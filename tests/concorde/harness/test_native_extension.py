@@ -19,7 +19,13 @@ def _node_strips_types() -> bool:
     if node is None:
         return False
     probe = subprocess.run(
-        [node, "-p", "Boolean(process.features.typescript)"],
+        # -e with a plain write: -p prints through util.inspect, which colours output when
+        # FORCE_COLOR is set and would make "true" unrecognizable.
+        [
+            node,
+            "-e",
+            "process.stdout.write(String(Boolean(process.features.typescript)))",
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -77,6 +83,7 @@ class NativeExtensionTests(unittest.TestCase):
                 "workflowRunning": True,
                 "workflowAccepted": True,
                 "workflowLaunchFailure": True,
+                "workflowReplacementRefused": True,
                 "workflowStop": True,
             },
             self.probe("workflow"),

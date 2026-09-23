@@ -308,6 +308,7 @@ class CoordinatorFailureTests(unittest.TestCase):
         for argv in (
             ("--child", "other-run", "--phase", "maintenance"),
             ("--child", "other-run", "--phase", "maintenance", "--release"),
+            ("--child", "author-run", "--phase", "test", "--release"),
         ):
             with self.subTest(argv=argv), self.assertRaises(SpecError):
                 self.status("--change-id", change, *argv)

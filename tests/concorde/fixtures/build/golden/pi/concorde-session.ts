@@ -817,7 +817,7 @@ const CATALOG: SessionCatalog = {
                     "$ref": "#/$defs/concorde-project-proposal"
                   },
                   "schema_version": {
-                    "const": 1,
+                    "const": 2,
                     "type": "integer"
                   },
                   "type_id": {
@@ -830,6 +830,11 @@ const CATALOG: SessionCatalog = {
                   "data"
                 ],
                 "type": "object"
+              },
+              "proposal_digest": {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
               },
               "run_in_primary": {
                 "type": "boolean"
@@ -950,11 +955,17 @@ const CATALOG: SessionCatalog = {
                   "type": "object"
                 },
                 "type": "array"
+              },
+              "source_digest": {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
               }
             },
             "required": [
               "action",
               "base_digest",
+              "source_digest",
               "files"
             ],
             "type": "object"
@@ -967,7 +978,7 @@ const CATALOG: SessionCatalog = {
             "$ref": "#/$defs/concorde-init-request"
           },
           "schema_version": {
-            "const": 3,
+            "const": 4,
             "type": "integer"
           },
           "type_id": {
@@ -981,7 +992,7 @@ const CATALOG: SessionCatalog = {
         ],
         "type": "object"
       },
-      "request_version": 3
+      "request_version": 4
     },
     {
       "description": "Host service: propose a change of the stored Agent models, thinking levels and time limits, then apply exactly the reviewed proposal; with accept_protocol, also rebind the project to the installed Protocol copy.",

@@ -66,9 +66,9 @@ have the same shape, not that the routing is right.
 ## Terminal Agent Operation (`terminal_agent_operation`) {#terminal-agent-operation}
 
 `OperationNode(name)` resolves `name` to an Agent definition. Its `graph(launcher=None)` compiles
-this Graph with Runtime context type `OperationRuntimeContext(host=None, configuration=None,
-launcher=None)` and no checkpointer; `invoke(context, launcher)` validates a typed input value and
-runs it. The Graph catalog compiles it from `OperationNode("context_assessor").graph()`; the
+this Graph with Runtime context type `OperationRuntimeContext(launcher=None)`, whose only field is
+the trusted Agent service, and no checkpointer; `invoke(context, launcher)` validates a typed input
+value and runs it. The Graph catalog compiles it from `OperationNode("context_assessor").graph()`; the
 channels below are those of the context assessor, whose input type is
 `concorde-agent-stage-context` and whose result type is `concorde-agent-stage-result`. Another
 Agent gives the same shape over its own types.
@@ -106,14 +106,6 @@ flowchart TB
     __start__ --> terminal_agent
     terminal_agent --> __end__
 ```
-
-## Capability State adapter
-
-`run_host(name, state, runtime)` wraps a capability's State as its typed request, runs it through
-admission with the Host and configuration found in `OperationRuntimeContext`, and returns
-`{"result": envelope}`. It refuses when no Host was supplied. `StateContract(input_type,
-output_type)` names the typed State a capability exposes; without an output type the State is
-`{"result": dict}`.
 
 ## Requirements
 
@@ -196,18 +188,11 @@ through Runtime context or the graph factory, never through State.
 - WHEN the service raises, returns a result the Agent's contract rejects, or returns an awaitable to a synchronous invocation
 - THEN the Graph stops without an output update and the error carries a causal feedback record
 
-### Capability State
+### Embedding in a parent Graph
 
 #### scenario.execution.operation-state — Only declared channels cross a State boundary
 
-- GIVEN a capability's State adapter or a Terminal Agent Operation embedded in a larger parent State
-- WHEN the parent Graph runs it
-- THEN only the declared input channels reach it and only its declared output channels leave it
-- AND trusted Hosts and services stay in Runtime context rather than State
-
-#### scenario.execution.operation-result-state — Host failures stay explicit in State
-
-- GIVEN a capability invoked through its State adapter
-- WHEN admission or execution returns a blocked or failed result envelope
-- THEN the `result` channel carries that envelope and its errors unchanged
-- BUT no successful output is invented
+- GIVEN a Terminal Agent Operation embedded as a node of a larger parent `StateGraph`
+- WHEN the parent Graph runs it with the Agent service in Runtime context
+- THEN only the Agent's declared input channels reach the service and only its declared output channels are written back, while the parent's other channels keep their values
+- AND the trusted Agent service stays in Runtime context rather than State, so the embedded Graph invoked without one refuses to run

@@ -297,13 +297,14 @@ class SolveTests(SolveCandidate, unittest.TestCase):
 
     # --- verification -----------------------------------------------------------------------
 
-    # Not declared for scenario.issue-solving.verification-blocking: the solver's next call
-    # receives the feedback but not the Issue context of the findings' reports, which the
-    # scenario promises; the Issue solver's Agent definition admits only an Issue selection.
+    @verifies("scenario.issue-solving.verification-blocking")
     def test_blocking_findings_send_the_solver_back_with_feedback(self):
         workflow = self.first_decision("verify")
         self.assertEqual("verify", workflow.host_step("decision-0")["route"])
-        workflow.review_all(0, blocking=("v-0-1-0",))
+        findings = []
+        for key in workflow.keys("v-0-"):
+            proposal = workflow.review(key, blocking=key == "v-0-1-0")
+            findings.extend(proposal["result"]["data"]["issues"])
         self.assertEqual("decide", workflow.host_step("verified-0")["route"])
         solution = self.solution()
         self.assertIsNone(solution["verified_inputs"])
@@ -312,6 +313,23 @@ class SolveTests(SolveCandidate, unittest.TestCase):
         selection = workflow.selection(1)
         self.assertIn("still reports blocking Issues", selection["feedback"])
         self.assertEqual("", selection["verification"])
+        # The next solver call also reads the reports of the blocking findings.
+        [finding] = findings
+        inputs = workflow.slot_descriptor("d-1")["snapshot"]["stage_inputs"]
+        self.assertEqual(
+            ["concorde-issue-selection", "concorde-issue-context"],
+            [item["type_id"] for item in inputs],
+        )
+        [observation] = inputs[1]["data"]["observations"]
+        self.assertEqual(
+            {
+                k: v
+                for k, v in finding.items()
+                if k not in {"severity", "affected_task"}
+            },
+            observation["receipt"],
+        )
+        self.assertEqual(transfer_report()["description"], observation["description"])
         self.assert_open()
 
     @verifies("scenario.issue-solving.reviewer-failed")

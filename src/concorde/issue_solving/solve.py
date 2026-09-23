@@ -45,6 +45,8 @@ class IssueSolve:
         self.final_decision = None
         self.child_output = {}
         self.duplicate_versions = {}
+        # Receipts of the blocking findings of the last verification, for the next decision.
+        self.findings = []
         if saved:
             for key, value in saved.items():
                 setattr(self, key, value.encode() if key == "original" else value)
@@ -65,6 +67,7 @@ class IssueSolve:
             "closed_revision",
             "child_output",
             "duplicate_versions",
+            "findings",
         )
         return {
             name: (
@@ -450,9 +453,10 @@ class IssueSolve:
         return requests
 
     def accept_verification(self, outputs, before):
-        from ..issues.references import review_blockers
+        from ..issues.references import receipt, review_blockers
 
         evidence = []
+        self.findings = []
         for output in outputs:
             self.child_output = output
             data = output["data"]
@@ -464,6 +468,13 @@ class IssueSolve:
                         "failed",
                     )
                 self.feedback = "Issue-specific verification still reports blocking Issues; repair the affected contract or code."
+                self.findings = [
+                    receipt(issue)
+                    for other in outputs
+                    for reviewed in other["data"]["reviews"]
+                    for issue in reviewed["data"]["issues"]
+                    if issue["severity"] == "blocking"
+                ]
                 self.solution["verified_inputs"] = None
                 self.save()
                 return {"route": "decide"}

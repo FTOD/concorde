@@ -508,8 +508,8 @@ Graph Spec check owned by Agent execution compares it with its compiled Graph.
 
 ### scenario.spec.apply-initialization — Applying an accepted proposal
 
-- GIVEN a proposal returned by propose whose destinations are all still absent
-- WHEN the user session calls `concorde-init` with `action: "apply"` and that exact proposal
+- GIVEN a proposal returned by propose whose destinations are all still absent and whose project is unchanged
+- WHEN the user session calls `concorde-init` with `action: "apply"`, that exact proposal and the `proposal_digest` propose returned
 - THEN every proposed file is written in one file transaction and the resulting project validates
 - AND the result has status `applied` and lists the written paths
 - BUT no Protocol copy or other installer output is created
@@ -530,14 +530,14 @@ Graph Spec check owned by Agent execution compares it with its compiled Graph.
 
 ### scenario.spec.reject-invalid-proposal — A malformed proposal is refused
 
-- GIVEN a proposal whose envelope is incomplete, that lacks the configuration or the registry, whose Protocol binding no longer matches the installed copy, or that has a non-null before-digest
+- GIVEN a proposal that is not the one its named `proposal_digest` identifies, whose envelope is incomplete, that lacks the configuration or the registry, whose Protocol binding no longer matches the installed copy, or that has a non-null before-digest
 - WHEN apply is requested
 - THEN it fails with `invalid_proposal`
 - AND no file is written
 
-### scenario.spec.reject-stale-proposal — A proposal whose destination now exists
+### scenario.spec.reject-stale-proposal — A proposal for an earlier project state
 
-- GIVEN a proposal returned by propose, one of whose destinations was created afterwards
+- GIVEN a proposal returned by propose, one of whose destinations was created afterwards, or whose project gained or lost a file its realization would bind
 - WHEN apply is requested
 - THEN it fails with `stale_proposal`
 - AND no file is written

@@ -411,16 +411,16 @@ and `max`.
 
 - GIVEN an Agent call whose run was interrupted, stopped, timed out or exited nonzero, even though its gate passed
 - WHEN `accept` runs
-- THEN it fails with outcome `cancelled`, `limit_exhausted` or `failed` and keeps the native row as a cause
-- AND the call is invalidated
+- THEN the driver's `accept` refuses with outcome `cancelled`, `limit_exhausted` or `failed` and keeps the native row as a cause, recording nothing as accepted
+- AND the native call extension, on that failed `accept`, then runs `invalidate`, so the call is invalidated
 - BUT files a programmer already changed stay in the candidate
 
 #### scenario.execution.stale-call — Changed inputs make a call stale
 
 - GIVEN a staged Agent call
 - WHEN any delivered file, snapshot source, configuration, instruction, registry, change status or provider input recheck differs from preparation before `accept`
-- THEN acceptance fails with `stale_context` and invalidates the call
-- BUT nothing is recorded as accepted
+- THEN the driver's `accept` refuses with `stale_context` and records nothing as accepted
+- AND the native call extension, on that failed `accept`, then runs `invalidate`, so no later step can accept the call
 
 #### scenario.execution.repeat-accept — A repeated acceptance never records twice
 

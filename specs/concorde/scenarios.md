@@ -25,13 +25,14 @@ end-to-end acceptance tests of the Framework.
 - AND no project file is created, changed or removed
 - AND a following `concorde-init` proposal fails with `not_installed`
 
-### scenario.concorde.adopt-provision-failure — A failed upgrade restores the previous installation
+### scenario.concorde.adopt-provision-failure — A failed upgrade restores the previous installation's files
 
 - GIVEN an initialized project with a working installation
-- WHEN the developer reinstalls a newer Concorde and provisioning its managed runtime fails
+- WHEN the developer reinstalls a newer Concorde and provisioning or verifying its managed runtime fails
 - THEN the installer reports the failure
-- AND the previous installation and its Protocol copy are restored byte for byte
-- AND capabilities keep running on the previous installation
+- AND the previous installation's files, its receipt and its Protocol copy are restored byte for byte
+- AND when the upgrade kept the existing runtime, capabilities keep running on the previous installation
+- BUT when the upgrade had to rebuild the runtime, the previous runtime is not kept, and capabilities fail local verification until an installation succeeds ([runtime rebuild failure](distribution/scenarios.md#scenario.distribution.runtime-rebuild-failure))
 
 ### scenario.concorde.protocol-upgrade-refused — A newer Protocol is not adopted silently
 

@@ -146,7 +146,7 @@ See [relay result](requirements.md#req.admission.relay-result).
 
 - GIVEN a relayed request whose candidate launcher exits without printing a result envelope
 - WHEN the Host reads the launcher's output
-- THEN the request fails with `relay_failed`, whose causal feedback keeps the launcher's exit code and sanitized output
+- THEN the request ends with status `failed` and error `relay_failed`, a transport failure rather than a refusal, whose causal feedback keeps the launcher's exit code and sanitized output
 - AND the candidate and its change status are kept
 
 See [relay result](requirements.md#req.admission.relay-result).

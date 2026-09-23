@@ -278,6 +278,19 @@ class OwnershipTests(CandidateFixture, unittest.TestCase):
             )
         self.assertEqual("workspace_mismatch", conflict.exception.code)
         self.assertEqual(before, self.status_bytes(state["change_id"]))
+        # A release must name exactly the current owner and the phase it was bound in.
+        for child_id, phase in (("writer-2", "maintenance"), ("writer-1", "test")):
+            with self.subTest(release=(child_id, phase)):
+                with self.assertRaises(SpecError) as release:
+                    coordinate_child(
+                        self.primary,
+                        state["change_id"],
+                        child_id=child_id,
+                        phase=phase,
+                        release=True,
+                    )
+                self.assertEqual("workspace_mismatch", release.exception.code)
+                self.assertEqual(before, self.status_bytes(state["change_id"]))
 
         with self.assertRaises(SpecError) as linked:
             coordinate_child(
@@ -600,6 +613,11 @@ class SnapshotTests(CandidateFixture, unittest.TestCase):
                 self.assertEqual(working, files_below(self.candidate))
                 self.assertEqual(index, self.index_entries(self.candidate))
                 self.assertEqual(status, self.status_bytes(state["change_id"]))
+        # Without either marker nothing identifies a guidance block: the whole file is delivered.
+        unmarked = guided.replace(GUIDANCE_START, "\n").replace(GUIDANCE_END, "")
+        agents.write_text(unmarked)
+        tree = snapshot_tree(self.candidate)
+        self.assertEqual(unmarked.encode(), self.show(tree, "AGENTS.md"))
 
 
 if __name__ == "__main__":

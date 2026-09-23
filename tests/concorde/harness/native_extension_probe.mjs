@@ -451,6 +451,18 @@ if (want("workflow")) {
   assert.equal(registration.disposed, false);
   report.workflowRunning = true;
 
+  // A new preparation never replaces a running Workflow: it is refused and nothing is stopped.
+  const beforeReplacement = actions().length;
+  const preparedBefore = preparations;
+  await assert.rejects(prepare({}, ctx), /still running/);
+  assert.equal(preparations, preparedBefore);
+  assert.equal(
+    since(beforeReplacement).some((entry) => entry.action === "workflow-stop"),
+    false,
+  );
+  assert.equal(registration.disposed, false);
+  report.workflowReplacementRefused = true;
+
   // A receipt is reported and the registration released.
   respond({
     "workflow-result": {

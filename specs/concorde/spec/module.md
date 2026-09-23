@@ -109,8 +109,10 @@ Validation and Delivery call.
 
 After installation the user session calls `concorde-init` with `action: "propose"`, a name and a
 worker configuration, and receives the **initial proposal**: the exact configuration, registry and
-root entry, nothing written yet. Calling it again with `action: "apply"` and that exact proposal
-writes the files only if every destination is still absent and the project then validates. The
+root entry, nothing written yet, and the proposal's digest. Calling it again with `action:
+"apply"`, that exact proposal and its digest writes the files only if every destination is still
+absent, the project's files are those the proposal was computed from, and the project then
+validates. The
 root entry says the project is not yet specified, and one realization, Existing project files,
 binds the files the project already has. Initialization refuses a configured project
 (`already_initialized`) and one without the installer's Protocol copy (`not_installed`).

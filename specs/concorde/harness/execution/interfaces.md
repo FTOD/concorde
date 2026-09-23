@@ -215,8 +215,10 @@ and intercepts the matching `subagent` call. For a `workflow` plan the registrar
    Workflow directory;
 5. answers the `concorde` tool's `result` action with the `workflow-result` step and releases the
    registration once the Workflow is no longer running;
-6. on session shutdown or replacement, runs `workflow-stop` and asks pi-subagents to stop a launched,
-   unfinished Workflow, or invalidates one that never launched.
+6. refuses a new preparation while its launched Workflow still runs, stopping nothing; before a new
+   preparation it releases a finished Workflow and invalidates one that never launched;
+7. on session shutdown, runs `workflow-stop` and asks pi-subagents to stop a launched, unfinished
+   Workflow, or invalidates one that never launched.
 
 The registrar knows no provider: which script runs, which steps exist and what they print all come
 from the plan.
@@ -286,10 +288,11 @@ prepared workflow plan.
 ### scenario.execution.workflow-stop — Stopping ends a Workflow's steps
 
 - GIVEN a launched Workflow that has not finished
-- WHEN the session shuts down or a new preparation replaces it
+- WHEN the session shuts down
 - THEN the registrar runs `workflow-stop` and asks pi-subagents to stop the run
 - AND every later workflow step fails with `execution_cancelled`
 - BUT a receipt written before the stop stays a separate, accepted fact
+- AND a new preparation requested while the Workflow still runs is refused instead of replacing it, and nothing is stopped
 
 ### scenario.execution.host-step-failure — A failing Host step is never a result
 

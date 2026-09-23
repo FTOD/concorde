@@ -67,6 +67,9 @@ requests refused before admission and requests interrupted by the Host.
 A result envelope SHALL distinguish an admission refusal, a provider's business outcome and an
 execution failure by its status, output and error codes.
 
+Only an execution failure is recorded by admission as the change's lifecycle status. A refusal
+leaves the change's lifecycle status as it was, and a provider records its own lifecycle outcomes.
+
 ### req.admission.run-record — Every executed request has a run record
 
 Every request admitted in `execute` mode SHALL have one run record in the primary worktree, opened

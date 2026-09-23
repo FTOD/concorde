@@ -22,6 +22,7 @@ from ..harness.native_driver import (
     stage_response,
     stop_plan,
 )
+from ..issues.references import observation_context
 from ..issues.store import read_issue
 from .bookkeeping import MAX_DECISIONS, serve
 from .solve import IssueSolve
@@ -166,6 +167,11 @@ class IssuesWorkflowHook:
             "expected_revision": domain.solution["revision"],
         }
         key = f"d-{index}"
+        stage_inputs = (prepared["selection"],)
+        if domain.findings:
+            # After blocking verification findings the solver also reads their reports.
+            stage_inputs += (observation_context(run.repository.root, domain.findings),)
+            domain.findings = []
         _issue(
             driver,
             layout,
@@ -173,7 +179,7 @@ class IssuesWorkflowHook:
             "issue_solver",
             task,
             operation="concorde-issues",
-            stage_inputs=(prepared["selection"],),
+            stage_inputs=stage_inputs,
         )
         state["inventory"].append(key)
         state["phase"] = "decision"

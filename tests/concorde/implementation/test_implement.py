@@ -598,6 +598,19 @@ class ComponentWorkTests(Candidate, unittest.TestCase):
         self.assert_no_call(value, before)
         self.assert_no_completion()
 
+    @verifies("scenario.implementation.components-context-stale")
+    def test_a_changed_component_spec_in_the_owner_context_makes_the_plan_stale(self):
+        self.complete_component(self.component_tasks())
+        before = set(self.calls.iterdir())
+        entry = self.root / "specs/ledger/module.md"
+        entry.write_text(entry.read_text() + "\nThe ledger also records reversals.\n")
+        value = self.prepare()
+        self.assertEqual("rejected", value["state"], value)
+        self.assertEqual({"stale_context"}, codes(value))
+        self.assertIsNone(value["result"]["output"], value)
+        self.assert_no_call(value, before)
+        self.assert_no_completion()
+
 
 class ConsumerComponentTests(Candidate, unittest.TestCase):
     """The component is a consumer of the owner, so its Spec is outside the owner's context."""

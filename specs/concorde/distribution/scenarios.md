@@ -38,10 +38,11 @@ See [req.distribution.build-idempotent](requirements.md#req.distribution.build-i
 
 ### scenario.distribution.build-protocol-assets — The Protocol assets hold only the Protocol
 
-- GIVEN the Protocol text and its Module chapter and templates
+- GIVEN the Protocol text: its normative chapters, its Module chapter with the Module and scenario templates, and its migration notes
 - WHEN the build renders the Protocol assets
-- THEN the principles bundle holds every Protocol chapter in order and the Module asset holds the Module chapter with its templates
-- AND neither holds any Concorde configuration, profile or execution rule
+- THEN the principles bundle holds, in reading order, every normative chapter other than the Module chapter: principles, model, relations, context, boundaries, format, checks and views
+- AND the Module asset holds the Module chapter followed by the Module and scenario templates
+- AND neither asset holds the migration notes or any Concorde configuration, profile or execution rule
 
 See [req.distribution.protocol-only-bundle](requirements.md#req.distribution.protocol-only-bundle).
 

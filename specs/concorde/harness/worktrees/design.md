@@ -55,8 +55,9 @@ candidate influence a request that never ran there.
 ## Deliverable snapshots and the boundary check
 
 A deliverable snapshot is computed in a private Git index that removes the control paths under
-`.concorde/` and strips exactly the recorded guidance block; edited or duplicated markers block it.
-The caller's index, the working files and the status record are untouched, and run records use the
+`.concorde/` and strips exactly the recorded guidance block. A single edited or removed marker, or
+duplicated markers, block it; a file without either marker has no guidance block to strip. The
+caller's index, the working files and the status record are untouched, and run records use the
 same snapshot as a run's exact input tree.
 
 The worktree boundary check reports a directory's Git identity and whether it is a linked worktree,

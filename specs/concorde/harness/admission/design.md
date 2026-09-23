@@ -16,7 +16,8 @@ Every capability, deterministic or model-backed, passes the same finite steps in
 3. bind the workspace (stay, relay, apply in the primary on opt-in, or delivery session);
 4. check the configuration and open the run record;
 5. dispatch through the dispatcher the launcher supplied;
-6. finalize: map the outcome to a status, record lifecycle failures, finish the run record.
+6. finalize: map the outcome to a status, record execution failures and the lifecycle outcome a
+   provider handed over, finish the run record.
 
 A failed step skips the rest and goes straight to finalization. The sequence is plain code, not a
 scheduler: it accepts no caller-supplied steps and launches no model. Model work is only prepared
@@ -84,11 +85,15 @@ its own request, because an uninitialized project has none stored.
 
 ## Refusals, outcomes and failures
 
-Admission refusals keep their error code and give status `blocked`. A provider's output decides the
-status by its outcome: `completed`, `ready` and `delivered` succeed, `failed` fails, anything else
-blocks. Execution failures give status `failed` with `execution_failed`, `execution_cancelled` or
-`execution_limit`, and are recorded as the change's lifecycle status. A failed status or run record
-write is reported beside the output as `state_persistence_failed`, never instead of it. An
+Admission refusals keep their error code and give status `blocked`; a refusal, including a gate
+refusal such as `review_required`, stops the request without changing the change's lifecycle
+status. A provider's output decides the status by its outcome: `completed`, `ready` and `delivered`
+succeed, `failed` fails, anything else blocks; lifecycle outcomes such as `blocked` are recorded by
+the provider, which hands them to finalization. Execution failures give status `failed` with
+`execution_failed`, `execution_cancelled` or `execution_limit`, and are recorded as the change's
+lifecycle status. A relay whose candidate launcher returned no envelope is a transport failure:
+status `failed` with `relay_failed`, the candidate's own change status untouched. A failed status or
+run record write is reported beside the output as `state_persistence_failed`, never instead of it. An
 interrupt ends the request with `execution_cancelled` and keeps the candidate; a relayed launcher
 gets thirty seconds to cancel its own work before it is killed.
 

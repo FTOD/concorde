@@ -21,7 +21,7 @@ The source layout renders:
 | --- | --- |
 | `generated/native/<agent>.md` | For `code-reviewer`, `context-assessor`, `issue-solver`, `planner`, `programmer`, `spec-reviewer` and `task-author`: the resolved `prompts/native/<agent>.md` followed by the resolved `agents/<agent>/spec.md` |
 | `generated/session/pi/concorde-session.ts` | The private session entry with its capability catalog, as Pi session's [catalog contract](../session/interfaces.md#contract.session.catalog) defines |
-| `generated/protocol/principles.md` | The resolved Protocol principles bundle: every Protocol chapter in order, and nothing else |
+| `generated/protocol/principles.md` | The resolved Protocol principles bundle: every normative Protocol chapter except the Module chapter, in reading order, and nothing else (not the migration notes) |
 | `generated/protocol/kinds/module.md` | The resolved Module chapter with the Module and Scenario templates |
 | `generated/schemas.json` | The JSON Schema of every registered request and record type, keyed by type identity, with sorted keys and two-space indentation |
 | `.pi/agents/*.md`, `.pi/extensions/*.ts` | The Task subagent and session extension files rendered by Pi session's projector |

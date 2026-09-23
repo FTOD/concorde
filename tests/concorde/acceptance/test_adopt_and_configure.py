@@ -154,6 +154,7 @@ class AdoptAcceptance(ConsumerProject, unittest.TestCase):
             {
                 "action": "apply",
                 "proposal": proposal["proposal"],
+                "proposal_digest": proposal["proposal_digest"],
                 "run_in_primary": True,
             },
         )
@@ -289,9 +290,10 @@ class AdoptAcceptance(ConsumerProject, unittest.TestCase):
         self.assertNotEqual(0, code, report)
         self.assertEqual("failed", report["status"], report)
         self.assertIn("injected runtime verification failure", report["error"])
-        # The previous installation and its Protocol copy are restored byte for byte.
+        # The previous installation's files, receipt and Protocol copy are restored byte for
+        # byte; the plan kept the existing runtime (see age_installation), so it is intact too.
         self.assertEqual(before, self.tree())
-        # Capabilities keep running on the previous installation.
+        # With the runtime kept, capabilities keep running on the previous installation.
         result = self.call("concorde-issues", LIST_ISSUES)
         self.assertEqual("succeeded", result["status"], result)
 

@@ -113,7 +113,7 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             "configuration": None,
             "input": {
                 "type_id": "concorde-init-request",
-                "schema_version": 3,
+                "schema_version": 4,
                 "data": {
                     "action": "propose",
                     "name": "Consumer",

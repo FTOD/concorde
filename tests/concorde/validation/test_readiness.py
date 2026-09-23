@@ -280,9 +280,7 @@ class ReadinessTests(WorktreeProject, unittest.TestCase):
         )
         self.assertEqual("blocked", self.entry()["status"])
 
-    # Not declared for scenario.validation.review-required: admission records every refused
-    # mutating request as a blocked change, although the scenario promises the change is not
-    # marked blocked. Only the progress entry stays unblocked.
+    @verifies("scenario.validation.review-required")
     def test_a_missing_required_review_stops_readiness(self):
         self.planned_change()
         run = Invocation(
@@ -294,7 +292,8 @@ class ReadinessTests(WorktreeProject, unittest.TestCase):
         require_reviews(run, True)
         self.refused(self.validate(), "review_required")
         change = self.change_status()
-        self.assertNotEqual("ready", change["status"])
+        # The gate refusal withdrew readiness and marked neither the change nor its entry blocked.
+        self.assertNotIn(change["status"], {"ready", "blocked"}, change)
         self.assertNotEqual("blocked", self.entry()["status"])
         self.assertEqual(
             ["passed"], [item["status"] for item in self.entry()["checks"]]

@@ -290,6 +290,7 @@ class DeclarationAdmissionTests(unittest.TestCase):
             {
                 "action": "apply",
                 "proposal": proposed["output"]["data"]["proposal"],
+                "proposal_digest": proposed["output"]["data"]["proposal_digest"],
                 "run_in_primary": True,
             }
         )

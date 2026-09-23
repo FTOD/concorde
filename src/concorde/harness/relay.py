@@ -83,18 +83,19 @@ def relay_operation(
     interrupt reaches the launcher as SIGTERM, which cancels its worker and prints its result;
     only a launcher that does not finish within the grace period is killed."""
     try:
-        if not source_checkout(candidate):
-            state = read_change(candidate, required=True)
-            target = host.relay_target or {}
-            if target.get("change_id") != state["change_id"] or target.get(
-                "path"
-            ) != str(candidate):
-                raise SpecError(
-                    "relay target does not own this candidate", "workspace_mismatch"
-                )
-            # Reject conflicting owner intent of a mutation before installation writes.
-            if target.get("mutates"):
-                resume_owner(state, invocation["input"]["data"])
+        # Every candidate, Concorde's own source included, must be the one whose change status
+        # names the requested change and path.
+        state = read_change(candidate, required=True)
+        target = host.relay_target or {}
+        if target.get("change_id") != state["change_id"] or target.get("path") != str(
+            candidate
+        ):
+            raise SpecError(
+                "relay target does not own this candidate", "workspace_mismatch"
+            )
+        # Reject conflicting owner intent of a mutation before installation writes.
+        if target.get("mutates"):
+            resume_owner(state, invocation["input"]["data"])
         argv = [
             *relay_launcher(
                 host,

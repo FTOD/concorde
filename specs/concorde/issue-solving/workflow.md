@@ -109,7 +109,7 @@ iterations `i` (0 to 5):
 
 | Step | Kind | What it does | Next |
 | --- | --- | --- | --- |
-| `next-i` | Host step | stops at the attempt limit or on a changed Issue; otherwise counts the attempt, builds the selection and issues solver slot `d-i` | `decide`, or `finished` |
+| `next-i` | Host step | stops at the attempt limit or on a changed Issue; otherwise counts the attempt, builds the selection, adds the Issue context of the previous verification's blocking findings, and issues solver slot `d-i` | `decide`, or `finished` |
 | `d-i` | Agent call | the Issue solver returns a solve decision | `decision-i` |
 | `decision-i` | Host step | admits the decision; finishes on hand-back, question or stop; closes and validates on a closing decision; otherwise issues review slots `v-i-g-m` | `verify`, or `finished` |
 | `v-i-g-m` | Agent calls | reviewers of group `g`, member `m`, run one after another | `verified-i` |

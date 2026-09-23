@@ -336,8 +336,8 @@ class RelayTests(WorktreeProject, unittest.TestCase):
         recorded = read_change(self.path, required=True)
         with scrubbed_process_environment():
             _, result = self.relay_request(FixtureInstallation(script))
-        self.assertIn(result["status"], {"blocked", "failed"}, result)
-        self.assertNotEqual("succeeded", result["status"])
+        # A transport failure is an execution failure, never a refusal.
+        self.assertEqual("failed", result["status"], result)
         [error] = result["errors"]
         self.assertEqual("relay_failed", error["code"], result)
         feedback = error["feedback"]

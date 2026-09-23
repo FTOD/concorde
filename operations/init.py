@@ -15,8 +15,8 @@ USES = ()
 # declaration names the same schemas.
 REQUEST = INIT_REQUEST
 RESPONSE = INIT_RESPONSE
-REQUEST_VERSION = 3
-RESPONSE_VERSION = 1
+REQUEST_VERSION = 4
+RESPONSE_VERSION = 2
 
 
 MUTATION = {"policy": "by-action", "actions": ["apply"]}

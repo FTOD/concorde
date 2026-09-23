@@ -66,7 +66,7 @@ A call adds `report_issue` and `structured_output` to the tools; no definition l
 | programmer | `implementation`, stage | project | spec-context, implementation, references | implementation | **`concorde-implementation-task`**, `concorde-review-result`, `concorde-issue-context` | `tasks` | read, grep, find, ls, edit, write, bash, run_checks | 3600 s | `concorde.implementation.hooks:programmer` |
 | spec reviewer | `spec-review`, review | capsule | spec-context | none | review input | review status | read, grep, find, ls | 1800 s | `concorde.review.native:spec_reviewer` |
 | code reviewer | `code-review`, review | project | spec-context, implementation, references | none | review input | review status | read, grep, find, ls, run_checks | 3600 s | `concorde.review.native:code_reviewer` |
-| issue solver | `issue-solve`, stage | capsule | spec-context | none | **`concorde-issue-selection`** | `issue_decision` | read, grep, find, ls | 1800 s | `concorde.issue_solving.native:issue_solver` |
+| issue solver | `issue-solve`, stage | capsule | spec-context | none | **`concorde-issue-selection`**, `concorde-issue-context` | `issue_decision` | read, grep, find, ls | 1800 s | `concorde.issue_solving.native:issue_solver` |
 
 The code reviewer's workspace is the project so that its `run_checks` measures the candidate, but
 its capsule holds copies of the implementation files it reviews; it has no shell.
@@ -106,7 +106,8 @@ are the canonical text.
   defects; a test that declares a scenario of this Module without exercising it is a defect.
   Unavailable evidence is never a pass.
 - **issue solver.** Chooses the next bounded action for one selected Issue revision from the Spec
-  context, bounded feedback and at most five admitted duplicate candidates. `issue_decision` has
+  context, bounded feedback, the reports of the last verification's blocking findings and at most
+  five admitted duplicate candidates. `issue_decision` has
   exactly `action`, `intent`, `rationale` and `duplicate_of`; it reads no implementation, edits
   nothing and closes nothing.
 

@@ -597,17 +597,21 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
                         ],
                     )
             except Exception as error:
-                # A refusal carries its stable code and blocks; anything else is a failure.
+                # A refusal carries its stable code and blocks; anything else is a failure. A
+                # relay whose launcher returned no envelope is a transport failure, not a
+                # refusal: it fails and keeps its own code.
                 code = getattr(error, "code", None)
-                refused = isinstance(error, (SpecError, TypedDataError)) or (
-                    isinstance(code, str) and bool(code)
+                transport = code == "relay_failed"
+                refused = not transport and (
+                    isinstance(error, (SpecError, TypedDataError))
+                    or (isinstance(code, str) and bool(code))
                 )
                 result.update(
                     status="blocked" if refused else "failed",
                     errors=[
                         error_entry(
                             error,
-                            code=code if refused else None,
+                            code=code if refused or transport else None,
                             layer="admission",
                             attempt=host.invocation_id,
                         )
@@ -662,17 +666,25 @@ def operation_graph_nodes(operation, configuration, runtime_input, *, host_conte
             for error in result["errors"]
         ):
             record_progress = False
+        # Admission records only an execution failure as the change's lifecycle status. A refusal
+        # stops the request without touching the change, and a provider records its own
+        # lifecycle outcomes (such as blocked) through the host's lifecycle values.
+        lifecycle_status = host.lifecycle.get("status") or (
+            "failed"
+            if result["status"] == "failed" and result["output"] is None
+            else None
+        )
         if (
             record_progress
             and host.mode == "execute"
             and result["status"] not in {"succeeded", "described"}
+            and lifecycle_status is not None
         ):
             output = result["output"]["data"] if result["output"] else {}
             try:
                 progress(
                     host.project_root,
-                    status=host.lifecycle.get("status")
-                    or ("blocked" if result["status"] == "blocked" else "failed"),
+                    status=lifecycle_status,
                     outcome=host.lifecycle.get("outcome")
                     or output.get("outcome")
                     or (result["errors"][0]["code"] if result["errors"] else "failed"),

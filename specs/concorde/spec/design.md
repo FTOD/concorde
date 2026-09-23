@@ -81,7 +81,8 @@ once the file exists it must leave `pending`, and confirmation rewrites only the
 ## Initialization
 
 The initializer separates describing a new project from writing it: the proposal is the preview,
-and application accepts only that exact proposal while every destination is absent. It proves its
+and application accepts only that exact proposal, named by its digest, while every destination is
+absent and the project is still in the state the proposal was computed from. It proves its
 result by running the validator on the written files inside the transaction, so a first Spec that
 does not validate is rolled back. Initialization creates only what the project owns, its
 configuration, registry and first Spec; the Protocol copy and everything else that exists because

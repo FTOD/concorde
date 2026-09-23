@@ -84,7 +84,7 @@ See [incarnation-bound status](requirements.md#req.worktrees.incarnation-bound).
 ### scenario.worktrees.child-owner-conflict — A second Task subagent cannot take an owned worktree
 
 - GIVEN a change whose worktree a Task subagent already owns
-- WHEN the user session records a different Task subagent for it, or for another change on the same worktree
+- WHEN the user session records a different Task subagent for it, or for another change on the same worktree, or releases it naming another Task subagent or another phase than the owner's
 - THEN the request is refused with `workspace_mismatch`
 - AND the recorded owner is unchanged
 
@@ -183,7 +183,8 @@ See [local state not delivered](requirements.md#req.worktrees.local-state-not-de
 
 ### scenario.worktrees.guidance-markers-edited — Edited guidance markers block the snapshot
 
-- GIVEN a candidate whose guidance block markers were edited, removed or duplicated
+- GIVEN a candidate whose `AGENTS.md` still holds one guidance marker but whose other marker was edited or removed, or whose markers were duplicated
 - WHEN the Host computes its deliverable snapshot
 - THEN it fails with `invalid_worktree_state`
-- BUT no content around the markers is discarded
+- AND no file, index entry or change status is changed
+- BUT a file from which both markers were removed is indistinguishable from one whose guidance block was deleted as a whole: it holds no guidance block, and its whole content is delivered as the candidate's own

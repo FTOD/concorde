@@ -178,7 +178,7 @@ See [req.session.tester-commands-only](requirements.md#req.session.tester-comman
 - GIVEN a tester with a valid selection
 - WHEN it calls `test_command` with a command that exits zero and report names
 - THEN the command runs in the read-only check boundary with fresh scratch
-- AND the tool returns the exit status, the tail of each output stream and a complete evidence export summary naming the exported reports
+- AND the tool returns the exit status, the tail of each output stream and a complete evidence export summary that names its export manifest, which lists each requested report among the exported artifacts
 
 ### scenario.session.tester-command-failed — A failed or unexported command fails the tool call
 

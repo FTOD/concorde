@@ -439,21 +439,26 @@ a repository loaded with overrides, because only files on disk can be confirmed.
 `concorde-init` is a deterministic capability; it runs no model and selects no context. Spec tooling
 registers its request and response types and the proposal type.
 
-`concorde-init-request@3` has closed data with `action` (`"propose"` or `"apply"`) and
-optional `name`, `target_id`, `configuration`, `proposal` and `run_in_primary` (Request admission's
-opt-in to apply in the primary worktree):
+`concorde-init-request@4` has closed data with `action` (`"propose"` or `"apply"`) and
+optional `name`, `target_id`, `configuration`, `proposal`, `proposal_digest` and `run_in_primary`
+(Request admission's opt-in to apply in the primary worktree):
 
 - `propose` requires `name` (nonblank) and `configuration` (a worker configuration, the typed value
   that Request admission registers as `concorde-operation-configuration`) and accepts `target_id`,
   default `module.project`. It fails with `already_initialized` when `.concorde/config.json` exists
   and with `not_installed` when the installer's Protocol copy is missing.
-- `apply` requires `proposal`, the complete `concorde-project-proposal@1` value that propose
-  returned, with closed data `{action: "initialize", base_digest: null, files: [{path,
-  before_digest, content}]}`.
+- `apply` requires `proposal`, the complete `concorde-project-proposal@2` value that propose
+  returned, with closed data `{action: "initialize", base_digest: null, source_digest, files:
+  [{path, before_digest, content}]}`, and `proposal_digest`, the digest propose returned for it.
 
-It returns `concorde-init-response@1` with closed data `{status, proposal, files}`:
-`proposed` with the typed proposal and its ordered paths, or `applied` with `proposal: null` and the
-written paths. A preview request is refused with `use_proposal`, because the proposal is already
+`source_digest` is the `sha256:` digest of the canonical JSON of `{protocol, entries}`: the binding
+of the installed Protocol copy and the realization entries the proposal binds (below), that is, the
+project state the proposal was computed from. `proposal_digest` is the `sha256:` digest of the
+canonical JSON of the proposal typed value.
+
+It returns `concorde-init-response@2` with closed data `{status, proposal, proposal_digest, files}`:
+`proposed` with the typed proposal, its digest and its ordered paths, or `applied` with `proposal`
+and `proposal_digest` null and the written paths. A preview request is refused with `use_proposal`, because the proposal is already
 the preview.
 
 The proposal contains four files, each with `before_digest: null`: `.concorde/config.json` with
@@ -474,13 +479,16 @@ which case its files are exact entries, as are files the exclusion rule would sk
 explains this realization and says it promises nothing about the files. A project with no files
 gets no realization.
 
-Apply refuses a proposal whose envelope is not exactly that shape, that lacks the configuration or
-the registry, whose configuration names another registry path or a Protocol binding other than the
-installed copy's, or that has a non-null digest (`invalid_proposal`). It writes only the
-configuration, the registry and the members of the documents the proposed registry lists
-(`permission_denied` otherwise), through one file transaction whose final check validates the
-project; a destination that appeared since the proposal fails with `stale_proposal`, and a
-validation error rolls every file back.
+Apply accepts only the exact proposal propose returned. It refuses, writing nothing: a
+`proposal_digest` that is not the digest of the given proposal; a proposal whose envelope is not
+exactly that shape, that lacks the configuration or the registry, whose configuration names another
+registry path or a Protocol binding other than the installed copy's, or that has a non-null
+before-digest (all `invalid_proposal`); and a proposal whose `source_digest` differs from the
+project's current one, because the project's files changed so that propose would now return a
+different proposal (`stale_proposal`). It writes only the configuration, the registry and the
+members of the documents the proposed registry lists (`permission_denied` otherwise), through one
+file transaction whose final check validates the project; a destination that appeared since the
+proposal fails with `stale_proposal`, and a validation error rolls every file back.
 
 ## Protocol manifest and binding {#protocol-manifest}
 

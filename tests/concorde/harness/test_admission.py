@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from concorde.distribution.build import write_build
 from concorde.harness import change_worktree
@@ -235,51 +235,83 @@ class SourceRelayTests(unittest.TestCase):
         from concorde.harness.relay import relay_operation
         from concorde.spec.repository import SpecError
 
+        state = ensure_change(
+            self.candidate, task={"task": "maintenance"}, mode="maintenance"
+        )
         (self.candidate / "concorde.json").write_text("{}")
         (self.candidate / "src/concorde").mkdir(parents=True)
+        relaying = OperationHost(
+            self.primary,
+            self.primary,
+            relay_target={
+                "path": str(self.candidate),
+                "change_id": state["change_id"],
+                "mutates": False,
+            },
+        )
+        # A source candidate is checked like any other: its change status must name the
+        # requested change and path before anything is verified or launched. Git keeps running
+        # for real; only the candidate's launcher is replaced.
+        real_popen = subprocess.Popen
+        launched = []
+
+        def launcher(argv, *args, **kwargs):
+            if argv[-1] != "concorde-main":
+                return real_popen(argv, *args, **kwargs)
+            launched.append((argv, kwargs))
+            process = MagicMock()
+            process.communicate.return_value = (
+                '{"type_id":"concorde-operation-result"}',
+                "diagnostics",
+            )
+            return process
+
+        mismatched = OperationHost(
+            self.primary,
+            self.primary,
+            relay_target={
+                "path": str(self.candidate),
+                "change_id": "change.other",
+                "mutates": False,
+            },
+        )
+        with (
+            patch("concorde.harness.admission.verify_build") as verify,
+            patch("subprocess.Popen", side_effect=launcher),
+        ):
+            with self.assertRaises(SpecError) as mismatch:
+                relay_operation(mismatched, "concorde-main", {}, self.candidate)
+            self.assertEqual("workspace_mismatch", mismatch.exception.code)
+            verify.assert_not_called()
         with (
             patch(
                 "concorde.harness.admission.verify_build",
                 side_effect=SpecError("stale", "stale_build"),
             ) as verify,
-            patch("subprocess.Popen") as launch,
+            patch("subprocess.Popen", side_effect=launcher),
         ):
             with self.assertRaises(SpecError):
-                relay_operation(
-                    OperationHost(self.primary, self.primary),
-                    "concorde-main",
-                    {},
-                    self.candidate,
-                )
+                relay_operation(relaying, "concorde-main", {}, self.candidate)
             verify.assert_called_once_with(self.candidate)
-            launch.assert_not_called()
+        self.assertEqual([], launched)
         (self.candidate / ".venv/bin").mkdir(parents=True)
         (self.candidate / ".venv/bin/python").write_text("fixture interpreter")
         (self.candidate / "scripts").mkdir()
         (self.candidate / "scripts/run-operation.py").write_text("fixture launcher")
         with (
             patch("concorde.harness.admission.verify_build") as verify,
-            patch("subprocess.Popen") as launch,
+            patch("subprocess.Popen", side_effect=launcher),
         ):
-            launch.return_value.communicate.return_value = (
-                '{"type_id":"concorde-operation-result"}',
-                "diagnostics",
-            )
             result, diagnostics = relay_operation(
-                OperationHost(self.primary, self.primary),
-                "concorde-main",
-                {},
-                self.candidate,
+                relaying, "concorde-main", {}, self.candidate
             )
             verify.assert_called_once_with(self.candidate)
-            launch.assert_called_once()
-            self.assertEqual("concorde-main", launch.call_args.args[0][-1])
-            self.assertEqual(
-                str(self.candidate / ".venv/bin/python"), launch.call_args.args[0][0]
-            )
-            self.assertNotIn("PYTHONPATH", launch.call_args.kwargs["env"])
-            self.assertNotIn("PYTHONHOME", launch.call_args.kwargs["env"])
-            self.assertEqual("diagnostics", diagnostics)
+        [(argv, kwargs)] = launched
+        self.assertEqual("concorde-main", argv[-1])
+        self.assertEqual(str(self.candidate / ".venv/bin/python"), argv[0])
+        self.assertNotIn("PYTHONPATH", kwargs["env"])
+        self.assertNotIn("PYTHONHOME", kwargs["env"])
+        self.assertEqual("diagnostics", diagnostics)
 
 
 class LauncherAdmissionTests(unittest.TestCase):

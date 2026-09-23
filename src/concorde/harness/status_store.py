@@ -501,6 +501,12 @@ def coordinate_child(
             )
         if not child_id.strip() or phase not in {"maintenance", "test", "task"}:
             raise SpecError("invalid child identity or phase", "invalid_input")
+        if release and (owner is None or owner["phase"] != phase):
+            # A release names exactly the current owner and the phase it was bound in.
+            raise SpecError(
+                "a release must name the current owner and its phase",
+                "workspace_mismatch",
+            )
         state["child"] = (
             None
             if release

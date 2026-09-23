@@ -42,9 +42,11 @@ PROPOSAL = obj(
     {
         "action": {"enum": ["initialize"]},
         "base_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+        "source_digest": DIGEST,
         "files": array(PROPOSAL_FILE),
     }
 )
+PROPOSAL_VERSION = 2
 INIT_REQUEST = obj(
     {
         "action": {"enum": ["propose", "apply"]},
@@ -52,23 +54,32 @@ INIT_REQUEST = obj(
         "target_id": STRING,
         "configuration": typed_schema("concorde-operation-configuration"),
         "proposal": typed_schema("concorde-project-proposal"),
+        "proposal_digest": DIGEST,
         "run_in_primary": {"type": "boolean"},
     },
-    ("name", "target_id", "configuration", "proposal", "run_in_primary"),
+    (
+        "name",
+        "target_id",
+        "configuration",
+        "proposal",
+        "proposal_digest",
+        "run_in_primary",
+    ),
 )
-INIT_REQUEST_VERSION = 3
+INIT_REQUEST_VERSION = 4
 INIT_RESPONSE = obj(
     {
         "status": {"enum": ["proposed", "applied"]},
         "proposal": {
             "anyOf": [typed_schema("concorde-project-proposal"), {"type": "null"}]
         },
+        "proposal_digest": {"anyOf": [DIGEST, {"type": "null"}]},
         "files": array(PATH),
     }
 )
-INIT_RESPONSE_VERSION = 1
+INIT_RESPONSE_VERSION = 2
 
-register("concorde-project-proposal", 1, PROPOSAL)
+register("concorde-project-proposal", PROPOSAL_VERSION, PROPOSAL)
 register("concorde-init-request", INIT_REQUEST_VERSION, INIT_REQUEST)
 register("concorde-init-response", INIT_RESPONSE_VERSION, INIT_RESPONSE)
 
@@ -131,6 +142,17 @@ def initial_module_metadata(
         "defines": defines,
         "relations": [],
     }
+
+
+def source_digest(root: Path, documents: set[str]) -> str:
+    """The digest of the project state a proposal is computed from: the installed Protocol
+    binding and the existing files the root Module's realization binds."""
+    return digest(
+        {
+            "protocol": installed_protocol_binding(root),
+            "entries": existing_files(root, documents),
+        }
+    )
 
 
 def existing_files(root: Path, documents: set[str]) -> list[str]:
@@ -276,18 +298,32 @@ def project_proposal(
     # topology-artifact ignore file) is the installer's output.
     return {
         "type_id": "concorde-project-proposal",
-        "schema_version": 1,
+        "schema_version": PROPOSAL_VERSION,
         "action": "initialize",
         "base_digest": None,
+        "source_digest": source_digest(root, {path, path + ".json"}),
         "files": files,
     }
 
 
+def proposal_digest(proposal: dict) -> str:
+    """The ``sha256:`` digest of the canonical JSON of a proposal typed value."""
+    return digest(proposal)
+
+
 def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
     if (
-        set(proposal) != {"type_id", "schema_version", "action", "base_digest", "files"}
+        set(proposal)
+        != {
+            "type_id",
+            "schema_version",
+            "action",
+            "base_digest",
+            "source_digest",
+            "files",
+        }
         or proposal["type_id"] != "concorde-project-proposal"
-        or proposal["schema_version"] != 1
+        or proposal["schema_version"] != PROPOSAL_VERSION
         or proposal["action"] not in {"initialize"}
     ):
         raise SpecError("invalid project proposal envelope", "invalid_proposal")
@@ -332,6 +368,13 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         raise SpecError(
             "initialization cannot replace existing files", "invalid_proposal"
         )
+    documents = allowed - {".concorde/config.json", ".concorde/specs.json"}
+    if source_digest(root, documents) != proposal["source_digest"]:
+        # The project's files changed since propose: it would now propose something else.
+        raise SpecError(
+            "the project changed since this proposal was made; propose again",
+            "stale_proposal",
+        )
 
     def verify():
         report = validate_repository(root, package_root=package)
@@ -361,11 +404,20 @@ def run(request) -> dict:
             "use_proposal",
         )
     if data["action"] == "apply":
-        if "proposal" not in data:
+        if not {"proposal", "proposal_digest"} <= set(data):
             raise SpecError(
-                "apply requires the complete typed proposal", "invalid_input"
+                "apply requires the proposal and its proposal_digest",
+                "invalid_input",
+                "/proposal",
             )
         proposal = data["proposal"]
+        # Apply accepts only the exact proposal propose returned, named by its digest.
+        if proposal_digest(proposal) != data["proposal_digest"]:
+            raise SpecError(
+                "proposal_digest is not the digest of the given proposal",
+                "invalid_proposal",
+                "/proposal_digest",
+            )
         value = apply_project_proposal(
             host.project_root,
             host.package_root,
@@ -377,7 +429,12 @@ def run(request) -> dict:
         )
         return typed(
             "concorde-init-response",
-            {"status": "applied", "proposal": None, "files": value["files"]},
+            {
+                "status": "applied",
+                "proposal": None,
+                "proposal_digest": None,
+                "files": value["files"],
+            },
         )
     if not {"name", "configuration"} <= set(data):
         raise SpecError(
@@ -392,13 +449,17 @@ def run(request) -> dict:
     )
     proposal = typed(
         "concorde-project-proposal",
-        {key: value[key] for key in ("action", "base_digest", "files")},
+        {
+            key: value[key]
+            for key in ("action", "base_digest", "source_digest", "files")
+        },
     )
     return typed(
         "concorde-init-response",
         {
             "status": "proposed",
             "proposal": proposal,
+            "proposal_digest": proposal_digest(proposal),
             "files": [item["path"] for item in value["files"]],
         },
     )

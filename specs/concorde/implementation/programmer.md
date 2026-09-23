@@ -174,9 +174,16 @@ See [preserve task identity and acceptance](#req.implementation.admitted-contrac
 ### scenario.implementation.components-stale — Changed component work must be completed again
 
 - GIVEN an owner whose component work was completed
-- WHEN the component's Spec or code changes before the owner's next implementation run
+- WHEN the component's implementation changes, or its Spec changes while that Spec is outside the owner's Spec context, before the owner's next implementation run
 - THEN `concorde-implement` returns the component again in the `components` field
 - BUT the owner's programmer does not start
+
+### scenario.implementation.components-context-stale — A changed component Spec in the owner's context makes the owner's plan stale
+
+- GIVEN an owner whose component work was completed, for a component whose Spec belongs to the owner's Spec context
+- WHEN the component's Spec changes before the owner's next implementation run
+- THEN `concorde-implement` refuses with `stale_context`, because the owner's Spec revision no longer equals its plan's
+- BUT no component work is returned and the owner's programmer does not start
 
 ### scenario.implementation.shared-file — A programmer that may write a shared file is bound to every binder
 

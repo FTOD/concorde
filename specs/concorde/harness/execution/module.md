@@ -120,8 +120,8 @@ outside any data a model writes, and resolves model selection.
 
 <a id="realization.execution.operation-graph"></a><a id="realization.execution.graph-spec-check"></a>
 
-The **operation graph** builds the Terminal Agent Operation and State adapter; the **Graph Spec
-check** compares each catalog Graph with its Graph Spec and refuses the Functional API.
+The **operation graph** builds the Terminal Agent Operation and its Runtime context; the
+**Graph Spec check** compares each catalog Graph with its Graph Spec and refuses the Functional API.
 
 <a id="realization.execution.tests"></a>
 

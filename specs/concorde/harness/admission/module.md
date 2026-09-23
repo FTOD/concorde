@@ -89,7 +89,7 @@ configuration from its request.
 
 **Other checks and errors.** A top-level model-backed request needs a fresh build, else
 `stale_build`. Every executed request has one run record in the primary. An interrupt ends the request with `execution_cancelled` and keeps the candidate; a
-candidate launcher that returns no envelope gives `relay_failed`; a mutation of a change being
+candidate launcher that returns no envelope fails the request (status `failed`) with `relay_failed`; a mutation of a change being
 delivered gives `delivery_in_progress`. Nothing is retried automatically, and a repeated request
 cannot replace a change's recorded task or target. All codes are in
 [contracts](contracts.md#error-codes); less common paths are in the [design topic](design.md).
