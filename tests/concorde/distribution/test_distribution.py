@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
 import json
 import shutil
+import tarfile
 import subprocess
 import sys
 import tempfile
@@ -17,6 +20,7 @@ from concorde.distribution.build import (
     write_build,
 )
 from concorde.distribution.install import InstallError, install
+from concorde.distribution.tools import platform_key
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.spec.repository_base import SpecError
 from concorde.spec.verification import verifies
@@ -40,6 +44,33 @@ def package_copy(test) -> Path:
             shutil.copy2(source, root / name)
     write_build(root)
     return root
+
+
+FAKE_D2 = b"#!/bin/sh\necho fake d2\n"
+
+
+def fake_d2(test, package: Path, *, corrupt: bool = False):
+    """Pin a small d2 archive in ``package`` and return a fetch that serves it."""
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as bundle:
+        info = tarfile.TarInfo("d2-v0.9.0/bin/d2")
+        info.size = len(FAKE_D2)
+        bundle.addfile(info, io.BytesIO(FAKE_D2))
+    archive = buffer.getvalue()
+    descriptor = json.loads((package / "concorde.json").read_text())
+    descriptor["tools"]["d2"]["sha256"][platform_key()] = hashlib.sha256(
+        archive
+    ).hexdigest()
+    (package / "concorde.json").write_text(json.dumps(descriptor, indent=2) + "\n")
+    write_build(package)
+    urls: list[str] = []
+
+    def fetch(url: str) -> bytes:
+        urls.append(url)
+        return archive + (b"x" if corrupt else b"")
+
+    fetch.urls = urls
+    return fetch
 
 
 def command(*argv, cwd=REPOSITORY_ROOT):
@@ -228,7 +259,8 @@ class InstallTests(unittest.TestCase):
         project.mkdir()
         subprocess.run(["git", "init", "-q", str(project)], check=True)
         (project / "CLAUDE.md").write_text("# My project\n\nKeep this.\n")
-        receipt = install(project, package)
+        fetch = fake_d2(self, package)
+        receipt = install(project, package, fetch=fetch)
         self.assertTrue((project / ".concorde/protocol/manifest.json").exists())
         self.assertTrue(
             (project / ".concorde/framework/src/concorde/spec/grants.py").exists()
@@ -246,7 +278,16 @@ class InstallTests(unittest.TestCase):
         self.assertFalse((project / ".concorde/config.json").exists())
         self.assertFalse((project / ".concorde/specs.json").exists())
         self.assertFalse((project / "specs").exists())
-        install(project, package)
+        # The pinned d2 is placed, recorded in the receipt and kept out of version control.
+        d2 = project / ".concorde/tools/d2"
+        self.assertEqual(FAKE_D2, d2.read_bytes())
+        self.assertTrue(d2.stat().st_mode & 0o111)
+        self.assertEqual(".concorde/tools/d2", receipt["tools"]["d2"]["path"])
+        self.assertIn(".concorde/tools/", (project / ".gitignore").read_text())
+        self.assertIn(f"-{platform_key()}.tar.gz", fetch.urls[0])
+        install(project, package, fetch=fetch)
+        # The same pin is not downloaded again.
+        self.assertEqual(1, len(fetch.urls))
         self.assertEqual(
             1, (project / "CLAUDE.md").read_text().count("<!-- concorde:start -->")
         )
@@ -300,6 +341,59 @@ class InstallTests(unittest.TestCase):
             install(project, package)
         self.assertEqual("stale_build", raised.exception.code)
         self.assertFalse((project / ".claude").exists())
+
+
+class D2InstallTests(unittest.TestCase):
+    @verifies("scenario.distribution.install-d2-refused")
+    def test_a_d2_archive_that_does_not_match_its_pin_installs_nothing(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, fetch=fake_d2(self, package, corrupt=True))
+        self.assertEqual("d2_digest_mismatch", raised.exception.code)
+        self.assertIn("but concorde.json pins", str(raised.exception))
+        self.assertEqual([], list(project.iterdir()))
+
+    @verifies("scenario.distribution.install-d2-refused")
+    def test_an_unreachable_d2_release_is_reported_with_its_url(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+
+        def offline(url: str) -> bytes:
+            raise OSError("network is unreachable")
+
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, fetch=offline)
+        self.assertEqual("d2_unavailable", raised.exception.code)
+        self.assertIn(
+            "github.com/d2lang/d2/releases/download/v0.9.0", str(raised.exception)
+        )
+        self.assertIn("network is unreachable", str(raised.exception))
+        self.assertEqual([], list(project.iterdir()))
+
+    @verifies("scenario.distribution.install-d2-refused")
+    def test_install_without_d2_leaves_the_program_to_the_developer(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        receipt = install(project, package, d2=False)
+        self.assertEqual({}, receipt["tools"])
+        self.assertFalse((project / ".concorde/tools").exists())
+
+    def test_every_supported_platform_has_a_pinned_archive(self):
+        descriptor = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
+        self.assertEqual(
+            {
+                f"{system}-{machine}"
+                for system in ("linux", "macos", "windows")
+                for machine in ("amd64", "arm64")
+            },
+            set(descriptor["tools"]["d2"]["sha256"]),
+        )
+        self.assertEqual("linux-arm64", platform_key("Linux", "aarch64"))
+        self.assertEqual("macos-amd64", platform_key("Darwin", "x86_64"))
 
 
 if __name__ == "__main__":

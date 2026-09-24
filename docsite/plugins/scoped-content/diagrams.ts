@@ -5,6 +5,7 @@
  * marked `d2 illustrative` renders the same way under the non-normative label. */
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { dirname, posix, resolve } from "node:path";
 import {
@@ -26,8 +27,18 @@ import { ILLUSTRATIVE_LABEL } from "./render";
 
 const MODULE_KINDS = new Set(["owner", "module", "foreign"]);
 const INSTALL_HINT =
-  "install the d2 program from https://github.com/d2lang/d2/releases and put it on PATH, " +
-  "or set CONCORDE_D2 to its path";
+  "run the Concorde installer, which places d2 at .concorde/tools/d2, or install the d2 program " +
+  "from https://github.com/d2lang/d2/releases and put it on PATH, or set CONCORDE_D2 to its path";
+
+/** The d2 program: `CONCORDE_D2`, else the one the Concorde installer placed, else `d2` on PATH. */
+export function d2Program(projectRoot: string): string {
+  if (process.env.CONCORDE_D2) return process.env.CONCORDE_D2;
+  for (const name of ["d2", "d2.exe"]) {
+    const installed = resolve(projectRoot, ".concorde/tools", name);
+    if (existsSync(installed)) return installed;
+  }
+  return "d2";
+}
 
 function descendants(
   registry: ScopedRegistry,
@@ -84,8 +95,12 @@ function classify(
 }
 
 /** Run `d2` on `input` and return the SVG it writes to stdout. */
-function runD2(input: string, where: string): Promise<string> {
-  const program = process.env.CONCORDE_D2 || "d2";
+function runD2(
+  input: string,
+  where: string,
+  projectRoot: string,
+): Promise<string> {
+  const program = d2Program(projectRoot);
   const args = [
     "--layout=elk",
     "--theme=0",
@@ -161,7 +176,8 @@ async function renderBlock(
 ): Promise<string> {
   // An illustrative block may use the whole D2 language and asserts nothing, so it renders as
   // written.
-  if (illustrative) return runD2(source, `${page.sourcePath}:${line}`);
+  if (illustrative)
+    return runD2(source, `${page.sourcePath}:${line}`, registry.projectRoot);
   let input: string;
   try {
     input = styledDiagramInput(registry, page, source);
@@ -173,7 +189,7 @@ async function renderBlock(
       );
     throw error;
   }
-  return runD2(input, `${page.sourcePath}:${line}`);
+  return runD2(input, `${page.sourcePath}:${line}`, registry.projectRoot);
 }
 
 /** Replace every `d2` block of a staged page with an image of its rendering. */

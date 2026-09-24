@@ -91,9 +91,11 @@ jq .result /tmp/proposal.json > /tmp/accepted.json   # inspect it first
 ```
 
 The installer places the runtime under `.concorde/framework/`, the `.concorde/bin/concorde`
-command, the Protocol copy under `.concorde/protocol/`, and the main-session guidance as the
-Claude Code skill `.claude/skills/concorde/SKILL.md` and a block in `CLAUDE.md`. It never writes
-your Specs. Then open Claude Code in the project and talk to it: it is now the main agent.
+command, the Protocol copy under `.concorde/protocol/`, the main-session guidance as the
+Claude Code skill `.claude/skills/concorde/SKILL.md` and a block in `CLAUDE.md`, and the
+[`d2`](https://github.com/d2lang/d2) program that renders your Specs' diagrams as
+`.concorde/tools/d2`, a pinned release whose checksum it verifies (`--without-d2` skips it). It
+never writes your Specs. Then open Claude Code in the project and talk to it: it is now the main agent.
 
 A typical change, as the main agent runs it:
 
@@ -112,8 +114,9 @@ The [workflow guide](docs/workflow-guide.md) walks through it in detail.
 ## The docsite
 
 The **[published docsite](https://ftod.github.io/concorde/)** renders Concorde's own Specs. To
-preview it locally with Node.js 20+ and the [`d2`](https://github.com/d2lang/d2/releases) program,
-which renders the Specs' diagrams:
+preview it locally with Node.js 20+ and the [`d2`](https://github.com/d2lang/d2/releases) program
+on `PATH`, which renders the Specs' diagrams (the Concorde installer places `d2` in projects it
+installs into):
 
 ```bash
 python3 scripts/concorde.py build

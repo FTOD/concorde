@@ -65,4 +65,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN a Git project with Specs and a fresh Concorde package
 - WHEN the developer runs the installer on the project
 - THEN the project has the Protocol copy under `.concorde/protocol/`, the `concorde` command and the main-session guidance as a project skill and a `CLAUDE.md` block
+- AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
+- AND installing again with the same pin downloads nothing
 - BUT no Spec document, registry or Protocol binding of the project changed
+
+### scenario.distribution.install-d2-refused — A d2 archive that cannot be trusted installs nothing
+
+- GIVEN a fresh Concorde package whose `concorde.json` pins a `d2` release
+- WHEN the installer runs and the downloaded archive does not match the pinned SHA-256, or the download fails
+- THEN the installer refuses with `d2_digest_mismatch` or `d2_unavailable`, naming the URL and the reason
+- AND nothing is written into the project
+- BUT with `--without-d2` the installer places everything else and leaves `d2` to the developer

@@ -49,6 +49,16 @@ See [req.views.diagram-subset](requirements.md#req.views.diagram-subset).
 
 See [req.views.d2-failure](requirements.md#req.views.d2-failure).
 
+### scenario.views.d2-program — The installed d2 is found without configuration
+
+- GIVEN a project into which the Concorde installer placed `.concorde/tools/d2`
+- WHEN the publisher looks for the `d2` program
+- THEN it uses `CONCORDE_D2` when that is set
+- AND otherwise the installed `.concorde/tools/d2`
+- AND otherwise `d2` on `PATH`
+
+See [req.views.d2-program](requirements.md#req.views.d2-program).
+
 ## Pages and navigation
 
 ### scenario.views.publish-candidate — One canonical page per registered document

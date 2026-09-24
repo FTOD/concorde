@@ -4,19 +4,22 @@ It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol``
 ``generated`` outputs) to ``.concorde/framework/``, writes the ``.concorde/bin/concorde`` command,
 the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
 ``.claude/skills/concorde/SKILL.md`` and a delimited block in ``CLAUDE.md``, Concorde-owned
-defaults when absent, ignore rules for local state, and a receipt ``.concorde/install.json``. It
-refuses a package whose build is stale and never writes a Spec document, the registry or the
-project configuration.
+defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
+state, and a receipt ``.concorde/install.json``. It refuses a package whose build is stale, fetches
+and verifies ``d2`` before writing anything else, and never writes a Spec document, the registry or
+the project configuration.
 """
 
 from __future__ import annotations
 
 import json
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 from .build import BuildError, verify_fresh
 from .project_defaults import install_project_defaults
+from .tools import TOOLS, ToolError, install_d2
 
 FRAMEWORK = ".concorde/framework"
 COMMAND = ".concorde/bin/concorde"
@@ -26,7 +29,7 @@ RECEIPT = ".concorde/install.json"
 START = "<!-- concorde:start -->"
 END = "<!-- concorde:end -->"
 RUNTIME = ("src", "scripts", "prompts", "protocol", "generated")
-IGNORED = (".concorde/runs/", ".concorde/tasks/", ".concorde/framework/")
+IGNORED = (".concorde/runs/", ".concorde/tasks/", ".concorde/framework/", f"{TOOLS}/")
 SKILL_HEADER = (
     "---\n"
     "name: concorde\n"
@@ -85,8 +88,18 @@ def _ignore(project: Path) -> None:
         path.write_text(text + prefix + "\n".join(missing) + "\n", encoding="utf-8")
 
 
-def install(project: str | Path, package: str | Path) -> dict:
-    """Install ``package`` into ``project``; return the receipt."""
+def install(
+    project: str | Path,
+    package: str | Path,
+    *,
+    d2: bool = True,
+    fetch: Callable[[str], bytes] | None = None,
+) -> dict:
+    """Install ``package`` into ``project``; return the receipt.
+
+    With ``d2`` false the docsite's diagram program is left to the developer. ``fetch`` replaces
+    the download of the pinned ``d2`` archive, for tests and offline mirrors.
+    """
     project, package = Path(project).resolve(), Path(package).resolve()
     if not project.is_dir():
         raise InstallError("invalid_project", f"{project} is not a directory")
@@ -96,6 +109,15 @@ def install(project: str | Path, package: str | Path) -> dict:
         raise InstallError("stale_build", str(error)) from error
     skill = _guidance(package, "skill")
     block = _guidance(package, "claude-md")
+    descriptor = json.loads((package / "concorde.json").read_text())
+    tools = {}
+    if d2:
+        try:
+            tools["d2"] = install_d2(
+                project, descriptor, **({"fetch": fetch} if fetch else {})
+            )
+        except ToolError as error:
+            raise InstallError(error.code, str(error)) from error
     written = install_project_defaults(project, package)
     _copy_runtime(package, project / FRAMEWORK)
     command = project / COMMAND
@@ -110,11 +132,11 @@ def install(project: str | Path, package: str | Path) -> dict:
     (project / SKILL).write_text(SKILL_HEADER + skill, encoding="utf-8")
     _claude_md(project, block)
     _ignore(project)
-    version = json.loads((package / "concorde.json").read_text())["version"]
     receipt = {
-        "version": version,
+        "version": descriptor["version"],
         "framework": FRAMEWORK,
         "command": COMMAND,
+        "tools": tools,
         "files": sorted({*written, COMMAND, SKILL, CLAUDE_MD, ".gitignore"}),
     }
     (project / RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
@@ -127,10 +149,15 @@ def main(argv) -> int:
 
     parser = argparse.ArgumentParser(prog="install-concorde")
     parser.add_argument("project")
+    parser.add_argument(
+        "--without-d2",
+        action="store_true",
+        help="do not download d2; the docsite then needs d2 on PATH or in CONCORDE_D2",
+    )
     arguments = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[3]
     try:
-        receipt = install(arguments.project, package)
+        receipt = install(arguments.project, package, d2=not arguments.without_d2)
     except InstallError as error:
         sys.stdout.write(
             json.dumps({"error": error.code, "message": str(error)}) + "\n"

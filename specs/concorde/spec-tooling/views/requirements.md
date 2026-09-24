@@ -73,7 +73,10 @@ refused because the look is the publisher's.
 
 ### req.views.d2-program — Diagrams are rendered by the d2 program
 
-Publication SHALL render D2 with the `d2` program from github.com/d2lang/d2, found on `PATH` or through `CONCORDE_D2`.
+Publication SHALL render D2 with the `d2` program from github.com/d2lang/d2, taken from `CONCORDE_D2`, else from `.concorde/tools/d2`, else from `PATH`.
+
+The Concorde installer places a pinned, checksum-verified release at `.concorde/tools/d2`, so an
+installed project needs no configuration; a source checkout uses `d2` on `PATH`.
 
 ### req.views.d2-failure — A diagram that cannot be rendered fails the build
 

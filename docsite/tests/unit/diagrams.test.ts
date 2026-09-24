@@ -1,5 +1,5 @@
 import { existsSync, rmSync } from "node:fs";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -9,6 +9,7 @@ import {
   reference,
 } from "../../plugins/scoped-content/diagram-source";
 import {
+  d2Program,
   renderDiagrams,
   styledDiagramInput,
 } from "../../plugins/scoped-content/diagrams";
@@ -237,8 +238,25 @@ describe("scenario.views.d2-missing", () => {
       process.env.CONCORDE_D2 = resolve(project.root, "no-such-d2-program");
       const registry = loadScopedRegistry(project.root);
       await expect(materializeScoped(registry)).rejects.toThrow(
-        /Cannot render the D2 diagram at specs\/bank\/module\.md:\d+: the program '.*no-such-d2-program' was not found; install the d2 program from https:\/\/github\.com\/d2lang\/d2\/releases/,
+        /Cannot render the D2 diagram at specs\/bank\/module\.md:\d+: the program '.*no-such-d2-program' was not found; run the Concorde installer, which places d2 at \.concorde\/tools\/d2, or install the d2 program from https:\/\/github\.com\/d2lang\/d2\/releases/,
       );
+    } finally {
+      await rm(project.root, { recursive: true, force: true });
+    }
+  });
+
+  // verifies: scenario.views.d2-program
+  it("prefers CONCORDE_D2, then the installer's copy, then d2 on PATH", async () => {
+    const project = bankProject();
+    try {
+      delete process.env.CONCORDE_D2;
+      expect(d2Program(project.root)).toBe("d2");
+      const installed = resolve(project.root, ".concorde/tools/d2");
+      await mkdir(dirname(installed), { recursive: true });
+      await writeFile(installed, "");
+      expect(d2Program(project.root)).toBe(installed);
+      process.env.CONCORDE_D2 = "/opt/d2";
+      expect(d2Program(project.root)).toBe("/opt/d2");
     } finally {
       await rm(project.root, { recursive: true, force: true });
     }

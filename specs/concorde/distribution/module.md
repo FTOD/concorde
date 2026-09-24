@@ -38,8 +38,9 @@ interface, the Protocol copy and the installer describe how a project receives a
 
 **The package.** The package is this checkout, described by `concorde.json`: name, version,
 licence, repository, the architecture profile, the Python runtime requirement, the package roots
-the installer ships (`docsite`, `prompts`, `protocol`, `scripts`, `src`), the install locations and
-the supported client, `claude-code`. Everything the installer ships comes from it, and the build
+the installer ships (`docsite`, `prompts`, `protocol`, `scripts`, `src`), the install locations, the
+supported client, `claude-code`, and the pinned third-party programs under `tools` (today `d2`, by
+release, download URL and per-platform SHA-256). Everything the installer ships comes from it, and the build
 reads it as an input so that a changed descriptor makes every render stale. Views reads its package
 roots to confirm that the docsite template ships.
 
@@ -100,8 +101,12 @@ refuses a package whose build is stale and then places:
   Code guidance: the project skill `.claude/skills/concorde/SKILL.md` and a block between
   `<!-- concorde:start -->` and `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in
   place on a later install and leaving the rest of the file untouched;
-- ignore rules for `.concorde/runs/`, `.concorde/tasks/` and `.concorde/framework/` in the
-  project's `.gitignore`, and a receipt `.concorde/install.json`.
+- the `d2` program the docsite renders diagrams with, as `.concorde/tools/d2`: the release that
+  `concorde.json` pins under `tools.d2`, downloaded for this platform from github.com/d2lang/d2 and
+  accepted only if its SHA-256 matches the pin. It is fetched and checked before anything else is
+  written, and kept on a later install with the same pin; `--without-d2` skips it;
+- ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/framework/` and
+  `.concorde/tools/` in the project's `.gitignore`, and a receipt `.concorde/install.json`.
 
 It never writes Specs, the registry or the project configuration. After installing,
 `concorde init --propose --name <name> [--target <module id>]` prints Spec core's initialization

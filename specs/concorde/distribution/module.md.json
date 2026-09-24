@@ -137,7 +137,8 @@
       "meaning": "#realization.distribution.installer",
       "entries": [
         "scripts/install-concorde.py",
-        "src/concorde/distribution/install.py"
+        "src/concorde/distribution/install.py",
+        "src/concorde/distribution/tools.py"
       ],
       "pending": []
     },

@@ -63,8 +63,10 @@ assert, the registry mirror, realization bindings and contract examples, is esta
 ## Commands
 
 Run from `docsite/` after `npm ci` (Node.js 20 or newer). Rendering diagrams needs the `d2` program
-from [github.com/d2lang/d2](https://github.com/d2lang/d2/releases) on `PATH`, or its path in
-`CONCORDE_D2`; the scaffolded deploy workflow installs a pinned release.
+from [github.com/d2lang/d2](https://github.com/d2lang/d2/releases). The publisher takes it from
+`CONCORDE_D2`, else from `.concorde/tools/d2`, where the Concorde installer places a pinned,
+checksum-verified release, else from `PATH`. The scaffolded deploy workflow installs the same
+release in CI.
 
 | Command             | Purpose                                                                    |
 | ------------------- | -------------------------------------------------------------------------- |

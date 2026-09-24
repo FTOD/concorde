@@ -46,3 +46,10 @@ project configuration's Protocol binding.
 
 The installer SHALL refuse to install main-session guidance whose rendered output is missing or
 older than its sources.
+
+### req.distribution.installer-pinned-d2 — Only the pinned d2 is installed
+
+The installer SHALL place a `d2` program only from an archive whose SHA-256 equals the one `concorde.json` pins for the platform.
+
+The docsite renders the Specs' diagrams with it. The installer fetches and checks it before writing
+anything else, so a failed or tampered download leaves the project untouched.
