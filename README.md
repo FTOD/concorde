@@ -114,7 +114,8 @@ this workflow in detail.
 
 ## The docsite
 
-The **[published docsite](https://ftod.github.io/concorde/)** renders Concorde's own Specs. To
+The **[published docsite](https://ftod.github.io/concorde/)** opens on Concorde's user documents
+under [`docs/`](docs/README.md), then renders Concorde's own Specs and the Spec Protocol. To
 preview it locally with Node.js 20+ and the [`d2`](https://github.com/d2lang/d2/releases) program
 on `PATH`, which renders the Specs' diagrams (the Concorde installer places `d2` in projects it
 installs into):

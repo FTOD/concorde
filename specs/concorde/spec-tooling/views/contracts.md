@@ -148,8 +148,8 @@ remote, supplies `https://<owner>.github.io` as `url`, `/<repo>/` as `baseUrl` (
 `<owner>.github.io` repository) and the owner and repository names. Otherwise the defaults are
 `https://localhost`, `/`, and the lowercased title with every run of other characters replaced by
 one hyphen, trimmed, or `project` when empty; an info finding then asks the developer to set the
-final values. Explicit options override the defaults. The scaffold never adds a homepage or custom
-docs.
+final values. Explicit options override the defaults. The scaffold never adds user documents or
+custom docs.
 
 **Conflicts.** `conflicts` lists every proposed destination that already exists, with reason
 `target already exists`. It is information only and authorizes nothing.
@@ -192,10 +192,19 @@ or builds; a missing file, invalid JSON or a broken rule fails with an error nam
 | `organizationName`, `projectName` | Nonempty. |
 | `repository` | Optional absolute HTTP(S) URL; adds a navigation link, an icon for `github.com`, otherwise a "Source" label. |
 | `tagline` | Optional nonempty string. |
+| `userDocs` | Optional object, below; without it the root redirects to the root Module's entry. |
 | `customDocs` | Optional array of collections, below. |
-| `homepage` | Optional object, below; without it the root redirects to the root Module's entry. |
 
-The field `protocolDocs` is rejected with a message pointing to `customDocs`.
+The field `protocolDocs` is rejected with a message pointing to `customDocs`, and the removed field
+`homepage` with a message pointing to `userDocs`.
+
+**User documents.** `userDocs` has a nonempty `path` and an optional nonempty `label`, which
+defaults to "User documents". `path` names a directory relative to `docsite/` under the same rules
+as a collection's `path` below. The directory must contain a root page, `README.md`, `README.mdx`,
+`index.md` or `index.mdx`, and no registered Spec document, and none of its top-level documents or
+folders may be named `specs`, `search` or the first segment of a collection's `routeBasePath`. It
+is published as one Docusaurus docs instance at route base `/`, with a sidebar generated from its
+folders, as the first navigation item; its root page is the site's home page.
 
 **Custom docs collections.** Each has nonempty `id`, `label`, `path` and `routeBasePath`, and
 optional `sidebarPath`. `id` is a unique lowercase slug other than `default`. `routeBasePath` is
@@ -204,20 +213,11 @@ neither equal to, inside nor containing another collection's route. `path` (a di
 `sidebarPath` (a file) are relative to `docsite/`, may use `../`, and may not be absolute, use a
 drive prefix or contain a backslash. A collection must not contain a registered Spec document. Each
 collection is published as its own Docusaurus docs instance with its own sidebar, search index and
-navigation entry; its landing document uses `slug: /`.
+navigation entry after the Spec tabs; its landing document uses `slug: /`.
 
 A project may also provide `docsite/custom-docs/index.ts`, exporting an object with optional
 `plugins` and `navbarItems` arrays. They are added to the site as they are; their routes must stay
 outside `/specs`, and duplicate routes fail the build.
-
-**Homepage.** `homepage` has nonempty strings `eyebrow`, `title` and `description`; `features`
-with a nonempty `title` and a nonempty `items` array; `workflow` with nonempty `title`,
-`description` and a nonempty `steps` array; and `quickstart` with nonempty `title`, `description`
-and `code`. Each item and step has nonempty `title` and `description`. Optional `links` is an array
-of `{label, to}` with a nonempty label and a local `/route` or an HTTP(S) URL. Optional `reference`
-has nonempty `title` and `description` and a nonempty `tables` array; each table has nonempty
-`title` and `description`, a nonempty `columns` array of nonempty strings and a nonempty `rows`
-array whose rows have one nonempty string per column. All homepage text renders as plain text.
 
 ## Build commands
 

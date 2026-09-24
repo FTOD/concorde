@@ -19,8 +19,9 @@ GitHub Pages workflow.
 | Promotion | The directory swap that makes a checked publication candidate the new published site. |
 | Canonical page | The single page at which one registered Spec document is published. |
 | Reading collection | One of the two Spec tabs of the site, Module documents or Implementation documents, chosen for each document by its declared role. |
-| Custom docs | Project-owned documentation that the site publishes in its own tab, beside the Specs and outside them. |
-| Site identity | The project-owned file `docsite/site.json` that names the site and configures its optional homepage and custom docs. |
+| User documents | Project-owned documentation for the project's users, published from one directory as the site's first tab, whose root page is the site's home page. |
+| Custom docs | Project-owned documentation that the site publishes in its own tab after the Spec tabs, beside the Specs and outside them. |
+| Site identity | The project-owned file `docsite/site.json` that names the site and configures its optional user documents and custom docs. |
 | Scaffold proposal | The exact list of files, with their digests, that the scaffold command would create in a project. |
 | Build manifest | The record a build writes beside its pages, listing every published document with its route and source digests. |
 | [Developer](../../vocabulary.md#concept.concorde.developer) | |
@@ -42,9 +43,14 @@ there instead of copying it. Each page shows its owner, the Modules selecting it
 source digests, with every identity anchored, imports showing the imported definition, and
 illustrative diagrams labelled non-normative.
 
-<a id="concept.views.custom-docs"></a>
+<a id="concept.views.user-docs"></a><a id="concept.views.custom-docs"></a>
 
-**Custom docs** belong to no Module and are never agent context.
+**User documents** are written for the people who use the project, in any structure: the site
+publishes their directory as it is, with a sidebar that follows its folders, as the first tab, and
+their root page (`README.md` or `index.md`) is the home page at `/`. Without them the home page
+opens the root Module's entry. **Custom docs** are further collections, such as Concorde's own
+Spec Protocol, each in its own tab after the Spec tabs. Neither belongs to a Module, may contain a
+registered document, or is ever agent context.
 
 <a id="concept.views.publication-candidate"></a><a id="concept.views.promotion"></a><a id="concept.views.published-site"></a><a id="concept.views.build-manifest"></a>
 
@@ -104,8 +110,8 @@ damage an existing site or Spec.
 
 <a id="realization.views.concorde-site"></a>
 
-**Concorde site** is Concorde's own configuration — `site.json` homepage, Protocol collection,
-repository tests, Pages workflow — excluded from the template.
+**Concorde site** is Concorde's own configuration — `site.json` with its user documents and
+Protocol collection, repository tests, Pages workflow — excluded from the template.
 
 ## Relationships
 

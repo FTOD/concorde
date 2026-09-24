@@ -24,6 +24,7 @@ import scopedContent, { validateScopedBuild } from "../plugins/scoped-content";
 import * as customDocs from "../plugins/scoped-content/custom-docs";
 import * as model from "../plugins/scoped-content/model";
 import * as siteIdentity from "../plugins/scoped-content/site-identity";
+import * as userDocs from "../plugins/scoped-content/user-docs";
 import { materializeScoped } from "../plugins/scoped-content/materialize";
 import {
   preparePublication,
@@ -57,6 +58,7 @@ function siteConfiguration(): any {
     "./plugins/scoped-content": { __esModule: true, default: scopedContent },
     "./plugins/scoped-content/model": model,
     "./plugins/scoped-content/site-identity": siteIdentity,
+    "./plugins/scoped-content/user-docs": userDocs,
   };
   runInNewContext(compile("../docusaurus.config.ts"), {
     module: loaded,
@@ -297,6 +299,70 @@ it("shows only the Module documents tab when no document is an implementation do
   });
   put("specs/transfer/requirements.md", "# Transfer requirements\n\nPlain.\n");
   expect(tabs()).toEqual([["Module documents", "moduleDocumentsSidebar"]]);
+});
+
+// verifies: scenario.views.user-docs
+it("lists user documents first, then the Spec tabs, then custom docs, and gives them the root", () => {
+  put("docs/README.md", "# Bank\n");
+  put("docsite/guides/index.md", "---\nslug: /\n---\n# Guides\n");
+  put(
+    "docsite/site.json",
+    JSON.stringify({
+      ...readJson(project, "docsite/site.json"),
+      userDocs: { path: "../docs" },
+      customDocs: [
+        {
+          id: "guides",
+          label: "Guides",
+          path: "guides",
+          routeBasePath: "guides",
+        },
+      ],
+    }),
+  );
+  const config = siteConfiguration();
+  expect(
+    config.themeConfig.navbar.items
+      .filter((item: any) => item.position === "left")
+      .map((item: any) => item.label),
+  ).toEqual([
+    "User documents",
+    "Module documents",
+    "Implementation documents",
+    "Guides",
+  ]);
+  // The root redirect page steps aside so the user documents' root page is the home page.
+  expect(config.presets[0][1].pages.exclude).toContain("index.tsx");
+  expect(
+    config.plugins.find((plugin: any) => plugin?.[1]?.id === "user")[1],
+  ).toMatchObject({ path: "../docs", routeBasePath: "/" });
+});
+
+// verifies: scenario.views.publish-homepage-default
+it("keeps the root redirect page when no user documents are configured", () => {
+  const config = siteConfiguration();
+  expect(config.presets[0][1].pages).toEqual({});
+  expect(config.plugins.some((plugin: any) => plugin?.[1]?.id === "user")).toBe(
+    false,
+  );
+});
+
+// verifies: scenario.views.user-docs-refused
+it("user documents without a root page fail the build and promote nothing", async () => {
+  const previous = await publishedSite();
+  put("docs/guide.md", "# Guide\n");
+  put(
+    "docsite/site.json",
+    JSON.stringify({
+      ...readJson(project, "docsite/site.json"),
+      userDocs: { path: "../docs" },
+    }),
+  );
+  await expect(buildScript()()).rejects.toThrow(
+    /userDocs\.path \.\.\/docs has no root page/,
+  );
+  expect(existsSync(resolve(root, "docsite/.generated/candidate"))).toBe(false);
+  expect(snapshot(published())).toEqual(previous);
 });
 
 // verifies: scenario.views.materialize-failure

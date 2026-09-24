@@ -1,9 +1,3 @@
----
-slug: /
-title: Using Concorde
-sidebar_label: Using Concorde
----
-
 # Using Concorde
 
 This guide is for developers who want to use Concorde in their own project. It covers installing
@@ -44,7 +38,7 @@ A Concorde project has three kinds of documents, each for a different reader:
 | ---------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **Module documents**         | Developers who want to understand the architecture                            | Written under the Spec Protocol; they become agent context and define boundaries. |
 | **Implementation documents** | Developers and agents that need precise requirements, scenarios and contracts | Written under the Spec Protocol; same role.                                       |
-| **User documents**           | People who use the project, like this guide                                   | No structural rules; never agent context.                                         |
+| **User documents**           | People who use the project, like this guide                                   | No structural rules; never agent context; the docsite's first tab and home page.  |
 
 ## Before you start
 
@@ -369,10 +363,20 @@ npm --prefix docsite run start
 
 Unlike the initialization proposal, the docsite proposal is passed as a path inside the project.
 `--github-pages` adds a GitHub Actions workflow that deploys the site. Scaffolding only creates
-files; it never updates or deletes an existing site. The site shows Module documents and
-Implementation documents in their own tabs. Your user documents can be published beside them as
-**custom docs**: list a directory under `customDocs` in `docsite/site.json`, as Concorde does for
-the guide you are reading.
+files; it never updates or deletes an existing site.
+
+The site's tabs come in a fixed order:
+
+1. **User documents**, when you configure them: add `"userDocs": {"path": "../docs"}` to
+   `docsite/site.json`. The directory is published as it is, with a sidebar that follows its
+   folders, and its root page (`README.md` or `index.md`) becomes the site's home page at `/`.
+   Concorde publishes this guide that way. Without user documents, the home page opens the root
+   Module's entry.
+2. **Module documents** and **Implementation documents**, generated from your Specs.
+3. Any **custom docs** collections you list under `customDocs`, such as Concorde's Spec Protocol
+   tab.
+
+Neither user documents nor custom docs may contain a registered Spec document.
 
 ## Where things live
 

@@ -47,9 +47,13 @@ language that no Spec can override, and changing the house style restyles every 
 Rendering calls the `d2` program from github.com/d2lang/d2 once per diagram, with the ELK layout,
 and fails with the diagram's location when the program is missing or rejects the input.
 
-Custom docs appear in their own tabs. Concorde, for example, publishes the Spec Protocol chapters at
-`/protocol` as a custom docs collection. Custom docs are ordinary documentation: they belong to no
-Module and are never part of any agent's context.
+User documents come first. They are the project's documentation for its users, kept in one
+directory in whatever structure suits them, and the site publishes that directory as it is: the
+first tab, a sidebar that follows the folders, and the root page as the site's home page at `/`.
+Concorde publishes its `docs/` this way, so its home page is `docs/README.md`. The Spec tabs come
+next, and custom docs, such as the Spec Protocol chapters Concorde publishes at `/protocol`, come
+last in their own tabs. User documents and custom docs are ordinary documentation: they belong to
+no Module and are never part of any agent's context.
 
 ## Building and previewing
 
@@ -93,8 +97,8 @@ The scaffold never updates or deletes an existing site: bringing an existing sit
 template is a manual, reviewed change.
 
 After applying, edit `docsite/site.json` if needed. It holds the title, address and base URL, an
-optional repository link, an optional homepage and optional custom docs collections. Without a
-homepage, the site root redirects to the root Module's entry page. The exact fields are in
+optional repository link, optional user documents and optional custom docs collections. Without
+user documents, the site root redirects to the root Module's entry page. The exact fields are in
 [the site identity rules](contracts.md#site-identity).
 
 ## Why it is built this way
@@ -166,7 +170,7 @@ change rolls back the files already written. Because the scaffold can neither re
 accepting a proposal can never damage an existing site or a project Spec.
 
 **Concorde's own site is project-owned.** The Concorde site consists of the files that configure
-Concorde's publication rather than the template: `docsite/site.json` with Concorde's homepage, the
+Concorde's publication rather than the template: `docsite/site.json` with Concorde's user documents, the
 Protocol collection under `docsite/custom-docs/`, the repository-specific tests in
 `docsite/tests/repository/` and the GitHub Pages workflow. The template inventory excludes them, so
-a scaffolded project never receives Concorde's homepage or Protocol chapters.
+a scaffolded project never receives Concorde's user documents or Protocol chapters.

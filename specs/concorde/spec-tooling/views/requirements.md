@@ -9,7 +9,7 @@ The Module-wide obligations of [Views](module.md). The entry explains why they e
 
 Publication SHALL publish as Spec pages exactly the documents that the registry's Modules own.
 
-The optional homepage and custom docs are separate surfaces and are not Spec pages.
+User documents and custom docs are separate surfaces and are not Spec pages.
 
 ### req.views.no-directory-scanning — No discovery of documents
 
@@ -85,9 +85,16 @@ Publication SHALL fail naming the diagram's document and line when the `d2` prog
 A missing program is reported with how to install it, and a rejected diagram with the program's own
 message.
 
+### req.views.user-docs — User documents are the home page and the first tab
+
+Publication SHALL publish configured user documents from their directory as it is, in the first navigation tab, with their root page as the site's home page, never as Spec pages.
+
+Their sidebar follows the directory's folders. Without user documents the home page opens the root
+Module's entry.
+
 ### req.views.custom-docs — Custom docs stay outside the Specs
 
-Publication SHALL publish custom docs only in their own tabs and routes, never as Spec pages or inside a Spec collection.
+Publication SHALL publish custom docs only in their own tabs and routes, after the Spec tabs, never as Spec pages or inside a Spec collection.
 
 ### req.views.provenance-selection — Provenance agrees with Spec core
 

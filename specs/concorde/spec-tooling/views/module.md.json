@@ -76,6 +76,12 @@
       "meaning": "#concept.views.reading-collection"
     },
     {
+      "id": "concept.views.user-docs",
+      "type": "concept",
+      "title": "User documents",
+      "meaning": "#concept.views.user-docs"
+    },
+    {
       "id": "concept.views.custom-docs",
       "type": "concept",
       "title": "Custom docs",
@@ -165,6 +171,12 @@
       "source": "concept.views.canonical-page",
       "verb": "is listed in",
       "target": "concept.views.reading-collection"
+    },
+    {
+      "type": "relates",
+      "source": "realization.views.publisher",
+      "verb": "publishes first, as the home page",
+      "target": "concept.views.user-docs"
     },
     {
       "type": "relates",

@@ -188,22 +188,40 @@ it("publishes the Protocol as its own collection without Spec provenance", async
   }
 });
 
-// verifies: scenario.views.publish-homepage
-it("publishes the configured homepage at the root and links the Specs", async () => {
+// verifies: scenario.views.user-docs
+it("publishes the user documents as the home page and the first tab", async () => {
   const identity = loadSiteIdentity(site);
-  const homepage = identity.homepage!;
+  expect(identity.userDocs).toEqual({
+    path: "../docs",
+    label: "User documents",
+  });
   const base = identity.baseUrl.replace(/\/$/, "");
   const home = await readFile(resolve(output, "index.html"), "utf8");
-  const text = (value: string) =>
-    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  expect(home).toContain(text(homepage.title));
-  expect(home).toContain('id="get-started"');
-  for (const table of homepage.reference?.tables ?? [])
-    expect(home).toContain(text(table.title));
-  expect(home).toContain(`href="${base}/protocol"`);
-  expect(home).toContain('name="description"');
+  expect(home).toContain("Specify the architecture. Fence your agents.");
+  expect(home).toContain(`href="${base}/using-concorde"`);
+  expect(home).toContain("theme-doc-sidebar-container");
   expect(home).not.toMatch(/http-equiv="refresh"/i);
   expect(home).not.toContain("provenanceShell");
+  const tabs = [
+    ...home.matchAll(/class="navbar__item navbar__link[^"]*"[^>]*>([^<]+)</g),
+  ].map((match) => match[1]);
+  expect(tabs).toEqual([
+    "User documents",
+    "Module documents",
+    "Implementation documents",
+    "Spec Protocol",
+  ]);
+  const guide = await readFile(resolve(output, "using-concorde.html"), "utf8");
+  expect(guide).toContain("Using Concorde");
+  expect(guide).not.toContain("provenanceShell");
+  const manifest = JSON.parse(
+    await readFile(resolve(output, "build-manifest.json"), "utf8"),
+  );
+  expect(
+    manifest.pages.some((page: { sourcePath: string }) =>
+      page.sourcePath.startsWith("docs/"),
+    ),
+  ).toBe(false);
 });
 
 // verifies: scenario.views.inline-diagrams

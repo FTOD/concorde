@@ -3,7 +3,7 @@
 `docsite/` is the packaged, project-neutral publisher of a Concorde project's Specs. A scaffold
 copies it into another project with a neutral `site.json`. Project-owned `site.json`,
 `custom-docs/` and `tests/repository/` are excluded from the packaged inventory, so a scaffolded
-project never receives Concorde's homepage, Protocol chapters or repository tests.
+project never receives Concorde's user documents, Protocol chapters or repository tests.
 
 ## What it publishes
 
@@ -98,18 +98,36 @@ disposable; preview and production keep separate generated directories.
 | `projectName`      | string           | Non-empty.                                                                           |
 | `repository`       | string, optional | Absolute URL; adds a navbar repository link.                                         |
 | `tagline`          | string, optional | Falls back to a generic tagline.                                                     |
-| `customDocs`       | array, optional  | Project-owned documentation collections; see below.                                  |
-| `homepage`         | object, optional | A project introduction at `/`; without it the root redirects to the root Module.     |
+| `userDocs`         | object, optional | The user documents and home page; without it the root redirects to the root Module.  |
+| `customDocs`       | array, optional  | Further project-owned documentation collections; see below.                          |
 
-`homepage` requires nonempty `eyebrow`, `title` and `description`; `features` (`title`, `items`);
-`workflow` (`title`, `description`, `steps`); and `quickstart` (`title`, `description`, `code`).
-Optional `reference` adds tables (`title`, `description`, `columns`, `rows`) and optional `links`
-adds `{label, to}` links to local routes or HTTP(S) URLs. All copy renders as plain text. An invalid
-file fails the build with the field path in the error.
+An invalid file fails the build with the field path in the error. The removed `homepage` field is
+refused with a pointer to `userDocs`.
+
+## Navigation order
+
+The navbar lists the user documents first, then **Module documents** and **Implementation
+documents**, then each custom docs collection in `site.json` order, then extension items.
+
+## User documents
+
+User documents are the project's documentation for its users. The Spec Protocol places no rule on
+them: keep them in one directory in whatever structure suits them and name it in `site.json`:
+
+```json
+"userDocs": {"path": "../docs"}
+```
+
+`path` is a directory relative to `docsite/`; optional `label` (default "User documents") names the
+tab. The directory is published as it is at `/`, with a sidebar generated from its folders, and its
+root page, `README.md` or `index.md`, is the site's home page. It may not contain a registered Spec
+document, and no top-level document or folder may be named `specs`, `search` or the first segment
+of a custom docs route. User documents belong to no Module and never enter an agent's context.
+Concorde publishes its own `docs/` this way.
 
 ## Custom docs
 
-Human-authored guides live outside the Specs in their own tabs. They belong to no Module and never
+Further human-authored collections live outside the Specs in their own tabs, after the Spec tabs. They belong to no Module and never
 enter an agent's context. Add a collection to `site.json`:
 
 ```json

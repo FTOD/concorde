@@ -4,6 +4,7 @@ import type { Config, PluginModule } from "@docusaurus/types";
 import type { Options as ClassicOptions } from "@docusaurus/preset-classic";
 
 import { customDocsConfiguration } from "./plugins/scoped-content/custom-docs";
+import { userDocsConfiguration } from "./plugins/scoped-content/user-docs";
 
 import generatedCache from "./plugins/generated-cache";
 import scopedContent from "./plugins/scoped-content";
@@ -16,6 +17,7 @@ import { loadSiteIdentity } from "./plugins/scoped-content/site-identity";
 const projectRoot = resolve(__dirname, "..");
 const identity = loadSiteIdentity(__dirname);
 const registry = loadScopedRegistry(projectRoot);
+const user = userDocsConfiguration(__dirname, identity, registry);
 const custom = customDocsConfiguration(__dirname, identity, registry);
 requireScoped(projectRoot);
 let repositoryHost: string | undefined;
@@ -59,6 +61,18 @@ const config: Config = {
           showLastUpdateTime: false,
         },
         blog: false,
+        // With user documents their root page is the home page, so the redirect page steps aside.
+        pages: user
+          ? {
+              exclude: [
+                "**/_*.{js,jsx,ts,tsx,md,mdx}",
+                "**/_*/**",
+                "**/*.test.{js,jsx,ts,tsx}",
+                "**/__tests__/**",
+                "index.tsx",
+              ],
+            }
+          : {},
         theme: { customCss: "./src/css/custom.css" },
         sitemap: false,
       } satisfies ClassicOptions,
@@ -66,6 +80,7 @@ const config: Config = {
   ],
   plugins: [
     generatedCache,
+    ...(user ? [user.plugin] : []),
     ...custom.plugins,
     [scopedContent as PluginModule, { projectRoot }],
     [
@@ -74,15 +89,26 @@ const config: Config = {
         hashed: true,
         indexDocs: true,
         indexBlog: false,
-        docsRouteBasePath: ["/specs", ...custom.docsRouteBasePath],
-        docsDir: [".generated/content/specs", ...custom.docsDir],
+        // The user documents' route "/" contains every other one, so it is matched last.
+        docsRouteBasePath: [
+          "/specs",
+          ...custom.docsRouteBasePath,
+          ...(user ? [user.docsRouteBasePath] : []),
+        ],
+        docsDir: [
+          ".generated/content/specs",
+          ...custom.docsDir,
+          ...(user ? [user.docsDir] : []),
+        ],
       },
     ],
   ],
   themeConfig: {
     navbar: {
       title: identity.title,
+      // User documents come first, then the Spec tabs, then project-owned custom docs.
       items: [
+        ...(user ? [user.navbarItem] : []),
         {
           type: "docSidebar",
           sidebarId: "moduleDocumentsSidebar",

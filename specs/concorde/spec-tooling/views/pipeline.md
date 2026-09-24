@@ -154,13 +154,16 @@ The content plugin publishes Docusaurus global data with `schema_version`, `root
 by route and renders the provenance bar: the collection label, the source path, links between the
 entry and the owner's implementation pages, and a "Spec metadata" disclosure with the document
 identity, the owner, the selecting Modules with their reasons, the metadata path and both digests.
-The homepage uses `rootModule` to find the root Module's entry.
+Without user documents, the site root uses `rootModule` to redirect to the root Module's entry.
 
 ## Build hooks
 
 The Docusaurus configuration loads the site identity and the model at start-up. The Spec docs
-instance reads `.generated/content/specs` at route base `/specs`; each custom docs collection is a
-separate instance; local search indexes all of them. Broken links, anchors and duplicate routes
+instance reads `.generated/content/specs` at route base `/specs`; user documents are a separate
+instance at route base `/` with a generated sidebar, and the root redirect page is then left out;
+each custom docs collection is a separate instance; local search indexes all of them. The
+navigation lists user documents, then Module documents and Implementation documents, then custom
+docs. Broken links, anchors and duplicate routes
 are build errors.
 
 The content plugin:
@@ -172,9 +175,12 @@ The content plugin:
   no longer matches, or if any registered page route is missing from the rendered routes; then
   writes `build-manifest.json`.
 
-Custom docs admission, done while configuring the site, fails when a collection directory or
-sidebar file is missing, when a collection directory contains a registered document, or when
-`custom-docs/index.ts` does not export an object with array `plugins` and `navbarItems`.
+User documents admission, done while configuring the site, fails when the directory is missing,
+has no root page, contains a registered document, or has a top-level document or folder that would
+publish under `/specs`, `/search` or a custom docs route. Custom docs admission fails when a
+collection directory or sidebar file is missing, when a collection directory contains a registered
+document, or when `custom-docs/index.ts` does not export an object with array `plugins` and
+`navbarItems`.
 
 ## Validation
 

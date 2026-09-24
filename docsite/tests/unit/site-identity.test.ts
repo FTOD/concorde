@@ -22,25 +22,6 @@ const validValue = {
 };
 
 const roots: string[] = [];
-const homepage = {
-  eyebrow: "Project documentation",
-  title: "Build with a clear contract.",
-  description: "Explore the project.",
-  features: {
-    title: "Operations",
-    items: [{ title: "Contracts", description: "Explicit promises." }],
-  },
-  workflow: {
-    title: "Workflow",
-    description: "An inspectable path.",
-    steps: [{ title: "Specify", description: "Define the behavior." }],
-  },
-  quickstart: {
-    title: "Get started",
-    description: "Install the project.",
-    code: "echo example",
-  },
-};
 afterEach(async () =>
   Promise.all(
     roots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
@@ -101,7 +82,7 @@ describe("site identity schema 1", () => {
     },
   );
 
-  it("supports independent custom docs and project-owned homepage links", () => {
+  it("supports independent custom docs", () => {
     const customDocs = [
       {
         id: "guides",
@@ -113,11 +94,41 @@ describe("site identity schema 1", () => {
     expect(parseSiteIdentity({ ...validValue, customDocs }).customDocs).toEqual(
       customDocs,
     );
-    const links = [{ label: "Guides", to: "/guides" }];
+  });
+
+  // verifies: scenario.views.user-docs-invalid
+  it("reads user documents with a default label", () => {
+    expect(parseSiteIdentity(validValue).userDocs).toBeUndefined();
     expect(
-      parseSiteIdentity({ ...validValue, homepage: { ...homepage, links } })
-        .homepage?.links,
-    ).toEqual(links);
+      parseSiteIdentity({ ...validValue, userDocs: { path: "../docs" } })
+        .userDocs,
+    ).toEqual({ path: "../docs", label: "User documents" });
+    expect(
+      parseSiteIdentity({
+        ...validValue,
+        userDocs: { path: "../guide", label: " Guide " },
+      }).userDocs,
+    ).toEqual({ path: "../guide", label: "Guide" });
+  });
+
+  // verifies: scenario.views.user-docs-invalid
+  it.each([
+    ["null", null, /userDocs must be an object/],
+    ["no path", {}, /userDocs.path/],
+    ["absolute path", { path: "/docs" }, /userDocs.path must be relative/],
+    ["blank label", { path: "../docs", label: " " }, /userDocs.label/],
+  ])("rejects invalid user documents: %s", (_label, userDocs, field) => {
+    expect(() => parseSiteIdentity({ ...validValue, userDocs })).toThrow(
+      /docsite\/site\.json is invalid/,
+    );
+    expect(() => parseSiteIdentity({ ...validValue, userDocs })).toThrow(field);
+  });
+
+  // verifies: scenario.views.user-docs-invalid
+  it("refuses the removed homepage field and points to user documents", () => {
+    expect(() =>
+      parseSiteIdentity({ ...validValue, homepage: { title: "Atlas" } }),
+    ).toThrow(/homepage was removed.*userDocs/);
   });
 
   it.each(["specs", "specs/extra", "../guides", "/guides", "guides//extra"])(
@@ -133,117 +144,6 @@ describe("site identity schema 1", () => {
       ).toThrow(/routeBasePath/);
     },
   );
-
-  it("keeps the landing page opt-in and preserves project-owned copy", () => {
-    expect(parseSiteIdentity(validValue).homepage).toBeUndefined();
-    expect(parseSiteIdentity({ ...validValue, homepage }).homepage).toEqual(
-      homepage,
-    );
-    expect(
-      parseSiteIdentity({
-        ...validValue,
-        homepage: { ...homepage, title: "  Atlas  " },
-      }).homepage?.title,
-    ).toBe("Atlas");
-  });
-
-  // verifies: scenario.views.publish-homepage-invalid
-  it.each([
-    ["null", null, /homepage must be an object/],
-    ["empty title", { ...homepage, title: " " }, /homepage.title/],
-    [
-      "missing features",
-      { ...homepage, features: undefined },
-      /homepage.features/,
-    ],
-    [
-      "empty features",
-      { ...homepage, features: { ...homepage.features, items: [] } },
-      /homepage.features.items/,
-    ],
-    [
-      "invalid feature",
-      { ...homepage, features: { ...homepage.features, items: [null] } },
-      /homepage.features.items\[0\]/,
-    ],
-    [
-      "missing description",
-      {
-        ...homepage,
-        features: { ...homepage.features, items: [{ title: "Feature" }] },
-      },
-      /homepage.features.items\[0\].description/,
-    ],
-    [
-      "invalid steps",
-      { ...homepage, workflow: { ...homepage.workflow, steps: "steps" } },
-      /homepage.workflow.steps/,
-    ],
-    [
-      "empty code",
-      { ...homepage, quickstart: { ...homepage.quickstart, code: "" } },
-      /homepage.quickstart.code/,
-    ],
-  ])("rejects an invalid homepage: %s", (_label, value, field) => {
-    expect(() => parseSiteIdentity({ ...validValue, homepage: value })).toThrow(
-      /docsite\/site.json/,
-    );
-    expect(() => parseSiteIdentity({ ...validValue, homepage: value })).toThrow(
-      field,
-    );
-  });
-
-  it("preserves optional reference tables as plain project-owned text", () => {
-    const reference = {
-      title: "Reference",
-      description: "Available tools.",
-      tables: [
-        {
-          title: "Tools",
-          description: "Commands.",
-          columns: ["Command", "Purpose"],
-          rows: [["<script>", "Show <help> & usage"]],
-        },
-      ],
-    };
-    expect(
-      parseSiteIdentity({ ...validValue, homepage: { ...homepage, reference } })
-        .homepage?.reference,
-    ).toEqual(reference);
-    expect(
-      parseSiteIdentity({ ...validValue, homepage }).homepage?.reference,
-    ).toBeUndefined();
-  });
-
-  it.each([
-    [null, /homepage.reference must be an object/],
-    [
-      { title: "Reference", description: "Tools.", tables: [] },
-      /homepage.reference.tables/,
-    ],
-    ...[
-      { columns: [], rows: [["command"]] },
-      { columns: ["Command"], rows: [] },
-      { columns: ["Command"], rows: [["command", "extra"]] },
-      { columns: ["Command"], rows: [[" "]] },
-      { columns: ["Command"], rows: ["command"] },
-      { columns: ["Command"], rows: [[42]] },
-    ].map((table): [unknown, RegExp] => [
-      {
-        title: "Reference",
-        description: "Tools.",
-        tables: [{ title: "Tools", description: "Commands.", ...table }],
-      },
-      /homepage.reference.tables\[0\]/,
-    ]),
-  ])("rejects malformed reference content %#", (reference, field) => {
-    expect(() =>
-      parseSiteIdentity({
-        ...validValue,
-        homepage: { ...homepage, reference },
-      }),
-    ).toThrow(field);
-  });
 
   it("reports a missing file by its project-relative name", async () => {
     const root = await mkdtemp(

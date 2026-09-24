@@ -63,7 +63,7 @@ export interface ScopedRegistry {
   schema_version: 23;
   projectRoot: string;
   registryPath: string;
-  /** The first Module without a parent: the homepage's entry into the Specs. */
+  /** The first Module without a parent: the site root's entry into the Specs without user documents. */
   rootModule: string;
   sourceDigest: string;
   modules: ModuleRecord[];

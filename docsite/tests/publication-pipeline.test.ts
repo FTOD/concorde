@@ -25,6 +25,7 @@ import {
 import { materializeScoped } from "../plugins/scoped-content/materialize";
 import scopedContent, { validateScopedBuild } from "../plugins/scoped-content";
 import { customDocsConfiguration } from "../plugins/scoped-content/custom-docs";
+import { userDocsConfiguration } from "../plugins/scoped-content/user-docs";
 import { parseSiteIdentity } from "../plugins/scoped-content/site-identity";
 import { promoteCandidate } from "../scripts/build";
 import {
@@ -481,6 +482,119 @@ it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
       ).toContain(destination);
     }
     expect(renderCount).toBe(7);
+  },
+);
+
+const withUserDocs = (userDocs: unknown, customDocs?: unknown) =>
+  parseSiteIdentity({
+    ...readJson(project, "docsite/site.json"),
+    userDocs,
+    ...(customDocs ? { customDocs } : {}),
+  });
+
+// verifies: scenario.views.user-docs
+it("publishes user documents at the root as the first tab without changing registered context inputs", () => {
+  const before = load();
+  put("docs/README.md", "# Bank\n\nWelcome.");
+  put("docs/guides/deposits.md", "# Deposits");
+  const user = userDocsConfiguration(
+    resolve(root, "docsite"),
+    withUserDocs({ path: "../docs" }),
+    before,
+  );
+  expect(user?.plugin).toEqual([
+    "@docusaurus/plugin-content-docs",
+    expect.objectContaining({
+      id: "user",
+      path: "../docs",
+      routeBasePath: "/",
+    }),
+  ]);
+  // No sidebar file: the sidebar is generated from the directory structure.
+  expect((user?.plugin as [string, object])[1]).not.toHaveProperty(
+    "sidebarPath",
+  );
+  expect(user?.navbarItem).toEqual({
+    type: "docSidebar",
+    docsPluginId: "user",
+    sidebarId: "defaultSidebar",
+    label: "User documents",
+    position: "left",
+  });
+  expect(user?.docsRouteBasePath).toBe("/");
+  expect(user?.docsDir).toBe("../docs");
+  expect(
+    userDocsConfiguration(
+      resolve(root, "docsite"),
+      parseSiteIdentity(readJson(project, "docsite/site.json")),
+      before,
+    ),
+  ).toBeUndefined();
+  expect(load()).toEqual(before);
+});
+
+// verifies: scenario.views.user-docs-refused
+it.each([
+  [
+    "a missing directory",
+    () => {},
+    "../missing",
+    undefined,
+    /userDocs.path does not exist/,
+  ],
+  [
+    "no root page",
+    () => put("docs/guide.md", "# Guide"),
+    "../docs",
+    undefined,
+    /has no root page/,
+  ],
+  [
+    "registered Specs",
+    () => {},
+    "..",
+    undefined,
+    /userDocs includes registered Spec/,
+  ],
+  [
+    "a page shadowing the Spec tabs",
+    () => {
+      put("docs/index.md", "# Home");
+      put("docs/specs/extra.md", "# Extra");
+    },
+    "../docs",
+    undefined,
+    /docs\/specs would publish under \/specs, which the Spec tabs use/,
+  ],
+  [
+    "a page shadowing a custom collection",
+    () => {
+      put("docs/index.md", "# Home");
+      put("docs/handbook.md", "# Handbook");
+      put("docsite/guides/index.md", "# Guides");
+    },
+    "../docs",
+    [
+      {
+        id: "guides",
+        label: "Guides",
+        path: "guides",
+        routeBasePath: "handbook/v1",
+      },
+    ],
+    /handbook.md would publish under \/handbook, which customDocs guides uses/,
+  ],
+])(
+  "refuses user documents with %s",
+  (_label, arrange, path, customDocs, error) => {
+    arrange();
+    expect(() =>
+      userDocsConfiguration(
+        resolve(root, "docsite"),
+        withUserDocs({ path }, customDocs),
+        load(),
+      ),
+    ).toThrow(error);
   },
 );
 

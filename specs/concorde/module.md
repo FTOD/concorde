@@ -63,8 +63,9 @@ The root also binds files of its own, shown with its children in
   that validates this checkout.
 - <a id="realization.concorde.user-documents"></a>**User documents** under `docs/` are written for
   the people who use Concorde, starting with the guide to using it. They follow no Spec Protocol
-  structure and are never agent context; the docsite publishes them in their own tab as
-  [custom docs](spec-tooling/views/module.md#concept.views.custom-docs).
+  structure and are never agent context; the docsite publishes them as its
+  [user documents](spec-tooling/views/module.md#concept.views.user-docs), the first tab, with
+  `docs/README.md` as the site's home page.
 - <a id="realization.concorde.development-environment"></a>**Development environment** is this
   checkout's Python project and lock, pytest setup and shared test support, the reference
   initializer, the Claude Code documentation fetcher, the docsite type check, and the tests of that

@@ -202,34 +202,41 @@ a link to a page or anchor that does not exist stops promotion, as
 
 ## Site configuration
 
-### scenario.views.publish-homepage — A configured homepage
+### scenario.views.user-docs — User documents as the home page and first tab
 
-- GIVEN `docsite/site.json` contains a valid `homepage` object
+- GIVEN `docsite/site.json` sets `userDocs.path` to a directory whose root page is `README.md` or `index.md`
 - WHEN the site is built
-- THEN the root page shows the configured introduction, features, workflow and quickstart, and a reference section when `homepage.reference` is present
-- AND its main Spec link opens the root Module's entry, and local links respect the base URL
-- AND configured `homepage.links` and the repository link appear only when present
-- BUT the homepage is not a Spec page, is not listed in the build manifest and grants no context
+- THEN the root page is the site's home page at `/`, and every other document is published at its path in the directory
+- AND the first navigation tab, labelled `userDocs.label` or "User documents", leads to them, with a sidebar that follows the directory's folders
+- AND the Module documents, Implementation documents and custom docs tabs follow in that order
+- BUT user documents are not Spec pages, are not listed in the build manifest, belong to no Module and grant no context
 
-### scenario.views.publish-homepage-default — No homepage configured
+### scenario.views.publish-homepage-default — No user documents configured
 
-- GIVEN `docsite/site.json` has no `homepage`
+- GIVEN `docsite/site.json` has no `userDocs`
 - WHEN the site is built
 - THEN the site root redirects to the root Module's entry page and shows a visible link to it
 - AND the template adds no Concorde-specific content
 
-### scenario.views.publish-homepage-invalid — An invalid homepage is refused
+### scenario.views.user-docs-invalid — An invalid user documents entry is refused
 
-- GIVEN `docsite/site.json` contains an incomplete or invalid `homepage` object
+- GIVEN `docsite/site.json` contains a `userDocs` value that is not an object with a relative `path` and an optional nonblank `label`, or still contains the removed `homepage` field
 - WHEN the site identity is loaded
-- THEN loading fails with an error naming `docsite/site.json` and the invalid field
+- THEN loading fails with an error naming `docsite/site.json` and the invalid field, and a `homepage` field is told to become the root page of user documents
 - AND no candidate is promoted
+
+### scenario.views.user-docs-refused — User documents that cannot be published fail the build
+
+- GIVEN `userDocs.path` names a missing directory, a directory without a root page, a directory containing a registered Spec document, or a directory whose top-level document or folder would publish under `/specs`, `/search` or a custom docs route
+- WHEN the site is configured
+- THEN the build fails naming `userDocs` and the offending path
+- AND nothing is promoted
 
 ### scenario.views.custom-docs — Custom docs in their own tabs
 
 - GIVEN `docsite/site.json` configures `customDocs` collections, or the project provides `docsite/custom-docs/index.ts`
 - WHEN the site is built
-- THEN each collection and each extension item has its own navigation entry outside the Spec tabs
+- THEN each collection and each extension item has its own navigation entry after the Spec tabs
 - AND custom pages are not listed in the build manifest and belong to no Module
 
 ### scenario.views.custom-docs-refused — Invalid custom docs fail the build
