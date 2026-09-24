@@ -91,7 +91,10 @@ input digest, remeasured at the end, proves the inputs did not change while the 
 than trusting a timestamp.
 
 The measurement covers everything Delivery will commit: tracked changes since the base commit and
-untracked files Git does not ignore. Checks run only for the changed Modules — checking a whole
+untracked files Git does not ignore. An untracked path Git cannot version, such as the `/dev/null`
+mounts with which Claude Code's Bash sandbox hides `.bashrc` or `.claude/settings.json` from a task
+session, is left out, so the readiness and delivery come out the same inside and outside that
+sandbox. Checks run only for the changed Modules — checking a whole
 project every run would be too slow — so a Module broken only through one it uses is caught only
 when bound or named with `--modules`. Structural validation always covers the whole worktree, since
 a Spec change can break a link anywhere.

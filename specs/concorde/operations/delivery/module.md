@@ -64,8 +64,9 @@ commit -> bundle: carries
 A **delivery commit** has subject `concorde: deliver <task-id>`, the goal as body, and three
 trailers: `Concorde-Task`, `Concorde-Evidence` (bundle path) and `Concorde-Readiness` (the
 delivery run, which decided the readiness). Its parent is the branch head Delivery validated; it
-contains the bundle, the cleared markers and every uncommitted change except what Git ignores —
-only the bundle when every step was already committed. A task may be delivered several times —
+contains the bundle, the cleared markers and every uncommitted change except what Git ignores and
+untracked paths Git cannot version, such as a sandbox's `/dev/null` mounts — only the bundle when
+every step was already committed. A task may be delivered several times —
 another `implement` after a code review, say — each a new commit on top, never amended.
 
 <a id="concept.delivery.evidence-bundle"></a>

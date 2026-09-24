@@ -7,7 +7,10 @@ the exact input measurement it is bound to.
 
 - The **changed paths** are the union of the paths Git reports as different between the base
   commit and the working tree, staged or not, and the untracked paths Git does not ignore, each as
-  a project-relative POSIX path, sorted by byte order.
+  a project-relative POSIX path, sorted by byte order. An untracked path that is neither a regular
+  file, a symbolic link nor a directory is left out: Git cannot version it, and it is how Claude
+  Code's Bash sandbox hides a path such as `.bashrc` behind a `/dev/null` mount. Such a path is no
+  uncommitted change either.
 - A changed path's **digest** is `sha256:` followed by the hexadecimal SHA-256 of the file's bytes
   in the worktree, or `null` when the path no longer exists.
 - The **configuration digest** is the digest of `.concorde/config.json` in the task worktree.
