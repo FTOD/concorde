@@ -1,0 +1,69 @@
+{
+  "task": "pi-worker-backend",
+  "goal": "Support pi as a second worker backend: compile the grant into a pi permission extension (checked file tools, sandbox-runtime for commands, concorde_result), launch pi -p from the Operation host, and keep a progress file for both backends",
+  "modules": [
+    "module.concorde",
+    "module.harness",
+    "module.harness.workers",
+    "module.operations"
+  ],
+  "sequence": 1,
+  "base_commit": "acecf88bcaac4fc0392ad07a8c4da3160a9b6cf5",
+  "parent_commit": "177ad3f82875e7cc7fddb887e6786ba5e5f046f7",
+  "readiness": {
+    "run_id": "r-20260924T171459-delivery-b1e61933",
+    "input_digest": "sha256:f576ce0a502cc4ae65467e2277886cbfd0e712fd0888a7ec333556c1e79d19bb",
+    "modules": [
+      "module.concorde",
+      "module.harness",
+      "module.harness.workers",
+      "module.implementation",
+      "module.operations"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:8e122b1bd9f22e8d91586055b2ce0d6d2dd33e288ab5393a2e2f14652295de28"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:4f2905deb8b2c64e6a7d2d1858f0ce506ddfe05559dc837f684415afc4556436"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:94a8cc615cafed14c857ecfc35a4ce4560f93dae52acc545172a5067d815d2ff"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:6977bd2886d3d711236b632e1ffe2dd053604169e37151e2c7fa7ad3051f5573"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T171433-validate-f94f169b",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness",
+        "module.harness.workers",
+        "module.operations"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:657227e477d0eb157f4b2978bc9392b7412a925744655e5519419fbc8af1ee2d"
+    }
+  ],
+  "created_at": "2026-09-24T17:15:14Z"
+}
