@@ -1,0 +1,8 @@
+{
+  "name": "concorde-pi-runtime",
+  "private": true,
+  "description": "The sandbox engine Concorde's pi workers run their commands in, pinned by package-lock.json",
+  "dependencies": {
+    "@anthropic-ai/sandbox-runtime": "0.0.77"
+  }
+}

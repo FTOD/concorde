@@ -2,18 +2,20 @@
 
 ## Purpose
 
-Main session is the guidance that makes an ordinary Claude Code session in a project's primary
-worktree act as Concorde's main agent: discuss work with the developer, split it into tasks, run
+Main session is the guidance that makes an ordinary Claude Code or pi session in a project's
+primary worktree act as Concorde's main agent: discuss work with the developer, split it into tasks, run
 Operations and read their results, keep each task's decision log, decide ordinary questions itself
 while escalating only major ones, merge delivered tasks, and handle Issues. It is advice to a
 model, not enforcement — Concorde places no permission limits on the main agent, and nothing here
-constrains the developer. Distribution renders and installs this Module's content.
+constrains the developer. In pi it adds a run view, an extension that starts Operations in the
+background and shows their progress. Distribution renders and installs this Module's content.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Main-session guidance | The Claude Code instructions, installed as a project skill and a `CLAUDE.md` block, that tell the main agent how to work with Concorde. |
+| Main-session guidance | The instructions, installed as a project skill for Claude Code and for pi and as a `CLAUDE.md` block, that tell the main agent how to work with Concorde. |
+| Run view | The Concorde extension of a pi main session that starts Operations in the background, shows every run and its worker's progress, and wakes the main agent when a run ends. |
 | Escalation policy | The rule by which the main agent decides ordinary questions itself, records and reports them, and asks the developer only for decisions with major impact. |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
@@ -30,7 +32,7 @@ constrains the developer. Distribution renders and installs this Module's conten
 
 <a id="concept.main-session.guidance"></a>
 
-**What the main agent is told.** The installed guidance tells the Claude Code session opened in a
+**What the main agent is told.** The installed guidance tells the Claude Code or pi session opened in a
 Concorde project's primary worktree that it is the main agent, and gives it a working method:
 
 - **Discuss first.** Agree the direction with the developer before changing anything.
@@ -67,6 +69,22 @@ main -> task: run code_review, validate, delivery
 task -> main: operation results
 main -> developer: merge; report the exponential back-off it chose
 ```
+
+<a id="concept.main-session.run-view"></a>
+
+**The run view in pi.** In Claude Code the main agent runs `concorde run` in background Bash and
+is woken when it exits. In pi the installed extension gives the same with more to watch: the
+`concorde_run` tool starts `concorde run` as a detached process and returns at once with the run
+identity. The extension follows every running Operation of the project through its [progress
+file](../operations/module.md#concept.operations.progress-file) and that of the worker it launched
+([progress file](../harness/workers/module.md#concept.workers.progress-file), paired by the host's
+process identifier), and shows each run as an external job in pi-subagents' FleetView — its task
+and Operation, its step, the worker's round and latest tool call, and on its end the result's
+status and summary. `bg_wait` counts the running ones, and when a run ends the extension sends the
+main agent a message naming the result file, which starts its next turn. `/concorde` lists the
+recent runs. The view only launches and observes: the Operation host runs and records every run,
+so closing pi never stops or changes one. Without pi-subagents the tool, the wake and `/concorde`
+still work.
 
 <a id="concept.main-session.escalation-policy"></a>
 
@@ -117,6 +135,10 @@ mainsession: Main session {
     "prompts/main-session/"
     "tests/concorde/main_session/"
   }
+  view: pi run view {
+    "pi_extension.ts"
+    "pi_runs.ts"
+  }
 }
 ```
 
@@ -127,7 +149,14 @@ skill `.claude/skills/concorde/SKILL.md`; `claude-md.md`, installed into the pro
 and are rendered by Distribution's build into `generated/main-session/`. Their tests, under
 `tests/concorde/main_session/`, check that the rendered guidance states every rule the
 [scenarios](scenarios.md) describe; what the main agent then does is judgment no deterministic test
-observes.
+observes. The skill is also installed for pi as `.pi/skills/concorde/SKILL.md`.
+
+<a id="realization.main-session.pi-run-view"></a>
+
+The **pi run view** is `src/concorde/main_session/pi_extension.ts`, installed as
+`.pi/extensions/concorde/index.ts`, with the pure reading of progress files in `pi_runs.ts` beside
+it. The tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi
+session and is exercised in one.
 
 ## Relationships
 
@@ -136,6 +165,8 @@ mainsession: Main session
 operations: Operations
 tasks: Tasks
 issues: Issues
+workers: Workers
+mainsession -> workers
 tooling: Spec tooling {
   mcp: Spec MCP server
 }
@@ -154,6 +185,13 @@ block are its only way to reach a session.
 catalog and `concorde run`. Each Operation returns an
 [Operation result](../operations/module.md#concept.operations.result) the main agent can read
 without inspecting the worker, and none starts the next one: that choice is the main agent's.
+
+<a id="uses-workers"></a>
+
+**Workers** keeps each worker run's [progress
+file](../harness/workers/module.md#concept.workers.progress-file). The run view relies on it
+recording the phase, round and latest tool call, and the host process that launched the worker,
+and on it being an observation only.
 
 <a id="uses-tasks"></a>
 

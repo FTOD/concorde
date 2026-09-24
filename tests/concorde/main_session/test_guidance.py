@@ -35,6 +35,7 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("concorde task open", self.skill)
         self.assertIn("in background Bash", self.skill)
+        self.assertIn("`concorde_run` tool", self.skill)
         self.assertIn("concorde run", self.block)
 
     @verifies("scenario.main-session.parallel-tasks")

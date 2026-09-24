@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from concorde.distribution.build import (
@@ -330,6 +331,59 @@ class InstallTests(unittest.TestCase):
         self.assertEqual("success", json.loads(valid.stdout)["status"], valid.stdout)
 
     @verifies("scenario.distribution.install")
+    @verifies("scenario.distribution.install-pi")
+    def test_install_with_pi_places_the_locked_runtime_extension_and_skill(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        calls = []
+
+        def fake_npm(command, cwd, **options):
+            calls.append((command, Path(cwd)))
+            entry = (
+                Path(cwd) / "node_modules/@anthropic-ai/sandbox-runtime/dist/index.js"
+            )
+            entry.parent.mkdir(parents=True)
+            entry.write_text("export {};\n")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with patch(
+            "concorde.distribution.tools.shutil.which", return_value="/usr/bin/npm"
+        ):
+            receipt = install(project, package, d2=False, pi=True, run=fake_npm)
+            install(project, package, d2=False, pi=True, run=fake_npm)
+        [(command, cwd)] = calls
+        self.assertEqual(["/usr/bin/npm", "ci", "--ignore-scripts"], command[:3])
+        self.assertEqual(project / ".concorde/tools/pi-runtime", cwd)
+        self.assertEqual(
+            (
+                package / "src/concorde/distribution/pi_runtime/package-lock.json"
+            ).read_bytes(),
+            (cwd / "package-lock.json").read_bytes(),
+        )
+        placed = receipt["tools"]["pi-runtime"]
+        self.assertEqual(
+            ("@anthropic-ai/sandbox-runtime", "0.0.77"),
+            (placed["package"], placed["version"]),
+        )
+        extension = project / ".pi/extensions/concorde"
+        self.assertIn("concorde_run", (extension / "index.ts").read_text())
+        self.assertTrue((extension / "pi_runs.ts").is_file())
+        skill = (project / ".pi/skills/concorde/SKILL.md").read_text()
+        self.assertTrue(skill.startswith("---\nname: concorde\n"))
+        self.assertIn(".pi/extensions/concorde/index.ts", receipt["files"])
+
+    def test_install_with_pi_without_npm_installs_nothing(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        with patch("concorde.distribution.tools.shutil.which", return_value=None):
+            with self.assertRaises(InstallError) as raised:
+                install(project, package, d2=False, pi=True)
+        self.assertEqual("npm_missing", raised.exception.code)
+        self.assertFalse((project / ".concorde/framework").exists())
+
     def test_install_refuses_stale_guidance(self):
         package = package_copy(self)
         project = package.parent / "project"

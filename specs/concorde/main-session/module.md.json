@@ -19,7 +19,15 @@
         "meaning": "#uses-operations",
         "relies_on": [
           "concept.operations.operation",
-          "concept.operations.result"
+          "concept.operations.result",
+          "concept.operations.progress-file"
+        ]
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers",
+        "relies_on": [
+          "concept.workers.progress-file"
         ]
       },
       {
@@ -67,6 +75,12 @@
       "meaning": "#concept.main-session.guidance"
     },
     {
+      "id": "concept.main-session.run-view",
+      "type": "concept",
+      "title": "Run view",
+      "meaning": "#concept.main-session.run-view"
+    },
+    {
       "id": "concept.main-session.escalation-policy",
       "type": "concept",
       "title": "Escalation policy",
@@ -80,6 +94,17 @@
       "entries": [
         "prompts/main-session/",
         "tests/concorde/main_session/"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.main-session.pi-run-view",
+      "type": "realization",
+      "title": "pi run view",
+      "meaning": "#realization.main-session.pi-run-view",
+      "entries": [
+        "src/concorde/main_session/pi_extension.ts",
+        "src/concorde/main_session/pi_runs.ts"
       ],
       "pending": []
     }

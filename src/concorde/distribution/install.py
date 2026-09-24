@@ -5,7 +5,9 @@ It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol``
 the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
 ``.claude/skills/concorde/SKILL.md`` and a delimited block in ``CLAUDE.md``, Concorde-owned
 defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
-state, and a receipt ``.concorde/install.json``. It refuses a package whose build is stale, fetches
+state, and a receipt ``.concorde/install.json``. With ``pi`` it also places the locked pi runtime
+under ``.concorde/tools/pi-runtime/``, Concorde's pi extension under ``.pi/extensions/concorde/``
+and the guidance as the pi skill ``.pi/skills/concorde/SKILL.md``. It refuses a package whose build is stale, fetches
 and verifies ``d2`` before writing anything else, and never writes a Spec document, the registry or
 the project configuration.
 """
@@ -19,11 +21,17 @@ from pathlib import Path
 
 from .build import BuildError, verify_fresh
 from .project_defaults import install_project_defaults
-from .tools import TOOLS, ToolError, install_d2
+from .tools import TOOLS, ToolError, install_d2, install_pi_runtime
 
 FRAMEWORK = ".concorde/framework"
 COMMAND = ".concorde/bin/concorde"
 SKILL = ".claude/skills/concorde/SKILL.md"
+PI_SKILL = ".pi/skills/concorde/SKILL.md"
+PI_EXTENSION = ".pi/extensions/concorde"
+PI_EXTENSION_SOURCES = {
+    "index.ts": "src/concorde/main_session/pi_extension.ts",
+    "pi_runs.ts": "src/concorde/main_session/pi_runs.ts",
+}
 CLAUDE_MD = "CLAUDE.md"
 RECEIPT = ".concorde/install.json"
 START = "<!-- concorde:start -->"
@@ -94,11 +102,14 @@ def install(
     *,
     d2: bool = True,
     fetch: Callable[[str], bytes] | None = None,
+    pi: bool = False,
+    run: Callable | None = None,
 ) -> dict:
     """Install ``package`` into ``project``; return the receipt.
 
     With ``d2`` false the docsite's diagram program is left to the developer. ``fetch`` replaces
-    the download of the pinned ``d2`` archive, for tests and offline mirrors.
+    the download of the pinned ``d2`` archive, for tests and offline mirrors. With ``pi`` the pi
+    runtime, extension and skill are installed too; ``run`` replaces the ``npm ci`` call.
     """
     project, package = Path(project).resolve(), Path(package).resolve()
     if not project.is_dir():
@@ -118,6 +129,13 @@ def install(
             )
         except ToolError as error:
             raise InstallError(error.code, str(error)) from error
+    if pi:
+        try:
+            tools["pi-runtime"] = install_pi_runtime(
+                project, package, **({"run": run} if run else {})
+            )
+        except ToolError as error:
+            raise InstallError(error.code, str(error)) from error
     written = install_project_defaults(project, package)
     _copy_runtime(package, project / FRAMEWORK)
     command = project / COMMAND
@@ -131,13 +149,25 @@ def install(
     (project / SKILL).parent.mkdir(parents=True, exist_ok=True)
     (project / SKILL).write_text(SKILL_HEADER + skill, encoding="utf-8")
     _claude_md(project, block)
+    pi_files = []
+    if pi:
+        (project / PI_SKILL).parent.mkdir(parents=True, exist_ok=True)
+        (project / PI_SKILL).write_text(SKILL_HEADER + skill, encoding="utf-8")
+        extension = project / PI_EXTENSION
+        extension.mkdir(parents=True, exist_ok=True)
+        for name, source in PI_EXTENSION_SOURCES.items():
+            shutil.copy2(package / source, extension / name)
+        pi_files = [
+            PI_SKILL,
+            *(f"{PI_EXTENSION}/{name}" for name in PI_EXTENSION_SOURCES),
+        ]
     _ignore(project)
     receipt = {
         "version": descriptor["version"],
         "framework": FRAMEWORK,
         "command": COMMAND,
         "tools": tools,
-        "files": sorted({*written, COMMAND, SKILL, CLAUDE_MD, ".gitignore"}),
+        "files": sorted({*written, COMMAND, SKILL, CLAUDE_MD, ".gitignore", *pi_files}),
     }
     (project / RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
     return receipt
@@ -154,10 +184,17 @@ def main(argv) -> int:
         action="store_true",
         help="do not download d2; the docsite then needs d2 on PATH or in CONCORDE_D2",
     )
+    parser.add_argument(
+        "--pi",
+        action="store_true",
+        help="also install the pi runtime (with npm), Concorde's pi extension and the pi skill",
+    )
     arguments = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[3]
     try:
-        receipt = install(arguments.project, package, d2=not arguments.without_d2)
+        receipt = install(
+            arguments.project, package, d2=not arguments.without_d2, pi=arguments.pi
+        )
     except InstallError as error:
         sys.stdout.write(
             json.dumps({"error": error.code, "message": str(error)}) + "\n"

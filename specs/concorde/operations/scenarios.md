@@ -16,6 +16,14 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND the result is printed, saved in the run directory and the run is finished as `ok` in the task record
 - AND the command exits with status 0
 
+### scenario.operations.progress-file — A run shows its progress
+
+- GIVEN a worker-backed Operation run
+- WHEN it runs and finishes
+- THEN its `status.json` names the Operation, task, current step and host process while it runs
+- AND once finished it holds the result's status and summary
+- AND the worker run it launched records the same host process in its own progress file
+
 ### scenario.operations.worker-blocked — A blocked worker escalates
 
 - GIVEN a worker that returns status `blocked` because the Spec lacks a promise

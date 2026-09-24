@@ -76,3 +76,12 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the installer refuses with `d2_digest_mismatch` or `d2_unavailable`, naming the URL and the reason
 - AND nothing is written into the project
 - BUT with `--without-d2` the installer places everything else and leaves `d2` to the developer
+
+### scenario.distribution.install-pi — Install for pi as well
+
+- GIVEN a project and a machine with npm
+- WHEN the developer installs Concorde with `--pi`
+- THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile
+- AND the run view is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
+- AND a second install with the same lockfile does not run npm again
+- BUT without npm the install is refused before anything else is written

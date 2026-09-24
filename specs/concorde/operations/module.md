@@ -17,6 +17,7 @@ the main agent decides.
 | Operation | A named job the main agent runs for one task, made of deterministic host steps and zero or more workers, that ends with exactly one Operation result. |
 | Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, whether it launches workers, whether it may change the task worktree and the contract of its output. |
 | Operation host | The deterministic process started by `concorde run` that executes one Operation's step table for one task and alone launches its workers, checks their work and writes its result. |
+| Operation progress file | The run's `status.json`, which the host keeps current with the Operation, task, current step and host process, and once finished with the status and summary. |
 | Operation result | The structured envelope an Operation returns to the main agent, holding its status, identities, summary, output, the worker result kept as claims, the host's own evidence and, when it is not ok, its error chain. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
@@ -120,6 +121,15 @@ host -> host: audit clean; 3 resume rounds; one check still fails
 host -> mainagent: failed - chain: Operation (rounds used up, decide) < Workers (rounds) < check (log)
 mainagent -> mainagent: reads the claim as a claim, the evidence as fact; decides the next step
 ```
+
+<a id="concept.operations.progress-file"></a>
+
+While it runs, the host keeps the run's **progress file** `.concorde/runs/<run-id>/status.json`
+current: the Operation, task and Modules, the step it is in, and, once finished, the status and
+summary, with the host's process identifier. Each worker the run launches keeps its own [progress
+file](../harness/workers/module.md#concept.workers.progress-file) with the same process identifier,
+so an observer such as the main session's run view can follow a run and its worker without asking
+the host. It is an observation aid; the Operation result is the run's answer.
 
 `concorde run` exits with status 0 for an `ok` result and 1 for `blocked` or `failed`. A command
 line that names no known Operation or no task is refused with status 2 and no result. A task the
