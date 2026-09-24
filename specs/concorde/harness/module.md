@@ -105,15 +105,13 @@ its own error types and does not use it.
 
 ## Relationships
 
-Both children and the code the Harness binds itself, nested:
+Both children and the error-chain code, nested; the package marker carries no behaviour and is
+left out:
 
 ```d2
 harness: Harness {
   workers: Workers
   checks: Check execution
-  package: Harness package {
-    "__init__.py"
-  }
   errors: Error chain code {
     "errors.py"
   }
