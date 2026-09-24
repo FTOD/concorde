@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,9 @@ STATES = ("open", "active", "delivered", "merged", "abandoned")
 ATTEMPTS = 3
 # Where task worktrees go by default, relative to the primary worktree; Git must ignore it.
 WORKTREES = ".claude/worktrees"
+# How long open, close and merge wait for the merge lock by default, and how often they retry.
+MERGE_WAIT = 300.0
+LOCK_POLL = 0.2
 
 
 class TaskError(Exception):
@@ -123,6 +127,74 @@ def _locked(primary: Path):
             fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
+def merge_lock_path(primary: Path) -> Path:
+    return tasks_directory(primary) / "merge.lock"
+
+
+def _holder(path: Path) -> str:
+    """The holder a live lock names, as text for a refusal."""
+    try:
+        holder = json.loads(path.read_text() or "null")
+    except (OSError, ValueError) as error:
+        return f"a holder whose entry in {path} cannot be read ({error})"
+    if not isinstance(holder, dict):
+        return f"a holder that has not written its entry in {path} yet"
+    return (
+        f"`concorde task {holder.get('command')}` of task {holder.get('task')} "
+        f"(process {holder.get('pid')}, holding it since {holder.get('since')})"
+    )
+
+
+@contextmanager
+def merge_lock(primary: Path, command: str, task_id: str, wait: float = MERGE_WAIT):
+    """Hold the primary worktree's merge lock; yield the seconds spent waiting for it.
+
+    The lock is a ``flock`` of this process, so the kernel releases it however the process
+    ends. While holding it, the process names itself in the lock file for waiters that give up.
+    """
+    directory = tasks_directory(primary)
+    directory.mkdir(parents=True, exist_ok=True)
+    path = merge_lock_path(primary)
+    started = time.monotonic()
+    descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    with os.fdopen(descriptor, "r+") as stream:
+        while True:
+            try:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() - started >= wait:
+                    raise TaskError(
+                        "merge_busy",
+                        f"`concorde task {command}` of task {task_id} waited {wait:g} s for "
+                        f"the merge lock {path} of the primary worktree {primary}, which "
+                        f"is still held by {_holder(path)}; one merge, open or close runs at "
+                        "a time",
+                    ) from None
+                time.sleep(LOCK_POLL)
+        waited = round(time.monotonic() - started, 3)
+        try:
+            stream.seek(0)
+            stream.truncate()
+            stream.write(
+                json.dumps(
+                    {
+                        "command": command,
+                        "task": task_id,
+                        "pid": os.getpid(),
+                        "since": now(),
+                    }
+                )
+            )
+            stream.flush()
+            yield waited
+        finally:
+            stream.seek(0)
+            stream.truncate()
+            stream.flush()
+            fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
 def _write(path: Path, data: bytes) -> None:
     descriptor, temporary = tempfile.mkstemp(prefix=".task-", dir=path.parent)
     try:
@@ -219,9 +291,26 @@ def open_task(
     *,
     base: str | None = None,
     path: Path | None = None,
+    wait: float = MERGE_WAIT,
 ) -> dict:
-    """Create the branch, the worktree, the record and the decision log of a new task."""
+    """Create the branch, the worktree, the record and the decision log of a new task.
+
+    Holds the merge lock, so the task is never based on a merge that may still be undone.
+    """
     primary = require_primary(primary)
+    with merge_lock(primary, "open", task_id, wait):
+        return _open_task(primary, task_id, goal, modules, base=base, path=path)
+
+
+def _open_task(
+    primary: Path,
+    task_id: str,
+    goal: str,
+    modules: list[str],
+    *,
+    base: str | None,
+    path: Path | None,
+) -> dict:
     if not TASK_ID.match(task_id or ""):
         raise TaskError("invalid_task_id", f"invalid task identity: {task_id!r}")
     problems = []
@@ -478,6 +567,32 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
     return record
 
 
+def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
+    """The record and branch head of a task ``close --merged`` accepts once the head is merged."""
+    record = load_task(primary, task_id)
+    if record["state"] in ("merged", "abandoned"):
+        raise TaskError(
+            "invalid_transition", f"task {task_id} is already {record['state']}"
+        )
+    if record["state"] != "delivered" or not record["deliveries"]:
+        raise TaskError(
+            "not_merged",
+            f"task {task_id} is {record['state']} with {len(record['deliveries'])} "
+            "delivery(ies); only a delivered task can be closed as merged",
+        )
+    head = _git(primary, "rev-parse", record["branch"]).stdout.strip()
+    if head != record["deliveries"][-1]["commit"]:
+        raise TaskError(
+            "not_merged",
+            f"{record['branch']} is at {head}, not at its last delivery commit "
+            f"{record['deliveries'][-1]['commit']}; deliver again or close it abandoned",
+        )
+    worktree = Path(record["worktree"])
+    if _dirty(worktree):
+        raise TaskError("dirty_worktree", _dirty_detail(worktree))
+    return record, head
+
+
 def close_task(
     primary: Path,
     task_id: str,
@@ -485,12 +600,22 @@ def close_task(
     merged: bool = False,
     abandoned: bool = False,
     force: bool = False,
+    wait: float = MERGE_WAIT,
 ) -> dict:
+    """Close a task as merged or abandoned, holding the merge lock."""
     primary = require_primary(primary)
     if merged == abandoned:
         raise TaskError(
             "invalid_input", "close needs exactly one of --merged or --abandoned"
         )
+    with merge_lock(primary, "close", task_id, wait):
+        return close_locked(primary, task_id, merged=merged, force=force)
+
+
+def close_locked(
+    primary: Path, task_id: str, *, merged: bool, force: bool = False
+) -> dict:
+    """``close_task`` for a caller that already holds the merge lock."""
     record = load_task(primary, task_id)
     worktree = Path(record["worktree"])
     if record["state"] in ("merged", "abandoned"):
@@ -498,19 +623,7 @@ def close_task(
             "invalid_transition", f"task {task_id} is already {record['state']}"
         )
     if merged:
-        if record["state"] != "delivered" or not record["deliveries"]:
-            raise TaskError(
-                "not_merged",
-                f"task {task_id} is {record['state']} with {len(record['deliveries'])} "
-                "delivery(ies); only a delivered task can be closed as merged",
-            )
-        head = _git(primary, "rev-parse", record["branch"]).stdout.strip()
-        if head != record["deliveries"][-1]["commit"]:
-            raise TaskError(
-                "not_merged",
-                f"{record['branch']} is at {head}, not at its last delivery commit "
-                f"{record['deliveries'][-1]['commit']}; deliver again or close it abandoned",
-            )
+        record, head = mergeable(primary, task_id)
         contained = _git(
             primary, "merge-base", "--is-ancestor", head, "HEAD", check=False
         )
@@ -518,8 +631,6 @@ def close_task(
             raise TaskError(
                 "not_merged", f"{head} is not contained in the primary branch"
             )
-        if _dirty(worktree):
-            raise TaskError("dirty_worktree", _dirty_detail(worktree))
     elif _dirty(worktree) and not force:
         raise TaskError(
             "dirty_worktree", _dirty_detail(worktree) + "; pass --force to discard them"
@@ -566,14 +677,19 @@ def close_task(
 
 
 __all__ = [
+    "MERGE_WAIT",
     "TaskError",
     "begin_run",
+    "close_locked",
     "close_task",
     "decision_log_path",
     "escalate",
     "finish_run",
     "list_tasks",
     "load_task",
+    "merge_lock",
+    "merge_lock_path",
+    "mergeable",
     "open_task",
     "primary_of",
     "record_delivery",

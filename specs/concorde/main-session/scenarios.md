@@ -58,8 +58,9 @@ check the rendered guidance against them are pending.
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads what to do after `delivery` committed a task's change with its evidence
-- THEN it is told to leave the task worktree and merge the task branch into the primary branch without asking the developer
-- AND to validate the primary branch, close the task as merged and report the merge
+- THEN it is told to leave the task worktree and merge the task with `concorde task merge <task>` without asking the developer
+- AND never to merge with `git merge` itself, because other main sessions may be merging
+- AND to run the command again on `merge_busy`, and to resolve a `merge_conflict` in the task worktree and deliver again
 
 ## Escalation
 

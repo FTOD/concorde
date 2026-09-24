@@ -56,8 +56,9 @@ made without the developer in the task's decision log.
 ### req.main-session.merge-without-authorization — Delivered tasks are merged
 
 The guidance SHALL tell the main agent to merge a task branch that `delivery` committed without
-asking the developer for authorization, from the primary worktree, and to validate the primary
-branch after merging.
+asking the developer for authorization, from the primary worktree, with `concorde task merge`
+rather than `git merge`, so that the merge holds the merge lock and validates the primary branch
+after merging.
 
 ## Escalation
 

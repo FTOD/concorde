@@ -279,6 +279,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             (1, "not_primary"), self.refusal("close", "t1", "--abandoned", cwd=worktree)
         )
+        self.assertEqual((1, "not_primary"), self.refusal("merge", "t1", cwd=worktree))
         self.assertEqual(
             (1, "not_primary"),
             self.refusal("session", "t1", "--main", "m", "--dry-run", cwd=worktree),

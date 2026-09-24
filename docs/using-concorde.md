@@ -284,13 +284,24 @@ a change needs, the Operation stops with a **Spec gap**, and the Spec is changed
 committed, the main agent leaves the task worktree and, in your primary checkout:
 
 ```bash
-git merge concorde/retry
-concorde validate
-concorde task close retry --merged
+concorde task merge retry
 ```
 
-Closing removes the worktree and keeps the record. A task that will not be merged is closed with
-`concorde task close retry --abandoned`.
+This merges the task branch, runs `concorde validate` on the result (or the commands you name with
+`--check`, for example a build before validating), and closes the task. Closing removes the
+worktree and keeps the record. If a check fails, the merge is undone and the primary branch is left
+as it was; the output of the checks is in `.concorde/tasks/retry.merge.log`. A merge conflict is
+not resolved in your primary checkout either: the merge is aborted, and the conflict is resolved
+in the task worktree by merging your primary branch into the task branch and delivering again.
+
+Several main sessions can work in the same project. Only one of them merges at a time:
+`concorde task merge` holds a lock on the primary checkout for as long as it runs, and a second
+merge waits for it (up to `--wait` seconds, 300 by default) or, if it gives up, tells you which
+task and process holds the lock. The lock belongs to the running command, so it is released even
+when that command or its session is killed. Merge with `concorde task merge`, not with `git merge`,
+so that the lock applies.
+
+A task that will not be merged is closed with `concorde task close retry --abandoned`.
 
 ### Several tasks at once
 
@@ -307,8 +318,9 @@ task worktree by the same method. Its file tools and shell may write only its ow
 reports back to the main agent when it has delivered or needs a decision beyond its task. Only the
 main agent merges. Because nobody answers a background session's permission prompts, a task
 session runs in Claude Code's `auto` permission mode, where a classifier approves or refuses each
-action within those limits. One task runs at most one Operation at a time. A merge conflict or a
-check that fails after merging is new work in a new task, never a reason to discard a change.
+action within those limits. One task runs at most one Operation at a time. A merge conflict is
+resolved in the task, and a check that fails after merging is new work, never a reason to discard
+a change.
 
 ## Read results
 

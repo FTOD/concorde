@@ -33,9 +33,14 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    Protocol, checks and prompts.
 5. Run `python3 scripts/concorde.py run validate --task <task>` and `run delivery --task <task>`
    there.
-6. Leave with ExitWorktree (`action: "keep"`), merge the task branch into main from the primary
-   worktree, run `python3 scripts/concorde.py build` and `validate` on main as a cross-check of the
-   branch's self-validation, and close the task with `task close <task> --merged`.
+6. Leave with ExitWorktree (`action: "keep"`) and, from the primary worktree, run
+   `python3 scripts/concorde.py task merge <task> --check "python3 scripts/concorde.py build"
+   --check "python3 scripts/concorde.py validate"`. It takes the merge lock, merges the task branch
+   into main, runs the build and `validate` on main as a cross-check of the branch's
+   self-validation, undoes the merge if either fails, and closes the task. Never merge with
+   `git merge` directly: other main sessions may be merging at the same time. On `merge_busy`, run
+   it again; on `merge_conflict`, re-enter the task worktree, merge main into the task branch,
+   resolve, and repeat steps 4 and 5.
 
 For work split into several tasks, the main agent stays in the primary worktree and starts one task
 session per task with `python3 scripts/concorde.py task session <task> --main <its session name>`;

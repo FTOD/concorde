@@ -33,10 +33,10 @@ checks.
 
 ## Lifecycle
 
-### req.tasks.primary-only — Tasks open, close and start sessions only from the primary
+### req.tasks.primary-only — Tasks open, close, merge and start sessions only from the primary
 
-The `concorde task open`, `concorde task close` and `concorde task session` commands SHALL refuse
-to run outside the primary worktree.
+The `concorde task open`, `concorde task close`, `concorde task merge` and `concorde task session`
+commands SHALL refuse to run outside the primary worktree.
 
 ### req.tasks.worktree-ignored — A worktree inside the primary is ignored there
 
@@ -78,6 +78,40 @@ with `--force`.
 ### req.tasks.refusal-inert — A refusal changes nothing
 
 A refused task command or record update SHALL leave every record, branch and worktree unchanged.
+
+The two exceptions are `concorde task merge` refusals that say so themselves: `rollback_failed`,
+where Git would not restore the primary branch, and a close that failed after the merge and its
+checks succeeded, which leaves the checked merge in place.
+
+## Merging
+
+### req.tasks.merge-serialized — One merge into the primary at a time
+
+Tasks SHALL hold the merge lock of the primary worktree for the whole of every `concorde task
+merge`, `open` and `close`, so no two of them overlap and none sees a merge that may still be
+rolled back.
+
+### req.tasks.merge-lock-released — The lock ends with its process
+
+The merge lock SHALL be released when the process holding it ends, whether it finished, failed or
+was killed, without any action by another session.
+
+### req.tasks.merge-busy-named — A waiter learns who holds the lock
+
+A merge, open or close that gives up waiting SHALL name the holder's command, task, process and
+start time.
+
+### req.tasks.merge-all-or-nothing — A merge is checked or undone
+
+`concorde task merge` SHALL end with the primary branch either at the merge commit, all its checks
+passed and the task closed as merged, or at the commit it started from with the task still
+delivered, apart from a `rollback_failed` or a failed close that it reports.
+
+### req.tasks.merge-clean-primary — A merge starts from a clean primary
+
+`concorde task merge` SHALL refuse, before merging, a primary worktree with a detached `HEAD` or any
+uncommitted or untracked path, and a task that `close --merged` would refuse for any reason other
+than containment.
 
 ### req.tasks.refusal-detail — A refusal is an error link
 

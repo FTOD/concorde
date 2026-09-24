@@ -8,9 +8,11 @@ work side by side without their changes mixing, to know each task's state, and t
 behind choices it made without the developer. The Operation host relies on it to find a task's
 worktree and record every run and delivery against it, kept in the primary worktree only. On the
 main agent's request it also starts a task session in a task worktree, with a boundary confining
-that session's writes to its task. Tasks does not decide how work is split or which tasks run in
-parallel, never runs an Operation, never commits or merges, and never interprets the decision log;
-the main agent and its task sessions do all of that.
+that session's writes to its task. When the main agent merges a delivered task, Tasks does the
+merge into the primary branch under a lock, so several main sessions never merge at once, and
+undoes it if the checks that follow fail. Tasks does not decide how work is split, which tasks run
+in parallel or when a task is merged, never runs an Operation, never commits on a task branch, and
+never interprets the decision log; the main agent and its task sessions do all of that.
 
 ## Terminology
 
@@ -20,6 +22,7 @@ the main agent and its task sessions do all of that.
 | Task record | The JSON file in the primary worktree that holds a task's identity, goal, Modules, branch, worktree path, base commit, state, Operation runs, deliveries, escalated error chains and started task sessions. |
 | Decision log | The Markdown file next to a task record in which the session working on the task writes the choices it made without the developer, and to which escalations are appended. |
 | Task state | The stage of a task's life: open, active, delivered, merged or abandoned. |
+| Merge lock | The lock of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task or closes one; the kernel releases it when that process ends. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Task session](../vocabulary.md#concept.concorde.task-session) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
@@ -112,7 +115,7 @@ start -> open: task open
 open -> active: first Operation run
 active -> delivered: delivery commit
 delivered -> active: a writing Operation starts
-delivered -> merged: task close --merged
+delivered -> merged: task merge, or task close --merged
 open -> abandoned: task close --abandoned
 active -> abandoned: task close --abandoned
 delivered -> abandoned: task close --abandoned
@@ -120,16 +123,48 @@ delivered -> abandoned: task close --abandoned
 
 A task is **open**, then **active** at its first Operation run. Delivery makes it **delivered**; a
 later writing Operation, such as another `implement` after a code review, returns it to active for
-another delivery. `concorde task close <task-id> --merged` is accepted only when the latest
-delivery commit is the branch's head, that head is in the primary branch, and the worktree is clean
-— the main agent merges with Git, unasked, before running it. `--abandoned` ends a task that won't
+another delivery. The main agent merges a delivered task, unasked, with `concorde task merge`
+(below), which closes it as merged. `concorde task close <task-id> --merged` closes a task
+merged some other way, and is accepted only when the latest delivery commit is the branch's head,
+that head is in the primary branch, and the worktree is clean. `--abandoned` ends a task that won't
 be merged, refusing uncommitted changes unless `--force`. Closing removes the worktree, keeping the
 branch, record and log; merged and abandoned tasks accept no further run. A worktree with checked-out
 submodules, such as the vendored references, is removed too: its submodules are deinitialized
 first, which refuses a submodule with local changes unless `--force`, and only then is the worktree
 removed.
 
-Only the main agent opens and closes tasks and starts task sessions, only from the primary
+<a id="concept.tasks.merge-lock"></a>
+
+Several main sessions may work in one project, each entering a task worktree of its own and
+returning to the primary worktree to merge. Two merges at once would interleave in the one
+primary checkout, so the main agent merges with one command:
+
+```text
+concorde task merge severity
+```
+
+Tasks takes the **merge lock** of the primary worktree, waiting for it up to `--wait` seconds
+(default 300), and holds it to the end. It refuses, before touching anything, a task that could
+not be closed as merged apart from not being merged yet (`not_merged`, `dirty_worktree`) and a
+primary worktree with uncommitted or untracked paths or a detached `HEAD` (`primary_dirty`). It
+then runs `git merge` there. A conflict is aborted and refused with `merge_conflict`, naming the
+paths: the conflict is resolved in the task worktree by merging the primary branch into the task
+branch, validating and delivering again, never in the primary worktree. After the merge, Tasks
+runs the checks in the primary worktree: `concorde validate` of the merged checkout by default, or
+exactly the `--check` commands given, such as a project that must build first. A failed check, or
+checks that leave uncommitted paths, returns the primary branch with `git reset --keep` to the
+commit it had and refuses with `check_failed`, naming the check, its exit status and its log,
+`.concorde/tasks/<task-id>.merge.log`. When everything passed, Tasks closes the task as merged
+and prints the record with the commits before and after, each check and how long it waited.
+
+The lock is a `flock` held by the command's own process, so no session has to release it or
+announce that it is done: the kernel releases it when the process ends, even when it is killed, and
+a waiting command wakes as soon as it is free. A command that gives up waiting fails with
+`merge_busy`, naming the holder's command, task, process and start time, which the holder writes
+into the lock file while it holds it. `concorde task open` and `concorde task close` take the same
+lock, so a task is never based on, or closed against, a merge that may still be undone.
+
+Only the main agent opens, merges and closes tasks and starts task sessions, only from the primary
 worktree (`not_primary` otherwise); a [worker](../vocabulary.md#concept.concorde.worker) cannot run
 them, having no Git access. Every refusal names its code (`task_exists`, `unknown_module`, `invalid_transition`,
 `not_merged`, ...), what was refused and why, and changes nothing ([contracts](contracts.md)).
@@ -142,8 +177,10 @@ record: Task record
 log: Decision log
 task: Task
 state: Task state
+lock: Merge lock
 store -> record: writes
 store -> log: creates
+store -> lock: holds while merging, opening or closing
 record -> task: describes
 record -> state: holds
 log -> task: explains the choices of
@@ -197,7 +234,18 @@ file, so tasks never contend.
 
 States only move forward, apart from delivered returning to active, and closing is checked against
 Git, not trusted — merged only when Git shows the delivered head inside the primary branch — which
-keeps the record honest though the merge happens outside Tasks. The decision log is free Markdown,
+keeps the record honest when a task was merged outside `concorde task merge`.
+
+The merge lock is held by the process doing the merge rather than recorded as an owner that others
+wait on and that must wake them: a recorded owner that crashed, was closed or forgot to notify
+would leave every waiter stuck, and Claude Code and pi sessions share no messaging channel to
+notify each other. A kernel `flock` is released and wakes waiters whatever happens to its holder,
+the same way for every kind of session. It only works if the whole critical section runs in one
+process, which is why merging, checking, undoing and closing are one command instead of steps the
+main agent issues one by one, and why conflicts are resolved in the task worktree: the lock is then
+held for the seconds a merge and its checks take, not for however long a resolution takes. Holding
+it also for `open` and `close` keeps both from reading a primary branch whose merge might still be
+reset. The decision log is free Markdown,
 since its readers are the main agent and the developer; Tasks gives it only a fixed place and
 lifetime. See the [requirements](requirements.md) and [scenarios](scenarios.md).
 

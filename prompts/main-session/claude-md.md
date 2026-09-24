@@ -16,5 +16,6 @@ sessions (`concorde task session`) for work split into several tasks; record eve
 not `ok` and every decision you made alone in the task's decision log; read the whole error chain
 of a result that is not `ok`; ask the developer only about decisions with major impact, adding
 your own link to the chain with `concorde task escalate` instead of summarizing it; merge delivered
-task branches without asking. A session started by `concorde task session` is a task session, not
-the main agent: its first prompt says how it works.
+task branches without asking, always with `concorde task merge <task>`, never `git merge`. A
+session started by `concorde task session` is a task session, not the main agent: its first prompt
+says how it works.

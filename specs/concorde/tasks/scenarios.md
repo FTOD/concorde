@@ -36,10 +36,10 @@ records and error codes are defined in the [contracts](contracts.md).
 - THEN the command fails with `unknown_module`
 - AND nothing is created
 
-### scenario.tasks.not-primary — Refuse to open, close or start sessions from a linked worktree
+### scenario.tasks.not-primary — Refuse to open, close, merge or start sessions from a linked worktree
 
 - GIVEN a shell whose working directory is inside a task worktree
-- WHEN `concorde task open`, `concorde task close` or `concorde task session` is run there
+- WHEN `concorde task open`, `concorde task close`, `concorde task merge` or `concorde task session` is run there
 - THEN the command fails with `not_primary`
 - AND nothing changes
 
@@ -131,6 +131,68 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN a merged or abandoned task
 - WHEN the host begins a run for it
 - THEN the update fails with `task_closed`
+
+## Merging
+
+### scenario.tasks.merge — Merge a delivered task
+
+- GIVEN a delivered task whose latest delivery commit is the head of its branch and whose worktree is clean
+- AND a clean primary worktree on its branch
+- WHEN the main agent runs `concorde task merge <task-id>` in the primary worktree
+- THEN the task branch is merged into the primary branch
+- AND `concorde validate` ran in the primary worktree after the merge and passed, its output in `.concorde/tasks/<task-id>.merge.log`
+- AND the task is closed as merged with its worktree removed
+- AND the output names the commits before and after the merge, each check with its exit status, and how long the command waited for the lock
+
+### scenario.tasks.merge-checks — Run the named checks instead of the default
+
+- GIVEN a delivered task
+- WHEN the main agent runs `concorde task merge <task-id> --check "python3 scripts/concorde.py build" --check "python3 scripts/concorde.py validate"`
+- THEN exactly those two commands run, in that order, in the primary worktree after the merge
+- AND the default check does not run
+
+### scenario.tasks.merge-waits — A second merge waits for the first
+
+- GIVEN one process holding the merge lock for task `a`
+- WHEN another main session runs `concorde task merge b` and the first process releases the lock within the wait
+- THEN the merge of `b` starts only after the release and reports how long it waited
+- BUT when the lock stays held for the whole `--wait`, the merge of `b` fails with `merge_busy` naming the holder's command `merge`, task `a`, process and start time, and nothing changes
+
+### scenario.tasks.merge-lock-dies — A dead holder releases the lock
+
+- GIVEN a process that took the merge lock and was killed before finishing
+- WHEN a main session runs `concorde task merge`, `open` or `close`
+- THEN it takes the lock at once, without waiting for any timeout or any other session
+
+### scenario.tasks.merge-open-close-wait — Opening and closing wait for a merge
+
+- GIVEN a process holding the merge lock
+- WHEN a main session runs `concorde task open` or `concorde task close` with the lock held for longer than the wait
+- THEN the command fails with `merge_busy` naming the holder
+- AND no record, branch or worktree is created or changed
+
+### scenario.tasks.merge-conflict — A conflict is aborted
+
+- GIVEN a delivered task whose branch conflicts with the primary branch
+- WHEN the main agent merges it with `concorde task merge`
+- THEN the command fails with `merge_conflict` naming the conflicting paths
+- AND the primary worktree is clean at the commit it had before, and the task is still delivered with its worktree
+- AND the refusal's options say to merge the primary branch into the task branch in the task worktree, validate and deliver again
+
+### scenario.tasks.merge-check-failed — A failed check undoes the merge
+
+- GIVEN a delivered task
+- WHEN the main agent merges it with a `--check` that exits with status 1
+- THEN the command fails with `check_failed` naming the check, its exit status, the log and the end of its output
+- AND the primary branch is back at the commit it had before the merge, clean
+- AND the task is still delivered with its worktree
+
+### scenario.tasks.merge-refused-early — Refuse a merge that cannot close
+
+- GIVEN a task that is not delivered, or whose branch moved past its latest delivery commit, or whose worktree has uncommitted changes, or a primary worktree with an uncommitted or untracked path or a detached `HEAD`
+- WHEN the main agent runs `concorde task merge` for it
+- THEN the command fails with `not_merged`, `dirty_worktree` or `primary_dirty` before merging
+- AND the primary branch, the task record and the worktree are unchanged
 
 ## Escalation
 

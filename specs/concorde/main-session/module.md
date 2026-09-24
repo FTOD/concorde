@@ -50,7 +50,7 @@ Concorde project's primary worktree that it is the main agent, and gives it a wo
   [Operation result](../operations/module.md#concept.operations.result), and run every `concorde`
   command with the worktree's own copy; leave after delivery. Be inside at most one task at a time.
   The only change made in the primary worktree is trivial housekeeping, such as regenerating the
-  registry mirror or resolving a mechanical merge conflict in it.
+  registry mirror.
 - **Hand split work to task sessions.** For work split into several tasks, start one
   [task session](../vocabulary.md#concept.concorde.task-session) per task with
   `concorde task session <task> --main <own session name>` and stay in the primary worktree while
@@ -58,8 +58,12 @@ Concorde project's primary worktree that it is the main agent, and gives it a wo
 - **Keep the decision log.** Record every non-`ok` result and every unsupervised choice, with its
   reason, in the task's [decision log](../tasks/module.md#concept.tasks.decision-log).
 - **Merge delivered work.** From the primary worktree, merge a branch `delivery` committed without
-  asking authorization, validate the primary branch and close the task; handle a later conflict or
-  failed check as new work, never by discarding someone's change.
+  asking authorization, with `concorde task merge`, never with `git merge`: it holds the
+  [merge lock](../tasks/module.md#concept.tasks.merge-lock) so merges of several main sessions never
+  interleave, validates the primary branch, undoes a merge whose checks fail and closes the task.
+  Retry a `merge_busy`; resolve a conflict in the task worktree by merging the primary branch into
+  the task branch and delivering again; handle a failed check as new work, never by discarding
+  someone's change.
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
 

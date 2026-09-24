@@ -489,30 +489,46 @@ with status 0 on success. A refusal prints `{"error": <link>}`, where the link i
 [`component` link](../contracts.md#contract.concorde.error) of the actor
 `Tasks (concorde task <command>)` whose code is one of the error codes below, whose detail names
 the task, Module, path, run or Git command concerned with its message (for an unknown task, the
-known tasks; for a dirty worktree, the uncommitted paths), and whose reason is `environment` for
-`git_failed`, `worktree_failed`, `record_conflict` and `record_unreadable`, `decision` for
-`dirty_worktree` and `not_merged`, and `input` otherwise. A refusal changes nothing and exits with
-status 1; a malformed command line prints the same shape with the code `invalid_command` and exits
-with status 2.
+known tasks; for a dirty worktree, the uncommitted paths; for a busy merge lock, its holder), and
+whose reason is `environment` for `git_failed`, `worktree_failed`, `record_conflict`,
+`record_unreadable`, `merge_busy` and `rollback_failed`, `decision` for `dirty_worktree`,
+`not_merged`, `primary_dirty`, `merge_conflict` and `check_failed`, and `input` otherwise. A
+refusal changes nothing and exits with status 1, apart from what `merge` states below; a malformed
+command line prints the same shape with the code `invalid_command` and exits with status 2.
 
 | Command | Effect | Output |
 | --- | --- | --- |
-| `concorde task open <task-id> --goal <text> --modules <id>[,<id>…] [--base <ref>] [--path <dir>]` | Creates branch `concorde/<task-id>` at `--base` (default: the primary worktree's `HEAD`), adds a worktree for it at `--path` (default: `.claude/worktrees/<task-id>` of the primary worktree, which Git must ignore there), writes the record in state `open` with no sessions, and the decision log | The new record |
+| `concorde task open <task-id> --goal <text> --modules <id>[,<id>…] [--base <ref>] [--path <dir>]` | Holding the merge lock, creates branch `concorde/<task-id>` at `--base` (default: the primary worktree's `HEAD`), adds a worktree for it at `--path` (default: `.claude/worktrees/<task-id>` of the primary worktree, which Git must ignore there), writes the record in state `open` with no sessions, and the decision log | The new record |
 | `concorde task list [--state <state>]` | None | An array of records, oldest first |
 | `concorde task show <task-id>` | None | `{"record": <record>, "decision_log": "<absolute path>"}` |
 | `concorde task session <task-id> --main <session> [--model <model>] [--dry-run]` | Writes `.concorde/tasks/<task-id>.session/settings.json` and its write hook, starts `claude --bg --name task-<task-id> --settings <file> --permission-mode auto [--model <model>]` in the task worktree with the rendered task-session guidance and the task's identity, goal, Modules, decision log and `--main` as first prompt, and appends the started session to the record; `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>"}` |
-| `concorde task close <task-id> --merged` | Checks the merge, removes the worktree, sets state `merged` | The updated record |
-| `concorde task close <task-id> --abandoned [--force]` | Removes the worktree, discarding uncommitted changes only with `--force`, sets state `abandoned` | The updated record |
+| `concorde task merge <task-id> [--check <command>]… [--wait <seconds>]` | Holding the merge lock: checks that the task is delivered, that its latest delivery commit is the head of its branch and that its worktree is clean, and that the primary worktree is on a branch with no uncommitted or untracked path; runs `git merge --no-edit concorde/<task-id>` in the primary worktree; runs each check there, appending its output to `.concorde/tasks/<task-id>.merge.log`; then closes the task as `close --merged` does. The default check is `concorde validate` of the merged primary worktree, run by the same Python with the running package on its path; each `--check` is split into words as a shell would and run without a shell, and any `--check` replaces the default; a check still running after 1800 seconds is stopped and counts as failed. A conflict aborts the merge; a check that exits non-zero or cannot run, or checks that leave an uncommitted path, reset the primary branch to the commit the merge started from with `git reset --keep`, so a refusal again leaves the primary branch where it was. `--wait` (default 300) bounds how long to wait for the lock | `{"record": <record>, "merge": {"before": "<commit>", "after": "<commit>", "checks": [{"argv": ["<word>", …], "exit_code": 0, "seconds": <number>}], "waited_seconds": <number>, "log": "<absolute path>"}}` |
+| `concorde task close <task-id> --merged` | Holding the merge lock, checks the merge, removes the worktree, sets state `merged` | The updated record |
+| `concorde task close <task-id> --abandoned [--force]` | Holding the merge lock, removes the worktree, discarding uncommitted changes only with `--force`, sets state `abandoned` | The updated record |
 | `concorde task escalate <task-id> [--by main-agent\|task-session] (--run <run-id> \| --error-file <path> \| --escalation <n>)… --code <code> --detail <text> --reason <reason> --explanation <text> [--attempt <text>]… [--option <text>]… [--recommendation <text>]` | Builds the escalating session's link, of level `main-agent` (the default, actor `main agent (task <task-id>)`) or `task-session` (actor `task session (task <task-id>)`), whose causes are the `error` of each named run of the task, each error read from a file (a link, or a JSON value whose `error` is one) and the error of each named earlier escalation of the task (numbered from 1 in record order), appends it to the record's `escalations` and appends it to the decision log, rendered and as JSON, under a heading naming the receiver: the main agent for `task-session`, the developer for `main-agent` | `{"escalated": <link>, "decision_log": "<absolute path>", "rendered": "<the chain as indented text>"}` |
 
 The decision log that `open` creates contains exactly a level-1 heading `Decision log: <task-id>`
 and a paragraph `Goal: <goal>`.
 
+The merge lock is an exclusive `flock` on `.concorde/tasks/merge.lock` of the primary worktree. The
+process running `open`, `close` or `merge` takes it before reading anything it acts on, holds it
+for the whole command and releases it when it ends; the kernel releases it when the process dies,
+however it dies. While holding it, the process keeps in the file one JSON object
+`{"command": "<open|close|merge>", "task": "<task-id>", "pid": <pid>, "since": "<RFC 3339 time>"}`.
+Only a process that failed to take the lock reads that object, so an object left by a dead holder
+is overwritten by the next holder and never reported. `open` and `close` wait for the lock as long
+as `merge` does by default.
+
+`merge` refuses before merging whatever `close --merged` would refuse apart from containment, so
+closing after the checks passed fails only for an environment error such as `worktree_failed`. That
+refusal leaves the merge and its checked commit in place, names the merge commit and says that
+`concorde task close <task-id> --merged` finishes the task.
+
 | Error code | Raised when |
 | --- | --- |
-| `not_primary` | `open`, `close` or `session` runs outside the primary worktree. |
+| `not_primary` | `open`, `close`, `merge` or `session` runs outside the primary worktree. |
 | `worktree_not_ignored` | The worktree path lies inside the primary worktree and Git does not ignore it there; the message names the path and how to ignore it. |
-| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names neither or both of `--merged` and `--abandoned`, or `--force` without `--abandoned`. |
+| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names neither or both of `--merged` and `--abandoned`, or `--force` without `--abandoned`, or a `--check` is empty or cannot be split into words, or `--wait` is negative. |
 | `worktree_failed` | Git refused to add or remove the worktree; the message carries Git's error. |
 | `invalid_task_id` | The identity does not match the record's `id` pattern. |
 | `task_exists` | A record with that identity exists, whatever its state. |
@@ -533,6 +549,11 @@ and a paragraph `Goal: <goal>`.
 | `unknown_escalation` | `escalate` names an escalation number the task does not have. |
 | `missing_worktree` | `session` names a task whose worktree no longer exists. |
 | `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), or the task-session guidance is missing from the package. |
+| `merge_busy` | The merge lock stayed held for the whole wait; the message names the holder's command, task, process and start time. |
+| `primary_dirty` | `merge` finds an uncommitted or untracked path in the primary worktree, or its `HEAD` detached; the message names the paths or the detached commit. |
+| `merge_conflict` | `git merge` stopped with conflicts; the merge was aborted, and the message names the conflicting paths. |
+| `check_failed` | A post-merge check exited non-zero or could not run, or the checks left uncommitted paths; the primary branch was reset to the commit before the merge, and the message names the check, its exit status, the log and the end of its output. |
+| `rollback_failed` | After a conflict or a failed check, Git refused to abort the merge or reset the primary branch; the message carries the original failure, Git's output and the commit the primary branch is at, and the primary worktree is left as Git left it. |
 | `nothing_to_escalate` | `escalate` names no run, file or escalation, or a run that ended without an error. |
 | `invalid_error` | An escalated file or escalation is not an error link, or the escalating session's link does not satisfy the error contract. |
 | `invalid_command` | The command line is malformed. |

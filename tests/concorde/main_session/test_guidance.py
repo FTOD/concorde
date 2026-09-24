@@ -82,8 +82,15 @@ class GuidanceTests(unittest.TestCase):
     def test_delivered_tasks_are_merged_without_asking(self):
         self.assertIn("without asking the developer for authorization", self.skill)
         self.assertIn("leave the task worktree if you are in it", self.skill)
-        self.assertIn("run `concorde validate` there", self.skill)
-        self.assertIn("concorde task close <task> --merged", self.skill)
+        self.assertIn(
+            "run `concorde task merge <task>` from the primary worktree", self.skill
+        )
+        self.assertIn("Never merge a task with `git merge` yourself", self.skill)
+        self.assertIn("When it fails with `merge_busy`", self.skill)
+        self.assertIn(
+            "merge the primary branch into the task branch, resolve the conflicts",
+            self.skill,
+        )
         self.assertIn("merge delivered task branches without asking", self.block)
 
     @verifies("scenario.main-session.ordinary-decision")

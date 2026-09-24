@@ -113,7 +113,7 @@ concorde run specify    --task retry --intent "state the retry limit"
 concorde run implement  --task retry --goal "implement the retry limit"
 concorde run validate   --task retry
 concorde run delivery   --task retry
-git merge concorde/retry && concorde task close retry --merged
+concorde task merge retry
 ```
 
 [Using Concorde](docs/using-concorde.md) walks through installation, the first Spec, checks and

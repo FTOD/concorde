@@ -1,5 +1,5 @@
-"""``concorde task open|list|show|session|close|escalate``: print one JSON value; refusals exit 1,
-bad usage 2.
+"""``concorde task open|list|show|session|close|merge|escalate``: print one JSON value; refusals
+exit 1, bad usage 2.
 
 A refusal prints ``{"error": <error link>}``: the Tasks component's account of what it refused,
 why it cannot handle it, and what the caller can do. ``session`` starts a task session in a task
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from .. import errors
 from ..spec.schema import ContractError, validate
-from . import session, store
+from . import merge, session, store
 
 # Why Tasks cannot handle each refusal itself; every other code is an input the caller corrects.
 HANDLING = {
@@ -48,6 +48,30 @@ HANDLING = {
         "environment",
         "the task's worktree is gone from disk, and recreating it is not Tasks' decision",
     ),
+    "merge_busy": (
+        "environment",
+        "another concorde task command holds the primary worktree's merge lock, and how long "
+        "to keep waiting is the caller's choice",
+    ),
+    "primary_dirty": (
+        "decision",
+        "Tasks neither commits nor discards what is in the primary worktree, and merges only "
+        "into a clean checked-out branch",
+    ),
+    "merge_conflict": (
+        "decision",
+        "resolving a conflict is work for the task, done in its worktree, never a step Tasks "
+        "takes in the primary worktree",
+    ),
+    "check_failed": (
+        "decision",
+        "the merged primary branch failed a check, and fixing that is new work Tasks cannot do",
+    ),
+    "rollback_failed": (
+        "environment",
+        "Git refused to restore the primary branch, so the primary worktree needs inspecting "
+        "before anyone merges again",
+    ),
 }
 OPTIONS = {
     "unknown_task": ["run concorde task list to see the tasks"],
@@ -56,7 +80,32 @@ OPTIONS = {
         "deliver or discard the changes",
         "close with --abandoned --force",
     ],
-    "not_merged": ["merge the task branch, then close the task"],
+    "not_merged": [
+        "merge the task with concorde task merge, which closes it",
+        "deliver the task again if its branch moved past the last delivery",
+    ],
+    "merge_busy": [
+        "run the command again, or merge with a longer --wait; the holder's lock is released "
+        "as soon as its process ends",
+    ],
+    "primary_dirty": [
+        "commit, move into a task or remove the listed paths of the primary worktree",
+        "check out the primary branch in the primary worktree",
+    ],
+    "merge_conflict": [
+        "merge the primary branch into the task branch in the task worktree, resolve the "
+        "conflicts, validate and run delivery again, then run concorde task merge again",
+        "close the task with --abandoned if its change is no longer wanted",
+    ],
+    "check_failed": [
+        "read the merge log, fix the cause in the task worktree after merging the primary "
+        "branch into it, deliver again and merge again",
+        "fix the check itself in its own task if the check is what is wrong",
+    ],
+    "rollback_failed": [
+        "inspect git status in the primary worktree and restore the primary branch to the "
+        "commit named before merging again",
+    ],
     "worktree_not_ignored": [
         "add .claude/worktrees/ to .gitignore",
         "pass --path outside the primary worktree",
@@ -116,6 +165,10 @@ def parser() -> argparse.ArgumentParser:
     mode.add_argument("--merged", action="store_true")
     mode.add_argument("--abandoned", action="store_true")
     closing.add_argument("--force", action="store_true")
+    merging = commands.add_parser("merge")
+    merging.add_argument("task_id")
+    merging.add_argument("--check", action="append", default=[])
+    merging.add_argument("--wait", type=float, default=store.MERGE_WAIT)
     escalating = commands.add_parser("escalate")
     escalating.add_argument("task_id")
     escalating.add_argument("--code", required=True)
@@ -265,6 +318,10 @@ def main(argv, cwd: Path | None = None) -> int:
             )
         elif arguments.command == "escalate":
             value = escalate(here, arguments)
+        elif arguments.command == "merge":
+            value = merge.merge_task(
+                here, arguments.task_id, arguments.check, arguments.wait
+            )
         else:
             if arguments.force and not arguments.abandoned:
                 raise store.TaskError(

@@ -81,8 +81,7 @@ Verified steps may already be committed on the task branch; `delivery` validates
 again itself, so `validate` before it is a preview of what would block.
 `--input <run-id>` passes the output of an earlier `ok` run of the same task, such as a plan, to
 the next worker. In the primary worktree you may do housekeeping that changes no Spec meaning and
-no code behaviour directly, such as `concorde registry --write` or resolving a mechanical conflict
-in the registry mirror after a merge.
+no code behaviour directly, such as `concorde registry --write`.
 
 ## Read results
 
@@ -170,11 +169,18 @@ pass the rest to the developer with your own link on top, naming its escalation 
 ## Merge delivered work
 
 When `delivery` has committed a task's change with its evidence on the task branch, leave the
-task worktree if you are in it, merge that branch into the primary branch from the primary
-worktree without asking the developer for authorization, run `concorde validate` there, then run
-`concorde task close <task> --merged`. A merge conflict or a check that fails after merging is new
-work in a new task, never a reason to discard someone's change. Abandon a task that will not be
-merged with `concorde task close <task> --abandoned`.
+task worktree if you are in it and run `concorde task merge <task>` from the primary worktree
+without asking the developer for authorization. Never merge a task with `git merge` yourself:
+other main sessions may be merging into the same primary worktree, and `concorde task merge` takes
+the merge lock that lets only one merge run at a time. It merges the branch, runs `concorde validate`
+there (or exactly the `--check` commands you name, for a project that must build first), undoes the
+merge if a check fails, and closes the task as merged. When it fails with `merge_busy`, another
+session is merging: run it again; the lock is free the moment that session's command ends. When it
+fails with `merge_conflict`, go back into the task worktree, merge the primary branch into the task
+branch, resolve the conflicts, run `validate` and `delivery` again, and merge again. A check that
+fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to
+discard someone's change. Abandon a task that will not be merged with
+`concorde task close <task> --abandoned`.
 
 ## Issues
 

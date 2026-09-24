@@ -60,6 +60,12 @@
       "meaning": "#concept.tasks.task-state"
     },
     {
+      "id": "concept.tasks.merge-lock",
+      "type": "concept",
+      "title": "Merge lock",
+      "meaning": "#concept.tasks.merge-lock"
+    },
+    {
       "id": "realization.tasks.store",
       "type": "realization",
       "title": "Task store",
@@ -77,6 +83,12 @@
       "source": "realization.tasks.store",
       "verb": "writes",
       "target": "concept.tasks.task-record"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "holds while merging, opening or closing",
+      "target": "concept.tasks.merge-lock"
     },
     {
       "type": "relates",
