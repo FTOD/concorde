@@ -61,6 +61,7 @@
         "AGENTS.md",
         "LICENSE",
         ".gitignore",
+        ".gitmodules",
         ".python-version",
         ".github/workflows/validate-source-checkout.yml"
       ],

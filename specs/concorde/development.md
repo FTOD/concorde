@@ -22,6 +22,16 @@ queueing and execution times apart and never presents summed parallel test time 
 - AND discovery, queueing, execution and total elapsed times are reported separately
 - BUT summed parallel test time is never reported as elapsed time
 
+## External references
+
+The third-party documentation and source that Modules include as `external` live under
+`references/`. The Claude Code documentation is tracked as plain files, refreshed by
+`scripts/development/fetch-claude-code-docs.py`. The pi, pi-subagents, sandbox-runtime and
+pi-packages references are Git submodules pinned in `.gitmodules` to the versions Concorde was
+built against, each with a sparse-checkout pattern (`concorde-sparse`) that keeps only the
+documentation and source a reader needs. `scripts/development/init-references.py` checks them out,
+without their media, at exactly the recorded commits.
+
 ## Docsite type check
 
 ### scenario.concorde.check-docsite-external — The docsite type check works on a disposable copy

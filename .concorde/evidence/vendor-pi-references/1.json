@@ -1,0 +1,98 @@
+{
+  "task": "vendor-pi-references",
+  "goal": "Vendor the pi, pi-subagents, sandbox-runtime and pi-permission-system references as pinned sparse submodules and declare them as external includes of the Modules that rely on them",
+  "modules": [
+    "module.concorde",
+    "module.harness.workers",
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "d4794ea3b5507e8c5cc720a2927c0dbaf2da1cf8",
+  "parent_commit": "da2ba0a7f35e3a6036ef94c941539ef26821bb4f",
+  "readiness": {
+    "run_id": "r-20260924T175846-delivery-8e9f1959",
+    "input_digest": "sha256:1081727bbe38fad85b6e36234df4f7818df3bfe298c7efff7de279089e953b47",
+    "modules": [
+      "module.concorde",
+      "module.harness.workers",
+      "module.main-session",
+      "module.validation",
+      "module.views"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:bd75b87a1b9916f7d1a2aec40f575c1f1f7e36e9f1db8a92da42f7a5d3ec25ed"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:bc37ee5c1ef9f0b1c5c0e0b1bd48e2117cc1d548901bdb4176e41d81b5a72fad"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:bee807eb2a1ec5bae2585e667298ee4134bdc34f45afacc64226fd1862b5a56d"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:b8f860456f912f70d282137510f367da2ad70ec4e3c8b01f42d92b23d79acd46"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:92a4bec6881863024aee7e0ef75b40712bf8955282da7a2c860910fa73f4d9c5"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:92a4bec6881863024aee7e0ef75b40712bf8955282da7a2c860910fa73f4d9c5"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:92a4bec6881863024aee7e0ef75b40712bf8955282da7a2c860910fa73f4d9c5"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T175026-validate-ca3827b1",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness.workers",
+        "module.main-session"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 4 blocking finding(s). unbound references/pi: no Module binds this changed path and it is neither a Spec document member nor a control record | unbound references/pi-packages: no Module binds this changed path and it is neither a Spec document member nor a control record | unbound references/pi-subagents: no Module binds this changed path and it is neither a Spec document member nor a control record | unbound references/sandbox-runtime: no Module binds this changed path and it is neither a Spec document member nor a control record",
+      "worker_runs": [],
+      "result_digest": "sha256:5b2a4a0b545e9ba8dd20609a04f2624d69d179d1d195aa0ee5031e0188d5b561"
+    },
+    {
+      "run_id": "r-20260924T175528-validate-effbe710",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness.workers",
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:abdfcb40687c4e2c2dffa9ca0791a1c4b46af841c0a854d19841f4a7bcdb0f03"
+    }
+  ],
+  "created_at": "2026-09-24T18:01:52Z"
+}

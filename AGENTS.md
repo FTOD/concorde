@@ -24,8 +24,9 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    `.claude/worktrees/<task>`.
 2. Enter the worktree with EnterWorktree (`path` set to it). A session is inside at most one task
    at a time.
-3. Create what Git ignores there: `uv sync --locked --group dev`, `npm --prefix docsite ci` and
-   `python3 scripts/concorde.py build`.
+3. Create what Git ignores there: `uv sync --locked --group dev`, `npm --prefix docsite ci`,
+   `python3 scripts/concorde.py build` and, for the reference submodules,
+   `python3 scripts/development/init-references.py`.
 4. Change the sources, verify, and commit each verified step on the task branch. Run every
    `scripts/concorde.py` command (`build`, `validate`, `registry`, `run <operation>`) from the task
    worktree, never the primary worktree's copy: only the branch's copy knows the branch's
