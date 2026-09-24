@@ -16,7 +16,7 @@ from pathlib import Path
 
 from concorde.distribution.install import install
 from concorde.spec.verification import verifies
-from tests.concorde.distribution.test_distribution import package_copy
+from tests.concorde.distribution.test_distribution import fake_d2, package_copy
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.validation.project import ValidationProject, evidence_of, git
@@ -43,7 +43,8 @@ class AdoptionTests(unittest.TestCase):
         project.mkdir()
         git(project, "init", "-q")
         (project / "app.py").write_text("print('app')\n")
-        install(project, package)
+        # The pinned d2 comes from a local stand-in: a check must not depend on the network.
+        install(project, package, fetch=fake_d2(self, package))
         concorde = str(project / ".concorde/bin/concorde")
         proposed = subprocess.run(
             [concorde, "init", "--propose", "--name", "App"],

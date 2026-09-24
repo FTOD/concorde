@@ -145,6 +145,11 @@ Code; a pi main session has none in this version.
 concorde task session <task> --main <your session name> [--model <model>]
 ```
 
+Before starting one, do in the task worktree the preparation that writes the repository's shared
+Git configuration, such as initializing submodules, as the project's own instructions say: Claude
+Code's sandbox keeps `.git/config` and Git's hooks read-only for the session, even though it may
+commit.
+
 Your session name is the one the ListAgents tool reports for this session. The command writes the
 session's boundary (its Edit and Write tools may change only the task worktree and decision log,
 and its Bash only the worktree, Git, Concorde's records and package caches), starts

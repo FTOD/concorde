@@ -172,7 +172,10 @@ in it only after the developer accepted a disclaimer once. A model without `auto
 back to asking and stall, so `--model` must name one that has it. Reads stay open, because the
 session needs the whole project's context. The network does not: a sandboxed command reaches only
 the hosts it names, such as a package registry or GitHub, and the `auto` classifier reviews those
-hosts together with the command, so no host is allowed wholesale in the settings.
+hosts together with the command, so no host is allowed wholesale in the settings. Claude Code's
+sandbox also keeps the repository's `.git/config` and Git's hooks read-only inside the writable Git
+directory, since writing them could run code outside the sandbox; a session commits but cannot
+register a submodule, so the main agent prepares that before starting it.
 
 Records live in the primary worktree, not the task worktrees: the main agent works there and must
 see every task in one place, including ones whose worktree is gone; and a task worktree is exactly
