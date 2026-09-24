@@ -1,0 +1,48 @@
+{
+  "task": "module-test-checks",
+  "goal": "Give every Module with its own tests a configured pytest check over them, so validate and delivery run the tests of each changed Module",
+  "modules": [
+    "module.harness.checks"
+  ],
+  "sequence": 1,
+  "base_commit": "4d6a16e6f91ea58ae2cb54423ce3acc345b4b40d",
+  "parent_commit": "36680a3770defe0d209a9d3e40b037ef86867bb7",
+  "readiness": {
+    "run_id": "r-20260924T164412-delivery-bf79d7b4",
+    "input_digest": "sha256:1056e705a10a82c35966c833e23d10ea388b6c54d6c39eebfef88e5e38a86606",
+    "modules": [
+      "module.harness.checks",
+      "module.harness.workers"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.harness.checks",
+        "status": "passed",
+        "measured_digest": "sha256:16ae7a28dceb09bbfe9df066e12b2a3414562bb0d26b7a480fbcdcd42d8ecf14"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:48355eb9571b2788f1e671155ec6c64c02d0cdda56e2ffbe8e7698ffe34d9e9f"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T163900-delivery-251a89f9",
+      "operation": "delivery",
+      "modules": [
+        "module.harness.checks"
+      ],
+      "status": "blocked",
+      "summary": "The task is not ready: 2 blocking finding(s) (not_ready); nothing was delivered.",
+      "worker_runs": [],
+      "result_digest": "sha256:1712a3f5c668a9bd81fd1a5fedf94dd151b83f4b27dec9f0b5561ddec31e3dd1"
+    }
+  ],
+  "created_at": "2026-09-24T16:44:21Z"
+}
