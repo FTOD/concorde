@@ -415,11 +415,11 @@ to it.
 
 ### scenario.spec.grant-understand — An understanding grant reads Specs and names code
 
-- GIVEN Module A that binds `src/a/`, uses Module B and includes pinned external material under `reference/lib/`
+- GIVEN Module A that binds `src/a/`, uses Module B and includes pinned external material under `references/lib/`
 - WHEN a grant for task type `understand` and Module A is computed
 - THEN both members of every document in A's Spec context are listed as `ro`
 - AND every existing file below `src/a/` is listed as `names`
-- AND `reference/lib/` is listed as `ro`
+- AND `references/lib/` is listed as `ro`
 - BUT no path is `rw`, and no file of B's realization or of any other Module appears
 
 A `review-spec` grant for the same Module is equal to it apart from its task type.

@@ -1168,14 +1168,14 @@ class CheckTests(unittest.TestCase):
         subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
         self.project.write("generated/out.txt", "rendered\n")
         self.project.write(".concorde/reflections/note.json", "{}\n")
-        self.project.write("reference/lib/api.md", "## connect(url)\n")
+        self.project.write("references/lib/api.md", "## connect(url)\n")
         self.project.write("scripts/export.py", "print('export')\n")
         self.metadata(
             "consumer",
             lambda value: value["module"]["includes"].append(
                 {
                     "kind": "external",
-                    "target": "reference/lib/",
+                    "target": "references/lib/",
                     "reason": "the library API",
                 }
             ),
@@ -1193,7 +1193,7 @@ class CheckTests(unittest.TestCase):
             "specs/provider/module.md.json",
             ".concorde/specs.json",
             "generated/out.txt",
-            "reference/lib/api.md",
+            "references/lib/api.md",
         ):
             self.assertIn(path, tracked)
         # Only the source file no realization covers is reported.

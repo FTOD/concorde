@@ -56,8 +56,8 @@ class GrantTests(unittest.TestCase):
         for path in ("src/a/one.py", "src/a/two.py", "src/bmod/b.py", "src/shared.py"):
             (self.root / path).parent.mkdir(parents=True, exist_ok=True)
             (self.root / path).write_text("value = 1\n")
-        (self.root / "reference/lib").mkdir(parents=True)
-        (self.root / "reference/lib/api.md").write_text("# API\n")
+        (self.root / "references/lib").mkdir(parents=True)
+        (self.root / "references/lib/api.md").write_text("# API\n")
         self.project.module(
             "module.a",
             "specs/a/module.md",
@@ -86,7 +86,7 @@ class GrantTests(unittest.TestCase):
             includes=[
                 {
                     "kind": "external",
-                    "target": "reference/lib/",
+                    "target": "references/lib/",
                     "reason": "the library's API reference",
                 }
             ],
@@ -121,7 +121,7 @@ class GrantTests(unittest.TestCase):
         self.assertEqual("names", levels["src/a/one.py"])
         self.assertEqual("names", levels["src/a/two.py"])
         self.assertEqual("names", levels["src/b.py"])
-        self.assertEqual("ro", levels["reference/lib/"])
+        self.assertEqual("ro", levels["references/lib/"])
         self.assertNotIn("rw", levels.values())
         self.assertFalse(any(path.startswith("src/bmod") for path in levels))
         self.assertFalse(any(path.startswith("specs/d") for path in levels))
@@ -250,7 +250,7 @@ class GrantTests(unittest.TestCase):
             includes=[
                 {
                     "kind": "external",
-                    "target": "reference/lib/",
+                    "target": "references/lib/",
                     "reason": "the library's API reference",
                 },
                 {

@@ -2,7 +2,7 @@
 """Check out Concorde's vendored external references (git submodules) without their media.
 
 A Module may declare third-party documentation or source as an ``includes`` of kind ``external``,
-vendored under ``reference/`` as a git submodule pinned to a fixed revision. A plain
+vendored under ``references/`` as a git submodule pinned to a fixed revision. A plain
 ``git submodule update --init`` would download the upstream repositories' media as well. This script performs the checkout the
 Framework expects instead: a partial clone (``--filter=blob:none``) whose sparse-checkout
 patterns, recorded in ``.gitmodules`` under ``submodule.<name>.concorde-sparse``, exclude media by

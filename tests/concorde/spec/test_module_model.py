@@ -362,24 +362,29 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
 
     @verifies("scenario.spec.external-reference")
     def test_external_material_is_read_material_not_context_or_implementation(self):
-        self.write("reference/lib/README.md", "# lib 1.0\n\nAPI reference.\n")
-        self.write("reference/lib/api.md", "## connect(url)\n")
-        self.write("reference/lib/.hidden.md", "ignored\n")
-        self.write("reference/lib/logo.png", "binary")
+        self.write("references/lib/README.md", "# lib 1.0\n\nAPI reference.\n")
+        self.write("references/lib/api.md", "## connect(url)\n")
+        self.write("references/lib/.hidden.md", "ignored\n")
+        self.write("references/lib/logo.png", "binary")
         self.declare_reference()
         repository = self.repository()
         a = repository.module("module.a")
-        self.assertEqual(("reference/lib/",), repository.external_inclusions(a))
+        self.assertEqual(("references/lib/",), repository.external_inclusions(a))
         self.assertEqual(
-            ("reference/lib",), scope_roots(repository.external_inclusions(a))
+            ("references/lib",), scope_roots(repository.external_inclusions(a))
         )
         self.assertEqual(
-            ("reference/lib/README.md", "reference/lib/api.md"),
-            repository.external_files("reference/lib/"),
+            ("references/lib/README.md", "references/lib/api.md"),
+            repository.external_files("references/lib/"),
         )
         external = repository.boundary_sets("module.a").external_context
         self.assertEqual(
-            (("reference/lib/", ("reference/lib/README.md", "reference/lib/api.md")),),
+            (
+                (
+                    "references/lib/",
+                    ("references/lib/README.md", "references/lib/api.md"),
+                ),
+            ),
             tuple((entry.path, entry.files) for entry in external),
         )
         self.assertEqual(("source/a.py", "source/shared.py"), repository.bound_files(a))
@@ -394,20 +399,20 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             ],
         )
         self.assertEqual(
-            [{"kind": "external", "path": "reference/lib/"}],
+            [{"kind": "external", "path": "references/lib/"}],
             repository.spec_context("module.a").value["references"],
         )
         # A selected Module does not bring its own external material.
         self.assertEqual(
             (), repository.external_inclusions(repository.module("module.root"))
         )
-        self.write("reference/lib/logo.png", "other binary")
+        self.write("references/lib/logo.png", "other binary")
         self.assertEqual(records, self.repository().external_context(a))
-        self.write("reference/lib/api.md", "## connect(url, timeout)\n")
+        self.write("references/lib/api.md", "## connect(url, timeout)\n")
         self.assertNotEqual(records, self.repository().external_context(a))
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, errors(report))
-        self.assertEqual((), repository.implemented_by("reference/lib/api.md"))
+        self.assertEqual((), repository.implemented_by("references/lib/api.md"))
 
     @verifies("scenario.spec.external-reference", "scenario.spec.reference-invalid")
     def test_external_material_cannot_overlap_documents_or_realizations_or_repeat(self):
@@ -416,13 +421,13 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             (("specs/",), "CHK.external.no-overlap"),
             (("source/shared.py",), "CHK.external.no-overlap"),
             (("source/",), "CHK.external.no-overlap"),
-            (("reference/lib/", "reference/lib/"), "CHK.includes.unique"),
+            (("references/lib/", "references/lib/"), "CHK.includes.unique"),
         ):
             with self.subTest(entries=entries):
                 fixture = ModuleImplementationTests()
                 fixture.setUp()
                 try:
-                    fixture.write("reference/lib/api.md", "api\n")
+                    fixture.write("references/lib/api.md", "api\n")
                     fixture.declare_reference(entries=entries)
                     report = validate_repository(fixture.root, package_root=PACKAGE)
                     self.assertIn(rule, rule_ids(report), errors(report))
@@ -505,15 +510,15 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
     def test_missing_untracked_or_overlapping_external_material_is_an_error(self):
         import subprocess
 
-        self.write("reference/tracked/api.md", "api\n")
+        self.write("references/tracked/api.md", "api\n")
         subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
         subprocess.run(("git", "add", "-A"), cwd=self.root, check=True)
-        self.write("reference/untracked/api.md", "api\n")
+        self.write("references/untracked/api.md", "api\n")
         self.declare_reference(
             entries=(
-                "reference/tracked/",
-                "reference/missing/",
-                "reference/untracked/",
+                "references/tracked/",
+                "references/missing/",
+                "references/untracked/",
                 "source/shared.py",
             )
         )
@@ -525,11 +530,11 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             f.message for f in report.findings if f.rule_id == "CHK.external.no-overlap"
         ]
         self.assertEqual(2, len(exists), exists)
-        self.assertTrue(any("reference/missing/" in m for m in exists), exists)
-        self.assertTrue(any("reference/untracked/" in m for m in exists), exists)
+        self.assertTrue(any("references/missing/" in m for m in exists), exists)
+        self.assertTrue(any("references/untracked/" in m for m in exists), exists)
         self.assertEqual(1, len(overlap), overlap)
         self.assertIn("source/shared.py", overlap[0])
-        self.assertFalse(any("reference/tracked/" in m for m in exists + overlap))
+        self.assertFalse(any("references/tracked/" in m for m in exists + overlap))
 
 
 if __name__ == "__main__":

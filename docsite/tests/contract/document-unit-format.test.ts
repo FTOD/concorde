@@ -36,7 +36,7 @@ const declaration = {
       },
     ],
     includes: [
-      { kind: "external", target: "reference/sdk/", reason: "SDK fields" },
+      { kind: "external", target: "references/sdk/", reason: "SDK fields" },
     ],
     participates: [],
   },

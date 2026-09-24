@@ -46,5 +46,5 @@ Thumbs.db
 
 node_modules
 
-# Retired vendored delegation dependency; local checkout may be retained.
-/reference/pi-subagents/
+# Local pi-subagents checkout, not vendored yet.
+/references/pi-subagents/

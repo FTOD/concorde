@@ -1078,7 +1078,7 @@ writes it as part of its own documents, and learns who it relates to without any
     ],
     "includes": [
       {"kind": "document", "target": "document.delivery-terms", "reason": "delivery window wording"},
-      {"kind": "external", "target": "reference/payment-sdk/", "reason": "payment request fields"}
+      {"kind": "external", "target": "references/payment-sdk/", "reason": "payment request fields"}
     ],
     "participates": [
       {"contract": "contract.inventory.reserve", "version": 1, "role": "required",

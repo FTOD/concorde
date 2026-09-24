@@ -119,7 +119,7 @@ it("derives which Modules select each document from owns, contains, uses and inc
   record("module.audit").uses[0].relies_on = ["scenario.transfer.submit"];
   record("module.audit").includes = [
     { kind: "module", target: "module.ledger", reason: "settled entries" },
-    { kind: "external", target: "reference/", reason: "not published" },
+    { kind: "external", target: "references/", reason: "not published" },
   ];
   writeRegistry(project);
   expect(selectedBy("specs/transfer/requirements.md")["module.audit"]).toEqual([

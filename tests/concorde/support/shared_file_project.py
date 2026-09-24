@@ -209,7 +209,7 @@ class SharedFileProject:
         config["checks"] = checks
         self.write(".concorde/config.json", json.dumps(config))
 
-    def declare_reference(self, module="module.a", entries=("reference/lib/",)):
+    def declare_reference(self, module="module.a", entries=("references/lib/",)):
         """Declare vendored material as ``includes`` of kind ``external`` of ``module``."""
         includes = [
             item

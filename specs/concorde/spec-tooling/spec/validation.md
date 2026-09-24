@@ -55,7 +55,7 @@ cannot be known.
 It exempts document members, everything under `.concorde/` (the registry, the configuration and
 other control records), generated outputs (everything under `generated/`, build output directories,
 and every output that `generated/build-manifest.json` lists), and external material declared with `includes` of kind `external`, including the vendored
-submodules under `reference/`.
+material under `references/`.
 
 **Links to definitions.** The Protocol requires a link fragment that names a stable identity to
 name a definition in the linked document, but lists no check for it. Concorde checks it: a link

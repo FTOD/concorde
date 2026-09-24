@@ -310,6 +310,11 @@
           "kind": "document",
           "target": "document.concorde.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "external",
+          "target": "references/claude-code/",
+          "reason": "Claude Code's settings, permission rules, hooks, sandbox and headless CLI, which the worker settings and launch rely on"
         }
       ],
       "participates": []
