@@ -22,6 +22,8 @@ from pathlib import Path
 TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
 STATES = ("open", "active", "delivered", "merged", "abandoned")
 ATTEMPTS = 3
+# Where task worktrees go by default, relative to the primary worktree; Git must ignore it.
+WORKTREES = ".claude/worktrees"
 
 
 class TaskError(Exception):
@@ -156,6 +158,39 @@ def update(primary: Path, task_id: str, change) -> dict:
     )
 
 
+def _ignored_inside(primary: Path, worktree: Path) -> None:
+    """Refuse a worktree inside the primary worktree that Git would not ignore there."""
+    resolved = Path(os.path.realpath(worktree))
+    if primary not in resolved.parents:
+        return
+    relative = resolved.relative_to(primary).as_posix()
+    checked = _git(primary, "check-ignore", "-q", relative + "/", check=False)
+    if checked.returncode != 0:
+        raise TaskError(
+            "worktree_not_ignored",
+            f"the worktree path {relative}/ lies inside the primary worktree {primary} but Git "
+            f"does not ignore it (git check-ignore exited {checked.returncode}), so the task's "
+            f"checkout would appear as untracked files of the primary branch; add "
+            f"{WORKTREES}/ (or the path's directory) to .gitignore, or pass --path outside "
+            "the primary worktree",
+        )
+
+
+def record_session(primary: Path, task_id: str, session: dict) -> dict:
+    """Append a started task session to the record of an open, active or delivered task."""
+
+    def change(record):
+        if record["state"] not in ("open", "active", "delivered"):
+            raise TaskError(
+                "task_closed",
+                f"task {task_id} is {record['state']}; a session works only in an open task",
+            )
+        record.setdefault("sessions", []).append(session)
+        return record
+
+    return update(primary, task_id, change)
+
+
 def _registered(root: Path, modules: list[str]) -> None:
     from ..spec.repository import SpecRepository
     from ..spec.repository_base import SpecError
@@ -225,14 +260,13 @@ def open_task(
             f"branch {branch} already exists in {primary} although no task record does; "
             "delete the branch or choose another task identity",
         )
-    worktree = Path(
-        os.path.abspath(path or primary.parent / f"{primary.name}.tasks" / task_id)
-    )
+    worktree = Path(os.path.abspath(path or primary / WORKTREES / task_id))
     if worktree.exists():
         raise TaskError(
             "path_exists",
             f"the worktree path {worktree} already exists; pass --path or remove it",
         )
+    _ignored_inside(primary, worktree)
     _registered(primary, modules)
     base_commit = _git(
         primary, "rev-parse", "--verify", f"{base or 'HEAD'}^{{commit}}"
@@ -268,6 +302,7 @@ def open_task(
         "runs": [],
         "deliveries": [],
         "escalations": [],
+        "sessions": [],
         "closed": None,
     }
     with _locked(primary):
@@ -421,10 +456,14 @@ def _dirty_detail(worktree: Path) -> str:
 
 
 def escalate(primary: Path, task_id: str, error: dict) -> dict:
-    """Record the main agent's error link in the task record and its decision log."""
+    """Record an escalated error link in the task record and its decision log.
+
+    A ``task-session`` link escalates to the main agent, a ``main-agent`` link to the developer.
+    """
     from ..errors import render
 
     stamp = now()
+    receiver = "main agent" if error["level"] == "task-session" else "developer"
 
     def change(record):
         record.setdefault("escalations", []).append({"at": stamp, "error": error})
@@ -433,7 +472,7 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
     record = update(primary, task_id, change)
     with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
         stream.write(
-            f"\n## Escalated to the developer, {stamp}\n\n{render(error)}\n\n"
+            f"\n## Escalated to the {receiver}, {stamp}\n\n{render(error)}\n\n"
             f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
         )
     return record
@@ -525,6 +564,7 @@ __all__ = [
     "open_task",
     "primary_of",
     "record_delivery",
+    "record_session",
     "require_primary",
     "show_task",
 ]

@@ -6,7 +6,8 @@ Concorde helps a developer and a main agent change a project that describes itse
 Specs. Spec tooling checks and publishes those Specs and computes what a task may read and write.
 Operations carry out bounded jobs, assessing, specifying, implementing, testing, reviewing,
 validating and delivering, under Spec-derived permissions, and the main agent stays in charge: it
-splits work into tasks, runs Operations and merges what is delivered. Concorde never chooses the
+splits work into tasks, carries each out inside its worktree or hands it to a task session, and
+merges what is delivered. Concorde never chooses the
 developer's direction or repairs a Spec on its own. The main agent and the workers run on Claude
 Code or on pi.
 
@@ -22,11 +23,16 @@ a [Task](tasks/module.md), an [Operation](operations/module.md) or a
 
 The installer places the Protocol copy under `.concorde/protocol/`, the `concorde` command and the
 main-session guidance, but never writes the Specs; initialization proposes and applies an honest
-first Spec. The developer then works with the main agent in the primary worktree, opening a task (a
-branch and worktree) and running Operations there with `concorde run <operation> --task <task>`:
-`understand`, `specify`, `implement`/`test`, `spec_review`/`code_review`, `validate` and `delivery`,
-typically ending with the result and its evidence committed on the task branch; the main agent then
-merges it, and several tasks may run at once.
+first Spec. The developer then works with the main agent in the primary worktree. For each piece of
+work it opens a task (a branch and a worktree under `.claude/worktrees/`), enters that worktree and
+works there with the worktree's own `concorde`: changing Specs and code directly or running
+Operations with `concorde run <operation> --task <task>` (`understand`, `specify`,
+`implement`/`test`, `spec_review`/`code_review`, `validate` and `delivery`), until `delivery`
+commits the result and its evidence on the task branch. It then returns to the primary worktree and
+merges. For work split into several tasks, it starts a
+[task session](vocabulary.md#concept.concorde.task-session) per task with
+`concorde task session`, which does the same inside its task and reports back, so several tasks run
+at once.
 
 Every Operation returns a structured result; a failure carries an
 [error chain](vocabulary.md#concept.concorde.error-chain): the Operation's own detailed link saying
@@ -34,21 +40,24 @@ why it cannot handle the error, with each error it received nested as a cause wi
 and every `concorde` command refuses in the same shape. The main agent reads the chain, decides what
 it can, logs the decision, escalates only a major-impact one, and adds its own link rather than
 summarizing. A step needing an unstated promise stops with a Spec gap instead of inferring it from
-code; only the developer and the main agent change Specs outside a `specify` task.
+code; only the developer, the main agent and a task session within its task's goal change Specs
+outside a `specify` task. A task session escalates to the main agent with its own link on top of
+the chain, and the main agent adds its link above that when the developer must decide.
 
 | Command | Use it to | Provided by |
 | --- | --- | --- |
 | `concorde validate` | check the structure of the Specs | [Spec core](spec-tooling/spec/module.md) |
 | `concorde grant` | compute a task type's grant for some Modules | [Spec core](spec-tooling/spec/module.md) |
 | `concorde spec-mcp` | let an agent query Modules, context and grants over MCP | [Spec MCP server](spec-tooling/spec-mcp/module.md) |
-| `concorde task` | open, list and close tasks | [Tasks](tasks/module.md) |
+| `concorde task` | open, list and close tasks, start task sessions, escalate | [Tasks](tasks/module.md) |
 | `concorde run` | run one Operation in a task worktree | [Operations](operations/module.md) |
 
 ## Design
 
-The Spec, not the code, is the shared source of truth. Concorde has three actors: the developer
-decides; the main agent has the global view and normally does not edit the project itself; workers
-do bounded work under a Spec-computed boundary. Between the main agent and the workers, the
+The Spec, not the code, is the shared source of truth. Concorde has three actors, and a fourth
+when work is split: the developer decides; the main agent has the global view and changes the
+project only inside a task worktree; task sessions, when started, carry one task each under a
+boundary confining their writes to it; workers do bounded work under a Spec-computed boundary. Between the main agent and the workers, the
 Operation host computes the grant, launches and audits the worker, runs the checks and turns the
 outcome into a trustworthy result.
 

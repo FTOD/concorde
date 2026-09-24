@@ -3,9 +3,10 @@
 ## Purpose
 
 Main session is the guidance that makes an ordinary Claude Code session in a project's primary
-worktree act as Concorde's main agent: discuss work with the developer, split it into tasks, run
-Operations and read their results, keep each task's decision log, decide ordinary questions itself
-while escalating only major ones, merge delivered tasks, and handle Issues. It is advice to a
+worktree act as Concorde's main agent: discuss work with the developer, split it into tasks, carry
+a task out inside its worktree or hand tasks to task sessions, keep each task's decision log,
+decide ordinary questions itself while escalating only major ones, merge delivered tasks, and
+handle Issues. It also holds the guidance a task session starts with. It is advice to a
 model, not enforcement — Concorde places no permission limits on the main agent, and nothing here
 constrains the developer. Distribution renders and installs this Module's content.
 
@@ -17,6 +18,7 @@ constrains the developer. Distribution renders and installs this Module's conten
 | Escalation policy | The rule by which the main agent decides ordinary questions itself, records and reports them, and asks the developer only for decisions with major impact. |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
+| [Task session](../vocabulary.md#concept.concorde.task-session) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
 | [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
 | [Task](../tasks/module.md#concept.tasks.task) | |
@@ -38,17 +40,23 @@ Concorde project's primary worktree that it is the main agent, and gives it a wo
   opened with `concorde task`. Run tasks in parallel only across worktrees whose Modules and shared
   files do not overlap; run the rest one after another
   ([requirements](requirements.md#req.main-session.parallel-by-worktree)).
-- **Run Operations, do not edit.** Change Specs or code only by running
-  [Operations](../operations/module.md#concept.operations.operation) with
-  `concorde run <operation> --task <task> …` in background Bash, then read the
-  [Operation result](../operations/module.md#concept.operations.result), except for trivial
-  housekeeping that changes no Spec meaning and no code behaviour, such as regenerating the
+- **Work inside the task.** Never change Specs or code in the primary worktree. For a single
+  task, enter its worktree (Claude Code's EnterWorktree), change Specs and code there directly or
+  by running [Operations](../operations/module.md#concept.operations.operation) with
+  `concorde run <operation> --task <task> …` in background Bash and reading the
+  [Operation result](../operations/module.md#concept.operations.result), and run every `concorde`
+  command with the worktree's own copy; leave after delivery. Be inside at most one task at a time.
+  The only change made in the primary worktree is trivial housekeeping, such as regenerating the
   registry mirror or resolving a mechanical merge conflict in it.
+- **Hand split work to task sessions.** For work split into several tasks, start one
+  [task session](../vocabulary.md#concept.concorde.task-session) per task with
+  `concorde task session <task> --main <own session name>` and stay in the primary worktree while
+  they run; they report back with SendMessage and escalate with their own link on the chain.
 - **Keep the decision log.** Record every non-`ok` result and every unsupervised choice, with its
   reason, in the task's [decision log](../tasks/module.md#concept.tasks.decision-log).
-- **Merge delivered work.** Merge a branch `delivery` committed without asking authorization, and
-  record the merge; handle a later conflict or failed check as new work, never by discarding
-  someone's change.
+- **Merge delivered work.** From the primary worktree, merge a branch `delivery` committed without
+  asking authorization, validate the primary branch and close the task; handle a later conflict or
+  failed check as new work, never by discarding someone's change.
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
 
@@ -101,9 +109,15 @@ that must hold regardless of judgment is enforced elsewhere — workers by the H
 their own checks, readiness by `validate` — so an agent that ignores the guidance wastes effort but
 cannot widen a worker's boundary.
 
-The main agent never edits the project itself: its view is the whole project, so nothing would
-bound, audit or evidence a change made directly. Tasks and Operations keep every change bounded and
-recorded, and keep the primary worktree clean to merge; merging needs no authorization because
+The main agent never changes the primary worktree's Specs or code: its view there is the whole
+project, so nothing would bound or evidence a change made directly, and the primary worktree must
+stay clean to merge. Inside a task worktree a direct change is bounded by the task and evidenced by
+`validate` and `delivery`, so the main agent and task sessions may change Specs and code there
+themselves. Every `concorde` command for a task runs with the worktree's own copy, because only the
+branch's copy knows the Specs, Protocol and checks the task changes. A session is inside one task
+at a time, which is why split work goes to task sessions; a task session's writes are confined to
+its task by the settings [Tasks](../tasks/module.md) generates, while the main agent stays
+unrestricted and alone merges; merging needs no authorization because
 `delivery` only commits what `validate` found ready, and a merge is ordinary, revertible Git. The
 escalation policy balances the same way: deciding ordinary questions keeps work moving, recording
 and reporting them keeps them reviewable, and reserving major-impact ones protects decisions only
@@ -123,8 +137,10 @@ mainsession: Main session {
 <a id="realization.main-session.guidance"></a>
 
 The **guidance sources** live under `prompts/main-session/` (`skill.md`, installed as the project
-skill `.claude/skills/concorde/SKILL.md`; `claude-md.md`, installed into the project's `CLAUDE.md`)
-and are rendered by Distribution's build into `generated/main-session/`. Their tests, under
+skill `.claude/skills/concorde/SKILL.md`; `claude-md.md`, installed into the project's `CLAUDE.md`;
+`task-session.md`, the first prompt `concorde task session` gives a task session; and
+`common/in-task.md`, the rules for working inside a task that the skill and the task-session
+guidance share) and are rendered by Distribution's build into `generated/main-session/`. Their tests, under
 `tests/concorde/main_session/`, check that the rendered guidance states every rule the
 [scenarios](scenarios.md) describe; what the main agent then does is judgment no deterministic test
 observes.

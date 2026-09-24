@@ -5,7 +5,7 @@ It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol``
 the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
 ``.claude/skills/concorde/SKILL.md`` and a delimited block in ``CLAUDE.md``, Concorde-owned
 defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
-state, and a receipt ``.concorde/install.json``. It refuses a package whose build is stale, fetches
+state and task worktrees, and a receipt ``.concorde/install.json``. It refuses a package whose build is stale, fetches
 and verifies ``d2`` before writing anything else, and never writes a Spec document, the registry or
 the project configuration.
 """
@@ -29,13 +29,19 @@ RECEIPT = ".concorde/install.json"
 START = "<!-- concorde:start -->"
 END = "<!-- concorde:end -->"
 RUNTIME = ("src", "scripts", "prompts", "protocol", "generated")
-IGNORED = (".concorde/runs/", ".concorde/tasks/", ".concorde/framework/", f"{TOOLS}/")
+IGNORED = (
+    ".concorde/runs/",
+    ".concorde/tasks/",
+    ".concorde/framework/",
+    f"{TOOLS}/",
+    ".claude/worktrees/",
+)
 SKILL_HEADER = (
     "---\n"
     "name: concorde\n"
-    "description: Work as Concorde's main agent in this project: split work into tasks, run "
-    "Concorde Operations in task worktrees, read their results, keep decision logs and merge "
-    "delivered work.\n"
+    "description: Work as Concorde's main agent in this project: split work into tasks, carry "
+    "them out inside their worktrees or through task sessions, read results, keep decision logs "
+    "and merge delivered work.\n"
     "---\n\n"
 )
 
@@ -122,10 +128,17 @@ def install(
     _copy_runtime(package, project / FRAMEWORK)
     command = project / COMMAND
     command.parent.mkdir(parents=True, exist_ok=True)
+    # A task worktree has no framework copy of its own (Git ignores it) unless the task
+    # reinstalled Concorde there; it then runs the primary worktree's copy.
     command.write_text(
         "#!/usr/bin/env sh\n"
         'root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)\n'
-        f'exec python3 "$root/{FRAMEWORK}/scripts/concorde.py" "$@"\n'
+        f'framework="$root/{FRAMEWORK}"\n'
+        'if [ ! -d "$framework" ]; then\n'
+        '  common=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir) || exit 1\n'
+        f'  framework="$(dirname -- "$common")/{FRAMEWORK}"\n'
+        "fi\n"
+        'exec python3 "$framework/scripts/concorde.py" "$@"\n'
     )
     command.chmod(0o755)
     (project / SKILL).parent.mkdir(parents=True, exist_ok=True)

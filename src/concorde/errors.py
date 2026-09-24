@@ -19,7 +19,15 @@ import traceback
 from pathlib import Path
 from typing import Iterable
 
-LEVELS = ("main-agent", "operation", "harness", "worker", "check", "component")
+LEVELS = (
+    "main-agent",
+    "task-session",
+    "operation",
+    "harness",
+    "worker",
+    "check",
+    "component",
+)
 
 # Why an actor could not handle an error; the explanation names the specifics.
 REASONS = {

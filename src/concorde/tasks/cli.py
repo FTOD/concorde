@@ -1,9 +1,11 @@
-"""``concorde task open|list|show|close|escalate``: print one JSON value; refusals exit 1, bad
-usage 2.
+"""``concorde task open|list|show|session|close|escalate``: print one JSON value; refusals exit 1,
+bad usage 2.
 
 A refusal prints ``{"error": <error link>}``: the Tasks component's account of what it refused,
-why it cannot handle it, and what the caller can do. ``escalate`` records the main agent's own
-link of an error chain, with the errors of the named runs or files as its causes.
+why it cannot handle it, and what the caller can do. ``session`` starts a task session in a task
+worktree. ``escalate`` records the escalating session's own link of an error chain (the main
+agent's, or a task session's to the main agent), with the errors of the named runs, files or
+earlier escalations as its causes.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from pathlib import Path
 
 from .. import errors
 from ..spec.schema import ContractError, validate
-from . import store
+from . import session, store
 
 # Why Tasks cannot handle each refusal itself; every other code is an input the caller corrects.
 HANDLING = {
@@ -38,6 +40,14 @@ HANDLING = {
         "closing a task as merged requires its last delivery to be contained in the primary "
         "branch; merging is the main agent's step",
     ),
+    "session_failed": (
+        "environment",
+        "Claude Code did not start the background session Tasks asked for",
+    ),
+    "missing_worktree": (
+        "environment",
+        "the task's worktree is gone from disk, and recreating it is not Tasks' decision",
+    ),
 }
 OPTIONS = {
     "unknown_task": ["run concorde task list to see the tasks"],
@@ -47,6 +57,16 @@ OPTIONS = {
         "close with --abandoned --force",
     ],
     "not_merged": ["merge the task branch, then close the task"],
+    "worktree_not_ignored": [
+        "add .claude/worktrees/ to .gitignore",
+        "pass --path outside the primary worktree",
+    ],
+    "session_failed": [
+        "have the developer accept Claude Code's bypass-permissions disclaimer once by running "
+        "claude --dangerously-skip-permissions interactively",
+        "have the developer run claude once in the task worktree and accept the trust prompt",
+        "work in the task yourself instead of starting a session",
+    ],
 }
 
 
@@ -87,6 +107,11 @@ def parser() -> argparse.ArgumentParser:
     listing.add_argument("--state", choices=store.STATES)
     showing = commands.add_parser("show")
     showing.add_argument("task_id")
+    starting = commands.add_parser("session")
+    starting.add_argument("task_id")
+    starting.add_argument("--main", required=True)
+    starting.add_argument("--model")
+    starting.add_argument("--dry-run", action="store_true")
     closing = commands.add_parser("close")
     closing.add_argument("task_id")
     mode = closing.add_mutually_exclusive_group(required=True)
@@ -99,8 +124,12 @@ def parser() -> argparse.ArgumentParser:
     escalating.add_argument("--detail", required=True)
     escalating.add_argument("--reason", required=True, choices=list(errors.REASONS))
     escalating.add_argument("--explanation", required=True)
+    escalating.add_argument(
+        "--by", choices=["main-agent", "task-session"], default="main-agent"
+    )
     escalating.add_argument("--run", action="append", default=[])
     escalating.add_argument("--error-file", action="append", default=[])
+    escalating.add_argument("--escalation", action="append", type=int, default=[])
     escalating.add_argument("--attempt", action="append", default=[])
     escalating.add_argument("--option", action="append", default=[])
     escalating.add_argument("--recommendation", default="")
@@ -152,20 +181,35 @@ def _file_error(path: str) -> dict:
     return _checked(value, f"--error-file {path}")
 
 
+def _escalated_error(task: dict, number: int) -> dict:
+    escalations = task.get("escalations", [])
+    if not 1 <= number <= len(escalations):
+        raise store.TaskError(
+            "unknown_escalation",
+            f"--escalation {number} is not an escalation of task {task['id']}, which has "
+            f"{len(escalations)} (numbered from 1 in record order)",
+        )
+    return _checked(
+        escalations[number - 1]["error"], f"escalation {number} of task {task['id']}"
+    )
+
+
 def escalate(here: Path, arguments) -> dict:
     primary = store.primary_of(here)
     task = store.load_task(primary, arguments.task_id)
     causes = [_run_error(primary, task, run) for run in arguments.run]
     causes += [_file_error(path) for path in arguments.error_file]
+    causes += [_escalated_error(task, number) for number in arguments.escalation]
     if not causes:
         raise store.TaskError(
             "nothing_to_escalate",
-            "name the errors being escalated with --run or --error-file",
+            "name the errors being escalated with --run, --error-file or --escalation",
         )
+    actor = "main agent" if arguments.by == "main-agent" else "task session"
     try:
         link = errors.link(
-            "main-agent",
-            f"main agent (task {task['id']})",
+            arguments.by,
+            f"{actor} (task {task['id']})",
             arguments.code,
             arguments.detail,
             reason=arguments.reason,
@@ -213,6 +257,14 @@ def main(argv, cwd: Path | None = None) -> int:
             value = store.list_tasks(store.primary_of(here), arguments.state)
         elif arguments.command == "show":
             value = store.show_task(store.primary_of(here), arguments.task_id)
+        elif arguments.command == "session":
+            value = session.start(
+                here,
+                arguments.task_id,
+                arguments.main,
+                model=arguments.model,
+                dry_run=arguments.dry_run,
+            )
         elif arguments.command == "escalate":
             value = escalate(here, arguments)
         else:

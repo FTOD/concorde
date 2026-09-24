@@ -16,7 +16,7 @@ started.
 ```concorde-contract
 {
   "id": "contract.concorde.error",
-  "version": 1,
+  "version": 2,
   "schema": {
     "$ref": "#/$defs/error",
     "$defs": {
@@ -39,6 +39,7 @@ started.
           "level": {
             "enum": [
               "main-agent",
+              "task-session",
               "operation",
               "harness",
               "worker",
@@ -140,7 +141,7 @@ started.
       }
     }
   },
-  "semantics": "One error link and, through causes, the chain below it. level names the kind of actor that wrote the link: main-agent, operation (an Operation host and its provider steps), harness (the Workers harness running one worker), worker (the worker's own report, a claim), check (one configured check) or component (a deterministic component the host called, such as Git, Tasks, Spec core or the Claude Code process). actor identifies it exactly, with the run, task, check or command concerned. code is a stable snake_case name chosen by the actor. detail describes the error completely: what failed, where, and the exact message or output; it is never only the code. evidence names the paths, commands and outputs that show it, each with a kind, a reference and a detail. attempts lists what the actor tried, in order. unhandled states why the actor could not handle the error itself; its reason is one of the reasons in the table below and explanation names the specifics. options and recommendation are what the actor offers its parent. causes are the errors the actor received from its children and could not handle, each exactly as its child wrote it; independent errors are siblings, and a link without causes is where an error started. A parent never edits or drops a cause. A behaviour or field change increments the version.",
+  "semantics": "One error link and, through causes, the chain below it. level names the kind of actor that wrote the link: main-agent, task-session (a session working inside one task worktree for the main agent), operation (an Operation host and its provider steps), harness (the Workers harness running one worker), worker (the worker's own report, a claim), check (one configured check) or component (a deterministic component the host called, such as Git, Tasks, Spec core or the Claude Code process). actor identifies it exactly, with the run, task, check or command concerned. code is a stable snake_case name chosen by the actor. detail describes the error completely: what failed, where, and the exact message or output; it is never only the code. evidence names the paths, commands and outputs that show it, each with a kind, a reference and a detail. attempts lists what the actor tried, in order. unhandled states why the actor could not handle the error itself; its reason is one of the reasons in the table below and explanation names the specifics. options and recommendation are what the actor offers its parent. causes are the errors the actor received from its children and could not handle, each exactly as its child wrote it; independent errors are siblings, and a link without causes is where an error started. A parent never edits or drops a cause. A behaviour or field change increments the version.",
   "example": {
     "level": "operation",
     "actor": "Operation implement r-20260924T093000-implement-5c1e0a77 (task severity)",

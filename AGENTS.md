@@ -7,23 +7,38 @@ sources. Specs and their paired metadata use English.
 ## How work is organized
 
 Concorde supports Claude Code and pi. The developer works with a main agent: the Claude Code or pi
-session in the primary worktree. The main agent discusses the project, splits work
-into tasks (a branch and its worktree each), runs Operations in those worktrees, keeps each task's
-decision log and merges delivered task branches. It normally does not edit the project itself.
+session in the primary worktree. The main agent discusses the project, splits work into tasks (a
+branch and its worktree each), carries a single task out inside its worktree or starts task
+sessions for work split into several tasks, keeps each task's decision log and merges delivered
+task branches. It never edits the primary worktree's sources.
 
 Workers are headless `claude -p` or `pi -p` processes launched by an Operation host for one bounded task of
 one task type (understand, specify, implement, test, review-spec, review-code) under a grant
 computed from the task worktree's Specs. Workers never touch Git, never run Operations and never
 start agents; their settings deny everything outside the grant.
 
-Developing this checkout itself is direct developer-authorized maintenance, done in a task. Open
-one from the primary worktree with
-`python3 scripts/concorde.py task open <task> --goal "<goal>" --modules <ids>`, change the sources
-in the task's worktree, verify, and commit each verified step on the task branch. Then run
-`python3 scripts/concorde.py run validate --task <task>` and `run delivery --task <task>`, merge
-the task branch into main, and close it with `task close <task> --merged`. The task worktree lacks
-the Git-ignored `.venv`, `docsite/node_modules` and `generated/`; create them there
-(`uv sync --locked --group dev`, `npm --prefix docsite ci`, `build`) before verifying.
+Developing this checkout itself is direct developer-authorized maintenance, done in a task:
+
+1. From the primary worktree, open it with
+   `python3 scripts/concorde.py task open <task> --goal "<goal>" --modules <ids>`; its worktree is
+   `.claude/worktrees/<task>`.
+2. Enter the worktree with EnterWorktree (`path` set to it). A session is inside at most one task
+   at a time.
+3. Create what Git ignores there: `uv sync --locked --group dev`, `npm --prefix docsite ci` and
+   `python3 scripts/concorde.py build`.
+4. Change the sources, verify, and commit each verified step on the task branch. Run every
+   `scripts/concorde.py` command (`build`, `validate`, `registry`, `run <operation>`) from the task
+   worktree, never the primary worktree's copy: only the branch's copy knows the branch's
+   Protocol, checks and prompts.
+5. Run `python3 scripts/concorde.py run validate --task <task>` and `run delivery --task <task>`
+   there.
+6. Leave with ExitWorktree (`action: "keep"`), merge the task branch into main from the primary
+   worktree, run `python3 scripts/concorde.py build` and `validate` on main as a cross-check of the
+   branch's self-validation, and close the task with `task close <task> --merged`.
+
+For work split into several tasks, the main agent stays in the primary worktree and starts one task
+session per task with `python3 scripts/concorde.py task session <task> --main <its session name>`;
+each works through steps 3 to 5 in its own worktree and reports back, and the main agent merges.
 
 Only a very small change, such as a typo, a one-line fix or a wording correction, may be made
 directly in the primary worktree, and only after the developer approves that specific change: say

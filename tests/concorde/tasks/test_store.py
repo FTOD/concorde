@@ -50,9 +50,11 @@ class TaskStoreTests(unittest.TestCase):
             "module.a",
         )
         self.assertEqual(0, status, value)
-        worktree = self.root.parent / f"{self.root.name}.tasks" / "severity"
+        worktree = self.root / ".claude/worktrees/severity"
         self.assertEqual(str(worktree), value["worktree"])
         self.assertEqual(("open", head), (value["state"], value["base_commit"]))
+        self.assertEqual([], value["sessions"])
+        self.assertNotIn(".claude", git(self.root, "status", "--porcelain"))
         self.assertEqual(head, git(self.root, "rev-parse", "concorde/severity"))
         self.assertEqual("concorde/severity", git(worktree, "branch", "--show-current"))
         self.assertEqual(
@@ -94,6 +96,20 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(before, self.record())
         self.assertFalse((self.root / ".concorde/tasks/t3.json").exists())
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t3"))
+
+    @verifies("scenario.tasks.open-not-ignored")
+    def test_a_worktree_the_primary_would_track_is_refused(self):
+        (self.root / ".gitignore").write_text(".concorde/runs/\n")
+        status, value = self.command(
+            "open", "t1", "--goal", "g", "--modules", "module.a"
+        )
+        self.assertEqual(1, status)
+        self.assertEqual("worktree_not_ignored", value["error"]["code"])
+        self.assertIn(".claude/worktrees/t1/", value["error"]["detail"])
+        self.assertIn("add .claude/worktrees/ to .gitignore", value["error"]["options"])
+        self.assertFalse((self.root / ".concorde/tasks/t1.json").exists())
+        self.assertFalse((self.root / ".claude/worktrees/t1").exists())
+        self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
 
     def refusal(self, *argv, cwd=None):
         status, value = self.command(*argv, cwd=cwd)
@@ -163,6 +179,83 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual((1, "nothing_to_escalate"), (status, value["error"]["code"]))
 
+    @verifies("scenario.tasks.session-escalates")
+    def test_a_task_session_escalates_to_the_main_agent(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        _, failed = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan(
+                [{"writes": {f"{worktree}/src/bmod/secret.py": "SECRET = 2\n"}}]
+            ),
+        )
+        status, value = self.command(
+            "escalate",
+            "t1",
+            "--by",
+            "task-session",
+            "--run",
+            failed["run_id"],
+            "--code",
+            "outside_task",
+            "--detail",
+            "the goal needs src/bmod/secret.py, which the task's Modules do not bind",
+            "--reason",
+            "scope",
+            "--explanation",
+            "binding module.b goes beyond the task; the main agent decides",
+            cwd=worktree,
+        )
+        self.assertEqual(0, status, value)
+        session_link = value["escalated"]
+        validate(session_link, ERROR_SCHEMA)
+        self.assertEqual(
+            ("task-session", "task session (task t1)"),
+            (session_link["level"], session_link["actor"]),
+        )
+        self.assertEqual(failed["error"], session_link["causes"][0])
+        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        self.assertIn("Escalated to the main agent", log)
+        status, value = self.command(
+            "escalate",
+            "t1",
+            "--escalation",
+            "1",
+            "--code",
+            "scope_decision",
+            "--detail",
+            "binding module.b widens what the task may change",
+            "--reason",
+            "decision",
+            "--explanation",
+            "changing a task's Modules is the developer's call here",
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual("main-agent", value["escalated"]["level"])
+        self.assertEqual([session_link], value["escalated"]["causes"])
+        self.assertIn("Escalated to the developer", self.project_log())
+        status, value = self.command(
+            "escalate",
+            "t1",
+            "--escalation",
+            "9",
+            "--code",
+            "x",
+            "--detail",
+            "x",
+            "--reason",
+            "decision",
+            "--explanation",
+            "x",
+        )
+        self.assertEqual((1, "unknown_escalation"), (status, value["error"]["code"]))
+
+    def project_log(self):
+        return (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+
     @verifies("scenario.tasks.open-unknown-module")
     def test_an_unknown_module_is_refused(self):
         self.assertEqual(
@@ -170,7 +263,7 @@ class TaskStoreTests(unittest.TestCase):
             self.refusal("open", "t1", "--goal", "g", "--modules", "module.billing"),
         )
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
-        self.assertFalse((self.root.parent / f"{self.root.name}.tasks/t1").exists())
+        self.assertFalse((self.root / ".claude/worktrees/t1").exists())
 
     @verifies("scenario.tasks.not-primary")
     def test_linked_worktrees_cannot_open_or_close(self):
@@ -185,6 +278,10 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual(
             (1, "not_primary"), self.refusal("close", "t1", "--abandoned", cwd=worktree)
+        )
+        self.assertEqual(
+            (1, "not_primary"),
+            self.refusal("session", "t1", "--main", "m", "--dry-run", cwd=worktree),
         )
         self.assertEqual(before, self.record())
 

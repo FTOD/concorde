@@ -67,7 +67,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the project has the Protocol copy under `.concorde/protocol/`, the `concorde` command and the main-session guidance as a project skill and a `CLAUDE.md` block
 - AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
 - AND installing again with the same pin downloads nothing
+- AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go
 - BUT no Spec document, registry or Protocol binding of the project changed
+
+### scenario.distribution.task-worktree-command — The command works in a task worktree
+
+- GIVEN a project where Concorde is installed and committed, and a linked worktree of it, which has no Framework copy of its own
+- WHEN `.concorde/bin/concorde` of the linked worktree runs
+- THEN it runs the primary worktree's Framework copy and answers as usual
 
 ### scenario.distribution.install-d2-refused — A d2 archive that cannot be trusted installs nothing
 

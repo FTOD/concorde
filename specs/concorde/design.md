@@ -13,16 +13,34 @@ can read them. Every other choice follows from making that safe and practical: w
 read and write is computed from the Specs, a worker's answer is checked by the host rather than
 trusted, and a missing promise stops work instead of being inferred from code.
 
-## Two tiers of agents
+## Main agent, task sessions and workers
 
 The main agent is the developer's Claude Code or pi session. It has the global view and the developer's
 trust, so Concorde does not restrict it. Workers are the opposite: each has one bounded task, no
-human to ask, and a boundary derived from the Specs. Keeping the tiers apart is what lets a large
+human to ask, and a boundary derived from the Specs. Keeping the two apart is what lets a large
 change be split into small, checkable steps without the developer supervising each one.
 
-A third tier, a per-task leader session between the main agent and the workers, was considered and
-deferred. With Operations run from the main agent, the main agent already has everything a leader
-would add, and one fewer layer of messaging means one fewer place for an error to be lost.
+Between them sits an optional **task session**, a per-task session the main agent starts only
+when it splits work into several tasks. Earlier versions deferred this tier: with Operations run
+from the main agent, the main agent already had everything such a session adds, and one fewer
+layer of messaging meant one fewer place for an error to be lost. Two things changed that. A
+session can be inside only one task worktree at a time, and the task's Concorde commands must run
+with that worktree's own copy, so parallel tasks need parallel sessions. And the error that
+motivated the deferral is contained structurally: a task session escalates through
+`concorde task escalate --by task-session`, which records its link with the failed runs' chains
+unchanged as causes, and the main agent adds its own link on top, so no level summarizes another.
+A task session's writes are confined to its task by generated settings, while the main agent
+stays unrestricted and alone merges.
+
+## Working inside the task
+
+Whoever carries out a task, the main agent or a task session, works inside the task worktree and
+runs every Concorde command there with the worktree's own copy. The primary worktree's copy is
+the code of the primary branch: it cannot know the Specs, Protocol or checks a task changes, and
+in Concorde's own checkout it would judge a change to Concorde with the code the change replaces.
+Running the branch's copy is self-validation, so after merging the main agent runs `validate` once
+more on the primary branch. Task worktrees live under `.claude/worktrees/` of the primary worktree,
+where Claude Code can move a session into an existing worktree and back.
 
 ## Tasks are branches
 

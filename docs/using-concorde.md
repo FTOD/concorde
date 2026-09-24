@@ -190,14 +190,21 @@ concorde task open retry --goal "limit payment retries" --modules module.payment
 concorde task show retry
 ```
 
-The worktree is created next to your checkout, at `<parent>/<project>.tasks/retry` (or `--path`),
-from your current commit (or `--base <ref>`). Your primary checkout is never touched by the task.
+The worktree is created inside your checkout at `.claude/worktrees/retry` (or `--path`), which
+the installer tells Git to ignore, from your current commit (or `--base <ref>`). Your primary
+checkout's files are never touched by the task.
 
-### 2. Run Operations
+### 2. Work inside the task
+
+The main agent enters the task worktree (Claude Code's EnterWorktree) and does the work there. It
+may change Specs and code directly and commit verified steps on the task branch, or run
+Operations for bounded steps. Every `concorde` command for the task runs from the task worktree
+with that worktree's own command, never your primary checkout's, because only the task branch
+knows the Specs and checks the task changes.
 
 Each Operation is one `concorde run` command. It prints one JSON result, also saved as
-`.concorde/runs/<run-id>/result.json`. The main agent runs them in background Bash so it can keep
-talking with you meanwhile.
+`.concorde/runs/<run-id>/result.json` of your primary checkout. The main agent runs them in
+background Bash so it can keep talking with you meanwhile.
 
 ```bash
 concorde run understand  --task retry --goal "how should retries be limited?" --plan
@@ -232,10 +239,11 @@ a change needs, the Operation stops with a **Spec gap**, and the Spec is changed
 ### 3. Merge and close
 
 `delivery` validates the whole task again itself and refuses it while anything blocks. Once it has
-committed:
+committed, the main agent leaves the task worktree and, in your primary checkout:
 
 ```bash
 git merge concorde/retry
+concorde validate
 concorde task close retry --merged
 ```
 
@@ -245,8 +253,21 @@ Closing removes the worktree and keeps the record. A task that will not be merge
 ### Several tasks at once
 
 Tasks whose Modules and shared files do not overlap may run at the same time, each in its own
-worktree. One task runs at most one Operation at a time. A merge conflict or a check that fails
-after merging is new work in a new task, never a reason to discard a change.
+worktree. A session works inside one task at a time, so for work split into several tasks the main
+agent starts a **task session** per task and stays in your primary checkout:
+
+```bash
+concorde task session retry --main <the main agent's session name>
+```
+
+A task session is a background Claude Code session (`claude agents` lists them) working in the
+task worktree by the same method. Its file tools and shell may write only its own task, and it
+reports back to the main agent when it has delivered or needs a decision beyond its task. Only the
+main agent merges. Because nobody answers a background session's permission prompts, a task
+session runs in Claude Code's `bypassPermissions` mode with those limits as its boundary; Claude
+Code allows that only after you have accepted its disclaimer once, by running
+`claude --dangerously-skip-permissions` interactively. One task runs at most one Operation at a time. A merge conflict or a check that
+fails after merging is new work in a new task, never a reason to discard a change.
 
 ## Read results
 
