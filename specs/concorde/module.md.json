@@ -61,6 +61,7 @@
         "AGENTS.md",
         "LICENSE",
         ".gitignore",
+        ".gitmodules",
         ".python-version",
         ".github/workflows/validate-source-checkout.yml"
       ],
@@ -98,8 +99,7 @@
         "scripts/development/init-references.py",
         "scripts/development/fetch-claude-code-docs.py",
         "scripts/development/check-docsite-types.py",
-        "tests/concorde/support/operation_project.py",
-        ".gitmodules"
+        "tests/concorde/support/operation_project.py"
       ],
       "pending": []
     },

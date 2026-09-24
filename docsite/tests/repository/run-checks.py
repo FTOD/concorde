@@ -34,6 +34,7 @@ FILES = (
     "AGENTS.md",
     "LICENSE",
     ".gitignore",
+    ".gitmodules",
     ".python-version",
     "concorde.json",
     "conftest.py",
