@@ -39,7 +39,8 @@ worktree's Git common directory. `<run-id>` is unique and chosen by the host.
 | `checks/<round>/<check-id>.log` | Check logs of each round | none |
 
 `TMPDIR` is a private directory `/tmp/concorde-<suffix>-<random>/` created for the run and
-removed when it ends, recorded as the run record's `tmp`. Claude Code's Bash sandbox creates Unix
+removed when it ends, recorded as the run record's `tmp`; where `/tmp` is read-only, as inside a
+check boundary, it is created under the system temporary directory instead. Claude Code's Bash sandbox creates Unix
 sockets below `TMPDIR`, and a socket path must stay under the kernel's 108-byte limit; below a deep
 run directory the sandbox fails to start and every Bash command is refused.
 
@@ -145,7 +146,7 @@ The environment is cleared and then set to exactly:
 | --- | --- |
 | `PATH`, `LANG` | the host's values |
 | `HOME` | `<run>/home` |
-| `TMPDIR` | the run's private directory under `/tmp` |
+| `TMPDIR` | the run's private directory under `/tmp`, or the system temporary directory |
 | `CLAUDE_CONFIG_DIR` | `<run>/config` |
 | `CLAUDE_CODE_DISABLE_CLAUDE_MDS` | `1` |
 | `CLAUDE_CODE_DISABLE_AUTO_MEMORY` | `1` |

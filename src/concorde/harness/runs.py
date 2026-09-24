@@ -48,8 +48,17 @@ def create_run(worktree: Path, prefix: str = "w") -> tuple[str, RunPaths]:
             continue
     for name in ("control", "config", "home", "tmp", "work", "checks"):
         (root / name).mkdir()
-    short = Path(tempfile.mkdtemp(prefix=f"concorde-{run_id[-6:]}-", dir="/tmp"))
-    return run_id, RunPaths(root, short)
+    return run_id, RunPaths(root, _short_tmp(run_id))
+
+
+def _short_tmp(run_id: str) -> Path:
+    """A private directory with a short path, under ``/tmp`` or, where ``/tmp`` is read-only (a
+    check boundary, say), under the system temporary directory."""
+    prefix = f"concorde-{run_id[-6:]}-"
+    try:
+        return Path(tempfile.mkdtemp(prefix=prefix, dir="/tmp"))
+    except OSError:
+        return Path(tempfile.mkdtemp(prefix=prefix))
 
 
 def remove_short_tmp(paths: RunPaths) -> None:
