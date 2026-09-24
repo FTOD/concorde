@@ -70,8 +70,10 @@ Any other nesting is an error. Containment is drawn only by nesting, never by an
 
 A checked diagram need not show every declared relation; like a derived view, its omissions are
 scope decisions. The `Relationships` section of an entry SHOULD contain a checked diagram of the
-principal collaboration, and a Module that binds files SHOULD draw its realizations with the files
-they bind, so a reader sees how the Module is built.
+principal collaboration, and a Module that binds files SHOULD draw the realizations that carry its
+function with the files they bind, so a reader sees how the Module is built. Realizations that only
+keep the repository running, such as project configuration, development tooling or test suites,
+are left to prose: a diagram shows architecture, not an inventory of files.
 
 ````markdown
 ```d2

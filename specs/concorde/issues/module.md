@@ -73,6 +73,9 @@ or 1 (refused) — shapes, operations, codes in the [Issue interface](interface.
 
 ## Design
 
+The store alone decides what a record may hold, and the command adds what the main agent must not
+be able to claim; everything else is ordinary work run through Operations.
+
 ```d2
 issues: Issues {
   store: Issue store {
@@ -89,26 +92,41 @@ issues: Issues {
 <a id="realization.issues.store"></a>
 
 **The Issue store** is the only code that creates, appends to or disposes an Issue record — Git
-moves of committed files aren't store writes, and it never runs Git. Each file holds one identity
-heading and one JSON record, with no prose copy to drift; each write checks the revision its
-caller read, publishes through a
-[file transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction), and syncs before
-acknowledging, all under one exclusive lock in `.concorde/runs/`. Record shapes are
-[typed values](../spec-tooling/spec/module.md#concept.spec.typed-value); the store checks form,
-not truth.
+moves of committed files aren't store writes, and it never runs Git or deletes a record file. Each
+file holds one identity heading and one JSON record, so no prose copy can drift from it, and
+reports are never rewritten: a later observation that classifies the problem differently is a new
+report. Each write checks the revision its caller read, publishes through a
+[file transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction) and syncs before
+acknowledging, so success means the record is on disk and a concurrent writer is never silently
+overwritten. One exclusive lock per worktree, `.concorde/runs/issues.lock`, is enough: identities
+are derived from the reporting invocation and the reporter's key rather than counted, so writers in
+different worktrees share neither a file nor allocation state. The lock is cooperative; a hand edit
+bypasses it and the revision check catches it at the next write. Report and receipt shapes are
+[typed values](../spec-tooling/spec/module.md#concept.spec.typed-value) registered as
+`concorde-issue-report@1` and `concorde-issue-receipt@1`, which Spec core does not know.
 
 <a id="realization.issues.command"></a>
 
 **The bookkeeping command** is the main agent's face of the store — `report`/`close`/`reopen` write,
 `list`/`show`/the store check read — and reads the
 [registry](../spec-tooling/spec/module.md#concept.spec.registry) for which Modules exist, which is
-root, and which digest names a report's context.
+root, and which digest names a report's context. Because it supplies provenance, a report file
+cannot claim another origin and the main agent never learns its shape; an owner given as `null`
+falls to the root Module, which the store check always accepts. It has no counter, so a repeated
+run records a second Issue, and the main agent checks `list` first. It is used by a model, which can
+only fix a request it understands, so every refusal names the Issue, report file and field or
+argument and says what is wrong, passing the store's own errors on unchanged.
+
+The store check is this Module's configured check rather than part of Spec validation, so Spec core
+stays unaware of Issues and the records are still checked whenever this Module's checks run. An
+open Issue with an unregistered owner fails it because nobody can be asked to solve it; a closed one
+is only noted.
 
 <a id="realization.issues.tests"></a>
 
 The **Issues tests** cover the store (temporary directories, concurrent writers, malformed records,
 failed publications), every bookkeeping-command action with its refusals, and the configured store
-check on a fixture project — reasons in [Issues design](design.md).
+check on a fixture project.
 
 ## Relationships
 

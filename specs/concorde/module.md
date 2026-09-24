@@ -55,8 +55,8 @@ Worker permissions are enforced by the worker's own Claude Code settings — den
 and the Bash sandbox — which guard against scope drift and mistakes, not a malicious actor; known
 limits are in the [Harness](harness/module.md), reasons in the [design topic](design.md).
 
-The root also binds files of its own, shown with its children in
-[Relationships](#relationships):
+The root also binds files that belong to no single child. They keep the repository running rather
+than carry the framework's function, so the [Relationships](#relationships) diagram leaves them out:
 
 - <a id="realization.concorde.project-files"></a>**Project files** are what belongs to no single
   responsibility: README, agent instructions, licence, repository configuration and the CI workflow
@@ -70,15 +70,12 @@ The root also binds files of its own, shown with its children in
   checkout's Python project and lock, pytest setup and shared test support, the reference
   initializer, the Claude Code documentation fetcher, the docsite type check, and the tests of that
   environment; see [Development environment](development.md).
-- <a id="realization.concorde.error-chain"></a>**Error chain code** is the link type every Module
-  shares — schema, reasons, exception helpers and human rendering — whose exact shape is the
-  [error contract](contracts.md#contract.concorde.error).
 - <a id="realization.concorde.acceptance-tests"></a>**Acceptance tests** exercise the root's
   cross-Module [scenarios](scenarios.md) through the installer and the `concorde` command.
 
 ## Relationships
 
-The root contains every other Module and binds the files above; nesting shows both at once:
+The root is the composition of seven child Modules; each one's own entry draws what it uses:
 
 ```d2
 root: Concorde Framework {
@@ -89,30 +86,6 @@ root: Concorde Framework {
   issues: Issues
   mainsession: Main session
   distribution: Distribution
-  files: Project files {
-    "README.md"
-    "AGENTS.md"
-    "LICENSE"
-    "validate-source-checkout.yml"
-  }
-  userdocs: User documents {
-    "docs/"
-  }
-  devenv: Development environment {
-    "pyproject.toml"
-    "uv.lock"
-    "conftest.py"
-    "tests/concorde/development/"
-    "init-references.py"
-    "fetch-claude-code-docs.py"
-    "check-docsite-types.py"
-  }
-  errors: Error chain code {
-    "errors.py"
-  }
-  acceptance: Acceptance tests {
-    "tests/concorde/acceptance/"
-  }
 }
 ```
 

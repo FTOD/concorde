@@ -40,6 +40,17 @@
         "src/concorde/harness/__init__.py"
       ],
       "pending": []
+    },
+    {
+      "id": "realization.harness.error-chain",
+      "type": "realization",
+      "title": "Error chain code",
+      "meaning": "#realization.harness.error-chain",
+      "entries": [
+        "src/concorde/errors.py",
+        "tests/concorde/test_errors.py"
+      ],
+      "pending": []
     }
   ],
   "relations": []
