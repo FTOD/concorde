@@ -59,8 +59,12 @@ The root also binds files of its own, shown with its children in
 [Relationships](#relationships):
 
 - <a id="realization.concorde.project-files"></a>**Project files** are what belongs to no single
-  responsibility: README, agent instructions, licence, repository configuration, the workflow guide
-  under `docs/`, and the CI workflow that validates this checkout.
+  responsibility: README, agent instructions, licence, repository configuration and the CI workflow
+  that validates this checkout.
+- <a id="realization.concorde.user-documents"></a>**User documents** under `docs/` are written for
+  the people who use Concorde, starting with the guide to using it. They follow no Spec Protocol
+  structure and are never agent context; the docsite publishes them in their own tab as
+  [custom docs](spec-tooling/views/module.md#concept.views.custom-docs).
 - <a id="realization.concorde.development-environment"></a>**Development environment** is this
   checkout's Python project and lock, pytest setup and shared test support, the reference
   initializer, the Claude Code documentation fetcher, the docsite type check, and the tests of that
@@ -88,8 +92,10 @@ root: Concorde Framework {
     "README.md"
     "AGENTS.md"
     "LICENSE"
-    "docs/"
     "validate-source-checkout.yml"
+  }
+  userdocs: User documents {
+    "docs/"
   }
   devenv: Development environment {
     "pyproject.toml"

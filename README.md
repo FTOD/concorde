@@ -14,7 +14,7 @@
   <a href="#get-started"><strong>Get started</strong></a> ·
   <a href="#the-docsite"><strong>Docsite</strong></a> ·
   <a href="https://ftod.github.io/concorde/"><strong>Explore the Specs</strong></a> ·
-  <a href="docs/workflow-guide.md"><strong>Workflow guide</strong></a>
+  <a href="docs/using-concorde.md"><strong>Using Concorde</strong></a>
 </p>
 
 # Concorde
@@ -109,7 +109,8 @@ concorde run delivery   --task retry
 git merge concorde/retry && concorde task close retry --merged
 ```
 
-The [workflow guide](docs/workflow-guide.md) walks through it in detail.
+[Using Concorde](docs/using-concorde.md) walks through installation, the first Spec, checks and
+this workflow in detail.
 
 ## The docsite
 

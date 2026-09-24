@@ -62,8 +62,17 @@
         "LICENSE",
         ".gitignore",
         ".python-version",
-        "docs/",
         ".github/workflows/validate-source-checkout.yml"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.concorde.user-documents",
+      "type": "realization",
+      "title": "User documents",
+      "meaning": "#realization.concorde.user-documents",
+      "entries": [
+        "docs/"
       ],
       "pending": []
     },

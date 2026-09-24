@@ -163,12 +163,18 @@
         "to": "/protocol"
       },
       {
-        "label": "Workflow guide",
-        "to": "https://github.com/FTOD/concorde/blob/main/docs/workflow-guide.md"
+        "label": "Using Concorde",
+        "to": "/docs"
       }
     ]
   },
   "customDocs": [
+    {
+      "id": "user",
+      "label": "User documents",
+      "path": "../docs",
+      "routeBasePath": "docs"
+    },
     {
       "id": "protocol",
       "label": "Spec Protocol",
