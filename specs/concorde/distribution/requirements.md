@@ -47,6 +47,13 @@ project configuration's Protocol binding.
 The installer SHALL refuse to install main-session guidance whose rendered output is missing or
 older than its sources.
 
+### req.distribution.installer-locked-pi-runtime — Only the locked pi runtime is installed
+
+The installer SHALL install the pi runtime only with `npm ci --ignore-scripts` from the `package-lock.json` the package ships.
+
+`npm ci` installs exactly the versions the lockfile names and refuses a package whose integrity
+hash differs, and no install script of a dependency runs on the developer's machine.
+
 ### req.distribution.installer-pinned-d2 — Only the pinned d2 is installed
 
 The installer SHALL place a `d2` program only from an archive whose SHA-256 equals the one `concorde.json` pins for the platform.

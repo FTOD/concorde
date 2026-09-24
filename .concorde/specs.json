@@ -762,7 +762,15 @@
           "meaning": "#uses-operations",
           "relies_on": [
             "concept.operations.operation",
-            "concept.operations.result"
+            "concept.operations.result",
+            "concept.operations.progress-file"
+          ]
+        },
+        {
+          "target": "module.harness.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "concept.workers.progress-file"
           ]
         },
         {

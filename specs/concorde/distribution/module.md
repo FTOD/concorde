@@ -4,7 +4,7 @@
 
 Distribution turns the Concorde checkout into something a developer can run and install: describes
 the package, builds the generated files, routes each `concorde` command to its owning Module,
-writes the Protocol copy a project carries, and installs Concorde with the main-session guidance.
+writes the Protocol copy a project carries, and installs Concorde with the main-session guidance, for Claude Code and, on request, for pi.
 It does not decide what a command does, what the main agent is told, or a project's Specs and
 configuration — the installer never writes Specs.
 
@@ -31,7 +31,7 @@ configuration — the installer never writes Specs.
 <a id="concept.distribution.package"></a>
 
 **The package.** `concorde.json` is the package's identity: name, version, licence, the roots the
-installer ships, install locations, the supported client `claude-code`, and the pinned third-party
+installer ships, install locations, the supported clients `claude-code` and `pi`, and the pinned third-party
 programs under `tools` (today `d2`, by release, URL and per-platform SHA-256). The build reads it
 too, so a changed descriptor makes every render stale.
 
@@ -87,6 +87,17 @@ plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/framewor
 `.concorde/install.json`. The command runs the Framework copy of the worktree it belongs to; a
 task worktree has none of its own, since Git ignores it, unless the task reinstalled Concorde
 there, so its command runs the primary worktree's copy, found through Git's common directory.
+
+With `--pi` the installer also prepares the project for a pi main session and pi workers: it
+places the pi runtime — the sandbox engine `@anthropic-ai/sandbox-runtime` that pi workers run
+their commands in — under `.concorde/tools/pi-runtime/` by copying the package's
+`src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
+`npm ci --ignore-scripts`, which installs exactly the locked versions after checking each
+package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime));
+the [run view](../main-session/module.md#concept.main-session.run-view) as
+`.pi/extensions/concorde/`; and the skill a second time as `.pi/skills/concorde/SKILL.md`. A later
+install with the same lockfile keeps the runtime it placed. Without npm it refuses before writing
+anything else.
 
 It never writes Specs, the registry or the project configuration
 ([requirements](requirements.md#req.distribution.installer-no-specs)). Afterwards,
@@ -152,6 +163,7 @@ distribution: Distribution {
     "install-concorde.py"
     "install.py"
     "tools.py"
+    "pi_runtime/"
   }
   build -> descriptor: reads
   command -> build: runs

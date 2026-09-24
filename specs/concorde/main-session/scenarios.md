@@ -5,6 +5,22 @@ check the rendered guidance against them are pending.
 
 ## Working method
 
+### scenario.main-session.pi-task-worktree — pi runs a task's Operation with its worktree's copy
+
+- GIVEN a pi main session in the primary worktree and a task whose record names an existing worktree
+- WHEN the main agent starts an Operation of that task with the `concorde_run` tool
+- THEN the run view starts the task worktree's own `concorde`, with the task worktree as working directory
+- BUT for a task without such a record it starts the session's own `concorde`, which refuses an unknown task
+
+### scenario.main-session.pi-run-view — pi shows every run and its worker's progress
+
+- GIVEN a pi main session with the run view and an Operation run whose worker is in its second round
+- WHEN the run view reads the progress files
+- THEN it shows the run with its task, Operation, step, the worker's round and latest tool call
+- AND a worker of another host process or an earlier run is not attributed to it
+- AND a finished run shows `completed`, `stopped` or `failed` for `ok`, `blocked` or `failed` with the result's summary
+- AND a run whose host process ended without finishing shows `failed`
+
 ### scenario.main-session.change-through-task — The guidance routes an agreed change through a task
 
 - GIVEN the rendered main-session guidance

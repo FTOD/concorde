@@ -61,6 +61,23 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 - Whenever the status is not `ok`, the host also writes the error chain, rendered as indented
   text, to standard error.
 
+## Progress file
+
+The host writes `.concorde/runs/<run-id>/status.json` atomically when the run directory is
+created, before each provider step and when the result is written:
+
+| Field | Content |
+| --- | --- |
+| `kind` | `operation` |
+| `run_id`, `operation`, `task`, `modules` | the run's identity, Operation, task and Modules |
+| `phase` | `running`, then `finished` once `result.json` is written |
+| `step` | the provider step running now, or null |
+| `status`, `summary` | null while running; the result's status and summary once finished |
+| `host_pid` | the host's process identifier, which every worker run it launches records too |
+| `started_at`, `updated_at` | UTC times |
+
+A failed write never changes the run.
+
 ## Worker settings in the project configuration
 
 The optional `workers` object of `.concorde/config.json`, read from the task worktree, sets the

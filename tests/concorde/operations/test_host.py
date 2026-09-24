@@ -113,6 +113,30 @@ class HostTests(unittest.TestCase):
         self.assertEqual(envelope, self.saved(envelope))
         self.assertEqual("ok", self.run_status(envelope))
 
+    @verifies("scenario.operations.progress-file")
+    def test_the_progress_file_follows_the_run(self):
+        status, envelope = self.implement([{}])
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        run = self.root / ".concorde/runs" / envelope["run_id"]
+        progress = json.loads((run / "status.json").read_text())
+        self.assertEqual(
+            ("operation", "implement", "t1", "finished", "ok", envelope["summary"]),
+            (
+                progress["kind"],
+                progress["operation"],
+                progress["task"],
+                progress["phase"],
+                progress["status"],
+                progress["summary"],
+            ),
+        )
+        self.assertEqual(os.getpid(), progress["host_pid"])
+        [worker] = envelope["worker_runs"]
+        worker_progress = json.loads(
+            (self.root / ".concorde/runs" / worker / "status.json").read_text()
+        )
+        self.assertEqual(progress["host_pid"], worker_progress["host_pid"])
+
     @verifies("scenario.operations.worker-blocked")
     def test_a_blocked_worker_escalates(self):
         status, envelope = self.implement(

@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
   <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-13.0.0-6264e8" alt="Spec Protocol 13.0.0" /></a>
-  <a href="#get-started"><img src="https://img.shields.io/badge/client-Claude_Code-273449" alt="Client: Claude Code" /></a>
+  <a href="#get-started"><img src="https://img.shields.io/badge/client-Claude_Code_%7C_pi-273449" alt="Client: Claude Code or pi" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
 
@@ -19,16 +19,20 @@
 
 # Concorde
 
-**Architecture-aware Specs, and Claude Code workers fenced by them.**
+**Architecture-aware Specs, and Claude Code or pi workers fenced by them.**
 
 Concorde keeps a project's Specs at the center of AI-assisted development. A Spec explains what
 each Module is responsible for, how it is designed, which precise promises it makes and which files
 realize it. From those Specs Concorde computes exactly what a task may read and write, and runs
-headless Claude Code workers inside that boundary. Your own Claude Code session, the **main
-agent**, splits work into tasks, runs Concorde's Operations, reads their results and merges what
+headless Claude Code or pi workers inside that boundary. Your own Claude Code or pi session, the
+**main agent**, splits work into tasks, runs Concorde's Operations, reads their results and merges what
 was delivered.
 
-This version supports **Claude Code only**. Pi and pi-subagents are not supported.
+Concorde supports **Claude Code** and **[pi](https://github.com/earendil-works/pi)**, for the main
+agent and for the workers. One grant is compiled into each: Claude Code settings with deny rules, a
+write hook and its sandbox, or a pi permission extension with the same sandbox engine. In pi the
+main agent also gets a run view in [pi-subagents](https://github.com/nicobailon/pi-subagents)'
+FleetView that shows every Operation and its worker's progress.
 
 ## Why Concorde
 
@@ -82,7 +86,7 @@ Install Concorde into a Git project and initialize its first Spec:
 
 ```bash
 python3 /path/to/concorde/scripts/concorde.py build
-python3 /path/to/concorde/scripts/install-concorde.py /path/to/project
+python3 /path/to/concorde/scripts/install-concorde.py /path/to/project   # add --pi for pi
 cd /path/to/project
 .concorde/bin/concorde init --propose --name "My project" > /tmp/proposal.json
 jq .result /tmp/proposal.json > /tmp/accepted.json   # inspect it first
@@ -94,8 +98,11 @@ The installer places the runtime under `.concorde/framework/`, the `.concorde/bi
 command, the Protocol copy under `.concorde/protocol/`, the main-session guidance as the
 Claude Code skill `.claude/skills/concorde/SKILL.md` and a block in `CLAUDE.md`, and the
 [`d2`](https://github.com/d2lang/d2) program that renders your Specs' diagrams as
-`.concorde/tools/d2`, a pinned release whose checksum it verifies (`--without-d2` skips it). It
-never writes your Specs. Then open Claude Code in the project and talk to it: it is now the main agent.
+`.concorde/tools/d2`, a pinned release whose checksum it verifies (`--without-d2` skips it). With
+`--pi` it also places the locked pi runtime, the pi run view and the pi skill. It never writes your
+Specs. Then open Claude Code or pi in the project and talk to it: it is now the main agent. To run
+workers on pi, set `"workers": {"backend": "pi", "model": "<provider>/<model>"}` in
+`.concorde/config.json`.
 
 A typical change, as the main agent runs it:
 
@@ -149,10 +156,13 @@ python3 scripts/concorde.py build --check
 python3 scripts/concorde.py validate
 .venv/bin/python -m pytest                          # parallel by default; -n 0 runs in-process
 CONCORDE_LIVE_CLAUDE=1 .venv/bin/python -m pytest tests/concorde/harness/workers/test_live.py
+CONCORDE_LIVE_PI=1 .venv/bin/python -m pytest tests/concorde/harness/workers/test_pi_live.py
 ```
 
-The last command runs a real Claude Code worker to check what only Claude Code enforces; it needs a
-logged-in Claude Code and costs a few cents. Never edit build output under `generated/`; change the
+The last two commands run a real worker to check what only the agent itself enforces: the first
+needs a logged-in Claude Code and costs a few cents; the second needs a configured pi
+(`CONCORDE_LIVE_PI_MODEL` names the model) and the pi runtime, from `install-concorde.py --pi` or
+`CONCORDE_SANDBOX_RUNTIME`. Never edit build output under `generated/`; change the
 sources (`prompts/`, `protocol/`, `src/`) and rebuild. See the [source-checkout rules](AGENTS.md) and
 [Concorde's own Specs](specs/concorde/module.md).
 

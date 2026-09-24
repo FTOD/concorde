@@ -1,9 +1,16 @@
 """Pinned third-party programs that the installer places under ``.concorde/tools/``.
 
-Today the only one is ``d2`` (github.com/d2lang/d2), which the docsite runs to render the Specs'
-diagrams. ``concorde.json`` pins its release and the SHA-256 of the archive for each platform; the
-installer downloads that archive, refuses any byte that does not match the pin, and writes only the
-program itself. A later install with the same pin keeps the program it already placed.
+``d2`` (github.com/d2lang/d2) renders the Specs' diagrams for the docsite. ``concorde.json`` pins
+its release and the SHA-256 of the archive for each platform; the installer downloads that archive,
+refuses any byte that does not match the pin, and writes only the program itself.
+
+The pi runtime is the sandbox engine pi workers run their commands in,
+``@anthropic-ai/sandbox-runtime``. The package ships its ``package.json`` and ``package-lock.json``
+under ``src/concorde/distribution/pi_runtime/``; the installer copies both to
+``.concorde/tools/pi-runtime/`` and runs ``npm ci``, which installs exactly the locked versions and
+checks each package's integrity hash, without running install scripts.
+
+A later install with the same pin or lockfile keeps what it already placed.
 """
 
 from __future__ import annotations
@@ -13,6 +20,8 @@ import io
 import json
 import os
 import platform
+import shutil
+import subprocess
 import tarfile
 import urllib.request
 from collections.abc import Callable
@@ -20,6 +29,10 @@ from pathlib import Path
 
 TOOLS = ".concorde/tools"
 D2_RECORD = f"{TOOLS}/d2.json"
+PI_RUNTIME = f"{TOOLS}/pi-runtime"
+PI_RUNTIME_RECORD = f"{TOOLS}/pi-runtime.json"
+PI_RUNTIME_SOURCE = "src/concorde/distribution/pi_runtime"
+PI_RUNTIME_ENTRY = "node_modules/@anthropic-ai/sandbox-runtime/dist/index.js"
 _SYSTEMS = {"linux": "linux", "darwin": "macos", "windows": "windows"}
 _MACHINES = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}
 
@@ -127,4 +140,77 @@ def install_d2(
     return placed
 
 
-__all__ = ["D2_RECORD", "TOOLS", "ToolError", "d2_path", "install_d2", "platform_key"]
+def install_pi_runtime(
+    project: Path,
+    package: Path,
+    *,
+    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> dict:
+    """Place the locked pi runtime under ``.concorde/tools/pi-runtime/``; return what was placed."""
+    source = package / PI_RUNTIME_SOURCE
+    lock = source / "package-lock.json"
+    try:
+        locked = json.loads(lock.read_text())
+        version = locked["packages"]["node_modules/@anthropic-ai/sandbox-runtime"][
+            "version"
+        ]
+    except (OSError, ValueError, KeyError) as error:
+        raise ToolError(
+            "invalid_descriptor",
+            f"{lock} is missing or pins no @anthropic-ai/sandbox-runtime: {error}",
+        ) from error
+    target = project / PI_RUNTIME
+    record_path = project / PI_RUNTIME_RECORD
+    placed = {
+        "package": "@anthropic-ai/sandbox-runtime",
+        "version": version,
+        "lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
+        "path": PI_RUNTIME,
+    }
+    try:
+        if (target / PI_RUNTIME_ENTRY).is_file() and json.loads(
+            record_path.read_text()
+        ) == placed:
+            return placed
+    except (OSError, ValueError):
+        pass
+    npm = shutil.which("npm")
+    if npm is None:
+        raise ToolError(
+            "npm_missing",
+            "the pi runtime is installed with npm, which is not on PATH; install Node.js and "
+            "npm, or install without --pi",
+        )
+    target.mkdir(parents=True, exist_ok=True)
+    for name in ("package.json", "package-lock.json"):
+        shutil.copy2(source / name, target / name)
+    command = [npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--omit=dev"]
+    try:
+        completed = run(
+            command, cwd=target, capture_output=True, text=True, timeout=600
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ToolError(
+            "pi_runtime_failed", f"`{' '.join(command)}` in {target} failed: {error}"
+        ) from error
+    if completed.returncode != 0 or not (target / PI_RUNTIME_ENTRY).is_file():
+        output = ((completed.stdout or "") + (completed.stderr or ""))[-2000:]
+        raise ToolError(
+            "pi_runtime_failed",
+            f"`{' '.join(command)}` in {target} exited with {completed.returncode} and left no "
+            f"{PI_RUNTIME_ENTRY}; its output ends with: {output.strip() or '(empty)'}",
+        )
+    record_path.write_text(json.dumps(placed, indent=2) + "\n")
+    return placed
+
+
+__all__ = [
+    "D2_RECORD",
+    "PI_RUNTIME",
+    "TOOLS",
+    "ToolError",
+    "d2_path",
+    "install_d2",
+    "install_pi_runtime",
+    "platform_key",
+]

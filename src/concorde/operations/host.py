@@ -195,6 +195,7 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
     )
     begun = False
     stop: Stop | None = None
+    _progress(context, phase="running", step=None)
     previous = {
         sig: signal.signal(sig, _cancel) for sig in (signal.SIGINT, signal.SIGTERM)
     }
@@ -265,6 +266,13 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
             signal.signal(sig, handler)
     envelope = _envelope(chosen, context, stop, started)
     (run_dir / "result.json").write_text(json.dumps(envelope, indent=2) + "\n")
+    _progress(
+        context,
+        phase="finished",
+        step=None,
+        status=envelope["status"],
+        summary=envelope["summary"],
+    )
     if begun:
         try:
             store.finish_run(primary, context.task["id"], identity, envelope["status"])
@@ -274,12 +282,41 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
     return (0 if envelope["status"] == "ok" else 1), envelope
 
 
+def _progress(context: RunContext, **fields) -> None:
+    """Rewrite the run's progress file ``status.json``; a failed write never changes the run."""
+    path = context.run_dir / "status.json"
+    try:
+        state = json.loads(path.read_text()) if path.exists() else {}
+    except (OSError, ValueError):
+        state = {}
+    state.update(
+        kind="operation",
+        run_id=context.run_id,
+        operation=context.operation,
+        task=context.task.get("id"),
+        modules=context.modules,
+        host_pid=os.getpid(),
+        updated_at=now(),
+        **fields,
+    )
+    state.setdefault("started_at", state["updated_at"])
+    state.setdefault("phase", "running")
+    state.setdefault("status", None)
+    temporary = path.with_suffix(".json.tmp")
+    try:
+        temporary.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+        temporary.replace(path)
+    except OSError:
+        pass
+
+
 def _cancel(signum, frame):
     raise Cancelled(signal.Signals(signum).name)
 
 
 def _steps(chosen, context: RunContext) -> Stop | None:
     for step in chosen.steps:
+        _progress(context, step=step.__name__)
         try:
             outcome = step(context)
         except Cancelled:

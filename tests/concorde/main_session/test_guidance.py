@@ -39,6 +39,8 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("in background Bash", self.skill)
+        self.assertIn("`concorde_run` tool", self.skill)
+        self.assertIn("runs the task worktree's own `concorde` there", self.skill)
         self.assertIn(
             "from the task worktree with the worktree's own command, never the primary "
             "worktree's",
@@ -51,7 +53,7 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn(
             "concorde task session <task> --main <your session name>", self.skill
         )
-        self.assertIn("You are inside at most one task at a time.", self.skill)
+        self.assertIn("inside at most one task at a time", self.skill)
         self.assertIn("stay in the primary worktree while any runs", self.skill)
         self.assertIn("naming its escalation as a cause", self.skill)
         self.assertIn("concorde task session", self.block)

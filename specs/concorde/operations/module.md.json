@@ -102,6 +102,12 @@
       "meaning": "#concept.operations.result"
     },
     {
+      "id": "concept.operations.progress-file",
+      "type": "concept",
+      "title": "Operation progress file",
+      "meaning": "#concept.operations.progress-file"
+    },
+    {
       "id": "realization.operations.runner",
       "type": "realization",
       "title": "Catalog and runner",

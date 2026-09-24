@@ -3,8 +3,8 @@
 This guide is for developers who want to use Concorde in their own project. It covers installing
 Concorde, writing the first Spec, working with the main agent, carrying one change from an idea to
 a merge, and reading what Concorde reports back. It describes Concorde 9 with
-[Spec Protocol 13](https://ftod.github.io/concorde/protocol) and Claude Code; other clients, such
-as Pi, are not supported in this version.
+[Spec Protocol 13](https://ftod.github.io/concorde/protocol) with Claude Code or
+[pi](https://github.com/earendil-works/pi) as the client, for the main agent and for the workers.
 
 In the commands below, `concorde` stands for your project's `.concorde/bin/concorde`.
 
@@ -13,16 +13,16 @@ In the commands below, `concorde` stands for your project's `.concorde/bin/conco
 Concorde keeps your project's **Specs** at the center of AI-assisted development. A Spec explains
 what each Module of your project is for, how it is designed, which precise promises it makes and
 which files realize it. From those Specs Concorde computes exactly what an AI task may read and
-write, and runs headless Claude Code workers inside that boundary.
+write, and runs headless Claude Code or pi workers inside that boundary.
 
 You work with three actors:
 
 - **You, the developer**, decide the direction and answer the questions that have a major impact.
-- **The main agent** is your own Claude Code session in the project's primary checkout. It discusses
+- **The main agent** is your own Claude Code or pi session in the project's primary checkout. It discusses
   the project with you, splits agreed work into tasks, runs Concorde's Operations, reads their
   results, keeps a decision log and merges what was delivered. It normally does not edit the
   project itself.
-- **Workers** are headless `claude -p` processes that one Operation starts for one bounded job,
+- **Workers** are headless `claude -p` or `pi -p` processes that one Operation starts for one bounded job,
   such as implementing a change. Each works under a **grant** computed from the Specs: the paths it
   may know by name, read and write. Everything else is denied.
 
@@ -46,9 +46,12 @@ You need:
 
 - a Git repository for your project, with at least one commit;
 - Python 3.11 or later;
-- [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and logged in;
+- [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and logged in, or
+  [pi](https://github.com/earendil-works/pi) with a configured model; for pi also Node.js with npm,
+  `rg` (ripgrep), `fd` and `socat`, and optionally
+  [pi-subagents](https://github.com/nicobailon/pi-subagents) for its run view;
 - Linux with a root-owned [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`), which
-  backs the Bash sandbox of Claude Code workers and runs your checks read-only; Concorde refuses a
+  backs the command sandbox of workers and runs your checks read-only; Concorde refuses a
   check it cannot sandbox rather than fall back to an unconfined process;
 - Node.js 20 or later only if you want to publish your Specs as a documentation site.
 
@@ -76,6 +79,14 @@ The installer places:
   `.concorde/tools/d2`, at a pinned release whose checksum it verifies (`--without-d2` skips it);
 - ignore rules for the directories Concorde writes at run time, and a receipt
   `.concorde/install.json`.
+
+To use pi, add `--pi`. The installer then also places:
+
+- the sandbox engine pi workers run their commands in, `@anthropic-ai/sandbox-runtime`, under
+  `.concorde/tools/pi-runtime/`, installed with `npm ci --ignore-scripts` from the lockfile
+  Concorde ships, so you get exactly the versions it was tested with;
+- Concorde's pi extension, the **run view**, as `.pi/extensions/concorde/`;
+- the main agent's guidance a second time, as the pi skill `.pi/skills/concorde/SKILL.md`.
 
 The installer never writes your Specs, your registry or your project configuration.
 
@@ -159,8 +170,8 @@ check.
 
 ## Work with the main agent
 
-Open Claude Code in your project's primary checkout. The installed skill makes that session the
-main agent; you talk to it as usual.
+Open Claude Code or pi in your project's primary checkout. The installed skill makes that session
+the main agent; you talk to it as usual.
 
 - **Discuss first.** Ask about the project, agree the direction and the large plan. The main agent
   answers from the Specs.
@@ -175,6 +186,36 @@ main agent; you talk to it as usual.
   its branch and reports what it merged.
 
 You can run every command below yourself as well; the main agent uses exactly the same ones.
+
+### In pi: the run view
+
+In pi the main agent starts Operations with the `concorde_run` tool instead of background Bash. The
+tool starts `concorde run` in the background and returns at once; when the run ends, the main agent
+is woken with its result. Meanwhile every run of the project appears in pi-subagents' **FleetView**
+as an external job: its task and Operation, the step it is in, and, while a worker runs, the
+worker's round and latest tool call, such as `implement worker (pi) round 2 · worker: bash pytest
+-q`. When it ends, the view shows its status and summary. `/concorde` lists the recent runs, also
+without pi-subagents. The view only observes: the Operation keeps running if you close pi.
+
+### Choose the worker backend
+
+Workers run on Claude Code unless your project configuration says otherwise. To run them on pi, set
+the `workers` object of `.concorde/config.json`:
+
+```json
+{
+  "workers": {
+    "backend": "pi",
+    "model": "anthropic/claude-sonnet-5",
+    "thinking": "medium"
+  }
+}
+```
+
+`model` is passed to the worker with `--model` (a pi `provider/id` for pi, a Claude model for
+Claude Code), and `thinking` with `--thinking` (pi only). The backend is independent of the client
+you talk to: a pi main agent can run Claude Code workers and the other way round. A pi worker uses
+copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.
 
 ## One change from idea to merge
 
@@ -203,8 +244,9 @@ with that worktree's own command, never your primary checkout's, because only th
 knows the Specs and checks the task changes.
 
 Each Operation is one `concorde run` command. It prints one JSON result, also saved as
-`.concorde/runs/<run-id>/result.json` of your primary checkout. The main agent runs them in
-background Bash so it can keep talking with you meanwhile.
+`.concorde/runs/<run-id>/result.json` of your primary checkout. The main agent runs them in the
+background (background Bash in Claude Code, the `concorde_run` tool in pi) so it can keep talking
+with you meanwhile.
 
 ```bash
 concorde run understand  --task retry --goal "how should retries be limited?" --plan
@@ -316,12 +358,23 @@ concorde grant --modules module.payments --type implement
 ```
 
 It lists the paths the worker may know by name (`names`), read (`ro`) and write (`rw`); every other
-path is denied. The worker then runs in its own run directory under `.concorde/runs/` with:
+path is denied. The same grant is compiled into each backend's own mechanism. A Claude Code worker
+runs in its own run directory under `.concorde/runs/` with:
 
 - deny rules for the file tools, which Claude Code also applies to its Bash sandbox;
 - a hook that lets Edit and Write touch only the writable paths;
 - a Bash sandbox without network, a cleared environment and a private Claude Code configuration;
 - no access to Git.
+
+A pi worker runs with Concorde's permission extension as its only extension:
+
+- `read`, `write` and `edit` are checked against the grant first, and a denial tells the worker
+  why, for example that a file is read-only or must first be declared through `specify`;
+- `bash`, `grep`, `find` and `ls` run inside the same sandbox engine Claude Code uses, so files
+  outside the grant do not exist for them and there is no network;
+- the worker has a cleared environment and a private pi configuration, and no context files,
+  skills, prompt templates or other extensions;
+- it ends by calling the `concorde_result` tool, and stops at the turn and budget limits you set.
 
 After each round the host audits the worktree; any write outside `rw` fails the run. A file that
 does not exist yet can only be written once `specify` has declared it as a pending file of its
