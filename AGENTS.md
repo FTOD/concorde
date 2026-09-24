@@ -17,8 +17,14 @@ computed from the task worktree's Specs. Workers never touch Git, never run Oper
 start agents; their settings deny everything outside the grant.
 
 Developing this checkout itself is direct developer-authorized maintenance: change sources in this
-worktree, verify, and commit each verified step. Do not run Concorde's own Operations on this
-checkout unless the developer explicitly asks for it.
+worktree, verify, and commit each verified step.
+
+Concorde's own Operations and worker agents may be used on this checkout, but they are still in
+early development, so using them is optional: do the work directly whenever that is more reliable.
+When you do run an Operation or a worker, observe the run closely (its result, error chain, host
+evidence, run record and the changes it made) rather than trusting its status. If the Operation,
+its host or its worker instructions show an obvious problem, fix it directly in the sources, verify
+the fix, and commit it as its own step.
 
 ## Source and verification
 
