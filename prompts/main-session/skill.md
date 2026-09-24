@@ -151,10 +151,9 @@ and its Bash only the worktree, Git, Concorde's records and package caches), sta
 `claude --bg` with the task's goal and records the session in the task. Start sessions only for
 tasks that may run in parallel, and stay in the primary worktree while any runs. `claude agents`
 lists them, `claude logs <id>` shows one's recent output and `claude stop <id>` stops one. A task
-session runs in `bypassPermissions` mode, since nobody answers its prompts; Claude Code refuses
-that for a background session until the developer has accepted its disclaimer once by running
-`claude --dangerously-skip-permissions` interactively, so when the command fails with
-`session_failed` saying so, ask the developer to do that.
+session runs in Claude Code's `auto` permission mode, since nobody answers its prompts: a
+classifier approves or refuses each action, inside the boundary above. Pass `--model` only with a
+model that has `auto` mode; without it the session would wait for answers nobody gives.
 
 A task session decides ordinary questions within its task and messages you with SendMessage when
 it has delivered, cannot go further, or needs a decision beyond its task. It escalates with

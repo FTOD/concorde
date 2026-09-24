@@ -12,8 +12,11 @@ Its boundary is generated here, next to the task record in
 - the Bash sandbox lets commands write only the task worktree, the repository's Git directory
   (commits on the task branch), ``.concorde/runs/`` and ``.concorde/tasks/`` (Operation runs and
   task records) and the user's package caches; reads and the network stay open;
-- nobody answers permission prompts in a background session, so it runs with
-  ``bypassPermissions`` and the hook and sandbox are the boundary.
+- nobody answers permission prompts in a background session, so it runs in Claude Code's
+  ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
+  and sandbox stay the boundary, and ``auto`` needs no one-time consent the way
+  ``bypassPermissions`` does for a background session. A model without ``auto`` mode falls back
+  to asking and stalls, so ``--model`` must name one that has it.
 """
 
 from __future__ import annotations
@@ -180,8 +183,7 @@ def start(
         "--settings",
         path.as_posix(),
         "--permission-mode",
-        "bypassPermissions",
-        "--allow-dangerously-skip-permissions",
+        "auto",
         *(["--model", model] if model else []),
         brief(primary, record, main.strip()),
     ]

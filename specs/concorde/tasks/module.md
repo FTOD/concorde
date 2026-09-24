@@ -165,10 +165,12 @@ generated settings: its Edit and Write tools pass through a hook that allows onl
 worktree and its decision log, and its Bash runs in Claude Code's sandbox writing only the task
 worktree, the repository's Git directory (for commits on the task branch), `.concorde/runs/` and
 `.concorde/tasks/` (for Operation runs and records) and package caches. Nobody answers permission
-prompts in a background session, so it runs in `bypassPermissions` mode with hook and sandbox as
-the boundary; Claude Code starts such a session only after the developer accepted its
-bypass-permissions disclaimer once, and says so in the output `session_failed` carries. Reads and the network stay open, because the session needs the whole project's
-context and its dependencies.
+prompts in a background session, so it runs in Claude Code's `auto` mode: a classifier approves or
+refuses each action instead of asking, an extra check inside the hook and sandbox, which stay the
+boundary. `bypassPermissions` would skip that check, and Claude Code starts a background session
+in it only after the developer accepted a disclaimer once. A model without `auto` mode would fall
+back to asking and stall, so `--model` must name one that has it. Reads and the network stay open,
+because the session needs the whole project's context and its dependencies.
 
 Records live in the primary worktree, not the task worktrees: the main agent works there and must
 see every task in one place, including ones whose worktree is gone; and a task worktree is exactly

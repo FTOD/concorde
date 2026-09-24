@@ -306,10 +306,9 @@ A task session is a background Claude Code session (`claude agents` lists them) 
 task worktree by the same method. Its file tools and shell may write only its own task, and it
 reports back to the main agent when it has delivered or needs a decision beyond its task. Only the
 main agent merges. Because nobody answers a background session's permission prompts, a task
-session runs in Claude Code's `bypassPermissions` mode with those limits as its boundary; Claude
-Code allows that only after you have accepted its disclaimer once, by running
-`claude --dangerously-skip-permissions` interactively. One task runs at most one Operation at a time. A merge conflict or a check that
-fails after merging is new work in a new task, never a reason to discard a change.
+session runs in Claude Code's `auto` permission mode, where a classifier approves or refuses each
+action within those limits. One task runs at most one Operation at a time. A merge conflict or a
+check that fails after merging is new work in a new task, never a reason to discard a change.
 
 ## Read results
 
