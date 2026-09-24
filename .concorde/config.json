@@ -10,7 +10,7 @@
       "id": "check.spec.model",
       "module": "module.spec",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -48,7 +48,7 @@
       "id": "check.views.repository-regressions",
       "module": "module.views",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "docsite/tests/repository/run-checks.py"
       ],
       "timeout_seconds": 600,
@@ -104,7 +104,7 @@
       "id": "check.checks.runtime",
       "module": "module.harness.checks",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -126,7 +126,7 @@
       "id": "check.concorde.tests",
       "module": "module.concorde",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -158,7 +158,7 @@
       "id": "check.spec-mcp.tests",
       "module": "module.spec-mcp",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -181,7 +181,7 @@
       "id": "check.spec-review.tests",
       "module": "module.spec-review",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -204,7 +204,7 @@
       "id": "check.views.tests",
       "module": "module.views",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -231,7 +231,7 @@
       "id": "check.workers.tests",
       "module": "module.harness.workers",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -255,7 +255,7 @@
       "id": "check.tasks.tests",
       "module": "module.tasks",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -277,7 +277,7 @@
       "id": "check.operations.tests",
       "module": "module.operations",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -300,7 +300,7 @@
       "id": "check.understanding.tests",
       "module": "module.understanding",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -323,7 +323,7 @@
       "id": "check.specification.tests",
       "module": "module.specification",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -346,7 +346,7 @@
       "id": "check.implementation.tests",
       "module": "module.implementation",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -369,7 +369,7 @@
       "id": "check.code-review.tests",
       "module": "module.code-review",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -392,7 +392,7 @@
       "id": "check.validation.tests",
       "module": "module.validation",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -414,7 +414,7 @@
       "id": "check.delivery.tests",
       "module": "module.delivery",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -437,7 +437,7 @@
       "id": "check.issues.tests",
       "module": "module.issues",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -460,7 +460,7 @@
       "id": "check.main-session.tests",
       "module": "module.main-session",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
@@ -483,7 +483,7 @@
       "id": "check.distribution.tests",
       "module": "module.distribution",
       "argv": [
-        "{python}",
+        ".venv/bin/python",
         "-m",
         "pytest",
         "-p",
