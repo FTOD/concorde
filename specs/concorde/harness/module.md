@@ -92,16 +92,28 @@ tier.
 The **Harness package** is `concorde.harness`'s Python package marker, holding both children's code
 with no behaviour of its own.
 
+<a id="realization.harness.error-chain"></a>
+
+**Error chain code** builds and renders the links of an
+[error chain](../vocabulary.md#concept.concorde.error-chain) in the shape of the Framework's
+[error contract](../contracts.md#contract.concorde.error): the schema, the reasons a level cannot
+handle an error, helpers turning an exception or finding into a link, and the human rendering.
+Workers and Check execution report their failures with it, and so do the Operation host, Tasks and
+the Issues command, so every level's link has the same shape whoever wrote it. The contract stays
+the root's, because every Module promises it; the Harness only owns the code. Spec tooling keeps
+its own error types and does not use it.
+
 ## Relationships
 
-Both children and the package marker above, nested:
+Both children and the error-chain code, nested; the package marker carries no behaviour and is
+left out:
 
 ```d2
 harness: Harness {
   workers: Workers
   checks: Check execution
-  package: Harness package {
-    "__init__.py"
+  errors: Error chain code {
+    "errors.py"
   }
   workers -> checks
 }

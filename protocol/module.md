@@ -57,6 +57,10 @@ algorithms, persistence layouts, internal limits and executable topology belong 
 public entry points and any limit or hazard a consumer needs for correct use belong to `module`
 reading. A topic is an explanation, never a second owner or a nested requirements container.
 
+Write the design in the entry's Design section. A separate topic is warranted only when an
+explanation is too long for the entry to stay readable; it then extends the entry and never repeats
+it, so a reader never has to leave the entry to learn what the entry already should say.
+
 ## The entry
 
 Every entry has the same five sections in the same order, so that every Module reads the same way
@@ -124,9 +128,12 @@ collaborates with its children and providers.
   with a link and no explanation does not satisfy this.
 - Declare the structural relationships a reader should see as `relates`, with a verb: the service
   *saves* the record, the operator *approves* the request.
-- Draw the principal collaboration as a checked D2 diagram, and draw how the Module is built: its
-  realizations with the files they bind. A checked diagram may only assert declared relations; a
-  picture that shows something else is marked `illustrative`. See [Views](views.md).
+- Draw the principal collaboration as a checked D2 diagram: the Module with its children and the
+  providers it uses. A diagram shows architecture, not an inventory: draw the realizations that
+  carry the Module's function with the files they bind, so a developer sees how it is built, and
+  leave realizations that only keep the repository running, such as project configuration,
+  development tooling or test suites, to prose. A checked diagram may only assert declared
+  relations; a picture that shows something else is marked `illustrative`. See [Views](views.md).
 
 Explain the conditions, invariants and reactions that a diagram cannot carry.
 

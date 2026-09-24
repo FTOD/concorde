@@ -73,9 +73,6 @@ checks: Check execution {
     "timing.py"
     "checks.py"
   }
-  tests: Check tests {
-    "checks/"
-  }
 }
 ```
 
