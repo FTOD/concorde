@@ -1,0 +1,138 @@
+{
+  "task": "lean-module-entries",
+  "goal": "Trim the root Relationships diagram to its child Modules, move the error-chain code realization into Harness, inline the Issues design topic into its entry, and relax the Protocol rule that every realization and its files must be drawn",
+  "modules": [
+    "module.concorde",
+    "module.harness",
+    "module.issues",
+    "module.spec"
+  ],
+  "sequence": 1,
+  "base_commit": "acecf88bcaac4fc0392ad07a8c4da3160a9b6cf5",
+  "parent_commit": "b1bf82ffc70799d51f5a67529527b6d25fcdf8f0",
+  "readiness": {
+    "run_id": "r-20260924T171811-delivery-280725b5",
+    "input_digest": "sha256:b44be80043d1fe4ce3b213a06e5e134903abb8004a03e37982b5449b1977ab2c",
+    "modules": [
+      "module.concorde",
+      "module.harness",
+      "module.harness.checks",
+      "module.harness.workers",
+      "module.implementation",
+      "module.issues",
+      "module.operations",
+      "module.spec"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:cc42a3d705cca2aebdeab29bbef3397aabd6775af381d56f2c0e77ee14dd458e"
+      },
+      {
+        "check": "check.checks.runtime",
+        "module": "module.harness.checks",
+        "status": "passed",
+        "measured_digest": "sha256:9a29948afc0537a37b8cb5928b94a69e8bc47eaa32434660627b23a6716148a2"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:4f2905deb8b2c64e6a7d2d1858f0ce506ddfe05559dc837f684415afc4556436"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:94a8cc615cafed14c857ecfc35a4ce4560f93dae52acc545172a5067d815d2ff"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:c22dafb8bd728cbaebf9568330c77f268624c2610509e17bed0dc612e88a425b"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:c22dafb8bd728cbaebf9568330c77f268624c2610509e17bed0dc612e88a425b"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:6977bd2886d3d711236b632e1ffe2dd053604169e37151e2c7fa7ad3051f5573"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:3f7977a11bf83aa4682a38bf16666c7e3424c193891e109299346abc70507c6c"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T171601-validate-572b6616",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness",
+        "module.issues",
+        "module.spec"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 1 blocking finding(s). load .concorde/protocol/manifest.json: protocol_mismatch: the Protocol copy .concorde/protocol/manifest.json differs from the manifest of the Concorde package at /home/zhenyu/concorde (at .concorde/protocol/manifest.json); why: the project's Protocol binding must name exactly the Protocol copy installed under .concorde/protocol/, and that copy must be unchanged; to fix: reinstall Concorde so the project's copy matches the package",
+      "worker_runs": [],
+      "result_digest": "sha256:74390e03456425927c2aafa0449259ddf7c750abaa93d5080928d723c72e27e4"
+    },
+    {
+      "run_id": "r-20260924T171606-validate-35d67a38",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness",
+        "module.issues",
+        "module.spec"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 1 blocking finding(s). load .concorde/protocol/manifest.json: protocol_mismatch: the Protocol copy .concorde/protocol/manifest.json differs from the manifest of the Concorde package at /home/zhenyu/concorde (at .concorde/protocol/manifest.json); why: the project's Protocol binding must name exactly the Protocol copy installed under .concorde/protocol/, and that copy must be unchanged; to fix: reinstall Concorde so the project's copy matches the package",
+      "worker_runs": [],
+      "result_digest": "sha256:e5768d697961afb849052b01b05ad05ca30aef7e758c3235dac02f114b889522"
+    },
+    {
+      "run_id": "r-20260924T171636-validate-b15001b6",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness",
+        "module.issues",
+        "module.spec"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:760c45ceac63b0eea895580903710a26593d8b1b0ff68c7a4b82dd418cc03503"
+    },
+    {
+      "run_id": "r-20260924T171746-validate-6137c676",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness",
+        "module.issues",
+        "module.spec"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:73c1cd97ac09e310ce35af7d079aebdf7224abf05fa5b4984d68bf6b3beb4221"
+    }
+  ],
+  "created_at": "2026-09-24T17:18:35Z"
+}
