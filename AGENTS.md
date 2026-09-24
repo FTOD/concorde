@@ -16,8 +16,18 @@ one task type (understand, specify, implement, test, review-spec, review-code) u
 computed from the task worktree's Specs. Workers never touch Git, never run Operations and never
 start agents; their settings deny everything outside the grant.
 
-Developing this checkout itself is direct developer-authorized maintenance: change sources in this
-worktree, verify, and commit each verified step.
+Developing this checkout itself is direct developer-authorized maintenance, done in a task. Open
+one from the primary worktree with
+`python3 scripts/concorde.py task open <task> --goal "<goal>" --modules <ids>`, change the sources
+in the task's worktree, verify, and commit each verified step on the task branch. Then run
+`python3 scripts/concorde.py run validate --task <task>` and `run delivery --task <task>`, merge
+the task branch into main, and close it with `task close <task> --merged`. The task worktree lacks
+the Git-ignored `.venv`, `docsite/node_modules` and `generated/`; create them there
+(`uv sync --locked --group dev`, `npm --prefix docsite ci`, `build`) before verifying.
+
+Only a very small change, such as a typo, a one-line fix or a wording correction, may be made
+directly in the primary worktree, and only after the developer approves that specific change: say
+what you would change and why it is small, and wait for the approval. Without it, open a task.
 
 Concorde's own Operations and worker agents may be used on this checkout, but they are still in
 early development, so using them is optional: do the work directly whenever that is more reliable.
