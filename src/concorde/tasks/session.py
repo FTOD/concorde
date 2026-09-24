@@ -11,8 +11,9 @@ Its boundary is generated here, next to the task record in
 - a PreToolUse hook lets Edit and Write change only the task worktree and its decision log;
 - the Bash sandbox lets commands write only the task worktree, the repository's Git directory
   (commits on the task branch), ``.concorde/runs/`` and ``.concorde/tasks/`` (Operation runs and
-  task records) and the user's package caches; reads stay open, and a command reaches the
-  network only through hosts it names, which the ``auto`` classifier reviews with it;
+  task records) and the user's package caches; reads and the network stay open, since the
+  boundary guards against mistakes, not exfiltration (``allowedDomains`` is ``*``, so no command
+  has to name the hosts it reaches);
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
   ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
   and sandbox stay the boundary, and ``auto`` needs no one-time consent the way
@@ -36,6 +37,8 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 PROMPT = "generated/main-session/task-session.md"
 # Package caches outside the worktree that ordinary builds write, such as uv, pip and npm.
 CACHES = (".cache", ".npm")
+# Every host: the sandbox's proxy otherwise admits only hosts a command names.
+ALL_HOSTS = ("*",)
 STARTED = re.compile(r"backgrounded\s+·\s+(?P<id>[0-9A-Za-z-]+)\s+·")
 
 
@@ -106,6 +109,7 @@ def settings(
             "autoAllowBashIfSandboxed": True,
             "allowUnsandboxedCommands": False,
             "filesystem": {"allowWrite": writable(primary, record, home)},
+            "network": {"allowedDomains": list(ALL_HOSTS)},
         },
     }
 

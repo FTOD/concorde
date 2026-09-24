@@ -167,3 +167,4 @@ records and error codes are defined in the [contracts](contracts.md).
 - WHEN its write hook judges an Edit of a file in the task worktree, of the decision log and of a file of the primary worktree
 - THEN the first two are allowed and the third is denied with a reason naming the task worktree
 - AND the sandbox lets Bash write only the task worktree, the Git directory, `.concorde/runs/`, `.concorde/tasks/` and package caches
+- AND the sandbox allows every network host
