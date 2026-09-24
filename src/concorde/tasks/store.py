@@ -525,9 +525,22 @@ def close_task(
             "dirty_worktree", _dirty_detail(worktree) + "; pass --force to discard them"
         )
     removed = False
+    submodules = worktree.exists() and (worktree / ".gitmodules").exists()
+    if submodules:
+        # Git removes a worktree that holds submodule repositories only with --force. Deinit
+        # first: it refuses local changes in a submodule unless the close is forced, so the
+        # forced removal below discards nothing the checks above would have kept.
+        arguments = ["submodule", "deinit", "--all", *(["--force"] if force else [])]
+        result = _git(worktree, *arguments, check=False)
+        if result.returncode != 0:
+            raise TaskError(
+                "worktree_failed",
+                f"git {' '.join(arguments)} in {worktree} exited {result.returncode}: "
+                f"{result.stderr.strip()}",
+            )
     if worktree.exists():
         arguments = ["worktree", "remove", str(worktree)]
-        if force:
+        if force or submodules:
             arguments.insert(2, "--force")
         result = _git(primary, *arguments, check=False)
         if result.returncode != 0:

@@ -449,6 +449,41 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(head, git(self.root, "rev-parse", "concorde/t1"))
         self.assertTrue((self.root / ".concorde/tasks/t1.decisions.md").exists())
 
+    @verifies("scenario.tasks.close-submodules")
+    def test_close_removes_a_worktree_with_checked_out_submodules(self):
+        library = self.root.parent / "library"
+        library.mkdir()
+        git(library, "init", "-q")
+        (library / "README.md").write_text("library\n")
+        git(library, "add", "-A")
+        git(
+            library, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "lib"
+        )
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        git(
+            worktree,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(library),
+            "vendor/lib",
+        )
+        head = self.deliver()
+        self.assertTrue((worktree / "vendor/lib/README.md").is_file())
+        (worktree / "vendor/lib/README.md").write_text("changed inside the submodule\n")
+        git(self.root, "merge", "--ff-only", "concorde/t1")
+        self.assertEqual((1, "dirty_worktree"), self.refusal("close", "t1", "--merged"))
+        self.assertTrue(worktree.exists())
+        git(worktree / "vendor/lib", "checkout", "--", "README.md")
+        status, value = self.command("close", "t1", "--merged")
+        self.assertEqual(0, status, value)
+        self.assertEqual(head, value["closed"]["primary_commit"])
+        self.assertTrue(value["closed"]["worktree_removed"])
+        self.assertFalse(worktree.exists())
+
     @verifies("scenario.tasks.close-not-merged")
     def test_an_unmerged_task_cannot_close_as_merged(self):
         self.project.open_task("t1")
