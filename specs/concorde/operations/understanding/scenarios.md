@@ -29,12 +29,12 @@ is in the [contracts](contracts.md).
 - AND each Spec gap names the Module, the document where the promise belongs, what is missing and why the goal needs it
 - BUT the assessment carries no plan and states no promise taken from the code
 
-### scenario.understanding.unassessable — A goal that cannot be assessed escalates
+### scenario.understanding.unassessable — A goal that cannot be assessed stops the run
 
 - GIVEN a goal that concerns a Module the run is not bound to
 - WHEN the worker cannot assess the goal from its Spec context
 - THEN the result has status `blocked`
-- AND it carries the worker's escalation with the problem, what it tried and its options
+- AND its error chain ends in the worker's own link with the problem, what it tried, why it could not assess and its options
 
 ## Host checks
 

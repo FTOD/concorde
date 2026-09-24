@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 
+from ..errors import evidence, link
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError, bound_by
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
@@ -181,4 +182,27 @@ def run_checks(
     return results
 
 
-__all__ = ["affected_modules", "check_revision", "run_checks"]
+LOG_TAIL = 3000
+
+
+def check_error(result: dict) -> dict:
+    """The error link of one check result that did not pass, with the end of its log."""
+    try:
+        tail = Path(result["log"]).read_bytes()[-LOG_TAIL:].decode("utf-8", "replace")
+    except OSError as error:
+        tail = f"(the log cannot be read: {error})"
+    timeout = result["status"] == "timeout"
+    outcome = "timed out" if timeout else f"failed with exit code {result['exit_code']}"
+    return link(
+        "check",
+        result["check_id"],
+        "check_timed_out" if timeout else "check_failed",
+        f"the configured check {result['check_id']} of {result['module']} {outcome}; its "
+        f"log {result['log']} ends with:\n{tail.strip() or '(empty)'}",
+        reason="capability",
+        explanation="a configured check only measures the code it runs against",
+        evidence=[evidence("log", result["log"], result.get("log_digest", ""))],
+    )
+
+
+__all__ = ["affected_modules", "check_error", "check_revision", "run_checks"]

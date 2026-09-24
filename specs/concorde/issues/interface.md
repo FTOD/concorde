@@ -185,10 +185,13 @@ actor `main-agent`. `--evidence` takes one or more items and may be repeated; th
 nonblank and distinct, and `--note` must be nonblank. `--duplicate-of` is required with
 `--reason duplicate` and refused with any other reason.
 
-Every refusal prints one line `{"error": <code>, "message": <text>}` and writes nothing. The
-message names the Issue, the report file and field, or the argument concerned, and states what is
-wrong. The exit status is 2 when the request is unusable (codes `usage`, `not_a_project`,
-`unreadable_file`) and 1 when the request is refused (every other code).
+Every refusal prints `{"error": <link>}` and writes nothing. The link is a `component` link of
+the Framework's [error chain](../contracts.md#contract.concorde.error) with the actor
+`Issues (concorde issues)`: its code is the refusal code, its detail names the Issue, the report
+file and field, or the argument concerned and states what is wrong, and its reason is
+`environment` for `io_error` and `input` for every other code. The exit status is 2 when the
+request is unusable (codes `usage`, `not_a_project`, `unreadable_file`) and 1 when the request is
+refused (every other code).
 
 `check` reads the configured registry and every entry of `.concorde/issues/` except hidden files
 such as `.gitignore`. Each error names the file: an entry that is not a regular file named

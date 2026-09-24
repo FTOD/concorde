@@ -65,9 +65,11 @@ class IssueCommandTests(unittest.TestCase):
     def assert_refused(self, status, code, fragments, *args):
         before = sorted(p.name for p in (self.root / ".concorde").rglob("I-*.md"))
         result, value = self.run_command(*args)
-        self.assertEqual((status, code), (result, value["error"]), value)
+        self.assertEqual((status, code), (result, value["error"]["code"]), value)
+        self.assertEqual("component", value["error"]["level"])
+        self.assertTrue(value["error"]["unhandled"]["explanation"])
         for fragment in fragments:
-            self.assertIn(fragment, value["message"])
+            self.assertIn(fragment, value["error"]["detail"])
         after = sorted(p.name for p in (self.root / ".concorde").rglob("I-*.md"))
         self.assertEqual(before, after)
         return value

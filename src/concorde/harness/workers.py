@@ -22,6 +22,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..errors import WORKER_ERROR_SCHEMA, evidence, link
 from ..spec.repository_base import SpecError
 from ..spec.schema import ContractError, validate
 from .audit import audit, rw_allows, snapshot
@@ -39,41 +40,11 @@ TAIL = 20_000
 WORKER_RESULT_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
-    "required": [
-        "status",
-        "summary",
-        "problem",
-        "attempts",
-        "evidence",
-        "options",
-        "recommendation",
-        "blocking",
-        "impact",
-        "proposed_deletions",
-        "output",
-    ],
+    "required": ["status", "summary", "error", "proposed_deletions", "output"],
     "properties": {
         "status": {"enum": ["ok", "blocked", "failed"]},
         "summary": {"type": "string", "minLength": 1},
-        "problem": {"type": "string"},
-        "attempts": {"type": "array", "items": {"type": "string", "minLength": 1}},
-        "evidence": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["kind", "ref", "detail"],
-                "properties": {
-                    "kind": {"enum": ["file", "command", "output", "spec"]},
-                    "ref": {"type": "string", "minLength": 1},
-                    "detail": {"type": "string"},
-                },
-            },
-        },
-        "options": {"type": "array", "items": {"type": "string", "minLength": 1}},
-        "recommendation": {"type": "string"},
-        "blocking": {"type": "boolean"},
-        "impact": {"type": "string"},
+        "error": {"anyOf": [{"type": "null"}, WORKER_ERROR_SCHEMA]},
         "proposed_deletions": {
             "type": "array",
             "items": {"type": "string", "minLength": 1},
@@ -155,8 +126,12 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
         "create files with the Write tool instead.\n"
         "- When the Spec does not state a promise you need, do not infer it from code: return "
         "`blocked` and describe the missing promise.\n"
-        "- End with the structured result. For `blocked` or `failed`, fill in the problem, what "
-        "you tried, your evidence, the options and your recommendation.\n"
+        "- End with the structured result. For `ok`, `error` is null. For `blocked` or `failed`, "
+        "`error` is required and must let the host reason about it without asking you: a code, "
+        "the complete detail (what failed, where, with the exact message or output), your "
+        "evidence, everything you tried, why you could not handle it yourself (`unhandled`: "
+        "`permission`, `decision`, `scope`, `capability`, `exhausted`, `environment` or `input`, "
+        "with a specific explanation), the options you see and your recommendation.\n"
     )
 
 
@@ -310,10 +285,96 @@ def _resume_prompt(failures: list[dict]) -> str:
     return "".join(parts)
 
 
+def _tail(data: bytes, size: int = 4000) -> str:
+    return data[-size:].decode("utf-8", "replace").strip()
+
+
+def claude_failure(outcome: dict, envelope: dict | None) -> dict | None:
+    """A component link when the Claude Code process itself reported an error, else ``None``."""
+    actor = "Claude Code process (claude -p)"
+    if envelope is None:
+        return link(
+            "component",
+            actor,
+            "no_result_envelope",
+            f"the process exited with code {outcome.get('exit')} and printed no JSON result "
+            f"envelope; standard output ends with: {_tail(outcome['stdout']) or '(empty)'}; "
+            f"standard error ends with: {_tail(outcome['stderr']) or '(empty)'}",
+            reason="environment",
+            explanation="the process ended without a result; it cannot report more",
+        )
+    subtype = str(envelope.get("subtype") or "success")
+    if subtype == "success" and not envelope.get("is_error"):
+        return None
+    text = envelope.get("result")
+    detail = (
+        f"the result envelope has subtype {subtype}, is_error {bool(envelope.get('is_error'))}, "
+        f"{envelope.get('num_turns', '?')} turn(s), cost {envelope.get('total_cost_usd', '?')} "
+        f"USD, exit code {outcome.get('exit')}"
+    )
+    if isinstance(text, str) and text.strip():
+        detail += f"; its final text: {text.strip()[-2000:]}"
+    if envelope.get("errors"):
+        detail += f"; errors: {json.dumps(envelope['errors'])[-2000:]}"
+    stderr = _tail(outcome["stderr"], 2000)
+    if stderr:
+        detail += f"; standard error ends with: {stderr}"
+    exhausted = subtype in ("error_max_turns", "error_max_budget_usd")
+    return link(
+        "component",
+        actor,
+        "claude_" + "".join(c if c.isalnum() else "_" for c in subtype.lower()),
+        detail,
+        reason="exhausted" if exhausted else "environment",
+        explanation=(
+            "the session reached the turn or budget limit it was started with"
+            if exhausted
+            else "Claude Code reported an error of the model service or its own execution"
+        ),
+    )
+
+
+def worker_link(record: dict, result: dict) -> dict | None:
+    """The worker's own error as a link; its content is the worker's claim."""
+    error = result.get("error")
+    if not isinstance(error, dict):
+        return None
+    sessions = [item.get("session") for item in record["rounds"] if item.get("session")]
+    return link(
+        "worker",
+        f"{record['task_type']} worker of {record['run_id']}"
+        + (f" (session {sessions[-1]})" if sessions else ""),
+        error["code"],
+        error["detail"],
+        reason=error["unhandled"]["reason"],
+        explanation=error["unhandled"]["explanation"],
+        evidence=error["evidence"],
+        attempts=error["attempts"],
+        options=error["options"],
+        recommendation=error["recommendation"],
+    )
+
+
+def _consistency(result: dict) -> str | None:
+    if result["status"] == "ok" and result.get("error") is not None:
+        return (
+            "the result has status ok but carries an error; an ok result has error null"
+        )
+    if result["status"] != "ok" and result.get("error") is None:
+        return (
+            f"the result has status {result['status']} but no error; a blocked or failed "
+            "result must carry its error"
+        )
+    return None
+
+
 def run_worker(request: WorkerRequest) -> dict:
     """Run one worker to its end and return its run record (also written to the run directory)."""
+    from .checks import check_error
+
     worktree = Path(os.path.realpath(request.worktree))
     run_id, paths = create_run(worktree)
+    actor = f"Workers run {run_id} ({request.task_type} worker)"
     record: dict = {
         "run_id": run_id,
         "task_type": request.task_type,
@@ -334,20 +395,40 @@ def run_worker(request: WorkerRequest) -> dict:
         "deleted": [],
         "deletions_refused": [],
         "status": "failed",
-        "errors": [],
+        "error": None,
         "run_directory": paths.root.as_posix(),
         "tmp": paths.tmp.as_posix(),
     }
 
-    def finish(status: str, error: str | None = None, detail: str = "") -> dict:
+    def finish(status: str, error: dict | None = None) -> dict:
         remove_short_tmp(paths)
         _remove_unused_pending(worktree, record)
         record["status"] = status
-        if error:
-            record["errors"].append({"code": error, "detail": detail})
+        record["error"] = error
         record["ended_at"] = now()
         write_record(paths, record)
         return record
+
+    def fail(code: str, detail: str, reason: str, explanation: str, **extra) -> dict:
+        found = list(extra.pop("evidence", ()))
+        if record["transcript"]:
+            found.append(evidence("transcript", record["transcript"], ""))
+        found.append(
+            evidence("run-record", (paths.root / "record.json").as_posix(), "")
+        )
+        return finish(
+            "failed",
+            link(
+                "harness",
+                actor,
+                code,
+                detail,
+                reason=reason,
+                explanation=explanation,
+                evidence=found,
+                **extra,
+            ),
+        )
 
     if (
         request.task_type not in TOOL_SETS
@@ -355,8 +436,30 @@ def run_worker(request: WorkerRequest) -> dict:
         or not request.grant.get("context_identity")
         or not isinstance(request.grant.get("entries"), list)
     ):
-        return finish(
-            "failed", "grant_unavailable", "missing grant, entries or context identity"
+        missing = [
+            name
+            for name, present in (
+                ("a known task type", request.task_type in TOOL_SETS),
+                ("a grant object", isinstance(request.grant, dict)),
+                (
+                    "a context identity",
+                    isinstance(request.grant, dict)
+                    and bool(request.grant.get("context_identity")),
+                ),
+                (
+                    "grant entries",
+                    isinstance(request.grant, dict)
+                    and isinstance(request.grant.get("entries"), list),
+                ),
+            )
+            if not present
+        ]
+        return fail(
+            "grant_unavailable",
+            f"the worker request for task type {request.task_type!r} lacks "
+            + ", ".join(missing),
+            "input",
+            "Workers launches only with a complete frozen grant, which its caller computes",
         )
     grant_file = paths.control / "grant.json"
     grant_file.write_text(json.dumps(request.grant, indent=2, sort_keys=True))
@@ -372,7 +475,13 @@ def run_worker(request: WorkerRequest) -> dict:
             home=request.home,
         )
     except SettingsError as error:
-        return finish("failed", error.code, str(error))
+        return fail(
+            error.code,
+            f"the worker settings cannot be generated: {error}",
+            "environment",
+            "the settings follow from the grant and the file layout, which Workers cannot "
+            "change",
+        )
     settings_file = paths.control / "settings.json"
     settings_file.write_text(json.dumps(settings, indent=2, sort_keys=True))
     (paths.control / "write_hook.py").write_text(
@@ -390,56 +499,172 @@ def run_worker(request: WorkerRequest) -> dict:
     if credentials is not None:
         shutil.copy2(credentials, paths.config / ".credentials.json")
         os.chmod(paths.config / ".credentials.json", 0o600)
-    record["pending_created"] = _precreate(worktree, request.grant)
+    try:
+        record["pending_created"] = _precreate(worktree, request.grant)
+    except OSError as error:
+        return fail(
+            "pending_not_created",
+            f"a pending file of the grant could not be pre-created in {worktree}: "
+            f"{type(error).__name__}: {error}",
+            "environment",
+            "Workers cannot create files the file system refuses",
+        )
     try:
         before = snapshot(worktree)
     except (OSError, subprocess.CalledProcessError) as error:
-        return finish(
-            "failed", "launch_failed", f"cannot snapshot the worktree: {error}"
+        from ..errors import exception_detail
+
+        return fail(
+            "snapshot_failed",
+            f"the task worktree {worktree} cannot be snapshotted before the launch: "
+            + exception_detail(error),
+            "environment",
+            "the audit needs a snapshot from read-only Git, which failed",
         )
 
     session: str | None = None
+    attempts: list[str] = []
     prompt, kind = brief_file.read_text(), "initial"
     for number in range(1, request.rounds + 2):
         round_record: dict = {"round": number, "prompt": kind}
         record["rounds"].append(round_record)
-        outcome = _launch(
-            request, paths, _command(request, paths, schema_text, session), prompt
-        )
+        command = _command(request, paths, schema_text, session)
+        outcome = _launch(request, paths, command, prompt)
         record["stderr_tail"] = outcome["stderr"][-TAIL:].decode("utf-8", "replace")
         round_record.update(exit=outcome.get("exit"), duration=outcome.get("duration"))
         if outcome.get("error"):
-            return finish("failed", outcome["error"], outcome.get("detail", ""))
-        envelope = _envelope(outcome["stdout"]) or {}
-        if envelope.get("session_id"):
+            return fail(
+                outcome["error"],
+                f"round {number}: the command {command[0]} could not be started: "
+                f"{outcome.get('detail', '')}",
+                "environment",
+                "Workers cannot install or repair the claude command; set CONCORDE_CLAUDE "
+                "or PATH",
+                attempts=attempts,
+            )
+        envelope = _envelope(outcome["stdout"])
+        if envelope and envelope.get("session_id"):
             session = envelope["session_id"]
         round_record["session"] = session
+        if envelope:
+            round_record["claude"] = {
+                key: envelope.get(key)
+                for key in ("subtype", "is_error", "num_turns", "total_cost_usd")
+            }
         record["transcript"] = _transcript(paths, session)
         verdict = audit(worktree, before, rw)
         round_record["audit"] = verdict.record()
+        # A write outside the grant is reported whatever else went wrong in the round.
+        outside = (
+            ""
+            if verdict.clean
+            else f"; the worker also changed {len(verdict.violations)} path(s) outside "
+            f"the grant's writable paths: {', '.join(verdict.violations)}"
+        )
         if outcome["timed_out"]:
-            return finish(
-                "failed",
+            return fail(
                 "worker_timeout",
-                f"round {number} exceeded {request.timeout}s",
+                f"round {number} did not finish within {request.timeout}s; the process "
+                f"group was killed{outside}",
+                "exhausted",
+                f"Workers stops every round at the configured timeout ({request.timeout}s, "
+                "workers.timeout_seconds) and does not extend it",
+                attempts=attempts,
+            )
+        failure = claude_failure(outcome, envelope)
+        if failure is not None:
+            exhausted = failure["unhandled"]["reason"] == "exhausted"
+            return fail(
+                "worker_limit_reached" if exhausted else "claude_failed",
+                f"round {number}: the Claude Code process ended with an error "
+                f"({failure['code']}) before a structured result{outside}",
+                "exhausted" if exhausted else "environment",
+                (
+                    f"Workers does not raise the limits it was given (max_turns "
+                    f"{request.max_turns}, max_budget_usd {request.max_budget_usd})"
+                    if exhausted
+                    else "Workers does not retry a failed Claude Code process"
+                ),
+                attempts=attempts,
+                causes=[failure],
             )
         result = envelope.get("structured_output")
+        invalid = None
         try:
             if result is None:
-                raise ContractError("no structured output")
-            validate(result, schema)
-        except ContractError as error:
-            if not envelope:
-                return finish(
-                    "failed", "launch_failed", "the worker printed no JSON envelope"
+                text = str(envelope.get("result") or "").strip()
+                raise ContractError(
+                    "the worker ended without a structured result"
+                    + (f"; its final text: {text[-2000:]}" if text else "")
                 )
-            return finish("failed", "worker_result_invalid", str(error))
-        record["worker_result"] = result
+            validate(result, schema)
+            invalid = _consistency(result)
+        except ContractError as error:
+            invalid = str(error)
+        if invalid is None:
+            record["worker_result"] = result
         if not verdict.clean:
-            return finish("failed", "audit_violation", ", ".join(verdict.violations))
+            return fail(
+                "audit_violation",
+                f"round {number}: the worker changed {len(verdict.violations)} path(s) "
+                f"outside the grant's writable paths: {', '.join(verdict.violations)}; "
+                + (
+                    f"its result was invalid: {invalid}"
+                    if invalid
+                    else f"the worker itself reported status {result['status']}"
+                ),
+                "permission",
+                "Workers never accepts a write outside the grant and never widens it",
+                evidence=[
+                    evidence("audit", str(number), f"violation: {path}")
+                    for path in verdict.violations
+                ],
+                attempts=attempts,
+                causes=[None if invalid else worker_link(record, result)],
+            )
+        if invalid:
+            return fail(
+                "worker_result_invalid",
+                f"round {number}: the worker's result does not satisfy its result "
+                f"schema: {invalid}",
+                "capability",
+                "Workers cannot repair a worker's answer and does not relaunch a worker for "
+                "an invalid one",
+                evidence=[
+                    evidence(
+                        "result-schema",
+                        (paths.control / "result.schema.json").as_posix(),
+                        "",
+                    )
+                ],
+                attempts=attempts,
+            )
         if result["status"] != "ok":
             _finalize(worktree, record, result, clean=True)
-            return finish(result["status"])
+            cause = worker_link(record, result)
+            return finish(
+                result["status"],
+                link(
+                    "harness",
+                    actor,
+                    f"worker_{result['status']}",
+                    f"the {request.task_type} worker ended {result['status']} in round "
+                    f"{number} with {cause['code']}: {cause['detail']}",
+                    reason="capability",
+                    explanation="Workers resumes a worker only to repair failing configured "
+                    "checks; it returns every other blocker unchanged",
+                    evidence=[
+                        evidence("run-record", (paths.root / "record.json").as_posix()),
+                    ]
+                    + (
+                        [evidence("transcript", record["transcript"])]
+                        if record["transcript"]
+                        else []
+                    ),
+                    attempts=attempts,
+                    causes=[cause],
+                ),
+            )
         if request.check_modules is None:
             _finalize(worktree, record, result, clean=True)
             return finish("ok")
@@ -452,20 +677,58 @@ def run_worker(request: WorkerRequest) -> dict:
                 log_directory=paths.checks / str(number),
             )
         except (SpecError, OSError) as error:
-            return finish("failed", "checks_unavailable", str(error))
+            code = getattr(error, "code", None) or "checks_unavailable"
+            return fail(
+                "checks_unavailable",
+                f"round {number}: the configured checks of "
+                f"{', '.join(request.check_modules)} could not run ({code}): {error}",
+                "environment",
+                "Workers runs the checks through Check execution and cannot repair its "
+                "configuration or sandbox",
+                attempts=attempts,
+                causes=[
+                    link(
+                        "component",
+                        "Check execution",
+                        code,
+                        str(error),
+                        reason="environment",
+                        explanation="the check could not be run as configured",
+                    )
+                ],
+            )
         round_record["checks"] = checks
         failures = [item for item in checks if item["status"] != "passed"]
         if not failures:
             _finalize(worktree, record, result, clean=True)
             return finish("ok")
+        attempts.append(
+            f"round {number}: the worker ended ok; failing: "
+            + ", ".join(
+                f"{item['check_id']} ({item['status']}, exit {item['exit_code']})"
+                for item in failures
+            )
+        )
         if number > request.rounds:
-            return finish(
-                "failed",
+            return fail(
                 "checks_failed",
-                ", ".join(item["check_id"] for item in failures),
+                f"{len(failures)} configured check(s) still fail after {number} round(s) "
+                f"({request.rounds} resume round(s) allowed): "
+                + ", ".join(item["check_id"] for item in failures),
+                "exhausted",
+                f"Workers resumes the worker at most {request.rounds} time(s) with the "
+                "failures and does not extend that",
+                attempts=attempts,
+                causes=[check_error(item) for item in failures],
             )
         prompt, kind = _resume_prompt(failures), "check_failures"
-    return finish("failed", "checks_failed", "no rounds left")
+    return fail(
+        "checks_failed",
+        "no rounds left",
+        "exhausted",
+        "Workers does not extend the configured rounds",
+        attempts=attempts,
+    )
 
 
 def _remove_unused_pending(worktree: Path, record: dict) -> None:

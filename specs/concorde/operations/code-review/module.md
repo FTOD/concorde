@@ -63,7 +63,9 @@ The Operation returns an [Operation result](../module.md#concept.operations.resu
 whenever the review completed, whatever the verdict; `blocked` when the reviewer could not judge
 the change at all, for example because the diff consists of files no bound Module binds; and
 `failed` when the host could not run the reviewer, the audit found any change, or a finding cites
-a promise that does not exist. Only an `ok` run carries a report; the host evidence of any other
+a promise that does not exist. For an unresolved basis the Operation's link has the code
+`unresolved_basis`, names every finding with the basis it cites, and gives `capability` as its
+reason; for a base that does not resolve, `unresolved_base` with Git's message as its cause. Only an `ok` run carries a report; the host evidence of any other
 run still names the base, the diff's paths and the check results.
 
 <a id="concept.code-review.finding"></a>

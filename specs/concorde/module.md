@@ -37,12 +37,16 @@ a task: a branch with its own worktree. In that worktree it runs Operations with
 the task branch into the primary branch. Several tasks may run at the same time in their own
 worktrees.
 
-Every Operation returns a structured result. When a worker cannot finish, the result carries an
-escalation with the problem, what was tried, evidence and options. The main agent decides what it
-can, records the decision in the task's decision log, and asks the developer only when a decision
-has a major impact. When a step needs a promise the Spec does not state, it stops with a Spec gap
-instead of inferring it from code; only the developer and the main agent change Specs outside a
-`specify` task.
+Every Operation returns a structured result. When it cannot finish, the result carries an
+[error chain](vocabulary.md#concept.concorde.error-chain): the Operation's own detailed account of
+the error and why it cannot handle it, with the errors it received from below, such as the worker
+run, the worker's own report and the failing checks, nested as its causes, each with its own
+reason. Every `concorde` command refuses in the same shape. The main agent reads the whole chain,
+decides what it can, records the decision in the task's decision log, and asks the developer only
+when a decision has a major impact; then it adds its own link to the chain instead of summarizing
+it. When a step needs a promise the Spec does not state, it stops with a Spec gap instead of
+inferring it from code; only the developer and the main agent change Specs outside a `specify`
+task.
 
 | Command | Use it to | Provided by |
 | --- | --- | --- |
@@ -80,6 +84,12 @@ It binds the **development environment** of this checkout: the Python project an
 pytest configuration and its evidence plugin, shared test support, the reference initializer and
 the docsite type check, and the tests of that environment, whose
 promises are in [Development environment](development.md).
+
+<a id="realization.concorde.error-chain"></a>
+
+It binds the **error chain** shared by every Module: the link type, its schema, the reasons, the
+helpers that build links from exceptions and the rendering for a human reader, whose exact shape is
+the [error contract](contracts.md#contract.concorde.error), together with its tests.
 
 <a id="realization.concorde.acceptance-tests"></a>
 

@@ -71,7 +71,16 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("changes what a Module promises to its users", self.skill)
-        self.assertIn("pass the escalation on in full", self.skill)
+        self.assertIn(
+            "never replace the chain with your own summary: add your link on top of it",
+            self.skill,
+        )
+        self.assertIn("concorde task escalate <task> --run <run-id>", self.skill)
+
+    @verifies("scenario.main-session.read-error-chain")
+    def test_the_main_agent_reads_the_whole_error_chain(self):
+        self.assertIn("carries an **error chain** in `error`", self.skill)
+        self.assertIn("Read the whole chain before deciding", self.skill)
 
     @verifies("scenario.main-session.solve-issue")
     def test_issues_are_solved_by_ordinary_work(self):

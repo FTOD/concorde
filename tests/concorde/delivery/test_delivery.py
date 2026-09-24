@@ -7,6 +7,7 @@ import unittest
 
 from concorde.delivery.bundle import BUNDLE_SCHEMA, OUTPUT_SCHEMA
 from concorde.delivery.operation import DELIVERY
+from concorde.errors import codes
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate as check_schema
 from concorde.spec.verification import verifies
@@ -46,7 +47,10 @@ class DeliveryTests(unittest.TestCase):
         self.assertIsNone(envelope["output"])
         refs = [item["ref"] for item in envelope["host_evidence"]]
         self.assertIn(code, refs)
-        self.assertEqual(envelope["escalation"]["source"], "host")
+        self.assertEqual(
+            (envelope["error"]["level"], envelope["error"]["code"]), ("operation", code)
+        )
+        self.assertEqual(envelope["error"]["unhandled"]["reason"], "decision")
         self.assertEqual(len(self.project.record()["deliveries"]), deliveries)
 
     @verifies("scenario.delivery.deliver")
@@ -204,6 +208,12 @@ class DeliveryTests(unittest.TestCase):
         before = status_lines(self.worktree)
         status, envelope = self.project.deliver()
         self.assert_inert(envelope, "not_ready")
+        # The validate run's own chain is the cause, down to the stray file's finding.
+        self.assertEqual(
+            ["not_ready", "not_deliverable", "unbound_finding"],
+            codes(envelope["error"]),
+        )
+        self.assertIn("stray.txt", envelope["error"]["detail"])
         self.assertEqual(
             (self.head(), status_lines(self.worktree)), (self.base, before)
         )
@@ -227,6 +237,8 @@ class DeliveryTests(unittest.TestCase):
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
         self.assertIn("hook says no", evidence_of(envelope, "git")[-1]["detail"])
+        self.assertEqual(["commit_failed", "git_failed"], codes(envelope["error"]))
+        self.assertIn("hook says no", envelope["error"]["causes"][0]["detail"])
         self.assertEqual(self.head(), self.base)
         self.assertEqual(
             (self.worktree / "specs/a/module.md.json").read_bytes(), metadata

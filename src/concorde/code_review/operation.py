@@ -19,8 +19,8 @@ from ..operations.provider import (
     Provider,
     RunContext,
     Stop,
+    component,
     evidence,
-    host_escalation,
     load_prompt,
 )
 from ..spec.grants import Grant, grant
@@ -119,15 +119,6 @@ def _git(worktree: Path, *arguments: str, check: bool = True):
     )
 
 
-def _failed(summary: str, kind: str, ref: str, detail: str, options=()) -> Stop:
-    return Stop(
-        "failed",
-        summary,
-        [evidence(kind, ref, detail)],
-        host_escalation(f"{summary} {detail}".strip(), options=list(options)),
-    )
-
-
 # --- inputs ------------------------------------------------------------------------------------
 
 
@@ -135,35 +126,47 @@ def review_grant(ctx: RunContext) -> Grant | Stop:
     try:
         return grant(SpecRepository(ctx.worktree), ctx.modules, "review-code")
     except (SpecError, OSError, ValueError) as error:
-        code = getattr(error, "code", "grant_unavailable")
-        return _failed(
-            f"The review-code grant for {', '.join(ctx.modules)} could not be computed ({code}).",
-            "grant",
-            ", ".join(ctx.modules),
-            str(error),
-            ["repair the Specs", "name registered Modules"],
-        )
+        return ctx.grant_failure("review-code", ctx.modules, error)
 
 
 def resolve_base(ctx: RunContext) -> str | Stop:
     reference = ctx.arguments.base or ctx.task.get("base_commit")
     if not reference:
-        return _failed(
+        return ctx.fail(
+            "failed",
+            "no_base",
             "The task records no base commit and no --base was given.",
-            "base",
-            "",
-            "no base",
+            f"task {ctx.task.get('id')} records no base commit and --base was not given, so "
+            "there is no diff to review",
+            reason="input",
+            explanation="the diff base comes from the task record or the caller",
+            evidence=[evidence("base", "", "no base")],
+            options=["pass --base with a commit of the task branch"],
         )
     found = _git(
         ctx.worktree, "rev-parse", "--verify", f"{reference}^{{commit}}", check=False
     )
     if found.returncode != 0:
-        return _failed(
+        stderr = found.stderr.decode("utf-8", "replace").strip()
+        return ctx.fail(
+            "failed",
+            "unresolved_base",
             f"The base {reference} cannot be resolved.",
-            "base",
-            reference,
-            found.stderr.decode("utf-8", "replace").strip(),
-            ["pass --base with a commit of the task branch"],
+            f"the diff base {reference} does not name a commit in {ctx.worktree}: {stderr}",
+            reason="input",
+            explanation="the diff base comes from the task record or the caller",
+            evidence=[evidence("base", reference, stderr)],
+            causes=[
+                component(
+                    "git rev-parse",
+                    "git_failed",
+                    f"git rev-parse --verify {reference}^{{commit}} exited "
+                    f"{found.returncode}: {stderr}",
+                    "input",
+                    "Git cannot resolve a name that names no commit",
+                )
+            ],
+            options=["pass --base with a commit of the task branch"],
         )
     return found.stdout.decode().strip()
 
@@ -229,14 +232,7 @@ def host_checks(ctx: RunContext) -> list[dict] | Stop:
             ctx.worktree, modules=ctx.modules, log_directory=ctx.run_dir / "checks"
         )
     except (SpecError, OSError) as error:
-        code = getattr(error, "code", "checks_unavailable")
-        return _failed(
-            f"The configured checks could not be run ({code}).",
-            "checks_unavailable",
-            code,
-            str(error),
-            ["repair the check configuration", "inspect the check sandbox"],
-        )
+        return ctx.checks_unavailable(error)
 
 
 def check_results(primary: Path, results: list[dict]) -> list[dict]:
@@ -386,22 +382,25 @@ def review_step(ctx: RunContext):
     findings = list((outcome.output or {}).get("findings") or [])
     problems = unresolved_bases(ctx.worktree, ctx.modules, findings)
     if problems:
-        return Stop(
+        return ctx.fail(
             "failed",
+            "unresolved_basis",
             "A finding cites a basis the bound Modules' Spec context does not define.",
-            outcome.evidence
-            + [
+            "the reviewer's findings cite bases that the Spec context of "
+            f"{', '.join(ctx.modules)} does not define, so the review is discarded: "
+            + ", ".join(f"{finding} cites {basis}" for finding, basis in problems),
+            reason="capability",
+            explanation="the host checks every basis but never corrects a finding or "
+            "relaunches the reviewer",
+            evidence=[
                 evidence("unresolved-basis", basis, finding)
                 for finding, basis in problems
             ],
-            host_escalation(
-                "unresolved basis: "
-                + ", ".join(f"{finding} cites {basis}" for finding, basis in problems),
-                options=[
-                    "run code_review again",
-                    "check the Spec context of the bound Modules",
-                ],
-            ),
+            host_evidence=outcome.evidence,
+            options=[
+                "run code_review again",
+                "check the Spec context of the bound Modules",
+            ],
         )
     blocking = any(item["severity"] == "blocking" for item in findings)
     return Continue(

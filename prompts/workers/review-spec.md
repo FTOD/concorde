@@ -86,3 +86,5 @@ reason says which.
 Return `blocked` only when you cannot review at all, for example because the reviewed Module's
 own documents cannot be read; a missing provider document is a `context` finding, not a reason to
 stop. In `output`, still return `{"findings": []}` or `{"checks": []}`.
+
+@prompts/workers/common/errors.md

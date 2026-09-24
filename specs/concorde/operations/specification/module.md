@@ -21,7 +21,7 @@ problem needs a decision, not another guess.
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
 | [Spec](../../vocabulary.md#concept.concorde.spec) | |
 | [Task type](../../vocabulary.md#concept.concorde.task-type) | |
-| [Escalation](../../vocabulary.md#concept.concorde.escalation) | |
+| [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 | [Operation](../module.md#concept.operations.operation) | |
 | [Operation host](../module.md#concept.operations.host) | |
 | [Operation result](../module.md#concept.operations.result) | |
@@ -64,8 +64,10 @@ summary of the promises it added, changed or removed, and the new documents it w
 The status is `ok` when the change was made and validation reports no new error. It is `blocked`
 when the worker could not make the change, for example because the intent contradicts a promise
 another Module relies on or needs a document of a Module that was not bound, or when validation
-reports a new error; the result then carries an [escalation](../../vocabulary.md#concept.concorde.escalation)
-with the worker's options or the validation findings. It is `failed` when the host could not run
+reports a new error; the result then carries an [error chain](../../vocabulary.md#concept.concorde.error-chain)
+that ends in the worker's own link with its options, or, for new validation errors, the
+Operation's `new_structural_errors` link with the reason `decision` and one cause per new finding
+with its rule, file and message. It is `failed` when the host could not run
 the worker or the write audit found a change outside the grant. In every case the worker's edits
 stay in the task worktree uncommitted: the main agent inspects them, runs `specify` again with a
 corrected intent, repairs them itself or discards them. Whenever the host observed the worktree

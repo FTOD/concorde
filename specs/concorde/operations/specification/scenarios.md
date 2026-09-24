@@ -37,12 +37,12 @@ is in the [contracts](contracts.md).
 - AND the worker's edits stay in the task worktree for the main agent to inspect
 - BUT the worker is not resumed
 
-### scenario.specification.foreign-document — A needed document of another Module escalates
+### scenario.specification.foreign-document — A needed document of another Module stops the run
 
 - GIVEN an intent that can only be carried out by changing a document of a Module that is not bound
 - WHEN the worker finds it cannot make the change within its grant
 - THEN the result has status `blocked`
-- AND it carries the worker's escalation naming the other Module and the options it sees
+- AND its error chain ends in the worker's own link naming the other Module, the reason it could not change it and the options it sees
 
 ### scenario.specification.code-write — A write to code fails the run
 

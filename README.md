@@ -64,13 +64,17 @@ runs the project's configured checks itself in a read-only sandbox and, when a c
 the same worker with the failures. These layers guard against scope drift and mistakes, not a
 malicious actor; the [Harness](specs/concorde/harness/module.md) states their limits honestly.
 
-### Tasks, results and escalations
+### Tasks, results and error chains
 
 Each unit of work is a **task**: a branch with its own worktree, a record and a decision log. Every
 Operation returns one JSON result that keeps what the host verified (`host_evidence`) apart from
-what the worker claims (`worker`), and every failure carries an **escalation** with the problem,
-what was tried, the evidence, the options and a recommendation. The main agent decides what it can,
-records it, and asks the developer only about decisions with major impact.
+what the worker claims (`worker`). Every failure carries an **error chain**: each level that could
+not handle the error (a check, the worker, the worker harness, the Operation, the main agent) adds
+one link with a detailed account, its evidence, what it tried, its options and the specific reason
+it could not handle the error, and keeps the errors it received as causes, unchanged. The main
+agent reads the whole chain, decides what it can, records it, and asks the developer only about
+decisions with major impact, adding its own link with `concorde task escalate` so the developer
+sees the full path from where the error started.
 
 ## Get started
 

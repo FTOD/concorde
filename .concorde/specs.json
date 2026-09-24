@@ -11,7 +11,8 @@
         "specs/concorde/vocabulary.md",
         "specs/concorde/requirements.md",
         "specs/concorde/scenarios.md",
-        "specs/concorde/development.md"
+        "specs/concorde/development.md",
+        "specs/concorde/contracts.md"
       ],
       "contains": [
         {
@@ -192,6 +193,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -298,6 +304,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -329,6 +340,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -355,6 +371,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -423,6 +444,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -457,6 +483,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -491,6 +522,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -529,6 +565,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -567,6 +608,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -605,6 +651,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -643,6 +694,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -675,6 +731,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []
@@ -726,6 +787,11 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []

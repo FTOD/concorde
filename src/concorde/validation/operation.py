@@ -17,14 +17,15 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..harness.checks import affected_modules, run_checks
+from ..errors import link
+from ..harness.checks import affected_modules, check_error, run_checks
 from ..operations.provider import (
     Continue,
     Provider,
     RunContext,
     Stop,
+    component,
     evidence,
-    host_escalation,
 )
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError, bound_by, control_path, covers
@@ -152,6 +153,8 @@ class State:
     confirmations: list[dict] = field(default_factory=list)
     changed_modules: list[str] = field(default_factory=list)
     checks: list[dict] = field(default_factory=list)
+    # The error link of each blocking finding, in the order of ``blocking``.
+    links: list[dict] = field(default_factory=list)
 
 
 def _state(ctx: RunContext) -> State:
@@ -164,37 +167,91 @@ def finding(kind: str, ref: str, detail: str) -> dict:
     return {"kind": kind, "ref": ref or "-", "detail": detail or "-"}
 
 
+# Why no step of validate repairs a finding of each kind, and what repairs it.
+FINDING_HANDLING = {
+    "load": (
+        "Spec core",
+        "the task worktree's Specs do not load; validate diagnoses them and never repairs them",
+    ),
+    "structural": (
+        "Spec core validation",
+        "validate diagnoses the Specs; repairing a Spec is a specify task or a hand edit",
+    ),
+    "unbound": (
+        "Validation",
+        "binding a changed path to a Module is a Spec change, which validate never makes",
+    ),
+    "check": (
+        "Check execution",
+        "the check could not run as configured; validate never changes a check",
+    ),
+}
+
+
+def block(state: "State", kind: str, ref: str, detail: str, cause: dict | None = None):
+    """Record one blocking finding with its error link."""
+    state.blocking.append(finding(kind, ref, detail))
+    actor, explanation = FINDING_HANDLING[kind]
+    state.links.append(
+        cause
+        or link(
+            "component",
+            actor,
+            f"{kind}_finding",
+            f"{ref}: {detail}",
+            reason="capability",
+            explanation=explanation,
+            evidence=[evidence(kind, ref, detail)],
+        )
+    )
+
+
 def require_task_branch(ctx: RunContext):
     """Stop unless the task worktree's head is on the task branch (shared with Delivery)."""
     branch = current_branch(ctx.worktree)
     expected = ctx.task["branch"]
     if branch != expected:
         found = branch or "a detached head"
-        return Stop(
+        return ctx.fail(
             "failed",
+            "wrong_branch",
             f"The task worktree is on {found}, not on the task branch {expected}.",
-            [evidence("git", "wrong_branch", f"{ctx.worktree} is on {found}")],
-            host_escalation(
-                f"the task worktree is not on {expected}",
-                options=[f"check out {expected} in {ctx.worktree}"],
-                recommendation=f"check out {expected} and run the Operation again",
-            ),
+            f"the task worktree {ctx.worktree} is on {found}, but {ctx.operation} works only "
+            f"on the task branch {expected}",
+            reason="permission",
+            explanation="Operations never switch branches or change Git state of a task "
+            "worktree; only the main agent does",
+            evidence=[evidence("git", "wrong_branch", f"{ctx.worktree} is on {found}")],
+            options=[f"check out {expected} in {ctx.worktree}"],
+            recommendation=f"check out {expected} and run the Operation again",
         )
     return Continue()
 
 
 def measurement_failed(ctx: RunContext, error: MeasurementError) -> Stop:
-    return Stop(
+    return ctx.fail(
         "failed",
+        "measurement_failed",
         f"The inputs of the task worktree could not be measured ({error.code}).",
-        [evidence("git", error.code, str(error))],
-        host_escalation(
-            f"the task worktree's changes cannot be measured: {error}",
-            options=[
-                "repair the worktree's Git state",
-                "restore .concorde/config.json",
-            ],
-        ),
+        f"the changes of {ctx.worktree} since {ctx.task.get('base_commit')} cannot be "
+        f"measured: {error.code}: {error}",
+        reason="environment",
+        explanation="the measurement reads Git and the configuration; the Operation cannot "
+        "repair either",
+        evidence=[evidence("git", error.code, str(error))],
+        causes=[
+            component(
+                "Validation measurement",
+                error.code,
+                str(error),
+                "environment",
+                "Git or the configuration could not be read",
+            )
+        ],
+        options=[
+            "repair the worktree's Git state",
+            "restore .concorde/config.json",
+        ],
     )
 
 
@@ -225,23 +282,21 @@ def validate_structure(ctx: RunContext):
     except (SpecError, OSError, ValueError) as error:
         load_error = error
         state.repository = None
-        state.blocking.append(
-            finding(
-                "load",
-                getattr(error, "field", "") or ".concorde/specs.json",
-                str(error),
-            )
+        block(
+            state,
+            "load",
+            getattr(error, "field", "") or ".concorde/specs.json",
+            str(error),
         )
     if state.repository is not None:
         for module in ctx.modules:
             if module not in state.repository.modules:
-                state.blocking.append(
-                    finding(
-                        "structural",
-                        module,
-                        f"the task names {module}, which the task worktree's registry does "
-                        "not register",
-                    )
+                block(
+                    state,
+                    "structural",
+                    module,
+                    f"the task names {module}, which the task worktree's registry does "
+                    "not register",
                 )
     result = validate_repository(ctx.worktree, document_overrides=overrides or None)
     changed = {
@@ -250,7 +305,7 @@ def validate_structure(ctx: RunContext):
     for item in result.findings:
         if item.rule_id == "CONCORDE-SOURCE-008":
             if load_error is None:
-                state.blocking.append(finding("load", item.source, item.message))
+                block(state, "load", item.source, item.message)
             continue
         if load_error is not None and str(load_error) == (
             f"{item.rule_id}: {item.source}: {item.message}"
@@ -263,7 +318,8 @@ def validate_structure(ctx: RunContext):
                 and state.repository is not None
             ):
                 continue  # reported once, as an unbound change, by require_accounted
-            state.blocking.append(_structural(item))
+            value = _structural(item)
+            block(state, "structural", value["ref"], value["detail"])
         elif item.severity == "warning":
             state.warnings.append(_structural(item))
     summary = result.result.get("summary", {})
@@ -314,13 +370,12 @@ def require_accounted(ctx: RunContext):
             or any(bound_by(entry, path) for entry in entries)
         ):
             continue
-        state.blocking.append(
-            finding(
-                "unbound",
-                path,
-                "no Module binds this changed path and it is neither a Spec document member "
-                "nor a control record",
-            )
+        block(
+            state,
+            "unbound",
+            path,
+            "no Module binds this changed path and it is neither a Spec document member "
+            "nor a control record",
         )
     return Continue()
 
@@ -348,21 +403,12 @@ def run_configured_checks(ctx: RunContext):
             )
         except SpecError as error:
             if error.code == "check_sandbox_unavailable":
-                return Stop(
-                    "failed",
-                    "The read-only check boundary could not be established; no readiness "
-                    "was issued.",
-                    found + [evidence("check", error.code, str(error))],
-                    host_escalation(
-                        f"configured checks cannot run in their read-only boundary: {error}",
-                        options=[
-                            "run validate on a host that supports the check sandbox"
-                        ],
-                    ),
-                )
+                stop = ctx.checks_unavailable(error, [module])
+                stop.evidence[:0] = found
+                return stop
             if error.code == "stale_evidence":
                 return inputs_changed(ctx, found, str(error))
-            state.blocking.append(finding("check", module, f"{error.code}: {error}"))
+            block(state, "check", module, f"{error.code}: {error}")
             found.append(evidence("check", module, f"{error.code}: {error}"))
             continue
         for result in results:
@@ -390,28 +436,32 @@ def run_configured_checks(ctx: RunContext):
                 )
             )
             if result["status"] != "passed":
-                state.blocking.append(
-                    finding(
-                        "check",
-                        entry["check"],
-                        f"{entry['module']} check {entry['status']} ({exit_text}); "
-                        f"log {entry['log']}",
-                    )
+                block(
+                    state,
+                    "check",
+                    entry["check"],
+                    f"{entry['module']} check {entry['status']} ({exit_text}); "
+                    f"log {entry['log']}",
+                    check_error(result),
                 )
     return Continue(evidence=found)
 
 
 def inputs_changed(ctx: RunContext, found: list[dict], detail: str) -> Stop:
-    return Stop(
+    return ctx.fail(
         "failed",
+        "inputs_changed",
         "The task worktree changed while validate ran (inputs_changed); no readiness was "
         "issued.",
-        found + [evidence("readiness", "inputs_changed", detail)],
-        host_escalation(
-            "the task worktree changed during validation",
-            options=["let the worktree settle and run validate again"],
-            recommendation="run validate again once nothing else changes the worktree",
-        ),
+        f"the task worktree {ctx.worktree} changed while validate ran, so no readiness "
+        f"describes it: {detail}",
+        reason="environment",
+        explanation="something outside validate changed the worktree; a readiness is only "
+        "issued for inputs that stayed the same",
+        evidence=[evidence("readiness", "inputs_changed", detail)],
+        host_evidence=found,
+        options=["let the worktree settle and run validate again"],
+        recommendation="run validate again once nothing else changes the worktree",
     )
 
 
@@ -462,22 +512,26 @@ def issue_readiness(ctx: RunContext):
     reasons = [
         f"{item['kind']} {item['ref']}: {item['detail']}" for item in state.blocking
     ]
-    return Stop(
+    return ctx.fail(
         "blocked",
+        "not_deliverable",
         f"Not deliverable: {len(reasons)} blocking finding(s). " + " | ".join(reasons),
-        found
-        + [
+        f"task {ctx.task['id']} is not deliverable: {len(reasons)} blocking finding(s), each "
+        f"a cause below; delivery refuses the task until validate is ready (readiness in "
+        f"{saved})",
+        reason="decision",
+        explanation="validate only decides readiness and never repairs; each finding needs "
+        "a Spec change (specify) or a code change (implement), which the main agent chooses",
+        evidence=[
             evidence("blocking", item["ref"], item["detail"]) for item in state.blocking
         ],
-        host_escalation(
-            "The task is not deliverable: " + "; ".join(reasons),
-            options=[
-                "repair each blocking finding in the task worktree and run validate again",
-                "run specify for a Spec finding, implement for a code or check finding",
-            ],
-            recommendation="repair the first blocking finding: " + reasons[0],
-            impact=f"delivery refuses this task until validate is ready; readiness in {saved}",
-        ),
+        host_evidence=found,
+        causes=state.links,
+        options=[
+            "repair each blocking finding in the task worktree and run validate again",
+            "run specify for a Spec finding, implement for a code or check finding",
+        ],
+        recommendation="repair the first blocking finding: " + reasons[0],
     )
 
 

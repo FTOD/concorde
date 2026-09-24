@@ -13,7 +13,9 @@ import shutil
 import unittest
 from pathlib import Path
 
+from concorde.errors import ERROR_SCHEMA
 from concorde.harness.workers import run_worker
+from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject
 
@@ -76,7 +78,7 @@ class LiveWorkerTests(unittest.TestCase):
                 max_turns=40,
             )
         )
-        self.assertEqual("ok", record["status"], record["errors"])
+        self.assertEqual("ok", record["status"], record["error"])
         results = tool_results(record["transcript"])
         bash = [text for name, _, text in results if name == "Bash"]
         self.assertTrue(
@@ -101,6 +103,42 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertFalse((root / "checks/new.txt").exists())
         self.assertIn("# edited", (root / "src/a/calc.py").read_text())
         self.assertEqual(["src/a/calc.py"], record["rounds"][0]["audit"]["changed"])
+
+    @verifies("scenario.workers.blocked-not-resumed")
+    def test_a_real_worker_reports_a_detailed_error(self):
+        project = WorkerProject(self, check=False)
+        root = project.root
+        guidance = (
+            (Path(__file__).resolve().parents[4] / "prompts/workers/common/errors.md")
+            .read_text()
+            .split("---\n", 2)[2]
+        )
+        record = run_worker(
+            project.request(
+                [],
+                instructions=(
+                    f"Set SECRET to 2 in {root}/src/bmod/secret.py. That file is the only "
+                    "change the task needs, and no other file may be changed instead.\n\n"
+                    + guidance
+                ),
+                claude=shutil.which("claude"),
+                credentials=Path.home() / ".claude/.credentials.json",
+                model="claude-haiku-4-5-20251001",
+                check_modules=None,
+                timeout=400,
+                max_turns=20,
+            )
+        )
+        self.assertEqual("blocked", record["status"], record["error"])
+        error = record["error"]
+        validate(error, ERROR_SCHEMA)
+        self.assertEqual(("harness", "worker_blocked"), (error["level"], error["code"]))
+        [worker] = error["causes"]
+        self.assertEqual("worker", worker["level"])
+        self.assertIn("secret.py", worker["detail"])
+        self.assertIn(worker["unhandled"]["reason"], ("permission", "scope"))
+        self.assertTrue(worker["unhandled"]["explanation"] and worker["options"])
+        self.assertEqual([], record["rounds"][0]["audit"]["changed"])
 
 
 if __name__ == "__main__":

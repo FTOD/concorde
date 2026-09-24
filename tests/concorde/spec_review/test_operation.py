@@ -13,7 +13,11 @@ from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.spec_review.operation import PAYLOAD_SCHEMA
-from tests.concorde.support.operation_project import OperationProject
+from tests.concorde.support.operation_project import (
+    OperationProject,
+    link_at,
+    worker_error,
+)
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 FAKE_REVIEWER = Path(__file__).with_name("fake_reviewer.py")
@@ -207,7 +211,11 @@ class SpecReviewTests(unittest.TestCase):
         output = envelope["output"]
         self.assertEqual("incomplete", output["verdict"])
         self.assertIsNone(output["modules"][0]["findings"][0]["check"])
-        self.assertEqual("host", envelope["escalation"]["source"])
+        error = envelope["error"]
+        self.assertEqual("review_incomplete", error["code"])
+        [module] = error["causes"]
+        self.assertIn("review of module.a", module["actor"])
+        self.assertEqual("claude_failed", module["code"])
 
     @verifies("scenario.spec-review.several-modules")
     def test_each_module_is_reviewed_on_its_own(self):
@@ -278,7 +286,10 @@ class SpecReviewTests(unittest.TestCase):
         ]
         self.assertTrue(structural)
         self.assertTrue(all("specs/a/" in item["ref"] for item in structural))
-        self.assertEqual("host", envelope["escalation"]["source"])
+        [module] = envelope["error"]["causes"]
+        self.assertEqual("structural_errors", module["code"])
+        self.assertTrue(module["causes"])
+        self.assertTrue(all("specs/a/" in item["detail"] for item in module["causes"]))
 
     def test_an_unloadable_worktree_fails_the_run(self):
         self.project.open_task("t1", goal="Review.")
@@ -300,14 +311,17 @@ class SpecReviewTests(unittest.TestCase):
             {
                 "reviewer module.a": reviewer(
                     status="blocked",
-                    problem="The entry of module.c is needed to judge the Usage.",
-                    attempts=["read the selected documents"],
-                    options=[
-                        "add a uses relation to module.c",
-                        "review module.c first",
-                    ],
-                    recommendation="add the relation",
-                    blocking=True,
+                    error=worker_error(
+                        "The entry of module.c is needed to judge the Usage.",
+                        code="context_missing",
+                        reason="permission",
+                        attempts=["read the selected documents"],
+                        options=[
+                            "add a uses relation to module.c",
+                            "review module.c first",
+                        ],
+                        recommendation="add the relation",
+                    ),
                 )
             }
         )
@@ -320,15 +334,14 @@ class SpecReviewTests(unittest.TestCase):
         self.assertEqual(
             self.identity("module.a"), output["modules"][0]["context_identity"]
         )
-        escalation = envelope["escalation"]
-        self.assertEqual("worker", escalation["source"])
+        worker = link_at(envelope["error"], "worker")
         self.assertEqual(
-            "The entry of module.c is needed to judge the Usage.", escalation["problem"]
+            "The entry of module.c is needed to judge the Usage.", worker["detail"]
         )
-        self.assertEqual(["read the selected documents"], escalation["attempts"])
+        self.assertEqual(["read the selected documents"], worker["attempts"])
         self.assertEqual(
             ["add a uses relation to module.c", "review module.c first"],
-            escalation["options"],
+            worker["options"],
         )
         self.assertEqual("blocked", envelope["worker"]["status"])
 

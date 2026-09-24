@@ -38,3 +38,5 @@ could interpret the results.
 Return `blocked` only when you cannot interpret the results at all, for example when a log is
 unreadable and nothing in your boundary explains the failure. Still fill `output`, with the
 failures you could interpret and your notes.
+
+@prompts/workers/common/errors.md

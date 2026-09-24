@@ -35,9 +35,22 @@ def now() -> str:
 
 
 def _git(cwd: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["git", *arguments], cwd=cwd, check=check, capture_output=True, text=True
-    )
+    """Run Git; with ``check`` a failure is ``git_failed`` naming the command and its output."""
+    try:
+        result = subprocess.run(
+            ["git", *arguments], cwd=cwd, check=False, capture_output=True, text=True
+        )
+    except OSError as error:
+        raise TaskError(
+            "git_failed", f"git {' '.join(arguments)} could not run in {cwd}: {error}"
+        ) from error
+    if check and result.returncode != 0:
+        raise TaskError(
+            "git_failed",
+            f"git {' '.join(arguments)} in {cwd} exited {result.returncode}: "
+            + (result.stderr.strip() or result.stdout.strip() or "(no output)"),
+        )
+    return result
 
 
 def primary_of(path: Path) -> Path:
@@ -71,11 +84,29 @@ def decision_log_path(primary: Path, task_id: str) -> Path:
     return tasks_directory(primary) / f"{task_id}.decisions.md"
 
 
+def _unknown(primary: Path, task_id: str) -> TaskError:
+    directory = tasks_directory(primary)
+    known = (
+        sorted(path.stem for path in directory.glob("*.json"))
+        if directory.is_dir()
+        else []
+    )
+    return TaskError(
+        "unknown_task",
+        f"no task {task_id!r} in {directory} (known tasks: {', '.join(known) or 'none'})",
+    )
+
+
 def load_task(primary: Path, task_id: str) -> dict:
     path = record_path(primary, task_id)
     if not TASK_ID.match(task_id or "") or not path.is_file():
-        raise TaskError("unknown_task", f"no task {task_id!r}")
-    return json.loads(path.read_text())
+        raise _unknown(primary, task_id)
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError) as error:
+        raise TaskError(
+            "record_unreadable", f"the task record {path} cannot be read: {error}"
+        ) from error
 
 
 @contextmanager
@@ -111,7 +142,7 @@ def update(primary: Path, task_id: str, change) -> dict:
     path = record_path(primary, task_id)
     for _ in range(ATTEMPTS):
         if not TASK_ID.match(task_id or "") or not path.is_file():
-            raise TaskError("unknown_task", f"no task {task_id!r}")
+            raise _unknown(primary, task_id)
         before = path.read_bytes()
         record = change(json.loads(before))
         record["updated_at"] = now()
@@ -132,10 +163,20 @@ def _registered(root: Path, modules: list[str]) -> None:
     try:
         repository = SpecRepository(root)
     except (SpecError, OSError, ValueError) as error:
-        raise TaskError("specs_unloadable", str(error)) from error
+        code = getattr(error, "code", None)
+        raise TaskError(
+            "specs_unloadable",
+            f"the Specs of {root} cannot be loaded"
+            + (f" ({code})" if code else "")
+            + f": {error}",
+        ) from error
     unknown = sorted(item for item in modules if item not in repository.modules)
     if unknown:
-        raise TaskError("unknown_module", f"unregistered Module: {', '.join(unknown)}")
+        raise TaskError(
+            "unknown_module",
+            f"{', '.join(unknown)} {'is' if len(unknown) == 1 else 'are'} not registered in "
+            f"{root} (registered: {', '.join(sorted(repository.modules))})",
+        )
 
 
 def open_task(
@@ -151,10 +192,25 @@ def open_task(
     primary = require_primary(primary)
     if not TASK_ID.match(task_id or ""):
         raise TaskError("invalid_task_id", f"invalid task identity: {task_id!r}")
-    if not goal or not modules or len(set(modules)) != len(modules):
-        raise TaskError("invalid_input", "a task needs a goal and distinct Modules")
+    problems = []
+    if not goal or not goal.strip():
+        problems.append("the goal is empty")
+    if not modules:
+        problems.append("no Module is named")
+    duplicates = sorted({item for item in modules if modules.count(item) > 1})
+    if duplicates:
+        problems.append(f"Modules are named twice: {', '.join(duplicates)}")
+    if problems:
+        raise TaskError(
+            "invalid_input",
+            "a task needs a goal and distinct Modules: " + "; ".join(problems),
+        )
     if record_path(primary, task_id).exists():
-        raise TaskError("task_exists", f"task {task_id} already exists")
+        raise TaskError(
+            "task_exists",
+            f"task {task_id} already exists ({record_path(primary, task_id)}); choose another "
+            "identity or close it first",
+        )
     branch = f"concorde/{task_id}"
     if (
         _git(
@@ -167,12 +223,19 @@ def open_task(
         ).returncode
         == 0
     ):
-        raise TaskError("branch_exists", f"branch {branch} already exists")
+        raise TaskError(
+            "branch_exists",
+            f"branch {branch} already exists in {primary} although no task record does; "
+            "delete the branch or choose another task identity",
+        )
     worktree = Path(
         os.path.abspath(path or primary.parent / f"{primary.name}.tasks" / task_id)
     )
     if worktree.exists():
-        raise TaskError("path_exists", f"{worktree} already exists")
+        raise TaskError(
+            "path_exists",
+            f"the worktree path {worktree} already exists; pass --path or remove it",
+        )
     _registered(primary, modules)
     base_commit = _git(
         primary, "rev-parse", "--verify", f"{base or 'HEAD'}^{{commit}}"
@@ -189,7 +252,11 @@ def open_task(
         check=False,
     )
     if created.returncode != 0:
-        raise TaskError("worktree_failed", created.stderr.strip())
+        raise TaskError(
+            "worktree_failed",
+            f"git worktree add -b {branch} {worktree} {base_commit} exited "
+            f"{created.returncode}: {created.stderr.strip()}",
+        )
     stamp = now()
     record = {
         "id": task_id,
@@ -203,6 +270,7 @@ def open_task(
         "updated_at": stamp,
         "runs": [],
         "deliveries": [],
+        "escalations": [],
         "closed": None,
     }
     with _locked(primary):
@@ -215,11 +283,14 @@ def open_task(
 
 def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
     directory = tasks_directory(primary)
-    records = [
-        json.loads(path.read_text())
-        for path in sorted(directory.glob("*.json"))
-        if directory.is_dir()
-    ]
+    records = []
+    for path in sorted(directory.glob("*.json")) if directory.is_dir() else []:
+        try:
+            records.append(json.loads(path.read_text()))
+        except (OSError, ValueError) as error:
+            raise TaskError(
+                "record_unreadable", f"the task record {path} cannot be read: {error}"
+            ) from error
     records.sort(key=lambda item: (item["created_at"], item["id"]))
     return [item for item in records if state is None or item["state"] == state]
 
@@ -345,6 +416,32 @@ def _dirty(worktree: Path) -> bool:
     return bool(status.strip())
 
 
+def _dirty_detail(worktree: Path) -> str:
+    lines = _git(worktree, "status", "--porcelain", check=False).stdout.splitlines()
+    shown = ", ".join(line[3:] for line in lines[:20])
+    more = f" and {len(lines) - 20} more" if len(lines) > 20 else ""
+    return f"{worktree} has {len(lines)} uncommitted change(s): {shown}{more}"
+
+
+def escalate(primary: Path, task_id: str, error: dict) -> dict:
+    """Record the main agent's error link in the task record and its decision log."""
+    from ..errors import render
+
+    stamp = now()
+
+    def change(record):
+        record.setdefault("escalations", []).append({"at": stamp, "error": error})
+        return record
+
+    record = update(primary, task_id, change)
+    with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
+        stream.write(
+            f"\n## Escalated to the developer, {stamp}\n\n{render(error)}\n\n"
+            f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
+        )
+    return record
+
+
 def close_task(
     primary: Path,
     task_id: str,
@@ -366,11 +463,17 @@ def close_task(
         )
     if merged:
         if record["state"] != "delivered" or not record["deliveries"]:
-            raise TaskError("not_merged", f"task {task_id} is not delivered")
+            raise TaskError(
+                "not_merged",
+                f"task {task_id} is {record['state']} with {len(record['deliveries'])} "
+                "delivery(ies); only a delivered task can be closed as merged",
+            )
         head = _git(primary, "rev-parse", record["branch"]).stdout.strip()
         if head != record["deliveries"][-1]["commit"]:
             raise TaskError(
-                "not_merged", "the task branch moved after its last delivery"
+                "not_merged",
+                f"{record['branch']} is at {head}, not at its last delivery commit "
+                f"{record['deliveries'][-1]['commit']}; deliver again or close it abandoned",
             )
         contained = _git(
             primary, "merge-base", "--is-ancestor", head, "HEAD", check=False
@@ -380,9 +483,11 @@ def close_task(
                 "not_merged", f"{head} is not contained in the primary branch"
             )
         if _dirty(worktree):
-            raise TaskError("dirty_worktree", f"{worktree} has uncommitted changes")
+            raise TaskError("dirty_worktree", _dirty_detail(worktree))
     elif _dirty(worktree) and not force:
-        raise TaskError("dirty_worktree", f"{worktree} has uncommitted changes")
+        raise TaskError(
+            "dirty_worktree", _dirty_detail(worktree) + "; pass --force to discard them"
+        )
     removed = False
     if worktree.exists():
         arguments = ["worktree", "remove", str(worktree)]
@@ -390,7 +495,11 @@ def close_task(
             arguments.insert(2, "--force")
         result = _git(primary, *arguments, check=False)
         if result.returncode != 0:
-            raise TaskError("worktree_failed", result.stderr.strip())
+            raise TaskError(
+                "worktree_failed",
+                f"git {' '.join(arguments)} exited {result.returncode}: "
+                f"{result.stderr.strip()}",
+            )
         removed = True
     primary_head = _git(primary, "rev-parse", "HEAD").stdout.strip()
 
@@ -412,6 +521,7 @@ __all__ = [
     "begin_run",
     "close_task",
     "decision_log_path",
+    "escalate",
     "finish_run",
     "list_tasks",
     "load_task",

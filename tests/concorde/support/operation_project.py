@@ -19,6 +19,38 @@ from concorde.tasks import store
 from tests.concorde.harness.workers.test_workers import WorkerProject
 
 
+def worker_error(
+    detail: str,
+    *,
+    code: str = "spec_gap",
+    reason: str = "decision",
+    attempts=(),
+    options=(),
+    recommendation: str = "",
+) -> dict:
+    """The ``error`` of a fake worker result."""
+    return {
+        "code": code,
+        "detail": detail,
+        "evidence": [],
+        "attempts": list(attempts),
+        "unhandled": {"reason": reason, "explanation": f"{reason}: {detail}"},
+        "options": list(options),
+        "recommendation": recommendation,
+    }
+
+
+def link_at(error: dict, level: str) -> dict | None:
+    """The first link of ``level`` in the error tree, depth first."""
+    if error["level"] == level:
+        return error
+    for cause in error["causes"]:
+        found = link_at(cause, level)
+        if found is not None:
+            return found
+    return None
+
+
 def commit(root: Path, message: str = "change") -> str:
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
     subprocess.run(
@@ -65,4 +97,4 @@ class OperationProject(WorkerProject):
         return "Do the task.\nFAKE-PLAN: " + json.dumps(steps)
 
 
-__all__ = ["OperationProject", "commit"]
+__all__ = ["OperationProject", "commit", "link_at", "worker_error"]

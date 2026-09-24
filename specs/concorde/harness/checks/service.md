@@ -56,6 +56,15 @@ is acceptable.
 A consumer decides whether a stored check result is still current by recomputing `check_revision`
 for the same Module and comparing it with `source_digest`.
 
+### A check that did not pass as an error link
+
+`check_error(result)` turns a check result whose status is not `passed` into the check's link of
+the Framework's [error chain](../../contracts.md#contract.concorde.error), so every consumer reports
+a failing check the same way: the level `check`, the check's identity as actor, the code
+`check_failed` or `check_timed_out`, a detail naming the Module, the exit code, the log path and the
+last 3,000 bytes of the log, the log as evidence, and the reason `capability`, because a check only
+measures the code it runs against.
+
 ## Requirements
 
 ### req.checks.measured-input-unchanged — A check cannot vouch for input that changed
@@ -67,6 +76,10 @@ inputs it measured differ after the run from before it.
 
 The check service SHALL write every configured check's log only into the log directory its caller
 named.
+
+### req.checks.failure-link — A failing check explains itself
+
+The check service SHALL describe a check result that did not pass, when a consumer reports it as an error, with its Module, exit code, log path and the end of its log.
 
 ### req.checks.no-status-without-run — A refused check has no status
 

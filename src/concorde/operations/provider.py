@@ -2,9 +2,11 @@
 
 A provider is a fixed list of steps. Each step receives the run's ``RunContext`` and returns
 ``Continue`` (with any output and host evidence it produced) or ``Stop`` (with a status, a summary,
-host evidence and, unless the status is ``ok``, an escalation). ``RunContext.run_worker`` is the
-standard worker sequence: it computes the grant from the task worktree's Specs, runs one worker
-through Workers and maps its outcome to a step outcome.
+host evidence and, unless the status is ``ok``, the Operation's error link). ``RunContext.fail``
+builds that link: the Operation's own account of the error and why it cannot handle it, with the
+errors it received from its children as causes. ``RunContext.run_worker`` is the standard worker
+sequence: it computes the grant from the task worktree's Specs, runs one worker through Workers
+and maps its outcome to a step outcome.
 """
 
 from __future__ import annotations
@@ -15,6 +17,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
+
+from ..errors import evidence, from_exception, link
 
 
 @dataclass
@@ -28,7 +32,7 @@ class Stop:
     status: str
     summary: str
     evidence: list[dict] = field(default_factory=list)
-    escalation: dict | None = None
+    error: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -57,22 +61,100 @@ def load_prompt(name: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def evidence(kind: str, ref: str = "", detail: str = "") -> dict:
-    return {"kind": kind, "ref": ref, "detail": detail}
+def component(
+    actor: str, code: str, detail: str, reason: str, explanation: str, **extra
+):
+    """A link of a deterministic component the host called, such as Git, Tasks or Spec core."""
+    return link(
+        "component",
+        actor,
+        code,
+        detail,
+        reason=reason,
+        explanation=explanation,
+        **extra,
+    )
 
 
-def host_escalation(
-    problem: str, *, options=(), recommendation: str = "", impact: str = ""
-) -> dict:
-    return {
-        "source": "host",
-        "problem": problem,
-        "attempts": [],
-        "options": list(options),
-        "recommendation": recommendation,
-        "blocking": True,
-        "impact": impact,
-    }
+def spec_finding(rule_id: str, source: str, line, message: str, explanation: str):
+    """The link of one Spec validation finding, as Spec core reported it."""
+    location = (source or "-") + (f":{line}" if line else "")
+    return link(
+        "component",
+        "Spec core validation",
+        "spec_finding",
+        f"{rule_id} at {location}: {message}",
+        reason="capability",
+        explanation=explanation,
+        evidence=[evidence("finding", location, rule_id)],
+    )
+
+
+# How an Operation treats each error code of a worker run record: the reason it cannot handle it,
+# the explanation, the options it offers the main agent and its recommendation.
+WORKER_HANDLING = {
+    "audit_violation": (
+        "permission",
+        "an Operation never widens a grant and never retries with a wider one; giving the "
+        "task the path (declaring it pending through specify, or binding more Modules) is the "
+        "main agent's decision",
+        [
+            "run specify to declare the path as a pending file of a bound Module",
+            "bind the Module that owns the path and run the Operation again",
+            "discard the stray change and run the Operation with a narrower goal",
+        ],
+    ),
+    "checks_failed": (
+        "decision",
+        "the Operation used every resume round it is configured with; whether to narrow the "
+        "goal, change the Spec or allow more rounds is the main agent's decision",
+        [
+            "run the Operation again with a narrower goal or more --rounds",
+            "run understand to check whether the Spec supports the change",
+            "run test to get an interpretation of the failures",
+        ],
+    ),
+    "worker_blocked": (
+        "decision",
+        "the worker's blocker needs a decision, a permission or a Spec change above the "
+        "Operation",
+        [
+            "follow the worker's options in the cause",
+            "run specify when the worker names a Spec gap",
+        ],
+    ),
+    "worker_failed": (
+        "decision",
+        "the Operation does not rerun a worker that failed; rerunning or changing the task is "
+        "the main agent's decision",
+        ["follow the worker's options in the cause", "run the Operation again"],
+    ),
+    "worker_timeout": (
+        "exhausted",
+        "the Operation passes the configured limits to Workers and does not raise them; "
+        "raising workers.timeout_seconds in .concorde/config.json is the main agent's decision",
+        ["raise workers.timeout_seconds", "run the Operation with a narrower goal"],
+    ),
+    "worker_limit_reached": (
+        "exhausted",
+        "the Operation passes the configured limits to Workers and does not raise them; "
+        "raising workers.max_turns or workers.max_budget_usd is the main agent's decision",
+        [
+            "raise workers.max_turns or workers.max_budget_usd",
+            "run the Operation with a narrower goal",
+        ],
+    ),
+    "worker_result_invalid": (
+        "capability",
+        "the Operation cannot repair a worker's answer and does not relaunch a worker",
+        ["run the Operation again", "inspect the transcript in the cause's evidence"],
+    ),
+}
+ENVIRONMENT_HANDLING = (
+    "environment",
+    "the failure lies in the environment the Operation runs in, which it cannot change",
+    ["repair the environment named in the cause and run the Operation again"],
+)
 
 
 @dataclass
@@ -119,19 +201,7 @@ class RunContext:
         try:
             frozen = grant(SpecRepository(self.worktree), bound, task_type).value
         except (SpecError, OSError, ValueError) as error:
-            code = getattr(error, "code", "grant_unavailable")
-            return Stop(
-                "failed",
-                f"The {task_type} grant for {', '.join(bound)} could not be computed ({code}).",
-                [evidence("grant", ", ".join(bound), str(error))],
-                host_escalation(
-                    f"no {task_type} grant for {', '.join(bound)}: {error}",
-                    options=[
-                        "bind every Module that binds the shared file",
-                        "repair the Specs",
-                    ],
-                ),
-            )
+            return self.grant_failure(task_type, bound, error)
         config = self.workers_config()
         runtime = tuple(
             Path(path) if os.path.isabs(path) else self.worktree / path
@@ -155,6 +225,133 @@ class RunContext:
             )
         )
         return self.absorb(record)
+
+    @property
+    def actor(self) -> str:
+        return f"Operation {self.operation} {self.run_id} (task {self.task.get('id', '?')})"
+
+    def fail(
+        self,
+        status: str,
+        code: str,
+        summary: str,
+        detail: str,
+        *,
+        reason: str,
+        explanation: str,
+        evidence: list[dict] | None = None,
+        host_evidence: list[dict] | None = None,
+        causes=(),
+        attempts=(),
+        options=(),
+        recommendation: str = "",
+    ) -> Stop:
+        """Stop with ``status`` and this Operation's error link; ``causes`` are child errors.
+
+        ``evidence`` belongs to the error and is also host evidence of the run; ``host_evidence``
+        is host evidence of the run only.
+        """
+        found = list(evidence or [])
+        options = list(options)
+        return Stop(
+            status,
+            summary,
+            list(host_evidence or []) + found,
+            link(
+                "operation",
+                self.actor,
+                code,
+                detail,
+                reason=reason,
+                explanation=explanation,
+                evidence=found,
+                attempts=attempts,
+                options=options,
+                recommendation=recommendation or (options[0] if options else ""),
+                causes=causes,
+            ),
+        )
+
+    def grant_failure(self, task_type: str, modules: list[str], error) -> Stop:
+        code = getattr(error, "code", None) or "grant_unavailable"
+        names = ", ".join(modules)
+        return self.fail(
+            "failed",
+            "grant_unavailable",
+            f"The {task_type} grant for {names} could not be computed ({code}).",
+            f"the {task_type} grant for {names} cannot be computed from the Specs of "
+            f"{self.worktree}: {code}: {error}",
+            reason="scope",
+            explanation="an Operation computes grants from the task worktree's Specs and never "
+            "repairs them; the Specs or the bound Modules must change first",
+            evidence=[evidence("grant", names, f"{code}: {error}")],
+            causes=[
+                component(
+                    "Spec core (grant)",
+                    code,
+                    str(error),
+                    "input",
+                    "a grant exists only for registered Modules whose Specs load and whose "
+                    "shared files are bound by every Module that binds them",
+                )
+            ],
+            options=[
+                "bind every Module that binds the shared file",
+                "repair the Specs with specify or by hand",
+                "run validate for every structural finding",
+            ],
+        )
+
+    def checks_unavailable(self, error, modules: list[str] | None = None) -> Stop:
+        """Stop ``failed`` because Check execution could not run the configured checks."""
+        code = getattr(error, "code", None) or "checks_unavailable"
+        names = ", ".join(modules or self.modules)
+        return self.fail(
+            "failed",
+            "checks_unavailable",
+            f"The configured checks could not be run ({code}).",
+            f"the configured checks of {names} could not run in {self.worktree}: {code}: "
+            f"{error}",
+            reason="environment",
+            explanation="the Operation runs checks through Check execution and cannot repair "
+            "their configuration or their sandbox",
+            evidence=[evidence("checks_unavailable", code, str(error))],
+            causes=[
+                component(
+                    "Check execution",
+                    code,
+                    str(error),
+                    "environment",
+                    "a check that cannot run as configured produces no result",
+                )
+            ],
+            options=[
+                "repair the check configuration",
+                "run the Operation on a host that supports the check sandbox",
+            ],
+        )
+
+    def exception(self, actor: str, error: BaseException, code: str, summary: str):
+        """Stop ``failed`` for an unexpected exception of a component the step called."""
+        trace = (
+            self.run_dir / f"traceback-{len(list(self.run_dir.glob('traceback*')))}.txt"
+        )
+        cause = from_exception(actor, error, trace=trace)
+        return self.fail(
+            "failed",
+            code,
+            summary,
+            f"{actor} raised {cause['detail']}",
+            reason="capability",
+            explanation="the Operation has no recovery for an unexpected error of a "
+            "component it relies on",
+            evidence=[evidence("host-error", actor, cause["detail"])],
+            causes=[cause],
+            options=[
+                "inspect the traceback in the cause's evidence",
+                "report an Issue",
+            ],
+        )
 
     def absorb(self, record: dict):
         """Map one worker run record to a step outcome, adding host evidence."""
@@ -195,39 +392,31 @@ class RunContext:
             found.append(
                 evidence("stderr", record["run_id"], record["stderr_tail"][-2000:])
             )
-        errors = record.get("errors") or []
         status = record["status"]
         if status == "ok":
             return Continue(output=(self.worker or {}).get("output"), evidence=found)
-        if errors:
-            error = errors[0]
-            return Stop(
-                "failed",
-                f"The worker run {record['run_id']} failed: {error['code']}.",
-                found
-                + [evidence(error["code"], record["run_id"], error.get("detail", ""))],
-                host_escalation(
-                    f"{error['code']}: {error.get('detail', '')}",
-                    options=[
-                        "inspect the run record",
-                        "run the Operation again with a narrower goal",
-                    ],
-                ),
-            )
-        worker = self.worker or {}
-        return Stop(
+        cause = record.get("error")
+        code = cause["code"] if cause else "worker_run_failed"
+        reason, explanation, options = WORKER_HANDLING.get(code, ENVIRONMENT_HANDLING)
+        worker_options = [
+            option
+            for item in (cause or {}).get("causes", [])
+            for option in item["options"]
+        ]
+        detail = (
+            f"the {record['task_type']} worker run {record['run_id']} ended {status}: "
+            f"{code}: {cause['detail'] if cause else 'the run record carries no error'}"
+        )
+        return self.fail(
             status,
-            f"The worker ended {status}; the audit was clean.",
-            found,
-            {
-                "source": "worker",
-                "problem": worker.get("problem") or worker.get("summary", ""),
-                "attempts": worker.get("attempts", []),
-                "options": worker.get("options", []),
-                "recommendation": worker.get("recommendation", ""),
-                "blocking": bool(worker.get("blocking", True)),
-                "impact": worker.get("impact", ""),
-            },
+            code,
+            f"The worker run {record['run_id']} ended {status} ({code}).",
+            detail,
+            reason=reason,
+            explanation=explanation,
+            host_evidence=found,
+            causes=[cause],
+            options=worker_options + options,
         )
 
 
@@ -236,7 +425,8 @@ __all__ = [
     "Provider",
     "RunContext",
     "Stop",
+    "component",
     "evidence",
-    "host_escalation",
     "load_prompt",
+    "spec_finding",
 ]

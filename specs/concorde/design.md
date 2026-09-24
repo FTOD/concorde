@@ -22,7 +22,7 @@ change be split into small, checkable steps without the developer supervising ea
 
 A third tier, a per-task leader session between the main agent and the workers, was considered and
 deferred. With Operations run from the main agent, the main agent already has everything a leader
-would add, and one fewer layer of messaging means one fewer place for an escalation to be lost.
+would add, and one fewer layer of messaging means one fewer place for an error to be lost.
 
 ## Tasks are branches
 
@@ -40,8 +40,26 @@ are short and must be readable and testable as code.
 
 When a check fails, the host resumes the same worker with the failure, up to a fixed number of
 rounds. These automatic rounds repair code only. A Spec gap, a boundary the worker needs to cross,
-or a failed deterministic Spec check stops the Operation and returns an escalation, because
+or a failed deterministic Spec check stops the Operation and returns its error chain, because
 deciding what the Spec should promise belongs to the developer and the main agent.
+
+## Errors travel as a chain
+
+Every level of Concorde handles some errors and must pass the others up: Workers resumes a worker
+for a failing check but not for a Spec gap, an Operation reruns nothing, the main agent decides
+ordinary questions but not the project's direction. An error that is passed up as a bare code or
+a one-line summary loses exactly what the next level needs to decide, and an error that each level
+re-describes in its own words drifts from what actually happened. So every level that cannot
+handle an error adds one link and keeps the rest: its own detailed account, the specific reason it
+cannot handle the error, the options it sees, and the errors it received as causes, unchanged. The
+reasons come from a small fixed set, such as a missing permission, a decision reserved to a higher
+level or used-up rounds, so a reader can see at a glance which level could act with more authority.
+
+The chain is structured data with one [contract](contracts.md#contract.concorde.error), not a
+convention of prose. Workers fill in their part of it in their result, the host checks it against
+its schema, and the main agent adds its own link with a command rather than paraphrasing, so the
+developer receives the whole path from the failing check or the worker's missing promise up to the
+question they are asked.
 
 ## Grants come from the task's own Specs
 

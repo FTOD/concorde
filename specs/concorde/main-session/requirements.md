@@ -41,6 +41,14 @@ asking the developer for authorization.
 The guidance SHALL state the escalation policy: decide ordinary questions, record and report them,
 and ask the developer before acting only on decisions with major impact.
 
+### req.main-session.read-chain — The whole error chain is read
+
+The guidance SHALL tell the main agent to read the whole error chain of a result that is not `ok` before deciding.
+
+### req.main-session.extend-chain — An escalation extends the chain
+
+The guidance SHALL tell the main agent to escalate an error it cannot handle with `concorde task escalate`, adding its own link on top of the chain instead of summarizing it.
+
 ## Issues
 
 ### req.main-session.issues-by-operations — Issues are solved by ordinary work

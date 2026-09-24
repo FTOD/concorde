@@ -52,7 +52,7 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 - GIVEN a reviewer that ends `blocked` because it needs a document outside its grant
 - WHEN the host collects its result
 - THEN A's outcome is `incomplete` and the verdict is `incomplete`
-- AND the reviewer's problem, attempts and options are returned unchanged as its escalation
+- AND the result's error is the Operation's `review_incomplete` link whose cause for A ends in the reviewer's own link with its detail, attempts and options unchanged
 
 ### scenario.spec-review.audit-change — A reviewer that changed a file
 

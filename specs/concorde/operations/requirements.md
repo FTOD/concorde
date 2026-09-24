@@ -16,9 +16,13 @@ exactly one Operation result, including when the run is refused, fails or is can
 The host SHALL NOT place any statement taken from a worker result in the result's `summary` or
 `host_evidence`.
 
-### req.operations.escalation-when-not-ok — Every problem carries an escalation
+### req.operations.error-when-not-ok — Every problem carries its error chain
 
-An Operation result SHALL carry an escalation exactly when its status is not `ok`.
+An Operation result SHALL carry an error exactly when its status is not `ok`, whose top link is the Operation's own, with the errors of the worker run, the checks or the components the host called as its causes.
+
+### req.operations.reasons — The Operation says why it cannot handle the error
+
+The Operation's own link SHALL give the reason the Operation cannot handle the error as [How the host runs an Operation](host.md#errors) assigns it, and a detail that names the task, the Modules, the run, the paths and the messages concerned.
 
 ### req.operations.status-mapping — Host failures are never ok
 

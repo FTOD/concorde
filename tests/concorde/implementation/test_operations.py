@@ -11,7 +11,12 @@ from concorde.harness.runs import read_record
 from concorde.implementation.operation import CODE_CHANGE_SCHEMA, TEST_REPORT_SCHEMA
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
-from tests.concorde.support.operation_project import OperationProject, commit
+from tests.concorde.support.operation_project import (
+    OperationProject,
+    commit,
+    link_at,
+    worker_error,
+)
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 FIXED = "def add(a, b):\n    return a + b\n"
@@ -138,15 +143,17 @@ class ImplementTests(unittest.TestCase):
                 {
                     "result": {
                         "status": "blocked",
-                        "problem": "the Spec of module.a does not say how add rounds",
-                        "blocking": True,
+                        "error": worker_error(
+                            "the Spec of module.a does not say how add rounds"
+                        ),
                     }
                 }
             ]
         )
         self.assertEqual((1, "blocked"), (status, envelope["status"]))
-        self.assertEqual("worker", envelope["escalation"]["source"])
-        self.assertIn("does not say", envelope["escalation"]["problem"])
+        worker = link_at(envelope["error"], "worker")
+        self.assertIn("does not say", worker["detail"])
+        self.assertEqual("decision", envelope["error"]["unhandled"]["reason"])
         record = self.record(envelope)
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("", status_lines(self.worktree))

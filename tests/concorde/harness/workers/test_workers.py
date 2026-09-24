@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.errors import ERROR_SCHEMA
 from concorde.harness import write_hook
 from concorde.harness.settings import (
     RunPaths,
@@ -26,6 +27,7 @@ from concorde.harness.workers import (
 )
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
+from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.spec.test_grants import document, realization
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -306,7 +308,7 @@ class WorkerRunTests(unittest.TestCase):
                 }
             ]
         )
-        self.assertEqual("ok", record["status"], record["errors"])
+        self.assertEqual("ok", record["status"], record["error"])
         self.assertEqual(
             {"src/a/calc.py", "src/new.py"},
             set(record["rounds"][0]["audit"]["changed"]),
@@ -328,7 +330,7 @@ class WorkerRunTests(unittest.TestCase):
             [{"writes": {f"{self.root}/src/new.py": "VALUE = 1\n"}}],
             check_modules=None,
         )
-        self.assertEqual("ok", record["status"], record["errors"])
+        self.assertEqual("ok", record["status"], record["error"])
         self.assertEqual(
             {"src/new.py", "src/unused.py"}, set(record["pending_created"])
         )
@@ -363,7 +365,7 @@ class WorkerRunTests(unittest.TestCase):
         with patch("concorde.harness.settings.deny_rules", covering):
             record = self.project.run([{}])
         self.assertEqual("failed", record["status"])
-        self.assertEqual("run_directory_denied", record["errors"][0]["code"])
+        self.assertEqual("run_directory_denied", record["error"]["code"])
         self.assertTrue((Path(record["run_directory"]) / "record.json").exists())
         self.assertEqual([], record["rounds"])
 
@@ -380,7 +382,7 @@ class WorkerRunTests(unittest.TestCase):
             ]
         )
         self.assertEqual("failed", record["status"])
-        self.assertEqual("audit_violation", record["errors"][0]["code"])
+        self.assertEqual("audit_violation", record["error"]["code"])
         self.assertIn("src/bmod/secret.py", record["rounds"][0]["audit"]["violations"])
         self.assertNotIn("checks", record["rounds"][0])
         self.assertEqual(1, len(record["rounds"]))
@@ -413,7 +415,7 @@ class WorkerRunTests(unittest.TestCase):
             ],
             check_modules=None,
         )
-        self.assertEqual("ok", record["status"], record["errors"])
+        self.assertEqual("ok", record["status"], record["error"])
         self.assertEqual(["src/a/old.py"], record["deleted"])
         self.assertEqual(
             [f"{self.root}/specs/a/module.md"], record["deletions_refused"]
@@ -429,7 +431,7 @@ class WorkerRunTests(unittest.TestCase):
                 {"writes": {f"{self.root}/src/a/flag": "ok"}},
             ]
         )
-        self.assertEqual("ok", record["status"], record["errors"])
+        self.assertEqual("ok", record["status"], record["error"])
         self.assertEqual(2, len(record["rounds"]))
         self.assertEqual("failed", record["rounds"][0]["checks"][0]["status"])
         self.assertEqual("passed", record["rounds"][1]["checks"][0]["status"])
@@ -449,7 +451,16 @@ class WorkerRunTests(unittest.TestCase):
             [{"writes": {f"{self.root}/src/a/flag": "broken"}}], rounds=1
         )
         self.assertEqual("failed", record["status"])
-        self.assertEqual("checks_failed", record["errors"][0]["code"])
+        error = record["error"]
+        self.assertEqual("checks_failed", error["code"])
+        self.assertEqual("exhausted", error["unhandled"]["reason"])
+        self.assertEqual(2, len(error["attempts"]))
+        [cause] = error["causes"]
+        self.assertEqual(
+            ("check", "check.a", "check_failed"),
+            (cause["level"], cause["actor"], cause["code"]),
+        )
+        self.assertIn("exit code 1", cause["detail"])
         self.assertEqual(2, len(record["rounds"]))
         self.assertEqual("failed", record["rounds"][-1]["checks"][0]["status"])
 
@@ -459,11 +470,7 @@ class WorkerRunTests(unittest.TestCase):
             [
                 {
                     "writes": {f"{self.root}/src/a/flag": "broken"},
-                    "result": {
-                        "status": "blocked",
-                        "problem": "the rounding rule is not specified",
-                        "blocking": True,
-                    },
+                    "result": {"status": "blocked"},
                 }
             ]
         )
@@ -471,9 +478,13 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("clean", record["rounds"][0]["audit"]["verdict"])
         self.assertNotIn("checks", record["rounds"][0])
-        self.assertEqual(
-            "the rounding rule is not specified", record["worker_result"]["problem"]
-        )
+        error = record["error"]
+        self.assertEqual(("harness", "worker_blocked"), (error["level"], error["code"]))
+        [cause] = error["causes"]
+        self.assertEqual(("worker", "spec_gap"), (cause["level"], cause["code"]))
+        self.assertEqual("the rounding rule is not specified", cause["detail"])
+        self.assertEqual("decision", cause["unhandled"]["reason"])
+        self.assertEqual(record["worker_result"]["error"]["detail"], cause["detail"])
 
     @verifies("scenario.workers.timeout")
     def test_a_round_past_its_deadline_is_killed(self):
@@ -482,7 +493,7 @@ class WorkerRunTests(unittest.TestCase):
             [{"spawn": str(pid_file), "sleep": 60}], timeout=3, check_modules=None
         )
         self.assertEqual("failed", record["status"])
-        self.assertEqual("worker_timeout", record["errors"][0]["code"])
+        self.assertEqual("worker_timeout", record["error"]["code"])
         child = int(pid_file.read_text())
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline and Path(f"/proc/{child}").exists():
@@ -498,13 +509,40 @@ class WorkerRunTests(unittest.TestCase):
         for step, code in (
             ({"no_structured": True}, "worker_result_invalid"),
             ({"result": {"status": "maybe"}}, "worker_result_invalid"),
-            ({"raw": "not json at all"}, "launch_failed"),
+            ({"raw": "not json at all"}, "claude_failed"),
+            ({"result": {"status": "blocked", "error": None}}, "worker_result_invalid"),
         ):
             with self.subTest(code=code, step=step):
                 record = self.project.run([step], check_modules=None)
                 self.assertEqual("failed", record["status"])
-                self.assertEqual(code, record["errors"][0]["code"])
+                self.assertEqual(code, record["error"]["code"])
                 self.assertIn("stderr_tail", record)
+                validate(record["error"], ERROR_SCHEMA)
+
+    @verifies("scenario.workers.claude-error")
+    def test_an_error_of_claude_code_itself_is_reported_with_its_limit(self):
+        record = self.project.run(
+            [
+                {
+                    "no_structured": True,
+                    "envelope": {
+                        "subtype": "error_max_turns",
+                        "num_turns": 7,
+                        "result": "stopped",
+                    },
+                }
+            ],
+            check_modules=None,
+        )
+        error = record["error"]
+        self.assertEqual("worker_limit_reached", error["code"])
+        self.assertEqual("exhausted", error["unhandled"]["reason"])
+        [cause] = error["causes"]
+        self.assertEqual(
+            ("component", "claude_error_max_turns"), (cause["level"], cause["code"])
+        )
+        self.assertIn("7 turn(s)", cause["detail"])
+        self.assertIn("stopped", cause["detail"])
 
     def test_the_result_schema_is_the_contract(self):
         text = (

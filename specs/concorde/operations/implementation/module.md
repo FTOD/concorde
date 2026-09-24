@@ -25,7 +25,7 @@ other Operations.
 | [Task type](../../vocabulary.md#concept.concorde.task-type) | |
 | [Implementation context](../../vocabulary.md#concept.concorde.implementation-context) | |
 | [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
-| [Escalation](../../vocabulary.md#concept.concorde.escalation) | |
+| [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 | [Operation](../module.md#concept.operations.operation) | |
 | [Operation host](../module.md#concept.operations.host) | |
 | [Operation result](../module.md#concept.operations.result) | |
@@ -65,8 +65,10 @@ other Issues files, and returns once the Issues checks pass or the rounds are us
 [code change contract](contracts.md#contract.implementation.code-change). The status is `ok` when
 the last round's configured checks passed. It is `blocked` when the worker reported a Spec gap or
 another problem it cannot solve within its grant, such as a file shared with a Module that was not
-bound; the worker's [escalation](../../vocabulary.md#concept.concorde.escalation) is passed on and
-the run is not resumed. It is `failed` when checks still fail after the last round, when the write
+bound; the worker's own link ends the result's
+[error chain](../../vocabulary.md#concept.concorde.error-chain) unchanged and the run is not
+resumed. When checks still fail after the last round, the chain ends in one link per failing check
+with its exit code and the end of its log. It is `failed` when checks still fail after the last round, when the write
 audit found a change outside the grant, or when the host could not run the worker. A run with no
 configured check for its Modules ends `ok` with no check evidence, which the result states, and
 the main agent should then run `test` or add checks. Whenever the worker returned a result, the

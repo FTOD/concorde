@@ -162,7 +162,8 @@ class CodeReviewTests(unittest.TestCase):
             if item["kind"] == "unresolved-basis"
         ]
         self.assertEqual(("req.a.nothing", "F1"), (problem["ref"], problem["detail"]))
-        self.assertEqual("host", envelope["escalation"]["source"])
+        self.assertEqual("unresolved_basis", envelope["error"]["code"])
+        self.assertIn("F1 cites req.a.nothing", envelope["error"]["detail"])
 
     def test_a_blocking_finding_without_basis_fails_the_run(self):
         _, envelope = self.review([finding(1, basis=None)])

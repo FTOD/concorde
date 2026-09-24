@@ -35,7 +35,7 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Parse the command line and look up the catalog entry; only then create the run identity and directory | host | malformed command line or unknown Operation (exit 2, no result, no directory) |
+| 1 | Parse the command line and look up the catalog entry; only then create the run identity and directory | host | malformed command line, unknown Operation or a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
 | 2 | Resolve the task and its worktree; check `--modules` and `--input` | host, Tasks, Spec core | unknown task or Module, missing worktree, inadmissible input (`failed`, not recorded in the task) |
 | 3 | Begin the run in the task record with the catalog entry's `writes` flag; the task worktree's Specs are loaded to check the Modules unless the provider diagnoses them itself (`validate`) | Tasks | `task_closed` or `task_busy` (`failed`, not recorded in the task) |
 | 4 | Execute the provider's steps in order | provider, Workers, Check execution | a step stops the run with a status |
@@ -48,13 +48,18 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
   owns, and the run record of the latest worker launch. The runner never skips, repeats or reorders
   steps; any repetition, such as resume rounds, happens inside one step.
 - An exception raised by a step becomes a `failed` result with `host-error` evidence naming the
-  step, the error type and message, and the path of the traceback in the run directory.
+  step, the error type and message; the cause of its error is a `component` link with the
+  exception's type, message and command output, where it was raised and the path of the full
+  traceback in the run directory.
 - On `SIGINT` or `SIGTERM` the host stops its running step, ends every worker process it started
-  through Workers and finishes with a `failed` result with `cancelled` evidence.
+  through Workers and finishes with a `failed` result with `cancelled` evidence naming the signal.
 - Steps 5 and 6 run whatever happened in step 4. If step 6 cannot write the task record, the result
   is still written and printed, with `record` evidence naming the failure.
 - A refusal in steps 2 or 3 still writes and prints a result, with the refusal code as `refused`
-  evidence and an escalation from the host.
+  evidence and an error whose cause is the Tasks refusal with its message, such as the known tasks
+  for an unknown one or the running Operation for a busy one.
+- Whenever the status is not `ok`, the host also writes the error chain, rendered as indented
+  text, to standard error.
 
 ## Worker settings in the project configuration
 
@@ -85,13 +90,13 @@ number of resume rounds (default 3). Workers performs:
 
 The step's outcome maps to the result status as follows; the first matching row wins.
 
-| Outcome | Status | Escalation source |
-| --- | --- | --- |
-| Grant not computable, launch error, timeout, invalid worker result, audit violation | `failed` | host |
-| Checks still failing after the last round | `failed` | host |
-| Worker result status `failed` | `failed` | worker |
-| Worker result status `blocked` | `blocked` | worker |
-| Worker result status `ok`, audit clean, every check passed | `ok`, unless a later provider step stops the run | none |
+| Outcome | Status |
+| --- | --- |
+| Grant not computable, launch error, timeout, invalid worker result, audit violation | `failed` |
+| Checks still failing after the last round | `failed` |
+| Worker result status `failed` | `failed` |
+| Worker result status `blocked` | `blocked` |
+| Worker result status `ok`, audit clean, every check passed | `ok`, unless a later provider step stops the run |
 
 The host copies the worker result into the envelope's `worker` field unchanged and adds as host
 evidence the grant, the context identity, the audit, each check with its command, exit code and
@@ -99,3 +104,31 @@ log path, the rounds used, the transcript path and the worker's standard error. 
 statement of the worker into `summary` or `host_evidence`; the summary of a worker-backed result
 states the status and what the host verified, and the main agent reads the worker's own account in
 `worker`.
+
+## Errors
+
+When a run does not end `ok`, the result's `error` is the Operation's own link of the
+[error chain](../contracts.md#contract.concorde.error): the level `operation`, the actor
+`Operation <name> <run-id> (task <task>)`, a code, a detail naming the task, the Modules, the run,
+the paths and the messages concerned, the reason the Operation cannot handle the error, the options
+it offers the main agent with a recommendation, and as causes the errors it received, unchanged.
+A step that stops the run builds that link itself; the runner and the standard worker sequence
+build it as follows.
+
+| Error | Code | Reason | Causes |
+| --- | --- | --- | --- |
+| Refusal before the run began | `refused` | `decision` for `task_busy`, `scope` for `specs_unloadable`, `input` otherwise | the Tasks refusal |
+| Grant not computable | `grant_unavailable` | `scope` | Spec core's error |
+| Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error |
+| Worker run ended with an audit violation | `audit_violation` | `permission` | the run record's error |
+| Worker run ended with checks still failing | `checks_failed` | `decision` | the run record's error |
+| Worker ended `blocked` or `failed` | `worker_blocked`, `worker_failed` | `decision` | the run record's error, whose cause is the worker's link |
+| Worker round timed out, or its turn or budget limit was reached | `worker_timeout`, `worker_limit_reached` | `exhausted` | the run record's error |
+| Worker result invalid | `worker_result_invalid` | `capability` | the run record's error |
+| Any other failure of a worker run | the run record's code | `environment` | the run record's error |
+| A step raised | `host_error` | `capability` | the exception's `component` link |
+| Cancelled | `cancelled` | `environment` | none |
+| Invalid envelope or output | `invalid_result` | `capability` | the error the run had, if any |
+
+For a worker run the Operation's options are the worker's own options, when it gave any, followed by
+the Operation's; each provider's Spec lists the links its own steps add.

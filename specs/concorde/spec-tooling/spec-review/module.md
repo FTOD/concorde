@@ -32,7 +32,7 @@ validation, which Spec core owns, and does not judge code, which Code review own
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
 | [Task type](../../vocabulary.md#concept.concorde.task-type) | |
 | [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
-| [Escalation](../../vocabulary.md#concept.concorde.escalation) | |
+| [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 
 A Spec review produces review findings and one review verdict inside an ordinary Operation result;
 the verdict is evidence bound to the context identities the reviewers read.
@@ -161,7 +161,7 @@ it prepared and no other instructions, to return the reviewer's
 findings, to audit that the worker changed no file, and to keep a
 [run record](../../harness/workers/module.md#concept.workers.run-record) per worker. A worker that
 ends `blocked` or `failed`, or an audit that finds a change, makes that Module's review
-`incomplete`, and the worker's own escalation travels in the result unchanged.
+`incomplete`, and the worker's own error link travels in the result's error chain unchanged.
 
 <a id="uses-operations"></a>
 

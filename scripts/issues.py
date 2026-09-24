@@ -2,8 +2,9 @@
 """List, show and check branch-local Issues, and record reports and dispositions for the main
 agent; never launch a model.
 
-Every refusal prints ``{"error": <code>, "message": <text>}`` and exits 2 for a request the
-command cannot understand, 1 for one the Issue rules refuse.
+Every refusal prints ``{"error": <error link>}``, the Issues component's account of what it refused
+and why it cannot handle it itself, and exits 2 for a request the command cannot understand, 1 for
+one the Issue rules refuse.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from concorde.errors import link  # noqa: E402
 from concorde.issues.store import (  # noqa: E402
     DIRECTORY,
     dispose_issue,
@@ -91,10 +93,35 @@ def main(argv=None) -> int:
         return refuse(
             "io_error", f"{error.filename or 'file'}: {error.strerror}", REFUSED
         )
+    except Exception as error:  # noqa: BLE001 -- every failure leaves a detailed error
+        from concorde.errors import from_exception
+
+        print(
+            json.dumps(
+                {"error": from_exception("Issues (concorde issues)", error)},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return REFUSED
 
 
 def refuse(code: str, message: str, status: int) -> int:
-    print(json.dumps({"error": code, "message": message}, ensure_ascii=False))
+    environment = code in ("io_error", "git_failed")
+    error = link(
+        "component",
+        "Issues (concorde issues)",
+        code if re.fullmatch(r"[a-z][a-z0-9_]*", code) else "refused",
+        message,
+        reason="environment" if environment else "input",
+        explanation=(
+            "the file system or Git refused an operation the Issues command needs"
+            if environment
+            else "the request or the Issue record does not satisfy the Issue rules; only "
+            "the caller can correct it"
+        ),
+    )
+    print(json.dumps({"error": error}, ensure_ascii=False, indent=2))
     return status
 
 

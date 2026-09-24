@@ -22,7 +22,7 @@ so everything here is the design its implementation must follow.
 | Deny rules | The `permissions.deny` entries of the worker settings that forbid the file tools every path the grant does not make readable or writable. |
 | Write hook | A small PreToolUse hook on Edit and Write that denies every path outside the grant's `rw` list and explains the denial. |
 | Brief | The prompt a worker receives: the Operation's task instructions followed by the grant's `rw`, `ro` and `names` lists as absolute paths and the rules of its boundary. |
-| Worker result | The structured answer a worker ends with, validated against a fixed schema, reporting its status, what it did or could not do, its evidence and the deletions it proposes. |
+| Worker result | The structured answer a worker ends with, validated against a fixed schema, reporting its status, a summary, its own error link when it could not finish, and the deletions it proposes. |
 | Write audit | The host's comparison, after each round and outside the worker, of the task worktree's changes with the grant's `rw` list. |
 | Resume round | One continuation of the same worker session with the failures of the configured checks, started by `claude -p --resume`. |
 | Run record | The host's durable record of one worker run: its grant and context identity, settings, transcript path, audits, checks, rounds and result. |
@@ -31,7 +31,7 @@ so everything here is the design its implementation must follow.
 | [Task type](../../vocabulary.md#concept.concorde.task-type) | |
 | [Boundary](../../vocabulary.md#concept.concorde.boundary) | |
 | [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
-| [Escalation](../../vocabulary.md#concept.concorde.escalation) | |
+| [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 | [Grant](../../spec-tooling/spec/module.md#concept.spec.grant) | |
 | [Context identity](../../spec-tooling/spec/module.md#concept.spec.context-identity) | |
 | [Configured check](../checks/module.md#concept.checks.configured-check) | |
@@ -104,10 +104,11 @@ a read denial means the path is outside its grant.
 <a id="concept.workers.worker-result"></a>
 
 Every worker ends with a **worker result** validated by `--json-schema`: `status` (`ok`, `blocked`
-or `failed`), a summary, the problem it could not solve, what it tried, evidence items, options, a
-recommendation, whether the problem blocks the task, its impact, and the deletions it proposes. A
-`blocked` or `failed` result is the worker's [escalation](../../vocabulary.md#concept.concorde.escalation)
-to the host. The exact contract is in [the worker result contract](contracts.md).
+or `failed`), a summary, the deletions it proposes and, when it could not finish, its `error`: the
+first link of the [error chain](../../vocabulary.md#concept.concorde.error-chain), with a code, the
+complete detail, its evidence, what it tried, why it could not handle the error itself, its options
+and its recommendation. The brief asks for exactly that, so the host and the main agent can act on
+it without asking the worker. The exact contract is in [the worker result contract](contracts.md).
 
 <a id="concept.workers.audit"></a>
 
@@ -132,17 +133,21 @@ The **run record** is written for every run, including a refused launch. It hold
 context identity, the digests of the settings and brief, the tool list, the transcript path and
 session identifiers, each round's audit and check results with log paths, the worker's stderr
 tail, the worker result verbatim, the deletions performed and the host's final status with its
-error codes. The host adds deterministic evidence and never restates a worker's claim as a fact.
+error link. The host adds deterministic evidence and never restates a worker's claim as a fact.
 Delivery later collects run records into a task's evidence.
 
 ### Failures and repeat runs
 
-Host failures use the same record with status `failed` and an error code: a grant that is missing
-or unreadable, a run directory that a deny rule would cover, a launch error, a timeout (the whole
-process group is killed), a missing or invalid worker result, an audit violation, or checks that
-cannot run. Every call starts a new run with a new run directory; a failed run is never resumed by
-a later call. The exact codes, layout and command lines are in [the run mechanics](launch.md), and
-the testable behaviour in [the scenarios](scenarios.md).
+Every run that does not end `ok` carries an error link written by Workers: what failed in which
+round, why Workers cannot handle it, and what it received from below as causes, namely the
+worker's own error, the error Claude Code itself reported, such as a used-up turn limit, or every
+check that still fails with the end of its log. Host failures use the same record with status
+`failed`: a grant that is missing or unreadable, a run directory that a deny rule would cover, a
+launch error, a timeout (the whole process group is killed), a Claude Code error, a missing or
+invalid worker result, an audit violation, or checks that cannot run. Every call starts a new run
+with a new run directory; a failed run is never resumed by a later call. The exact codes, layout
+and command lines are in [the run mechanics](launch.md), and the testable behaviour in
+[the scenarios](scenarios.md).
 
 ## Design
 
@@ -193,8 +198,9 @@ confirmed when the runtime is built; the per-task-type tool lists are the v1 def
 The **worker runtime** consists of the settings generator (`settings.py`), which turns a grant into
 deny rules, the sandbox and the hook registration; the write hook script (`write_hook.py`); the
 launcher (`workers.py`), which writes the brief, runs and resumes `claude -p` with its limits and
-decides the rounds; the write audit (`audit.py`); and the run directories and records
-(`runs.py`). Its tests use a fake `claude` for the host's behaviour and, on request with
+decides the rounds; the write audit (`audit.py`); the run directories and records
+(`runs.py`); and the worker prompt snippets every Operation's worker instructions include, such as
+how a worker reports its error (`prompts/workers/common/`). Its tests use a fake `claude` for the host's behaviour and, on request with
 `CONCORDE_LIVE_CLAUDE=1`, a real Claude Code worker for what only Claude Code enforces.
 
 ## Relationships

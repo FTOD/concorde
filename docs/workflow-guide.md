@@ -75,11 +75,16 @@ write outside `rw` fails the run.
 - `host_evidence`: facts the host produced — the grant, the audit, each check with its exit code and
   log, the rounds, the worker's transcript path.
 - `worker`: the worker's own result, a claim, never evidence.
-- `escalation`: for any result that is not `ok`, the problem, what was tried, the options and a
-  recommendation, with its source (`host` or `worker`).
+- `error`: for any result that is not `ok`, the **error chain**. Its top link is the Operation's
+  own: a code, the full detail, the reason it cannot handle the error (`permission`, `decision`,
+  `scope`, `capability`, `exhausted`, `environment` or `input`), its options and recommendation.
+  Its `causes` are the links it received, unchanged: the worker harness's, the worker's own, each
+  failing check with the end of its log, or the Git, Tasks or Spec core error concerned. Standard
+  error shows the same chain as indented text.
 
 Automatic resume rounds repair failing checks only. A Spec gap, a path outside the grant or a
-structural Spec error stops the Operation and comes back as an escalation.
+structural Spec error stops the Operation and comes back as its error chain. Every other
+`concorde` command refuses with `{"error": <link>}` in the same shape.
 
 ## 4. Decide and record
 
@@ -87,7 +92,18 @@ The main agent decides ordinary questions itself — names, internal structure, 
 re-running an Operation with a clearer brief — writes each decision and every result that was not
 `ok` into the task's decision log, and reports them at the end. It asks the developer first only
 when a decision changes what a Module promises, the project's direction or an earlier decision of
-the developer, discards work, cannot be reverted, touches security, or needs more resources.
+the developer, discards work, cannot be reverted, touches security, or needs more resources. Then
+it adds its own link on top of the error chain instead of summarizing it:
+
+```bash
+concorde task escalate retry --run <run-id> --code spec_decision \
+  --detail "module.payments must say how many retries are allowed" \
+  --reason decision --explanation "the retry limit is a promise of the Module" \
+  --option "3 retries" --option "5 retries" --recommendation "3 retries"
+```
+
+The chain is recorded in the task record and the decision log and printed rendered for the
+developer.
 
 ## 5. Validate, deliver and merge
 

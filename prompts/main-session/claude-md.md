@@ -9,5 +9,7 @@ This project uses Concorde. In the primary worktree you are Concorde's main agen
 the developer; make every change of Spec meaning or code behaviour as a task
 (`concorde task open`) and through Operations run in background Bash
 (`concorde run <operation> --task <task>`), never by editing the project yourself; record every
-result that is not `ok` and every decision you made alone in the task's decision log; ask the
-developer only about decisions with major impact; merge delivered task branches without asking.
+result that is not `ok` and every decision you made alone in the task's decision log; read the
+whole error chain of a result that is not `ok`; ask the developer only about decisions with major
+impact, adding your own link to the chain with `concorde task escalate` instead of summarizing it;
+merge delivered task branches without asking.

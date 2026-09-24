@@ -25,8 +25,8 @@ from ..operations.provider import (
     Provider,
     RunContext,
     Stop,
+    component,
     evidence,
-    host_escalation,
 )
 from ..tasks import store
 from ..validation import confirmations as confirming
@@ -71,22 +71,75 @@ def _git(worktree: Path, *arguments: str) -> subprocess.CompletedProcess:
     )
 
 
-def _blocked(code: str, summary: str, detail: str, options, kind="readiness") -> Stop:
-    return Stop(
+def _blocked(
+    ctx: RunContext,
+    code: str,
+    summary: str,
+    detail: str,
+    options,
+    kind="readiness",
+    causes=(),
+) -> Stop:
+    """Stop ``blocked``: delivery commits only a current, ready readiness."""
+    return ctx.fail(
         "blocked",
+        code,
         summary,
-        [evidence(kind, code, detail)],
-        host_escalation(
-            f"{code}: {detail}",
-            options=list(options),
-            recommendation=options[0],
-        ),
+        detail,
+        reason="decision",
+        explanation="delivery never validates, repairs or commits without a current ready "
+        "readiness; what to run next is the main agent's decision",
+        evidence=[evidence(kind, code, detail)],
+        causes=causes,
+        options=list(options),
     )
 
 
-def _failed(summary: str, found: list[dict], problem: str, options=()) -> Stop:
-    return Stop(
-        "failed", summary, found, host_escalation(problem, options=list(options))
+def _failed(
+    ctx: RunContext,
+    code: str,
+    summary: str,
+    found: list[dict],
+    detail: str,
+    options=(),
+    *,
+    reason: str = "environment",
+    explanation: str = "Git or the task record refused a change delivery needs; delivery "
+    "undoes what it did and cannot repair either",
+    causes=(),
+) -> Stop:
+    return ctx.fail(
+        "failed",
+        code,
+        summary,
+        detail,
+        reason=reason,
+        explanation=explanation,
+        evidence=found,
+        causes=causes,
+        options=list(options),
+    )
+
+
+def _git_link(command: str, result: subprocess.CompletedProcess) -> dict:
+    output = ((result.stdout or "") + (result.stderr or "")).strip()
+    return component(
+        f"git {command}",
+        "git_failed",
+        f"git {command} in the task worktree exited {result.returncode}: "
+        + (output[-2000:] or "(no output)"),
+        "environment",
+        "Git refused the command",
+    )
+
+
+def _record_link(error: store.TaskError) -> dict:
+    return component(
+        "Tasks",
+        error.code,
+        str(error),
+        "environment",
+        "the task record could not be changed",
     )
 
 
@@ -132,11 +185,15 @@ def recover(ctx: RunContext):
         )
     except store.TaskError as error:
         return _failed(
+            ctx,
+            "record_failed",
             f"The unrecorded delivery commit {state.head} could not be recorded "
             f"({error.code}).",
             found + [evidence("record", error.code, str(error))],
-            f"the task record cannot be written: {error}",
+            f"the delivery commit {state.head} at the head of {ctx.task['branch']} is missing "
+            f"from the task record, and recording it failed: {error.code}: {error}",
             ["repair the task record and run delivery again"],
+            causes=[_record_link(error)],
         )
     ctx.output = {
         "commit": state.head,
@@ -163,6 +220,7 @@ def load_readiness(ctx: RunContext):
     ]
     if not runs:
         return _blocked(
+            ctx,
             "no_readiness",
             "The task has no validate run (no_readiness); nothing was delivered.",
             f"task {ctx.task['id']} has no validate run",
@@ -172,29 +230,41 @@ def load_readiness(ctx: RunContext):
     path = ctx.primary / ".concorde/runs" / latest / "result.json"
     try:
         result = json.loads(path.read_text())
-    except (OSError, ValueError):
-        result = {}
+    except (OSError, ValueError) as error:
+        result = {"unreadable": f"{path}: {type(error).__name__}: {error}"}
     # A ready readiness ends ok; a not-ready one ends blocked and still carries the readiness.
     readiness = (
         result.get("output") if result.get("status") in ("ok", "blocked") else None
     )
     if not isinstance(readiness, dict) or readiness.get("task") != ctx.task["id"]:
+        why = result.get("unreadable") or (
+            f"it ended {result.get('status', runs[-1]['status'])}: "
+            f"{result.get('summary', 'no summary')}"
+        )
         return _blocked(
+            ctx,
             "no_readiness",
             f"The latest validate run {latest} produced no readiness (no_readiness); "
             "nothing was delivered.",
-            f"{latest} ended {result.get('status', runs[-1]['status'])} without a readiness",
+            f"the latest validate run {latest} of task {ctx.task['id']} produced no readiness: "
+            f"{why}",
             options,
+            causes=[result["error"]] if isinstance(result.get("error"), dict) else [],
         )
     if not readiness.get("ready"):
         blocking = readiness.get("blocking") or []
         return _blocked(
+            ctx,
             "not_ready",
             f"The latest readiness ({latest}) is not ready (not_ready); nothing was "
             "delivered.",
-            f"{latest}: {len(blocking)} blocking finding(s): "
-            + "; ".join(f"{item['kind']} {item['ref']}" for item in blocking[:10]),
+            f"the latest readiness of task {ctx.task['id']}, from validate run {latest}, is "
+            f"not ready: {len(blocking)} blocking finding(s): "
+            + "; ".join(
+                f"{item['kind']} {item['ref']}: {item['detail']}" for item in blocking
+            ),
             ["fix the blocking findings and run validate again"],
+            causes=[result["error"]] if isinstance(result.get("error"), dict) else [],
         )
     state.readiness_run, state.readiness = latest, readiness
     return Continue(evidence=[evidence("readiness", latest, "ready")])
@@ -224,6 +294,7 @@ def compare_inputs(ctx: RunContext):
         elif now["head"] != state.readiness["inputs"]["head"]:
             detail += f"; the head moved to {now['head']}"
         return _blocked(
+            ctx,
             "stale_readiness",
             "The task worktree changed since its readiness (stale_readiness); nothing was "
             "delivered.",
@@ -242,6 +313,7 @@ def require_changes(ctx: RunContext):
         return measurement_failed(ctx, error)
     if not changed:
         return _blocked(
+            ctx,
             "nothing_to_deliver",
             "The task worktree has no uncommitted change (nothing_to_deliver).",
             f"{ctx.worktree} is clean at {_state(ctx).head}",
@@ -258,10 +330,25 @@ def apply_confirmations(ctx: RunContext):
         state.backups = confirming.apply(ctx.worktree, listed)
     except confirming.ConfirmationRefused as error:
         return _failed(
+            ctx,
+            "confirmations_refused",
             f"The confirmations could not be applied ({error.code}); nothing was committed.",
             [evidence("readiness", error.code, str(error))],
-            f"confirmations of {state.readiness_run} refused: {error}",
+            f"the pending confirmations of readiness {state.readiness_run} could not be "
+            f"applied: {error.code}: {error}",
             ["run validate again, then delivery"],
+            reason="input",
+            explanation="delivery applies exactly the confirmations its readiness lists and "
+            "never recomputes them",
+            causes=[
+                component(
+                    "Validation confirmations",
+                    error.code,
+                    str(error),
+                    "input",
+                    "the metadata no longer matches what the readiness confirmed",
+                )
+            ],
         )
     return Continue(
         evidence=[
@@ -280,11 +367,16 @@ def write_bundle(ctx: RunContext):
     if target.exists():
         undo(ctx)
         return _failed(
+            ctx,
+            "bundle_exists",
             f"The evidence bundle {state.bundle} already exists; nothing was committed.",
             [evidence("git", state.bundle, "bundle path taken")],
-            f"{state.bundle} exists although the task record lists "
-            f"{state.sequence - 1} deliveries",
+            f"the evidence bundle {state.bundle} already exists in {ctx.worktree} although "
+            f"the task record lists {state.sequence - 1} deliveries",
             ["inspect the task branch and the task record"],
+            reason="decision",
+            explanation="delivery never overwrites evidence; reconciling the branch and the "
+            "task record is the main agent's decision",
         )
     value = build_bundle(
         ctx.primary,
@@ -329,9 +421,14 @@ def commit(ctx: RunContext):
     if staged.returncode != 0:
         undo(ctx)
         return _failed(
+            ctx,
+            "stage_failed",
             "Git could not stage the delivery; the worktree was restored.",
             [evidence("git", "add", staged.stderr.strip())],
-            f"git add failed: {staged.stderr.strip()}",
+            f"git add failed in {ctx.worktree}, so nothing was committed; the confirmations "
+            f"and the bundle were undone: {staged.stderr.strip()}",
+            ["repair the worktree's Git state, then run delivery again"],
+            causes=[_git_link("add", staged)],
         )
     message = commit_message(ctx.task, state.bundle, state.readiness_run)
     result = subprocess.run(
@@ -346,14 +443,19 @@ def commit(ctx: RunContext):
         output = (result.stdout + result.stderr).strip()
         undo(ctx)
         return _failed(
+            ctx,
+            "commit_failed",
             "Git refused the delivery commit; the confirmations and the bundle were undone "
             "and the index reset.",
             found
             + [
                 evidence("git", "commit", output[-4000:] or f"exit {result.returncode}")
             ],
-            f"git commit failed: {output[-1000:]}",
+            f"git commit refused the delivery commit of task {ctx.task['id']} in "
+            f"{ctx.worktree}; the confirmations and the bundle were undone and the index "
+            f"reset: {output[-1000:] or f'exit {result.returncode}'}",
             ["fix the commit hook or the author identity, then run delivery again"],
+            causes=[_git_link("commit", result)],
         )
     state.commit = head_commit(ctx.worktree)
     return Continue(evidence=[evidence("commit", state.commit, f"parent {state.head}")])
@@ -376,10 +478,16 @@ def verify(ctx: RunContext):
         problems.append("the worktree is not clean after the commit")
     if problems:
         return _failed(
+            ctx,
+            "commit_unverified",
             f"The delivery commit {state.commit} does not verify.",
             [evidence("git", state.commit, "; ".join(problems))],
-            "; ".join(problems),
+            f"the delivery commit {state.commit} on {ctx.task['branch']} does not verify: "
+            + "; ".join(problems),
             ["inspect the task branch"],
+            reason="decision",
+            explanation="delivery never rewrites a commit it made; repairing the branch is the "
+            "main agent's decision",
         )
     return Continue()
 
@@ -397,11 +505,15 @@ def record(ctx: RunContext):
         )
     except store.TaskError as error:
         return _failed(
+            ctx,
+            "record_failed",
             f"The delivery commit {state.commit} was made but not recorded ({error.code}); "
             "the next delivery run records it.",
             [evidence("record", error.code, str(error))],
-            f"the task record cannot be written: {error}",
+            f"the delivery commit {state.commit} was made on {ctx.task['branch']} but the task "
+            f"record could not be written: {error.code}: {error}",
             ["run delivery again to record the commit"],
+            causes=[_record_link(error)],
         )
     return Continue(evidence=[evidence("record", ctx.task["id"], "delivery recorded")])
 

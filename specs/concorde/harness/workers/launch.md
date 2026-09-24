@@ -183,8 +183,9 @@ when the audit was clean. A proposed deletion outside `rw` is refused and record
 
 | Worker result and audit | Checks | Next |
 | --- | --- | --- |
-| audit violation | not run | end `failed` with `audit_violation` |
-| `blocked` or `failed`, audit clean | not run | end with the worker's status |
+| audit violation, whatever the result | not run | end `failed` with `audit_violation` |
+| invalid result, audit clean | not run | end `failed` with `worker_result_invalid` |
+| `blocked` or `failed`, audit clean | not run | end with the worker's status and `worker_blocked` or `worker_failed` |
 | `ok`, audit clean, no checks given | — | end `ok` |
 | `ok`, audit clean, all checks pass | run | end `ok` |
 | `ok`, audit clean, a check fails, rounds left | run | resume round |
@@ -210,20 +211,39 @@ its log.
 | `worker_result` | the last worker result, verbatim, or null |
 | `pending_created`, `pending_removed`, `deleted`, `deletions_refused` | paths the host pre-created, removed or refused to remove |
 | `status` | the host's final status: `ok`, `blocked` or `failed` |
-| `errors` | host error codes with details |
+| `error` | null for `ok`; otherwise the harness's link of the [error chain](../../contracts.md#contract.concorde.error) |
+| `rounds[].claude` | per round, the subtype, error flag, turn count and cost the Claude Code envelope reported |
 
-Host error codes:
+## Errors
 
-| Code | Meaning |
-| --- | --- |
-| `grant_unavailable` | the grant or its context identity is missing or unreadable |
-| `run_directory_denied` | a generated deny rule would cover the worker's own directories |
-| `launch_failed` | `claude` could not be started or exited without a JSON envelope |
-| `worker_timeout` | a round exceeded its timeout; the process group was killed |
-| `worker_result_invalid` | the envelope has no structured output that satisfies the schema |
-| `audit_violation` | the audit found a write outside `rw` |
-| `checks_unavailable` | the configured checks could not run |
-| `checks_failed` | a check still failed after the last round |
+Every run that does not end `ok` has an `error` whose top link has the level `harness`, the actor
+`Workers run <run-id> (<task type> worker)`, one of the codes below, a detail that names the round,
+the paths, commands and messages concerned, and the reason Workers cannot handle it. Its evidence
+names the run record and, once a session exists, the transcript. A write outside `rw` is reported
+by every code whose round had one, even when the round also timed out or failed otherwise.
+
+| Code | Detail | Reason | Causes |
+| --- | --- | --- | --- |
+| `grant_unavailable` | which of the task type, grant, context identity or entries is missing | `input` | none |
+| `run_directory_denied` | the deny rule that would cover the worker's own directories | `environment` | none |
+| `pending_not_created` | the pending path that could not be created and why | `environment` | none |
+| `snapshot_failed` | the Git command that failed and its output | `environment` | none |
+| `launch_failed` | the command that could not be started and the operating system's error | `environment` | none |
+| `worker_timeout` | the round and the timeout | `exhausted` | none |
+| `worker_limit_reached` | the round and the limit Claude Code reported | `exhausted` | the Claude Code process's link |
+| `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope | `environment` | the Claude Code process's link |
+| `worker_result_invalid` | the schema violation, or the worker's final text when it gave no structured result | `capability` | none |
+| `audit_violation` | every violating path and the worker's own reported status | `permission` | the worker's link, when its result was valid |
+| `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
+| `checks_unavailable` | the Modules and Check execution's error | `environment` | Check execution's link |
+| `checks_failed` | every check still failing and the rounds used; `attempts` lists each round's failures | `exhausted` | one link per failing check, from Check execution |
+
+The **Claude Code process's link** has the level `component` and states the envelope's subtype,
+error flag, turn count, cost, exit status, final text, reported errors and the tail of standard
+error; its reason is `exhausted` for the `error_max_turns` and `error_max_budget_usd` subtypes and
+`environment` otherwise. The **worker's link** is the worker result's `error` with the level
+`worker`, the actor naming the run and the latest session, and no causes; Workers copies it
+unchanged.
 
 ## Requirements
 
@@ -274,6 +294,10 @@ Each resume round SHALL continue the session identifier returned by the previous
 ### req.workers.claims-apart — Worker claims stay claims
 
 The run record SHALL keep the worker result verbatim and separate from the evidence the host observed itself.
+
+### req.workers.error-chain — A failed run explains itself
+
+Every run that does not end `ok` SHALL carry the harness's error link with the worker's own error, the Claude Code process's error or each failing check as its causes, as listed in [Errors](#errors).
 
 ### req.workers.host-deletes — Only the host deletes
 

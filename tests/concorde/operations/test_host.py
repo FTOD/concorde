@@ -11,8 +11,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
 from concorde.operations import catalog
-from concorde.operations.host import RESULT_SCHEMA
+from concorde.operations.host import RESULT_SCHEMA, UsageError
 from concorde.operations.provider import Continue, Provider, evidence
 from concorde.spec.verification import verifies
 from concorde.tasks import store
@@ -108,7 +109,7 @@ class HostTests(unittest.TestCase):
         )
         self.assertEqual("done", envelope["worker"]["summary"])
         self.assertEqual(1, len(envelope["worker_runs"]))
-        self.assertIsNone(envelope["escalation"])
+        self.assertIsNone(envelope["error"])
         self.assertEqual(envelope, self.saved(envelope))
         self.assertEqual("ok", self.run_status(envelope))
 
@@ -119,21 +120,39 @@ class HostTests(unittest.TestCase):
                 {
                     "result": {
                         "status": "blocked",
-                        "problem": "the Spec does not state the rounding rule",
-                        "options": ["round per line", "round per order"],
-                        "recommendation": "round per order",
-                        "blocking": True,
+                        "error": {
+                            "code": "spec_gap",
+                            "detail": "the Spec does not state the rounding rule",
+                            "evidence": [],
+                            "attempts": ["read specs/a/module.md"],
+                            "unhandled": {
+                                "reason": "decision",
+                                "explanation": "the rounding rule is the Spec's to state",
+                            },
+                            "options": ["round per line", "round per order"],
+                            "recommendation": "round per order",
+                        },
                     }
                 }
             ]
         )
         self.assertEqual((1, "blocked"), (status, envelope["status"]))
-        escalation = envelope["escalation"]
-        self.assertEqual("worker", escalation["source"])
+        error = envelope["error"]
+        self.assertEqual(["worker_blocked", "worker_blocked", "spec_gap"], codes(error))
         self.assertEqual(
-            "the Spec does not state the rounding rule", escalation["problem"]
+            ["operation", "harness", "worker"],
+            [
+                error["level"],
+                error["causes"][0]["level"],
+                error["causes"][0]["causes"][0]["level"],
+            ],
         )
-        self.assertEqual("round per order", escalation["recommendation"])
+        worker = error["causes"][0]["causes"][0]
+        self.assertEqual("the Spec does not state the rounding rule", worker["detail"])
+        self.assertEqual("round per order", worker["recommendation"])
+        self.assertEqual("decision", worker["unhandled"]["reason"])
+        self.assertEqual("decision", error["unhandled"]["reason"])
+        self.assertIn("round per line", error["options"])
         host_text = json.dumps(envelope["host_evidence"]) + envelope["summary"]
         self.assertNotIn("rounding rule", host_text)
 
@@ -151,7 +170,15 @@ class HostTests(unittest.TestCase):
             and "log" in checks[-1]["detail"]
         )
         self.assertIn("2 round(s)", json.dumps(envelope["host_evidence"]))
-        self.assertEqual("host", envelope["escalation"]["source"])
+        error = envelope["error"]
+        self.assertEqual(
+            ["checks_failed", "checks_failed", "check_failed"], codes(error)
+        )
+        self.assertEqual("decision", error["unhandled"]["reason"])
+        self.assertEqual("exhausted", error["causes"][0]["unhandled"]["reason"])
+        check = error["causes"][0]["causes"][0]
+        self.assertEqual(("check", "check.a"), (check["level"], check["actor"]))
+        self.assertIn("exit code 1", check["detail"])
 
     @verifies("scenario.operations.audit-violation")
     def test_a_write_outside_the_grant_fails_the_run(self):
@@ -178,7 +205,10 @@ class HostTests(unittest.TestCase):
         status, envelope = self.project.run("validate", "--task", "missing")
         self.assertEqual((1, "failed"), (status, envelope["status"]))
         self.assertEqual("unknown_task", envelope["host_evidence"][0]["ref"])
-        self.assertEqual("host", envelope["escalation"]["source"])
+        error = envelope["error"]
+        self.assertEqual(["refused", "unknown_task"], codes(error))
+        self.assertEqual("input", error["unhandled"]["reason"])
+        self.assertIn("known tasks: t1", error["causes"][0]["detail"])
         store.begin_run(
             self.root, "t1", "r-other", "implement", ["module.a"], True, os.getpid()
         )
@@ -186,6 +216,8 @@ class HostTests(unittest.TestCase):
         status, envelope = self.project.run("validate", "--task", "t1")
         self.assertEqual("failed", envelope["status"])
         self.assertEqual("task_busy", envelope["host_evidence"][0]["ref"])
+        self.assertEqual("decision", envelope["error"]["unhandled"]["reason"])
+        self.assertIn("r-other", envelope["error"]["detail"])
         self.assertIsNone(envelope["output"])
         self.assertEqual(before["runs"], store.load_task(self.root, "t1")["runs"])
 
@@ -193,8 +225,10 @@ class HostTests(unittest.TestCase):
     def test_a_malformed_command_line_writes_nothing(self):
         runs = self.root / ".concorde/runs"
         before = sorted(runs.iterdir()) if runs.exists() else []
-        self.assertEqual((2, None), self.project.run("frobnicate", "--task", "t1"))
-        self.assertEqual((2, None), self.project.run("validate"))
+        with self.assertRaisesRegex(UsageError, "unknown Operation 'frobnicate'"):
+            self.project.run("frobnicate", "--task", "t1")
+        with self.assertRaisesRegex(UsageError, "--task"):
+            self.project.run("validate")
         after = sorted(runs.iterdir()) if runs.exists() else []
         self.assertEqual(before, after)
 
@@ -205,13 +239,15 @@ class HostTests(unittest.TestCase):
         [error] = [
             item for item in envelope["host_evidence"] if item["kind"] == "host-error"
         ]
-        self.assertEqual("raising_step", error["ref"])
-        self.assertIn("traceback", error["detail"])
-        self.assertTrue(
-            (
-                self.root / ".concorde/runs" / envelope["run_id"] / "traceback.txt"
-            ).exists()
+        self.assertEqual("host step raising_step", error["ref"])
+        self.assertIn("RuntimeError: boom", error["detail"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual(
+            ("component", "RuntimeError: boom"), (cause["level"], cause["detail"])
         )
+        trace = [item for item in cause["evidence"] if item["kind"] == "traceback"]
+        self.assertTrue(Path(trace[0]["ref"]).is_file())
+        self.assertIn("raising_step", Path(trace[0]["ref"]).read_text())
         self.assertEqual("failed", self.run_status(envelope))
 
     @verifies("scenario.operations.cancelled")
@@ -253,11 +289,18 @@ class HostTests(unittest.TestCase):
         )
         self.assertEqual("failed", refused["status"])
         self.assertEqual("input_not_admissible", refused["host_evidence"][0]["ref"])
+        self.assertIn("ended failed", refused["error"]["detail"])
 
     def test_the_result_schema_is_the_contract(self):
         text = (REPOSITORY_ROOT / "specs/concorde/operations/contracts.md").read_text()
         fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
         self.assertEqual(json.loads(fence)["schema"], RESULT_SCHEMA)
+
+    def test_the_error_link_is_the_framework_contract(self):
+        text = (REPOSITORY_ROOT / "specs/concorde/contracts.md").read_text()
+        fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
+        self.assertEqual(json.loads(fence)["schema"], ERROR_SCHEMA)
+        self.assertEqual(RESULT_SCHEMA["$defs"]["error"], LINK_SCHEMA)
 
 
 if __name__ == "__main__":

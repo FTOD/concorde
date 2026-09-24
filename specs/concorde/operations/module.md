@@ -19,13 +19,13 @@ main agent decides, and each provider defines what its own Operation does.
 | Operation | A named job the main agent runs for one task, made of deterministic host steps and zero or more workers, that ends with exactly one Operation result. |
 | Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, whether it launches workers, whether it may change the task worktree and the contract of its output. |
 | Operation host | The deterministic process started by `concorde run` that executes one Operation's step table for one task and alone launches its workers, checks their work and writes its result. |
-| Operation result | The structured envelope an Operation returns to the main agent, holding its status, identities, summary, output, the worker result kept as claims, the host's own evidence and, when it is not ok, an escalation. |
+| Operation result | The structured envelope an Operation returns to the main agent, holding its status, identities, summary, output, the worker result kept as claims, the host's own evidence and, when it is not ok, its error chain. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
 | [Task type](../vocabulary.md#concept.concorde.task-type) | |
 | [Module](../vocabulary.md#concept.concorde.module) | |
 | [Evidence](../vocabulary.md#concept.concorde.evidence) | |
-| [Escalation](../vocabulary.md#concept.concorde.escalation) | |
+| [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
 | [Grant](../spec-tooling/spec/module.md#concept.spec.grant) | |
 | [Context identity](../spec-tooling/spec/module.md#concept.spec.context-identity) | |
 | [Worker result](../harness/workers/module.md#concept.workers.worker-result) | |
@@ -93,16 +93,22 @@ run, gives a summary, and carries the Operation's `output` as its provider defin
 worker-backed Operation it also carries the worker's own [worker result](../harness/workers/module.md#concept.workers.worker-result)
 unchanged, and next to it the host's evidence: the grant and its context identity, the write
 audit, each check command with its exit code and log, the resume rounds used, the transcript path
-and the worker's standard error. When the status is not `ok`, an escalation states the problem,
-what was tried, the options and a recommendation, and whether it came from the worker or from the
-host. The exact envelope is the [result contract](contracts.md#contract.operations.result).
+and the worker's standard error. When the status is not `ok`, its `error` is the
+[error chain](../vocabulary.md#concept.concorde.error-chain) of the run: the Operation's own link,
+which describes the error in full and gives the reason the Operation cannot handle it, the options
+and a recommendation, and below it, unchanged, the errors it received: the Workers harness's link
+for a worker run, the worker's own link, each failing check, or the Git, Tasks or Spec core error
+concerned. The exact envelope is the [result contract](contracts.md#contract.operations.result).
 
 For example, an `implement` run whose worker edited the right files but left one test failing
 after three resume rounds returns `failed`, the worker's result claiming the work is done, host
-evidence with the failing check's exit code and log path, and an escalation from the host. The main
-agent reads the claim as a claim and the evidence as fact, records its decision in the task's
-decision log and chooses the next step: another `implement` with a sharper goal, an `understand`, or an
-escalation to the developer.
+evidence with the failing check's exit code and log path, and an error chain: the Operation's
+link says the resume rounds are used up and that narrowing the goal or changing the Spec is the
+main agent's decision; below it the Workers harness's link lists the rounds, and below that the
+check's link quotes the end of its log. The main agent reads the claim as a claim and the evidence
+as fact, records its decision in the task's decision log and chooses the next step: another
+`implement` with a sharper goal, an `understand`, or an escalation to the developer that adds its
+own link on top of the chain.
 
 `concorde run` exits with status 0 for an `ok` result and 1 for `blocked` or `failed`. A command
 line that names no known Operation or no task is refused with status 2 and no result. A run the
@@ -151,7 +157,7 @@ The host writes a result in every case it can, including its own failures, and r
 the [task record](../tasks/module.md#concept.tasks.task-record) when it starts and when it ends.
 The main agent is woken only by the process exit, so a run that ended without a result would leave
 it guessing; with the result always present, every problem travels up as an
-[escalation](../vocabulary.md#concept.concorde.escalation) with evidence. No provider calls another
+[error chain](../vocabulary.md#concept.concorde.error-chain) with evidence. No provider calls another
 Operation, because deciding the next step needs the global view only the main agent has. The
 precise obligations are in the [requirements](requirements.md) and shown in the
 [scenarios](scenarios.md).
@@ -253,8 +259,8 @@ settings, tools and brief from the frozen grant, launches the worker, audits its
 checks with resume rounds and writes the run record, and returns the
 [worker result](../harness/workers/module.md#concept.workers.worker-result) with the host evidence
 it gathered. Operations relies on the audit catching any write outside the grant and on each
-launch having its own run record. A launch error, a timeout or an audit violation ends the run as
-`failed`.
+launch having its own run record, and on the run record's error link, which the host keeps as the
+cause of its own. A launch error, a timeout or an audit violation ends the run as `failed`.
 
 <a id="uses-checks"></a>
 

@@ -10,7 +10,11 @@ from pathlib import Path
 from concorde.harness.runs import read_record
 from concorde.spec.verification import verifies
 from concorde.understanding.operation import ASSESSMENT_SCHEMA
-from tests.concorde.support.operation_project import OperationProject
+from tests.concorde.support.operation_project import (
+    OperationProject,
+    link_at,
+    worker_error,
+)
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 GOAL = "let A answer two questions"
@@ -138,10 +142,13 @@ class UnderstandTests(unittest.TestCase):
                     "result": {
                         "status": "blocked",
                         "summary": "cannot assess",
-                        "problem": "the goal concerns module.b, which is not bound",
-                        "attempts": ["read the A Spec"],
-                        "options": ["bind module.b"],
-                        "blocking": True,
+                        "error": worker_error(
+                            "the goal concerns module.b, which is not bound",
+                            code="unbound_module",
+                            reason="scope",
+                            attempts=["read the A Spec"],
+                            options=["bind module.b"],
+                        ),
                         "output": assessment(sufficient=False),
                     }
                 }
@@ -149,11 +156,12 @@ class UnderstandTests(unittest.TestCase):
         )
         self.assertEqual(1, status)
         self.assertEqual("blocked", envelope["status"])
-        escalation = envelope["escalation"]
-        self.assertEqual("worker", escalation["source"])
-        self.assertIn("module.b", escalation["problem"])
-        self.assertEqual(["read the A Spec"], escalation["attempts"])
-        self.assertEqual(["bind module.b"], escalation["options"])
+        worker = link_at(envelope["error"], "worker")
+        self.assertIn("module.b", worker["detail"])
+        self.assertEqual("scope", worker["unhandled"]["reason"])
+        self.assertEqual(["read the A Spec"], worker["attempts"])
+        self.assertEqual(["bind module.b"], worker["options"])
+        self.assertIn("bind module.b", envelope["error"]["options"])
         self.assertIsNone(envelope["output"])
 
     @verifies("scenario.understanding.unknown-module")
@@ -205,9 +213,10 @@ class UnderstandTests(unittest.TestCase):
         )
         self.assertEqual(1, status)
         self.assertEqual("failed", envelope["status"])
-        text = json.dumps(envelope["host_evidence"])
-        self.assertIn("audit_violation", text)
-        self.assertIn("specs/a/module.md", text)
+        error = envelope["error"]
+        self.assertEqual("audit_violation", error["code"])
+        self.assertEqual("permission", error["unhandled"]["reason"])
+        self.assertIn("specs/a/module.md", error["detail"])
         record = read_record(self.project.root, envelope["worker_runs"][-1])
         self.assertEqual(1, len(record["rounds"]))
 

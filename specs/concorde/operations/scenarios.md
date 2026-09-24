@@ -21,8 +21,9 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - GIVEN a worker that returns status `blocked` because the Spec lacks a promise
 - WHEN its Operation ends
 - THEN the result has status `blocked`
-- AND its escalation has source `worker` with the worker's problem, options and recommendation
-- AND the worker's statements appear only in `worker` and the escalation, never in `host_evidence`
+- AND its error is a chain of the Operation's link, the Workers harness's link and the worker's own link with its detail, options and recommendation unchanged
+- AND the Operation's link gives `decision` as its reason and offers the worker's options
+- AND the worker's statements appear only in `worker` and in the worker's link, never in `host_evidence`
 - AND the command exits with status 1
 
 ### scenario.operations.checks-exhausted — Checks still failing after the last round
@@ -31,13 +32,14 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - WHEN the rounds are used up
 - THEN the result has status `failed` even though the worker reported `ok`
 - AND its host evidence names the check, its exit code, its log and the rounds used
-- AND its escalation has source `host`
+- AND its error chain runs from the Operation's link (`decision`) through the Workers harness's link (`exhausted`) to the check's link with its exit code and the end of its log
 
 ### scenario.operations.audit-violation — A write outside the grant fails the run
 
 - GIVEN a worker that changed a file outside its grant's writable paths
 - WHEN the host audits the task worktree
 - THEN the result has status `failed` with the violation as `audit` evidence
+- AND its error's top link gives `permission` as the reason and names the file
 - AND no configured check is run for that worker
 
 ## Deterministic runs and refusals
@@ -54,7 +56,7 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - GIVEN a task that is unknown, merged, abandoned or already running an Operation
 - WHEN the main agent runs an Operation for it
 - THEN no provider step runs
-- AND the result has status `failed`, `refused` evidence with the reason and an escalation from the host
+- AND the result has status `failed`, `refused` evidence with the reason and an error whose cause is the Tasks refusal, naming the known tasks or the running Operation
 - AND the task record gains no run
 
 ### scenario.operations.bad-command — A malformed command line
@@ -62,13 +64,15 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - GIVEN a command line with an unknown Operation name or without `--task`
 - WHEN `concorde run` is invoked
 - THEN it exits with status 2
+- AND standard error names what is wrong, such as the unknown Operation or the missing argument
 - AND no result and no run directory are written
 
 ### scenario.operations.host-error — A host step raises an error
 
 - GIVEN a provider step that raises an unexpected error
 - WHEN the runner executes it
-- THEN the result has status `failed` with `host-error` evidence naming the step and the traceback's path
+- THEN the result has status `failed` with `host-error` evidence naming the step and the error
+- AND the cause of its error is a `component` link with the exception's type, message and output, where it was raised and the traceback's path
 - AND the run is finished as `failed` in the task record
 
 ### scenario.operations.cancelled — The run is cancelled

@@ -132,11 +132,89 @@ class TaskFlowTests(unittest.TestCase):
         plan = implement_plan({f"{worktree}/src/bmod/secret.py": "SECRET = 2\n"})
         status, envelope = self.project.run("implement", "--task", "t1", "--goal", plan)
         self.assertEqual((1, "failed"), (status, envelope["status"]))
-        self.assertEqual("host", envelope["escalation"]["source"])
-        self.assertIn("src/bmod/secret.py", envelope["escalation"]["problem"])
+        error = envelope["error"]
+        self.assertEqual(
+            ("operation", "audit_violation"), (error["level"], error["code"])
+        )
+        self.assertEqual("permission", error["unhandled"]["reason"])
+        self.assertIn("src/bmod/secret.py", error["detail"])
+        self.assertEqual("harness", error["causes"][0]["level"])
         self.assertTrue(evidence_of(envelope, "audit"))
         self.assertEqual(1, len(envelope["worker_runs"]))
         self.assertIn("1 round(s)", json.dumps(envelope["host_evidence"]))
+
+    @verifies("scenario.concorde.error-chain-to-developer")
+    def test_an_error_reaches_the_developer_as_one_chain(self):
+        worktree = self.project.task("t1")
+        worker = {
+            "code": "spec_gap",
+            "detail": "specs/a/module.md does not say whether add rounds its result",
+            "evidence": [
+                {"kind": "spec", "ref": f"{worktree}/specs/a/module.md", "detail": ""}
+            ],
+            "attempts": ["read every document of module.a"],
+            "unhandled": {
+                "reason": "decision",
+                "explanation": "what module.a promises is the Spec's to state",
+            },
+            "options": ["specify rounding in module.a"],
+            "recommendation": "specify rounding in module.a",
+        }
+        plan = OperationProject.plan(
+            [
+                {
+                    "result": {
+                        "status": "blocked",
+                        "error": worker,
+                        "output": {"addresses": []},
+                    }
+                }
+            ]
+        )
+        status, envelope = self.project.run("implement", "--task", "t1", "--goal", plan)
+        self.assertEqual((1, "blocked"), (status, envelope["status"]))
+        escalated = subprocess.run(
+            [
+                *COMMAND,
+                "task",
+                "escalate",
+                "t1",
+                "--run",
+                envelope["run_id"],
+                "--code",
+                "spec_decision",
+                "--detail",
+                "module.a must say whether add rounds before it can be implemented",
+                "--reason",
+                "decision",
+                "--explanation",
+                "changing what module.a promises is the developer's decision",
+            ],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, escalated.returncode, escalated.stdout)
+        value = json.loads(escalated.stdout)
+        chain, levels = value["escalated"], []
+        link = chain
+        while True:
+            levels.append(link["level"])
+            self.assertTrue(link["detail"] and link["unhandled"]["explanation"])
+            if not link["causes"]:
+                break
+            [link] = link["causes"]
+        self.assertEqual(["main-agent", "operation", "harness", "worker"], levels)
+        self.assertEqual(
+            {key: link[key] for key in worker if key != "evidence"},
+            {key: worker[key] for key in worker if key != "evidence"},
+        )
+        self.assertEqual(worker["evidence"], link["evidence"])
+        record = json.loads((self.root / ".concorde/tasks/t1.json").read_text())
+        self.assertEqual(chain, record["escalations"][-1]["error"])
+        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        self.assertIn("does not say whether add rounds", log)
+        self.assertIn("does not say whether add rounds", value["rendered"])
 
     @verifies("scenario.concorde.parallel-tasks")
     def test_two_tasks_in_parallel(self):

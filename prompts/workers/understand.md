@@ -40,8 +40,10 @@ assessment names an unknown Module or breaks the rules above.
 ## When to return `blocked`
 
 Return `blocked` when you cannot assess the goal at all: the goal is ambiguous, or it concerns
-Modules you are not bound to and cannot read. Describe the problem, what you tried and the options
+Modules you are not bound to and cannot read. Report it in `error`, with what you tried and the options
 (for example, which Modules to bind). Still fill `output` with a well-formed assessment:
 `sufficient` false, `gaps` empty and `plan` null.
 
 An insufficient Spec is not a reason to block: report the gaps with status `ok`.
+
+@prompts/workers/common/errors.md

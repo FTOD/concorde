@@ -19,9 +19,8 @@ from ..operations.provider import (
     Continue,
     Provider,
     RunContext,
-    Stop,
+    component,
     evidence,
-    host_escalation,
     load_prompt,
 )
 
@@ -230,44 +229,64 @@ def check_assessment(ctx: RunContext):
         known = set(SpecRepository(ctx.worktree).modules)
     except (SpecError, OSError, ValueError) as error:
         ctx.output = None
-        return Stop(
+        code = getattr(error, "code", None) or "specs_unloadable"
+        return ctx.fail(
             "failed",
+            "specs_unloadable",
             "The task worktree's Specs could not be loaded to check the assessment.",
-            [evidence("spec-load", ctx.worktree.as_posix(), str(error))],
-            host_escalation(f"the Specs cannot be loaded: {error}"),
+            f"the Specs of {ctx.worktree} could not be loaded after the worker finished, so "
+            f"the Modules the assessment names cannot be checked: {code}: {error}",
+            reason="scope",
+            explanation="understand reads Specs and never repairs them",
+            evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
+            causes=[
+                component(
+                    "Spec core",
+                    code,
+                    str(error),
+                    "input",
+                    "Specs that do not load cannot be queried",
+                )
+            ],
+            options=["run validate for the task", "repair the Specs"],
         )
     unknown = sorted(named_modules(assessment) - known)
     if unknown:
         ctx.output = None
-        return Stop(
+        return ctx.fail(
             "failed",
+            "unknown_modules",
             f"The assessment names {len(unknown)} Module(s) the task worktree does not define.",
-            [
+            f"the worker's assessment names {', '.join(unknown)}, which the registry of "
+            f"{ctx.worktree} does not register; the assessment is discarded",
+            reason="capability",
+            explanation="the host checks the worker's assessment but never corrects it or "
+            "relaunches the worker",
+            evidence=[
                 evidence("unknown-module", identity, "not in the task worktree's Specs")
                 for identity in unknown
             ],
-            host_escalation(
-                f"the assessment names unknown Modules: {', '.join(unknown)}",
-                options=[
-                    "run understand again with a clearer goal",
-                    "register the Module first if it should exist",
-                ],
-            ),
+            options=[
+                "run understand again with a clearer goal",
+                "register the Module first if it should exist",
+            ],
         )
     problems = inconsistencies(assessment, ctx.modules, bool(ctx.arguments.plan))
     if problems:
         ctx.output = None
-        return Stop(
+        return ctx.fail(
             "failed",
+            "inconsistent_assessment",
             "The assessment is inconsistent: " + "; ".join(problems) + ".",
-            [evidence("inconsistent-assessment", "", problem) for problem in problems],
-            host_escalation(
-                "inconsistent assessment: " + "; ".join(problems),
-                options=[
-                    "run understand again",
-                    "read the worker's answer in `worker`",
-                ],
-            ),
+            "the worker's assessment is inconsistent, so it is discarded: "
+            + "; ".join(problems),
+            reason="capability",
+            explanation="the host checks the worker's assessment but never corrects it or "
+            "relaunches the worker",
+            evidence=[
+                evidence("inconsistent-assessment", "", problem) for problem in problems
+            ],
+            options=["run understand again", "read the worker's answer in `worker`"],
         )
     verdict = "sufficient" if assessment["sufficient"] else "insufficient"
     return Continue(

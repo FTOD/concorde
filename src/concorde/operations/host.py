@@ -11,19 +11,20 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import secrets
 import signal
 import sys
-import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .. import errors
 from ..spec.schema import ContractError, validate
 from ..tasks import store
 from .catalog import CATALOG, provider
-from .provider import Continue, RunContext, Stop, evidence, host_escalation
+from .provider import Continue, RunContext, Stop, component, evidence
 
 RESULT_SCHEMA: dict = {
     "type": "object",
@@ -39,7 +40,7 @@ RESULT_SCHEMA: dict = {
         "worker",
         "worker_runs",
         "host_evidence",
-        "escalation",
+        "error",
         "started_at",
         "finished_at",
     ],
@@ -57,45 +58,39 @@ RESULT_SCHEMA: dict = {
         "worker": {"anyOf": [{"type": "null"}, {"type": "object"}]},
         "worker_runs": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "host_evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
-        "escalation": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/escalation"}]},
+        "error": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/error"}]},
         "started_at": {"type": "string", "minLength": 1},
         "finished_at": {"type": "string", "minLength": 1},
     },
-    "$defs": {
-        "evidence": {
-            "type": "object",
-            "additionalProperties": False,
-            "required": ["kind", "ref", "detail"],
-            "properties": {
-                "kind": {"type": "string", "minLength": 1},
-                "ref": {"type": "string"},
-                "detail": {"type": "string"},
-            },
-        },
-        "escalation": {
-            "type": "object",
-            "additionalProperties": False,
-            "required": [
-                "source",
-                "problem",
-                "attempts",
-                "options",
-                "recommendation",
-                "blocking",
-                "impact",
-            ],
-            "properties": {
-                "source": {"enum": ["worker", "host"]},
-                "problem": {"type": "string", "minLength": 1},
-                "attempts": {"type": "array", "items": {"type": "string"}},
-                "options": {"type": "array", "items": {"type": "string"}},
-                "recommendation": {"type": "string"},
-                "blocking": {"type": "boolean"},
-                "impact": {"type": "string"},
-            },
-        },
-    },
+    "$defs": copy.deepcopy(errors.DEFS),
 }
+
+# How the runner treats a refusal of Tasks before the run begins.
+REFUSALS = {
+    "task_busy": (
+        "decision",
+        "one task runs one Operation at a time; waiting for the running Operation or "
+        "cancelling it is the main agent's decision",
+        [
+            "wait for the running Operation to finish",
+            "cancel it, then run this one again",
+        ],
+    ),
+    "specs_unloadable": (
+        "scope",
+        "the Operation needs the task worktree's Specs to load and never repairs them",
+        [
+            "run validate for the task to see why the Specs do not load",
+            "repair the Specs by hand",
+        ],
+    ),
+}
+INPUT_REFUSAL = (
+    "input",
+    "the task, Modules or inputs named on the command line are refused and only the caller "
+    "can correct them",
+    ["correct the command line and run the Operation again"],
+)
 
 
 class Cancelled(Exception):
@@ -111,26 +106,36 @@ def run_id(operation: str) -> str:
     return f"r-{stamp}-{operation}-{secrets.token_hex(4)}"
 
 
-def parse(argv) -> tuple[argparse.Namespace, object] | None:
-    """The parsed command line and the provider, or None for a command-line error."""
+class UsageError(Exception):
+    """A malformed command line; no run is created."""
+
+
+class _Parser(argparse.ArgumentParser):
+    def error(self, message):
+        raise UsageError(f"{self.prog}: {message}")
+
+
+def parse(argv) -> tuple[argparse.Namespace, object]:
+    """The parsed command line and the provider; ``UsageError`` names what is wrong."""
     words = list(argv)
-    if not words or words[0] not in CATALOG:
-        return None
+    if not words:
+        raise UsageError("no Operation named")
+    if words[0] not in CATALOG:
+        raise UsageError(f"unknown Operation {words[0]!r}")
     name = words[0]
     try:
         chosen = provider(name)
-    except (ImportError, AttributeError):
-        return None
-    command = argparse.ArgumentParser(prog=f"concorde run {name}")
+    except (ImportError, AttributeError) as error:
+        raise UsageError(
+            f"the provider of {name} cannot be loaded: {errors.exception_detail(error)}"
+        ) from error
+    command = _Parser(prog=f"concorde run {name}")
     command.add_argument("--task", required=True)
     command.add_argument("--modules")
     command.add_argument("--input", action="append", default=[])
     if chosen.add_arguments:
         chosen.add_arguments(command)
-    try:
-        return command.parse_args(words[1:]), chosen
-    except SystemExit:
-        return None
+    return command.parse_args(words[1:]), chosen
 
 
 def _inputs(primary: Path, task: dict, requested: list[str]) -> dict[str, dict]:
@@ -139,10 +144,22 @@ def _inputs(primary: Path, task: dict, requested: list[str]) -> dict[str, dict]:
     for identity in requested:
         run = runs.get(identity)
         path = primary / ".concorde/runs" / identity / "result.json"
-        if run is None or run["status"] != "ok" or not path.is_file():
+        if run is None:
+            known = ", ".join(sorted(runs)) or "none"
             raise store.TaskError(
                 "input_not_admissible",
-                f"{identity} is not an ok run of task {task['id']}",
+                f"--input {identity} is not a run of task {task['id']} (its runs: {known})",
+            )
+        if run["status"] != "ok":
+            raise store.TaskError(
+                "input_not_admissible",
+                f"--input {identity} ({run['operation']}) ended {run['status']}; only an ok "
+                "run's output is admitted",
+            )
+        if not path.is_file():
+            raise store.TaskError(
+                "input_not_admissible",
+                f"--input {identity} has no saved result at {path}",
             )
         result = json.loads(path.read_text())
         admitted[identity] = {
@@ -152,17 +169,16 @@ def _inputs(primary: Path, task: dict, requested: list[str]) -> dict[str, dict]:
     return admitted
 
 
-def execute(argv, cwd: Path | None = None) -> tuple[int, dict | None]:
-    """Run one Operation; return the exit status and the envelope (None on a usage error)."""
-    parsed = parse(argv)
-    if parsed is None:
-        return 2, None
-    arguments, chosen = parsed
+def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
+    """Run one Operation; return the exit status and the envelope; ``UsageError`` otherwise."""
+    arguments, chosen = parse(argv)
     here = Path(os.path.realpath(cwd or Path.cwd()))
     try:
         primary = store.primary_of(here)
-    except Exception:  # noqa: BLE001 -- not a Git repository
-        return 2, None
+    except Exception as error:  # noqa: BLE001 -- not a Git repository
+        raise UsageError(
+            f"{here} is not inside a Git repository: {errors.exception_detail(error)}"
+        ) from None
     identity = run_id(chosen.name)
     run_dir = primary / ".concorde/runs" / identity
     run_dir.mkdir(parents=True)
@@ -210,20 +226,39 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict | None]:
             )
             begun = True
         except store.TaskError as refusal:
-            stop = Stop(
+            reason, explanation, options = REFUSALS.get(refusal.code, INPUT_REFUSAL)
+            stop = context.fail(
                 "failed",
-                f"The run was refused before it began: {refusal.code}.",
-                [evidence("refused", refusal.code, str(refusal))],
-                host_escalation(f"{refusal.code}: {refusal}"),
+                "refused",
+                f"The run was refused before it began: {refusal.code}: {refusal}",
+                f"{chosen.name} was refused before it began: {refusal.code}: {refusal}",
+                reason=reason,
+                explanation=explanation,
+                evidence=[evidence("refused", refusal.code, str(refusal))],
+                causes=[
+                    component(
+                        "Tasks",
+                        refusal.code,
+                        str(refusal),
+                        "input",
+                        "Tasks refuses a run whose task, Modules or state do not admit it",
+                    )
+                ],
+                options=options,
             )
         if stop is None:
             stop = _steps(chosen, context)
-    except Cancelled:
-        stop = Stop(
+    except Cancelled as cancelled:
+        stop = context.fail(
             "failed",
+            "cancelled",
             "The run was cancelled.",
-            [evidence("cancelled", "", "SIGINT or SIGTERM")],
-            host_escalation("the run was cancelled before it finished"),
+            f"{chosen.name} received {cancelled} before it finished; the worker processes it "
+            "started were ended",
+            reason="environment",
+            explanation="a signal from outside ended the run; the host does not resume it",
+            evidence=[evidence("cancelled", "", str(cancelled))],
+            options=["run the Operation again"],
         )
     finally:
         for sig, handler in previous.items():
@@ -240,7 +275,7 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict | None]:
 
 
 def _cancel(signum, frame):
-    raise Cancelled()
+    raise Cancelled(signal.Signals(signum).name)
 
 
 def _steps(chosen, context: RunContext) -> Stop | None:
@@ -250,21 +285,11 @@ def _steps(chosen, context: RunContext) -> Stop | None:
         except Cancelled:
             raise
         except Exception as error:  # noqa: BLE001 -- a step error is a failed result
-            trace = context.run_dir / "traceback.txt"
-            trace.write_text(traceback.format_exc())
-            return Stop(
-                "failed",
-                f"The step {step.__name__} raised {type(error).__name__}.",
-                [
-                    evidence(
-                        "host-error",
-                        step.__name__,
-                        f"{type(error).__name__}: {error}; traceback {trace}",
-                    )
-                ],
-                host_escalation(
-                    f"{step.__name__} raised {type(error).__name__}: {error}"
-                ),
+            return context.exception(
+                f"host step {step.__name__}",
+                error,
+                "host_error",
+                f"The step {step.__name__} raised {type(error).__name__}: {error}",
             )
         context.evidence.extend(outcome.evidence)
         if isinstance(outcome, Continue):
@@ -287,9 +312,16 @@ def _envelope(chosen, context: RunContext, stop: Stop | None, started: str) -> d
         if stop is not None
         else f"{chosen.name} finished for {', '.join(context.modules)}."
     )
-    escalation = None if status == "ok" else (stop.escalation if stop else None)
-    if status != "ok" and escalation is None:
-        escalation = host_escalation(summary)
+    error = None if status == "ok" else (stop.error if stop else None)
+    if status != "ok" and error is None:
+        error = context.fail(
+            status,
+            "missing_error",
+            summary,
+            f"the step that stopped the run with status {status} gave no error: {summary}",
+            reason="capability",
+            explanation="the host cannot reconstruct an error the step did not report",
+        ).error
     envelope = {
         "operation": chosen.name,
         "task": context.task.get("id", "?"),
@@ -301,7 +333,7 @@ def _envelope(chosen, context: RunContext, stop: Stop | None, started: str) -> d
         "worker": context.worker,
         "worker_runs": context.worker_runs,
         "host_evidence": evidence_list,
-        "escalation": escalation,
+        "error": error,
         "started_at": started,
         "finished_at": now(),
     }
@@ -309,27 +341,56 @@ def _envelope(chosen, context: RunContext, stop: Stop | None, started: str) -> d
         validate(envelope, RESULT_SCHEMA)
         if status == "ok" and chosen.output_schema is not None:
             validate(envelope["output"], chosen.output_schema)
-    except ContractError as error:
+    except ContractError as problem:
+        invalid = evidence("invalid-output", problem.field, str(problem))
+        envelope["host_evidence"].append(invalid)
         envelope.update(
             status="failed",
-            summary="The run produced an invalid result.",
+            summary=f"The run produced an invalid result: {problem}",
             output=None,
-            escalation=host_escalation(f"invalid result: {error}"),
+            error=context.fail(
+                "failed",
+                "invalid_result",
+                "invalid result",
+                f"the result of {chosen.name} does not satisfy the result contract or the "
+                f"provider's output contract: {problem}",
+                reason="capability",
+                explanation="the host never returns a result that breaks its contract and "
+                "cannot repair one",
+                evidence=[invalid],
+                causes=[error] if isinstance(error, dict) and "level" in error else [],
+                options=["report an Issue against the provider"],
+            ).error,
         )
-        envelope["host_evidence"].append(evidence("invalid-output", "", str(error)))
     return envelope
 
 
 def main(argv) -> int:
-    status, envelope = execute(argv)
-    if envelope is None:
+    try:
+        status, envelope = execute(argv)
+    except UsageError as error:
         sys.stderr.write(
-            "usage: concorde run <operation> --task <task-id> [--modules ids] "
-            f"[--input run-id]... ; operations: {', '.join(CATALOG)}\n"
+            f"concorde run: {error}\nusage: concorde run <operation> --task <task-id> "
+            f"[--modules ids] [--input run-id]... ; operations: {', '.join(CATALOG)}\n"
         )
         return 2
+    except Exception as error:  # noqa: BLE001 -- the runner itself failed; say exactly how
+        link = errors.from_exception(
+            "Operation runner (concorde run)",
+            error,
+            explanation="the runner failed outside every provider step, so no result could "
+            "be written",
+        )
+        sys.stderr.write("concorde run failed:\n" + errors.render(link) + "\n")
+        return 1
     sys.stdout.write(json.dumps(envelope, indent=2) + "\n")
+    if envelope["error"] is not None:
+        sys.stderr.write(
+            f"{envelope['operation']} ended {envelope['status']}: {envelope['summary']}\n"
+            + errors.render(envelope["error"])
+            + "\n"
+        )
     return status
 
 
-__all__ = ["RESULT_SCHEMA", "execute", "main"]
+__all__ = ["RESULT_SCHEMA", "UsageError", "execute", "main"]

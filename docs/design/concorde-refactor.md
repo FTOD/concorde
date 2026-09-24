@@ -483,6 +483,15 @@ bookkeeping.
 - **Main-session guidance** is installed as the project skill `.claude/skills/concorde/SKILL.md`
   and a delimited `CLAUDE.md` block; the installer places the runtime under `.concorde/framework/`
   and the command `.concorde/bin/concorde`, and `concorde init` proposes and applies a first Spec.
+- **Error chain.** Escalations became a structural error chain (`contract.concorde.error`, owned by
+  the root Module, `src/concorde/errors.py`). Every level that cannot handle an error adds one link
+  with its detailed account and one of seven reasons (`permission`, `decision`, `scope`,
+  `capability`, `exhausted`, `environment`, `input`) and keeps the errors it received as causes,
+  unchanged: checks, the worker (its result's `error`), the Workers harness (the run record's
+  `error`), the Operation (the result's `error`), deterministic components (Git, Tasks, Spec core,
+  the Claude Code process) and the main agent (`concorde task escalate`). Every `concorde task` and
+  `concorde issues` refusal is a link too. Spec tooling's own commands keep their findings format,
+  so that Spec tooling stays independent; the Operations turn findings into links.
 - **Verification.** Every scenario of every Module is declared by a test of its own Module;
   workers are faked for the host's behaviour, and `CONCORDE_LIVE_CLAUDE=1` runs a real Claude Code
   worker for what only Claude Code enforces. A live end-to-end run (`implement`, `validate`,

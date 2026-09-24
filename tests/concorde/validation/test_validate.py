@@ -90,10 +90,17 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
         readiness = envelope["output"]
         self.assertFalse(readiness["ready"])
-        # Every blocking reason is named, with its location, in the escalation.
-        problem = envelope["escalation"]["problem"]
-        for item in readiness["blocking"]:
-            self.assertIn(f"{item['kind']} {item['ref']}: {item['detail']}", problem)
+        # Every blocking reason is named, with its location, as a cause of the error.
+        error = envelope["error"]
+        self.assertEqual(
+            ("not_deliverable", "decision"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertEqual(len(readiness["blocking"]), len(error["causes"]))
+        for item, cause in zip(readiness["blocking"], error["causes"]):
+            self.assertIn(item["ref"], cause["detail"] + cause["actor"])
+        check = next(cause for cause in error["causes"] if cause["level"] == "check")
+        self.assertIn("exit code 1", check["detail"])
         self.assertIn("Not deliverable: 3 blocking finding(s)", envelope["summary"])
         kinds = {item["kind"] for item in readiness["blocking"]}
         self.assertEqual(
@@ -127,7 +134,9 @@ class ValidateTests(unittest.TestCase):
         readiness = envelope["output"]
         self.assertFalse(readiness["ready"])
         [load] = [item for item in readiness["blocking"] if item["kind"] == "load"]
-        self.assertIn(load["detail"], envelope["escalation"]["problem"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual(("component", "load_finding"), (cause["level"], cause["code"]))
+        self.assertIn(load["detail"], cause["detail"])
         self.assertTrue(load["detail"])
         self.assertEqual(readiness["checks"], [])
 
@@ -192,9 +201,15 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual((status, envelope["status"]), (1, "failed"))
         self.assertIsNone(envelope["output"])
         self.assertEqual(
-            [item["ref"] for item in evidence_of(envelope, "check")],
+            [item["ref"] for item in evidence_of(envelope, "checks_unavailable")],
             ["check_sandbox_unavailable"],
         )
+        error = envelope["error"]
+        self.assertEqual(
+            ("checks_unavailable", "environment"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertIn("no namespaces here", error["causes"][0]["detail"])
 
 
 class SharedFileTests(unittest.TestCase):

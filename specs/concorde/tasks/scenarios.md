@@ -117,3 +117,13 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN a merged or abandoned task
 - WHEN the host begins a run for it
 - THEN the update fails with `task_closed`
+
+## Escalation
+
+### scenario.tasks.escalate — The main agent adds its link when it escalates
+
+- GIVEN a task with an Operation run that ended with an error the main agent cannot decide
+- WHEN the main agent runs `concorde task escalate` naming that run with its own code, detail, reason and options
+- THEN the printed chain's top link has the level `main-agent` and the run's error, unchanged, as its cause
+- AND the chain is appended to the task record's escalations and to the decision log, rendered and as JSON
+- BUT an escalation that names no run and no file is refused with `nothing_to_escalate` and records nothing

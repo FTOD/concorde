@@ -75,11 +75,15 @@ exact shape is the [evidence bundle contract](contracts.md#contract.delivery.evi
 The result status is `blocked` when the main agent has to act first: no `validate` run yet, or a
 latest `validate` run that produced no readiness (`no_readiness`), a latest readiness that is not
 ready (`not_ready`), a worktree that changed since (`stale_readiness`), or nothing left to commit
-(`nothing_to_deliver`). The code is the `ref` of a `readiness` host evidence entry, or of a `git`
-entry for `nothing_to_deliver`. In each case Delivery writes nothing, and the usual answer is to fix
-the findings or run `validate` again. The status is `failed` when the worktree is not on the task
+(`nothing_to_deliver`). The code is the code of the result's
+[error chain](../../vocabulary.md#concept.concorde.error-chain), with the reason `decision`, and the
+`ref` of a `readiness` host evidence entry, or of a `git` entry for `nothing_to_deliver`. For
+`not_ready` and `no_readiness` the latest `validate` run's own error chain is the cause, so the main
+agent reads every blocking finding with its details without opening that run. In each case Delivery
+writes nothing, and the usual answer is to fix the findings or run `validate` again. The status is `failed` when the worktree is not on the task
 branch, the confirmations cannot be applied, or Git refuses the commit, for example because of a
-hook or a missing author identity; the hook's output is then `git` host evidence and the worktree
+hook or a missing author identity; the hook's output is then `git` host evidence and the cause of
+the error, a `component` link of the Git command with its exit status and output, and the worktree
 is left as it was validated. If a delivery commit was made but could not be recorded in the task
 record, the next `delivery` run finds it at the head of the branch and records it instead of
 committing again.

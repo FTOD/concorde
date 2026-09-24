@@ -104,6 +104,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a configured check that fails after every round
 - WHEN the configured number of resume rounds has been used
 - THEN the run ends `failed` with `checks_failed` and the last check results
+- AND its error gives `exhausted` as the reason, lists each round's failing checks as attempts and has one cause per failing check with its exit code and the end of its log
 - BUT no further round is started
 
 ### scenario.workers.blocked-not-resumed — A blocked worker goes to the main agent
@@ -112,6 +113,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the host finishes the round
 - THEN the audit still runs
 - BUT no configured check runs, no resume round follows, and the run ends `blocked` with the worker result verbatim
+- AND the run's error is the harness's `worker_blocked` link whose one cause is the worker's own error, unchanged, with the level `worker`
 
 ## Host failures
 
@@ -126,5 +128,13 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a worker that exits without a structured result that satisfies the worker result schema
 - WHEN the host reads its output
-- THEN the run ends `failed` with `worker_result_invalid`
+- THEN the run ends `failed` with `worker_result_invalid` and the schema violation or the worker's final text in its error
 - AND the stderr tail and transcript path are in the run record
+- AND a `blocked` or `failed` result without an error, or an `ok` result with one, is invalid too
+
+### scenario.workers.claude-error — An error of Claude Code itself is reported with its cause
+
+- GIVEN a worker whose Claude Code session ends with an error subtype, such as the turn limit, instead of a structured result
+- WHEN the host reads its output
+- THEN the run ends `failed` with `worker_limit_reached` for a turn or budget limit and `claude_failed` otherwise
+- AND the error's cause is the Claude Code process's link with the subtype, the turn count, the cost, the final text and the tail of standard error

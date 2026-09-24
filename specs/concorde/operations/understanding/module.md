@@ -23,7 +23,7 @@ the plan is a proposal the main agent may follow, change or reject.
 | [Task type](../../vocabulary.md#concept.concorde.task-type) | |
 | [Spec context](../../vocabulary.md#concept.concorde.spec-context) | |
 | [Implementation context](../../vocabulary.md#concept.concorde.implementation-context) | |
-| [Escalation](../../vocabulary.md#concept.concorde.escalation) | |
+| [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 | [Operation](../module.md#concept.operations.operation) | |
 | [Operation host](../module.md#concept.operations.host) | |
 | [Operation result](../module.md#concept.operations.result) | |
@@ -74,12 +74,16 @@ carries no plan. The usual next step is a `specify` run that closes the gaps, fo
 The result status is `ok` whenever the worker completed an assessment, sufficient or not; the
 `sufficient` field tells whether work may proceed. It is `blocked` when the worker could not assess
 the goal at all, for example because the goal is ambiguous or concerns Modules that were not bound,
-and the result then carries the worker's [escalation](../../vocabulary.md#concept.concorde.escalation).
+and the result's [error chain](../../vocabulary.md#concept.concorde.error-chain) then ends in the
+worker's own link, with what it tried, why it could not assess and the Modules it would need.
 It is `failed` when the host could not run the worker, the worker changed a file, or the assessment
 names a Module that does not exist or is inconsistent: gaps listed although it is sufficient or
 missing although it is not, a plan that was not requested or follows an insufficient Spec, no plan
-although one was requested for a sufficient Spec, or no entry for a bound Module. A failed or
-blocked result carries no `output`; the worker's own answer stays in the `worker` field. Running the Operation again with the same inputs is safe: it
+although one was requested for a sufficient Spec, or no entry for a bound Module. The Operation's
+own link then has the code `unknown_modules` or `inconsistent_assessment`, lists every unknown
+Module or every inconsistency, and gives `capability` as its reason: the host checks the
+assessment but never corrects it or relaunches the worker. A failed or blocked result carries no
+`output`; the worker's own answer stays in the `worker` field. Running the Operation again with the same inputs is safe: it
 changes nothing and produces a fresh assessment.
 
 ## Design

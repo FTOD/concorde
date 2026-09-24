@@ -41,16 +41,21 @@ second status for the same finding is ignored, and a finding without a status ke
 
 ## Result status
 
-| Verdict | Status | Escalation |
+| Verdict | Status | Error |
 | --- | --- | --- |
 | `accepted` or `changes_required` | `ok` | none |
-| `incomplete`, and some incomplete Module failed: a worker failed, a launch error, a timeout, an invalid result, an audit violation or a grant that could not be computed | `failed` | that of the first incomplete Module |
-| `incomplete` otherwise: a structural error or a `blocked` worker | `blocked` | that of the first incomplete Module |
+| `incomplete`, and some incomplete Module failed: a worker failed, a launch error, a timeout, an invalid result, an audit violation or a grant that could not be computed | `failed` | `review_incomplete`, one cause per incomplete Module |
+| `incomplete` otherwise: a structural error or a `blocked` worker | `blocked` | `review_incomplete`, one cause per incomplete Module |
 
 A loading error in step 1 is `failed` with no output. In every other case the result's `output` is
 the review payload, including for `blocked` and `failed`, so the findings of the Modules that were
-reviewed are never lost. The escalation of an incomplete Module is the worker's own when its worker
-ended `blocked` or `failed`, and the host's otherwise; the summary names every incomplete Module and
+reviewed are never lost. The result's error is the Operation's `review_incomplete` link with the
+reason `decision`; its causes are the error of every incomplete Module, in the order of the
+Modules, never only the first. The error of an incomplete Module is the Operation's link for that
+Module, whose actor names the Module: for a worker run it has the Workers harness's link, and below
+it the worker's own when the worker ended `blocked` or `failed`, as its cause; for a structural
+error it is `structural_errors` with one cause per failing rule, file and message; for an unknown
+Module it is `unknown_module`. The summary names every incomplete Module with its own summary and
 counts the blocking findings that stand. The `worker` field holds the last worker result.
 
 ## Reviewer result

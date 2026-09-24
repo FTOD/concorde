@@ -10,9 +10,12 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
+from concorde.errors import ERROR_SCHEMA, codes
+from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
 from tests.concorde.support.operation_project import OperationProject, commit
+from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 def git(root, *arguments):
@@ -94,7 +97,71 @@ class TaskStoreTests(unittest.TestCase):
 
     def refusal(self, *argv, cwd=None):
         status, value = self.command(*argv, cwd=cwd)
-        return status, value["error"]
+        validate(value["error"], ERROR_SCHEMA)
+        self.assertEqual("component", value["error"]["level"])
+        return status, value["error"]["code"]
+
+    @verifies("scenario.tasks.escalate")
+    def test_the_main_agent_adds_its_link_when_it_escalates(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        _, failed = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan(
+                [{"writes": {f"{worktree}/src/bmod/secret.py": "SECRET = 2\n"}}]
+            ),
+        )
+        status, value = self.command(
+            "escalate",
+            "t1",
+            "--run",
+            failed["run_id"],
+            "--code",
+            "grant_decision",
+            "--detail",
+            "the change needs src/bmod/secret.py, which module.a does not bind",
+            "--reason",
+            "decision",
+            "--explanation",
+            "binding module.b changes what the task may touch; the developer decides",
+            "--option",
+            "bind module.b",
+        )
+        self.assertEqual(0, status, value)
+        link = value["escalated"]
+        validate(link, ERROR_SCHEMA)
+        self.assertEqual(
+            ("main-agent", "grant_decision"), (link["level"], link["code"])
+        )
+        self.assertEqual(
+            ["grant_decision", "audit_violation", "audit_violation"], codes(link)[:3]
+        )
+        self.assertEqual(link, self.record()["escalations"][-1]["error"])
+        text = (REPOSITORY_ROOT / "specs/concorde/tasks/contracts.md").read_text()
+        contract = json.loads(
+            text.split("```concorde-contract\n", 1)[1].split("```")[0]
+        )
+        validate(self.record(), contract["schema"])
+        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        self.assertIn("Escalated to the developer", log)
+        self.assertIn("Not handled here (decision)", log)
+        self.assertIn("src/bmod/secret.py", value["rendered"])
+        status, value = self.command(
+            "escalate",
+            "t1",
+            "--code",
+            "x",
+            "--detail",
+            "x",
+            "--reason",
+            "decision",
+            "--explanation",
+            "x",
+        )
+        self.assertEqual((1, "nothing_to_escalate"), (status, value["error"]["code"]))
 
     @verifies("scenario.tasks.open-unknown-module")
     def test_an_unknown_module_is_refused(self):

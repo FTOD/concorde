@@ -26,9 +26,10 @@ from ..operations.provider import (
     Provider,
     RunContext,
     Stop,
+    component,
     evidence,
-    host_escalation,
     load_prompt,
+    spec_finding,
 )
 
 MODULE_ID = {"type": "string", "pattern": "^module\\."}
@@ -232,16 +233,28 @@ def baseline(ctx: RunContext):
             }
         )
     except (SpecError, OSError, ValueError) as error:
-        return Stop(
+        code = getattr(error, "code", None) or "specs_unloadable"
+        return ctx.fail(
             "failed",
+            "specs_unloadable",
             "The task worktree's Specs could not be loaded for the baseline.",
-            [evidence("spec-load", ctx.worktree.as_posix(), str(error))],
-            host_escalation(
-                f"the Specs cannot be loaded: {error}",
-                options=[
-                    "repair the configuration, registry or Protocol binding by hand"
-                ],
-            ),
+            f"the Specs of {ctx.worktree} could not be loaded before the change: {code}: "
+            f"{error}",
+            reason="scope",
+            explanation="a specify worker edits Spec documents under a grant computed from "
+            "loadable Specs; repairing the configuration, registry or Protocol binding is "
+            "outside what specify may change",
+            evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
+            causes=[
+                component(
+                    "Spec core",
+                    code,
+                    str(error),
+                    "input",
+                    "Specs that do not load cannot be validated or granted",
+                )
+            ],
+            options=["repair the configuration, registry or Protocol binding by hand"],
         )
     errors = {key(f) for f in result.findings if f.severity == "error"}
     current.baseline_errors = errors
@@ -423,7 +436,7 @@ def observe(ctx: RunContext):
             current.stop.status,
             current.stop.summary,
             found,
-            current.stop.escalation,
+            current.stop.error,
         )
     new = current.validation["new_errors"]
     if new:
@@ -431,20 +444,32 @@ def observe(ctx: RunContext):
         listing = "; ".join(
             f"{item['rule_id']} {item['path'] or ''}: {item['message']}" for item in new
         )
-        return Stop(
+        return ctx.fail(
             "blocked",
+            "new_structural_errors",
             f"The change introduced {len(new)} structural error(s); the edits stay in the task "
             "worktree.",
-            found,
-            host_escalation(
-                f"the Spec change introduced structural errors: {listing}",
-                options=[
-                    "repair the documents by hand",
-                    "run specify again with a corrected intent",
-                    "discard the edits",
-                ],
-                impact="the task's Specs do not validate until the new errors are repaired",
-            ),
+            f"after the worker's change the task's Specs have {len(new)} new structural "
+            f"error(s), so they do not validate until these are repaired: {listing}",
+            reason="decision",
+            explanation="specify runs its worker once and never repairs a Spec automatically; "
+            "whether to repair, rerun or discard the edits is the main agent's decision",
+            evidence=found,
+            causes=[
+                spec_finding(
+                    item["rule_id"],
+                    item["path"],
+                    None,
+                    item["message"],
+                    "validation diagnoses the Specs; it does not change them",
+                )
+                for item in new
+            ],
+            options=[
+                "repair the documents by hand",
+                "run specify again with a corrected intent",
+                "discard the edits",
+            ],
         )
     return Continue(output=output, evidence=found)
 

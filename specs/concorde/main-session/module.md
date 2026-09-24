@@ -20,7 +20,7 @@ Distribution renders and installs it.
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
-| [Escalation](../vocabulary.md#concept.concorde.escalation) | |
+| [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
 | [Task](../tasks/module.md#concept.tasks.task) | |
 | [Decision log](../tasks/module.md#concept.tasks.decision-log) | |
 | [Operation](../operations/module.md#concept.operations.operation) | |
@@ -72,16 +72,23 @@ schedule open.
 
 <a id="concept.main-session.escalation-policy"></a>
 
-**When to ask the developer.** The **escalation policy** turns an
-[escalation](../vocabulary.md#concept.concorde.escalation) from an Operation into either a decision
-or a question. The main agent decides design uncertainties of ordinary scope itself, such as
+**Reading an error.** Every Operation result that is not `ok`, and every refusal of a `concorde`
+command, carries an [error chain](../vocabulary.md#concept.concorde.error-chain). The guidance tells
+the main agent to read the whole chain before deciding: the origin says what went wrong, and each
+link's reason says why the level that wrote it could not handle the error, which points at the
+level that can.
+
+**When to ask the developer.** The **escalation policy** turns an error chain from an Operation
+into either a decision or a question. The main agent decides design uncertainties of ordinary scope itself, such as
 naming, internal structure, the order of tasks, re-running an Operation with a clarified brief or
 splitting a task, records the decision and reports it at the end. It asks the developer before
 acting only when a decision has a major impact: it changes what a Module promises to its users or
 the project's direction, contradicts an earlier decision of the developer, discards work or data,
 cannot be undone by an ordinary revert, touches security or credentials, or needs resources beyond
 what the developer set. When in doubt between the two, the main agent records its reasoning and
-asks.
+asks. When it asks, it never replaces the chain with its own summary: it escalates with
+`concorde task escalate`, which adds its own link, with the reason it may not decide, on top of the
+chain, records it in the task and prints it rendered for the developer.
 
 **Issues.** A problem that the current task will not fix, such as a Spec gap a worker reported
 about another Module, is worth an [Issue](../issues/module.md#concept.issues.issue) so that it
@@ -145,7 +152,7 @@ it, and the installed skill and `CLAUDE.md` block are the only way it reaches a 
 
 **Operations** provides the [Operation](../operations/module.md#concept.operations.operation)
 catalog and `concorde run`. The guidance relies on every Operation returning an
-[Operation result](../operations/module.md#concept.operations.result) whose status, escalation and
+[Operation result](../operations/module.md#concept.operations.result) whose status, error chain and
 evidence the main agent can read without inspecting the worker, and on no Operation starting the
 next one: choosing what runs next is the main agent's duty.
 

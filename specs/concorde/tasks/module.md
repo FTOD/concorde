@@ -16,13 +16,13 @@ commits or merges, and never interprets the decision log; the main agent does al
 | Term | Definition |
 | --- | --- |
 | Task | One unit of work of the main agent, made of a branch, a worktree checked out on it, a task record and a decision log. |
-| Task record | The JSON file in the primary worktree that holds a task's identity, goal, Modules, branch, worktree path, base commit, state, Operation runs and deliveries. |
-| Decision log | The Markdown file next to a task record in which the main agent writes the choices it made without the developer and the escalations it raised. |
+| Task record | The JSON file in the primary worktree that holds a task's identity, goal, Modules, branch, worktree path, base commit, state, Operation runs, deliveries and the error chains escalated to the developer. |
+| Decision log | The Markdown file next to a task record in which the main agent writes the choices it made without the developer, and to which its escalations are appended. |
 | Task state | The stage of a task's life: open, active, delivered, merged or abandoned. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
 | [Module](../vocabulary.md#concept.concorde.module) | |
-| [Escalation](../vocabulary.md#concept.concorde.escalation) | |
+| [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
 | [File transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction) | |
 | [Registry](../spec-tooling/spec/module.md#concept.spec.registry) | |
 
@@ -68,11 +68,20 @@ starts.
 <a id="concept.tasks.decision-log"></a>
 
 The **decision log** lives at `.concorde/tasks/<task-id>.decisions.md`. Tasks creates it with a
-heading and the goal when the task opens and never touches it again. The main agent appends to it
-directly: every design uncertainty it decided on its own, with the options and the reason, every
-Operation result that was not `ok` and what it did about it, and every
-[escalation](../vocabulary.md#concept.concorde.escalation) it raised with the developer. It is the
-place the main agent reads from when it reports to the developer at the end of the task.
+heading and the goal when the task opens and otherwise only appends escalations to it. The main
+agent appends to it directly: every design uncertainty it decided on its own, with the options and
+the reason, and every Operation result that was not `ok` and what it did about it. It is the place
+the main agent reads from when it reports to the developer at the end of the task.
+
+When the main agent cannot handle an error itself and asks the developer, it escalates with
+`concorde task escalate`: it names the runs, or the saved refusals of other commands, whose errors
+it cannot handle, and states its own link of the
+[error chain](../vocabulary.md#concept.concorde.error-chain): a code, the detail of what it needs
+decided, the reason it may not decide it itself, what it tried, the options and its
+recommendation. Tasks puts those errors unchanged under that link as its causes, appends the chain
+to the task record's escalations and to the decision log, rendered for a human and as JSON, and
+prints it, so the developer reads one chain from the main agent's question down to where the error
+started.
 
 <a id="concept.tasks.task-state"></a>
 
@@ -105,9 +114,11 @@ abandoned tasks accept no further Operation run.
 
 Only the main agent opens and closes tasks, and only from the primary worktree: the commands refuse
 to run in a linked worktree (`not_primary`). A [worker](../vocabulary.md#concept.concorde.worker)
-cannot run them at all, because it has no access to Git. Every refusal names its reason, such as
-`task_exists`, `unknown_module`, `invalid_transition` or `not_merged`, and changes nothing. The
-command outputs and error codes are in the [contracts](contracts.md).
+cannot run them at all, because it has no access to Git. Every refusal is an error link that names
+its code, such as `task_exists`, `unknown_module`, `invalid_transition` or `not_merged`, what
+exactly was refused with the concerned task, Module, path or Git output, and why Tasks cannot handle
+it; a refusal changes nothing. The command outputs and error codes are in the
+[contracts](contracts.md).
 
 ## Design
 

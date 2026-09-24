@@ -73,16 +73,21 @@ configuration, all combined into one input digest. Any later change to the workt
 digest, and Delivery then refuses the readiness as stale; the main agent runs `validate` again.
 
 The result status is `ok` when the task is ready. When it is not, the status is `blocked`: the
-summary starts with `Not deliverable:` and the count of blocking findings, and the summary, the
-host escalation and one `blocking` host evidence entry per finding each name every finding by its
-kind, location and message, so the main agent learns everything that stands between the task and
-delivery from the result itself. The readiness is the output in both cases; the main agent fixes
+summary starts with `Not deliverable:` and the count of blocking findings, and the summary and one
+`blocking` host evidence entry per finding name every finding by its kind, location and message.
+The result's [error chain](../../vocabulary.md#concept.concorde.error-chain) is the Operation's
+`not_deliverable` link, with the reason `decision` because validate only diagnoses, and one cause
+per blocking finding: a `check` link with the check's exit code and the end of its log for a
+failing check, and a `component` link naming the rule, the location and the message for a load,
+structural or unbound finding. So the main agent learns everything that stands between the task
+and delivery from the result itself. The readiness is the output in both cases; the main agent fixes
 the findings, typically with another `implement`, a `specify`, or by regenerating a stale registry
-mirror in the task worktree. The status is `failed` when no trustworthy readiness exists, and a host evidence entry names the
-reason in its `ref`: `git` evidence `wrong_branch` when the worktree is not on the task branch,
-`git` evidence with the Git error when Git cannot report the changes, `check` evidence
-`check_sandbox_unavailable` when the check sandbox is unavailable, and `readiness` evidence
-`inputs_changed` when the worktree changed while the checks ran. Running `validate` again on an
+mirror in the task worktree. The status is `failed` when no trustworthy readiness exists, and the error's code names the
+reason: `wrong_branch` (reason `permission`, since Operations never switch branches) when the
+worktree is not on the task branch, `measurement_failed` with the Git error as its cause when Git
+cannot report the changes, `checks_unavailable` with Check execution's error as its cause when the
+check sandbox is unavailable, and `inputs_changed` when the worktree changed while the checks ran;
+a host evidence entry with the same code accompanies each. Running `validate` again on an
 unchanged worktree gives the same readiness with fresh check results.
 
 ## Design

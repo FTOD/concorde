@@ -26,15 +26,33 @@ A worker's readable and writable paths SHALL NOT exceed what its task type assig
 
 A worker SHALL NOT be able to read or change Git metadata; diffs, commits and merges belong to the host and the main agent.
 
-## Results and problems
+## Results and errors
 
-### req.concorde.escalation-evidence — A problem travels up with its evidence
+### req.concorde.detailed-errors — Errors are reported in detail
 
-Every Operation result that is not successful SHALL carry the problem, the evidence the host produced and the worker's own report kept apart.
+Every Operation, worker, host step, `concorde` command and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
+
+A status, a code or a one-line summary alone is never the whole report. The parent must be able to reason about the error from the link without asking the actor that wrote it.
+
+### req.concorde.error-chain — An unhandled error keeps its chain
+
+An actor that cannot handle an error it received from a child SHALL pass the child's error on unchanged as a cause of its own link, which states the reason the actor cannot handle the error.
+
+The reasons are the fixed set of the [error contract](contracts.md#contract.concorde.error). The last receiver thereby reads one reason per level, from where the error started up to itself. Independent errors, such as several failing checks, are sibling causes.
+
+### req.concorde.structured-errors — The chain is structured data
+
+Every error link SHALL conform to the error contract wherever it appears: in an Operation result, a worker run record, a worker result, a refusal of a `concorde` command and an escalation of the main agent.
+
+### req.concorde.claims-apart — Host evidence and worker claims stay apart
+
+Every Operation result that is not successful SHALL keep the evidence the host produced apart from the worker's own report.
+
+The worker's link in the chain is marked with the level `worker`; the host never moves a worker's statement into its own links or its host evidence.
 
 ### req.concorde.spec-gaps-stop — Automatic rounds never repair Specs
 
-An Operation SHALL stop and return an escalation instead of resuming a worker when the failure is a Spec gap, a needed path outside the grant, or a failed structural Spec check.
+An Operation SHALL stop and return its error chain instead of resuming a worker when the failure is a Spec gap, a needed path outside the grant, or a failed structural Spec check.
 
 Only failures of configured checks against code are fed back to the same worker automatically.
 

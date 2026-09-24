@@ -3,7 +3,8 @@
 The test puts a plan in the worker instructions as ``FAKE-PLAN: <json>``: a list of rounds, each
 with ``writes`` (absolute path to content), ``result`` (the structured output, merged over a valid
 ``ok`` result), and optional ``sleep``, ``spawn`` (start a detached sleeper that records its PID),
-``raw`` (print this instead of an envelope) or ``no_structured`` (omit the structured output).
+``raw`` (print this instead of an envelope), ``envelope`` (fields merged over the result envelope,
+such as an error subtype) or ``no_structured`` (omit the structured output).
 The fake records its argument list, environment and prompt per round in its working directory. It
 does not enforce anything: enforcement is Claude Code's and is covered by the live test.
 """
@@ -19,15 +20,23 @@ from pathlib import Path
 BASE = {
     "status": "ok",
     "summary": "done",
-    "problem": "",
-    "attempts": [],
-    "evidence": [],
-    "options": [],
-    "recommendation": "",
-    "blocking": False,
-    "impact": "",
+    "error": None,
     "proposed_deletions": [],
     "output": {},
+}
+
+# A worker error for plans that end blocked or failed without spelling one out.
+ERROR = {
+    "code": "spec_gap",
+    "detail": "the rounding rule is not specified",
+    "evidence": [{"kind": "spec", "ref": "specs/a/module.md", "detail": "no rule"}],
+    "attempts": ["read specs/a/module.md"],
+    "unhandled": {
+        "reason": "decision",
+        "explanation": "what the Spec promises is decided above the worker",
+    },
+    "options": ["specify the rounding rule"],
+    "recommendation": "specify the rounding rule",
 }
 
 
@@ -65,8 +74,14 @@ def main() -> int:
         "session_id": f"fake-session-{number}",
         "result": "",
     }
+    envelope.update(step.get("envelope", {}))
     if not step.get("no_structured"):
-        envelope["structured_output"] = {**BASE, **step.get("result", {})}
+        result = {**BASE, **step.get("result", {})}
+        if result["status"] in ("blocked", "failed") and "error" not in step.get(
+            "result", {}
+        ):
+            result["error"] = ERROR
+        envelope["structured_output"] = result
     print(json.dumps(envelope))
     return 0
 

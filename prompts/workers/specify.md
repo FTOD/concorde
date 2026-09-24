@@ -45,3 +45,5 @@ promise another Module relies on, it needs a document of a Module you are not bo
 a new document. Name the other Module or the document, what you tried and the options you see.
 Leave any edits you already made consistent, and still fill `output` (with an empty list where
 nothing applies).
+
+@prompts/workers/common/errors.md

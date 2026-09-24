@@ -85,10 +85,10 @@
       "meaning": "#concept.concorde.evidence"
     },
     {
-      "id": "concept.concorde.escalation",
+      "id": "concept.concorde.error-chain",
       "type": "concept",
-      "title": "Escalation",
-      "meaning": "#concept.concorde.escalation"
+      "title": "Error chain",
+      "meaning": "#concept.concorde.error-chain"
     }
   ],
   "relations": []

@@ -49,3 +49,5 @@ host derives the verdict from your findings.
 
 Return `blocked` only when you cannot judge the change at all, for example when every changed path
 lies outside your boundary. Still fill `output` with the findings you could establish.
+
+@prompts/workers/common/errors.md

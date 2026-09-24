@@ -22,11 +22,11 @@ Concorde is new to you.
 | Task context | The material produced for one task, namely its brief, constraints and admitted artifacts, which adds no Spec or code source. |
 | Boundary | The read and write limits one task receives, fixed by its task type and its bound Modules. |
 | Evidence | A recorded check or review result, bound to the exact inputs it examined. |
-| Escalation | A structured report of a problem one tier cannot resolve, with its evidence and options, passed to the tier above. |
+| Error chain | The structured report of an error that travels up: one link per level that could not handle it, each with its detailed account and its reason for not handling it, and the errors it received from below nested as its causes. |
 
 The words fall into four groups: who works (developer, main agent, worker), what is described
 (Module, Spec), what a worker may know and do (task type, context and its four kinds, boundary),
-and how results and problems travel (evidence, escalation).
+and how results and problems travel (evidence, error chain).
 
 ## The people and agents
 
@@ -115,11 +115,17 @@ explained by the [Harness](harness/module.md).
 those inputs change, the evidence no longer applies; it is never a permanent property of a Module,
 and a Spec never stores it.
 
-<a id="concept.concorde.escalation"></a>
+<a id="concept.concorde.error-chain"></a>
 
-An **escalation** is how a problem travels up. A worker that cannot finish returns a structured
-result that names the problem, what it tried, its evidence, the options it sees and its
-recommendation. The Operation host adds the evidence it produced itself, such as audit findings and
-check output, and never turns a worker's claim into a fact. The main agent decides what it can,
-records the decision in the task's decision log, and escalates to the developer only when the
-impact is major.
+An **error chain** is how a problem travels up. Every actor that meets an error it cannot handle
+reports it to its parent as one **link**: which actor it is, a code, a complete description of what
+went wrong with its evidence, what it tried, the options it sees, and why it could not handle the
+error itself, for example because the fix needs a permission it lacks or a decision reserved to a
+level above. The errors it received from below and could not handle become the causes of its link,
+unchanged; it never replaces them with its own summary. Checks, workers, the Workers harness,
+Operations, deterministic components such as Git or the Spec core, and the main agent all write
+links, so the last receiver, the main agent or the developer, reads the whole path from where the
+error started up to itself, with every level's reason. A worker's link is its own claim; the host's
+links state what the host observed. The main agent decides what it can, records the decision in
+the task's decision log, and when it escalates to the developer it adds its own link on top of the
+chain. The exact shape is the [error contract](contracts.md#contract.concorde.error).

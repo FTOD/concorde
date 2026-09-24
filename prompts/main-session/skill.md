@@ -62,10 +62,19 @@ directly.
 
 ## Read results
 
-Exit status 0 means `ok`, 1 means `blocked` or `failed`, 2 means the command line was wrong. In a
-result, `host_evidence` holds facts the host observed itself (grant, audit, checks, rounds);
-`worker` holds the worker's own claims; `escalation` says what went wrong, who raised it (`host`
-or `worker`), what was tried, the options and a recommendation. Trust evidence over claims.
+Exit status 0 means `ok`, 1 means `blocked` or `failed`, 2 means the command line was wrong (the
+reason is on standard error). In a result, `host_evidence` holds facts the host observed itself
+(grant, audit, checks, rounds); `worker` holds the worker's own claims. Trust evidence over claims.
+
+Every result that is not `ok` carries an **error chain** in `error`. Each link is one level's own
+account: its `level` and `actor`, a `code`, the full `detail`, its `evidence` and `attempts`, the
+`options` and `recommendation` it offers, why it could not handle the error itself
+(`unhandled.reason` and `explanation`), and the errors it received from below as `causes`. The top
+link is the Operation's; below it come the worker run, the worker's own report, the failing
+checks, Git or Spec findings, down to where the error started. Read the whole chain before
+deciding: the origin tells you what went wrong, and each `unhandled` tells you why nobody below
+could fix it. Standard error shows the same chain as indented text. Every other `concorde` command
+refuses with `{"error": <link>}` in the same shape.
 
 ## Keep the decision log
 
@@ -83,8 +92,21 @@ Ask the developer before acting only when a decision has a major impact: it chan
 promises to its users or the project's direction, contradicts an earlier decision of the
 developer, discards work or data, cannot be undone by an ordinary revert, touches security or
 credentials, or needs resources beyond what the developer set. When in doubt, record your
-reasoning and ask. When you ask, pass the escalation on in full: the problem, what was tried, the
-evidence, the options and your recommendation.
+reasoning and ask.
+
+When you cannot handle an error yourself, never replace the chain with your own summary: add your
+link on top of it and pass all of it on.
+
+```bash
+concorde task escalate <task> --run <run-id> [--run <run-id>…] [--error-file <json>…] \
+  --code <snake_case> --detail "<what you need decided, and what you already know>" \
+  --reason decision --explanation "<why you may not decide this yourself>" \
+  [--attempt "<what you tried>"…] [--option "<choice>"…] [--recommendation "<yours>"]
+```
+
+It records your link, with the named runs' chains (or the errors saved from other commands) as
+its causes, in the task record and the decision log, and prints the chain rendered for the
+developer. Show the developer that rendered chain, with your question, instead of a paraphrase.
 
 ## Merge delivered work
 

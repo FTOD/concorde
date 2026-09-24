@@ -41,7 +41,7 @@ The implement host SHALL resume the worker only to repair configured checks that
 preceding round.
 
 A worker result of `blocked` or `failed`, including one that reports a Spec gap, ends the run with
-that status and the worker's escalation.
+that status and an error chain that ends in the worker's own link.
 
 ### req.implementation.round-limit — Resume rounds are bounded
 

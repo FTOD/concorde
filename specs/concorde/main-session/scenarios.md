@@ -41,7 +41,13 @@ check the rendered guidance against them are pending.
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to handle a result whose options would change what a Module promises to its users
 - THEN it is told to ask the developer before acting
-- AND to pass the escalation on in full: the problem, what was tried, the evidence, the options and a recommendation
+- AND to escalate with `concorde task escalate`, adding its own link on top of the error chain instead of replacing it with a summary
+
+### scenario.main-session.read-error-chain — The guidance reads the whole error chain
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to handle a result that is not `ok`
+- THEN it is told that the result carries an error chain in `error`, what each link holds, and to read the whole chain before deciding
 
 ## Issues
 

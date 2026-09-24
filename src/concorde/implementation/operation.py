@@ -25,7 +25,6 @@ from ..operations.provider import (
     RunContext,
     Stop,
     evidence,
-    host_escalation,
     load_prompt,
 )
 from ..spec.grants import grant
@@ -190,19 +189,7 @@ def preflight(ctx: RunContext, task_type: str) -> Stop | None:
     try:
         grant(SpecRepository(ctx.worktree), ctx.modules, task_type)
     except (SpecError, OSError, ValueError) as error:
-        code = getattr(error, "code", "grant_unavailable")
-        return Stop(
-            "failed",
-            f"The {task_type} grant for {', '.join(ctx.modules)} could not be computed ({code}).",
-            [evidence("grant", ", ".join(ctx.modules), str(error))],
-            host_escalation(
-                f"no {task_type} grant for {', '.join(ctx.modules)}: {error}",
-                options=[
-                    "repair the Specs",
-                    "bind every Module that binds a shared file",
-                ],
-            ),
-        )
+        return ctx.grant_failure(task_type, ctx.modules, error)
     return None
 
 
@@ -213,16 +200,7 @@ def host_checks(ctx: RunContext) -> list[dict] | Stop:
             ctx.worktree, modules=ctx.modules, log_directory=ctx.run_dir / "checks"
         )
     except (SpecError, OSError) as error:
-        code = getattr(error, "code", "checks_unavailable")
-        return Stop(
-            "failed",
-            f"The configured checks could not be run ({code}).",
-            [evidence("checks_unavailable", code, str(error))],
-            host_escalation(
-                f"the configured checks of {', '.join(ctx.modules)} could not run: {error}",
-                options=["repair the check configuration", "inspect the check sandbox"],
-            ),
-        )
+        return ctx.checks_unavailable(error)
 
 
 def _admitted(ctx: RunContext) -> str:
@@ -321,11 +299,17 @@ def code_change(
 
 def implement_step(ctx: RunContext):
     if ctx.arguments.rounds is not None and ctx.arguments.rounds < 0:
-        return Stop(
+        return ctx.fail(
             "failed",
+            "invalid_argument",
             "--rounds must not be negative.",
-            [evidence("invalid-argument", "--rounds", str(ctx.arguments.rounds))],
-            host_escalation("--rounds must be zero or more"),
+            f"--rounds is {ctx.arguments.rounds}; it must be zero or more",
+            reason="input",
+            explanation="the number of resume rounds comes from the caller",
+            evidence=[
+                evidence("invalid-argument", "--rounds", str(ctx.arguments.rounds))
+            ],
+            options=["run implement again with --rounds 0 or more"],
         )
     before = _present(ctx.worktree)
     instructions = (

@@ -24,7 +24,7 @@ Tasks SHALL NOT delete a task record or a decision log, including when the task 
 
 ### req.tasks.decision-log-untouched — The decision log belongs to the main agent
 
-Tasks SHALL NOT change a decision log after creating it.
+Tasks SHALL NOT change a decision log after creating it except by appending an escalation the main agent requested.
 
 ### req.tasks.registered-modules — Records name only registered Modules
 
@@ -73,3 +73,11 @@ with `--force`.
 ### req.tasks.refusal-inert — A refusal changes nothing
 
 A refused task command or record update SHALL leave every record, branch and worktree unchanged.
+
+### req.tasks.refusal-detail — A refusal is an error link
+
+Every refusal of a `concorde task` command SHALL print an error link that names what was refused, with the task, Module, path, run or Git output concerned, and why Tasks cannot handle it.
+
+### req.tasks.escalation-kept — Escalations keep their whole chain
+
+An escalation SHALL record the escalated errors unchanged as the causes of the main agent's link, in the task record and the decision log.

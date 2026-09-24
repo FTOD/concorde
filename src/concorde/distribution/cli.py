@@ -11,10 +11,17 @@ from ..spec.diagnostics import canonical_json, envelope, exit_code, tool_envelop
 from ..spec.model import Finding, ToolResult
 
 
+class _Parser(argparse.ArgumentParser):
+    """Refuses a command line with argparse's own message instead of exiting."""
+
+    def error(self, message):
+        raise ValueError(f"invalid command line: {self.prog}: {message}")
+
+
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="concorde")
+    parser = _Parser(prog="concorde")
     parser.add_argument("--project-root", default=".")
-    subparsers = parser.add_subparsers(dest="tool", required=True)
+    subparsers = parser.add_subparsers(dest="tool", required=True, parser_class=_Parser)
 
     validate = subparsers.add_parser("validate")
     validate.add_argument("target", nargs="?")
@@ -296,7 +303,20 @@ TOOLS = frozenset(
 )
 
 
-def _failed(tool: str, message: str) -> dict:
+def _failed(tool: str, error: BaseException) -> dict:
+    """The envelope of a command that raised: the exception, its output and where it rose."""
+    import traceback
+
+    from ..errors import exception_detail
+
+    usage = isinstance(error, ValueError) and str(error).startswith(
+        "invalid command line"
+    )
+    message = str(error) if usage else exception_detail(error)
+    frames = traceback.extract_tb(error.__traceback__)
+    if frames and not usage:
+        last = frames[-1]
+        message += f" (raised at {last.filename}:{last.lineno} in {last.name})"
     return envelope(
         tool,
         ".",
@@ -308,7 +328,9 @@ def _failed(tool: str, message: str) -> dict:
                 "error",
                 ".concorde/config.json",
                 message,
-                "Correct the project configuration or runtime environment and retry.",
+                "Correct the command line; see concorde <tool> --help."
+                if usage
+                else "Correct the project configuration or runtime environment and retry.",
             )
         ],
         {},
@@ -338,8 +360,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             arguments = parser.parse_args(words)
         except SystemExit as exit_:
-            # --help ends normally; a refused command line is a failure like any other and
-            # still prints exactly one envelope rather than only argparse's usage text.
+            # --help ends normally; a refused command line raises ValueError from the parser
+            # and still prints exactly one envelope rather than only argparse's usage text.
             if exit_.code in (0, None):
                 raise
             raise ValueError(f"invalid command line: {' '.join(words)}") from None
@@ -356,6 +378,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         payload = tool_envelope(result)
     except Exception as error:  # noqa: BLE001 -- command boundary always returns the normative envelope
         tool = arguments.tool if arguments is not None else requested
-        payload = _failed(tool if tool in TOOLS else "validate", str(error))
+        payload = _failed(tool if tool in TOOLS else "validate", error)
     sys.stdout.write(canonical_json(payload))
     return exit_code(payload["status"])

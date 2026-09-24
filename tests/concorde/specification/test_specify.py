@@ -10,7 +10,12 @@ from pathlib import Path
 from concorde.harness.runs import read_record
 from concorde.spec.verification import verifies
 from concorde.specification.operation import SPEC_CHANGE_SCHEMA, WORKER_OUTPUT_SCHEMA
-from tests.concorde.support.operation_project import OperationProject, commit
+from tests.concorde.support.operation_project import (
+    OperationProject,
+    commit,
+    link_at,
+    worker_error,
+)
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 CLAIMS = {
@@ -198,7 +203,11 @@ class SpecifyTests(unittest.TestCase):
         )
         self.assertEqual(1, status)
         self.assertEqual("blocked", envelope["status"])
-        self.assertEqual("host", envelope["escalation"]["source"])
+        error = envelope["error"]
+        self.assertEqual(
+            ("operation", "new_structural_errors"), (error["level"], error["code"])
+        )
+        self.assertIn("CHK.node.meaning", error["causes"][0]["detail"])
         new = envelope["output"]["validation"]["new_errors"]
         self.assertTrue(new)
         self.assertIn("new-error", self.kinds(envelope))
@@ -222,10 +231,13 @@ class SpecifyTests(unittest.TestCase):
                     "result": {
                         "status": "blocked",
                         "summary": "needs module.b",
-                        "problem": "the intent changes specs/b/module.md of module.b",
-                        "attempts": ["edited A's part"],
-                        "options": ["bind module.b as well"],
-                        "blocking": True,
+                        "error": worker_error(
+                            "the intent changes specs/b/module.md of module.b",
+                            code="foreign_document",
+                            reason="permission",
+                            attempts=["edited A's part"],
+                            options=["bind module.b as well"],
+                        ),
                         "output": {**CLAIMS, "summary": "Edited A only."},
                     },
                 }
@@ -233,10 +245,10 @@ class SpecifyTests(unittest.TestCase):
         )
         self.assertEqual(1, status)
         self.assertEqual("blocked", envelope["status"])
-        escalation = envelope["escalation"]
-        self.assertEqual("worker", escalation["source"])
-        self.assertIn("module.b", escalation["problem"])
-        self.assertEqual(["bind module.b as well"], escalation["options"])
+        worker = link_at(envelope["error"], "worker")
+        self.assertIn("module.b", worker["detail"])
+        self.assertEqual("permission", worker["unhandled"]["reason"])
+        self.assertEqual(["bind module.b as well"], worker["options"])
         # The state the worker left behind is still observed and validated.
         self.assertEqual(["specs/a/module.md"], envelope["output"]["changed_documents"])
         self.assertIn("validation", self.kinds(envelope))
@@ -254,9 +266,10 @@ class SpecifyTests(unittest.TestCase):
         )
         self.assertEqual(1, status)
         self.assertEqual("failed", envelope["status"])
-        text = json.dumps(envelope["host_evidence"])
-        self.assertIn("audit_violation", text)
-        self.assertIn("src/a/calc.py", text)
+        error = envelope["error"]
+        self.assertEqual("audit_violation", error["code"])
+        self.assertEqual("permission", error["unhandled"]["reason"])
+        self.assertIn("src/a/calc.py", error["detail"])
         self.assertFalse({"validation", "registry"} & self.kinds(envelope))
         self.assertIsNone(envelope["output"])
 

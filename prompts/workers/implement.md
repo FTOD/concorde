@@ -41,3 +41,5 @@ Return `blocked`, and do not change the code any further, when:
 
 Never work around a Spec gap by guessing, and never change a test so that it stops checking a
 promise. Still fill `output` with `addresses` (it may be empty).
+
+@prompts/workers/common/errors.md

@@ -31,7 +31,7 @@ change and the test report are in the [contracts](contracts.md).
 
 - GIVEN a goal whose code needs a promise the bound Module's Spec does not state
 - WHEN the worker returns `blocked` naming the Spec gap
-- THEN the result has status `blocked` with the worker's escalation
+- THEN the result has status `blocked` with an error chain that ends in the worker's own link naming the Spec gap, unchanged
 - BUT the host neither resumes the worker nor changes any Spec document
 
 ### scenario.implementation.out-of-grant — A write outside the grant fails the run

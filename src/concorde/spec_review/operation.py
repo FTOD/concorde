@@ -26,9 +26,10 @@ from ..operations.provider import (
     Provider,
     RunContext,
     Stop,
+    component,
     evidence,
-    host_escalation,
     load_prompt,
+    spec_finding,
 )
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError
@@ -225,14 +226,26 @@ def validate_modules(ctx: RunContext):
             load = [error]
     if load:
         detail = "; ".join(getattr(item, "message", str(item)) for item in load)
-        return Stop(
+        return ctx.fail(
             "failed",
+            "specs_unloadable",
             "The task worktree's Specs could not be loaded.",
-            [evidence("structural", ".concorde/config.json", detail)],
-            host_escalation(
-                f"the task worktree's Specs could not be loaded: {detail}",
-                options=["repair the configuration, registry or Protocol binding"],
-            ),
+            f"the Specs of {ctx.worktree} could not be loaded, so no Module can be reviewed: "
+            f"{detail}",
+            reason="scope",
+            explanation="spec_review reviews loadable Specs and never repairs them",
+            evidence=[evidence("structural", ".concorde/config.json", detail)],
+            causes=[
+                component(
+                    "Spec core",
+                    getattr(item, "code", None) or "specs_unloadable",
+                    getattr(item, "message", str(item)),
+                    "input",
+                    "Specs that do not load cannot be validated or granted",
+                )
+                for item in load
+            ],
+            options=["repair the configuration, registry or Protocol binding"],
         )
     state.repository = repository
     found = []
@@ -242,14 +255,16 @@ def validate_modules(ctx: RunContext):
                 "structural", module, "not a registered Module of the task worktree"
             )
             found.append(item)
-            review.stop = Stop(
+            review.stop = ctx.fail(
                 "failed",
+                "unknown_module",
                 f"{module} is not a registered Module.",
-                [item],
-                host_escalation(
-                    f"{module} is not a registered Module of the task worktree",
-                    options=["name registered Modules in --modules"],
-                ),
+                f"{module} is not a registered Module of {ctx.worktree}, so it cannot be "
+                "reviewed",
+                reason="input",
+                explanation="the reviewed Modules come from the command line or the task",
+                evidence=[item],
+                options=["name registered Modules in --modules"],
             )
             continue
         review.documents = repository.modules[module].documents
@@ -269,15 +284,28 @@ def validate_modules(ctx: RunContext):
             for item in errors
         ]
         found.extend(items)
-        review.stop = Stop(
+        review.stop = ctx.fail(
             "blocked",
+            "structural_errors",
             f"{module} fails structural validation.",
-            items,
-            host_escalation(
-                f"{module} fails {len(errors)} structural check(s); no reviewer was launched",
-                options=["repair the Specs with specify", "run validate for details"],
-                recommendation="repair the structural errors, then run spec_review again",
-            ),
+            f"{module} fails {len(errors)} structural check(s), so no reviewer was launched "
+            "for it",
+            reason="decision",
+            explanation="a reviewer judges only structurally valid Specs; repairing them is a "
+            "specify task the main agent chooses",
+            evidence=items,
+            causes=[
+                spec_finding(
+                    item.rule_id,
+                    item.source,
+                    item.line,
+                    item.message,
+                    "validation diagnoses the Specs; it does not change them",
+                )
+                for item in errors
+            ],
+            options=["repair the Specs with specify", "run validate for details"],
+            recommendation="repair the structural errors, then run spec_review again",
         )
     return Continue(evidence=found)
 
@@ -393,6 +421,7 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
     if len(ctx.worker_runs) > launched:
         review.context_identity = _identity(outcome.evidence)
     if isinstance(outcome, Stop):
+        outcome.error["actor"] += f", review of {review.module}"
         review.stop = outcome
         return found
     findings, corrections = _normalize(
@@ -400,14 +429,17 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
     )
     found.extend(corrections)
     if findings is None:
-        review.stop = Stop(
+        review.stop = ctx.fail(
             "failed",
+            "unusable_finding",
             f"The reviewer of {review.module} returned an unusable finding.",
-            corrections,
-            host_escalation(
-                f"the reviewer of {review.module} named a path outside the task worktree",
-                options=["run spec_review again"],
-            ),
+            f"the reviewer of {review.module} named a path outside the task worktree: "
+            + "; ".join(item["detail"] for item in corrections),
+            reason="capability",
+            explanation="the host checks every finding's path but never corrects a finding "
+            "or relaunches the reviewer",
+            evidence=corrections,
+            options=["run spec_review again"],
         )
         return found
     review.findings = findings
@@ -426,6 +458,7 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
     )
     found.extend(_labelled(outcome.evidence, f"{review.module} checker"))
     if isinstance(outcome, Stop):
+        outcome.error["actor"] += f", review of {review.module}"
         review.stop = outcome
         return found
     for item in (outcome.output or {}).get("checks", []):
@@ -476,16 +509,22 @@ def derive_verdict(ctx: RunContext):
     counts = f"{standing} blocking finding(s) stand"
     if not incomplete:
         return Stop("ok", f"Spec review: {verdict}; {counts}.")
-    first = incomplete[0].stop
     status = (
         "failed" if any(r.stop.status == "failed" for r in incomplete) else "blocked"
     )
     names = ", ".join(review.module for review in incomplete)
-    return Stop(
+    reasons = "; ".join(f"{r.module}: {r.stop.summary}" for r in incomplete)
+    return ctx.fail(
         status,
-        f"Spec review: incomplete for {names} ({first.summary}); {counts}.",
-        [],
-        first.escalation,
+        "review_incomplete",
+        f"Spec review: incomplete for {names} ({reasons}); {counts}.",
+        f"the review of {len(incomplete)} of {len(reviews)} Module(s) is incomplete, each a "
+        f"cause below: {reasons}; {counts} in the reviewed Modules",
+        reason="decision",
+        explanation="spec_review reviews each Module once and never repairs or reruns; how "
+        "to complete the review is the main agent's decision",
+        causes=[review.stop.error for review in incomplete],
+        options=["address each cause, then run spec_review again for those Modules"],
     )
 
 
