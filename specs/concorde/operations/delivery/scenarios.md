@@ -15,6 +15,13 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - AND the task record lists the delivery and the task is delivered
 - AND the result has status `ok` with the commit as output and the worktree is clean
 
+### scenario.delivery.sandbox-masks — Deliver from a sandbox that masks paths
+
+- GIVEN a task worktree with an uncommitted change, seen from inside a sandbox that hides `.bashrc` behind a `/dev/null` mount
+- WHEN delivery runs inside that sandbox
+- THEN the readiness's changed paths do not include `.bashrc`
+- AND the delivery commit contains the change and the bundle but not `.bashrc`
+
 ### scenario.delivery.committed — Deliver a task whose steps are committed
 
 - GIVEN an active task whose verified steps are committed on its branch and whose worktree is clean

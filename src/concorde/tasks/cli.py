@@ -62,8 +62,6 @@ OPTIONS = {
         "pass --path outside the primary worktree",
     ],
     "session_failed": [
-        "have the developer accept Claude Code's bypass-permissions disclaimer once by running "
-        "claude --dangerously-skip-permissions interactively",
         "have the developer run claude once in the task worktree and accept the trust prompt",
         "work in the task yourself instead of starting a session",
     ],

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
+import sys
 import unittest
 
 from concorde.delivery.bundle import BUNDLE_SCHEMA, OUTPUT_SCHEMA
@@ -63,6 +66,48 @@ class DeliveryTests(unittest.TestCase):
         )
         self.assertEqual(envelope["error"]["unhandled"]["reason"], "decision")
         self.assertEqual(len(self.project.record()["deliveries"]), deliveries)
+
+    @verifies("scenario.delivery.sandbox-masks")
+    def test_deliver_inside_a_sandbox_that_masks_a_path(self):
+        bwrap = shutil.which("bwrap")
+        sandbox = [bwrap, "--dev-bind", "/", "/"] if bwrap else []
+        if not bwrap or subprocess.run([*sandbox, "true"]).returncode != 0:
+            self.skipTest("bubblewrap cannot create a sandbox here")
+        # The check boundary would need a second sandbox inside this one; what is under test is
+        # the measurement and the staging, so the task runs without configured checks.
+        config = self.worktree / ".concorde/config.json"
+        value = json.loads(config.read_text())
+        value["checks"] = []
+        config.write_text(json.dumps(value, indent=2) + "\n")
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        masked = self.worktree / ".bashrc"
+        done = subprocess.run(
+            [
+                *sandbox,
+                "--bind",
+                "/dev/null",
+                str(masked),
+                sys.executable,
+                str(REPOSITORY_ROOT / "scripts/concorde.py"),
+                "run",
+                "delivery",
+                "--task",
+                "t1",
+            ],
+            cwd=self.project.root,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        envelope = json.loads(done.stdout.split("\n}\n", 1)[0] + "\n}")
+        self.assertEqual("ok", envelope["status"], envelope)
+        readiness = self.saved_readiness(envelope)
+        changed = [item["path"] for item in readiness["inputs"]["changed"]]
+        self.assertEqual([".concorde/config.json", "src/a/calc.py"], changed)
+        committed = git(self.worktree, "show", "--name-only", "--format=", "HEAD")
+        self.assertIn("src/a/calc.py", committed.splitlines())
+        self.assertNotIn(".bashrc", committed.splitlines())
 
     @verifies("scenario.delivery.deliver")
     def test_deliver_a_validated_task(self):

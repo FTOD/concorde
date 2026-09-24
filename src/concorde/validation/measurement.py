@@ -1,7 +1,10 @@
 """The input measurement a readiness is bound to (see the Validation contracts).
 
 The changed paths are everything Git reports as different between the base commit and the working
-tree, staged or not, plus the untracked paths Git does not ignore. Each gets the SHA-256 digest of
+tree, staged or not, plus the untracked paths Git does not ignore. A submodule counts as changed
+when its checked-out commit differs, never for changes inside its own worktree: the task commits
+only the submodule's commit, and looking inside may need objects a partial clone has to fetch
+over a network the caller may not have. Each gets the SHA-256 digest of
 its bytes, or ``None`` when it no longer exists. The input digest covers the head and base
 commits, the changed paths and the digest of ``.concorde/config.json``. Delivery measures through
 this module too, so both sides compute the same digest for the same worktree.
@@ -62,12 +65,41 @@ def _paths(raw: bytes) -> set[str]:
     return {item for item in raw.decode("utf-8", "surrogateescape").split("\0") if item}
 
 
+def _special(worktree: Path, relative: str) -> bool:
+    """Whether an untracked path is neither a file, a symbolic link nor a directory."""
+    path = worktree / relative
+    return not (path.is_symlink() or path.is_file() or path.is_dir())
+
+
+def special_paths(worktree: Path) -> list[str]:
+    """Unignored new paths Git cannot version, such as a sandbox's ``/dev/null`` mounts.
+
+    Claude Code's Bash sandbox hides some paths of its working directory, such as ``.bashrc`` or
+    ``.claude/settings.json``, behind ``/dev/null`` mounts, which Git inside that sandbox lists as
+    untracked; they are no content of the task, and ``git add`` refuses them.
+    """
+    new = _paths(_output(worktree, "ls-files", "--others", "--exclude-standard", "-z"))
+    return sorted(path for path in new if _special(worktree, path))
+
+
 def changed_paths(worktree: Path, base: str) -> list[str]:
-    """Every path changed since ``base``, committed or not, and every unignored new path."""
+    """Every path changed since ``base``, committed or not, and every unignored new path.
+
+    New paths Git cannot version (see ``special_paths``) are left out.
+    """
     tracked = _paths(
-        _output(worktree, "diff", "--name-only", "--no-renames", "-z", base)
+        _output(
+            worktree,
+            "diff",
+            "--name-only",
+            "--no-renames",
+            "--ignore-submodules=dirty",
+            "-z",
+            base,
+        )
     )
     new = _paths(_output(worktree, "ls-files", "--others", "--exclude-standard", "-z"))
+    new = {path for path in new if not _special(worktree, path)}
     return sorted(
         tracked | new, key=lambda path: path.encode("utf-8", "surrogateescape")
     )
@@ -122,9 +154,22 @@ def measure(worktree: Path, base: str) -> dict:
 
 
 def has_uncommitted(worktree: Path) -> bool:
-    """Whether the worktree has a staged, unstaged or new unignored change against its head."""
-    return bool(
-        _output(worktree, "status", "--porcelain=v1", "--untracked-files=all").strip()
+    """Whether the worktree has a staged, unstaged or new unignored change against its head.
+
+    A new path Git cannot version (see ``special_paths``) is no change.
+    """
+    raw = _output(
+        worktree,
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
+        "--ignore-submodules=dirty",
+    ).decode("utf-8", "surrogateescape")
+    entries = [entry for entry in raw.split("\0") if entry]
+    return any(
+        not (entry.startswith("?? ") and _special(worktree, entry[3:]))
+        for entry in entries
     )
 
 
@@ -137,4 +182,5 @@ __all__ = [
     "measure",
     "path_digest",
     "sha256",
+    "special_paths",
 ]

@@ -17,7 +17,8 @@ Concorde-Readiness: <run identity of this delivery run, which decided the readin
 The commit uses the repository's configured author identity and runs the repository's commit hooks
 normally. Its parent is the head of the task branch that the delivery validated, whose commits
 since the base commit the readiness examined. It contains every uncommitted change of the task
-worktree that Git does not ignore, the metadata changed by the applied confirmations and the
+worktree that Git does not ignore, except an untracked path Git cannot version (neither a regular
+file, a symbolic link nor a directory), the metadata changed by the applied confirmations and the
 evidence bundle; when every step was committed before, only the bundle and any cleared markers.
 
 ## Evidence bundle

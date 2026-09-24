@@ -49,7 +49,9 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual(
             str(directory / "settings.json"), command[command.index("--settings") + 1]
         )
-        self.assertIn("bypassPermissions", command)
+        mode = command[command.index("--permission-mode") + 1]
+        self.assertEqual("auto", mode)
+        self.assertNotIn("--allow-dangerously-skip-permissions", command)
         brief = command[-1]
         self.assertIn("You are a task session", brief)
         self.assertIn("Let reports carry a severity.", brief)

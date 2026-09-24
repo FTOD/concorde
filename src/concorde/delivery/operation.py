@@ -30,7 +30,12 @@ from ..operations.provider import (
 )
 from ..tasks import store
 from ..validation import confirmations as confirming
-from ..validation.measurement import MeasurementError, has_uncommitted, head_commit
+from ..validation.measurement import (
+    MeasurementError,
+    has_uncommitted,
+    head_commit,
+    special_paths,
+)
 from ..validation.operation import (
     READINESS_STEPS,
     measurement_failed,
@@ -363,7 +368,15 @@ def undo(ctx: RunContext) -> None:
 def commit(ctx: RunContext):
     state = _state(ctx)
     found = []
-    staged = _git(ctx.worktree, "add", "-A")
+    # New paths Git cannot version, such as a sandbox's /dev/null mounts, are no content of the
+    # task and would make git add refuse the whole delivery.
+    try:
+        special = special_paths(ctx.worktree)
+    except MeasurementError as error:
+        undo(ctx)
+        return measurement_failed(ctx, error)
+    excluded = [f":(exclude,literal){path}" for path in special]
+    staged = _git(ctx.worktree, "add", "-A", "--", ".", *excluded)
     if staged.returncode == 0:
         staged = _git(ctx.worktree, "add", "-f", "--", state.bundle)
     if staged.returncode != 0:

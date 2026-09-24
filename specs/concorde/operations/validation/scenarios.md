@@ -49,6 +49,13 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the included submodule's gitlink is no blocking finding
 - BUT the other submodule's gitlink is reported as `unbound`
 
+### scenario.validation.submodule-content — Only a submodule's commit is measured
+
+- GIVEN a task worktree with a submodule
+- WHEN a file inside the submodule's own worktree changes
+- THEN the submodule is no changed path and the worktree has no uncommitted change
+- BUT when the submodule is moved to another commit, it is a changed path and an uncommitted change
+
 ### scenario.validation.confirmation — A filled pending entry becomes a confirmation
 
 - GIVEN a realization entry marked pending whose file an `implement` run created

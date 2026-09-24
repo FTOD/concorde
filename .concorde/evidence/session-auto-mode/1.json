@@ -1,0 +1,58 @@
+{
+  "task": "session-auto-mode",
+  "goal": "Start task sessions in Claude Code's auto permission mode instead of bypassPermissions, so no one-time disclaimer is needed; the generated hook and sandbox stay the boundary",
+  "modules": [
+    "module.tasks",
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "e6be162242ac284e78439d634e5295848c3bfcd8",
+  "parent_commit": "4a1102a9ddcdcc57e73336c3d59d094f766a9617",
+  "readiness": {
+    "run_id": "r-20260924T182226-delivery-b9da3aaa",
+    "input_digest": "sha256:339b634cdfd95f95a6eaee67d86266f41b0884681b7faf520e5001155f0ca4d2",
+    "modules": [
+      "module.concorde",
+      "module.delivery",
+      "module.main-session",
+      "module.tasks",
+      "module.validation"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:d615359c948fe22582a054a4a881ef3d11b7544de2b4ff5d456ba66b0262196a"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:a3fb67d40ac901cc7a72c1e7609f9400afd80cb9785f3e4b32b53555ad36f7a4"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:ac2cdbbfc654b671cb303314bb5bce770a61393038b70887e52cce2e8fdd9a08"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:8e8db28b34a9c331f2673a393f2e8efa6facfffcb0c9db8abf4b02824e5d51b2"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:87ece087b44b26f64cfbb0829108697a15436849e81323649c197f71d0e84467"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [],
+  "created_at": "2026-09-24T18:22:40Z"
+}
