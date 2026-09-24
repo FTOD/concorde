@@ -1,0 +1,102 @@
+{
+  "task": "worker-models",
+  "goal": "Project/worktree-level worker model configuration (default + per task type, per backend) discovered from the installed Claude Code or pi, chosen in the main session; worker backend follows the main session's client",
+  "modules": [
+    "module.harness.workers",
+    "module.operations",
+    "module.tasks",
+    "module.main-session",
+    "module.concorde",
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "c8561b4ecd8d2e25cf7bc698d1235452a6a46a01",
+  "parent_commit": "1331a22d281323903154664c4e900aebacc93360",
+  "readiness": {
+    "run_id": "r-20260924T194638-delivery-fa05a9ce",
+    "input_digest": "sha256:98509f68c3ca11f61b2cd3149134b692d50702299dfcb2b8990cd113bc16a58f",
+    "modules": [
+      "module.concorde",
+      "module.distribution",
+      "module.harness.workers",
+      "module.main-session",
+      "module.operations",
+      "module.tasks"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:04ad1c65f7f167e22ba864c25047d893f70996fc98b5a969e6b9ac2485b266ed"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:cef740eab8d3b7d8badd34cf053286e6e90efb5fca24d59ebe866aaa6fba9dd0"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:effb9f29797d68d721a80e9718834e0b727c847269bdd083502bce1c98838498"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:a5f2a2b12f0cdaab9799f21ee94538972e27c4fff71cc2a3594aca591b99ff6f"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:6e7252c55b1345836447e89168dcfb80f6eedefc1cc3e5ffcb4046db662d92a7"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:5bcee63f6796af285f339f409d7a2cbb28cea587905f831ccfbb0e30bb5e6f16"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T194459-validate-84136a04",
+      "operation": "validate",
+      "modules": [
+        "module.harness.workers",
+        "module.operations",
+        "module.tasks",
+        "module.main-session",
+        "module.concorde",
+        "module.distribution"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 2 blocking finding(s). unbound tests/concorde/support/agent_fakes.py: no Module binds this changed path and it is neither a Spec document member nor a control record | check check.concorde.tests: module.concorde check failed (exit 1); log .concorde/runs/r-20260924T194459-validate-84136a04/checks/check.concorde.tests.log",
+      "worker_runs": [],
+      "result_digest": "sha256:f15b72ecdaff5601cc0396cb69f38059a4638f9eab8b87b733c4a2c4f55fec79"
+    },
+    {
+      "run_id": "r-20260924T194613-validate-4bf35b9a",
+      "operation": "validate",
+      "modules": [
+        "module.harness.workers",
+        "module.operations",
+        "module.tasks",
+        "module.main-session",
+        "module.concorde",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:0ad9517e4d96f5b9cd2849550a03f309753a8a9532cb81d41ac0a906dd538f35"
+    }
+  ],
+  "created_at": "2026-09-24T19:46:58Z"
+}
