@@ -11,13 +11,14 @@ concorde: deliver <task-id>
 
 Concorde-Task: <task-id>
 Concorde-Evidence: .concorde/evidence/<task-id>/<n>.json
-Concorde-Readiness: <run identity of the consumed validate run>
+Concorde-Readiness: <run identity of this delivery run, which decided the readiness>
 ```
 
 The commit uses the repository's configured author identity and runs the repository's commit hooks
-normally. Its parent is the validated head of the task branch. It contains every uncommitted change
-of the task worktree that Git does not ignore, the metadata changed by the applied confirmations
-and the evidence bundle.
+normally. Its parent is the head of the task branch that the delivery validated, whose commits
+since the base commit the readiness examined. It contains every uncommitted change of the task
+worktree that Git does not ignore, the metadata changed by the applied confirmations and the
+evidence bundle; when every step was committed before, only the bundle and any cleared markers.
 
 ## Evidence bundle
 
@@ -97,7 +98,7 @@ and the evidence bundle.
       "created_at": {"type": "string", "minLength": 1}
     }
   },
-  "semantics": "The evidence committed with a delivery at .concorde/evidence/<task>/<sequence>.json, where sequence counts the task's deliveries from 1. goal and modules are copied from the task record; base_commit is the task's base commit and parent_commit the validated head the delivery commit is created on. readiness identifies the consumed validate run and repeats its input digest, the Modules it covered, its check results without log paths and the number of its warnings; every check passed, because only a ready readiness is delivered. confirmations lists the pending entries whose markers this delivery cleared. runs lists every Operation run of the task that started after the previous delivery and before this one, in start order, excluding this delivery run: its status and summary from its saved Operation result, the run record identities of its workers, and the SHA-256 digest of its saved result.json, or null with status interrupted when no result was saved. Run records, results and transcripts themselves stay uncommitted in the primary worktree's .concorde/runs/. created_at is RFC 3339 in UTC.",
+  "semantics": "The evidence committed with a delivery at .concorde/evidence/<task>/<sequence>.json, where sequence counts the task's deliveries from 1. goal and modules are copied from the task record; base_commit is the task's base commit and parent_commit the validated head the delivery commit is created on. readiness identifies this delivery run, which decided it with Validation's steps, and repeats its input digest, the Modules it covered, its check results without log paths and the number of its warnings; every check passed, because only a ready readiness is delivered. confirmations lists the pending entries whose markers this delivery cleared. runs lists every Operation run of the task that started after the previous delivery and before this one, in start order, excluding this delivery run: its status and summary from its saved Operation result, the run record identities of its workers, and the SHA-256 digest of its saved result.json, or null with status interrupted when no result was saved. Run records, results and transcripts themselves stay uncommitted in the primary worktree's .concorde/runs/. created_at is RFC 3339 in UTC.",
   "example": {
     "task": "severity",
     "goal": "let Issue reports carry a severity",
@@ -106,7 +107,7 @@ and the evidence bundle.
     "base_commit": "d460b95e0c1a2b3c4d5e6f708192a3b4c5d6e7f8",
     "parent_commit": "d460b95e0c1a2b3c4d5e6f708192a3b4c5d6e7f8",
     "readiness": {
-      "run_id": "r-20260924T103000-validate-9b1c0d2e",
+      "run_id": "r-20260924T103800-delivery-77d0e4f5",
       "input_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
       "modules": ["module.issues"],
       "checks": [

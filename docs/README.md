@@ -48,8 +48,8 @@ questions itself and escalates only decisions with major impact.
    must change first.
 3. **Implement and test.** Run `implement` and `test`; the host audits every write and runs the
    configured checks itself.
-4. **Validate, deliver, merge.** `validate` decides readiness, `delivery` commits the change with
-   its evidence, and the main agent merges the branch.
+4. **Validate, deliver, merge.** `validate` previews readiness, `delivery` validates the whole task
+   again and commits it with its evidence, and the main agent merges the branch.
 
 ## Install into a Git project
 

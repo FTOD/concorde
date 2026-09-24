@@ -1,10 +1,10 @@
-"""The ``delivery`` Operation: commit a validated task worktree (see the Delivery Spec).
+"""The ``delivery`` Operation: validate a whole task, then commit it (see the Delivery Spec).
 
 1. Require that the task worktree's head is the task branch.
 2. Record a delivery commit at the branch head that the task record lacks, and stop.
-3. Load the readiness of the task's latest ``validate`` run and require it to be ready.
-4. Measure the inputs again through Validation and compare the input digest.
-5. Require at least one uncommitted change.
+3. Require new work: a commit since the previous delivery (or the base), or an uncommitted change.
+4. Decide the readiness of the whole task with Validation's steps, as ``validate`` does.
+5. Require that readiness to be ready.
 6. Apply the readiness's confirmations through Validation.
 7. Write the evidence bundle in the task worktree.
 8. Stage everything and create the delivery commit; undo steps 6 and 7 when Git refuses.
@@ -30,13 +30,14 @@ from ..operations.provider import (
 )
 from ..tasks import store
 from ..validation import confirmations as confirming
-from ..validation.measurement import (
-    MeasurementError,
-    has_uncommitted,
-    head_commit,
-    measure,
+from ..validation.measurement import MeasurementError, has_uncommitted, head_commit
+from ..validation.operation import (
+    READINESS_STEPS,
+    measurement_failed,
+    not_deliverable,
+    readiness_of,
+    require_task_branch,
 )
-from ..validation.operation import measurement_failed, require_task_branch
 from .bundle import (
     OUTPUT_SCHEMA,
     SUBJECT,
@@ -77,18 +78,19 @@ def _blocked(
     summary: str,
     detail: str,
     options,
+    *,
+    explanation: str,
     kind="readiness",
     causes=(),
 ) -> Stop:
-    """Stop ``blocked``: delivery commits only a current, ready readiness."""
+    """Stop ``blocked`` without writing anything; ``explanation`` says why for this code."""
     return ctx.fail(
         "blocked",
         code,
         summary,
         detail,
         reason="decision",
-        explanation="delivery never validates, repairs or commits without a current ready "
-        "readiness; what to run next is the main agent's decision",
+        explanation=explanation,
         evidence=[evidence(kind, code, detail)],
         causes=causes,
         options=list(options),
@@ -210,117 +212,63 @@ def recover(ctx: RunContext):
     )
 
 
-def load_readiness(ctx: RunContext):
+def require_new_work(ctx: RunContext):
+    """Continue when the head moved past the previous delivery (or the base) or a change waits."""
     state = _state(ctx)
     task = store.load_task(ctx.primary, ctx.task["id"])
-    runs = [run for run in task["runs"] if run["operation"] == "validate"]
-    options = [
-        "run validate on the task",
-        "fix the blocking findings and validate again",
-    ]
-    if not runs:
-        return _blocked(
-            ctx,
-            "no_readiness",
-            "The task has no validate run (no_readiness); nothing was delivered.",
-            f"task {ctx.task['id']} has no validate run",
-            options,
-        )
-    latest = runs[-1]["run_id"]
-    path = ctx.primary / ".concorde/runs" / latest / "result.json"
-    try:
-        result = json.loads(path.read_text())
-    except (OSError, ValueError) as error:
-        result = {"unreadable": f"{path}: {type(error).__name__}: {error}"}
-    # A ready readiness ends ok; a not-ready one ends blocked and still carries the readiness.
-    readiness = (
-        result.get("output") if result.get("status") in ("ok", "blocked") else None
-    )
-    if not isinstance(readiness, dict) or readiness.get("task") != ctx.task["id"]:
-        why = result.get("unreadable") or (
-            f"it ended {result.get('status', runs[-1]['status'])}: "
-            f"{result.get('summary', 'no summary')}"
-        )
-        return _blocked(
-            ctx,
-            "no_readiness",
-            f"The latest validate run {latest} produced no readiness (no_readiness); "
-            "nothing was delivered.",
-            f"the latest validate run {latest} of task {ctx.task['id']} produced no readiness: "
-            f"{why}",
-            options,
-            causes=[result["error"]] if isinstance(result.get("error"), dict) else [],
-        )
-    if not readiness.get("ready"):
-        blocking = readiness.get("blocking") or []
-        return _blocked(
-            ctx,
-            "not_ready",
-            f"The latest readiness ({latest}) is not ready (not_ready); nothing was "
-            "delivered.",
-            f"the latest readiness of task {ctx.task['id']}, from validate run {latest}, is "
-            f"not ready: {len(blocking)} blocking finding(s): "
-            + "; ".join(
-                f"{item['kind']} {item['ref']}: {item['detail']}" for item in blocking
-            ),
-            ["fix the blocking findings and run validate again"],
-            causes=[result["error"]] if isinstance(result.get("error"), dict) else [],
-        )
-    state.readiness_run, state.readiness = latest, readiness
-    return Continue(evidence=[evidence("readiness", latest, "ready")])
-
-
-def compare_inputs(ctx: RunContext):
-    state = _state(ctx)
-    try:
-        now = measure(ctx.worktree, ctx.task["base_commit"])
-    except MeasurementError as error:
-        return measurement_failed(ctx, error)
-    recorded = state.readiness["inputs"]["digest"]
-    if now["digest"] != recorded:
-        before = {
-            item["path"]: item["digest"]
-            for item in state.readiness["inputs"]["changed"]
-        }
-        after = {item["path"]: item["digest"] for item in now["changed"]}
-        moved = sorted(
-            path
-            for path in before.keys() | after.keys()
-            if before.get(path) != after.get(path)
-        )
-        detail = f"readiness {state.readiness_run} has input digest {recorded}, now {now['digest']}"
-        if moved:
-            detail += "; changed since: " + ", ".join(moved[:20])
-        elif now["head"] != state.readiness["inputs"]["head"]:
-            detail += f"; the head moved to {now['head']}"
-        return _blocked(
-            ctx,
-            "stale_readiness",
-            "The task worktree changed since its readiness (stale_readiness); nothing was "
-            "delivered.",
-            detail,
-            ["run validate again, then delivery"],
-        )
-    return Continue(
-        evidence=[evidence("readiness", recorded, "input digest unchanged")]
-    )
-
-
-def require_changes(ctx: RunContext):
     try:
         changed = has_uncommitted(ctx.worktree)
     except MeasurementError as error:
         return measurement_failed(ctx, error)
-    if not changed:
-        return _blocked(
-            ctx,
-            "nothing_to_deliver",
-            "The task worktree has no uncommitted change (nothing_to_deliver).",
-            f"{ctx.worktree} is clean at {_state(ctx).head}",
-            ["do more work on the task, or close it"],
-            kind="git",
-        )
-    return Continue()
+    if task["deliveries"]:
+        since, what = task["deliveries"][-1]["commit"], "the previous delivery commit"
+    else:
+        since, what = ctx.task["base_commit"], "the task's base commit"
+    if changed or state.head != since:
+        return Continue()
+    return _blocked(
+        ctx,
+        "nothing_to_deliver",
+        "The task has no commit or change since "
+        + ("its previous delivery" if task["deliveries"] else "its base")
+        + " (nothing_to_deliver).",
+        f"{ctx.worktree} is clean and its head {state.head} is {what}, so the task branch "
+        "holds nothing that was not delivered",
+        ["do more work on the task, or close it"],
+        explanation="delivery validates and commits new work only, and the task has none; "
+        "whether to do more work or close the task is the main agent's decision",
+        kind="git",
+    )
+
+
+def decide(ctx: RunContext):
+    """Take the readiness Validation's steps decided; stop ``blocked`` when it is not ready."""
+    state = _state(ctx)
+    readiness, found = readiness_of(ctx)
+    state.readiness_run, state.readiness = ctx.run_id, readiness
+    if readiness["ready"]:
+        return Continue(evidence=found)
+    blocking = readiness["blocking"]
+    stop = _blocked(
+        ctx,
+        "not_ready",
+        f"The task is not ready: {len(blocking)} blocking finding(s) (not_ready); nothing "
+        "was delivered.",
+        f"validating task {ctx.task['id']} as a whole found {len(blocking)} blocking "
+        "finding(s): "
+        + "; ".join(
+            f"{item['kind']} {item['ref']}: {item['detail']}" for item in blocking
+        ),
+        [
+            "repair each blocking finding in the task worktree and run delivery again",
+            "run specify for a Spec finding, implement for a code or check finding",
+        ],
+        explanation="delivery validates the whole task before it commits and never repairs a "
+        "finding; each needs a Spec or code change the main agent chooses",
+        causes=[not_deliverable(ctx)],
+    )
+    stop.evidence[:0] = found
+    return stop
 
 
 def apply_confirmations(ctx: RunContext):
@@ -336,7 +284,7 @@ def apply_confirmations(ctx: RunContext):
             [evidence("readiness", error.code, str(error))],
             f"the pending confirmations of readiness {state.readiness_run} could not be "
             f"applied: {error.code}: {error}",
-            ["run validate again, then delivery"],
+            ["run delivery again"],
             reason="input",
             explanation="delivery applies exactly the confirmations its readiness lists and "
             "never recomputes them",
@@ -542,9 +490,9 @@ DELIVERY = Provider(
     steps=(
         check_branch,
         recover,
-        load_readiness,
-        compare_inputs,
-        require_changes,
+        require_new_work,
+        *READINESS_STEPS,
+        decide,
         apply_confirmations,
         write_bundle,
         commit,
@@ -553,6 +501,8 @@ DELIVERY = Provider(
         output,
     ),
     output_schema=OUTPUT_SCHEMA,
+    # Validation's steps diagnose Specs that cannot be loaded, as validate does.
+    requires_loaded_specs=False,
 )
 
 

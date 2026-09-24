@@ -42,6 +42,17 @@ class DeliveryTests(unittest.TestCase):
     def committed(self, path: str, commit: str = "HEAD") -> str:
         return git(self.worktree, "show", f"{commit}:{path}")
 
+    def commit_step(self, message: str = "A verified step") -> str:
+        git(self.worktree, "add", "-A")
+        git(self.worktree, "commit", "-q", "-m", message)
+        return self.head()
+
+    def saved_readiness(self, envelope: dict) -> dict:
+        path = (
+            self.project.root / ".concorde/runs" / envelope["run_id"] / "readiness.json"
+        )
+        return json.loads(path.read_text())
+
     def assert_inert(self, envelope: dict, code: str, deliveries: int = 0):
         self.assertEqual(envelope["status"], "blocked", envelope)
         self.assertIsNone(envelope["output"])
@@ -92,7 +103,7 @@ class DeliveryTests(unittest.TestCase):
             message,
             "concorde: deliver t1\n\nFix A.\n\nConcorde-Task: t1\n"
             "Concorde-Evidence: .concorde/evidence/t1/1.json\n"
-            f"Concorde-Readiness: {validation['run_id']}",
+            f"Concorde-Readiness: {envelope['run_id']}",
         )
         self.assertEqual(
             git(self.worktree, "log", "-1", "--format=%an <%ae>"),
@@ -101,11 +112,13 @@ class DeliveryTests(unittest.TestCase):
         bundle = json.loads(self.committed(".concorde/evidence/t1/1.json"))
         check_schema(bundle, BUNDLE_SCHEMA)
         self.assertEqual(bundle["parent_commit"], self.base)
-        self.assertEqual(bundle["readiness"]["run_id"], validation["run_id"])
+        # Delivery decides the readiness itself; an earlier validate run is only listed.
+        self.assertEqual(bundle["readiness"]["run_id"], envelope["run_id"])
         self.assertEqual(
             bundle["readiness"]["input_digest"],
             validation["output"]["inputs"]["digest"],
         )
+        self.assertTrue(self.saved_readiness(envelope)["ready"])
         self.assertEqual(
             [run["run_id"] for run in bundle["runs"]], [validation["run_id"]]
         )
@@ -120,7 +133,7 @@ class DeliveryTests(unittest.TestCase):
                 (d["commit"], d["bundle"], d["readiness_run"])
                 for d in record["deliveries"]
             ],
-            [(commit, ".concorde/evidence/t1/1.json", validation["run_id"])],
+            [(commit, ".concorde/evidence/t1/1.json", envelope["run_id"])],
         )
         self.assertEqual(status_lines(self.worktree), "")
         self.assertIsNone(envelope["worker"])
@@ -177,52 +190,67 @@ class DeliveryTests(unittest.TestCase):
         )
         self.assertEqual(len(self.project.record()["deliveries"]), 2)
 
-    @verifies("scenario.delivery.stale")
-    def test_refuse_a_stale_readiness(self):
+    @verifies("scenario.delivery.committed")
+    def test_deliver_a_task_whose_steps_are_committed(self):
         (self.worktree / "src/a/calc.py").write_text(FIXED)
-        self.validated()
-        (self.worktree / "src/a/calc.py").write_text(FIXED + "# later\n")
-        before = (status_lines(self.worktree), git(self.worktree, "ls-files", "-s"))
+        step = self.commit_step()
+        self.assertEqual(status_lines(self.worktree), "")
         status, envelope = self.project.deliver()
-        self.assertEqual(status, 1)
-        self.assert_inert(envelope, "stale_readiness")
-        self.assertEqual(self.head(), self.base)
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+        commit = envelope["output"]["commit"]
         self.assertEqual(
-            (status_lines(self.worktree), git(self.worktree, "ls-files", "-s")), before
+            git(self.worktree, "rev-list", "--parents", "-n1", commit).split()[1:],
+            [step],
         )
-        self.assertIn("src/a/calc.py", evidence_of(envelope, "readiness")[-1]["detail"])
+        self.assertEqual(
+            git(self.worktree, "diff", "--name-only", step, commit).splitlines(),
+            [".concorde/evidence/t1/1.json"],
+        )
+        readiness = self.saved_readiness(envelope)
+        self.assertEqual(
+            [item["path"] for item in readiness["inputs"]["changed"]], ["src/a/calc.py"]
+        )
+        bundle = json.loads(self.committed(".concorde/evidence/t1/1.json"))
+        self.assertEqual(
+            (bundle["parent_commit"], bundle["readiness"]["input_digest"]),
+            (step, readiness["inputs"]["digest"]),
+        )
+        self.assertEqual(status_lines(self.worktree), "")
+        self.assertEqual(self.project.record()["state"], "delivered")
 
     @verifies("scenario.delivery.not-ready")
-    def test_refuse_a_missing_readiness(self):
-        (self.worktree / "src/a/calc.py").write_text(FIXED)
+    def test_refuse_a_task_that_is_not_ready(self):
+        (self.worktree / "stray.txt").write_text("unbound\n")
+        step = self.commit_step()
         status, envelope = self.project.deliver()
         self.assertEqual(status, 1)
-        self.assert_inert(envelope, "no_readiness")
-        self.assertEqual(self.head(), self.base)
-
-    @verifies("scenario.delivery.not-ready")
-    def test_refuse_a_negative_readiness(self):
-        (self.worktree / "stray.txt").write_text("unbound\n")
-        status, envelope = self.project.validate()
-        self.assertFalse(envelope["output"]["ready"])
-        before = status_lines(self.worktree)
-        status, envelope = self.project.deliver()
         self.assert_inert(envelope, "not_ready")
-        # The validate run's own chain is the cause, down to the stray file's finding.
+        # Delivery's own Validation link is the cause, down to the committed stray file.
         self.assertEqual(
             ["not_ready", "not_deliverable", "unbound_finding"],
             codes(envelope["error"]),
         )
         self.assertIn("stray.txt", envelope["error"]["detail"])
-        self.assertEqual(
-            (self.head(), status_lines(self.worktree)), (self.base, before)
-        )
+        self.assertIn("never repairs", envelope["error"]["unhandled"]["explanation"])
+        self.assertFalse(self.saved_readiness(envelope)["ready"])
+        self.assertEqual((self.head(), status_lines(self.worktree)), (step, ""))
 
     @verifies("scenario.delivery.nothing")
     def test_nothing_to_deliver(self):
         self.validated()
         status, envelope = self.project.deliver()
         self.assert_inert(envelope, "nothing_to_deliver")
+        self.assertIn("base commit", envelope["error"]["detail"])
+        self.assertIn("new work only", envelope["error"]["unhandled"]["explanation"])
+
+    @verifies("scenario.delivery.nothing")
+    def test_nothing_new_after_a_delivery(self):
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        self.commit_step()
+        self.assertEqual(self.project.deliver()[1]["status"], "ok")
+        status, envelope = self.project.deliver()
+        self.assert_inert(envelope, "nothing_to_deliver", deliveries=1)
+        self.assertIn("previous delivery commit", envelope["error"]["detail"])
 
     @verifies("scenario.delivery.commit-refused")
     def test_git_refuses_the_commit(self):
@@ -231,7 +259,6 @@ class DeliveryTests(unittest.TestCase):
         hook.chmod(0o755)
         (self.worktree / "src/new.py").write_text("NEW = 1\n")
         (self.worktree / "src/a/calc.py").write_text(FIXED)
-        digest = self.validated()["output"]["inputs"]["digest"]
         metadata = (self.worktree / "specs/a/module.md.json").read_bytes()
         before = (status_lines(self.worktree), git(self.worktree, "ls-files", "-s"))
         status, envelope = self.project.deliver()
@@ -247,6 +274,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(
             (status_lines(self.worktree), git(self.worktree, "ls-files", "-s")), before
         )
+        digest = self.saved_readiness(envelope)["inputs"]["digest"]
         self.assertEqual(measure(self.worktree, self.base)["digest"], digest)
         self.assertEqual(self.project.record()["deliveries"], [])
 

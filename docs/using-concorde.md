@@ -218,7 +218,7 @@ concorde run delivery    --task retry
 | `spec_review` | reads only   | Reviews the bound Modules' Specs and reports every blocking finding (`--check-findings` has each finding checked).            |
 | `code_review` | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                      |
 | `validate`    | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                |
-| `delivery`    | none         | Deterministic: commits the change with an evidence bundle on the task branch.                                                 |
+| `delivery`    | none         | Deterministic: validates the whole task again, then commits its evidence bundle on the task branch.                           |
 
 A typical task runs `understand`, `specify` when the Spec must change first, `implement` and `test`,
 the reviews when the change deserves them, and then `validate` and `delivery`. Steps are repeated
@@ -231,7 +231,8 @@ a change needs, the Operation stops with a **Spec gap**, and the Spec is changed
 
 ### 3. Merge and close
 
-`delivery` refuses without current readiness from `validate`. Once it has committed:
+`delivery` validates the whole task again itself and refuses it while anything blocks. Once it has
+committed:
 
 ```bash
 git merge concorde/retry

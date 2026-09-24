@@ -488,7 +488,8 @@ def remeasure(ctx: RunContext):
     return Continue()
 
 
-def issue_readiness(ctx: RunContext):
+def readiness_of(ctx: RunContext) -> tuple[dict, list[dict]]:
+    """The readiness the steps before decided, saved in the run directory, and its evidence."""
     state = _state(ctx)
     modules = sorted(set(state.changed_modules) | set(ctx.modules))
     readiness = {
@@ -503,7 +504,6 @@ def issue_readiness(ctx: RunContext):
     }
     path = ctx.run_dir / "readiness.json"
     path.write_text(json.dumps(readiness, indent=2) + "\n")
-    ctx.output = readiness
     saved = path.relative_to(ctx.primary).as_posix()
     found = [
         evidence(
@@ -514,6 +514,35 @@ def issue_readiness(ctx: RunContext):
             f"{len(state.warnings)} warning(s); saved {saved}",
         )
     ]
+    return readiness, found
+
+
+def not_deliverable(ctx: RunContext) -> dict:
+    """The Validation link explaining why the decided readiness is not ready."""
+    state = _state(ctx)
+    reasons = [
+        f"{item['kind']} {item['ref']}: {item['detail']}" for item in state.blocking
+    ]
+    return component(
+        "Validation",
+        "not_deliverable",
+        f"task {ctx.task['id']} is not deliverable: {len(reasons)} blocking finding(s), each "
+        "a cause below: " + " | ".join(reasons),
+        "decision",
+        "Validation only decides readiness and never repairs; each finding needs a Spec "
+        "change (specify) or a code change (implement)",
+        evidence=[
+            evidence("blocking", item["ref"], item["detail"]) for item in state.blocking
+        ],
+        causes=state.links,
+    )
+
+
+def issue_readiness(ctx: RunContext):
+    state = _state(ctx)
+    readiness, found = readiness_of(ctx)
+    ctx.output = readiness
+    saved = (ctx.run_dir / "readiness.json").relative_to(ctx.primary).as_posix()
     if readiness["ready"]:
         return Stop("ok", "Readiness decided: ready.", found)
     reasons = [
@@ -524,8 +553,8 @@ def issue_readiness(ctx: RunContext):
         "not_deliverable",
         f"Not deliverable: {len(reasons)} blocking finding(s). " + " | ".join(reasons),
         f"task {ctx.task['id']} is not deliverable: {len(reasons)} blocking finding(s), each "
-        f"a cause below; delivery refuses the task until validate is ready (readiness in "
-        f"{saved})",
+        f"a cause below; delivery, which decides the same readiness again, refuses the task "
+        f"until they are repaired (readiness in {saved})",
         reason="decision",
         explanation="validate only decides readiness and never repairs; each finding needs "
         "a Spec change (specify) or a code change (implement), which the main agent chooses",
@@ -542,24 +571,32 @@ def issue_readiness(ctx: RunContext):
     )
 
 
+# Steps 2-8: what decides a readiness; Delivery runs them too before it commits.
+READINESS_STEPS = (
+    measure_inputs,
+    validate_structure,
+    sort_findings,
+    require_accounted,
+    derive_changed_modules,
+    run_configured_checks,
+    remeasure,
+)
+
 VALIDATE = Provider(
     name="validate",
     task_type=None,
     writes=False,
-    steps=(
-        check_branch,
-        measure_inputs,
-        validate_structure,
-        sort_findings,
-        require_accounted,
-        derive_changed_modules,
-        run_configured_checks,
-        remeasure,
-        issue_readiness,
-    ),
+    steps=(check_branch, *READINESS_STEPS, issue_readiness),
     output_schema=READINESS_SCHEMA,
     requires_loaded_specs=False,
 )
 
 
-__all__ = ["READINESS_SCHEMA", "VALIDATE", "require_task_branch"]
+__all__ = [
+    "READINESS_SCHEMA",
+    "READINESS_STEPS",
+    "VALIDATE",
+    "not_deliverable",
+    "readiness_of",
+    "require_task_branch",
+]

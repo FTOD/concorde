@@ -5,16 +5,16 @@
 Validation decides whether a task worktree is ready to deliver, with the deterministic `validate`
 Operation: it checks the Spec structure, finds the Modules the task changed, runs their configured
 checks, and returns a readiness — ready or not, with every blocking finding — bound to the exact
-worktree state examined. The main agent relies on it before delivering; Delivery relies on it to
-refuse a worktree that changed since. Validation launches no worker, changes no file of the task
-worktree, and judges nothing a deterministic check cannot: whether code keeps its promises beyond
+worktree state examined. The main agent relies on it to see whether a task is deliverable;
+Delivery runs the same steps itself right before it commits. Validation launches no worker,
+changes no file of the task worktree, and judges nothing a deterministic check cannot: whether code keeps its promises beyond
 what the checks test, or whether a Spec explains enough, is for the reviews and the main agent.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Readiness | The outcome of one `validate` run: whether the task worktree may be delivered, with its blocking findings, the checks run and the pending entries to confirm, bound to a digest of the exact inputs examined. |
+| Readiness | The outcome of Validation's readiness steps in one `validate` or `delivery` run: whether the task worktree may be delivered, with its blocking findings, the checks run and the pending entries to confirm, bound to a digest of the exact inputs examined. |
 | [Main agent](../../vocabulary.md#concept.concorde.main-agent) | |
 | [Module](../../vocabulary.md#concept.concorde.module) | |
 | [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
@@ -29,8 +29,9 @@ what the checks test, or whether a Spec explains enough, is for the reviews and 
 
 ## Usage
 
-The main agent runs the Operation when it believes a task's work is complete, usually after
-`implement`, `test` and the reviews, and always right before `delivery`:
+The main agent runs the Operation when it wants to know whether a task's work is complete, usually
+after `implement`, `test` and the reviews. `delivery` decides the same readiness again itself, so a
+`validate` run is a preview, not a precondition:
 
 ```text
 concorde run validate --task severity
@@ -62,8 +63,8 @@ Modules bind a changed file or own a changed Spec document, found through the
 all its Modules' checks.
 
 The readiness records its inputs — head, base, every changed path's digest and the configuration
-digest — as one input digest. A later worktree change alters it; Delivery then refuses the
-readiness as stale and the main agent reruns `validate`.
+digest — as one input digest, which proves exactly which inputs a readiness describes; a later
+worktree change alters it.
 
 | Status | Code | Reason | Detail |
 | --- | --- | --- | --- |
@@ -84,9 +85,10 @@ worktree gives the same readiness with fresh check results.
 
 ## Design
 
-Readiness is decided by deterministic code alone, so Delivery can trust it without asking — a
-model's opinion of completeness is not enough. Binding it to an input digest lets Delivery detect
-staleness by remeasuring, not by trusting a timestamp.
+Readiness is decided by deterministic code alone, so Delivery can run the same steps and trust
+their outcome without asking — a model's opinion of completeness is not enough. Binding it to an
+input digest, remeasured at the end, proves the inputs did not change while the checks ran, rather
+than trusting a timestamp.
 
 The measurement covers everything Delivery will commit: tracked changes since the base commit and
 untracked files Git does not ignore. Checks run only for the changed Modules — checking a whole
@@ -115,7 +117,7 @@ Specs before the run, so these diagnoses always reach the main agent. Step 8 cat
 changes during a check, which can take minutes.
 
 A `validate` run writes nothing in the task worktree; its logs and readiness go to the run
-directory in the primary worktree. Delivery reuses the same measurement and a confirmation service
+directory in the primary worktree. Delivery reuses the readiness steps and a confirmation service
 that clears exactly the listed pending markers in one
 [file transaction](../../spec-tooling/spec/module.md#concept.spec.file-transaction), bound to the
 measured metadata digests, then revalidates and rolls back on any remaining error. See the

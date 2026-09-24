@@ -6,10 +6,21 @@ obligations at work.
 
 ## Preconditions
 
-### req.delivery.current-readiness — Only a current, ready readiness is delivered
+### req.delivery.own-readiness — Delivery validates the whole task itself
 
-Delivery SHALL commit only when the task's latest `validate` run produced a ready readiness whose
-input digest equals a fresh measurement of the task worktree.
+Delivery SHALL commit only when a readiness it decided in the same run with Validation's steps,
+over every commit on the task branch since the base commit and every uncommitted change, is ready.
+
+### req.delivery.committed-steps — Committed steps are deliverable
+
+Delivery SHALL accept a task worktree without uncommitted changes when the task branch has a
+commit since the previous delivery, or since the base commit when the task has no delivery.
+
+### req.delivery.blocked-reason — A refusal says its own reason
+
+A delivery run that ends `blocked` SHALL explain in its error link the reason of its own code: for
+`nothing_to_deliver`, which commit the head equals and that no change waits; for `not_ready`,
+every blocking finding.
 
 ### req.delivery.blocked-inert — A blocked delivery changes nothing
 
@@ -21,7 +32,8 @@ deliveries of the task record unchanged.
 ### req.delivery.exact-content — The commit holds what was validated
 
 A delivery commit SHALL contain exactly the uncommitted changes the readiness examined, the metadata
-changed by the applied confirmations and the evidence bundle.
+changed by the applied confirmations and the evidence bundle; the commits it is created on are the
+ones the readiness examined.
 
 ### req.delivery.task-branch — Commits go on the task branch
 

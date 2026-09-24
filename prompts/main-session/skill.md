@@ -55,6 +55,8 @@ concorde run delivery   --task <task>
 
 A typical order is `understand` to assess and plan, `specify` when the Spec must change first,
 `implement` and `test`, the reviews when the change deserves them, then `validate` and `delivery`.
+Verified steps may already be committed on the task branch; `delivery` validates the whole task
+again itself, so `validate` before it is a preview of what would block.
 `--input <run-id>` passes the output of an earlier `ok` run of the same task, such as a plan, to
 the next worker. Housekeeping that changes no Spec meaning and no code behaviour, such as
 `concorde registry --write` or resolving a mechanical conflict in the registry mirror, you may do

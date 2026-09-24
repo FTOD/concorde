@@ -5,19 +5,28 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 
 ## Delivering
 
-### scenario.delivery.deliver — Deliver a validated task
+### scenario.delivery.deliver — Deliver a task with uncommitted work
 
-- GIVEN an active task whose latest `validate` run produced a ready readiness
-- AND the task worktree has not changed since
+- GIVEN an active task whose worktree has uncommitted changes that pass validation
 - WHEN the main agent runs `concorde run delivery --task severity`
-- THEN a delivery commit is created on `concorde/severity` with the validated head as its parent
+- THEN Delivery decides the readiness itself and records its own run as the readiness run
+- AND a delivery commit is created on `concorde/severity` with the validated head as its parent
 - AND it contains every uncommitted change and the evidence bundle `.concorde/evidence/severity/1.json`
 - AND the task record lists the delivery and the task is delivered
 - AND the result has status `ok` with the commit as output and the worktree is clean
 
+### scenario.delivery.committed — Deliver a task whose steps are committed
+
+- GIVEN an active task whose verified steps are committed on its branch and whose worktree is clean
+- AND no `validate` run since
+- WHEN the main agent runs `delivery`
+- THEN Delivery validates every change since the base commit
+- AND the delivery commit, on top of the last step, adds only the evidence bundle
+- AND the task is delivered
+
 ### scenario.delivery.confirmations — Pending markers are cleared in the commit
 
-- GIVEN a ready readiness that lists a confirmation for a filled pending entry
+- GIVEN a task whose readiness lists a confirmation for a filled pending entry
 - WHEN the task is delivered
 - THEN the delivery commit contains the declaring metadata with that entry no longer pending
 - AND the output and the bundle list the confirmed entry
@@ -31,31 +40,26 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 
 ## Refusing
 
-### scenario.delivery.stale — Refuse a stale readiness
+### scenario.delivery.not-ready — Refuse a task that is not ready
 
-- GIVEN a ready readiness
-- WHEN a file of the task worktree changes and the main agent runs `delivery`
-- THEN the result has status `blocked` with `stale_readiness`
-- AND no commit is created, nothing in the worktree changes and no delivery is recorded
-
-### scenario.delivery.not-ready — Refuse a missing or negative readiness
-
-- GIVEN a task without a `validate` run, or whose latest readiness is not ready
+- GIVEN a task with a committed file that no Module binds
 - WHEN the main agent runs `delivery`
-- THEN the result has status `blocked` with `no_readiness` or `not_ready`
-- AND no commit is created and no delivery is recorded
+- THEN the result has status `blocked` with `not_ready`, and Validation's `not_deliverable` link
+  names the file as a cause
+- AND no commit is created, nothing in the worktree changes and no delivery is recorded
 
 ### scenario.delivery.nothing — Nothing to deliver
 
-- GIVEN a current ready readiness and a worktree without uncommitted changes
+- GIVEN a clean worktree whose head is the task's base commit, or its previous delivery commit
 - WHEN the main agent runs `delivery`
 - THEN the result has status `blocked` with `nothing_to_deliver`
+- AND the error names which commit the head equals and explains that there is no new work
 
 ## Failures
 
 ### scenario.delivery.commit-refused — Git refuses the commit
 
-- GIVEN a current ready readiness and a commit hook that rejects the commit
+- GIVEN a task that is ready and a commit hook that rejects the commit
 - WHEN the task is delivered
 - THEN the result has status `failed` with the hook's output as host evidence
 - AND the confirmed metadata is restored, the bundle removed and the index reset
