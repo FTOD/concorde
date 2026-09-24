@@ -3,14 +3,11 @@
 ## Purpose
 
 Spec review judges whether the Specs of one or more Modules are good enough for their reader, which
-no deterministic check can establish. It is the `spec_review` Operation: the main agent runs it in a
-task worktree, and for each named Module a headless worker of task type `review-spec` reads that
-Module's Spec context and works through one checklist covering readability, the form of
-requirements and scenarios, how well the design is explained, the honesty of diagrams and the
-coherence of terminology. It returns every blocking finding it can establish in one pass, with a
-verdict the host derives from them. Spec review never edits a Spec, never repairs what it finds and
-never calls another Operation; the main agent decides what to change. It does not repeat structural
-validation, which Spec core owns, and does not judge code, which Code review owns.
+no deterministic check can establish. It is the `spec_review` Operation: a headless `review-spec`
+worker per named Module reads its Spec context, works through one checklist, and returns every
+blocking finding in one pass with a verdict the host derives. It never edits a Spec, repairs a
+finding or calls another Operation, and does not repeat structural validation (Spec core) or judge
+code (Code review).
 
 ## Terminology
 
@@ -34,137 +31,124 @@ validation, which Spec core owns, and does not judge code, which Code review own
 | [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
 | [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 
-A Spec review produces review findings and one review verdict inside an ordinary Operation result;
-the verdict is evidence bound to the context identities the reviewers read.
+Findings and one verdict travel inside an ordinary Operation result; the verdict is evidence bound
+to the context identities the reviewers read.
 
 ## Usage
 
 <a id="concept.spec-review.review"></a>
 
-The main agent runs a **Spec review** when a Spec change is ready to be judged, typically after a
-`specify` run and before implementation, or when it doubts that an existing Spec is clear enough to
+The main agent runs a **Spec review** when a Spec change is ready to be judged, typically after
+`specify` and before implementation, or when it doubts that an existing Spec is clear enough to
 hand to workers:
 
 ```text
 concorde run spec_review --task <task-id> --modules module.checkout,module.inventory [--check-findings]
 ```
 
-It runs in the background like any Operation and writes an Operation result when it ends. Each named
-Module is reviewed on its own, from the Specs of the task worktree, so a Spec change made on the
-task branch is what gets judged, committed or not. The result's status is `ok` when every Module
-could be reviewed, whatever the verdict; it is `blocked` or `failed` only when the verdict is
-`incomplete`, and the result then still carries the findings of every Module that was reviewed.
+It runs in the background and writes a result when it ends. Each named Module is reviewed on its
+own from the task worktree's Specs, so what gets judged is the branch's own change, committed or
+not. Status is `ok` whenever every Module could be reviewed, `blocked`/`failed` only when the
+verdict is `incomplete` — still carrying every reviewed Module's findings.
 
 <a id="concept.spec-review.finding"></a>
 
-Each **review finding** names the Module and document, the anchor or line it concerns, one checklist
-dimension (`readability`, `obligations`, `design`, `views` or `terminology`), a severity, the
-problem, the evidence in the Spec that shows it, and a suggested repair. A finding is `blocking`
-when a reader or a worker bound to the Module could not rely on the Spec as written, for example a
-requirement that states two obligations, a scenario whose outcome cannot be tested, or a Usage
-section that never shows a normal path; everything else is `advisory`. A reviewer reports every
-blocking finding it can establish in one pass instead of stopping at the first, so one round of
-changes can address them all. With `--check-findings` a second worker checks each finding against
-the same Specs and marks it `confirmed` or `disputed` with a reason; a Module without findings needs
-no checker.
+Each **review finding** names the Module, document and anchor or line concerned, one checklist
+dimension (`readability`, `obligations`, `design`, `views`, `terminology`), a severity, the problem,
+its evidence and a suggested repair. It is `blocking` when a reader or bound worker could not rely
+on the Spec as written, `advisory` otherwise. A reviewer reports every blocking finding it can
+establish in one pass, so one round of changes can address them all.
+`--check-findings` has a second worker mark each finding `confirmed` or `disputed` with a reason; a
+Module without findings needs no checker.
 
 <a id="concept.spec-review.verdict"></a>
 
-The **review verdict** is `accepted` when no blocking finding stands, because there is none or
-the checker disputed every one, `changes_required` when at least one blocking finding stands, and
-`incomplete` when a Module could not be reviewed, because its Specs fail structural validation,
-its worker was blocked or failed, or the host's audit found a change. The verdict comes with the context identity
-of every reviewed Module; once any of those Specs changes, the verdict no longer applies to them.
-The main agent reads the findings, decides which to act on, records that decision in the task's
-decision log and, when it wants changes, runs `specify` again; Spec review itself changes nothing.
+The **review verdict** is `accepted` when no blocking finding stands (none existed, or the checker
+disputed every one), `changes_required` when one does, and `incomplete` when a Module could not be
+reviewed — failed structural validation, a blocked/failed worker, or an audit-found change. It
+carries every reviewed Module's context identity and stops applying once any of those Specs
+changes. The main agent decides what to act on, logs that decision, and reruns `specify` for
+changes; Spec review itself changes nothing.
 
 ## Design
 
-Spec review follows the ordinary host sequence of a worker-backed Operation, with the steps that
-concern writing left out, because a `review-spec` grant makes nothing writable. The host validates
-the named Modules first and stops a Module's review with `incomplete` when Spec core reports a
-structural error, since a worker judging a Spec that does not load would report noise. It then
-freezes one grant per Module, launches one reviewer per Module, audits that nothing changed,
-optionally runs the checker, and derives the verdict itself. The exact steps are in the
-[step table](operation.md#host-sequence).
+Spec review follows the ordinary host sequence of a worker-backed Operation, minus the writing
+steps a `review-spec` grant makes moot. It validates Modules first, marking one `incomplete` on a
+Spec core structural error rather than send a worker to judge a Spec that won't load; freezes one
+grant per Module; launches one reviewer per Module; audits for changes; optionally runs the
+checker; and derives the verdict ([step table](operation.md#host-sequence)).
+
+```d2
+host: Review host {
+  "src/concorde/spec_review/"
+}
+checklist: Reviewer brief {
+  "prompts/workers/review-spec.md"
+}
+host -> checklist: hands reviewers
+```
 
 <a id="realization.spec-review.operation"></a>
 
-The **Review host** runs that sequence: it validates the Modules, asks Spec core for each grant,
-launches the reviewers and the optional checker through the Harness, derives the verdict and
-returns the Operation result. In this version it reviews the Modules one after another.
+**Review host** runs that sequence through the Harness and returns the Operation result, reviewing
+Modules one after another in this version.
 
 <a id="realization.spec-review.checklist"></a>
 
-The **Reviewer brief** is the checklist every reviewer and checker receives: the dimensions, what
-counts as blocking, the one-pass rule, and the shape of a finding. The host appends the role, the
-reviewed Module with its own documents, the task's goal for orientation and, for a checker, the
-numbered findings to check.
+**Reviewer brief** is the checklist every reviewer and checker receives — dimensions, what counts
+as blocking, the one-pass rule, a finding's shape — plus, from the host, the role, the reviewed
+Module's own documents, the task's goal and, for a checker, the numbered findings to check.
 
-Deriving the verdict in the host rather than taking a worker's word keeps the outcome
-deterministic: a worker contributes findings, which remain its claims, and the host counts them.
-One reviewer per Module keeps each worker's context exactly one Module's Spec context, which is
-also the scope of its judgment: a reviewer judges only the reviewed Module's own documents. A
-problem it notices in a provider's selected document is reported as an advisory finding naming the
-provider and never blocks this Module's verdict; reviewing the provider is a separate run. The host
-enforces this rather than trusting it: it names each finding after the Module that owns the cited
-document and counts a blocking finding about any document the reviewed Module does not own as
-advisory, recording the correction as its own evidence.
+The host, not the worker, derives the verdict, keeping it deterministic: findings stay worker
+claims, host-counted. One reviewer per Module keeps its context exactly that Module's Spec context,
+and its judgment to that Module's own documents; a problem noticed in a provider's document becomes
+an advisory finding naming the provider, never blocking this verdict — the host enforces this
+itself, re-filing any such blocking finding as advisory.
 
-A reviewer cannot widen its own view. When it cannot judge something without a document outside
-its grant, it reports a `context` finding that names what it needed, and the main agent, which has
-the project-wide view, decides whether the Spec lacks a relation or the review needs another
-Module. In this version reviewers read the Specs directly under their grant and do not use the Spec
-MCP server, and all dimensions are one checklist per reviewer; splitting dimensions into parallel
-reviewers and letting reviewers query the server are future work.
+A reviewer cannot widen its own view: lacking a needed document, it reports a `context` finding
+naming it, and the main agent decides whether the Spec lacks a relation or the review needs another
+Module. In this version, reviewers read Specs directly under their grant, not the Spec MCP server,
+on one checklist covering all dimensions; splitting by dimension and server queries are future
+work.
 
 ## Relationships
 
 ```d2
 host: Review host
-brief: Reviewer brief
-finding: Review finding
-verdict: Review verdict
 core: Spec core
 workers: Workers
+operations: Operations
 host -> core: validates and computes grants with
 host -> workers: launches reviewers through
-host -> brief: hands reviewers
-host -> finding: collects
-host -> verdict: derives
-verdict -> finding: is derived from
+host -> operations: returns its result through
 ```
 
-The picture leaves out the Operation catalog, which lists Spec review, and the main agent, which
-runs it and reads its result.
+Operations also uses Spec review in turn, since `spec_review` is one of its own Operations —
+declared and explained there, not here.
 
 <a id="uses-spec"></a>
 
-**Spec core** provides the structural answers the review builds on. The host relies on its
-[structural checks](../spec/module.md#concept.spec.structural-check) to decide whether a Module can
-be reviewed at all, and on its [grants](../spec/module.md#concept.spec.grant) with their
-[context identities](../spec/module.md#concept.spec.context-identity) to fix, per Module, exactly
-which Specs the reviewer may read and to bind the verdict to them. The host asks for each grant
-with the task worktree as root and task type `review-spec`. When Spec core cannot load the task
-worktree's Specs, the Operation fails with that error as host evidence; when it rejects one
-Module's grant, that Module's review is `incomplete`.
+**Spec core**'s [structural checks](../spec/module.md#concept.spec.structural-check) decide whether
+a Module can be reviewed at all; its [grants](../spec/module.md#concept.spec.grant) with
+[context identities](../spec/module.md#concept.spec.context-identity) fix, per Module and task type
+`review-spec`, exactly which Specs a reviewer may read and bind the verdict to. A load failure fails
+the Operation as host evidence; a rejected grant makes that Module's review `incomplete`.
 
 <a id="uses-workers"></a>
 
-**Workers**, in the Harness, turn a frozen grant into a running Claude Code worker and report what
-happened. The host relies on them to launch each reviewer with the [brief](../../harness/workers/module.md#concept.workers.brief)
-it prepared and no other instructions, to return the reviewer's
-[worker result](../../harness/workers/module.md#concept.workers.worker-result), extended here by its
-findings, to audit that the worker changed no file, and to keep a
-[run record](../../harness/workers/module.md#concept.workers.run-record) per worker. A worker that
-ends `blocked` or `failed`, or an audit that finds a change, makes that Module's review
-`incomplete`, and the worker's own error link travels in the result's error chain unchanged.
+**Workers**, in the Harness, turn a frozen grant into a running Claude Code worker: launch each
+reviewer with only its [brief](../../harness/workers/module.md#concept.workers.brief), return its
+[worker result](../../harness/workers/module.md#concept.workers.worker-result) extended with
+findings, audit for changes, and keep a
+[run record](../../harness/workers/module.md#concept.workers.run-record). A `blocked`/`failed`
+worker, or an audit finding a change, makes that Module's review `incomplete`, its error link
+travelling in the result's error chain unchanged.
 
 <a id="uses-operations"></a>
 
-**Operations** defines what an [Operation](../../operations/module.md#concept.operations.operation)
-is, runs its [host](../../operations/module.md#concept.operations.host) from `concorde run`, and
-fixes the [Operation result](../../operations/module.md#concept.operations.result) envelope in which
-Spec review returns its verdict and findings. Spec review relies on that contract to be launched
-with a task and its arguments and to hand its payload back to the main agent; its duty is to fill
-the envelope honestly, keeping worker claims apart from the evidence the host produced.
+**Operations** defines the [Operation](../../operations/module.md#concept.operations.operation)
+concept, runs its [host](../../operations/module.md#concept.operations.host) from `concorde run`,
+and fixes the [Operation result](../../operations/module.md#concept.operations.result) envelope in
+which Spec review returns its verdict and findings. Spec review relies on it to be launched with a
+task and its arguments and to hand its payload back; its duty is to fill the envelope honestly,
+keeping worker claims apart from the host's own evidence.

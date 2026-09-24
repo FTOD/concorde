@@ -2,14 +2,11 @@
 
 ## Purpose
 
-Distribution turns the Concorde checkout into something a developer can run and install. It
-describes the package, builds the generated files from their prompt sources and records them in a
-build manifest, provides the `concorde` command-line interface that routes each command to the
-Module that owns it, writes the Protocol copy a project carries, and installs Concorde into another
-project together with the main-session guidance. It does not decide what a command does (the
-owning Module does), what the main agent is told (Main session does) or what a project's Specs and
-configuration say (initialization and the developer do): the installer never writes Specs. The
-installer and the tests of this Module are not implemented yet.
+Distribution turns the Concorde checkout into something a developer can run and install: describes
+the package, builds the generated files, routes each `concorde` command to its owning Module,
+writes the Protocol copy a project carries, and installs Concorde with the main-session guidance.
+It does not decide what a command does, what the main agent is told, or a project's Specs and
+configuration — the installer never writes Specs.
 
 ## Terminology
 
@@ -29,43 +26,29 @@ installer and the tests of this Module are not implemented yet.
 | [Scaffold proposal](../spec-tooling/views/module.md#concept.views.scaffold-proposal) | |
 | [Main-session guidance](../main-session/module.md#concept.main-session.guidance) | |
 
-The package, the build and its manifest describe what the checkout produces; the command-line
-interface, the Protocol copy and the installer describe how a project receives and runs it.
-
 ## Usage
 
 <a id="concept.distribution.package"></a>
 
-**The package.** The package is this checkout, described by `concorde.json`: name, version,
-licence, repository, the architecture profile, the Python runtime requirement, the package roots
-the installer ships (`docsite`, `prompts`, `protocol`, `scripts`, `src`), the install locations, the
-supported client, `claude-code`, and the pinned third-party programs under `tools` (today `d2`, by
-release, download URL and per-platform SHA-256). Everything the installer ships comes from it, and the build
-reads it as an input so that a changed descriptor makes every render stale. Views reads its package
-roots to confirm that the docsite template ships.
+**The package.** `concorde.json` is the package's identity: name, version, licence, the roots the
+installer ships, install locations, the supported client `claude-code`, and the pinned third-party
+programs under `tools` (today `d2`, by release, URL and per-platform SHA-256). The build reads it
+too, so a changed descriptor makes every render stale.
 
 <a id="concept.distribution.build"></a><a id="concept.distribution.build-manifest"></a>
 
-**Building.** Whoever changes a source the build reads rebuilds in the same worktree with
-`python3 scripts/concorde.py build`. The build resolves every prompt root under `prompts/`, expands
-its `@path.md` include lines and `{KEY}` parameters, and writes each result one to one under
-`generated/`, for example `prompts/protocol/principles.md` to `generated/protocol/principles.md`.
-It then writes the **build manifest** `generated/build-manifest.json` with the digest of every
-source and output. `build --check` renders in memory, writes nothing and reports every stale or
-missing output. Today the only prompt roots are the Protocol bundle; the main-session guidance and
-the worker briefs become prompt roots when their Modules add them, and a prompt file that no root
-includes fails the build, so a new prompt cannot be forgotten. `generated/` is ignored by Git: a
-checkout always rebuilds.
-
-After a Protocol change, `python3 scripts/concorde.py protocol-manifest --write --bind-project`
-accepts the fresh digests into the tracked `protocol/manifest.json`, binds the project
-configuration to that manifest and refreshes this checkout's own Protocol copy. Without `--write` it
-only reports whether the tracked manifest matches the build.
+**Building.** `python3 scripts/concorde.py build` expands every prompt root into `generated/`
+([requirements](requirements.md#req.distribution.build-reachable)) and writes
+`generated/build-manifest.json` with every source's and output's digest; `build --check` only
+reports what is stale, writing nothing
+([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
+Git-ignored, so a checkout always rebuilds. `protocol-manifest --write --bind-project` accepts a
+Protocol change's fresh digests, binds the configuration and refreshes this checkout's own copy.
 
 <a id="concept.distribution.cli"></a>
 
-**The command line.** `scripts/concorde.py` (or the `concorde.sh` and `concorde.ps1` wrappers, or
-`python -m concorde` with `src/` on the path) takes a global `--project-root` and one subcommand:
+**The command line.** `scripts/concorde.py` (or the `concorde.sh`/`concorde.ps1` wrappers) takes a
+global `--project-root` and one subcommand:
 
 | Command | Does | Owned by |
 | --- | --- | --- |
@@ -81,131 +64,141 @@ only reports whether the tracked manifest matches the build.
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 
-Every command except `spec-mcp`, `task`, `run` and `issues` prints exactly one JSON result envelope and exits
-with its status; a refused command line or an unexpected error still prints one `failed` envelope
-rather than a traceback. `task`, `run` and `issues` hand the rest of the command line to their owners, which
-print their own JSON and define their own exit codes; Distribution only routes them.
+Every command but `spec-mcp`, `task`, `run` and `issues` prints exactly one JSON envelope and exits
+with its status, even when refused
+([requirements](requirements.md#req.distribution.one-envelope)); those four route to their owners,
+which define their own JSON and exit codes.
 
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
 
-**Installing into a project.** The **installer**, `python3 scripts/install-concorde.py <project>`,
-refuses a package whose build is stale and then places:
+**Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale
+build, then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy;
+it needs only the Python standard library), the `concorde` command as `.concorde/bin/concorde`,
+the Protocol copy under `.concorde/protocol/` and Concorde-owned defaults only where absent, the
+[main-session guidance](../main-session/module.md#concept.main-session.guidance) as the project
+skill `.claude/skills/concorde/SKILL.md` and a block between `<!-- concorde:start -->` and
+`<!-- concorde:end -->` in the project's `CLAUDE.md` — replaced in place on a later install,
+leaving the rest of the file untouched — and the `d2` release `concorde.json` pins, placed at
+`.concorde/tools/d2`, checked against its SHA-256 before anything else is written and kept on a
+later install with the same pin
+([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
+plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/framework/` and
+`.concorde/tools/`, and a receipt `.concorde/install.json`.
 
-- the Framework runtime (`src`, `scripts`, `prompts`, `protocol` and the rendered `generated`
-  outputs) under `.concorde/framework/`, replacing an earlier copy; the runtime needs only the
-  Python standard library;
-- the `concorde` command as `.concorde/bin/concorde`, which runs the installed runtime;
-- the **Protocol copy** under `.concorde/protocol/` (the tracked manifest and every rendered asset
-  it lists) and Concorde-owned defaults when they are absent, such as `.concorde/issues/.gitignore`;
-- the [main-session guidance](../main-session/module.md#concept.main-session.guidance) as Claude
-  Code guidance: the project skill `.claude/skills/concorde/SKILL.md` and a block between
-  `<!-- concorde:start -->` and `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in
-  place on a later install and leaving the rest of the file untouched;
-- the `d2` program the docsite renders diagrams with, as `.concorde/tools/d2`: the release that
-  `concorde.json` pins under `tools.d2`, downloaded for this platform from github.com/d2lang/d2 and
-  accepted only if its SHA-256 matches the pin. It is fetched and checked before anything else is
-  written, and kept on a later install with the same pin; `--without-d2` skips it;
-- ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/framework/` and
-  `.concorde/tools/` in the project's `.gitignore`, and a receipt `.concorde/install.json`.
-
-It never writes Specs, the registry or the project configuration. After installing,
-`concorde init --propose --name <name> [--target <module id>]` prints Spec core's initialization
-proposal, and `concorde init --apply --proposal <file>` applies exactly that proposal from a file
+It never writes Specs, the registry or the project configuration
+([requirements](requirements.md#req.distribution.installer-no-specs)). Afterwards,
+`concorde init --propose --name <name>` prints Spec core's initialization proposal, and
+`concorde init --apply --proposal <file>` applies exactly the proposal it printed, from a file
 outside the project; the developer accepts a new Protocol copy later by updating the binding.
 
 ## Design
 
 <a id="realization.distribution.descriptor"></a>
 
-The **package descriptor** `concorde.json` is the package's identity. Keeping it an input of the
-build means a version or licence change is never shipped with renders made before it.
+The **package descriptor** `concorde.json` is an input of the build, so a licence or version change
+is never shipped with renders made before it.
 
 <a id="realization.distribution.build"></a>
 
-The **build renderer** is a pure function of the source tree followed by a guarded write. Includes
-must be safe repository-relative Markdown paths, may not reach a Spec document, may not form a
-cycle or reach one file twice within a root, and must agree on audience; Protocol prompts include
-only Protocol text. An output is written only inside the build-owned locations
-`generated/protocol/`, `generated/workers/`, `generated/main-session/` and
-`generated/build-manifest.json`, because `generated/` is shared; every Markdown file directly in
-`prompts/workers/` or `prompts/main-session/` is a root of its own; an owned
-output the build no longer produces is removed only when its bytes match the previous manifest,
-and links or unknown files stop the build before anything changes. The manifest lets any consumer
-check freshness cheaply by rehashing the recorded sources instead of rebuilding.
+The **build renderer** is a pure function of the source tree followed by a guarded write: includes
+must be safe, acyclic and audience-consistent, and an output is written only inside the build-owned
+`generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)). A
+leftover is removed only when its bytes still match the previous manifest; an edited leftover, a
+link or an unknown file stops the build first.
 
 <a id="realization.distribution.command"></a>
 
-The **command entry points** are thin: they parse the command line, hand the request to the owning
-Module's function, and wrap the outcome in the shared envelope from Spec core. A command's meaning
-therefore changes only in its owner, and the entry points never interpret Specs themselves.
+The **command entry points** are thin: they parse the command line, call the owning Module's
+function, and wrap the outcome in Spec core's shared envelope, so a command's meaning changes only
+in its owner.
 
 <a id="realization.distribution.protocol-copy-writer"></a>
 
-The **Protocol copy writer** builds the copy from the tracked manifest and the rendered assets,
-after checking that the build is fresh and that each asset still has its recorded digest. A project
-therefore receives exactly the Protocol the manifest names, which is what Spec core's
-[Protocol binding](../spec-tooling/spec/module.md#concept.spec.protocol-binding) accepts.
+The **Protocol copy writer** builds the copy from the tracked manifest and rendered assets after
+checking freshness and each digest
+([requirements](requirements.md#req.distribution.no-stale-copy)), so a project receives exactly the
+Protocol the manifest names.
 
 <a id="realization.distribution.installer"></a>
 
-The **installer program** reuses the Protocol copy writer and the build's freshness check, and
-installs the rendered main-session guidance.
+The **installer program** reuses the writer and the build's freshness check, and installs the
+rendered main-session guidance.
+
+How this Module is built:
+
+```d2
+distribution: Distribution {
+  descriptor: Package descriptor {
+    "concorde.json"
+  }
+  build: Build renderer {
+    "build.py"
+    "prompt_resolver.py"
+  }
+  command: Command entry points {
+    "__main__.py"
+    "cli.py"
+    "concorde.py"
+    "concorde.sh"
+    "concorde.ps1"
+  }
+  writer: Protocol copy writer {
+    "project_defaults.py"
+  }
+  installer: Installer program {
+    "install-concorde.py"
+    "install.py"
+    "tools.py"
+  }
+  build -> descriptor: reads
+  command -> build: runs
+  installer -> writer: places through
+}
+```
+
+Python sources are under `src/concorde/distribution/` except `src/concorde/__main__.py` and the
+`scripts/` entry points. The [build manifest](#concept.distribution.build-manifest) and
+[Protocol copy](#concept.distribution.protocol-copy) are recorded and written but bind no file of
+their own.
 
 <a id="realization.distribution.tests"></a>
 
-The **Distribution tests** exercise the build and the Protocol manifest on built copies of the
-package, the command line, and the installer followed by initialization and validation of a fresh
-project through the installed command. The obligations they verify are in the
+The **Distribution tests**, under `tests/concorde/distribution/`, exercise the build, the Protocol
+manifest and the installed command on a fresh project, verifying the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
 ## Relationships
 
 ```d2
-build: Build renderer
-manifest: Build manifest
-descriptor: Package descriptor
-writer: Protocol copy writer
-copy: Protocol copy
-command: Command entry points
-spec: Spec core
-views: Views
-installer: Installer program
-mainsession: Main session
 distribution: Distribution
-build -> manifest: records
-build -> descriptor: reads
-writer -> copy: writes
-command -> build: runs
-command -> spec: routes validate and registry to
-command -> views: routes docsite to
-installer -> writer: places through
-installer -> mainsession: installs
-distribution -> spec
-distribution -> views
+tooling: Spec tooling {
+  spec: Spec core
+  views: Views
+}
+mainsession: Main session
+distribution -> tooling.spec
+distribution -> tooling.views
 distribution -> mainsession
 ```
 
 <a id="uses-spec"></a>
 
-**Spec core** owns `validate` and `registry`, the [structural checks](../spec-tooling/spec/module.md#concept.spec.structural-check)
-and the [registry](../spec-tooling/spec/module.md#concept.spec.registry) they work on, the Protocol
-text and manifest the build renders, and the
+**Spec core** owns `validate` and `registry`, the
+[structural checks](../spec-tooling/spec/module.md#concept.spec.structural-check) and
+[registry](../spec-tooling/spec/module.md#concept.spec.registry) they work on, and the
 [Protocol binding](../spec-tooling/spec/module.md#concept.spec.protocol-binding) that
-`protocol-manifest --bind-project` rewrites and the installer leaves to the developer.
-Distribution relies on Spec core's result envelope for every command and never interprets a Spec
-itself; when Spec core refuses a project, the command prints that refusal unchanged.
+`protocol-manifest --bind-project` rewrites. Distribution relies on its envelope for every command
+and never interprets a Spec itself; a Spec core refusal prints unchanged.
 
 <a id="uses-views"></a>
 
-**Views** owns the docsite scaffold. The `docsite` command only routes `--propose` and `--apply` to
-it; the [scaffold proposal](../spec-tooling/views/module.md#concept.views.scaffold-proposal) and
-every file it writes are Views' responsibility, and an `--apply` without `--proposal` is refused
-before Views is called.
+**Views** owns the docsite scaffold; `docsite` only routes `--propose`/`--apply` to it. The
+[scaffold proposal](../spec-tooling/views/module.md#concept.views.scaffold-proposal) and every file
+it writes are Views' responsibility, and an `--apply` without `--proposal` is refused first.
 
 <a id="uses-main-session"></a>
 
-**Main session** owns the guidance the main agent receives, authored under `prompts/main-session/`.
-Distribution renders it as a prompt root once it exists and the installer places the rendered
-[main-session guidance](../main-session/module.md#concept.main-session.guidance) into the project's
-Claude Code configuration without changing its content. If the guidance is missing or stale, the
-installer refuses instead of installing an older copy.
+**Main session** owns the guidance the main agent receives. Distribution renders it as a prompt
+root and the installer places the rendered
+[main-session guidance](../main-session/module.md#concept.main-session.guidance) unchanged, and
+refuses to install it missing or stale rather than fall back to an old copy.

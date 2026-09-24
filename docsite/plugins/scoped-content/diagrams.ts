@@ -164,7 +164,41 @@ export function styledDiagramInput(
       );
     classes.push(`${edgeReference(edge)}.class: ${uses ? "uses" : "relates"}`);
   }
-  return `${DIAGRAM_STYLE}\n${source}\n${classes.join("\n")}\n`;
+  return `${DIAGRAM_STYLE}\n${source}\n${[...classes, ...grids(parsed, kinds)].join("\n")}\n`;
+}
+
+/** Many unconnected children would lay out as one long row, so a container of at least
+ * `GRID_FROM` children, none of which an edge touches, arranges them in a near-square grid. A
+ * realization's file rows are a table and keep their own layout. */
+const GRID_FROM = 5;
+function grids(
+  parsed: ReturnType<typeof parseDiagramSource>,
+  kinds: Map<string, string>,
+): string[] {
+  const key = (path: string[]) => JSON.stringify(path);
+  const touched = new Set(
+    parsed.edges.flatMap((edge) =>
+      [edge.src, edge.dst].flatMap((path) =>
+        path.map((_, n) => key(path.slice(0, n + 1))),
+      ),
+    ),
+  );
+  return parsed.shapes.flatMap((shape) => {
+    if (kinds.get(key(shape.path)) === "realization-files") return [];
+    const inner = parsed.shapes.filter(
+      (child) =>
+        child.path.length === shape.path.length + 1 &&
+        key(child.path.slice(0, -1)) === key(shape.path),
+    );
+    if (
+      inner.length < GRID_FROM ||
+      inner.some((child) => touched.has(key(child.path)))
+    )
+      return [];
+    return [
+      `${reference(shape.path)}.grid-columns: ${Math.ceil(Math.sqrt(inner.length))}`,
+    ];
+  });
 }
 
 async function renderBlock(

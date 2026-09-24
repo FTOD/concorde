@@ -170,6 +170,33 @@ describe("scenario.views.diagram-style", () => {
   });
 
   // verifies: scenario.views.diagram-style
+  it("lays out many unconnected children as a grid, never a table's rows", () => {
+    const project = bankProject();
+    try {
+      const registry = loadScopedRegistry(project.root);
+      const page = registry.pages.find(
+        (p) => p.sourcePath === "specs/transfer/module.md",
+      )!;
+      const children = ["a", "b", "c", "d", "e"].map((k) => `  ${k}: ${k}`);
+      const loose = styledDiagramInput(
+        registry,
+        page,
+        ["transfer: Transfer {", ...children, "}"].join("\n"),
+      );
+      expect(loose).toContain('"transfer".grid-columns: 3');
+      // An edge between the children keeps the layout engine in charge.
+      const linked = styledDiagramInput(
+        registry,
+        page,
+        ["transfer: Transfer {", ...children, "  a -> b", "}"].join("\n"),
+      );
+      expect(linked).not.toContain("grid-columns");
+    } finally {
+      rmSync(project.root, { recursive: true, force: true });
+    }
+  });
+
+  // verifies: scenario.views.diagram-style
   it("renders a checked diagram to a staged SVG the page references", async () => {
     const project = bankProject();
     try {

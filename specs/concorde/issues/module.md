@@ -2,15 +2,13 @@
 
 ## Purpose
 
-Issues keeps a durable record of concrete problems found while working on a project, so that a
-problem outlives the conversation, worker or task that found it. It owns the Issue records under
-`.concorde/issues/`, the store that is the only code writing them, dispositions that close or
-reopen an Issue, and the bookkeeping command through which the main agent records reports, closes
-and reopens Issues, and lists, shows and checks the records. Recording a problem never stops
-anyone, never starts a repair and never grants read or write access to the project. Issues does
-not solve problems and decides nothing about who may close an Issue: the main agent solves an
-Issue by running ordinary Operations on the Issue's Module, and whoever disposes an Issue is
-responsible for the evidence it cites.
+Issues keeps a durable record of concrete problems found while working on a project, outliving the
+conversation, worker or task that found it: Issue records under `.concorde/issues/`, the store that
+alone writes them, dispositions closing or reopening one, and the bookkeeping command the main
+agent records, closes, reopens, lists, shows and checks them with. Recording never stops anyone,
+starts a repair or grants read/write access; Issues neither solves problems nor decides who may
+close one — the main agent solves an Issue with ordinary Operations on its Module, and whoever
+disposes it answers for the evidence cited.
 
 ## Terminology
 
@@ -27,121 +25,111 @@ responsible for the evidence it cites.
 | [Typed value](../spec-tooling/spec/module.md#concept.spec.typed-value) | |
 | [File transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction) | |
 
-An Issue is the problem; an Issue report is one observation of it; a Disposition is the decision
-that the problem is settled or needs attention again. Keeping observations and decisions apart is
-the main idea of the Module: anyone may observe cheaply, while closing requires evidence.
+An Issue is the problem, a report one observation of it, and a Disposition the decision that it is
+settled or needs attention again; observing is cheap, while closing requires evidence.
 
 ## Usage
 
 <a id="concept.issues.issue"></a><a id="concept.issues.report"></a>
 
-**What an Issue is.** Each Issue is one file, `.concorde/issues/I-<32 hex digits>.md`, committed
-with the branch like any other project file. It holds the Issue's reports, its dispositions and a
-status of `open` or `closed`. Each report is classified as a `bug`, a `gap` (an
-implementation/Spec mismatch, a conflict between Specs or a missing necessary promise) or a
-`limitation`, and names the Module that owns the broken promise, or `null` when the reporter does
-not know; the Issue's owner is then the reporting Module, which for a report recorded through the
-command is the project's root Module. For example, the observation that no
-Spec says how often a failed payment is retried is a `gap` of subtype `missing-contract` with
-owner `module.payments`, citing the Spec file that shows the omission. Reports are never
-edited: a later observation is appended as a new report. Because the files travel with Git, an
-Issue closed in a task worktree is still open on the primary branch until the task branch is
-merged.
+**What an Issue is.** Each Issue is one file, `.concorde/issues/I-<32 hex digits>.md`, holding its
+reports, dispositions and a status of `open`/`closed`. Each report is a `bug`, a `gap` (an
+implementation/Spec mismatch, a Spec conflict or a missing promise) or a `limitation`, naming the
+owning Module or `null` if unknown — the Issue's owner is then the reporting Module, the root
+Module for a command-recorded report. Reports are only appended, never edited; since files travel
+with Git, a task-worktree closure stays open on the primary branch until the branch merges.
 
-**Recording a report.** The main agent writes the report as a JSON file and runs
-`python3 scripts/issues.py report --file <report.json> [--task <task-id>]`. The command refuses an
-owner that is not a registered Module and evidence that does not exist in the project, and adds
-the provenance itself: who reported (`main-agent`), the reporting Module, a digest of the registry,
-the task and the Git `HEAD`, so a report file cannot claim another origin. It answers with a
-[receipt](interface.md#contract.issues.receipt) and the record's new revision only after the record
-is on disk. A report file that names an Issue and its current revision appends a later observation
-to that open Issue instead of creating one. Each run of the command is a separate invocation, so
-running it twice with the same file records two Issues. No Operation records Issues on its own in
-this version: the main agent decides which problems deserve an Issue, typically a Spec gap or
-failure an Operation result reported that the current task will not fix.
+**Recording a report.** The main agent writes it as JSON and runs
+`python3 scripts/issues.py report --file <report.json> [--task <task-id>]`; the command refuses an
+unregistered owner or evidence absent from the project, and adds its own provenance (reporter,
+reporting Module, registry digest, task, Git `HEAD`) so a report can't claim another origin. It
+answers with a [receipt](interface.md#contract.issues.receipt) and the new revision once the
+record is on disk; naming an open Issue and its revision appends rather than creates, and the same
+file run twice records two Issues. No Operation records Issues on its own in this version — the
+main agent decides, typically for a Spec gap or an unfixed reported failure.
 
 <a id="concept.issues.disposition"></a>
 
-**Closing and reopening.** A disposition has a reason (`resolved`, `duplicate`, `not-actionable` or
-`reopened`), a note, at least one evidence reference and the actor; `duplicate` names another open
-Issue. Only an open Issue can be closed and only a closed one reopened. Closed Issues keep all
-their reports, because reopening needs them. The main agent runs `close <id> --reason <reason>
---note <text> --evidence <item>...` or `reopen <id> --note <text> --evidence <item>...`; the
-command records the main agent as the actor. The store checks the form of a disposition, not
-whether its evidence is true, so the caller that disposes an Issue is accountable for it.
+**Closing and reopening.** A disposition has a reason (`resolved`, `duplicate`, `not-actionable`,
+`reopened`), a note, at least one evidence reference and the actor (`duplicate` names another open
+Issue); only an open Issue closes, only a closed one reopens, both keeping all reports. The main
+agent runs `close <id> --reason <reason> --note <text> --evidence <item>...` or `reopen ...`; the
+command records the main agent as the actor. The store checks a disposition's form, not its
+evidence's truth, so whoever disposes an Issue answers for it.
 
-**Solving an Issue.** Solving is ordinary work. The main agent reads the Issue, opens a task for its
-owning Module, runs the Operations that fix the problem, such as `understand`, `specify` or
-`implement`, and closes the Issue on the task branch with the evidence of the delivered change, so
-the closure is merged together with the fix.
+**Solving an Issue** is ordinary work: the main agent reads it, opens a task for its owning Module,
+runs the Operations that fix the problem, and closes the Issue on the task branch with the
+delivered change's evidence, merging the closure with the fix.
 
-**Bookkeeping and the store check.** `python3 scripts/issues.py list` prints a summary row per
-Issue, `show <id>` prints one record with its revision, and `check` validates every record; the
-command refuses a directory that is not an initialized Concorde project and never launches a model.
-The configured check `check.issues.store` runs `check` whenever this Module's checks run. It fails
-for a malformed, misnamed or inconsistent record and for an open Issue whose owner is no longer a
-registered Module; a closed Issue with an unknown owner is only noted. Such an Issue is still listed
-and shown, and is repaired by appending a report naming a registered owner or by closing it.
-Requests naming an unknown Issue, a stale revision, a closed Issue to append to or close, an open
-Issue to reopen, an unregistered owner or missing evidence are refused and write nothing. Every
-refusal prints an error code and a message naming the Issue, file, argument or field concerned,
-and exits with status 2 when the request itself is unusable and 1 when the Issue rules refuse it.
-The exact shapes, operations and error codes are in the [Issue interface](interface.md).
+**Bookkeeping and the store check.** `list` prints a summary row per Issue, `show <id>` one record
+with its revision, and `check` validates every record; the command refuses a directory that is not
+an initialized Concorde project and never launches a model. The configured check
+`check.issues.store` runs `check` whenever this Module's checks run, failing a malformed, misnamed
+or inconsistent record and an open Issue with an unregistered owner (closed ones are only noted,
+still listed/shown, repaired by a new report or by closing). An unknown Issue, a stale revision, a
+closed Issue to append to or close, an open Issue to reopen, an unregistered owner or missing
+evidence is refused, writing nothing and printing an error code and message, exiting 2 (unusable)
+or 1 (refused) — shapes, operations, codes in the [Issue interface](interface.md).
 
 ## Design
 
+```d2
+issues: Issues {
+  store: Issue store {
+    "store.py"
+    "shapes.py"
+  }
+  command: Bookkeeping command {
+    "scripts/issues.py"
+  }
+  command -> store: records and reads Issues through
+}
+```
+
 <a id="realization.issues.store"></a>
 
-**The Issue store** is the only code that creates, appends to or disposes an Issue record; Git moves of committed files between branches are not store writes, and the store never
-runs Git. Each file holds one identity heading and one JSON record, so there is no prose copy to
-drift. Each write checks the revision its caller read, publishes through a
-[file transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction) and syncs before
-acknowledging, all under one exclusive lock kept in the worktree's own `.concorde/runs/`. The
-record shapes are registered as [typed values](../spec-tooling/spec/module.md#concept.spec.typed-value).
-The store checks form, not truth.
+**The Issue store** is the only code that creates, appends to or disposes an Issue record — Git
+moves of committed files aren't store writes, and it never runs Git. Each file holds one identity
+heading and one JSON record, with no prose copy to drift; each write checks the revision its
+caller read, publishes through a
+[file transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction), and syncs before
+acknowledging, all under one exclusive lock in `.concorde/runs/`. Record shapes are
+[typed values](../spec-tooling/spec/module.md#concept.spec.typed-value); the store checks form,
+not truth.
 
 <a id="realization.issues.command"></a>
 
-**The bookkeeping command** `scripts/issues.py` is the main agent's face of the store: `report`,
-`close` and `reopen` write through it, and `list`, `show` and the store check read. It reads the
-[registry](../spec-tooling/spec/module.md#concept.spec.registry) to know which Modules exist, which
-one is the root, and which digest names the context of a report.
+**The bookkeeping command** is the main agent's face of the store — `report`/`close`/`reopen` write,
+`list`/`show`/the store check read — and reads the
+[registry](../spec-tooling/spec/module.md#concept.spec.registry) for which Modules exist, which is
+root, and which digest names a report's context.
 
 <a id="realization.issues.tests"></a>
 
-The **Issues tests** cover the store on temporary directories, concurrent writers, malformed
-records and failed publications, every action of the bookkeeping command with its refusals, and
-the configured store check run as its configured command on a fixture project.
-
-The reasons behind these choices are in [Issues design](design.md).
+The **Issues tests** cover the store (temporary directories, concurrent writers, malformed records,
+failed publications), every bookkeeping-command action with its refusals, and the configured store
+check on a fixture project — reasons in [Issues design](design.md).
 
 ## Relationships
 
 ```d2
-command: Bookkeeping command
-store: Issue store
-issue: Issue
-report: Issue report
-disposition: Disposition
-spec: Spec core
-command -> store: records and reads Issues through
-store -> issue: keeps
-issue -> report: holds
-disposition -> issue: closes or reopens
-store -> spec: writes records through
+issues: Issues
+core: Spec core
+session: Main session
+issues -> core
+session -> issues
 ```
 
-Nothing outside the store writes a record. The bookkeeping command is how the main agent adds
-reports and dispositions, in the worktree it runs in; the main agent usually closes an Issue on the
-task branch that fixed the problem. The
-[Main session](../main-session/module.md) guidance tells the main agent when to record, solve and
-close Issues; Issues itself relies on nobody but Spec core.
+Nothing outside the store writes a record; the bookkeeping command is how the main agent adds
+reports and dispositions, usually closing an Issue on the task branch that fixed it. Main session
+declares `session -> issues` above; its [guidance](../main-session/module.md) says when to record,
+solve and close Issues. Issues relies on nobody but Spec core.
 
 <a id="uses-spec"></a>
 
 **Spec core** provides the [typed-value](../spec-tooling/spec/module.md#concept.spec.typed-value)
-machinery with which Issues registers and checks its shapes, the
-[file transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction) through which the
-store publishes a record bound to its previous digest, and the
-[registry](../spec-tooling/spec/module.md#concept.spec.registry) the command reads to know which
-Modules exist. A transaction refused as stale is reported as `stale_issue`, and nothing is written.
+machinery Issues' shapes register with, the
+[file transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction) a digest-bound
+record publishes through, and the [registry](../spec-tooling/spec/module.md#concept.spec.registry)
+the command reads for which Modules exist. A stale transaction is refused, reported `stale_issue`,
+writing nothing.
