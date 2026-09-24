@@ -1,0 +1,27 @@
+{
+  "task": "delivery-committed-branch",
+  "goal": "Delivery accepts a task branch whose verified steps are already committed, validates the whole task itself before committing its evidence, and gives each blocked code its own reason",
+  "modules": [
+    "module.delivery",
+    "module.validation"
+  ],
+  "sequence": 1,
+  "base_commit": "0ab27b2327522f705fbb7b3703d3cd468957793d",
+  "parent_commit": "e924e3d73ddc7b28efbf691be1917e7daac100b1",
+  "readiness": {
+    "run_id": "r-20260924T162913-delivery-bacaac15",
+    "input_digest": "sha256:64009af05cba7579a76b31c32e9aceb0efe2658eb6be0b58eb32ada919eb0593",
+    "modules": [
+      "module.concorde",
+      "module.delivery",
+      "module.main-session",
+      "module.tasks",
+      "module.validation"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [],
+  "created_at": "2026-09-24T16:29:15Z"
+}
