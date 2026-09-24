@@ -124,7 +124,10 @@ another delivery. `concorde task close <task-id> --merged` is accepted only when
 delivery commit is the branch's head, that head is in the primary branch, and the worktree is clean
 — the main agent merges with Git, unasked, before running it. `--abandoned` ends a task that won't
 be merged, refusing uncommitted changes unless `--force`. Closing removes the worktree, keeping the
-branch, record and log; merged and abandoned tasks accept no further run.
+branch, record and log; merged and abandoned tasks accept no further run. A worktree with checked-out
+submodules, such as the vendored references, is removed too: its submodules are deinitialized
+first, which refuses a submodule with local changes unless `--force`, and only then is the worktree
+removed.
 
 Only the main agent opens and closes tasks and starts task sessions, only from the primary
 worktree (`not_primary` otherwise); a [worker](../vocabulary.md#concept.concorde.worker) cannot run

@@ -105,6 +105,13 @@ records and error codes are defined in the [contracts](contracts.md).
 - AND the record's state is `merged` with the primary branch's head recorded
 - AND the branch, the record and the decision log remain
 
+### scenario.tasks.close-submodules — Close a task whose worktree has submodules
+
+- GIVEN a merged task whose worktree has a checked-out submodule
+- WHEN the main agent closes it with `--merged` while the submodule has a local change
+- THEN the command fails with `dirty_worktree` and the worktree stays
+- BUT once the change is undone, closing removes the worktree and records the task as `merged`
+
 ### scenario.tasks.close-not-merged — Refuse to close an unmerged task as merged
 
 - GIVEN a task that is not delivered, or whose delivered head is not contained in the primary branch, or whose branch moved past its latest delivery commit
