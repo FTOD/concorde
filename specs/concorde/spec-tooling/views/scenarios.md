@@ -18,7 +18,7 @@ registry with the entries' `module` blocks; the Spec validator does.
 
 ### scenario.views.load-registry-refused — Inputs the publisher cannot publish are refused
 
-- GIVEN an unsafe path, a symbolic link, duplicate JSON keys, a duplicate identity, a composition cycle, an unmarked Mermaid block that is not a flowchart, a `relies_on` identity its target does not define, or a Terminology import row that does not link to its concept's defining document
+- GIVEN an unsafe path, a symbolic link, duplicate JSON keys, a duplicate identity, a composition cycle, a Mermaid block, a `relies_on` identity its target does not define, or a Terminology import row that does not link to its concept's defining document
 - WHEN the publisher loads the project
 - THEN loading fails with an error naming the source
 - BUT nothing is staged or promoted
@@ -30,14 +30,24 @@ registry with the entries' `module` blocks; the Spec validator does.
 - THEN loading fails with an error naming the offending document
 - AND no candidate is staged or promoted
 
-### scenario.views.reject-graph-spec-placement — Executable topology on an explanatory page is refused
+### scenario.views.diagram-subset-refused — A checked diagram that sets its own look is refused
 
-- GIVEN a `module`-role document containing a Mermaid block with a `%% graph:` line
-- WHEN the publisher loads the project
-- THEN loading fails with an error naming the document
-- AND no candidate is staged or promoted
+- GIVEN a document whose checked `d2` block sets a style, shape, class or layout, or draws an edge other than `->`
+- WHEN the site is built
+- THEN the build fails with an error naming the document, the line and the statement that leaves the semantic subset
+- AND no candidate is promoted
 
-See [req.views.graph-spec-placement](requirements.md#req.views.graph-spec-placement).
+See [req.views.diagram-subset](requirements.md#req.views.diagram-subset).
+
+### scenario.views.d2-missing — Without the d2 program diagrams cannot be published
+
+- GIVEN a registered document containing a `d2` block
+- AND no `d2` program on `PATH` and no `CONCORDE_D2`
+- WHEN the site is built
+- THEN the build fails with an error naming the diagram's document and line and saying how to install the program
+- AND no candidate is promoted
+
+See [req.views.d2-failure](requirements.md#req.views.d2-failure).
 
 ## Pages and navigation
 
@@ -48,7 +58,7 @@ See [req.views.graph-spec-placement](requirements.md#req.views.graph-spec-placem
 - THEN every registered document is published at exactly one page whose route is `/specs/` followed by its source path without `.md`, with a leading `specs/` removed when every document lies under `specs/`
 - AND each Module appears in the navigation under the Module that contains it, and root Modules at the top level
 - AND a Module's name opens its entry, with its explanatory topics and then its child Modules beneath it
-- AND Mermaid fences render where the document places them
+- AND D2 diagrams render where the document places them
 
 ### scenario.views.reading-collections — Two reading collections, one Module specification
 
@@ -95,28 +105,30 @@ anchor.
 
 ### scenario.views.illustrative-label — An illustrative diagram is labelled
 
-- GIVEN a document containing a Mermaid block marked `illustrative`
+- GIVEN a document containing a D2 block marked `illustrative`
 - WHEN the site is built
 - THEN the diagram renders in its place with a visible label saying that it is illustrative and not normative
-- AND an unmarked flowchart renders without that label
+- AND a checked D2 diagram renders without that label
+
+### scenario.views.diagram-style — The look of a checked diagram comes from what it names
+
+- GIVEN a checked D2 diagram that nests the page's child Modules and realizations with their files, and draws an edge between two Modules and an edge with a verb between two nodes
+- WHEN the site is built
+- THEN the page's Module, its child Modules, other Modules, concepts and realizations each render in their own fixed look
+- AND a realization drawn with files renders as a table whose rows are the files
+- AND the edge between Modules renders as a solid arrow and the edge between nodes as a dashed arrow labelled with its verb
+- BUT the source block holds no styling
+
+See [req.views.diagram-look](requirements.md#req.views.diagram-look).
 
 ### scenario.views.inline-diagrams — Diagrams render where their documents place them
 
-- GIVEN a registered document containing Mermaid fences
+- GIVEN a registered document containing D2 fences
 - WHEN the site is built and promoted
 - THEN each diagram renders on that document's page at the position of its fence, from the fence's own text
 - AND the site contains no page, navigation entry or data file drawn from diagrams or relations outside the documents
 
 See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source-identity).
-
-### scenario.views.operation-graphs-in-owner-specs — Executable topology is read in its owner's implementation pages
-
-- GIVEN Concorde's own project
-- WHEN the site is built
-- THEN no separate page, navigation entry or data file collects executable topology
-- AND every published page that contains a Mermaid block with a `%% graph:` line is in the Implementation documents collection
-
-Building the site runs no project code: such a flowchart is ordinary reading.
 
 ## Building and promotion
 

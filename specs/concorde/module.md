@@ -98,25 +98,16 @@ Its **acceptance tests**, under `tests/concorde/acceptance/`, exercise the root'
 
 ## Relationships
 
-```mermaid
-flowchart TB
-    accTitle: The Modules of the Concorde Framework
-    accDescr: The root Module contains seven Modules; Spec tooling, Harness and Operations are themselves composites.
-    root[Concorde Framework]
-    spectooling[Spec tooling]
-    harness[Harness]
-    tasks[Tasks]
-    operations[Operations]
-    issues[Issues]
-    mainsession[Main session]
-    distribution[Distribution]
-    root -->|contains| spectooling
-    root -->|contains| harness
-    root -->|contains| tasks
-    root -->|contains| operations
-    root -->|contains| issues
-    root -->|contains| mainsession
-    root -->|contains| distribution
+```d2
+root: Concorde Framework {
+  spectooling: Spec tooling
+  harness: Harness
+  tasks: Tasks
+  operations: Operations
+  issues: Issues
+  mainsession: Main session
+  distribution: Distribution
+}
 ```
 
 Each composite explains its own children: Spec tooling contains the Spec core, the Spec MCP server,

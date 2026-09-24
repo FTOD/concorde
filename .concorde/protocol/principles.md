@@ -37,22 +37,31 @@ A project's specification is **one graph**. Its nodes are the things the specifi
 its edges are the relations between them. Everything else in the Protocol is either how the graph
 is written down, or something computed from it.
 
-```mermaid illustrative
-flowchart LR
-    accTitle: The Spec Protocol graph
-    accDescr: Node types and the main relation types between them.
-    Parent[Module] -->|contains| M[Module]
-    M -->|uses / includes| Provider[Module]
-    M -->|owns| D[Document]
-    D -->|defines| C[Concept]
-    D -->|defines| Rz[Realization]
-    D -->|defines| RS[Requirement / Scenario]
-    D -->|defines| K[Contract]
-    D -->|imports| Foreign[Concept of another Module]
-    M -->|participates| K
-    Rz -->|binds| F[(Implementation files)]
-    T[(Test file)] -->|verifies| RS
+```d2 illustrative
+direction: right
+parent: Module {
+  m: Module {
+    d: Document {
+      c: Concept
+      rz: Realization {
+        f: Implementation files {shape: cylinder}
+      }
+      rs: Requirement / Scenario
+      k: Contract
+    }
+  }
+}
+provider: Module
+foreign: Concept of another Module
+t: Test file {shape: cylinder}
+parent.m -> provider: uses / includes
+parent.m.d -> foreign: imports
+parent.m -> parent.m.d.k: participates
+t -> parent.m.d.rs: verifies
 ```
+
+Nesting shows composition: a Module contains Modules, owns documents, a document defines nodes and
+a realization binds files.
 
 **Nodes.** Seven types, defined in [Node types](model.md):
 
@@ -1187,18 +1196,29 @@ Requirement identities begin `req.`; scenario identities begin `scenario.`. Pref
 establish ownership. Stable identities let links survive renames and moves, and let boundaries,
 reviews and tests name exactly one thing.
 
-A readable anchor is either a standalone `<a id="identity"></a>` line before its explanation, or an
-ATX heading carrying a trailing `{#identity}`. Requirement and scenario headings supply their
-identity directly. Anchors are unique within their document and outside fences. A heading anchor
-extends to the next heading of the same or higher level; a standalone anchor extends to the next
-heading; either ends at the next anchor group.
+A readable anchor is one of three forms:
 
-Adjacent anchors on one standalone line identify several nodes explained together by the following
-prose, and that prose MUST explain all of them.
+- a **standalone** line of one or more `<a id="identity"></a>` before its explanation, which
+  extends to the next heading;
+- an **opening** group of one or more `<a id="identity"></a>` at the very start of a paragraph or of
+  a list item's text, which explains exactly that paragraph or list item: the paragraph ends at the
+  next blank line, heading or fence, and the list item also at the next list item that is not
+  indented deeper;
+- an ATX heading carrying a trailing `{#identity}`, which extends to the next heading of the same or
+  higher level. Requirement and scenario headings supply their identity directly.
+
+A standalone or heading anchor also ends at the next anchor group. Anchors are unique within their
+document and outside fences, and an anchor anywhere else, such as inside a sentence or a table, is
+not a readable anchor.
+
+Several anchors in one group identify several nodes explained together by the same prose, and that
+prose MUST explain all of them. The region of an anchor is the text a tool attributes to its nodes,
+for instance when it compares definitions between revisions, so an opening group is the precise
+choice for an item in a list of short explanations.
 
 ## Reading structure
 
-The first level-2 headings of an entry `module.md`, outside fences, are exactly once and in order:
+An entry `module.md` has these level-2 sections, outside fences, each exactly once and in any order:
 
 ```text
 Purpose
@@ -1208,13 +1228,14 @@ Design
 Relationships
 ```
 
-A level-1 title and brief navigation may precede them. Purpose is nonempty plain prose: no lists,
+It MAY have further level-2 sections, for example one that shows how the Module is built. A level-1
+title and brief navigation may precede the first of them. Purpose is nonempty plain prose: no lists,
 tables, nested headings or fences. Usage, Design and Relationships contain explanatory prose, not
 only links, headings or diagrams. Honest unknowns are stated explicitly.
 
 A `module`-role topic begins with a short orienting introduction. When the topic defines or imports
-a concept, its first level-2 section is `## Terminology`. In the entry, Terminology always follows
-Purpose; it may hold only prose when the entry defines and imports nothing.
+a concept, its first level-2 section is `## Terminology`. In the entry, Terminology may hold only
+prose when the entry defines and imports nothing.
 
 `module` documents MUST NOT contain requirement or scenario definitions or canonical contract
 fences. `implementation` documents contain those definitions and MAY group them under headings
@@ -1303,8 +1324,9 @@ changes need no version increment.
 
 ## Diagrams
 
-A Mermaid block in reading is either a **checked flowchart** or marked `illustrative`. The rules are
-in [Views](views.md).
+Diagrams in reading are D2 blocks. A `d2` block is either a **checked diagram**, written in the
+semantic subset and allowed only in `module` reading, or marked `d2 illustrative`. A block in any
+other diagram language, such as Mermaid, is an error. The rules are in [Views](views.md).
 
 ## Links
 
@@ -1356,7 +1378,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.document.role` | `role` is exactly `module` or `implementation`, explicitly declared. | error |
 | `CHK.document.schema` | Metadata is `schema_version` 3 with the required fields and no unknown keys outside `extensions`. | error |
 | `CHK.document.entry` | Each Module owns exactly one `module`-role document whose reading path ends in `module.md`; its metadata, and no other, has the `module` block, whose `owns` includes the entry. | error |
-| `CHK.document.sections` | An entry has Purpose, Terminology, Usage, Design, Relationships once, in order, as its first level-2 headings. | error |
+| `CHK.document.sections` | An entry has the level-2 sections Purpose, Terminology, Usage, Design and Relationships, each exactly once, in any order. | error |
 | `CHK.document.topic-terminology` | A `module`-role topic that defines or imports a concept has `## Terminology` as its first level-2 section. | error |
 | `CHK.document.prose` | Purpose is plain prose; Usage, Design and Relationships are not only links, headings or diagrams. | error |
 | `CHK.terminology.rows` | A Terminology section has at most one table, with columns `Term` and `Definition`, whose rows correspond one to one with the concepts the document defines and imports. | error |
@@ -1413,9 +1435,11 @@ and Modules; a concept is not compared with its own Module.
 
 | Identity | Statement | Severity |
 | --- | --- | --- |
-| `CHK.view.marked` | Every Mermaid block in reading is a `flowchart`/`graph` or is marked `illustrative`. | error |
-| `CHK.view.nodes` | Every node label of a checked flowchart resolves to exactly one node or Module. | error |
-| `CHK.view.edges` | Every edge of a checked flowchart is labelled and matches a declared `relates`, `uses` or `contains` in its direction. | error |
+| `CHK.view.marked` | Every diagram in reading is a `d2` block; a checked one lies in `module` reading, and every other is marked `illustrative`. A Mermaid block is an error. | error |
+| `CHK.view.subset` | A checked diagram uses only the semantic subset of D2. | error |
+| `CHK.view.nodes` | Every shape of a checked diagram resolves to exactly one node, Module or, inside a realization, bound file. | error |
+| `CHK.view.nesting` | Every nesting of a checked diagram matches a declared `contains`, the ownership of a node or the binding of a file. | error |
+| `CHK.view.edges` | Every edge of a checked diagram matches a declared relation in its direction: an unlabelled edge between two Modules a `uses`, and a labelled edge a `relates`; an edge touching a node is labelled and no edge touches a file. | error |
 
 ## Reconciliation
 
@@ -1465,7 +1489,7 @@ boundaries from.
 A publisher renders views from declared relations. The renderer chooses:
 
 - **scope** — which Modules, nodes and relation types to show;
-- **grouping** — subgraphs, layers and ordering;
+- **grouping** — nesting, layers and ordering;
 - **layout and styling**.
 
 The renderer MUST NOT choose which relations exist. An omitted node or edge is a scope decision and
@@ -1476,44 +1500,98 @@ Derived views are rendered at publication or delivery time and are never written
 files. A publisher MAY enrich a written table, for example by showing an imported term's
 definition next to its link; the enrichment is a view.
 
-## Checked flowcharts
+## Checked diagrams
 
-A `module` document may draw the architecture it explains. An unmarked Mermaid `flowchart` or `graph` block in
-`module` reading is a **checked flowchart**: it may only assert what is declared.
+A document draws structure in [D2](https://github.com/d2lang/d2). A `d2` block that is not marked
+`illustrative` is a **checked diagram**: it states only what is drawn, what nests in what and what
+points at what, and it may only assert what is declared. How the diagram looks (shapes, colours,
+line styles, layout, direction) is chosen by the publisher from what each shape resolves to, never
+written in reading. A checked diagram appears only in `module` reading.
 
-- **Nodes.** Every node label resolves to exactly one of: a concept or realization of the owning
-  Module, by title; a Module, by title; or a node of another Module, by the qualified form
-  `Module title / node title`. An unresolved or ambiguous label is an error.
-- **Edges.** Every edge carries a nonempty label and corresponds to a declared relation between its
-  endpoints in the drawn direction: `relates`, `uses` or `contains`. For a `relates` edge the label
-  SHOULD be the relation's `verb`.
-- **Nothing else.** Subgraph titles, styling and comments assert nothing.
+**The semantic subset.** A checked diagram consists of:
 
-A checked flowchart need not show every declared relation; like a derived view, its omissions are
-scope decisions. The `Relationships` section of an entry SHOULD contain a checked flowchart of the
-principal collaboration.
+- **shapes**, written `key` or `key: Label`, where a key may be quoted and the label is the text
+  that resolves;
+- **nesting**, written as a shape followed by a `{ ... }` block holding other statements;
+- **edges**, written `a -> b` or `a -> b: label`, possibly chained, whose ends are keys or dotted
+  key paths relative to the enclosing block;
+- comments starting with `#`, and `;` between statements on one line.
 
-Naming a node in a view grants no context and transfers no ownership. The owner is visible in a
-qualified label, so a node of another Module cannot be mistaken for a local one.
+Nothing else is allowed: no D2 keyword (such as `style`, `shape`, `class`, `direction`, `near`,
+`label`, `icon`, `vars`), no imports, globs, filters, substitutions, block strings or arrays, and no
+edge other than `->`.
+
+**Shapes.** Every shape resolves by its label, or by its key when it has no label, to exactly one of:
+a concept or realization of the owning Module, by title; a Module, by title; a node of another
+Module, by the qualified form `Module title / node title`; or, only directly inside a realization
+shape, a **file** of that realization: a bound entry path, or a suffix of exactly one bound entry
+that begins after a `/`. An unresolved or ambiguous shape is an error.
+
+**Nesting** asserts what it encloses:
+
+| Outer shape | Inner shape | Asserts |
+| --- | --- | --- |
+| Module | Module | the outer Module `contains` the inner one |
+| Module | concept, realization or qualified node | the outer Module owns the node |
+| realization | file | the realization binds the file |
+
+Any other nesting is an error. Containment is drawn only by nesting, never by an edge.
+
+**Edges** assert a declared relation in the drawn direction:
+
+- An unlabelled edge between two Modules asserts a `uses`: the plain arrow is the dependency.
+- A labelled edge asserts a `relates` between its ends, and its label SHOULD be the relation's
+  `verb`. An edge that touches a concept, realization or qualified node always carries a label.
+- A file shape has no edges; it asserts only its binding.
+
+A checked diagram need not show every declared relation; like a derived view, its omissions are
+scope decisions. The `Relationships` section of an entry SHOULD contain a checked diagram of the
+principal collaboration, and a Module that binds files SHOULD draw its realizations with the files
+they bind, so a reader sees how the Module is built.
+
+````markdown
+```d2
+checkout: Checkout {
+  service: Checkout service {
+    "service.py"
+  }
+  record: Order record
+  service -> record: saves
+}
+inventory: Inventory
+checkout -> inventory
+```
+````
+
+Here `Checkout` and `Inventory` resolve to Modules, `Checkout service` to a realization and
+`Order record` to a concept of Checkout, and `service.py` to a file that Checkout service binds.
+The picture asserts that Checkout owns both nodes, that the realization binds the file, that a
+`relates` with verb `saves` connects them, and that Checkout `uses` Inventory.
+
+Naming a shape in a view grants no context and transfers no ownership. The owner is visible in a
+qualified label or in the enclosing Module, so a node of another Module cannot be mistaken for a
+local one.
 
 ## Illustrative blocks
 
 Explanation sometimes needs a picture that is not a relationship inventory: a flow over time, a
-state sketch, a before/after comparison. Any other Mermaid block, and any flowchart not meant as a
-checked view, MUST be marked `illustrative` in its info string:
+state sketch, a before/after comparison. Such a block is marked `illustrative` in its info string
+and may use the whole D2 language:
 
 ````markdown
-```mermaid illustrative
-sequenceDiagram
-    accTitle: How a submission proceeds
-    accDescr: Conceptual overview; not a relationship declaration.
-    ...
+```d2 illustrative
+shape: sequence_diagram
+client: Client
+checkout: Checkout
+client -> checkout: submit
+checkout -> client: order number
 ```
 ````
 
 An `illustrative` block is excluded from the model, labelled non-normative by the publisher and not
 checked against declarations. It carries no authority beyond the surrounding prose, and it MUST NOT
-be the only place a collaboration is described: a load-bearing relationship is declared.
+be the only place a collaboration is described: a load-bearing relationship is declared. Diagrams
+in any other language are not part of reading; a Mermaid block is an error.
 
 ## Publication obligations
 

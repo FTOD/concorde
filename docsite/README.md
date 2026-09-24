@@ -38,28 +38,33 @@ Rendering works on a staged copy under `.generated/`; Spec files are never chang
 - A Terminology import row, which holds only a link in its source, shows the imported concept's
   definition from its owner's defining row, marked *Imported from* the owning Module. A definition
   cell that is written is shown as written.
-- An unmarked Mermaid `flowchart` or `graph` renders where it is written. A block marked
-  ```` ```mermaid illustrative ```` renders as Mermaid under a visible "Illustrative,
-  non-normative" label.
+- A `d2` block renders where it is written, as an SVG produced by the `d2` program. A checked
+  block holds only shapes, nesting and edges; the publisher gives each shape and edge its look from
+  what it names (a block inside a block for containment, a realization with its files as a table, a
+  plain arrow for `uses`, a dashed arrow with its verb for `relates`). A block marked
+  ```` ```d2 illustrative ```` renders as written under a visible "Illustrative, non-normative"
+  label.
 
 ## What it refuses
 
 The publisher refuses what it cannot publish correctly: an unreadable configuration, a registry
 that is not schema 3, malformed Module records or metadata that is not schema 3, a document owned
 twice, a duplicate identity, a composition cycle or a Module with two parents, an entry that is not
-a `module`-role `module.md` with a `module` block, a requirement, scenario, contract or Graph Spec
-flowchart in a `module`-role document, a concept defined in an `implementation`-role document, an
-unmarked Mermaid block that is not a flowchart, a `relies_on` identity the target does not own, a
+a `module`-role `module.md` with a `module` block, a requirement, scenario or contract in a
+`module`-role document, a concept defined in an `implementation`-role document, a Mermaid block, a
+checked `d2` block that sets styles or layout, a `relies_on` identity the target does not own, a
 Terminology import row that does not link to its concept's defining document, and a relative link to
 an unregistered document. After the build, every internal link and anchor must resolve.
 
-The publisher is not the Protocol validator. Structural conformance, such as checked flowcharts,
-the registry mirror, realization bindings and contract examples, is established by
+The publisher is not the Protocol validator. Structural conformance, such as what checked diagrams
+assert, the registry mirror, realization bindings and contract examples, is established by
 `python3 scripts/concorde.py validate`.
 
 ## Commands
 
-Run from `docsite/` after `npm ci` (Node.js 20 or newer):
+Run from `docsite/` after `npm ci` (Node.js 20 or newer). Rendering diagrams needs the `d2` program
+from [github.com/d2lang/d2](https://github.com/d2lang/d2/releases) on `PATH`, or its path in
+`CONCORDE_D2`; the scaffolded deploy workflow installs a pinned release.
 
 | Command             | Purpose                                                                    |
 | ------------------- | -------------------------------------------------------------------------- |

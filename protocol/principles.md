@@ -37,22 +37,31 @@ A project's specification is **one graph**. Its nodes are the things the specifi
 its edges are the relations between them. Everything else in the Protocol is either how the graph
 is written down, or something computed from it.
 
-```mermaid illustrative
-flowchart LR
-    accTitle: The Spec Protocol graph
-    accDescr: Node types and the main relation types between them.
-    Parent[Module] -->|contains| M[Module]
-    M -->|uses / includes| Provider[Module]
-    M -->|owns| D[Document]
-    D -->|defines| C[Concept]
-    D -->|defines| Rz[Realization]
-    D -->|defines| RS[Requirement / Scenario]
-    D -->|defines| K[Contract]
-    D -->|imports| Foreign[Concept of another Module]
-    M -->|participates| K
-    Rz -->|binds| F[(Implementation files)]
-    T[(Test file)] -->|verifies| RS
+```d2 illustrative
+direction: right
+parent: Module {
+  m: Module {
+    d: Document {
+      c: Concept
+      rz: Realization {
+        f: Implementation files {shape: cylinder}
+      }
+      rs: Requirement / Scenario
+      k: Contract
+    }
+  }
+}
+provider: Module
+foreign: Concept of another Module
+t: Test file {shape: cylinder}
+parent.m -> provider: uses / includes
+parent.m.d -> foreign: imports
+parent.m -> parent.m.d.k: participates
+t -> parent.m.d.rs: verifies
 ```
+
+Nesting shows composition: a Module contains Modules, owns documents, a document defines nodes and
+a realization binds files.
 
 **Nodes.** Seven types, defined in [Node types](model.md):
 

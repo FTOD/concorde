@@ -148,15 +148,19 @@ tests share.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Validation collaboration
-    accDescr: The Validate Operation produces a readiness; Validation uses Spec core, Check execution, Tasks and Operations.
-    op[Validate Operation] -->|produces| readiness[Readiness]
-    validation[Validation] -->|uses| spec[Spec core]
-    validation -->|uses| checks[Check execution]
-    validation -->|uses| tasks[Tasks]
-    validation -->|uses| operations[Operations]
+```d2
+op: Validate Operation
+readiness: Readiness
+validation: Validation
+spec: Spec core
+checks: Check execution
+tasks: Tasks
+operations: Operations
+op -> readiness: produces
+validation -> spec
+validation -> checks
+validation -> tasks
+validation -> operations
 ```
 
 The Validate Operation produces one readiness per run; Delivery consumes the latest one of a task.

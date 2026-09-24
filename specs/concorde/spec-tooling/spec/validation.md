@@ -15,9 +15,9 @@ severity. Validation evaluates all of them. They fall into five families:
 | Family | What it catches | Example |
 | --- | --- | --- |
 | Nodes | Bad identities, missing or unresolved explanations, concept definitions, requirement statements, scenario steps and contract fences | a requirement whose first sentence contains `SHALL` twice |
-| Documents | Unpaired or misplaced documents, wrong metadata schema, missing entry sections, malformed Terminology tables | an entry whose `Design` heading comes before `Usage` |
+| Documents | Unpaired or misplaced documents, wrong metadata schema, missing or repeated entry sections, malformed Terminology tables | an entry with two `Design` sections |
 | Relations | Relations at the wrong site, unresolved targets, composition cycles, registry drift, bad bindings, unbound files, name collisions, contract participation | a Module that uses itself, or a file no Module binds |
-| Views | Mermaid blocks in reading that are neither checked flowcharts nor marked illustrative, and checked flowcharts that assert something undeclared | an edge drawn from a realization to a Module without a matching `relates` |
+| Views | Mermaid blocks, checked D2 diagrams outside `module` reading or outside the semantic subset, and checked diagrams whose shapes, nesting or edges assert something undeclared | a Module drawn inside another that does not contain it |
 | Reconciliation | A declaration that requires a definition the Module's context does not contain | an import row for a concept whose defining document the Module never selects |
 
 Most families look at one document at a time. Relations and Reconciliation look across the whole

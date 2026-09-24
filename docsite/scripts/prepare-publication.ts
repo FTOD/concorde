@@ -11,8 +11,9 @@ import { materializeScoped } from "../plugins/scoped-content/materialize";
 export const productionGeneratedDirectory = ".generated/docusaurus-production";
 
 /**
- * Stage the registered Markdown and navigation this build publishes. Diagrams are inline Mermaid
- * fences of the registered documents; checkout-only extensions register their own routes.
+ * Stage the registered Markdown and navigation this build publishes. Diagrams are the D2 fences of
+ * the registered documents, rendered to images by the `d2` program; checkout-only extensions
+ * register their own routes.
  */
 export async function preparePublication(
  projectRoot: string,

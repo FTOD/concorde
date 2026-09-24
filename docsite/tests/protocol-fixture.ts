@@ -204,7 +204,7 @@ export function bankProject(): Project {
     owner: "module.bank",
     body: entryBody("Bank", {
       relationships:
-        '```mermaid\nflowchart LR\n    Bank -->|contains| Transfer\n```\n\n<a id="contains-transfer"></a><a id="contains-audit"></a>\n\nBank is composed of Transfer and Audit.',
+        '```d2\nbank: Bank {\n  transfer: Transfer\n}\n```\n\n<a id="contains-transfer"></a><a id="contains-audit"></a>\n\nBank is composed of Transfer and Audit.',
     }),
   });
   putDocument(project, "specs/transfer/module.md", {

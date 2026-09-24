@@ -271,34 +271,29 @@ it("rejects invalid roles, a non-module entry and definitions outside implementa
   });
   expect(load).toThrow(/Concepts are defined only in module-role documents/);
   updateMetadata(project, topic, (m) => m.defines.pop());
-  const bank = "specs/bank/module.md";
-  put(
-    project,
-    bank,
-    read(project, bank) +
-      "\n```mermaid\nflowchart LR\n    %% graph: publish\n    a -->|b| c\n```\n",
-  );
-  expect(load).toThrow(
-    /Graph Spec flowcharts belong in an implementation-role document/,
-  );
 });
 
 // verifies: scenario.views.reject-reading-collection
-it("requires the five entry sections once and in order", () => {
+it("requires the five entry sections exactly once, in any order", () => {
   const path = "specs/ledger/module.md";
   const original = read(project, path);
   for (const invalid of [
     original.replace("## Purpose", "### Purpose"),
     original.replace("## Usage", "## Use"),
     original + "\n## Design\n\nAgain.\n",
-    original.replace(
-      /## Usage([\s\S]*)## Design([\s\S]*)## Relationships/,
-      "## Design$2## Usage$1## Relationships",
-    ),
   ]) {
     put(project, path, invalid);
     expect(load).toThrow(/Purpose, Terminology, Usage, Design, Relationships/);
   }
+  put(
+    project,
+    path,
+    original.replace(
+      /## Usage([\s\S]*)## Design([\s\S]*)## Relationships/,
+      "## Design$2## Usage$1## Relationships",
+    ),
+  );
+  expect(load).not.toThrow();
   put(project, path, original + "\n## Open questions\n\nNone.\n");
   expect(load).not.toThrow();
 });

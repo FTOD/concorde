@@ -88,24 +88,22 @@ sandboxed. Wrapping the whole worker in an outer OS sandbox is future work.
 The sequence below is an illustration, not a declaration; each arrow in it is declared by the
 calling Module's own `uses`.
 
-```mermaid illustrative
-sequenceDiagram
-    accTitle: One task from the main agent to a merged change
-    accDescr: The main agent opens a task, runs Operations whose host computes a grant, launches a worker, audits and checks it, then validates, delivers and merges.
-    participant M as Main agent
-    participant T as Tasks
-    participant O as Operation host
-    participant S as Spec core
-    participant W as Worker
-    participant C as Check execution
-    M->>T: open a task (branch and worktree)
-    M->>O: concorde run implement --task
-    O->>S: grant for the task type and Modules
-    O->>W: launch with settings, brief and grant
-    W-->>O: worker result
-    O->>O: audit writes against the grant
-    O->>C: run configured checks
-    O-->>M: Operation result with evidence
-    M->>O: concorde run validate, then delivery
-    M->>T: merge the task branch
+```d2 illustrative
+shape: sequence_diagram
+m: Main agent
+t: Tasks
+o: Operation host
+s: Spec core
+w: Worker
+c: Check execution
+m -> t: open a task (branch and worktree)
+m -> o: concorde run implement --task
+o -> s: grant for the task type and Modules
+o -> w: launch with settings, brief and grant
+w -> o: worker result {style.stroke-dash: 3}
+o -> o: audit writes against the grant
+o -> c: run configured checks
+o -> m: Operation result with evidence {style.stroke-dash: 3}
+m -> o: concorde run validate, then delivery
+m -> t: merge the task branch
 ```

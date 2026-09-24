@@ -1,4 +1,4 @@
-"""Task-type grants of Spec Protocol 12 (``protocol/boundaries.md``, task types).
+"""Task-type grants of Spec Protocol 13 (``protocol/boundaries.md``, task types).
 
 A grant lists the paths a task of one task type, bound to one or more Modules, may know by name
 (``names``), read (``ro``) or change (``rw``); every other path is denied and omitted. It is

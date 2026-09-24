@@ -120,22 +120,19 @@ reviewers and letting reviewers query the server are future work.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Spec review relationships
-    accDescr: The Review host validates and computes grants with Spec core, launches reviewers through Workers, hands them the Reviewer brief, and derives the review verdict from the review findings.
-    host[Review host]
-    brief[Reviewer brief]
-    finding[Review finding]
-    verdict[Review verdict]
-    core[Spec core]
-    workers[Workers]
-    host -->|validates and computes grants with| core
-    host -->|launches reviewers through| workers
-    host -->|hands reviewers| brief
-    host -->|collects| finding
-    host -->|derives| verdict
-    verdict -->|is derived from| finding
+```d2
+host: Review host
+brief: Reviewer brief
+finding: Review finding
+verdict: Review verdict
+core: Spec core
+workers: Workers
+host -> core: validates and computes grants with
+host -> workers: launches reviewers through
+host -> brief: hands reviewers
+host -> finding: collects
+host -> verdict: derives
+verdict -> finding: is derived from
 ```
 
 The picture leaves out the Operation catalog, which lists Spec review, and the main agent, which

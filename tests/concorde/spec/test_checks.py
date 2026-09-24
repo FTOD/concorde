@@ -1,4 +1,4 @@
-"""Every family of Protocol 12 structural checks, each on a small fixture project."""
+"""Every family of Protocol 13 structural checks, each on a small fixture project."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ PROVIDER = module_document(
         ],
     ),
     "The store holds every thing.",
-    'flowchart LR\n    store["Store"] -->|holds| thing["Thing"]',
+    'store: Store {\n  "provider.py"\n}\nthing: Thing\nstore -> thing: holds',
     requirements="### req.provider.keep — Things are kept\n\nThe provider SHALL keep every stored thing.\n",
     relations=[
         {
@@ -78,8 +78,8 @@ CONSUMER = module_document(
         ],
     ),
     "The view reads things from the provider.",
-    'flowchart LR\n    view["View"] -->|shows| thing["Provider / Thing"]\n'
-    '    consumer["Consumer"] -->|reads things from| provider["Provider"]',
+    "view: View\nthing: Provider / Thing\nconsumer: Consumer\nprovider: Provider\n"
+    "view -> thing: shows\nconsumer -> provider",
     uses=[
         {
             "target": "module.provider",
@@ -105,7 +105,7 @@ ROOT = module_document(
     "",
     ("The app is the composition of its two children.", []),
     "The app contains the provider and the consumer.",
-    'flowchart TB\n    app["App"] -->|contains| provider["Provider"]\n    app -->|contains| consumer["Consumer"]',
+    "app: App {\n  provider: Provider\n  consumer: Consumer\n}",
     contains=[
         {
             "target": "module.provider",
@@ -194,9 +194,6 @@ class CheckTests(unittest.TestCase):
         original = (self.root / entry).read_text()
         cases = {
             "missing": original.replace("## Design\n", "## Drawing\n"),
-            "misordered": original.replace("## Usage", "## Tmp")
-            .replace("## Design", "## Usage")
-            .replace("## Tmp", "## Design"),
             "repeated": original + "\n## Purpose\n\nAgain.\n",
             "level": original.replace("## Relationships", "### Relationships"),
             "fenced": original.replace("## Usage", "```text\n## Usage\n```"),
@@ -220,6 +217,14 @@ class CheckTests(unittest.TestCase):
         (self.root / entry).write_text(
             original.replace("## Purpose\n", "## Purpose ##\n").rstrip()
         )
+        self.assertNotIn("CHK.document.sections", self.rules())
+        # The sections may come in any order, and further sections may be added.
+        reordered = (
+            original.replace("## Usage", "## Tmp")
+            .replace("## Design", "## Usage")
+            .replace("## Tmp", "## Design")
+        )
+        (self.root / entry).write_text(reordered + "\n## Structure\n\nMore detail.\n")
         self.assertNotIn("CHK.document.sections", self.rules())
 
     @verifies("scenario.spec.reader-parts")
@@ -339,7 +344,7 @@ class CheckTests(unittest.TestCase):
         self.metadata("consumer", lambda value: value["module"].update(uses=[]))
         self.edit(
             self.entry("consumer"),
-            '    consumer["Consumer"] -->|reads things from| provider["Provider"]',
+            "consumer -> provider\n",
             "",
         )
         rules = self.rules()
@@ -437,7 +442,7 @@ class CheckTests(unittest.TestCase):
                 contains=value["module"]["contains"][:1]
             ),
         )
-        self.edit(self.entry("app"), '    app -->|contains| consumer["Consumer"]', "")
+        self.edit(self.entry("app"), "  consumer: Consumer\n", "")
         self.assertIn("CHK.contains.root", self.rules("warning"))
         self.assertNotIn("CHK.contains.root", self.rules())
 
@@ -707,50 +712,82 @@ class CheckTests(unittest.TestCase):
         self.assertIn("CHK.participates.unique", self.rules())
 
     @verifies("scenario.spec.validate-architecture-mismatch")
-    def test_checked_flowcharts_assert_only_declared_relations(self):
+    def test_checked_diagrams_assert_only_declared_relations(self):
         entry = self.entry("consumer")
         original = (self.root / entry).read_text()
+        provider = self.entry("provider")
+        provider_original = (self.root / provider).read_text()
         cases = {
             "CHK.view.nodes": original.replace(
-                'thing["Provider / Thing"]', 'thing["Widget"]'
+                "thing: Provider / Thing", "thing: Widget"
             ),
-            "CHK.view.edges": original.replace("-->|shows|", "-->"),
+            # An edge that touches a node carries the verb of its relates.
+            "CHK.view.edges": original.replace("view -> thing: shows", "view -> thing"),
             "CHK.view.edges ": original.replace(
-                'view["View"] -->|shows| thing["Provider / Thing"]',
-                'thing["Provider / Thing"] -->|shows| view["View"]',
+                "view -> thing: shows", "thing -> view: shows"
+            ),
+            # An unlabelled edge between Modules is a uses in the drawn direction.
+            "CHK.view.edges  ": original.replace(
+                "consumer -> provider", "provider -> consumer"
+            ),
+            # A labelled edge between Modules is a relates, and none is declared here.
+            "CHK.view.edges   ": original.replace(
+                "consumer -> provider", "consumer -> provider: reads things from"
+            ),
+            # A qualified node drawn inside a Module that does not own it.
+            "CHK.view.nesting": original.replace(
+                "consumer: Consumer\n",
+                "consumer: Consumer {\n  store: Provider / Store\n}\n",
+            ),
+            # A Module drawn inside one that does not contain it.
+            "CHK.view.nesting ": original.replace(
+                "provider: Provider\n", "provider: Provider {\n  inner: Consumer\n}\n"
+            ),
+            "CHK.view.subset": original.replace(
+                "view -> thing: shows", "view <- thing: shows"
+            ),
+            "CHK.view.subset ": original.replace(
+                "consumer -> provider", "consumer -> provider\nview.style.fill: red"
             ),
             "CHK.view.marked": original
             + "\n```mermaid\nsequenceDiagram\n    A->>B: hi\n```\n",
-            # A reversed arrow points from its right node to its left one.
-            "CHK.view.edges  ": original.replace(
-                'view["View"] -->|shows| thing["Provider / Thing"]',
-                'view["View"] <--|shows| thing["Provider / Thing"]',
-            ),
-            # An edge without one direction asserts no declared relation.
-            "CHK.view.edges   ": original.replace("-->|shows|", "---|shows|"),
-            "CHK.view.edges    ": original.replace("-->|shows|", "<-->|shows|"),
         }
         for rule, text in cases.items():
             with self.subTest(rule):
                 (self.root / entry).write_text(text)
                 self.assertIn(rule.strip(), self.rules())
-        # The declared direction drawn with a reversed arrow is accepted.
-        (self.root / entry).write_text(
-            original.replace(
-                'view["View"] -->|shows| thing["Provider / Thing"]',
-                'thing["Provider / Thing"] <--|shows| view["View"]',
-            )
+        (self.root / entry).write_text(original)
+        for rule, text in {
+            # A file shape names an entry its realization binds.
+            "CHK.view.nodes": provider_original.replace(
+                '"provider.py"', '"missing.py"'
+            ),
+            # A file shape asserts only its binding and has no edges.
+            "CHK.view.edges": provider_original.replace(
+                "store -> thing: holds",
+                'store -> thing: holds\nstore."provider.py" -> thing: holds',
+            ),
+            # Only a Module holds nodes.
+            "CHK.view.nesting": provider_original.replace(
+                "thing: Thing", "thing: Thing {\n  inner: Store\n}"
+            ),
+        }.items():
+            with self.subTest(rule):
+                (self.root / provider).write_text(text)
+                self.assertIn(rule, self.rules())
+        (self.root / provider).write_text(provider_original)
+        # A checked diagram belongs to module reading only.
+        obligations = self.root / "specs/consumer/obligations.md"
+        obligations_original = obligations.read_text()
+        obligations.write_text(
+            obligations_original + "\n```d2\nconsumer: Consumer\n```\n"
         )
-        self.assertNotIn("CHK.view.edges", self.rules())
-        (self.root / entry).write_text(
-            original
-            + "\n```mermaid illustrative\nsequenceDiagram\n    A->>B: hi\n```\n"
-            + "\n```mermaid illustrative\nflowchart LR\n    x[Anything] --> y[Else]\n```\n"
+        self.assertIn("CHK.view.marked", self.rules())
+        obligations.write_text(
+            obligations_original + "\n```d2 illustrative\nconsumer: Consumer\n```\n"
         )
-        self.assertEqual(
-            set(),
-            self.rules() & {"CHK.view.marked", "CHK.view.nodes", "CHK.view.edges"},
-        )
+        self.assertNotIn("CHK.view.marked", self.rules())
+        obligations.write_text(obligations_original)
         # A label matching both a local node and a Module title is ambiguous.
         self.edit(
             self.entry("provider"),
@@ -770,8 +807,8 @@ class CheckTests(unittest.TestCase):
         )
         self.edit(
             self.entry("provider"),
-            'flowchart LR\n    store["Store"] -->|holds| thing["Thing"]',
-            'flowchart LR\n    store["Store"] -->|holds| thing["Thing"]\n    c["Consumer"]',
+            "store -> thing: holds",
+            "store -> thing: holds\nc: Consumer",
         )
         self.assertIn("CHK.view.nodes", self.rules())
 
@@ -988,7 +1025,7 @@ class CheckTests(unittest.TestCase):
         )
         self.edit(
             self.entry("consumer"),
-            '    consumer["Consumer"] -->|reads things from| provider["Provider"]',
+            "consumer -> provider\n",
             "",
         )
         self.assertNotIn("CHK.context.reconciled", self.rules())
@@ -1084,19 +1121,30 @@ class CheckTests(unittest.TestCase):
         self.assertEqual("success", report.status, [f.message for f in report.findings])
         self.assertEqual({"CONCORDE-COVERAGE-001"}, self.rules("warning"))
 
-    @verifies("scenario.spec.checked-flowchart")
-    def test_a_checked_flowchart_that_asserts_only_declarations_passes(self):
+    @verifies("scenario.spec.checked-diagram")
+    def test_a_checked_diagram_that_asserts_only_declarations_passes(self):
         entry = self.entry("consumer")
         # Local realization, qualified provider concept and Module titles, each edge declared.
         text = (self.root / entry).read_text()
-        self.assertIn('view["View"] -->|shows| thing["Provider / Thing"]', text)
+        self.assertIn("view -> thing: shows", text)
+        self.assertIn("consumer -> provider\n", text)
+        # The provider draws its realization with the file it binds.
         self.assertIn(
-            'consumer["Consumer"] -->|reads things from| provider["Provider"]', text
+            'store: Store {\n  "provider.py"\n}',
+            (self.root / self.entry("provider")).read_text(),
+        )
+        # The root nests its children, which asserts its contains.
+        self.assertIn(
+            "app: App {\n  provider: Provider",
+            (self.root / "specs/app/module.md").read_text(),
         )
         (self.root / entry).write_text(
             text
-            + "\n```mermaid illustrative\nflowchart LR\n    x[Anything] -->|feeds| y[Else]\n```\n"
-            + "\n```mermaid illustrative\nsequenceDiagram\n    A->>B: hi\n```\n"
+            + "\n```d2\n# quoted keys, dotted paths and comments\n"
+            + '"the app": App {\n  consumer: Consumer\n}\n'
+            + '"the app".consumer -> provider; provider: Provider\n```\n'
+            + "\n```d2 illustrative\nx: Anything {style.fill: red}\nx -> y: feeds\n```\n"
+            + "\n```d2 illustrative\nshape: sequence_diagram\na -> b: hi\n```\n"
         )
         report = self.project.validate()
         self.assertEqual("success", report.status, [f.message for f in report.findings])

@@ -40,10 +40,7 @@ RELATES = [
         "target": "realization.shop.cart",
     }
 ]
-DIAGRAM = (
-    "flowchart TB\n    accTitle: Shop\n    accDescr: The tests exercise the cart.\n"
-    '    cart["Cart"]\n    tests["Shop tests"]\n    tests -->|exercise| cart'
-)
+DIAGRAM = "cart: Cart\ntests: Shop tests\ntests -> cart: exercise"
 REQUIREMENT = (
     "### req.shop.single-order — One order per submission\n\n"
     "Shop SHALL create at most one order for a successfully\nsubmitted checkout request.\n\n"
@@ -57,7 +54,7 @@ SCENARIO = (
 
 def shop(requirements=REQUIREMENT, scenarios=SCENARIO, extra="", nodes=NODES):
     both = len(nodes) == 2
-    diagram = DIAGRAM if both else 'flowchart TB\n    cart["Cart"]' if nodes else None
+    diagram = DIAGRAM if both else "cart: Cart" if nodes else None
     return module_document(
         "document.shop",
         "module.shop",
@@ -424,7 +421,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                     ],
                 ),
                 "The tests exercise the shop boundary.",
-                'flowchart TB\n    tests["Other tests"]',
+                "tests: Other tests",
             ),
         )
         register_module(self.root, "module.other", "specs/other/module.md")

@@ -1,7 +1,7 @@
-/** Protocol 11 reading and metadata parsing for publication.
+/** Protocol 13 reading and metadata parsing for publication.
  *
  * Publication reads what it renders: document pairs, identities, anchors, Terminology tables,
- * definition headings, contract fences and Mermaid blocks. Structural conformance as a whole is
+ * definition headings, contract fences and D2 blocks. Structural conformance as a whole is
  * `concorde.py validate`; this module rejects only what would make a page wrong or unaddressable. */
 export const identityPattern = /^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$/;
 export function requireThat(value: unknown, message: string): asserts value {
@@ -88,9 +88,9 @@ export function headingList(content: string) {
   }));
 }
 export interface Fence {
-  /** First word of the info string, such as `mermaid`. */
+  /** First word of the info string, such as `d2`. */
   language: string;
-  /** The whole trimmed info string, such as `mermaid illustrative`. */
+  /** The whole trimmed info string, such as `d2 illustrative`. */
   info: string;
   start: number;
   end: number;
@@ -131,24 +131,65 @@ export function fenceRanges(content: string): Fence[] {
   requireThat(!open, "Unclosed Markdown fence");
   return result;
 }
-/** `mermaid illustrative` marks a picture excluded from the declared model. */
+/** `d2 illustrative` marks a picture excluded from the declared model. */
 export function isIllustrative(info: string): boolean {
   const words = info.split(/\s+/);
-  return words[0] === "mermaid" && words.slice(1).includes("illustrative");
+  return words[0] === "d2" && words.slice(1).includes("illustrative");
 }
-/** Unmarked Mermaid is a checked flowchart and so must be a `flowchart` or `graph`. */
+/** Diagrams in reading are D2; a Mermaid block is not part of Protocol 13 reading. */
 export function requireMarkedDiagrams(content: string, path: string): void {
   for (const fence of fenceRanges(content)) {
-    if (fence.language !== "mermaid" || isIllustrative(fence.info)) continue;
-    const body = fence.body
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("%%"));
+    const line = content.slice(0, fence.start).split("\n").length;
     requireThat(
-      /^(?:flowchart|graph)\b/.test(body[0] ?? ""),
-      `Mermaid block is neither a flowchart nor marked illustrative: ${path}`,
+      fence.language !== "mermaid",
+      `Mermaid block at ${path}:${line} is not part of reading; rewrite it as a \`d2\` block or a \`d2 illustrative\` block`,
     );
   }
+}
+/** An anchor group opening a paragraph or a list item's text. */
+export const OPENING_ANCHORS =
+  /^([ \t]*)((?:[-*+]|\d+[.)])[ \t]+)?((?:<a id="[^"]+"><\/a>[ \t]*)+)(?=\S)/;
+const LIST_ITEM = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+/;
+const STANDALONE_ANCHORS = /^\s*(?:<a id="[^"]+"><\/a>[ \t]*)+\s*$/;
+/** Offsets of anchor groups that open a paragraph or list item, with the end of that block. */
+function openingAnchors(
+  text: string,
+): { ids: string[]; start: number; body: number; end: number }[] {
+  const lines = text.split("\n");
+  const offsets: number[] = [];
+  let offset = 0;
+  for (const line of lines) {
+    offsets.push(offset);
+    offset += line.length + 1;
+  }
+  const blank = (line: string) => !line.trim() || /^#{1,6}[ \t]/.test(line);
+  const result: { ids: string[]; start: number; body: number; end: number }[] =
+    [];
+  lines.forEach((line, index) => {
+    const match = OPENING_ANCHORS.exec(line);
+    if (!match || STANDALONE_ANCHORS.test(line)) return;
+    const item = Boolean(match[2]);
+    if (!item && index > 0 && !blank(lines[index - 1])) return;
+    const indent = match[1].replace(/\t/g, "    ").length;
+    let last = index + 1;
+    for (; last < lines.length; last++) {
+      const next = lines[last];
+      if (blank(next) || STANDALONE_ANCHORS.test(next)) break;
+      const marker = LIST_ITEM.exec(next);
+      if (
+        marker &&
+        (!item || marker[1].replace(/\t/g, "    ").length <= indent)
+      )
+        break;
+    }
+    result.push({
+      ids: [...match[3].matchAll(/<a id="([^"]+)"><\/a>/g)].map((m) => m[1]),
+      start: offsets[index],
+      body: offsets[index] + match[0].length,
+      end: last < lines.length ? offsets[last] : text.length,
+    });
+  });
+  return result;
 }
 export const DEFINITION_HEADING =
   /^((?:req|scenario)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]+[—–-][ \t]+(\S.*)$/;
@@ -168,8 +209,13 @@ export function readingMeanings(
 ): Map<string, string> {
   const text = prose(content),
     headings = headingList(content);
-  const anchors: { id: string; start: number; body: number; level?: number }[] =
-    [];
+  const anchors: {
+    id: string;
+    start: number;
+    body: number;
+    level?: number;
+    end?: number;
+  }[] = [];
   for (const heading of headings) {
     const explicit = /\s+\{#([^{}]+)\}$/.exec(heading.text);
     const definition = DEFINITION_HEADING.exec(
@@ -199,6 +245,14 @@ export function readingMeanings(
       });
     }
   }
+  for (const group of openingAnchors(text))
+    for (const id of group.ids)
+      anchors.push({
+        id,
+        start: group.start,
+        body: group.body,
+        end: group.end,
+      });
   anchors.sort((a, b) => a.start - b.start);
   const result = new Map<string, string>();
   for (let i = 0; i < anchors.length; i++) {
@@ -217,7 +271,7 @@ export function readingMeanings(
           (anchor.level === undefined || h.level <= anchor.level),
       )?.start ?? text.length;
     const body = text
-      .slice(anchor.body, Math.min(next, headingEnd))
+      .slice(anchor.body, anchor.end ?? Math.min(next, headingEnd))
       .replace(/^#{1,6} .+$/gm, "")
       .trim();
     result.set(anchor.id, body);
@@ -297,11 +351,10 @@ export function requireReading(
   if (entry) {
     const top = headings.filter((h) => h.level === 2).map((h) => h.text);
     requireThat(
-      top.slice(0, 5).join(",") === ENTRY_SECTIONS.join(",") &&
-        ENTRY_SECTIONS.every(
-          (name) => top.filter((text) => text === name).length === 1,
-        ),
-      `Module entry requires level-2 Purpose, Terminology, Usage, Design, Relationships once and in order: ${path}`,
+      ENTRY_SECTIONS.every(
+        (name) => top.filter((text) => text === name).length === 1,
+      ),
+      `Module entry requires level-2 Purpose, Terminology, Usage, Design, Relationships, each exactly once: ${path}`,
     );
   }
   requireThat(
@@ -309,13 +362,6 @@ export function requireReading(
       (definitionHeadings(content).length === 0 &&
         !fences.some((f) => f.language === "concorde-contract")),
     `Requirements, scenarios and contracts belong in an implementation-role document: ${path}`,
-  );
-  requireThat(
-    role === "implementation" ||
-      !fences.some(
-        (f) => f.language === "mermaid" && /^\s*%%\s*graph:/m.test(f.body),
-      ),
-    `Graph Spec flowcharts belong in an implementation-role document: ${path}`,
   );
   requireMarkedDiagrams(content, path);
 }

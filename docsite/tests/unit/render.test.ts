@@ -171,41 +171,39 @@ it("renders written definition cells and definitionless concepts as written", ()
 });
 
 // verifies: scenario.views.illustrative-label
-it("labels illustrative Mermaid as non-normative and leaves checked flowcharts as written", () => {
+it("leaves d2 blocks untouched by renderPage, which never renders diagrams itself", () => {
   const path = "specs/bank/module.md";
   const illustrative =
-    "```mermaid illustrative\nsequenceDiagram\n    accTitle: A transfer over time\n    accDescr: Conceptual overview.\n    Owner->>Transfer: submit\n```";
+    "```d2 illustrative\ndirection: right\nOwner -> Transfer: submit\n```";
   put(project, path, read(project, path) + "\n" + illustrative + "\n");
   const bank = render(path);
-  expect(bank).toContain(
-    ILLUSTRATIVE_LABEL +
-      "\n\n```mermaid\nsequenceDiagram\n    accTitle: A transfer over time",
-  );
-  expect(bank).toContain(
-    "```mermaid\nflowchart LR\n    Bank -->|contains| Transfer\n```",
-  );
-  expect(bank.match(/diagram-illustrative/g)).toHaveLength(1);
+  // Diagram rendering, and the illustrative label it adds, belong to renderDiagrams; renderPage
+  // passes every d2 fence through as written, checked or illustrative alike.
+  expect(bank).toContain(illustrative);
+  expect(bank).toContain("```d2\nbank: Bank {\n  transfer: Transfer\n}\n```");
+  expect(bank).not.toContain(ILLUSTRATIVE_LABEL);
   expect(ILLUSTRATIVE_LABEL).toContain("Illustrative, non-normative.");
 });
 
-// verifies: scenario.views.illustrative-label
-it("rejects an unmarked Mermaid block that is not a flowchart", () => {
+// verifies: scenario.views.load-registry-refused
+it("rejects any Mermaid block, wherever it is marked", () => {
   const path = "specs/bank/module.md";
   const original = read(project, path);
-  put(
-    project,
-    path,
-    original + "\n```mermaid\nsequenceDiagram\n    A->>B: go\n```\n",
-  );
-  expect(() => loadScopedRegistry(project.root)).toThrow(
-    /neither a flowchart nor marked illustrative/,
-  );
+  for (const mermaid of [
+    "```mermaid\nsequenceDiagram\n    A->>B: go\n```",
+    "```mermaid illustrative\nsequenceDiagram\n    A->>B: go\n```",
+    "```mermaid\nflowchart LR\n    A --> B\n```",
+  ]) {
+    put(project, path, original + "\n" + mermaid + "\n");
+    expect(() => loadScopedRegistry(project.root)).toThrow(
+      /Mermaid block .* is not part of reading; rewrite it as a `d2` block or a `d2 illustrative` block/,
+    );
+  }
   put(
     project,
     path,
     original +
-      "\n````markdown\n```mermaid\nsequenceDiagram\n    A->>B: quoted\n```\n````\n" +
-      "\n```mermaid\n%% A comment first\ngraph TD\n    A -->|go| B\n```\n",
+      "\n````markdown\n```mermaid\nsequenceDiagram\n    A->>B: quoted\n```\n````\n",
   );
   expect(() => loadScopedRegistry(project.root)).not.toThrow();
 });

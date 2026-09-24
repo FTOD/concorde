@@ -3,10 +3,10 @@
  * - every stable identity becomes an addressable anchor;
  * - requirement and scenario headings show their titles and keep their identity as the anchor;
  * - import rows of Terminology tables show the imported definition, marked with its owner;
- * - `mermaid illustrative` blocks render as Mermaid under a visible non-normative label. */
+ * - D2 blocks are rendered to images separately, by `diagrams.ts`. */
 import {
   DEFINITION_HEADING,
-  isIllustrative,
+  OPENING_ANCHORS,
   parseJson,
   readingMeanings,
   tableCells,
@@ -58,10 +58,6 @@ export function injectAnchors(content: string): string {
         } catch {
           /* an unreadable fence is reported by the registry loader, not here */
         }
-      }
-      if (isIllustrative(info)) {
-        out.push(ILLUSTRATIVE_LABEL, "", line.replace(/mermaid.*$/, "mermaid"));
-        continue;
       }
       out.push(line);
       continue;
@@ -158,17 +154,26 @@ function anchorAtMeanings(
         return [line];
       }
       const standalone = /^\s*(?:<a id="[^"]+"><\/a>[ \t]*)+\s*$/.test(line);
-      const ids = standalone
-        ? [...line.matchAll(/<a id="([^"]+)"><\/a>/g)].map((m) => m[1])
-        : [/^#{1,6}[ \t].*\{#([^{}]+)\}[ \t]*$/.exec(line)?.[1]].filter(
-            (id): id is string => Boolean(id),
-          );
+      const opening = standalone ? null : OPENING_ANCHORS.exec(line);
+      const ids =
+        standalone || opening
+          ? [...(opening?.[0] ?? line).matchAll(/<a id="([^"]+)"><\/a>/g)].map(
+              (m) => m[1],
+            )
+          : [/^#{1,6}[ \t].*\{#([^{}]+)\}[ \t]*$/.exec(line)?.[1]].filter(
+              (id): id is string => Boolean(id),
+            );
       const extra = ids.flatMap((id) => pending.get(id) ?? []);
       ids.forEach((id) => pending.delete(id));
       if (!extra.length) return [line];
-      return standalone
-        ? [line.trimEnd() + extra.map(anchor).join("")]
-        : [line, "", extra.map(anchor).join("")];
+      if (standalone) return [line.trimEnd() + extra.map(anchor).join("")];
+      if (opening)
+        return [
+          opening[0] +
+            extra.map(anchor).join("") +
+            line.slice(opening[0].length),
+        ];
+      return [line, "", extra.map(anchor).join("")];
     })
     .join("\n");
 }

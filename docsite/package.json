@@ -18,13 +18,11 @@
     "@docusaurus/core": "3.10.2",
     "@docusaurus/plugin-content-docs": "3.10.2",
     "@docusaurus/preset-classic": "3.10.2",
-    "@docusaurus/theme-mermaid": "3.10.2",
     "@easyops-cn/docusaurus-search-local": "0.55.3",
-    "@mermaid-js/layout-elk": "0.1.9",
     "gray-matter": "4.0.3",
+    "parse5": "7.3.0",
     "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "parse5": "7.3.0"
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.2",

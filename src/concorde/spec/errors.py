@@ -40,7 +40,7 @@ CODES: dict[str, tuple[str, str]] = {
         "create the file, restore it, or remove the reference to it",
     ),
     "unsupported_profile": (
-        "this Spec tooling reads only the project profile and registry schema of Protocol 12 "
+        "this Spec tooling reads only the project profile and registry schema of Protocol 13 "
         "(schema_version 3)",
         "migrate the configuration and registry to the current profile explicitly",
     ),
@@ -149,8 +149,9 @@ CODES: dict[str, tuple[str, str]] = {
         "fix the declaration or the test source",
     ),
     "invalid_diagram": (
-        "a checked Mermaid flowchart uses only the syntax the Views chapter defines",
-        "rewrite the diagram in the supported syntax or mark it illustrative",
+        "a checked D2 diagram uses only the semantic subset the Views chapter defines: shapes, "
+        "nesting and '->' edges, with no styling or layout",
+        "remove the styling or layout statement, or mark the block `d2 illustrative`",
     ),
     "invalid_docsite_template": (
         "the docsite scaffold is copied only from the package's complete, safe template",

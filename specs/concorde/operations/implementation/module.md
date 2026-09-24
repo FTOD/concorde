@@ -174,16 +174,21 @@ summary; the host adds everything it observed itself.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Implementation collaboration
-    accDescr: The Implement and test Operations produce code changes and test reports; Implementation uses Operations, Workers, Check execution and Spec core.
-    ops[Implement and test Operations] -->|produces| change[Code change]
-    ops -->|produces| report[Test report]
-    implementation[Implementation] -->|uses| operations[Operations]
-    implementation -->|uses| workers[Workers]
-    implementation -->|uses| checks[Check execution]
-    implementation -->|uses| spec[Spec core]
+```d2
+ops: Implement and test Operations
+change: Code change
+report: Test report
+implementation: Implementation
+operations: Operations
+workers: Workers
+checks: Check execution
+spec: Spec core
+ops -> change: produces
+ops -> report: produces
+implementation -> operations
+implementation -> workers
+implementation -> checks
+implementation -> spec
 ```
 
 <a id="uses-operations"></a>

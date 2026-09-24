@@ -4,7 +4,6 @@ import {
   mkdir,
   mkdtemp,
   readFile,
-  readdir,
   rm,
   symlink,
   writeFile,
@@ -206,7 +205,7 @@ describe("a project holding only initialization outputs", () => {
       "\n## scenario.atlas.publication – Readable situation\n\n- GIVEN a definition\n- WHEN it is published\n- THEN its title is readable\n" +
       "\n## scenario.atlas.another - Readable situation\n\n- GIVEN another definition with the same title\n- WHEN it is published\n- THEN its identity remains distinct\n" +
       "\nSee [obligation](#req.atlas.publication), [situation](#scenario.atlas.publication) and [another](#scenario.atlas.another).\n" +
-      "\n```mermaid illustrative\nsequenceDiagram\n    accTitle: Publication over time\n    accDescr: Conceptual overview.\n    Source->>Site: publish\n```\n";
+      "\n```d2 illustrative\ndirection: right\nSource -> Site: publish over time\n```\n";
     await writeFile(sourcePath, source);
     await mkdir(resolve(root, "docsite/.docusaurus"), { recursive: true });
     await writeFile(
@@ -391,20 +390,10 @@ describe("a project holding only initialization outputs", () => {
     expect(mdx).toMatch(/The answer is (?:<!-- -->)?42/);
     expect(mdx).not.toContain("provenanceShell");
     expect(html).not.toContain("provenanceShell");
-    // Mermaid renders after hydration; its page-specific definition is shipped in a client chunk.
-    const scripts = resolve(root, "docsite/build/assets/js");
-    const clientChunks = await Promise.all(
-      (await readdir(scripts))
-        .filter((name) => name.endsWith(".js"))
-        .map((name) => readFile(resolve(scripts, name), "utf8")),
-    );
-    expect(
-      clientChunks.some(
-        (chunk) =>
-          chunk.includes("Handbook workflow") &&
-          /Start --(?:>|\\x3e|\\u003e) Finish/.test(chunk),
-      ),
-    ).toBe(true);
+    // Mermaid support was removed from the site entirely: a `mermaid`-labelled fence in a custom
+    // doc is ordinary code, rendered statically with the page rather than deferred to hydration.
+    expect(html).toContain("flowchart LR");
+    expect(html).toContain("Start");
     expect(
       await readFile(resolve(root, "docsite/build/app.html"), "utf8"),
     ).toContain("Custom application");

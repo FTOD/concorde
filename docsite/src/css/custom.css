@@ -41,7 +41,7 @@
 .provenance__kind {
   font-weight: 700;
 }
-/* A Mermaid block marked illustrative explains; it is excluded from the declared model. */
+/* A D2 block marked illustrative explains; it is excluded from the declared model. */
 .diagram-illustrative {
   margin-bottom: 0.4rem;
   padding: 0.35rem 0.75rem;

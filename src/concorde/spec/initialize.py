@@ -1,4 +1,4 @@
-"""Initialize a project with a Protocol 12 registry and an honest root Module stub."""
+"""Initialize a project with a Protocol 13 registry and an honest root Module stub."""
 
 from __future__ import annotations
 
@@ -343,7 +343,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         }
     except (KeyError, TypeError) as error:
         raise SpecError(
-            f"the proposed registry is not a Protocol 12 registry: missing or malformed "
+            f"the proposed registry is not a Protocol 13 registry: missing or malformed "
             f"{error}",
             "invalid_proposal",
             "/proposal/files",

@@ -103,10 +103,11 @@ to it.
 
 ### scenario.spec.reader-parts-invalid — A malformed entry
 
-- GIVEN an entry with a missing, repeated or misordered required section, a Purpose containing a list, or a Usage section holding only links
+- GIVEN an entry with a missing or repeated required section, a Purpose containing a list, or a Usage section holding only links
 - WHEN the validator runs
 - THEN it reports `CHK.document.sections` or `CHK.document.prose` for each problem
 - BUT headings inside fences do not count as sections
+- AND the required sections in another order, or an additional level-2 section, are not problems
 
 ### scenario.spec.terminology-imports — Importing a provider's term
 
@@ -223,19 +224,21 @@ to it.
 - AND an internal peer that does not declare the complementary role for the same version fails `CHK.participates.complementary`
 - AND a repeated contract, peer and role fails `CHK.participates.unique`
 
-### scenario.spec.checked-flowchart — A checked flowchart that asserts only declarations
+### scenario.spec.checked-diagram — A checked diagram that asserts only declarations
 
-- GIVEN a module document with an unmarked Mermaid flowchart whose node labels name local concepts and realizations, Module titles and qualified `Module title / node title` labels
-- AND every edge is labelled and matches a declared `relates`, `uses` or `contains` in its direction
+- GIVEN a module document with a `d2` block whose shapes name local concepts and realizations, Module titles, qualified `Module title / node title` labels and, inside a realization, files it binds
+- AND every nesting matches a declared `contains`, the ownership of a node or the binding of a file
+- AND every unlabelled edge between two Modules matches a declared `uses` and every labelled edge a declared `relates`, in its direction
 - WHEN the validator runs
 - THEN no view finding is reported
-- AND a block marked `mermaid illustrative` in the same document is not checked
+- AND a block marked `d2 illustrative` in the same document, even one that sets styles, is not checked
 
-### scenario.spec.validate-architecture-mismatch — A flowchart that asserts something undeclared
+### scenario.spec.validate-architecture-mismatch — A diagram that asserts something undeclared
 
-- GIVEN a module document with an unmarked Mermaid flowchart that has an unresolved or ambiguous node label and an edge with no matching declaration, and an unmarked Mermaid block that is not a flowchart
+- GIVEN a module document with a checked `d2` block that has an unresolved or ambiguous shape, a file its realization does not bind, a nesting nothing declares, an edge with no matching declaration or an unlabelled edge touching a node, and a statement outside the semantic subset
+- AND a Mermaid block, and a checked `d2` block in an `implementation` document
 - WHEN the validator runs
-- THEN it reports `CHK.view.nodes` for the label, `CHK.view.edges` for the edge and `CHK.view.marked` for the unmarked block
+- THEN it reports `CHK.view.nodes` for the shapes, `CHK.view.nesting` for the nesting, `CHK.view.edges` for the edges, `CHK.view.subset` for the statement and `CHK.view.marked` for each misplaced block
 
 ### scenario.spec.check-input-missing — A configured check names a missing input
 

@@ -96,31 +96,25 @@ They also exercise the timing recorder and the timing summary.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Check execution
-    accDescr: The check runner runs configured checks, records check results and diagnostic spans, and enforces the read-only check boundary, which provides the check scratch; configured checks run inside the boundary.
-    runner[Check runner]
-    check[Configured check]
-    result[Check result]
-    boundary[Read-only check boundary]
-    scratch[Check scratch]
-    span[Diagnostic span]
-    runner -->|runs| check
-    runner -->|records| result
-    runner -->|records| span
-    runner -->|enforces| boundary
-    check -->|runs inside| boundary
-    boundary -->|provides| scratch
+```d2
+runner: Check runner
+check: Configured check
+result: Check result
+boundary: Read-only check boundary
+scratch: Check scratch
+span: Diagnostic span
+runner -> check: runs
+runner -> result: records
+runner -> span: records
+runner -> boundary: enforces
+check -> boundary: runs inside
+boundary -> scratch: provides
 ```
 
-```mermaid
-flowchart LR
-    accTitle: Check execution and its provider
-    accDescr: Check execution uses the Spec core.
-    me[Check execution]
-    spec[Spec core]
-    me -->|uses| spec
+```d2
+me: Check execution
+spec: Spec core
+me -> spec
 ```
 
 Workers, Validation and the Operation providers use this Module; it knows none of them. They rely

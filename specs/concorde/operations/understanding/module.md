@@ -130,15 +130,19 @@ and `tests/concorde/understanding/`, which run the Operation end to end against 
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Understanding collaboration
-    accDescr: The Understand Operation produces an assessment that reports Spec gaps; Understanding uses Operations, Workers and Spec core.
-    op[Understand Operation] -->|produces| assessment[Assessment]
-    assessment -->|reports| gap[Spec gap]
-    understanding[Understanding] -->|uses| operations[Operations]
-    understanding -->|uses| workers[Workers]
-    understanding -->|uses| spec[Spec core]
+```d2
+op: Understand Operation
+assessment: Assessment
+gap: Spec gap
+understanding: Understanding
+operations: Operations
+workers: Workers
+spec: Spec core
+op -> assessment: produces
+assessment -> gap: reports
+understanding -> operations
+understanding -> workers
+understanding -> spec
 ```
 
 <a id="uses-operations"></a>

@@ -35,7 +35,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.document.role` | `role` is exactly `module` or `implementation`, explicitly declared. | error |
 | `CHK.document.schema` | Metadata is `schema_version` 3 with the required fields and no unknown keys outside `extensions`. | error |
 | `CHK.document.entry` | Each Module owns exactly one `module`-role document whose reading path ends in `module.md`; its metadata, and no other, has the `module` block, whose `owns` includes the entry. | error |
-| `CHK.document.sections` | An entry has Purpose, Terminology, Usage, Design, Relationships once, in order, as its first level-2 headings. | error |
+| `CHK.document.sections` | An entry has the level-2 sections Purpose, Terminology, Usage, Design and Relationships, each exactly once, in any order. | error |
 | `CHK.document.topic-terminology` | A `module`-role topic that defines or imports a concept has `## Terminology` as its first level-2 section. | error |
 | `CHK.document.prose` | Purpose is plain prose; Usage, Design and Relationships are not only links, headings or diagrams. | error |
 | `CHK.terminology.rows` | A Terminology section has at most one table, with columns `Term` and `Definition`, whose rows correspond one to one with the concepts the document defines and imports. | error |
@@ -92,9 +92,11 @@ and Modules; a concept is not compared with its own Module.
 
 | Identity | Statement | Severity |
 | --- | --- | --- |
-| `CHK.view.marked` | Every Mermaid block in reading is a `flowchart`/`graph` or is marked `illustrative`. | error |
-| `CHK.view.nodes` | Every node label of a checked flowchart resolves to exactly one node or Module. | error |
-| `CHK.view.edges` | Every edge of a checked flowchart is labelled and matches a declared `relates`, `uses` or `contains` in its direction. | error |
+| `CHK.view.marked` | Every diagram in reading is a `d2` block; a checked one lies in `module` reading, and every other is marked `illustrative`. A Mermaid block is an error. | error |
+| `CHK.view.subset` | A checked diagram uses only the semantic subset of D2. | error |
+| `CHK.view.nodes` | Every shape of a checked diagram resolves to exactly one node, Module or, inside a realization, bound file. | error |
+| `CHK.view.nesting` | Every nesting of a checked diagram matches a declared `contains`, the ownership of a node or the binding of a file. | error |
+| `CHK.view.edges` | Every edge of a checked diagram matches a declared relation in its direction: an unlabelled edge between two Modules a `uses`, and a labelled edge a `relates`; an edge touching a node is labelled and no edge touches a file. | error |
 
 ## Reconciliation
 

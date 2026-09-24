@@ -81,10 +81,11 @@ The **Docsite publisher** reads only the configuration, the registry and the doc
 nothing is published that no Module owns. It publishes each document once, rewrites only a staged
 copy under `docsite/.generated/`, and promotes a candidate only after its source digest, page
 inventory and every internal link check out, restoring the old site if promotion fails. It refuses
-inputs it cannot publish correctly, including a flowchart of executable topology on a `module`-role
-page, but leaves full structural conformance to Spec core. Its TypeScript recomputation of which Modules
-select a document must equal Spec core's `selected-by`
-[impact index](../spec/module.md#concept.spec.impact-index).
+inputs it cannot publish correctly, including any Mermaid block and a checked D2 diagram that sets
+its own look, but leaves full structural conformance to Spec core. It renders every D2 diagram with
+the `d2` program, choosing each shape's look from what the shape names. Its TypeScript recomputation
+of which Modules select a document must equal Spec core's `selected-by` [impact
+index](../spec/module.md#concept.spec.impact-index).
 
 <a id="realization.views.scaffold"></a>
 
@@ -100,36 +101,33 @@ Protocol collection, repository tests and the Pages workflow, all excluded from 
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Views collaboration
-    accDescr: The publisher reads the registry and builds candidates that replace the published site; the scaffold copies the publisher through Spec core's file transactions.
-    registry[Spec core / Registry]
-    publisher[Docsite publisher]
-    candidate[Publication candidate]
-    published[Published site]
-    page[Canonical page]
-    collection[Reading collection]
-    identity[Site identity]
-    custom[Custom docs]
-    manifest[Build manifest]
-    scaffold[Docsite scaffold]
-    proposal[Scaffold proposal]
-    site[Concorde site]
-    spec[Spec core]
-    publisher -->|reads| registry
-    publisher -->|reads| identity
-    publisher -->|publishes each document as| page
-    page -->|is listed in| collection
-    publisher -->|publishes beside the Specs| custom
-    publisher -->|builds| candidate
-    candidate -->|replaces| published
-    publisher -->|writes| manifest
-    scaffold -->|returns| proposal
-    scaffold -->|copies| publisher
-    scaffold -->|creates| identity
-    scaffold -->|writes files through| spec
-    site -->|configures| publisher
+```d2
+registry: Spec core / Registry
+publisher: Docsite publisher
+candidate: Publication candidate
+published: Published site
+page: Canonical page
+collection: Reading collection
+identity: Site identity
+custom: Custom docs
+manifest: Build manifest
+scaffold: Docsite scaffold
+proposal: Scaffold proposal
+site: Concorde site
+spec: Spec core
+publisher -> registry: reads
+publisher -> identity: reads
+publisher -> page: publishes each document as
+page -> collection: is listed in
+publisher -> custom: publishes beside the Specs
+publisher -> candidate: builds
+candidate -> published: replaces
+publisher -> manifest: writes
+scaffold -> proposal: returns
+scaffold -> publisher: copies
+scaffold -> identity: creates
+scaffold -> spec: writes files through
+site -> publisher: configures
 ```
 
 The publisher and the scaffold never edit each other's output: the scaffold creates files once,

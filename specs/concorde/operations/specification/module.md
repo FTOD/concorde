@@ -138,14 +138,17 @@ names, the prompt `prompts/workers/specify.md` rendered to `generated/workers/sp
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Specification collaboration
-    accDescr: The Specify Operation produces a Spec change; Specification uses Operations, Workers and Spec core.
-    op[Specify Operation] -->|produces| change[Spec change]
-    specification[Specification] -->|uses| operations[Operations]
-    specification -->|uses| workers[Workers]
-    specification -->|uses| spec[Spec core]
+```d2
+op: Specify Operation
+change: Spec change
+specification: Specification
+operations: Operations
+workers: Workers
+spec: Spec core
+op -> change: produces
+specification -> operations
+specification -> workers
+specification -> spec
 ```
 
 <a id="uses-operations"></a>

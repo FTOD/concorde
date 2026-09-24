@@ -16,7 +16,7 @@ const entry =
   "| Pipe \\| term | A cell with an escaped \\| pipe. |\n\n" +
   "## Usage\n\nSubmit one request.\n\n## Design\n\n" +
   '<a id="concept.example.result"></a><a id="realization.example.service"></a>\n\nThe service produces the result.\n\n' +
-  "## Relationships\n\n```mermaid\nflowchart LR\n    Service[Example service] -->|produces| Result\n```\n";
+  "## Relationships\n\n```d2\nservice: Example service\nresult: Result\nservice -> result: produces\n```\n";
 const declaration = {
   schema_version: 3,
   document: {
@@ -148,7 +148,7 @@ describe("Protocol 11 reading and document metadata", () => {
       expect(() => parse(value, isEntry)).toThrow();
   });
   // verifies: scenario.views.reject-reading-collection
-  it("keeps definitions and Graph Specs out of module-role reading", () => {
+  it("keeps definitions out of module-role reading", () => {
     expect(() =>
       requireReading(entry, "example/module.md", true, "module"),
     ).not.toThrow();
@@ -159,7 +159,6 @@ describe("Protocol 11 reading and document metadata", () => {
       "\n### req.example.once — One result\n\nExample SHALL return one result.\n",
       "\n### scenario.example.once — One result\n\n- GIVEN input\n- WHEN called\n- THEN one result\n",
       '\n```concorde-contract\n{"id":"contract.example.result"}\n```\n',
-      "\n```mermaid\nflowchart LR\n    %% graph: example\n    a -->|b| c\n```\n",
     ];
     for (const fragment of fragments) {
       expect(() =>
@@ -224,6 +223,19 @@ describe("Protocol 11 reading and document metadata", () => {
       ),
     ).toThrow(/Invalid canonical contract/);
   });
+  it("anchors an opening anchor to exactly its list item or paragraph", () => {
+    const content =
+      "# Doc\n\n## Design\n\n" +
+      '- <a id="realization.x.y"></a>**Y** does the work.\n' +
+      "- Another item.\n\n" +
+      '<a id="concept.x.z"></a>**Z** is a concept explained here.\n\n' +
+      "A different paragraph that is not part of either meaning.\n";
+    const meanings = readingMeanings(content, "example/doc.md");
+    expect(meanings.get("realization.x.y")).toBe("**Y** does the work.");
+    expect(meanings.get("concept.x.z")).toBe(
+      "**Z** is a concept explained here.",
+    );
+  });
   it("reads defining and import rows of the Terminology table", () => {
     expect(terminologyRows(entry)).toEqual([
       { term: "Result", definition: "The returned value." },
@@ -247,11 +259,12 @@ describe("Protocol 11 reading and document metadata", () => {
       ),
     ).toEqual([]);
   });
-  it("rejects diagrams that are neither checked flowcharts nor marked illustrative", () => {
+  it("rejects any Mermaid block, wherever it is marked", () => {
     for (const diagram of [
       "```mermaid\nsequenceDiagram\n    A->>B: go\n```",
       "```mermaid\nstateDiagram-v2\n    [*] --> A\n```",
       "```mermaid illustrated\nsequenceDiagram\n    A->>B: go\n```",
+      "```mermaid illustrative\nsequenceDiagram\n    A->>B: go\n```",
     ])
       expect(() =>
         requireReading(
@@ -260,11 +273,12 @@ describe("Protocol 11 reading and document metadata", () => {
           true,
           "module",
         ),
-      ).toThrow(/neither a flowchart nor marked illustrative/);
+      ).toThrow(
+        /Mermaid block .* is not part of reading; rewrite it as a `d2` block or a `d2 illustrative` block/,
+      );
     expect(() =>
       requireReading(
-        entry +
-          "\n```mermaid illustrative\nsequenceDiagram\n    A->>B: go\n```\n",
+        entry + "\n```d2 illustrative\nA -> B: go\n```\n",
         "example/module.md",
         true,
         "module",

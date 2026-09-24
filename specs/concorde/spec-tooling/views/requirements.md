@@ -43,7 +43,7 @@ Publication SHALL show next to each Terminology import row the definition of the
 
 ### req.views.illustrative-label — Illustrative diagrams are labelled
 
-Publication SHALL render every Mermaid block marked `illustrative` with a visible label stating that it is not normative.
+Publication SHALL render every D2 block marked `illustrative` with a visible label stating that it is not normative.
 
 ### req.views.derived-views-not-written — Rendering never edits sources
 
@@ -51,18 +51,36 @@ Publication SHALL NOT write rendered, enriched or rewritten content into any reg
 
 ### req.views.diagram-source-identity — A fence is its diagram's only source
 
-Publication SHALL render each Mermaid diagram from its fence in the containing document and from no other source.
+Publication SHALL render each D2 diagram from its fence in the containing document and from no other source.
 
-The publisher produces no separate diagram files or records, so a diagram changes only when the
-document containing it changes.
+The rendered image is staged beside its page and derived only from the fence and the publisher's
+house style, so a diagram changes only when the document containing it or the house style changes.
 
-### req.views.graph-spec-placement — Executable topology stays in implementation documents
+### req.views.diagram-look — The publisher decides how a diagram looks
 
-Publication SHALL refuse a `module`-role document that contains a Mermaid block with a `%% graph:`
-line.
+Publication SHALL choose how a checked D2 diagram looks from what each shape resolves to.
 
-Such a line marks a flowchart of executable topology, which the Protocol places in `implementation`
-reading; the publisher only refuses to publish a document that breaks the rule.
+A shape that names the page's Module, one of its descendants, another Module, a concept, a
+realization or a file each has one fixed look, and an edge between two Modules looks different
+from an edge that relates nodes.
+
+### req.views.diagram-subset — A diagram that sets its own look is refused
+
+Publication SHALL refuse a checked D2 block that leaves the semantic subset, naming its document and line.
+
+The semantic subset is the Protocol's. A reading that sets a style, shape, class or layout is
+refused because the look is the publisher's.
+
+### req.views.d2-program — Diagrams are rendered by the d2 program
+
+Publication SHALL render D2 with the `d2` program from github.com/d2lang/d2, found on `PATH` or through `CONCORDE_D2`.
+
+### req.views.d2-failure — A diagram that cannot be rendered fails the build
+
+Publication SHALL fail naming the diagram's document and line when the `d2` program is missing or rejects the diagram.
+
+A missing program is reported with how to install it, and a rejected diagram with the program's own
+message.
 
 ### req.views.custom-docs — Custom docs stay outside the Specs
 

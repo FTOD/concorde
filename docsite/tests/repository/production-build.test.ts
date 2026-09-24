@@ -1,5 +1,5 @@
 import { captureProcess } from "../capture-process";
-import { access, mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { beforeAll, it, expect } from "vitest";
 import {
@@ -159,16 +159,6 @@ it("shows imported definitions and labels illustrative diagrams", async () => {
   }
   expect(imports).toBeGreaterThan(0);
   expect(illustrative).toBeGreaterThan(0);
-});
-
-// verifies: scenario.views.operation-graphs-in-owner-specs
-it("publishes Graph Specs only inside their owners' implementation pages", async () => {
-  await expect(access(resolve(output, "agent-graphs.html"))).rejects.toThrow();
-  const home = await readFile(resolve(output, "index.html"), "utf8");
-  expect(home).not.toContain("agent-graphs");
-  for (const page of registry.pages)
-    if (/^\s*%%\s*graph:/m.test(page.content))
-      expect(page.readingCollection, page.sourcePath).toBe("implementation");
 });
 
 // verifies: scenario.views.protocol-docs-tab

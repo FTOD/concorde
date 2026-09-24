@@ -135,14 +135,16 @@ does is judgment that no deterministic test observes.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Main session collaborations
-    accDescr: Main session uses Operations, Tasks, Issues and the Spec MCP server.
-    mainsession[Main session] -->|uses| operations[Operations]
-    mainsession -->|uses| tasks[Tasks]
-    mainsession -->|uses| issues[Issues]
-    mainsession -->|uses| specmcp[Spec MCP server]
+```d2
+mainsession: Main session
+operations: Operations
+tasks: Tasks
+issues: Issues
+specmcp: Spec MCP server
+mainsession -> operations
+mainsession -> tasks
+mainsession -> issues
+mainsession -> specmcp
 ```
 
 The guidance describes how the main agent uses four providers. Distribution renders and installs

@@ -75,7 +75,9 @@ node_types:
       - CHK.registry.mirror
       - CHK.evidence.no-spec-coverage
       - CHK.view.marked
+      - CHK.view.subset
       - CHK.view.nodes
+      - CHK.view.nesting
       - CHK.view.edges
 
   - id: concept

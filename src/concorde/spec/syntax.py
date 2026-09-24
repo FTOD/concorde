@@ -1,4 +1,4 @@
-"""Protocol 12 reading syntax: anchors, sections, Terminology tables, definitions and diagrams.
+"""Protocol 13 reading syntax: anchors, sections, Terminology tables, definitions and diagrams.
 
 Every parser here reads one reading document's text and returns what it declares together with
 the problems it found, each tagged with the identity of the check it violates. Nothing here reads
@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from itertools import pairwise
 from dataclasses import dataclass, field
 
 from .errors import SpecError
@@ -18,6 +19,11 @@ READING_SECTIONS = ("Purpose", "Terminology", "Usage", "Design", "Relationships"
 HEADING_ANCHOR = re.compile(r"[ \t]+\{#([^{}\s]+)\}[ \t]*$")
 HTML_ANCHOR_LINE = re.compile(r'^[ \t]*(?:<a id="[^"]*"></a>[ \t]*)+$')
 HTML_ANCHOR = re.compile(r'<a id="([^"]*)"></a>')
+# An anchor group that opens a paragraph or a list item's text, followed by that text.
+OPENING_ANCHORS = re.compile(
+    r"^(?P<indent>[ \t]*)(?P<marker>(?:[-*+]|\d+[.)])[ \t]+)?"
+    r'(?P<group>(?:<a id="[^"]*"></a>[ \t]*)+)(?P<rest>\S.*)$'
+)
 SCENARIO_HEADING = re.compile(
     r"^(scenario\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]+[—–-][ \t]+(\S.*)$"
 )
@@ -34,6 +40,9 @@ TEST_DECLARATION = re.compile(r"@verifies\s*\(|//\s*verifies:")
 SENTENCE_BREAK = re.compile(r"(?<=[.!?])[\"')\]]*\s+(?=[A-Z])")
 STEP_ORDER = {"GIVEN": 0, "WHEN": 1, "THEN": 2}
 NODE_PREFIXES = ("concept.", "realization.", "req.", "scenario.", "contract.")
+# Fence languages that draw diagrams: D2 is the reading's diagram language, and Mermaid is
+# recognized only to be refused.
+DIAGRAM_LANGUAGES = ("d2", "mermaid")
 
 
 @dataclass(frozen=True)
@@ -82,7 +91,7 @@ class Reading:
     requirements: list = field(default_factory=list)
     scenarios: list = field(default_factory=list)
     contracts: list = field(default_factory=list)
-    mermaid: list = field(default_factory=list)
+    diagrams: list = field(default_factory=list)
     links: list = field(default_factory=list)
     terminology: list[TermRow] | None = None
     problems: list[Problem] = field(default_factory=list)
@@ -135,13 +144,18 @@ def _anchors(lines, found: list[Heading], reading: Reading) -> None:
     """Resolve readable anchors outside fences with bounded explanation regions.
 
     A heading anchor extends to the next heading of the same or a higher level; a standalone
-    anchor extends to the next heading; either ends at the next anchor group. Requirement and
-    scenario headings supply their identity as their anchor.
+    anchor extends to the next heading; either ends at the next anchor group. An anchor group
+    opening a paragraph or a list item explains exactly that block, its own line included.
+    Requirement and scenario headings supply their identity as their anchor.
     """
     heading_at = {heading.line: heading for heading in found}
     groups: list[tuple[tuple[str, ...], int, int | None, str]] = []
+    opening_ends: dict[int, int] = {}
     seen: set[str] = set()
-    for number, kind, line in lines:
+    previous_blank = True
+    for position, (number, kind, line) in enumerate(lines):
+        starts_block = previous_blank
+        previous_blank = kind != "prose" or not line.strip() or number in heading_at
         if kind != "prose":
             continue
         heading = heading_at.get(number)
@@ -165,6 +179,11 @@ def _anchors(lines, found: list[Heading], reading: Reading) -> None:
                 names = [heading.anchor]
         elif HTML_ANCHOR_LINE.match(line):
             names = HTML_ANCHOR.findall(line)
+        elif (opening := OPENING_ANCHORS.match(line)) and (
+            starts_block or opening.group("marker")
+        ):
+            names = HTML_ANCHOR.findall(opening.group("group"))
+            opening_ends[number] = _block_end(lines, position, heading_at, opening)
         if not names:
             continue
         for name in names:
@@ -187,6 +206,20 @@ def _anchors(lines, found: list[Heading], reading: Reading) -> None:
             seen.add(name)
         groups.append((tuple(names), number, heading.level if heading else None, line))
     for index, (names, start, level, _) in enumerate(groups):
+        if start in opening_ends:
+            region = [
+                (n, k, HTML_ANCHOR.sub("", text) if n == start else text)
+                for n, k, text in lines
+                if start <= n < opening_ends[start]
+            ]
+            prose_text = "\n".join(
+                text for _, k, text in region if k == "prose"
+            ).strip()
+            raw = "\n".join(text for _, _, text in region).strip()
+            for name in names:
+                if name not in reading.anchors:
+                    reading.anchors[name] = Anchor(name, start, prose_text, raw, names)
+            continue
         next_group = groups[index + 1][1] if index + 1 < len(groups) else None
         candidates = [
             heading.line
@@ -208,6 +241,24 @@ def _anchors(lines, found: list[Heading], reading: Reading) -> None:
         for name in names:
             if name not in reading.anchors:
                 reading.anchors[name] = Anchor(name, start, prose_text, raw, names)
+
+
+def _block_end(lines, position: int, heading_at: dict, opening: re.Match) -> int:
+    """The line after the paragraph or list item that an opening anchor group starts."""
+    indent = len(opening.group("indent").expandtabs())
+    item = bool(opening.group("marker"))
+    for number, kind, line in lines[position + 1 :]:
+        if kind != "prose" or not line.strip() or number in heading_at:
+            return number
+        marker = LIST_ITEM.match(line)
+        if marker and (
+            not item
+            or len(line[: len(line) - len(line.lstrip())].expandtabs()) <= indent
+        ):
+            return number
+        if HTML_ANCHOR_LINE.match(line):
+            return number
+    return lines[-1][0] + 1 if lines else position + 1
 
 
 def explained(anchor: Anchor) -> bool:
@@ -484,7 +535,7 @@ def _definitions(lines, reading: Reading) -> None:
 
 
 def _fences(lines, reading: Reading) -> None:
-    """Contract and Mermaid fences at the outer level."""
+    """Contract and diagram fences at the outer level."""
     current: dict | None = None
     for number, kind, line in lines:
         if kind == "fence-open":
@@ -498,7 +549,7 @@ def _fences(lines, reading: Reading) -> None:
             _close_fence(current, reading)
             current = None
     if current is not None:
-        if current["language"] in {"concorde-contract", "mermaid"}:
+        if current["language"] in {"concorde-contract", *DIAGRAM_LANGUAGES}:
             reading.problems.append(
                 Problem(
                     "CHK.contract.fence"
@@ -514,8 +565,10 @@ def _close_fence(fence: dict, reading: Reading) -> None:
     body = "\n".join(fence["body"])
     if fence["language"] == "concorde-contract":
         reading.contracts.append((fence["line"], body))
-    elif fence["language"] == "mermaid":
-        reading.mermaid.append((fence["line"], tuple(fence["info"][1:]), body))
+    elif fence["language"] in DIAGRAM_LANGUAGES:
+        reading.diagrams.append(
+            (fence["line"], fence["language"], tuple(fence["info"][1:]), body)
+        )
 
 
 def contract_problems(body: str) -> tuple[dict | None, list[str]]:
@@ -712,20 +765,23 @@ def entry_section_problems(text: str) -> list[Problem]:
     found = headings(lines)
     top = [heading for heading in found if heading.level == 2]
     problems = []
-    if [heading.text for heading in top[:5]] != list(READING_SECTIONS) or any(
-        sum(heading.text == name for heading in top) != 1 for name in READING_SECTIONS
-    ):
+    counts = {
+        name: sum(heading.text == name for heading in top) for name in READING_SECTIONS
+    }
+    wrong = [f"{name} ({count} times)" for name, count in counts.items() if count != 1]
+    if wrong:
         problems.append(
             Problem(
                 "CHK.document.sections",
-                "an entry starts with the level-2 sections Purpose, Terminology, Usage, Design "
-                "and Relationships, each once and in this order",
+                "an entry has the level-2 sections Purpose, Terminology, Usage, Design and "
+                "Relationships, each exactly once in any order; found "
+                + ", ".join(wrong),
             )
         )
         return problems
     total = lines[-1][0] if lines else 0
     heading_lines = {heading.line for heading in found}
-    for index, heading in enumerate(top[:5]):
+    for heading in (heading for heading in top if heading.text in READING_SECTIONS):
         end = next(
             (
                 later.line
@@ -794,195 +850,254 @@ def link_target(document_path: str, href: str) -> tuple[str, str] | None:
     return path, unquote(parsed.fragment)
 
 
-# --- Mermaid flowcharts ---------------------------------------------------------------------
+# --- D2 diagrams ----------------------------------------------------------------------------
 
-DIAGRAM_KEYWORDS = (
-    "flowchart",
-    "graph",
-    "subgraph",
-    "end",
-    "classDef",
-    "class",
-    "style",
-    "linkStyle",
-    "direction",
-    "click",
-    "accTitle",
-    "accDescr",
+# D2 keywords: each sets how a diagram looks or adds structure beyond shapes, nesting and edges.
+D2_KEYWORDS = frozenset(
+    {
+        "label",
+        "shape",
+        "style",
+        "class",
+        "classes",
+        "direction",
+        "near",
+        "icon",
+        "tooltip",
+        "link",
+        "width",
+        "height",
+        "top",
+        "left",
+        "constraint",
+        "vars",
+        "layers",
+        "scenarios",
+        "steps",
+        "grid-rows",
+        "grid-columns",
+        "grid-gap",
+        "vertical-gap",
+        "horizontal-gap",
+        "source-arrowhead",
+        "target-arrowhead",
+        "filled",
+        "multiple",
+        "3d",
+    }
 )
-EDGE = re.compile(
-    r"(?P<op>x--x|o--o|<-->|-->|---|-\.->|-\.-|==>|===|--x|--o|<--|<==)"
-    r"(?:[ \t]*\|(?P<label>[^|]*)\|)?"
-)
-INLINE_EDGE = re.compile(
-    r"--[ \t]+(?P<label>[^-]+?)[ \t]+-->|-\.[ \t]+(?P<label2>[^.]+?)[ \t]+\.->"
-    r"|==[ \t]+(?P<label3>[^=]+?)[ \t]+==>"
-)
-NODE = re.compile(r"(?P<id>[A-Za-z0-9_]+)(?::::\w+)?")
-OPENERS = ("(((", "[[", "[(", "((", "{{", "[/", "[\\", "[", "(", "{", ">")
-CLOSERS = (")))", "]]", ")]", "))", "}}", "/]", "\\]", "]", ")", "}")
-
-
-# Edge operators by the direction they draw: forward from the left node to the right one, reversed
-# from the right node to the left one, or without a single direction (undirected or both ways).
-REVERSED_EDGES = frozenset({"<--", "<=="})
-UNDIRECTED_EDGES = frozenset({"---", "-.-", "===", "<-->", "x--x", "o--o"})
+D2_OTHER_ARROWS = ("<->", "<-", "--")
 
 
 class DiagramError(SpecError):
-    """A checked Mermaid flowchart outside the supported syntax."""
+    """A checked D2 diagram outside the semantic subset of the Views chapter."""
 
     DEFAULT_CODE = "invalid_diagram"
 
-
-class UndirectedEdgeError(DiagramError):
-    """A checked edge drawn without exactly one direction."""
-
-
-def first_line(label: str) -> str:
-    text = label.strip()
-    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
-        text = text[1:-1]
-    text = re.split(r"<br\s*/?>", text)[0]
-    return text.strip()
+    def __init__(self, message: str, line: int) -> None:
+        super().__init__(message, line=line)
 
 
-def diagram_type(body: str) -> str | None:
-    for raw in body.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("%%"):
+@dataclass(frozen=True)
+class DiagramShape:
+    """One shape: its key path from the root and the text that resolves it."""
+
+    path: tuple[str, ...]
+    label: str
+    line: int
+
+
+@dataclass(frozen=True)
+class DiagramEdge:
+    source: tuple[str, ...]
+    target: tuple[str, ...]
+    label: str | None
+    line: int
+
+
+def _d2_statements(source: str) -> list[tuple[str, int, str]]:
+    """Statements as (text, line, ending), where ending is 'open', 'close' or 'end'."""
+    result: list[tuple[str, int, str]] = []
+    text = ""
+    line = start = 1
+    quote = False
+    index = 0
+
+    def flush(ending: str) -> None:
+        nonlocal text
+        if text.strip():
+            result.append((text.strip(), start, ending))
+        elif ending == "open":
+            raise DiagramError("a block opens without a shape", line)
+        text = ""
+
+    while index < len(source):
+        char = source[index]
+        if quote:
+            text += char
+            if char == "\\" and index + 1 < len(source):
+                index += 1
+                text += source[index]
+            elif char == '"':
+                quote = False
+            elif char == "\n":
+                raise DiagramError("a quoted key or label is not closed", line)
+            index += 1
             continue
-        return line.split()[0]
-    return None
+        if not text.strip():
+            start = line
+        if char == '"':
+            quote = True
+            text += char
+        elif char == "#":
+            while index + 1 < len(source) and source[index + 1] != "\n":
+                index += 1
+        elif char in "\n;":
+            flush("end")
+            if char == "\n":
+                line += 1
+        elif char == "{":
+            flush("open")
+        elif char == "}":
+            flush("end")
+            result.append(("", line, "close"))
+        elif char in "|`$[]":
+            raise DiagramError(
+                f"{char!r} (block strings, substitutions or arrays) is not part of the "
+                "semantic subset",
+                line,
+            )
+        else:
+            text += char
+        index += 1
+    if quote:
+        raise DiagramError("a quoted key or label is not closed", line)
+    flush("end")
+    return result
 
 
-def _scan_node(line: str, position: int) -> tuple[str, str | None, int]:
-    match = NODE.match(line, position)
-    if not match:
-        raise DiagramError(
-            f"cannot interpret diagram text near {line[position : position + 20]!r}"
-        )
-    node_id = match.group("id")
-    if node_id in DIAGRAM_KEYWORDS:
-        raise DiagramError(
-            f"reserved Mermaid keyword cannot be a node identifier: {node_id}"
-        )
-    position = match.end()
-    rest = line[position:]
-    for opener in OPENERS:
-        if rest.startswith(opener):
-            inner_start = position + len(opener)
-            if line[inner_start : inner_start + 1] == '"':
-                end = line.find('"', inner_start + 1)
-                if end < 0:
-                    raise DiagramError("unterminated quoted node label")
-                label = line[inner_start + 1 : end]
-                after = end + 1
-            else:
-                closer_index = min(
-                    (
-                        line.find(c, inner_start)
-                        for c in CLOSERS
-                        if line.find(c, inner_start) >= 0
-                    ),
-                    default=-1,
-                )
-                if closer_index < 0:
-                    raise DiagramError("unterminated node label")
-                label = line[inner_start:closer_index]
-                after = closer_index
-            for closer in CLOSERS:
-                if line.startswith(closer, after):
-                    after += len(closer)
-                    break
-            else:
-                raise DiagramError("node shape is not closed")
-            if line.startswith(":::", after):
-                style = re.compile(r":::\w+").match(line, after)
-                if style is None:
-                    raise DiagramError("node style name is missing")
-                after = style.end()
-            return node_id, label, after
-    return node_id, None, position
+def _split_outside(text: str, separator: str) -> list[str]:
+    """Split text at every separator outside double quotes."""
+    parts: list[str] = []
+    current = ""
+    quote = False
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == '"' and (index == 0 or text[index - 1] != "\\"):
+            quote = not quote
+        if not quote and text.startswith(separator, index):
+            parts.append(current)
+            current = ""
+            index += len(separator)
+            continue
+        current += char
+        index += 1
+    parts.append(current)
+    return parts
 
 
-def flowchart_model(
-    text: str,
-) -> tuple[dict[str, str], list[tuple[str, str | None, str]]]:
-    """Node labels and directed, labeled edges of one Mermaid flowchart.
+def _unquote(text: str, line: int) -> str:
+    stripped = text.strip()
+    if stripped.startswith('"'):
+        if len(stripped) < 2 or not stripped.endswith('"'):
+            raise DiagramError(f"malformed quoted text {stripped}", line)
+        return re.sub(r"\\(.)", r"\1", stripped[1:-1])
+    return stripped
 
-    Each edge is ``(source, label, target)`` in the drawn direction: ``<--`` and ``<==`` point from
-    the right node to the left one. An edge without exactly one direction (``---``, ``-.-``,
-    ``===``, ``<-->``, ``x--x``, ``o--o``) raises UndirectedEdgeError; an unreadable line raises
-    DiagramError.
+
+def _key_path(text: str, line: int) -> tuple[str, ...]:
+    segments = [segment.strip() for segment in _split_outside(text.strip(), ".")]
+    for segment in segments:
+        if not segment:
+            raise DiagramError(f"empty key in {text.strip()!r}", line)
+        if segment.startswith('"'):
+            continue
+        if segment in D2_KEYWORDS:
+            raise DiagramError(
+                f"{segment!r} sets how the diagram looks; styling and layout belong to the "
+                "publisher",
+                line,
+            )
+        if re.search(r"[*&!()<>@]", segment) or segment.startswith("..."):
+            raise DiagramError(
+                f"{segment!r} uses globs, filters, references or imports, which are not part "
+                "of the semantic subset",
+                line,
+            )
+    return tuple(_unquote(segment, line) for segment in segments)
+
+
+def diagram_model(
+    source: str,
+) -> tuple[list[DiagramShape], list[DiagramEdge]]:
+    """Shapes and directed edges of one checked D2 diagram in the semantic subset.
+
+    A shape is ``key`` or ``key: Label``, a ``{ ... }`` block after a shape nests statements in it,
+    and an edge is ``a -> b`` or ``a -> b: label`` between key paths relative to the enclosing
+    block; shapes named only by an edge or a dotted path are declared by that use. Anything else
+    raises DiagramError with the line of the block that holds it.
     """
-    nodes: dict[str, str] = {}
-    edges: list[tuple[str, str | None, str]] = []
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("%%"):
+    shapes: dict[tuple[str, ...], DiagramShape] = {}
+    edges: list[DiagramEdge] = []
+    scope: list[tuple[str, ...]] = [()]
+
+    def declare(path: tuple[str, ...], line: int, label: str | None = None) -> None:
+        for size in range(1, len(path) + 1):
+            prefix = path[:size]
+            own = label if size == len(path) else None
+            if prefix not in shapes:
+                shapes[prefix] = DiagramShape(prefix, own or prefix[-1], line)
+            elif own is not None:
+                shapes[prefix] = DiagramShape(prefix, own, shapes[prefix].line)
+
+    for text, line, ending in _d2_statements(source):
+        if ending == "close":
+            if len(scope) == 1:
+                raise DiagramError("a block closes that was never opened", line)
+            scope.pop()
             continue
-        head = re.split(r"[\s:]", line, 1)[0]
-        if head in DIAGRAM_KEYWORDS:
-            continue
-        position = 0
-        groups: list[list[str]] = []
-        pending_edges: list[str | None] = []
-        reversed_edges: list[bool] = []
-        current: list[str] = []
-        while position < len(line):
-            while position < len(line) and line[position] in " \t":
-                position += 1
-            if position >= len(line):
-                break
-            if line.startswith("&", position):
-                position += 1
-                continue
-            inline = INLINE_EDGE.match(line, position)
-            if inline:
-                label = (
-                    inline.group("label")
-                    or inline.group("label2")
-                    or inline.group("label3")
+        here = scope[-1]
+        for arrow in D2_OTHER_ARROWS:
+            if len(_split_outside(text, arrow)) > 1:
+                raise DiagramError(
+                    f"{arrow!r} has no single declared direction; draw every edge with '->'",
+                    line,
                 )
-                groups.append(current)
-                current = []
-                pending_edges.append(label.strip() if label and label.strip() else None)
-                reversed_edges.append(False)
-                position = inline.end()
-                continue
-            edge = EDGE.match(line, position)
-            if edge:
-                operator = edge.group("op")
-                if operator in UNDIRECTED_EDGES:
-                    raise UndirectedEdgeError(
-                        f"edge {operator!r} has no single direction: {raw.strip()!r}"
-                    )
-                label = edge.group("label")
-                groups.append(current)
-                current = []
-                pending_edges.append(label.strip() if label and label.strip() else None)
-                reversed_edges.append(operator in REVERSED_EDGES)
-                position = edge.end()
-                continue
-            node_id, label, position = _scan_node(line, position)
-            if label is not None:
-                nodes[node_id] = label
-            else:
-                nodes.setdefault(node_id, node_id)
-            current.append(node_id)
-        groups.append(current)
-        if len(groups) != len(pending_edges) + 1 or any(not group for group in groups):
-            raise DiagramError(f"cannot interpret diagram line: {raw.strip()!r}")
-        for index, label in enumerate(pending_edges):
-            for left in groups[index]:
-                for right in groups[index + 1]:
-                    edges.append(
-                        (right, label, left)
-                        if reversed_edges[index]
-                        else (left, label, right)
-                    )
-    return nodes, edges
+        ends = _split_outside(text, "->")
+        if len(ends) > 1:
+            if ending == "open":
+                raise DiagramError(
+                    "an edge block styles the edge; styling belongs to the publisher",
+                    line,
+                )
+            last = _split_outside(ends[-1], ":")
+            if len(last) > 2:
+                raise DiagramError(f"malformed edge {text!r}", line)
+            ends[-1] = last[0]
+            label = _unquote(last[1], line) if len(last) == 2 else None
+            paths = [here + _key_path(end, line) for end in ends]
+            for path in paths:
+                declare(path, line)
+            for source_path, target_path in pairwise(paths):
+                edges.append(DiagramEdge(source_path, target_path, label or None, line))
+            continue
+        parts = _split_outside(text, ":")
+        if len(parts) > 2:
+            raise DiagramError(f"malformed shape {text!r}", line)
+        path = here + _key_path(parts[0], line)
+        label = _unquote(parts[1], line) if len(parts) == 2 else None
+        if label == "":
+            raise DiagramError(f"empty label in {text!r}", line)
+        declare(path, line, label)
+        if ending == "open":
+            scope.append(path)
+    if len(scope) > 1:
+        raise DiagramError(
+            f"the block of {'.'.join(scope[-1])} is not closed",
+            len(source.splitlines()) or 1,
+        )
+    return list(shapes.values()), edges
 
 
 def canonical_json(value) -> str:

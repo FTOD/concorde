@@ -117,15 +117,18 @@ The reasons behind these choices are in [Issues design](design.md).
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Issues structure
-    accDescr: The command records and reads Issues through the store, the store keeps Issues, an Issue holds reports, dispositions close or reopen Issues, and the store writes through Spec core.
-    command[Bookkeeping command] -->|records and reads Issues through| store[Issue store]
-    store -->|keeps| issue[Issue]
-    issue -->|holds| report[Issue report]
-    disposition[Disposition] -->|closes or reopens| issue
-    store -->|writes records through| spec[Spec core]
+```d2
+command: Bookkeeping command
+store: Issue store
+issue: Issue
+report: Issue report
+disposition: Disposition
+spec: Spec core
+command -> store: records and reads Issues through
+store -> issue: keeps
+issue -> report: holds
+disposition -> issue: closes or reopens
+store -> spec: writes records through
 ```
 
 Nothing outside the store writes a record. The bookkeeping command is how the main agent adds

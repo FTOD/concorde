@@ -115,19 +115,16 @@ registry or confirms pending entries, and it opens no network listener. Structur
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Spec MCP server relationships
-    accDescr: The Server program is rooted at the server root, answers with Spec core and returns grants and context identities.
-    program[Server program]
-    root[Server root]
-    core[Spec core]
-    grant[Spec core / Grant]
-    identity[Spec core / Context identity]
-    program -->|is rooted at| root
-    program -->|answers with| core
-    program -->|returns| grant
-    program -->|returns| identity
+```d2
+program: Server program
+root: Server root
+core: Spec core
+grant: Spec core / Grant
+identity: Spec core / Context identity
+program -> root: is rooted at
+program -> core: answers with
+program -> grant: returns
+program -> identity: returns
 ```
 
 The Server program implements the Spec MCP server concept. The picture shows only what the server

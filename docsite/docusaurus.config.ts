@@ -41,10 +41,8 @@ const config: Config = {
   onBrokenAnchors: "throw",
   markdown: {
     format: "detect",
-    mermaid: true,
     hooks: { onBrokenMarkdownLinks: "throw" },
   },
-  themes: ["@docusaurus/theme-mermaid"],
   trailingSlash: false,
   staticDirectories: ["static"],
   presets: [

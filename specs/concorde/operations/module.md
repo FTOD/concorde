@@ -173,34 +173,41 @@ to this Module.
 
 ## Relationships
 
-```mermaid
-flowchart TB
-    accTitle: Operations and its collaborators
-    accDescr: Operations contains six providers and uses Spec core, Workers, Check execution, Tasks and Spec review.
-    operations[Operations]
-    operations -->|contains| understanding[Understanding]
-    operations -->|contains| specification[Specification]
-    operations -->|contains| implementation[Implementation]
-    operations -->|contains| codereview[Code review]
-    operations -->|contains| validation[Validation]
-    operations -->|contains| delivery[Delivery]
-    operations -->|uses| spec[Spec core]
-    operations -->|uses| workers[Workers]
-    operations -->|uses| checks[Check execution]
-    operations -->|uses| tasks[Tasks]
-    operations -->|uses| specreview[Spec review]
+```d2
+operations: Operations {
+  understanding: Understanding
+  specification: Specification
+  implementation: Implementation
+  codereview: Code review
+  validation: Validation
+  delivery: Delivery
+}
+spec: Spec core
+workers: Workers
+checks: Check execution
+tasks: Tasks
+specreview: Spec review
+operations -> spec
+operations -> workers
+operations -> checks
+operations -> tasks
+operations -> specreview
 ```
 
-```mermaid
-flowchart LR
-    accTitle: How an Operation runs
-    accDescr: The catalog lists Operations; the host runs one, launches workers through Workers, records the run in Tasks and returns the Operation result.
-    catalog[Operation catalog] -->|lists| operation[Operation]
-    host[Operation host] -->|runs| operation
-    host -->|returns| result[Operation result]
-    host -->|launches workers through| workers[Workers]
-    host -->|records runs in| tasks[Tasks]
-    runner[Catalog and runner] -->|implements| host
+```d2
+catalog: Operation catalog
+operation: Operation
+host: Operation host
+result: Operation result
+workers: Workers
+tasks: Tasks
+runner: Catalog and runner
+catalog -> operation: lists
+host -> operation: runs
+host -> result: returns
+host -> workers: launches workers through
+host -> tasks: records runs in
+runner -> host: implements
 ```
 
 The catalog names each Operation's provider, and the runner loads that provider's steps; a

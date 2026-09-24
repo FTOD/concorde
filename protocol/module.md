@@ -124,8 +124,9 @@ collaborates with its children and providers.
   with a link and no explanation does not satisfy this.
 - Declare the structural relationships a reader should see as `relates`, with a verb: the service
   *saves* the record, the operator *approves* the request.
-- Draw the principal collaboration as a checked flowchart. It may only assert declared relations;
-  a picture that shows something else is marked `illustrative`. See [Views](views.md).
+- Draw the principal collaboration as a checked D2 diagram, and draw how the Module is built: its
+  realizations with the files they bind. A checked diagram may only assert declared relations; a
+  picture that shows something else is marked `illustrative`. See [Views](views.md).
 
 Explain the conditions, invariants and reactions that a diagram cannot carry.
 

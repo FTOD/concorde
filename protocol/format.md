@@ -150,18 +150,29 @@ Requirement identities begin `req.`; scenario identities begin `scenario.`. Pref
 establish ownership. Stable identities let links survive renames and moves, and let boundaries,
 reviews and tests name exactly one thing.
 
-A readable anchor is either a standalone `<a id="identity"></a>` line before its explanation, or an
-ATX heading carrying a trailing `{#identity}`. Requirement and scenario headings supply their
-identity directly. Anchors are unique within their document and outside fences. A heading anchor
-extends to the next heading of the same or higher level; a standalone anchor extends to the next
-heading; either ends at the next anchor group.
+A readable anchor is one of three forms:
 
-Adjacent anchors on one standalone line identify several nodes explained together by the following
-prose, and that prose MUST explain all of them.
+- a **standalone** line of one or more `<a id="identity"></a>` before its explanation, which
+  extends to the next heading;
+- an **opening** group of one or more `<a id="identity"></a>` at the very start of a paragraph or of
+  a list item's text, which explains exactly that paragraph or list item: the paragraph ends at the
+  next blank line, heading or fence, and the list item also at the next list item that is not
+  indented deeper;
+- an ATX heading carrying a trailing `{#identity}`, which extends to the next heading of the same or
+  higher level. Requirement and scenario headings supply their identity directly.
+
+A standalone or heading anchor also ends at the next anchor group. Anchors are unique within their
+document and outside fences, and an anchor anywhere else, such as inside a sentence or a table, is
+not a readable anchor.
+
+Several anchors in one group identify several nodes explained together by the same prose, and that
+prose MUST explain all of them. The region of an anchor is the text a tool attributes to its nodes,
+for instance when it compares definitions between revisions, so an opening group is the precise
+choice for an item in a list of short explanations.
 
 ## Reading structure
 
-The first level-2 headings of an entry `module.md`, outside fences, are exactly once and in order:
+An entry `module.md` has these level-2 sections, outside fences, each exactly once and in any order:
 
 ```text
 Purpose
@@ -171,13 +182,14 @@ Design
 Relationships
 ```
 
-A level-1 title and brief navigation may precede them. Purpose is nonempty plain prose: no lists,
+It MAY have further level-2 sections, for example one that shows how the Module is built. A level-1
+title and brief navigation may precede the first of them. Purpose is nonempty plain prose: no lists,
 tables, nested headings or fences. Usage, Design and Relationships contain explanatory prose, not
 only links, headings or diagrams. Honest unknowns are stated explicitly.
 
 A `module`-role topic begins with a short orienting introduction. When the topic defines or imports
-a concept, its first level-2 section is `## Terminology`. In the entry, Terminology always follows
-Purpose; it may hold only prose when the entry defines and imports nothing.
+a concept, its first level-2 section is `## Terminology`. In the entry, Terminology may hold only
+prose when the entry defines and imports nothing.
 
 `module` documents MUST NOT contain requirement or scenario definitions or canonical contract
 fences. `implementation` documents contain those definitions and MAY group them under headings
@@ -266,8 +278,9 @@ changes need no version increment.
 
 ## Diagrams
 
-A Mermaid block in reading is either a **checked flowchart** or marked `illustrative`. The rules are
-in [Views](views.md).
+Diagrams in reading are D2 blocks. A `d2` block is either a **checked diagram**, written in the
+semantic subset and allowed only in `module` reading, or marked `d2 illustrative`. A block in any
+other diagram language, such as Mermaid, is an error. The rules are in [Views](views.md).
 
 ## Links
 

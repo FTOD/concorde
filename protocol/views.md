@@ -11,7 +11,7 @@ boundaries from.
 A publisher renders views from declared relations. The renderer chooses:
 
 - **scope** — which Modules, nodes and relation types to show;
-- **grouping** — subgraphs, layers and ordering;
+- **grouping** — nesting, layers and ordering;
 - **layout and styling**.
 
 The renderer MUST NOT choose which relations exist. An omitted node or edge is a scope decision and
@@ -22,44 +22,98 @@ Derived views are rendered at publication or delivery time and are never written
 files. A publisher MAY enrich a written table, for example by showing an imported term's
 definition next to its link; the enrichment is a view.
 
-## Checked flowcharts
+## Checked diagrams
 
-A `module` document may draw the architecture it explains. An unmarked Mermaid `flowchart` or `graph` block in
-`module` reading is a **checked flowchart**: it may only assert what is declared.
+A document draws structure in [D2](https://github.com/d2lang/d2). A `d2` block that is not marked
+`illustrative` is a **checked diagram**: it states only what is drawn, what nests in what and what
+points at what, and it may only assert what is declared. How the diagram looks (shapes, colours,
+line styles, layout, direction) is chosen by the publisher from what each shape resolves to, never
+written in reading. A checked diagram appears only in `module` reading.
 
-- **Nodes.** Every node label resolves to exactly one of: a concept or realization of the owning
-  Module, by title; a Module, by title; or a node of another Module, by the qualified form
-  `Module title / node title`. An unresolved or ambiguous label is an error.
-- **Edges.** Every edge carries a nonempty label and corresponds to a declared relation between its
-  endpoints in the drawn direction: `relates`, `uses` or `contains`. For a `relates` edge the label
-  SHOULD be the relation's `verb`.
-- **Nothing else.** Subgraph titles, styling and comments assert nothing.
+**The semantic subset.** A checked diagram consists of:
 
-A checked flowchart need not show every declared relation; like a derived view, its omissions are
-scope decisions. The `Relationships` section of an entry SHOULD contain a checked flowchart of the
-principal collaboration.
+- **shapes**, written `key` or `key: Label`, where a key may be quoted and the label is the text
+  that resolves;
+- **nesting**, written as a shape followed by a `{ ... }` block holding other statements;
+- **edges**, written `a -> b` or `a -> b: label`, possibly chained, whose ends are keys or dotted
+  key paths relative to the enclosing block;
+- comments starting with `#`, and `;` between statements on one line.
 
-Naming a node in a view grants no context and transfers no ownership. The owner is visible in a
-qualified label, so a node of another Module cannot be mistaken for a local one.
+Nothing else is allowed: no D2 keyword (such as `style`, `shape`, `class`, `direction`, `near`,
+`label`, `icon`, `vars`), no imports, globs, filters, substitutions, block strings or arrays, and no
+edge other than `->`.
+
+**Shapes.** Every shape resolves by its label, or by its key when it has no label, to exactly one of:
+a concept or realization of the owning Module, by title; a Module, by title; a node of another
+Module, by the qualified form `Module title / node title`; or, only directly inside a realization
+shape, a **file** of that realization: a bound entry path, or a suffix of exactly one bound entry
+that begins after a `/`. An unresolved or ambiguous shape is an error.
+
+**Nesting** asserts what it encloses:
+
+| Outer shape | Inner shape | Asserts |
+| --- | --- | --- |
+| Module | Module | the outer Module `contains` the inner one |
+| Module | concept, realization or qualified node | the outer Module owns the node |
+| realization | file | the realization binds the file |
+
+Any other nesting is an error. Containment is drawn only by nesting, never by an edge.
+
+**Edges** assert a declared relation in the drawn direction:
+
+- An unlabelled edge between two Modules asserts a `uses`: the plain arrow is the dependency.
+- A labelled edge asserts a `relates` between its ends, and its label SHOULD be the relation's
+  `verb`. An edge that touches a concept, realization or qualified node always carries a label.
+- A file shape has no edges; it asserts only its binding.
+
+A checked diagram need not show every declared relation; like a derived view, its omissions are
+scope decisions. The `Relationships` section of an entry SHOULD contain a checked diagram of the
+principal collaboration, and a Module that binds files SHOULD draw its realizations with the files
+they bind, so a reader sees how the Module is built.
+
+````markdown
+```d2
+checkout: Checkout {
+  service: Checkout service {
+    "service.py"
+  }
+  record: Order record
+  service -> record: saves
+}
+inventory: Inventory
+checkout -> inventory
+```
+````
+
+Here `Checkout` and `Inventory` resolve to Modules, `Checkout service` to a realization and
+`Order record` to a concept of Checkout, and `service.py` to a file that Checkout service binds.
+The picture asserts that Checkout owns both nodes, that the realization binds the file, that a
+`relates` with verb `saves` connects them, and that Checkout `uses` Inventory.
+
+Naming a shape in a view grants no context and transfers no ownership. The owner is visible in a
+qualified label or in the enclosing Module, so a node of another Module cannot be mistaken for a
+local one.
 
 ## Illustrative blocks
 
 Explanation sometimes needs a picture that is not a relationship inventory: a flow over time, a
-state sketch, a before/after comparison. Any other Mermaid block, and any flowchart not meant as a
-checked view, MUST be marked `illustrative` in its info string:
+state sketch, a before/after comparison. Such a block is marked `illustrative` in its info string
+and may use the whole D2 language:
 
 ````markdown
-```mermaid illustrative
-sequenceDiagram
-    accTitle: How a submission proceeds
-    accDescr: Conceptual overview; not a relationship declaration.
-    ...
+```d2 illustrative
+shape: sequence_diagram
+client: Client
+checkout: Checkout
+client -> checkout: submit
+checkout -> client: order number
 ```
 ````
 
 An `illustrative` block is excluded from the model, labelled non-normative by the publisher and not
 checked against declarations. It carries no authority beyond the surrounding prose, and it MUST NOT
-be the only place a collaboration is described: a load-bearing relationship is declared.
+be the only place a collaboration is described: a load-bearing relationship is declared. Diagrams
+in any other language are not part of reading; a Mermaid block is an error.
 
 ## Publication obligations
 

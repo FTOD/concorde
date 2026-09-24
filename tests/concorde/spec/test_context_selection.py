@@ -1,4 +1,4 @@
-"""Spec context selection, context identity and the authority it never grants (Protocol 12)."""
+"""Spec context selection, context identity and the authority it never grants (Protocol 13)."""
 
 import json
 import tempfile

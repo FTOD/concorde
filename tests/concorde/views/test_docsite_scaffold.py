@@ -343,7 +343,8 @@ class DocsiteScaffoldTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertNotIn("label: 'Graph'", config)
-        self.assertIn("@docusaurus/theme-mermaid", config)
+        # Diagrams are D2, rendered by the d2 program; the Mermaid theme is gone.
+        self.assertNotIn("theme-mermaid", config)
         identity_path = self.root / "docsite/site.json"
         identity = json.loads(identity_path.read_text(encoding="utf-8"))
         self.assertEqual(identity, proposed.result["proposal"]["identity"])

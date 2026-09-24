@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-12.0.0-6264e8" alt="Spec Protocol 12.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-13.0.0-6264e8" alt="Spec Protocol 13.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/client-Claude_Code-273449" alt="Client: Claude Code" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -112,7 +112,8 @@ The [workflow guide](docs/workflow-guide.md) walks through it in detail.
 ## The docsite
 
 The **[published docsite](https://ftod.github.io/concorde/)** renders Concorde's own Specs. To
-preview it locally with Node.js 20+:
+preview it locally with Node.js 20+ and the [`d2`](https://github.com/d2lang/d2/releases) program,
+which renders the Specs' diagrams:
 
 ```bash
 python3 scripts/concorde.py build
@@ -125,7 +126,7 @@ For your own project, [scaffold a docsite](docsite/README.md#scaffold-a-docsite)
 
 ## The Spec Protocol in brief
 
-Concorde's independent **[Spec Protocol 12.0.0](protocol/README.md)** has two purposes: a human
+Concorde's independent **[Spec Protocol 13.0.0](protocol/README.md)** has two purposes: a human
 understands a project's backbone from its Specs without reading code, and a harness derives from
 the Specs exactly what each AI task may read and write. A Module's entry answers five questions in
 order — **Purpose**, **Terminology**, **Usage**, **Design**, **Relationships** — and every node and

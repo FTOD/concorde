@@ -1,4 +1,4 @@
-"""Every decidable check of Spec Protocol 12 (``protocol/checks.md``), reported as findings.
+"""Every decidable check of Spec Protocol 13 (``protocol/checks.md``), reported as findings.
 
 A finding's ``rule_id`` is the check identity (``CHK.*``). A few tool findings keep a
 ``CONCORDE-*`` identity: link fragments, scenario coverage, configured check inputs, Issue records
@@ -38,16 +38,13 @@ from .syntax import (
     LINK,
     NODE_PREFIXES,
     DiagramError,
-    diagram_type,
+    diagram_model,
     entry_section_problems,
     explained,
-    first_line,
     first_section,
-    flowchart_model,
     link_target,
     one_sentence,
     test_declarations,
-    UndirectedEdgeError,
 )
 from .typed_data import TypedDataError
 from .verification import DeclarationError, scan_declarations
@@ -870,37 +867,34 @@ class Checks:
 
     def views(self) -> None:
         repository = self.repository
-        relates = {
-            (relation["source"], relation["target"])
-            for relation in repository.metadata_relations
-            if relation["type"] == "relates"
-        }
-        for module in repository.declarations.values():
-            for item in module.uses:
-                relates.add(("uses", module.id, item["target"]))
-            for item in module.contains:
-                relates.add(("contains", module.id, item["target"]))
         for path, reading in repository.readings.items():
             unit = repository.units[path]
-            for line, info, body in reading.mermaid:
-                kind = diagram_type(body)
-                if "illustrative" in info:
-                    continue
-                if kind not in {"flowchart", "graph"}:
+            for line, language, info, body in reading.diagrams:
+                if language == "mermaid":
                     self.add(
                         "CHK.view.marked",
                         path,
-                        "a Mermaid block that is not a flowchart is marked illustrative",
+                        "a Mermaid block is not part of reading; rewrite it as a checked `d2` "
+                        "block or a `d2 illustrative` block",
                         line=line,
                     )
                     continue
-                if unit.role != "module":
+                if "illustrative" in info:
                     continue
-                self.flowchart(path, unit.owner, line, body, relates)
+                if unit.role != "module":
+                    self.add(
+                        "CHK.view.marked",
+                        path,
+                        "a checked D2 diagram lies only in `module` reading; mark this one "
+                        "`d2 illustrative`",
+                        line=line,
+                    )
+                    continue
+                self.diagram(path, unit.owner, line, body)
 
     def resolve_label(self, owner: str, label: str) -> list[str]:
         repository = self.repository
-        text = first_line(label)
+        text = label.strip()
         matches = [
             node.id
             for node in (
@@ -929,66 +923,154 @@ class Checks:
                 ]
         return list(dict.fromkeys(matches))
 
-    def flowchart(
-        self, path: str, owner: str, line: int, body: str, relates: set
-    ) -> None:
+    def resolve_file(self, realization: str, label: str) -> list[str]:
+        """Bound entries of a realization that a file shape's label names."""
+        node = self.repository.realization_nodes[realization]
+        text = label.strip()
+        return [
+            entry
+            for entry in dict.fromkeys((*node.entries, *node.pending))
+            if entry == text or entry.endswith("/" + text.lstrip("/"))
+        ]
+
+    def diagram(self, path: str, owner: str, line: int, body: str) -> None:
+        """CHK.view.subset, nodes, nesting and edges for one checked D2 diagram."""
+        repository = self.repository
+        declarations = repository.declarations
         try:
-            nodes, edges = flowchart_model(body)
-        except UndirectedEdgeError as error:
-            self.add(
-                "CHK.view.edges",
-                path,
-                f"checked flowchart edge must point in one declared direction: {error}",
-                line=line,
-            )
-            return
+            shapes, edges = diagram_model(body)
         except DiagramError as error:
             self.add(
-                "CHK.view.nodes",
+                "CHK.view.subset",
                 path,
-                f"checked flowchart is unreadable: {error}",
-                line=line,
+                f"checked D2 diagram leaves the semantic subset: {error.message}",
+                line=line + (error.line or 0),
             )
             return
-        resolved: dict[str, str] = {}
-        for node_id, label in nodes.items():
-            matches = self.resolve_label(owner, label)
+        # Every shape resolves to ("module" | "concept" | "realization", id) or ("file", entry).
+        resolved: dict[tuple[str, ...], tuple[str, str]] = {}
+        for shape in sorted(shapes, key=lambda item: len(item.path)):
+            at = line + shape.line
+            parent = resolved.get(shape.path[:-1])
+            if parent and parent[0] == "realization":
+                entries = self.resolve_file(parent[1], shape.label)
+                if len(entries) != 1:
+                    self.add(
+                        "CHK.view.nodes",
+                        path,
+                        f"file shape {shape.label!r} inside realization {parent[1]} names "
+                        + (
+                            "no entry it binds"
+                            if not entries
+                            else f"several entries it binds: {entries}"
+                        ),
+                        line=at,
+                    )
+                    continue
+                resolved[shape.path] = ("file", entries[0])
+                continue
+            matches = self.resolve_label(owner, shape.label)
             if len(matches) != 1:
                 self.add(
                     "CHK.view.nodes",
                     path,
-                    f"flowchart node {first_line(label)!r} resolves to "
+                    f"diagram shape {shape.label!r} resolves to "
                     + (
                         "no node or Module"
                         if not matches
                         else f"several nodes: {matches}"
                     ),
-                    line=line,
+                    line=at,
                 )
                 continue
-            resolved[node_id] = matches[0]
-        for source, label, target in edges:
-            if label is None:
+            identity = matches[0]
+            kind = (
+                "module"
+                if identity in declarations
+                else "concept"
+                if identity in repository.concept_nodes
+                else "realization"
+            )
+            resolved[shape.path] = (kind, identity)
+            if parent is None:
+                continue
+            outer_kind, outer = parent
+            if outer_kind == "module" and kind == "module":
+                if identity not in {
+                    item["target"] for item in declarations[outer].contains
+                }:
+                    self.add(
+                        "CHK.view.nesting",
+                        path,
+                        f"{identity} is drawn inside {outer}, which declares no contains of it",
+                        line=at,
+                    )
+            elif outer_kind == "module":
+                node = repository.concept_nodes.get(
+                    identity
+                ) or repository.realization_nodes.get(identity)
+                if node.owner != outer:
+                    self.add(
+                        "CHK.view.nesting",
+                        path,
+                        f"{identity} is drawn inside {outer} but is owned by {node.owner}",
+                        line=at,
+                    )
+            else:
+                self.add(
+                    "CHK.view.nesting",
+                    path,
+                    f"{identity} is drawn inside the {outer_kind} {outer}; only a Module holds "
+                    "Modules and nodes, and only a realization holds files",
+                    line=at,
+                )
+        uses = {
+            (module.id, item["target"])
+            for module in declarations.values()
+            for item in module.uses
+        }
+        relates = {
+            (relation["source"], relation["target"])
+            for relation in repository.metadata_relations
+            if relation["type"] == "relates"
+        }
+        for edge in edges:
+            at = line + edge.line
+            ends = [resolved.get(edge.source), resolved.get(edge.target)]
+            if None in ends:
+                continue
+            (first_kind, first), (second_kind, second) = ends
+            if "file" in (first_kind, second_kind):
                 self.add(
                     "CHK.view.edges",
                     path,
-                    f"flowchart edge {source} -> {target} has no label",
-                    line=line,
+                    f"edge {first} -> {second} touches a file shape, which asserts only its binding",
+                    line=at,
                 )
-            if source not in resolved or target not in resolved:
-                continue
-            first, second = resolved[source], resolved[target]
-            if (
-                (first, second) not in relates
-                and ("uses", first, second) not in relates
-                and ("contains", first, second) not in relates
-            ):
-                self.add(
-                    "CHK.view.edges",
-                    path,
-                    f"flowchart edge {first} -> {second} matches no declared relates, uses or contains",
-                    line=line,
-                )
+            elif first_kind == second_kind == "module" and edge.label is None:
+                if (first, second) not in uses:
+                    self.add(
+                        "CHK.view.edges",
+                        path,
+                        f"edge {first} -> {second} between Modules matches no declared uses",
+                        line=at,
+                    )
+            else:
+                if edge.label is None:
+                    self.add(
+                        "CHK.view.edges",
+                        path,
+                        f"edge {first} -> {second} touches a node and needs the verb of its "
+                        "relates as label",
+                        line=at,
+                    )
+                if (first, second) not in relates:
+                    self.add(
+                        "CHK.view.edges",
+                        path,
+                        f"edge {first} -> {second} matches no declared relates",
+                        line=at,
+                    )
 
     # --- reconciliation -----------------------------------------------------------------
 
@@ -1339,7 +1421,7 @@ def validate_repository(
             },
             "source_digest": digest(sorted(inputs)),
             "claims": [
-                "Protocol 12 structural checks (protocol/checks.md)",
+                "Protocol 13 structural checks (protocol/checks.md)",
                 "registry mirror of the entries' module blocks",
                 "configured check input availability and path safety",
                 "stable-identity link fragments",
@@ -1356,7 +1438,7 @@ __all__ = [
     "DiagramError",
     "check_input_findings",
     "definition_ids",
-    "flowchart_model",
+    "diagram_model",
     "normalize_title",
     "spec_findings",
     "validate_repository",

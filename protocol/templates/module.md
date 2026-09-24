@@ -45,10 +45,17 @@ incidental implementation and open questions.]
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    Service[Example service] -->|saves| Record[Example record]
-    Service -->|reserves stock through| Provider[Provider]
+```d2
+example: Example {
+  service: Example service {
+    "src/example/"
+  }
+  record: Example record
+  service -> record: saves
+}
+provider: Provider
+example.service -> provider: reserves stock through
+example -> provider
 ```
 
 <a id="uses-example-provider"></a>
@@ -62,9 +69,11 @@ carry.]
 The first Terminology row defines `concept.example.record`; the second is an import row, which
 links to the provider's concept by identity and leaves the definition empty.
 
-The flowchart is checked: `Example service` and `Example record` resolve to this Module's nodes,
-`Provider` to a Module title, and each edge to one of the `relates` declarations below. A picture
-that should not be checked is marked `mermaid illustrative`.
+The diagram is checked. `Example` and `Provider` resolve to Module titles, `Example service` and
+`Example record` to this Module's nodes, and `src/example/` to the entry the service binds. Nesting
+asserts that Example owns both nodes and that the service binds its entry; the labelled edges match
+the `relates` declarations below and the unlabelled edge between the two Modules matches the `uses`.
+The look is the publisher's. A picture that should not be checked is marked `d2 illustrative`.
 
 ## Paired metadata
 
@@ -113,7 +122,7 @@ that should not be checked is marked `mermaid illustrative`.
 
 The `uses` entry selects the provider's entry and the document defining `concept.provider.thing`,
 which satisfies the context requirements of importing that concept and of relating to
-`module.provider`. The `Provider` label in the flowchart resolves because the provider Module's
+`module.provider`. The `Provider` label in the diagram resolves because the provider Module's
 title is `Provider`.
 
 ## Registry record

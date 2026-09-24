@@ -98,16 +98,12 @@ both children. It carries no behaviour of its own.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: The Harness and its children
-    accDescr: The Harness contains Workers and Check execution; Workers uses Check execution to run configured checks between resume rounds.
-    harness[Harness]
-    workers[Workers]
-    checks[Check execution]
-    harness -->|contains| workers
-    harness -->|contains| checks
-    workers -->|uses| checks
+```d2
+harness: Harness {
+  workers: Workers
+  checks: Check execution
+}
+harness.workers -> harness.checks
 ```
 
 The two children split along who acts. Workers acts around a model process; Check execution runs

@@ -87,18 +87,21 @@ started.
 
 A task's **task state** moves forward only:
 
-```mermaid illustrative
-stateDiagram-v2
-    accTitle: Task states
-    accDescr: A task is open until its first Operation run, active while work happens, delivered after a delivery commit, and finally merged or abandoned.
-    [*] --> open: task open
-    open --> active: first Operation run
-    active --> delivered: delivery commit
-    delivered --> active: a writing Operation starts
-    delivered --> merged: task close --merged
-    open --> abandoned: task close --abandoned
-    active --> abandoned: task close --abandoned
-    delivered --> abandoned: task close --abandoned
+```d2 illustrative
+start: "" {shape: circle; width: 16; height: 16; style.fill: black}
+open
+active
+delivered
+merged
+abandoned
+start -> open: task open
+open -> active: first Operation run
+active -> delivered: delivery commit
+delivered -> active: a writing Operation starts
+delivered -> merged: task close --merged
+open -> abandoned: task close --abandoned
+active -> abandoned: task close --abandoned
+delivered -> abandoned: task close --abandoned
 ```
 
 A task is **open** until its first Operation run starts, then **active**. Delivery makes it
@@ -160,16 +163,20 @@ their tests, which run on real Git repositories.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Tasks collaboration
-    accDescr: The Task store writes task records and creates decision logs; a record describes a task and holds its state; Tasks uses Spec core.
-    store[Task store] -->|writes| record[Task record]
-    store -->|creates| log[Decision log]
-    record -->|describes| task[Task]
-    record -->|holds| state[Task state]
-    log -->|explains the choices of| task
-    tasks[Tasks] -->|uses| spec[Spec core]
+```d2
+store: Task store
+record: Task record
+log: Decision log
+task: Task
+state: Task state
+tasks: Tasks
+spec: Spec core
+store -> record: writes
+store -> log: creates
+record -> task: describes
+record -> state: holds
+log -> task: explains the choices of
+tasks -> spec
 ```
 
 The Task store is the only writer of task records, and it writes each decision log only once, when

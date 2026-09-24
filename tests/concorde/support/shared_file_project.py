@@ -1,4 +1,4 @@
-"""A three-Module Protocol 12 project in which Modules A and B both bind ``source/shared.py``."""
+"""A three-Module Protocol 13 project in which Modules A and B both bind ``source/shared.py``."""
 
 from __future__ import annotations
 
@@ -41,10 +41,7 @@ ROOT = module_document(
     "- THEN it reports the composed integer\n",
     ("The root delegates both answers to its children.", []),
     "The root contains A and B, which both answer with an integer.",
-    "flowchart TB\n    accTitle: root composition\n"
-    "    accDescr: The root contains A and B.\n"
-    '    root["Root"]\n    a["A"]\n    b["B"]\n'
-    "    root -->|contains| a\n    root -->|contains| b",
+    "root: Root {\n  a: A\n  b: B\n}",
     contains=[
         {
             "target": "module.a",
@@ -82,9 +79,7 @@ MODULE_A = module_document(
         ],
     ),
     "The adapter reads the shared value.",
-    "flowchart TB\n    accTitle: A\n"
-    "    accDescr: The adapter reads the shared value function.\n"
-    '    adapter["Adapter"]\n    shared["Shared value"]\n    adapter -->|reads| shared',
+    "adapter: Adapter\nshared: Shared value\nadapter -> shared: reads",
     requirements="### req.a.pure — A never changes the shared value\n\n"
     "A SHALL NOT change the shared value.\n",
     relations=[

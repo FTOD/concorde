@@ -35,9 +35,17 @@ concept, realization, requirement, scenario and contract the document defines. A
 display only their title; the identity stays in the page as the heading's anchor. A Terminology
 import row, which in the source holds only a link, is shown with the imported definition next to
 the link, read from the defining document when the site is built and marked "Imported from" the
-owning Module. Mermaid diagrams appear exactly
-where the document places them, and a diagram marked `illustrative` carries a visible label saying
-it is not normative.
+owning Module. D2 diagrams appear exactly where the document places them, and a diagram marked
+`illustrative` carries a visible label saying it is not normative.
+
+**A diagram's source states meaning; its look is the publisher's.** A checked D2 block only names
+shapes, nests them and draws edges, which is what Spec core checks against the declarations. The
+publisher resolves every shape the same way and gives each kind one fixed look: containment is a
+block inside a block, a realization drawn with its files is a table of them, a `uses` is a solid
+arrow and a `relates` a dashed arrow with its verb. Every Module's pages therefore share one visual
+language that no Spec can override, and changing the house style restyles every diagram at once.
+Rendering calls the `d2` program from github.com/d2lang/d2 once per diagram, with the ELK layout,
+and fails with the diagram's location when the program is missing or rejects the input.
 
 Custom docs appear in their own tabs. Concorde, for example, publishes the Spec Protocol chapters at
 `/protocol` as a custom docs collection. Custom docs are ordinary documentation: they belong to no
@@ -118,29 +126,25 @@ also follows every internal link and anchor in the built HTML. Promotion is a re
 directories with rollback, so a failure leaves the old site in place, and pages that a new build
 no longer produces disappear with the old directory.
 
-```mermaid illustrative
-flowchart LR
-    accTitle: How one build runs
-    accDescr: Conceptual overview of staging, building, checking and promotion; not a relationship declaration.
-    A[Registered Specs] --> B[Staged pages and sidebars]
-    B --> C[Docusaurus build into the candidate]
-    C --> D{Digest, inventory and links current?}
-    D -->|yes| E[Promote to docsite/build]
-    D -->|no| F[Delete candidate, keep published site]
+```d2 illustrative
+direction: right
+a: Registered Specs
+b: Staged pages and sidebars
+c: Docusaurus build into the candidate
+d: Digest, inventory and links current? {shape: diamond}
+e: Promote to docsite/build
+f: Delete candidate, keep published site
+a -> b -> c -> d
+d -> e: yes
+d -> f: no
 ```
 
 **The publisher checks what it depends on, not everything.** It refuses inputs it cannot publish
-correctly, such as a document without a valid role, a requirement in a `module`-role document, an
-unmarked Mermaid block that is not a flowchart or an unresolved link; the
-[pipeline](pipeline.md#loading-and-admission) lists them all. It is not the Protocol validator:
-the registry mirror, checked flowcharts, realization bindings and contract examples are checked by
-Spec core's `concorde validate`, and a site that builds proves nothing more.
-
-One of these refusals goes beyond the Protocol's checks. The Protocol places executable topology
-in `implementation` reading. The publisher recognizes a flowchart of executable topology by a
-`%% graph:` line and refuses a `module`-role document that contains one, so such a flowchart is
-always published on its owner's implementation page and never on an explanatory page. Whether the
-flowchart matches any running code is not checked here.
+correctly, such as a document without a valid role, a requirement in a `module`-role document, a
+Mermaid block, a checked diagram outside the semantic subset or an unresolved link; the
+[pipeline](pipeline.md#loading-and-admission) lists them all. It is not the Protocol validator: the
+registry mirror, what checked diagrams assert, realization bindings and contract examples are
+checked by Spec core's `concorde validate`, and a site that builds proves nothing more.
 
 **Provenance is computed twice and must agree.** The publisher is TypeScript and does not call Spec
 tooling. It recomputes the one-level Spec context of every Module from the registry records to show,

@@ -221,7 +221,7 @@ it.each([
     /composition cycle: module\.(bank|audit)/,
   ],
   [
-    "an unmarked Mermaid block that is not a flowchart",
+    "a Mermaid block",
     () =>
       put(
         "specs/ledger/module.md",
@@ -261,19 +261,23 @@ it.each([
   },
 );
 
-// verifies: scenario.views.reject-graph-spec-placement
-it("refuses a Graph Spec on a module-role page and stages or promotes nothing", async () => {
+// verifies: scenario.views.diagram-subset-refused
+it("refuses a checked D2 diagram that sets its own look and promotes nothing", async () => {
+  // The diagram's own subset violation surfaces while staging, after other pages may already be
+  // written, so this checks the weaker promise the scenario makes: no candidate is promoted and
+  // the published site is unchanged, not that nothing at all was staged.
   const previous = await publishedSite();
   put(
     "specs/bank/module.md",
     read(project, "specs/bank/module.md") +
-      "\n```mermaid\nflowchart LR\n    %% graph: publish\n    a -->|b| c\n```\n",
+      '\n```d2\nfoo: Foo {\n  style.fill: "#fff"\n}\n```\n',
   );
   await expect(buildScript()()).rejects.toThrow(
-    /specs\/bank\/module\.md.*Graph Spec|Graph Spec.*specs\/bank\/module\.md/s,
+    /specs\/bank\/module\.md.*outside the semantic subset|outside the semantic subset.*specs\/bank\/module\.md/s,
   );
   expect(spawned).toBe(0);
-  expectNothingStagedOrPromoted(previous);
+  expect(existsSync(resolve(root, "docsite/.generated/candidate"))).toBe(false);
+  expect(snapshot(published())).toEqual(previous);
 });
 
 // verifies: scenario.views.reading-collections-single
@@ -372,7 +376,12 @@ it("a custom docs page with a broken internal link fails the build naming the li
     JSON.stringify({
       ...readJson(project, "docsite/site.json"),
       customDocs: [
-        { id: "guides", label: "Guides", path: "guides", routeBasePath: "guides" },
+        {
+          id: "guides",
+          label: "Guides",
+          path: "guides",
+          routeBasePath: "guides",
+        },
       ],
     }),
   );

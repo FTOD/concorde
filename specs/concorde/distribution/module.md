@@ -155,21 +155,29 @@ project through the installed command. The obligations they verify are in the
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Distribution structure
-    accDescr: The build renderer reads the package descriptor and records the build manifest; the Protocol copy writer writes the Protocol copy; the command entry points run the build and route commands to Spec core and Views; the installer program places the Protocol copy through the writer and installs the main-session guidance; Distribution uses Spec core, Views and Main session.
-    build[Build renderer] -->|records| manifest[Build manifest]
-    build -->|reads| descriptor[Package descriptor]
-    writer[Protocol copy writer] -->|writes| copy[Protocol copy]
-    command[Command entry points] -->|runs| build
-    command -->|routes validate and registry to| spec[Spec core]
-    command -->|routes docsite to| views[Views]
-    installer[Installer program] -->|places through| writer
-    installer -->|installs| mainsession[Main session]
-    distribution[Distribution] -->|uses| spec
-    distribution -->|uses| views
-    distribution -->|uses| mainsession
+```d2
+build: Build renderer
+manifest: Build manifest
+descriptor: Package descriptor
+writer: Protocol copy writer
+copy: Protocol copy
+command: Command entry points
+spec: Spec core
+views: Views
+installer: Installer program
+mainsession: Main session
+distribution: Distribution
+build -> manifest: records
+build -> descriptor: reads
+writer -> copy: writes
+command -> build: runs
+command -> spec: routes validate and registry to
+command -> views: routes docsite to
+installer -> writer: places through
+installer -> mainsession: installs
+distribution -> spec
+distribution -> views
+distribution -> mainsession
 ```
 
 <a id="uses-spec"></a>

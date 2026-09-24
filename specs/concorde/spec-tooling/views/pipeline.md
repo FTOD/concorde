@@ -30,13 +30,11 @@ Loading fails with an `Error` naming the source when:
 - metadata is not schema 3, has unknown fields, names another owner, or has a `role` other than
   `module` or `implementation`;
 - an entry's metadata lacks the `module` block, or any other document's metadata has one;
-- an entry has role `implementation`, or its first level-2 headings are not Purpose, Terminology,
-  Usage, Design and Relationships, once each and in order;
+- an entry has role `implementation`, or does not have the level-2 headings Purpose, Terminology,
+  Usage, Design and Relationships, each exactly once;
 - a `module`-role document contains a requirement or scenario heading or a `concorde-contract`
   fence, or an `implementation`-role document defines a concept;
-- a `module`-role document contains a Mermaid block with a line matching `%% graph:`, which marks
-  executable topology and belongs in implementation reading;
-- an unmarked Mermaid block does not start with `flowchart` or `graph`;
+- a document contains a Mermaid block: diagrams in reading are D2;
 - a concept or realization `meaning` anchor has no readable prose;
 - a `concorde-contract` fence has no valid identity or no positive integer version (the publisher
   does not check the schema or example; the Spec validator does);
@@ -45,7 +43,7 @@ Loading fails with an `Error` naming the source when:
   unknown Module or document;
 - two documents would share a route.
 
-These are the checks the publisher needs to produce correct pages. Checked flowcharts, realization
+These are the checks the publisher needs to produce correct pages. Checked diagrams, realization
 bindings, the registry mirror and contract examples are left to Spec core's validator.
 Loading never fetches anything and never reads implementation files.
 
@@ -106,9 +104,14 @@ no other route.
      `scenario.<id> — Title` (em dash, en dash or hyphen) becomes `Title {#<id>}`;
    - **contract anchors**: an HTML anchor whose id is the contract identity is inserted before
      each `concorde-contract` fence;
-   - **illustrative diagrams**: each `mermaid illustrative` block becomes a plain `mermaid` block
-     preceded by the label "Illustrative, non-normative. This diagram explains; it declares no
-     relationship.";
+   - **diagrams**: each `d2` block is rendered by the `d2` program to an SVG staged beside the page
+     and replaced by an image of it. A checked block is first parsed in the semantic subset, whose
+     violation fails the build with the document and line; each shape then receives a class of the
+     house style from what its label resolves to (the page's Module, a descendant, another Module, a
+     concept, a realization, a realization with file rows, a qualified node) and each edge the class
+     `uses` when it joins two Modules without a label, and `relates` otherwise. A `d2 illustrative`
+     block is rendered as written and preceded by the label "Illustrative, non-normative. This
+     diagram explains; it declares no relationship.";
    - **page anchors**: the Module identity (on its entry) and the document identity are inserted
      as anchors after the level-1 title, unless the reading already carries them.
 3. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` and, when any page has the

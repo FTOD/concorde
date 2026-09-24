@@ -1,4 +1,4 @@
-# Migration to Protocol 11 and 12
+# Migration to Protocol 11, 12 and 13
 
 Version 11 replaces Protocol 10's prose model with a declared one. Version-10 registries, metadata
 and reading structures are invalid and MUST be migrated explicitly. No tool may silently
@@ -81,3 +81,18 @@ illustrative table. Under 12, the Protocol defines six task types (`understand`,
 level. The rule for tasks bound to several Modules and for paths in several sets is now stated.
 Specifications need no change. A harness that used its own task kinds maps each onto a task type,
 and MUST NOT grant a level the type does not assign.
+
+## Version 13
+
+Version 13 changes how reading draws diagrams and relaxes two layout rules. Mermaid is no longer
+part of reading: a checked diagram is a `d2` block in the semantic subset of D2, in which nesting
+asserts composition, ownership and file binding, an unlabelled edge between two Modules asserts a
+`uses`, and a labelled edge asserts a `relates`. The look of a diagram is the publisher's. A picture
+that is not checked is a `d2 illustrative` block and may use the whole D2 language. Separately, the
+five sections of an entry may appear in any order, and an anchor may open a paragraph or a list
+item, in which case it explains exactly that block.
+
+To migrate, rewrite every Mermaid block. For a checked flowchart, draw each `contains` edge as
+nesting, keep each `uses` edge as an unlabelled `->` between the two Modules, and keep each `relates`
+edge as `->` with its verb as label; drop styling, `accTitle` and `accDescr`. Rewrite an illustrative
+Mermaid block as `d2 illustrative`. Nothing else in a specification needs to change.

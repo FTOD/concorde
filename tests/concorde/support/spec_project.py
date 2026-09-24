@@ -1,4 +1,4 @@
-"""Protocol 12 consumer fixture shared by the test suite."""
+"""Protocol 13 consumer fixture shared by the test suite."""
 
 import json
 from pathlib import Path
@@ -239,7 +239,7 @@ def module_document(
     extra_owned=(),
     contracts="",
 ):
-    """A Protocol 12 Module entry and its obligations document.
+    """A Protocol 13 Module entry and its obligations document.
 
     ``nodes`` is ``(design prose, [node, ...])``; each node has ``id``, ``type`` (``concept`` or
     ``realization``), ``title``, ``meaning`` (explanatory prose), and ``definition`` (concepts) or
@@ -306,7 +306,7 @@ def module_document(
         f"## Design\n\n{design}\n\n"
         + "".join(item + "\n\n" for item in prose)
         + f"## Relationships\n\n{architecture}\n\n"
-        + (f"```mermaid\n{diagram}\n```\n\n" if diagram else "")
+        + (f"```d2\n{diagram}\n```\n\n" if diagram else "")
         + "".join(item + "\n\n" for item in collaborations)
     )
     precise = DocumentSource(
@@ -368,14 +368,10 @@ BANK = module_document(
     ),
     "A transfer request is admitted by the transfer Module, which reads balances from the ledger\n"
     "Module. Banking reports each accepted change to the audit Module.",
-    "flowchart TB\n"
-    "    accTitle: Banking coordination\n"
-    "    accDescr: A transfer request is admitted by Transfers, which reads balances from the Ledger; Banking reports accepted changes to Audit.\n"
-    '    bank["Banking"]\n    request["Transfer request"]\n    transfer["Transfers"]\n'
-    '    ledger["Ledger"]\n    audit["Audit"]\n'
-    "    request -->|admitted by| transfer\n"
-    "    transfer -->|reads balances from| ledger\n"
-    "    bank -->|reports accepted changes to| audit",
+    "bank: Banking\nrequest: Transfer request\ntransfer: Transfers\nledger: Ledger\naudit: Audit\n"
+    "request -> transfer: admitted by\n"
+    "transfer -> ledger\n"
+    "bank -> audit",
     [uses(peer) for peer in ("service.transfer", "module.ledger", "scope.audit")],
     requirements="### req.bank.retry — Repeated requests are new decisions\n\n"
     "Banking SHALL treat a repeated request as a new decision.\n",
@@ -412,10 +408,7 @@ AUDIT = module_document(
         ],
     ),
     "Audit collaborates with no other Module; the accepted change reaches it from Banking.",
-    "flowchart TB\n"
-    "    accTitle: Audit outcomes\n"
-    "    accDescr: One audit record describes one accepted balance change.\n"
-    '    record["Audit record"]',
+    "record: Audit record",
 )
 
 TRANSFER = module_document(
@@ -456,12 +449,9 @@ TRANSFER = module_document(
     ),
     "The check exercises the calculation, which reads stored balances from the ledger Module.\n"
     "Ledger API tasks are separately bound to that Module.",
-    "flowchart TB\n"
-    "    accTitle: Transfer money\n"
-    "    accDescr: The transfer check exercises the transfer calculation, which reads stored balances from the ledger.\n"
-    '    check["Transfer check"]\n    calculation["Transfer calculation"]\n    ledger["Ledger"]\n'
-    "    check -->|exercises| calculation\n"
-    "    calculation -->|reads balances from| ledger",
+    "check: Transfer check\ncalculation: Transfer calculation\nledger: Ledger\n"
+    "check -> calculation: exercises\n"
+    "calculation -> ledger: reads balances from",
     [uses("module.ledger")],
     requirements="### req.transfer.pure — Transfers store nothing\n\n"
     "transfer SHALL NOT alter any stored balance.\n",
@@ -516,11 +506,7 @@ LEDGER = module_document(
         ],
     ),
     "An account identity indexes the balance store. Unknown identity is an explicit lookup failure.",
-    "flowchart TB\n"
-    "    accTitle: Ledger API\n"
-    "    accDescr: The balance store answers with the integer balance of an account or an explicit failure.\n"
-    '    account["Account"]\n    store["Balance store"]\n'
-    "    store -->|holds the balance of| account",
+    "account: Account\nstore: Balance store\nstore -> account: holds the balance of",
     relations=[
         {
             "type": "relates",
@@ -573,7 +559,7 @@ WORKSPACE = module_document(
 
 
 class SpecProject:
-    """A small Protocol 12 project written from DocumentSource values, for checks tests."""
+    """A small Protocol 13 project written from DocumentSource values, for checks tests."""
 
     def __init__(self, root: Path, checks=()):
         from concorde.distribution.project_defaults import write_protocol_copy

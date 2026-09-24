@@ -130,16 +130,21 @@ verdict.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Code review collaboration
-    accDescr: The Code review Operation produces a code review report made of findings; Code review uses Operations, Workers, Check execution and Spec core.
-    op[Code review Operation] -->|produces| review[Code review report]
-    review -->|holds| finding[Code review finding]
-    codereview[Code review] -->|uses| operations[Operations]
-    codereview -->|uses| workers[Workers]
-    codereview -->|uses| checks[Check execution]
-    codereview -->|uses| spec[Spec core]
+```d2
+op: Code review Operation
+review: Code review report
+finding: Code review finding
+codereview: Code review
+operations: Operations
+workers: Workers
+checks: Check execution
+spec: Spec core
+op -> review: produces
+review -> finding: holds
+codereview -> operations
+codereview -> workers
+codereview -> checks
+codereview -> spec
 ```
 
 <a id="uses-operations"></a>

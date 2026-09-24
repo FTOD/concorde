@@ -9,6 +9,7 @@ import {
   type ReadingCollection,
   type ScopedRegistry,
 } from "./model";
+import { renderDiagrams } from "./diagrams";
 import { renderPage } from "./render";
 interface SidebarItem {
   type: string;
@@ -81,17 +82,20 @@ export async function materializeScoped(registry: ScopedRegistry) {
       : posix.basename(page.sourcePath, ".md");
     await writeFile(
       path,
-      matter.stringify(renderPage(registry, page), {
-        format: "md",
-        slug: page.route.slice("/specs".length),
-        title,
-        sidebar_label: title,
-        displayed_sidebar:
-          page.readingCollection === "implementation"
-            ? "implementationDocumentsSidebar"
-            : "moduleDocumentsSidebar",
-        toc_max_heading_level: 3,
-      }),
+      matter.stringify(
+        await renderDiagrams(registry, page, renderPage(registry, page), path),
+        {
+          format: "md",
+          slug: page.route.slice("/specs".length),
+          title,
+          sidebar_label: title,
+          displayed_sidebar:
+            page.readingCollection === "implementation"
+              ? "implementationDocumentsSidebar"
+              : "moduleDocumentsSidebar",
+          toc_max_heading_level: 3,
+        },
+      ),
     );
   }
   await writeFile(

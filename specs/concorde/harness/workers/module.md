@@ -205,55 +205,50 @@ how a worker reports its error (`prompts/workers/common/`). Its tests use a fake
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Workers and its providers
-    accDescr: Workers uses the Spec core for grants and context identities, and Check execution for the configured checks of each round.
-    workers[Workers]
-    spec[Spec core]
-    checks[Check execution]
-    workers -->|uses| spec
-    workers -->|uses| checks
+```d2
+workers: Workers
+spec: Spec core
+checks: Check execution
+workers -> spec
+workers -> checks
 ```
 
-```mermaid
-flowchart LR
-    accTitle: What a worker run is made of
-    accDescr: The worker runtime generates the worker settings and the brief and writes the run record; the settings carry the deny rules and the write hook; the run directory holds the settings and the record, which records audits and resume rounds and keeps the worker result.
-    runtime[Worker runtime]
-    settings[Worker settings]
-    deny[Deny rules]
-    hook[Write hook]
-    brief[Brief]
-    dir[Run directory]
-    record[Run record]
-    audit[Write audit]
-    round[Resume round]
-    result[Worker result]
-    runtime -->|generates| settings
-    runtime -->|generates| brief
-    runtime -->|writes| record
-    settings -->|carries| deny
-    settings -->|carries| hook
-    dir -->|holds| settings
-    dir -->|holds| record
-    record -->|records| audit
-    record -->|records| round
-    record -->|keeps| result
+```d2
+runtime: Worker runtime
+settings: Worker settings
+deny: Deny rules
+hook: Write hook
+brief: Brief
+dir: Run directory
+record: Run record
+audit: Write audit
+round: Resume round
+result: Worker result
+runtime -> settings: generates
+runtime -> brief: generates
+runtime -> record: writes
+settings -> deny: carries
+settings -> hook: carries
+dir -> settings: holds
+dir -> record: holds
+record -> audit: records
+record -> round: records
+record -> result: keeps
 ```
 
-```mermaid illustrative
-flowchart TB
-    accTitle: One worker run
-    accDescr: The host sequence of one run, from the frozen grant to the run record, with the resume loop on check failures.
-    grant[Frozen grant] --> precreate[Pre-create pending files]
-    precreate --> generate[Generate settings, hook, tools and brief]
-    generate --> launch[Launch or resume the worker]
-    launch --> audit[Write audit]
-    audit -->|violation| record[Write the run record]
-    audit -->|clean| checks[Run configured checks]
-    checks -->|a check fails, rounds left| launch
-    checks -->|pass, or rounds used up| record
+```d2 illustrative
+grant: Frozen grant
+precreate: Pre-create pending files
+generate: Generate settings, hook, tools and brief
+launch: Launch or resume the worker
+audit: Write audit
+record: Write the run record
+checks: Run configured checks
+grant -> precreate -> generate -> launch -> audit
+audit -> record: violation
+audit -> checks: clean
+checks -> launch: a check fails, rounds left
+checks -> record: pass, or rounds used up
 ```
 
 The Operation providers, Spec review and Delivery use this Module; it knows none of them. They rely

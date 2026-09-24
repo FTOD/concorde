@@ -170,7 +170,7 @@ the defaults; a call site gives more specific ones when it knows more.
 | `invalid_owner` | every Spec document is owned by exactly one Module (CHK.owns.unique) | list the document in the owns of one Module only |
 | `unsafe_path` | Spec tooling reads only canonical project-relative paths of regular files, never through a symbolic link or outside the project | use a canonical project-relative path to a regular file and remove the symbolic link |
 | `missing_source` | a file the Specs or the configuration require does not exist or cannot be read | create the file, restore it, or remove the reference to it |
-| `unsupported_profile` | this Spec tooling reads only the project profile and registry schema of Protocol 12 (schema_version 3) | migrate the configuration and registry to the current profile explicitly |
+| `unsupported_profile` | this Spec tooling reads only the project profile and registry schema of Protocol 13 (schema_version 3) | migrate the configuration and registry to the current profile explicitly |
 | `protocol_mismatch` | the project's Protocol binding must name exactly the Protocol copy installed under .concorde/protocol/, and that copy must be unchanged | reinstall Concorde, or accept the installed Protocol by updating the binding |
 | `not_installed` | initialization needs the Protocol copy that only the installer places | run the Concorde installer in this project first |
 | `already_initialized` | initialization creates the first Spec only; it never overwrites a configured project | change an initialized project's Specs through ordinary work instead |
@@ -196,7 +196,7 @@ the defaults; a call site gives more specific ones when it knows more.
 | `stale_reference` | an artifact reference is valid only while the referenced bytes are unchanged | recompute the reference from the current file |
 | `invalid_front_matter` | front matter is the restricted YAML subset the Protocol defines | rewrite the front matter in the supported subset |
 | `invalid_declaration` | a verification declaration names scenario identities as string literals in a parseable test | fix the declaration or the test source |
-| `invalid_diagram` | a checked Mermaid flowchart uses only the syntax the Views chapter defines | rewrite the diagram in the supported syntax or mark it illustrative |
+| `invalid_diagram` | a checked D2 diagram uses only the semantic subset the Views chapter defines: shapes, nesting and '->' edges, with no styling or layout | remove the styling or layout statement, or mark the block `d2 illustrative` |
 | `invalid_docsite_template` | the docsite scaffold is copied only from the package's complete, safe template | reinstall or rebuild the Concorde package |
 | `no_root` | the Spec MCP server answers only for one project root | set CLAUDE_PROJECT_DIR or offer exactly one file:// root |
 | `outside_root` | the Spec MCP server answers only about paths inside its root | pass a path inside the server's root |

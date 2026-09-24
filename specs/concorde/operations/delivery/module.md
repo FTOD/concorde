@@ -134,16 +134,21 @@ carries it.
 
 ## Relationships
 
-```mermaid
-flowchart LR
-    accTitle: Delivery collaboration
-    accDescr: The Delivery Operation creates a delivery commit carrying an evidence bundle; Delivery uses Tasks, Validation, Operations and Workers.
-    op[Delivery Operation] -->|creates| commit[Delivery commit]
-    commit -->|carries| bundle[Evidence bundle]
-    delivery[Delivery] -->|uses| tasks[Tasks]
-    delivery -->|uses| validation[Validation]
-    delivery -->|uses| operations[Operations]
-    delivery -->|uses| workers[Workers]
+```d2
+op: Delivery Operation
+commit: Delivery commit
+bundle: Evidence bundle
+delivery: Delivery
+tasks: Tasks
+validation: Validation
+operations: Operations
+workers: Workers
+op -> commit: creates
+commit -> bundle: carries
+delivery -> tasks
+delivery -> validation
+delivery -> operations
+delivery -> workers
 ```
 
 The Delivery Operation creates one delivery commit per successful run, and each commit carries
