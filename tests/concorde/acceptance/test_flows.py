@@ -225,6 +225,7 @@ class TaskFlowTests(unittest.TestCase):
             **os.environ,
             "CONCORDE_CLAUDE": str(self.project.fake),
             "HOME": str(self.project.home),
+            "CONCORDE_CLIENT": "claude",
         }
         runs = [
             subprocess.Popen(
