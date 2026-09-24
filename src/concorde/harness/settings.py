@@ -257,6 +257,45 @@ def denied(rules: list[str], path: Path) -> bool:
     return False
 
 
+def sandbox_filesystem(
+    worktree: Path,
+    grant: dict,
+    run: RunPaths,
+    runtime: tuple[Path, ...] = (),
+    home: Path | None = None,
+) -> dict:
+    """The sandbox's filesystem lists of one worker, shared by both backends.
+
+    Everything in the task worktree and the user's home is hidden except the grant's ``ro`` and
+    ``rw`` paths, the runtime paths and the run's own directories; only ``rw`` paths and the run's
+    own directories are writable; the run's ``control/`` and ``config/`` are hidden.
+    """
+    worktree = Path(os.path.realpath(worktree))
+    home = Path(os.path.realpath(home or Path.home()))
+    view = GrantView(grant["entries"])
+    readable = [
+        (worktree / path.rstrip("/")).as_posix() for path in view.paths("ro", "rw")
+    ]
+    writable = [(worktree / path.rstrip("/")).as_posix() for path in view.paths("rw")]
+    own = [directory.as_posix() for directory in run.own()]
+    return {
+        "denyRead": [
+            worktree.as_posix(),
+            home.as_posix(),
+            run.control.as_posix(),
+            run.config.as_posix(),
+        ],
+        "allowRead": sorted(
+            set(
+                readable
+                + own
+                + [Path(os.path.realpath(path)).as_posix() for path in runtime]
+            )
+        ),
+        "allowWrite": sorted(set(writable + own)),
+    }
+
+
 def write_hook_source(worktree: Path, grant: dict) -> str:
     """The write hook script with the grant's lists embedded."""
     from . import write_hook
@@ -293,12 +332,6 @@ def worker_settings(
                 "run_directory_denied",
                 f"a generated deny rule covers the worker's own directory {directory}",
             )
-    view = GrantView(grant["entries"])
-    readable = [
-        (worktree / path.rstrip("/")).as_posix() for path in view.paths("ro", "rw")
-    ]
-    writable = [(worktree / path.rstrip("/")).as_posix() for path in view.paths("rw")]
-    own = [directory.as_posix() for directory in run.own()]
     return {
         "permissions": {"deny": rules},
         "hooks": {
@@ -318,18 +351,7 @@ def worker_settings(
             "enabled": True,
             "autoAllowBashIfSandboxed": True,
             "allowUnsandboxedCommands": False,
-            "filesystem": {
-                "denyRead": [
-                    worktree.as_posix(),
-                    home.as_posix(),
-                    run.control.as_posix(),
-                    run.config.as_posix(),
-                ],
-                "allowRead": sorted(
-                    set(readable + own + [path.as_posix() for path in runtime])
-                ),
-                "allowWrite": sorted(set(writable + own)),
-            },
+            "filesystem": sandbox_filesystem(worktree, grant, run, runtime, home),
             "network": {"allowedDomains": [], "strictAllowlist": True},
         },
     }
@@ -341,6 +363,7 @@ __all__ = [
     "TOOL_SETS",
     "deny_rules",
     "denied",
+    "sandbox_filesystem",
     "worker_settings",
     "write_hook_source",
 ]

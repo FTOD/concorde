@@ -16,7 +16,7 @@ Specs are read-only for you.
 3. A file your boundary lists as changeable may be empty because the host created it for you: it
    is a declared file that does not exist yet. Write its content if the goal needs it and leave it
    empty otherwise.
-4. You may use Bash to try things, for example to run a test. The host runs the configured checks
+4. You may use the shell tool (Bash or bash) to try things, for example to run a test. The host runs the configured checks
    itself after you finish; your own runs are never evidence. When a check fails, the host resumes
    you with its results, and you fix the code in the same way.
 

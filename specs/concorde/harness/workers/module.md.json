@@ -139,9 +139,7 @@
         "tests/concorde/harness/workers/",
         "prompts/workers/common/"
       ],
-      "pending": [
-        "src/concorde/harness/progress.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.workers.claude",
@@ -152,9 +150,7 @@
         "src/concorde/harness/claude_backend.py",
         "src/concorde/harness/write_hook.py"
       ],
-      "pending": [
-        "src/concorde/harness/claude_backend.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.workers.pi",
@@ -166,11 +162,7 @@
         "src/concorde/harness/pi_permission.ts",
         "src/concorde/harness/pi_policy.ts"
       ],
-      "pending": [
-        "src/concorde/harness/pi_backend.py",
-        "src/concorde/harness/pi_permission.ts",
-        "src/concorde/harness/pi_policy.ts"
-      ]
+      "pending": []
     }
   ],
   "relations": [
