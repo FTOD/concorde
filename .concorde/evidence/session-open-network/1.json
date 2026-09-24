@@ -1,0 +1,44 @@
+{
+  "task": "session-open-network",
+  "goal": "Open the network of task sessions entirely (sandbox allowedDomains *), since their boundary guards against mistakes, not exfiltration; the developer chose this explicitly",
+  "modules": [
+    "module.tasks",
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "8febe949ebb7fb0d588c54f4b85d3fb5090eb447",
+  "parent_commit": "40d9e79e17d5d44e10b01480583289d2bb42f4e3",
+  "readiness": {
+    "run_id": "r-20260924T185131-delivery-9ea17f50",
+    "input_digest": "sha256:29a90b816983fe775ae5c9b177dab0c0066174f29a10e4a94164089eba760b6e",
+    "modules": [
+      "module.concorde",
+      "module.main-session",
+      "module.tasks"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:87a148906925d1f6835783b64ecae6fb795121d93123d430fd69a1f3e0bc7f30"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:b13691204eba01848ee6081411a4c8ad74b6a041813b065d9130f6c7424f6c7c"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:bb6657b9c9c6d3c46c6c5b7c40f921069903f8ab36e7ca8b2768f5d85f037265"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [],
+  "created_at": "2026-09-24T18:51:40Z"
+}
