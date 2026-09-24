@@ -63,6 +63,16 @@
         "kind": "document",
         "target": "document.concorde.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi/",
+        "reason": "pi's extension API (tools, commands, session events, messages that start a turn), which the run view relies on"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi-subagents/",
+        "reason": "pi-subagents' external-runs and background-work APIs, through which the run view shows runs in FleetView and in bg_wait"
       }
     ],
     "participates": []

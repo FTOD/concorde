@@ -316,6 +316,21 @@
           "kind": "external",
           "target": "references/claude-code/",
           "reason": "Claude Code's settings, permission rules, hooks, sandbox and headless CLI, which the worker settings and launch rely on"
+        },
+        {
+          "kind": "external",
+          "target": "references/pi/",
+          "reason": "pi's extension API, built-in tools, path resolution, headless CLI and JSON event stream, which the pi backend and the permission extension rely on"
+        },
+        {
+          "kind": "external",
+          "target": "references/sandbox-runtime/",
+          "reason": "the sandbox engine both backends' command sandboxes run on, whose per-call filesystem configuration and strict network allowlist the pi backend relies on"
+        },
+        {
+          "kind": "external",
+          "target": "references/pi-packages/packages/pi-permission-system/",
+          "reason": "prior art for permission enforcement in pi, against which the permission extension's design was compared"
         }
       ],
       "participates": []
@@ -806,6 +821,16 @@
           "kind": "document",
           "target": "document.concorde.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "external",
+          "target": "references/pi/",
+          "reason": "pi's extension API (tools, commands, session events, messages that start a turn), which the run view relies on"
+        },
+        {
+          "kind": "external",
+          "target": "references/pi-subagents/",
+          "reason": "pi-subagents' external-runs and background-work APIs, through which the run view shows runs in FleetView and in bg_wait"
         }
       ],
       "participates": []

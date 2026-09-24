@@ -1,0 +1,16 @@
+[submodule "references/pi"]
+	path = references/pi
+	url = https://github.com/earendil-works/pi.git
+	concorde-sparse = /LICENSE /README.md /packages/coding-agent/README.md /packages/coding-agent/docs/ /packages/coding-agent/src/core/extensions/ /packages/coding-agent/src/core/tools/ /packages/coding-agent/src/utils/paths.ts /packages/coding-agent/examples/extensions/ /packages/agent/src/ !*.png !*.jpg !*.gif !*.webp !*.mp4
+[submodule "references/pi-subagents"]
+	path = references/pi-subagents
+	url = https://github.com/nicobailon/pi-subagents.git
+	concorde-sparse = /LICENSE /README.md /package.json /docs/ /agents/ /src/ !*.png !*.jpg !*.gif !*.webp !*.mp4
+[submodule "references/sandbox-runtime"]
+	path = references/sandbox-runtime
+	url = https://github.com/anthropics/sandbox-runtime.git
+	concorde-sparse = /LICENSE /README.md /package.json /src/ !*.png !*.jpg !*.gif
+[submodule "references/pi-packages"]
+	path = references/pi-packages
+	url = https://github.com/gotgenes/pi-packages.git
+	concorde-sparse = /LICENSE /README.md /packages/pi-permission-system/ !/packages/pi-permission-system/test/ !/packages/pi-permission-system/docs/plans/ !/packages/pi-permission-system/docs/retro/ !/packages/pi-permission-system/CHANGELOG.md !*.png !*.jpg !*.gif !*.webp !*.mp4

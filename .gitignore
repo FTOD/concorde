@@ -46,8 +46,3 @@ Thumbs.db
 
 node_modules
 
-# Local pi checkouts for the pi permission research, not vendored yet.
-/references/pi-subagents/
-/references/pi/
-/references/pi-permission-system/
-/references/sandbox-runtime/

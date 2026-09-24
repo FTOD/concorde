@@ -22,8 +22,9 @@ one from the primary worktree with
 in the task's worktree, verify, and commit each verified step on the task branch. Then run
 `python3 scripts/concorde.py run validate --task <task>` and `run delivery --task <task>`, merge
 the task branch into main, and close it with `task close <task> --merged`. The task worktree lacks
-the Git-ignored `.venv`, `docsite/node_modules` and `generated/`; create them there
-(`uv sync --locked --group dev`, `npm --prefix docsite ci`, `build`) before verifying.
+the Git-ignored `.venv`, `docsite/node_modules` and `generated/`, and its reference submodules are
+not checked out; create them there (`uv sync --locked --group dev`, `npm --prefix docsite ci`,
+`build`, `python3 scripts/development/init-references.py`) before verifying.
 
 Only a very small change, such as a typo, a one-line fix or a wording correction, may be made
 directly in the primary worktree, and only after the developer approves that specific change: say
