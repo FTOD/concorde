@@ -98,6 +98,12 @@ class LiveWorkerTests(unittest.TestCase):
             )
         )
         self.assertNotIn("SECRET = 1", "".join(bash))
+        [curl] = [
+            text
+            for name, arguments, text in results
+            if name == "Bash" and "curl" in arguments.get("command", "")
+        ]
+        self.assertNotIn("Example Domain", curl, "an unlisted host is unreachable")
         grep = [text for name, _, text in results if name == "Grep"]
         self.assertTrue(grep and "SECRET" not in grep[0], grep)
         self.assertFalse((root / "checks/new.txt").exists())

@@ -14,7 +14,9 @@ file tree:
 
 System directories and the declared runtime paths stay readable, because Bash needs them to run
 anything. The write hook makes the grant's ``rw`` paths the only ones Edit and Write may change,
-which deny rules cannot express. The sandbox confines Bash writes and network.
+which deny rules cannot express. The sandbox confines Bash writes and network; its
+``strictAllowlist`` makes an unlisted host a denial rather than a prompt, which
+``bypassPermissions`` would otherwise approve.
 """
 
 from __future__ import annotations
@@ -328,7 +330,7 @@ def worker_settings(
                 ),
                 "allowWrite": sorted(set(writable + own)),
             },
-            "network": {"allowedDomains": []},
+            "network": {"allowedDomains": [], "strictAllowlist": True},
         },
     }
 

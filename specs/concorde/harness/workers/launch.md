@@ -68,7 +68,7 @@ The host refuses to launch when any deny rule it generated covers `work/`, `home
       "allowRead": ["<each ro and rw path>", "<runtime paths>", "<run>/work", "<run>/home", "<TMPDIR>"],
       "allowWrite": ["<each rw path>", "<run>/work", "<run>/home", "<TMPDIR>"]
     },
-    "network": {"allowedDomains": []}
+    "network": {"allowedDomains": [], "strictAllowlist": true}
   }
 }
 ```
@@ -261,7 +261,7 @@ The deny rules SHALL forbid Read, Glob and Grep every task-worktree path whose l
 
 ### req.workers.bash-sandbox — Bash runs sandboxed without network
 
-Every Bash command of a worker SHALL run in Claude Code's sandbox with no allowed network domain and with unsandboxed commands disabled.
+Every Bash command of a worker SHALL run in Claude Code's sandbox with no allowed network domain, with a strict allowlist so that an unlisted host is denied rather than approved by the permission mode, and with unsandboxed commands disabled.
 
 ### req.workers.working-directory — The worker never works in the worktree
 

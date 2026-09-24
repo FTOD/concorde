@@ -1,0 +1,56 @@
+{
+  "task": "worker-network-strict",
+  "goal": "Make worker Bash sandbox deny every unlisted network host (strictAllowlist) so req.workers.bash-sandbox holds under bypassPermissions",
+  "modules": [
+    "module.harness.workers"
+  ],
+  "sequence": 1,
+  "base_commit": "fb0ec26beda9685bcd63d6d49601bb6ee407e69e",
+  "parent_commit": "fb0ec26beda9685bcd63d6d49601bb6ee407e69e",
+  "readiness": {
+    "run_id": "r-20260924T161831-validate-9db419b8",
+    "input_digest": "sha256:08cf9b82b07fece3b91247b2cada58b1e518aeacadcee25690feaccc8c9a630f",
+    "modules": [
+      "module.harness.workers"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T161804-validate-0b08ea35",
+      "operation": "validate",
+      "modules": [
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:8b4ca1046748495188492ccba0894133e79a9d713545df4917d90365752dc286"
+    },
+    {
+      "run_id": "r-20260924T161810-delivery-22704429",
+      "operation": "delivery",
+      "modules": [
+        "module.harness.workers"
+      ],
+      "status": "blocked",
+      "summary": "The task worktree has no uncommitted change (nothing_to_deliver).",
+      "worker_runs": [],
+      "result_digest": "sha256:9b17c2cac2050a62898e701eeb5f4108ff5e78ff66e7429f9a7074f351f01ec0"
+    },
+    {
+      "run_id": "r-20260924T161831-validate-9db419b8",
+      "operation": "validate",
+      "modules": [
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:afe01c14138d2af66fa3c4249279ca793491919b6e41a4df9517a734309dfda1"
+    }
+  ],
+  "created_at": "2026-09-24T16:18:32Z"
+}

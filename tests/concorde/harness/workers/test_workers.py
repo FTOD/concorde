@@ -275,6 +275,7 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(sandbox["enabled"])
         self.assertFalse(sandbox["allowUnsandboxedCommands"])
         self.assertEqual([], sandbox["network"]["allowedDomains"])
+        self.assertTrue(sandbox["network"]["strictAllowlist"])
         self.assertIn(self.project.root.as_posix(), sandbox["filesystem"]["denyRead"])
         self.assertIn(self.project.home.as_posix(), sandbox["filesystem"]["denyRead"])
         self.assertIn(
