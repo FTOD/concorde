@@ -147,8 +147,7 @@ CONCORDE_LIVE_CLAUDE=1 .venv/bin/python -m pytest tests/concorde/harness/workers
 
 The last command runs a real Claude Code worker to check what only Claude Code enforces; it needs a
 logged-in Claude Code and costs a few cents. Never edit build output under `generated/`; change the
-sources (`prompts/`, `protocol/`, `src/`) and rebuild. See the [source-checkout rules](AGENTS.md),
-the [refactor design](docs/design/concorde-refactor.md) and
+sources (`prompts/`, `protocol/`, `src/`) and rebuild. See the [source-checkout rules](AGENTS.md) and
 [Concorde's own Specs](specs/concorde/module.md).
 
 ---

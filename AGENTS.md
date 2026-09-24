@@ -2,8 +2,7 @@
 
 This is a source checkout, not a consumer installation. Read the canonical
 `.concorde/protocol/principles.md` and the affected complete Specs under `specs/` before changing
-sources. Specs and their paired metadata use English. The accepted refactor design is
-`docs/design/concorde-refactor.md`; where a Spec and that document differ, the Spec wins.
+sources. Specs and their paired metadata use English.
 
 ## How work is organized
 

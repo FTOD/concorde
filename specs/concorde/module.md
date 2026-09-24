@@ -75,8 +75,8 @@ in the [design topic](design.md).
 <a id="realization.concorde.project-files"></a>
 
 The root binds the **project files** that belong to no single responsibility: README, agent
-instructions, licence, repository configuration, the design documents and workflow guide under
-`docs/`, and the CI workflow that validates this checkout.
+instructions, licence, repository configuration, the workflow guide under `docs/`, and the CI
+workflow that validates this checkout.
 
 <a id="realization.concorde.development-environment"></a>
 

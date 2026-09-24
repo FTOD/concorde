@@ -47,16 +47,16 @@ worktree, and one task runs at most one Operation at a time.
 The main agent runs every Operation with `concorde run` in background Bash and reads the JSON
 result when the command exits (status 0 `ok`, 1 `blocked` or `failed`, 2 a bad command line).
 
-| Operation | Task type | What it does |
-| --- | --- | --- |
-| `understand` | `understand` | Assesses what the Modules promise and whether the Spec suffices; plans when asked. Writes nothing. |
-| `specify` | `specify` | Changes the bound Modules' own Spec documents, including declaring pending files. |
-| `implement` | `implement` | Changes the bound Modules' code; the host runs the configured checks and resumes the worker on failures. |
-| `test` | `test` | The host runs the configured checks; the worker reads the code and interprets the results. |
-| `spec_review` | `review-spec` | Reviews the bound Modules' Specs and reports every blocking finding. |
-| `code_review` | `review-code` | Reviews the task's code changes against the Specs. |
-| `validate` | — | Deterministic: structural validation and the configured checks of the changed Modules; decides readiness. |
-| `delivery` | — | Deterministic: commits the task's change with an evidence bundle on the task branch. |
+| Operation     | Task type     | What it does                                                                                              |
+| ------------- | ------------- | --------------------------------------------------------------------------------------------------------- |
+| `understand`  | `understand`  | Assesses what the Modules promise and whether the Spec suffices; plans when asked. Writes nothing.        |
+| `specify`     | `specify`     | Changes the bound Modules' own Spec documents, including declaring pending files.                         |
+| `implement`   | `implement`   | Changes the bound Modules' code; the host runs the configured checks and resumes the worker on failures.  |
+| `test`        | `test`        | The host runs the configured checks; the worker reads the code and interprets the results.                |
+| `spec_review` | `review-spec` | Reviews the bound Modules' Specs and reports every blocking finding.                                      |
+| `code_review` | `review-code` | Reviews the task's code changes against the Specs.                                                        |
+| `validate`    | —             | Deterministic: structural validation and the configured checks of the changed Modules; decides readiness. |
+| `delivery`    | —             | Deterministic: commits the task's change with an evidence bundle on the task branch.                      |
 
 `--input <run-id>` admits the output of an earlier `ok` run of the same task, such as a plan from
 `understand`, into the next worker's brief.
@@ -131,4 +131,4 @@ closure merges with the fix.
 
 Concorde is developed in this checkout as direct developer-authorized maintenance: change sources,
 run `python3 scripts/concorde.py build`, `build --check`, `validate` and the tests, and commit each
-verified step. See [AGENTS.md](../AGENTS.md) and the [refactor design](design/concorde-refactor.md).
+verified step. See [AGENTS.md](../AGENTS.md).
