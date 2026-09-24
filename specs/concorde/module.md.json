@@ -103,17 +103,6 @@
       "pending": []
     },
     {
-      "id": "realization.concorde.error-chain",
-      "type": "realization",
-      "title": "Error chain code",
-      "meaning": "#realization.concorde.error-chain",
-      "entries": [
-        "src/concorde/errors.py",
-        "tests/concorde/test_errors.py"
-      ],
-      "pending": []
-    },
-    {
       "id": "realization.concorde.acceptance-tests",
       "type": "realization",
       "title": "Acceptance tests",

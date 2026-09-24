@@ -716,7 +716,6 @@
       "entry": "specs/concorde/issues/module.md",
       "owns": [
         "specs/concorde/issues/module.md",
-        "specs/concorde/issues/design.md",
         "specs/concorde/issues/interface.md",
         "specs/concorde/issues/requirements.md",
         "specs/concorde/issues/scenarios.md"
