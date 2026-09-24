@@ -37,7 +37,7 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 | --- | --- | --- | --- |
 | 1 | Parse the command line and look up the catalog entry; only then create the run identity and directory | host | malformed command line or unknown Operation (exit 2, no result, no directory) |
 | 2 | Resolve the task and its worktree; check `--modules` and `--input` | host, Tasks, Spec core | unknown task or Module, missing worktree, inadmissible input (`failed`, not recorded in the task) |
-| 3 | Begin the run in the task record with the catalog entry's `writes` flag | Tasks | `task_closed` or `task_busy` (`failed`, not recorded in the task) |
+| 3 | Begin the run in the task record with the catalog entry's `writes` flag; the task worktree's Specs are loaded to check the Modules unless the provider diagnoses them itself (`validate`) | Tasks | `task_closed` or `task_busy` (`failed`, not recorded in the task) |
 | 4 | Execute the provider's steps in order | provider, Workers, Check execution | a step stops the run with a status |
 | 5 | Compose the envelope from the step outcomes and check it against the result contract and the provider's output contract | host | the envelope or output is invalid (`failed`, `invalid-output` evidence) |
 | 6 | Write `result.json`, finish the run in the task record with the result's status, print the envelope and exit | host, Tasks | — |

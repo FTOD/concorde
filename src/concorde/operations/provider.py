@@ -39,6 +39,9 @@ class Provider:
     steps: tuple[Callable, ...]
     output_schema: dict | None = None
     add_arguments: Callable[[argparse.ArgumentParser], None] | None = None
+    # False for a provider that diagnoses the task worktree's Specs itself, such as validate:
+    # the host then begins the run even when those Specs cannot be loaded.
+    requires_loaded_specs: bool = True
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]

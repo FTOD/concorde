@@ -206,6 +206,7 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict | None]:
                 modules,
                 chosen.writes,
                 os.getpid(),
+                check_modules=chosen.requires_loaded_specs,
             )
             begun = True
         except store.TaskError as refusal:
@@ -213,7 +214,7 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict | None]:
                 "failed",
                 f"The run was refused before it began: {refusal.code}.",
                 [evidence("refused", refusal.code, str(refusal))],
-                host_escalation(str(refusal)),
+                host_escalation(f"{refusal.code}: {refusal}"),
             )
         if stop is None:
             stop = _steps(chosen, context)

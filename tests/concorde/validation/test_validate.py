@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import unittest
 from pathlib import Path
@@ -10,8 +9,6 @@ from unittest.mock import patch
 
 from concorde.harness import checks as check_service
 from concorde.harness.check_executor import CheckSandboxError
-from concorde.operations.host import _steps
-from concorde.operations.provider import RunContext
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from concorde.validation import confirmations
@@ -90,9 +87,14 @@ class ValidateTests(unittest.TestCase):
         (self.worktree / "stray.txt").write_text("unbound\n")
         (self.worktree / "src/a/flag").write_text("broken")
         status, envelope = self.project.validate()
-        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+        self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
         readiness = envelope["output"]
         self.assertFalse(readiness["ready"])
+        # Every blocking reason is named, with its location, in the escalation.
+        problem = envelope["escalation"]["problem"]
+        for item in readiness["blocking"]:
+            self.assertIn(f"{item['kind']} {item['ref']}: {item['detail']}", problem)
+        self.assertIn("Not deliverable: 3 blocking finding(s)", envelope["summary"])
         kinds = {item["kind"] for item in readiness["blocking"]}
         self.assertEqual(
             kinds, {"structural", "unbound", "check"}, readiness["blocking"]
@@ -119,30 +121,15 @@ class ValidateTests(unittest.TestCase):
 
     @verifies("scenario.validation.unloadable")
     def test_specs_that_cannot_be_loaded_are_not_ready(self):
-        # The host refuses to begin a run on unloadable Specs, so the steps run directly on a
-        # worktree whose registry broke after the task began.
         (self.worktree / ".concorde/specs.json").write_text("{")
-        run_dir = (
-            self.project.root / ".concorde/runs/r-20260924T000000-validate-00000000"
-        )
-        run_dir.mkdir(parents=True)
-        context = RunContext(
-            operation="validate",
-            primary=self.project.root,
-            task=self.project.record(),
-            worktree=self.worktree,
-            modules=["module.a"],
-            run_id=run_dir.name,
-            run_dir=run_dir,
-            arguments=argparse.Namespace(),
-        )
-        stop = _steps(VALIDATE, context)
-        self.assertEqual(stop.status, "ok")
-        readiness = context.output
+        status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
+        readiness = envelope["output"]
         self.assertFalse(readiness["ready"])
-        self.assertIn("load", {item["kind"] for item in readiness["blocking"]})
+        [load] = [item for item in readiness["blocking"] if item["kind"] == "load"]
+        self.assertIn(load["detail"], envelope["escalation"]["problem"])
+        self.assertTrue(load["detail"])
         self.assertEqual(readiness["checks"], [])
-        self.assertFalse((run_dir / "checks").exists())
 
     @verifies("scenario.validation.confirmation")
     def test_a_filled_pending_entry_becomes_a_confirmation(self):

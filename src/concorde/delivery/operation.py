@@ -174,7 +174,10 @@ def load_readiness(ctx: RunContext):
         result = json.loads(path.read_text())
     except (OSError, ValueError):
         result = {}
-    readiness = result.get("output") if result.get("status") == "ok" else None
+    # A ready readiness ends ok; a not-ready one ends blocked and still carries the readiness.
+    readiness = (
+        result.get("output") if result.get("status") in ("ok", "blocked") else None
+    )
     if not isinstance(readiness, dict) or readiness.get("task") != ctx.task["id"]:
         return _blocked(
             "no_readiness",

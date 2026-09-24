@@ -72,10 +72,13 @@ base commit, committed or not, with the digest of its content, and the digest of
 configuration, all combined into one input digest. Any later change to the worktree changes that
 digest, and Delivery then refuses the readiness as stale; the main agent runs `validate` again.
 
-The result status is `ok` whenever a readiness was decided, ready or not; the main agent reads
-`ready` to know whether to deliver, and `blocking` to know what to fix, typically with another
-`implement`, a `specify`, or by regenerating a stale registry mirror in the task worktree. The
-status is `failed` when no trustworthy readiness exists, and a host evidence entry names the
+The result status is `ok` when the task is ready. When it is not, the status is `blocked`: the
+summary starts with `Not deliverable:` and the count of blocking findings, and the summary, the
+host escalation and one `blocking` host evidence entry per finding each name every finding by its
+kind, location and message, so the main agent learns everything that stands between the task and
+delivery from the result itself. The readiness is the output in both cases; the main agent fixes
+the findings, typically with another `implement`, a `specify`, or by regenerating a stale registry
+mirror in the task worktree. The status is `failed` when no trustworthy readiness exists, and a host evidence entry names the
 reason in its `ref`: `git` evidence `wrong_branch` when the worktree is not on the task branch,
 `git` evidence with the Git error when Git cannot report the changes, `check` evidence
 `check_sandbox_unavailable` when the check sandbox is unavailable, and `readiness` evidence
@@ -116,9 +119,10 @@ they will read once Delivery has applied the confirmations, so a filled pending 
 and the readiness speaks for the Specs that will be committed; an unbound-file error of the
 structural check on a changed path is reported once, as the unbound finding of step 5. If the Specs
 cannot be loaded, steps 5 to 7 are skipped, because without the Specs no path can be attributed to
-a Module; the load failure is itself blocking. The Operation host normally refuses to begin a run
-whose Specs cannot be loaded, because it cannot resolve the bound Modules, so this case arises only
-when the Specs break after the run began. Step 8 exists because a
+a Module; the load failure is itself blocking and names the file and the loader's error. The
+Operation host begins a `validate` run without loading the task worktree's Specs, unlike other
+Operations, precisely so that this diagnosis reaches the main agent; a bound Module the loaded
+registry does not register is a structural blocking finding. Step 8 exists because a
 check can take minutes and nothing stops the main agent from changing the worktree meanwhile; a
 readiness is only issued for inputs that held still for the whole run.
 

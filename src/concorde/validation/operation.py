@@ -232,6 +232,17 @@ def validate_structure(ctx: RunContext):
                 str(error),
             )
         )
+    if state.repository is not None:
+        for module in ctx.modules:
+            if module not in state.repository.modules:
+                state.blocking.append(
+                    finding(
+                        "structural",
+                        module,
+                        f"the task names {module}, which the task worktree's registry does "
+                        "not register",
+                    )
+                )
     result = validate_repository(ctx.worktree, document_overrides=overrides or None)
     changed = {
         item["path"] for item in state.inputs["changed"] if item["digest"] is not None
@@ -436,23 +447,37 @@ def issue_readiness(ctx: RunContext):
     path = ctx.run_dir / "readiness.json"
     path.write_text(json.dumps(readiness, indent=2) + "\n")
     ctx.output = readiness
-    verdict = (
-        "ready"
-        if readiness["ready"]
-        else f"not ready, {len(state.blocking)} blocking finding(s)"
-    )
+    saved = path.relative_to(ctx.primary).as_posix()
+    found = [
+        evidence(
+            "readiness",
+            state.inputs["digest"],
+            f"{'ready' if readiness['ready'] else 'not ready'}; "
+            f"{len(state.inputs['changed'])} changed path(s), {len(state.checks)} check(s), "
+            f"{len(state.warnings)} warning(s); saved {saved}",
+        )
+    ]
+    if readiness["ready"]:
+        return Stop("ok", "Readiness decided: ready.", found)
+    reasons = [
+        f"{item['kind']} {item['ref']}: {item['detail']}" for item in state.blocking
+    ]
     return Stop(
-        "ok",
-        f"Readiness decided: {verdict}.",
-        [
-            evidence(
-                "readiness",
-                state.inputs["digest"],
-                f"{verdict}; {len(state.inputs['changed'])} changed path(s), "
-                f"{len(state.checks)} check(s), {len(state.warnings)} warning(s); "
-                f"saved {path.relative_to(ctx.primary).as_posix()}",
-            )
+        "blocked",
+        f"Not deliverable: {len(reasons)} blocking finding(s). " + " | ".join(reasons),
+        found
+        + [
+            evidence("blocking", item["ref"], item["detail"]) for item in state.blocking
         ],
+        host_escalation(
+            "The task is not deliverable: " + "; ".join(reasons),
+            options=[
+                "repair each blocking finding in the task worktree and run validate again",
+                "run specify for a Spec finding, implement for a code or check finding",
+            ],
+            recommendation="repair the first blocking finding: " + reasons[0],
+            impact=f"delivery refuses this task until validate is ready; readiness in {saved}",
+        ),
     )
 
 
@@ -472,6 +497,7 @@ VALIDATE = Provider(
         issue_readiness,
     ),
     output_schema=READINESS_SCHEMA,
+    requires_loaded_specs=False,
 )
 
 

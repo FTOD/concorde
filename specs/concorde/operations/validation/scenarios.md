@@ -17,8 +17,9 @@ readiness is defined in the [contracts](contracts.md).
 
 - GIVEN a task worktree with a broken Spec link, a new file bound by no Module and a failing check of a changed Module
 - WHEN `validate` runs
-- THEN the result has status `ok` and the readiness has `ready` false
+- THEN the result has status `blocked` and the readiness has `ready` false
 - AND `blocking` holds a structural finding, an unbound finding and a check finding
+- AND the summary and the escalation name each finding with its location and message
 
 ### scenario.validation.warnings — Warnings do not block
 
@@ -29,8 +30,9 @@ readiness is defined in the [contracts](contracts.md).
 ### scenario.validation.unloadable — Specs that cannot be loaded
 
 - GIVEN a task worktree whose Specs cannot be loaded
-- WHEN `validate` runs
-- THEN the readiness has `ready` false with a `load` finding
+- WHEN `validate` runs through `concorde run`
+- THEN the run begins, and the result has status `blocked` and a readiness with `ready` false
+- AND its `load` finding names the file and the loader's error, in the readiness and in the escalation
 - AND no configured check is run
 
 ### scenario.validation.shared-file — A shared file runs every binder's checks

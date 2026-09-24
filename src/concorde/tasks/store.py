@@ -250,11 +250,15 @@ def begin_run(
     modules: list[str],
     writes: bool,
     host_pid: int,
+    *,
+    check_modules: bool = True,
 ) -> dict:
+    """Begin a run; ``check_modules=False`` leaves the Module check to the Operation itself."""
     record = load_task(primary, task_id)
     if record["state"] in ("merged", "abandoned"):
         raise TaskError("task_closed", f"task {task_id} is {record['state']}")
-    _registered(Path(record["worktree"]), modules)
+    if check_modules:
+        _registered(Path(record["worktree"]), modules)
 
     def change(record):
         if record["state"] in ("merged", "abandoned"):
