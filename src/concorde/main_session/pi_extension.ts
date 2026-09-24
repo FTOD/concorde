@@ -180,7 +180,10 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     root = primaryRoot(ctx.cwd);
-    sessionId = ctx.sessionManager.getSessionId();
+    // pi-subagents names a session by its file, or by its identity when it is not persisted;
+    // FleetView and bg_wait show only records under that same name.
+    sessionId =
+      ctx.sessionManager.getSessionFile() ?? ctx.sessionManager.getSessionId();
     subagents = await loadSubagents();
     for (const operation of operationRuns(root)) {
       if (operation.phase !== "finished" && alive(operation.host_pid))
@@ -208,7 +211,8 @@ export default function (pi: ExtensionAPI) {
     description:
       "Start a Concorde Operation in the background: `concorde run <operation> --task <task> [arguments]`. " +
       "It returns at once with the run identity; the run appears in the run view, and you are " +
-      "woken with its result when it finishes. Do not poll it.",
+      "woken with its result when it finishes. Do not poll it. To block until every running " +
+      "Concorde run ends, call bg_wait without an id; bg_wait with an id sees only subagent runs.",
     promptSnippet:
       "Start a Concorde Operation in the background and be woken when it finishes",
     parameters: Type.Object({

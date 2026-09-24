@@ -90,7 +90,9 @@ file](../operations/module.md#concept.operations.progress-file) and that of the 
 ([progress file](../harness/workers/module.md#concept.workers.progress-file), paired by the host's
 process identifier), and shows each run as an external job in pi-subagents' FleetView — its task
 and Operation, its step, the worker's round and latest tool call, and on its end the result's
-status and summary. `bg_wait` counts the running ones, and when a run ends the extension sends the
+status and summary. A `bg_wait` call without an id waits for the running ones (with an id it
+matches only subagent runs); runs are filed under the session's file, or its identity when it is
+not persisted, the name pi-subagents gives the session. When a run ends the extension sends the
 main agent a message naming the result file, which starts its next turn. `/concorde` lists the
 recent runs. The view only launches and observes: the Operation host runs and records every run,
 so closing pi never stops or changes one. Without pi-subagents the tool, the wake and `/concorde`
