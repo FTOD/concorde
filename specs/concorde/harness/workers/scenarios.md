@@ -143,7 +143,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.pi-fenced-run — A pi worker is fenced by the same grant
 
-- GIVEN a project whose configuration selects the pi backend, and an `implement` grant with a `rw` source file, `ro` Specs, a `names` file and an ungranted file
+- GIVEN a run started from a pi main session, and an `implement` grant with a `rw` source file, `ro` Specs, a `names` file and an ungranted file
 - WHEN the host runs a pi worker that reads the Specs, edits the source file and ends with `concorde_result`
 - THEN the edit reaches the task worktree, the audit is clean and the run ends `ok` with the worker result verbatim
 - AND the run record holds the session identifier, the transcript path and the tool set of the pi backend
@@ -164,7 +164,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.pi-runtime-missing — A pi run without its runtime is refused
 
-- GIVEN a project that selects the pi backend on a machine without the sandbox-runtime package
+- GIVEN a run started from a pi main session on a machine without the sandbox-runtime package
 - WHEN the host is asked to start a worker
 - THEN it refuses before launch with `pi_runtime_missing`, naming the missing package and how to install it
 - AND it still writes the run record
@@ -175,3 +175,42 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the permission extension counts the turn
 - THEN it aborts the run and records the limit reached
 - AND the run ends `failed` with `worker_limit_reached`
+
+## Worker models
+
+### scenario.workers.backend-from-client — Workers run on the main session's program
+
+- GIVEN a command started from a Claude Code session, one started from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and one started from neither
+- WHEN each resolves the worker backend
+- THEN the first resolves `claude` from `CLAUDECODE=1` and the second `pi` from `CONCORDE_CLIENT`
+- AND the third is refused with `client_unknown`, naming every variable it looked at and how to set one
+- BUT a `CONCORDE_CLIENT` naming neither program is refused with `invalid_client`
+
+### scenario.workers.models-listed — The installed program's models are the candidates
+
+- GIVEN pi listing two models with credentials, one of them without reasoning, and Claude Code whose user settings name a model and whose environment pins another
+- WHEN `concorde workers models` runs for each backend
+- THEN the pi listing names both as `provider/model`, the reasoning one with pi's thinking levels and the other with only `off`, and is marked complete
+- AND the Claude Code listing names the aliases, the settings' model and the pinned model with Claude Code's effort levels, is marked incomplete and says why
+- AND each also names the configuration file, what it configures and the effective choice of every task type
+
+### scenario.workers.models-configured — A default and a task-type override
+
+- GIVEN a worktree without a worker model configuration
+- WHEN `concorde workers set` stores a default model and level and then an `implement` override of the model alone
+- THEN `.concorde/worker-models.json` holds both, and Git does not list it
+- AND an `implement` worker resolves the override's model with the default's level, every other task type the default
+- AND after `concorde workers unset --task-type implement` every task type resolves the default
+
+### scenario.workers.model-refused — A model or level the program does not offer is refused
+
+- GIVEN pi listing its models
+- WHEN `concorde workers set` names a model it does not list, or a level the chosen model does not offer
+- THEN the command exits 1 with an error link naming the value and the models or levels that are listed, and the file is unchanged
+- BUT with `--allow-unlisted` the unlisted model is stored
+
+### scenario.workers.model-config-invalid — An unreadable configuration is reported, never ignored
+
+- GIVEN a worktree whose `.concorde/worker-models.json` is not valid JSON or names an unknown task type
+- WHEN `concorde workers show` reads it
+- THEN it exits 1 with `config_invalid`, naming the file and what is wrong with it

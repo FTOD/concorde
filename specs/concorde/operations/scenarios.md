@@ -16,6 +16,21 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND the result is printed, saved in the run directory and the run is finished as `ok` in the task record
 - AND the command exits with status 0
 
+### scenario.operations.worker-model — A worker runs on the main session's program with the worktree's model
+
+- GIVEN a Claude Code main session and a task worktree whose worker model configuration sets a Claude Code default model and level and an `implement` override of the model
+- WHEN the main agent runs `concorde run implement` for the task
+- THEN the host launches `claude -p` with the override's model and the default's level as `--effort`
+- AND the run record and the result's `worker-model` host evidence name the backend, the model and the level
+- BUT a change made afterwards to the primary worktree's configuration does not change what the task's next worker runs on
+
+### scenario.operations.worker-model-unavailable — A run with no known main session program fails before launch
+
+- GIVEN a task, and a `concorde run implement` started outside any Claude Code or pi session with `CONCORDE_CLIENT` unset, or a task worktree whose worker model configuration is not valid JSON
+- WHEN the host reaches the worker step
+- THEN no worker starts and the result is `failed` with `worker_model_unavailable`
+- AND its cause is the `component` link of Workers' model configuration with `client_unknown` or `config_invalid`, naming the variables looked at or the file
+
 ### scenario.operations.progress-file — A run shows its progress
 
 - GIVEN a worker-backed Operation run

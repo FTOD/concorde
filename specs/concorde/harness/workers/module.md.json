@@ -31,6 +31,13 @@
           "concept.checks.configured-check",
           "concept.checks.check-result"
         ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.tasks.task"
+        ]
       }
     ],
     "includes": [
@@ -73,6 +80,12 @@
       "type": "concept",
       "title": "Worker backend",
       "meaning": "#concept.workers.backend"
+    },
+    {
+      "id": "concept.workers.model-configuration",
+      "type": "concept",
+      "title": "Worker model configuration",
+      "meaning": "#concept.workers.model-configuration"
     },
     {
       "id": "concept.workers.worker-settings",
@@ -176,6 +189,16 @@
         "src/concorde/harness/pi_backend.py",
         "src/concorde/harness/pi_permission.ts",
         "src/concorde/harness/pi_policy.ts"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.workers.models",
+      "type": "realization",
+      "title": "Model configuration",
+      "meaning": "#realization.workers.models",
+      "entries": [
+        "src/concorde/harness/models.py"
       ],
       "pending": []
     }

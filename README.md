@@ -100,9 +100,9 @@ Claude Code skill `.claude/skills/concorde/SKILL.md` and a block in `CLAUDE.md`,
 [`d2`](https://github.com/d2lang/d2) program that renders your Specs' diagrams as
 `.concorde/tools/d2`, a pinned release whose checksum it verifies (`--without-d2` skips it). With
 `--pi` it also places the locked pi runtime, the pi run view and the pi skill. It never writes your
-Specs. Then open Claude Code or pi in the project and talk to it: it is now the main agent. To run
-workers on pi, set `"workers": {"backend": "pi", "model": "<provider>/<model>"}` in
-`.concorde/config.json`.
+Specs. Then open Claude Code or pi in the project and talk to it: it is now the main agent.
+Workers run on the same program as the main agent; ask it to change the models they use and it lets
+you choose from what your Claude Code or pi installation offers (`concorde workers`).
 
 A typical change, as the main agent runs it:
 

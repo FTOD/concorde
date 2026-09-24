@@ -13,7 +13,7 @@ A run is requested with:
 
 | Input | Meaning |
 | --- | --- |
-| backend | `claude` (the default) or `pi`, from `workers.backend` of the project configuration |
+| backend | `claude` or `pi`: the program of the main session that started the run, as the host [detected](module.md#concept.workers.backend) it |
 | task worktree | Absolute path of the Git worktree the worker works in |
 | task type | One of the six Protocol task types; it selects the tool set |
 | grant | The frozen grant: every path with its level `rw`, `ro` or `names`, relative to the task worktree, and its context identity |
@@ -21,8 +21,8 @@ A run is requested with:
 | checks | The configured checks to run after each round, possibly none |
 | runtime paths | Extra absolute paths Bash may read, such as the toolchain, `.venv` or `node_modules` |
 | limits | Timeout per round, `--max-turns`, `--max-budget-usd`, and the number of resume rounds (default 3) |
-| model | Optionally the model passed with `--model` |
-| thinking | Optionally the thinking level passed with `--thinking`; pi backend only |
+| model | Optionally the model passed with `--model`, from the task worktree's [worker model configuration](module.md#concept.workers.model-configuration) |
+| reasoning | Optionally the reasoning level from the same configuration, passed with `--effort` on the Claude Code backend and `--thinking` on the pi backend |
 
 ## Run directory layout
 
@@ -160,7 +160,7 @@ On the Claude Code backend the first round runs, with `work/` as working directo
 claude -p --settings <run>/control/settings.json --tools <tool set>
        --json-schema <worker result schema> --output-format stream-json --verbose
        --permission-mode bypassPermissions --allow-dangerously-skip-permissions
-       --strict-mcp-config --max-turns <n> --max-budget-usd <x> [--model <model>]
+       --strict-mcp-config --max-turns <n> --max-budget-usd <x> [--model <model>] [--effort <level>]
 ```
 
 A resume round runs the same command with `--resume <latest session id>` and the check failures as
@@ -232,6 +232,7 @@ its log.
 | `run_directory`, `tmp` | the run directory and the run's `TMPDIR` |
 | `context_identity`, `grant_digest` | the grant's context identity and the digest of `control/grant.json` |
 | `backend` | `claude` or `pi` |
+| `model`, `reasoning` | the model and reasoning level passed to the worker, or null when the program's own default applied |
 | `settings_digest`, `brief_digest`, `tools` | what the worker was given; `settings_digest` is the digest of `control/settings.json` on the Claude Code backend and of `control/permission.ts` on the pi backend |
 | `started_at`, `ended_at` | UTC times |
 | `rounds` | per round: session identifier, prompt kind (`initial` or `check_failures`), exit status, duration, audit verdict with violating paths, and check results with log paths |

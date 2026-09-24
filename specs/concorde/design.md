@@ -32,6 +32,16 @@ unchanged as causes, and the main agent adds its own link on top, so no level su
 A task session's writes are confined to its task by generated settings, while the main agent
 stays unrestricted and alone merges.
 
+Workers run on the main agent's own program: a Claude Code main agent gets Claude Code workers and
+a pi main agent pi workers. The host reads which one started it from the environment rather than
+from a setting, because a setting could disagree with the session that is actually driving the
+work, and one program's credentials and models are what the developer has set up for it. Which
+model workers use is the developer's choice per worktree, in the untracked
+`.concorde/worker-models.json`: the models on offer depend on the machine's installation and
+credentials, not on the branch, and a task keeps the choice it was opened with so a change made
+for future work never alters a task already under way. Mixing programs, such as a Claude Code main
+agent with pi workers, is future work.
+
 ## Working inside the task
 
 Whoever carries out a task, the main agent or a task session, works inside the task worktree and

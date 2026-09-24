@@ -40,6 +40,10 @@ HANDLING = {
         "closing a task as merged requires its last delivery to be contained in the primary "
         "branch; merging is the main agent's step",
     ),
+    "config_copy_failed": (
+        "environment",
+        "the file system refused the copy, and Tasks does not remove a worktree it just created",
+    ),
     "session_failed": (
         "environment",
         "Claude Code did not start the background session Tasks asked for",

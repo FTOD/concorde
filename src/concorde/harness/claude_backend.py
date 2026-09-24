@@ -242,6 +242,8 @@ class ClaudeBackend:
             command += ["--max-budget-usd", str(request.max_budget_usd)]
         if request.model:
             command += ["--model", request.model]
+        if request.reasoning:
+            command += ["--effort", request.reasoning]
         if session:
             command += ["--resume", session]
         return command

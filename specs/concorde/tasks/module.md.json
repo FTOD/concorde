@@ -18,6 +18,13 @@
       {
         "target": "module.spec",
         "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers",
+        "relies_on": [
+          "concept.workers.model-configuration"
+        ]
       }
     ],
     "includes": [

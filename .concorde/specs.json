@@ -299,6 +299,13 @@
             "concept.checks.configured-check",
             "concept.checks.check-result"
           ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.tasks.task"
+          ]
         }
       ],
       "includes": [
@@ -386,6 +393,13 @@
         {
           "target": "module.spec",
           "meaning": "#uses-spec"
+        },
+        {
+          "target": "module.harness.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "concept.workers.model-configuration"
+          ]
         }
       ],
       "includes": [
@@ -785,7 +799,8 @@
           "target": "module.harness.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.workers.progress-file"
+            "concept.workers.progress-file",
+            "concept.workers.model-configuration"
           ]
         },
         {

@@ -19,6 +19,13 @@ from pathlib import Path
 from typing import Callable
 
 from ..errors import evidence, from_exception, link
+from ..harness.models import (
+    ModelConfigError,
+    config_path,
+    detect_client,
+    load,
+    selection,
+)
 
 
 @dataclass
@@ -232,6 +239,10 @@ class RunContext:
             frozen = grant(SpecRepository(self.worktree), bound, task_type).value
         except (SpecError, OSError, ValueError) as error:
             return self.grant_failure(task_type, bound, error)
+        try:
+            backend, model = self.worker_model(task_type)
+        except ModelConfigError as error:
+            return self.model_failure(task_type, error)
         config = self.workers_config()
         runtime = tuple(
             Path(path) if os.path.isabs(path) else self.worktree / path
@@ -251,12 +262,54 @@ class RunContext:
                 timeout=float(config.get("timeout_seconds", 1800)),
                 max_turns=int(config.get("max_turns", 200)),
                 max_budget_usd=config.get("max_budget_usd"),
-                model=config.get("model"),
-                backend=config.get("backend", "claude"),
-                thinking=config.get("thinking"),
+                model=model["model"],
+                backend=backend,
+                reasoning=model["reasoning"],
             )
         )
         return self.absorb(record)
+
+    def worker_model(self, task_type: str) -> tuple[str, dict]:
+        """The main session's backend and the task worktree's model choice for ``task_type``."""
+        backend, _ = detect_client()
+        return backend, selection(load(self.worktree), backend, task_type)
+
+    def model_failure(self, task_type: str, error) -> Stop:
+        """Stop ``failed``: the backend or the worker model configuration cannot be settled."""
+        path = config_path(self.worktree).as_posix()
+        return self.fail(
+            "failed",
+            "worker_model_unavailable",
+            f"The {task_type} worker could not be configured ({error.code}).",
+            f"the backend and model of the {task_type} worker of task "
+            f"{self.task.get('id', '?')} cannot be settled: {error.code}: {error} "
+            f"(configuration file {path})",
+            reason="input",
+            explanation="an Operation runs workers on the main session's agent program with the "
+            "task worktree's model configuration and never guesses or repairs either",
+            evidence=[evidence("worker_models", path, f"{error.code}: {error}")],
+            causes=[
+                component(
+                    "Workers (worker model configuration)",
+                    error.code,
+                    str(error),
+                    "input",
+                    "Workers reads the client from the environment and the configuration "
+                    "from the file, and changes neither",
+                )
+            ],
+            options=[
+                (
+                    "run the Operation from the Claude Code or pi main session, or set "
+                    "CONCORDE_CLIENT"
+                ),
+                (
+                    "inspect the configuration with concorde workers show --task "
+                    f"{self.task.get('id', '<task>')}, and fix it with concorde workers set "
+                    "or unset"
+                ),
+            ],
+        )
 
     @property
     def actor(self) -> str:
@@ -388,6 +441,12 @@ class RunContext:
                 f"{record['task_type']} grant",
             ),
             evidence("context-identity", record.get("context_identity") or "", ""),
+            evidence(
+                "worker-model",
+                record.get("backend") or "",
+                f"model {record.get('model') or 'the backend default'}, reasoning "
+                f"{record.get('reasoning') or 'the backend default'}",
+            ),
         ]
         rounds = record.get("rounds") or []
         for item in rounds:

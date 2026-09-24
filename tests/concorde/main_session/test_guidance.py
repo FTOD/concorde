@@ -129,6 +129,28 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("Solve an Issue like any other work", self.skill)
         self.assertIn("close the Issue on that task's branch", self.skill)
 
+    @verifies("scenario.main-session.choose-models")
+    def test_the_developer_chooses_worker_models(self):
+        self.assertIn("Workers run on your own agent program", self.skill)
+        self.assertIn("`.concorde/worker-models.json`", self.skill)
+        self.assertIn(
+            "copies the primary worktree's file into the new task worktree", self.skill
+        )
+        self.assertIn("Change worker models only when the developer asks.", self.skill)
+        self.assertIn("call the `concorde_configure_workers` tool", self.skill)
+        self.assertIn(
+            "run `concorde workers models` and ask with the AskUserQuestion tool",
+            self.skill,
+        )
+        self.assertIn(
+            "pass `--task <task>` only when the developer asks to change a task that "
+            "already exists",
+            self.skill,
+        )
+        self.assertIn(
+            "change the models workers use only when the developer asks", self.block
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

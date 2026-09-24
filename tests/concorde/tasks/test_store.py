@@ -8,12 +8,16 @@ import json
 import os
 import subprocess
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from concorde.errors import ERROR_SCHEMA, codes
+from concorde.harness import models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
+from tests.concorde.support.agent_fakes import command as model_command
+from tests.concorde.support.agent_fakes import fake_agents
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -64,6 +68,46 @@ class TaskStoreTests(unittest.TestCase):
             "# Decision log: severity\n\nGoal: let reports carry a severity\n",
             (self.root / ".concorde/tasks/severity.decisions.md").read_text(),
         )
+
+    @verifies("scenario.tasks.open-inherits-worker-models")
+    def test_a_new_task_keeps_its_own_worker_models(self):
+        primary_config = self.root / models.CONFIG
+        primary_config.write_text(
+            json.dumps(
+                {"schema_version": 1, "pi": {"default": {"model": "anthropic/a"}}}
+            )
+        )
+        worktree = Path(self.project.open_task("t1")["worktree"])
+        task_config = worktree / models.CONFIG
+        inherited = task_config.read_text()
+        self.assertEqual(primary_config.read_text(), inherited)
+        self.assertEqual("", git(worktree, "status", "--porcelain"))
+        primary_config.write_text(
+            json.dumps(
+                {"schema_version": 1, "pi": {"default": {"model": "anthropic/b"}}}
+            )
+        )
+        self.assertEqual(inherited, task_config.read_text())
+        environ = dict(
+            fake_agents(self.project.base / "bin", self.project.home),
+            CONCORDE_CLIENT="pi",
+        )
+        status, value = model_command(
+            ["set", "--task", "t1", "--model", "anthropic/c", "--allow-unlisted"],
+            self.root,
+            environ,
+        )
+        self.assertEqual((0, "task t1"), (status, value["scope"]), value)
+        self.assertEqual(
+            "anthropic/c", json.loads(task_config.read_text())["pi"]["default"]["model"]
+        )
+        self.assertEqual(
+            "anthropic/b",
+            json.loads(primary_config.read_text())["pi"]["default"]["model"],
+        )
+        primary_config.unlink()
+        second = Path(self.project.open_task("t2")["worktree"])
+        self.assertFalse((second / models.CONFIG).exists())
 
     @verifies("scenario.tasks.open-taken")
     def test_a_taken_identity_is_refused(self):

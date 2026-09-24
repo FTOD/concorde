@@ -27,7 +27,8 @@
         "target": "module.harness.workers",
         "meaning": "#uses-workers",
         "relies_on": [
-          "concept.workers.progress-file"
+          "concept.workers.progress-file",
+          "concept.workers.model-configuration"
         ]
       },
       {
@@ -91,6 +92,12 @@
       "meaning": "#concept.main-session.run-view"
     },
     {
+      "id": "concept.main-session.model-picker",
+      "type": "concept",
+      "title": "Model picker",
+      "meaning": "#concept.main-session.model-picker"
+    },
+    {
       "id": "concept.main-session.escalation-policy",
       "type": "concept",
       "title": "Escalation policy",
@@ -115,6 +122,16 @@
       "entries": [
         "src/concorde/main_session/pi_extension.ts",
         "src/concorde/main_session/pi_runs.ts"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.main-session.pi-model-picker",
+      "type": "realization",
+      "title": "pi model picker",
+      "meaning": "#realization.main-session.pi-model-picker",
+      "entries": [
+        "src/concorde/main_session/pi_models.ts"
       ],
       "pending": []
     }

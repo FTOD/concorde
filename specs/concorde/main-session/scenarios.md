@@ -62,6 +62,24 @@ check the rendered guidance against them are pending.
 - AND never to merge with `git merge` itself, because other main sessions may be merging
 - AND to run the command again on `merge_busy`, and to resolve a `merge_conflict` in the task worktree and deliver again
 
+## Worker models
+
+### scenario.main-session.pi-model-picker — pi's picker applies the developer's choice
+
+- GIVEN a pi main session whose worktree lists two pi models and configures an `implement` override
+- WHEN the developer opens the model picker with `/concorde-models` or the main agent calls `concorde_configure_workers`
+- THEN the picker offers the default and every task type with what it runs on now, then the listed models, then the chosen model's reasoning levels
+- AND each choice is applied with `concorde workers set --backend pi`, or `unset` when the developer returns a task type to the default, in the named task's worktree when a task is given
+- AND a refused command is shown with every link of its error chain
+
+### scenario.main-session.choose-models — The guidance lets the developer choose worker models
+
+- GIVEN the rendered main-session guidance
+- WHEN a developer asks the main agent to change the models workers use
+- THEN it is told that workers run on its own program and take their models from the worktree's configuration, which new tasks inherit
+- AND to let the developer choose with the picker in pi or with the question tool from `concorde workers models` in Claude Code
+- BUT to change an existing task's configuration only when the developer asks for that task
+
 ## Escalation
 
 ### scenario.main-session.ordinary-decision — The guidance decides ordinary questions and reports them

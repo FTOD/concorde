@@ -60,6 +60,12 @@ asking the developer for authorization, from the primary worktree, with `concord
 rather than `git merge`, so that the merge holds the merge lock and validates the primary branch
 after merging.
 
+## Worker models
+
+### req.main-session.developer-chooses-models — The developer chooses worker models
+
+The guidance SHALL tell the main agent to change the models workers use only when the developer asks, to let the developer choose among the candidates `concorde workers models` lists (in pi through the model picker, in Claude Code through its question tool), and to change an existing task's configuration only when the developer asks for that task.
+
 ## Escalation
 
 ### req.main-session.escalation-policy — Only major decisions reach the developer

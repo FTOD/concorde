@@ -361,8 +361,8 @@ class PiBackend:
         ]
         if request.model:
             command += ["--model", request.model]
-        if request.thinking:
-            command += ["--thinking", request.thinking]
+        if request.reasoning:
+            command += ["--thinking", request.reasoning]
         return command
 
     def stream(self) -> PiStream:

@@ -15,6 +15,14 @@ records and error codes are defined in the [contracts](contracts.md).
 - AND `.concorde/tasks/severity.decisions.md` holds the heading and the goal
 - AND the command prints the record
 
+### scenario.tasks.open-inherits-worker-models — A new task keeps its own copy of the worker models
+
+- GIVEN a primary worktree whose `.concorde/worker-models.json` chooses a default model
+- WHEN the main agent opens a task and then changes the primary worktree's default model
+- THEN the task worktree holds the configuration as it was when the task opened, untracked by Git
+- AND it changes only through `concorde workers set` or `unset` run in the task worktree or naming the task with `--task`
+- BUT a task opened from a primary worktree without the file gets none, and its workers use the program's default
+
 ### scenario.tasks.open-taken — Refuse a taken identity
 
 - GIVEN a task `severity` exists in any state, or the branch `concorde/severity` or the worktree path exists

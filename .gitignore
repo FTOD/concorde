@@ -43,6 +43,7 @@ Thumbs.db
 .venv
 .concorde/runs/
 .concorde/tasks/
+.concorde/worker-models.json
 .concorde/tools/
 
 node_modules

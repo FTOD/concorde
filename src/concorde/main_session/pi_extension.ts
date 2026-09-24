@@ -10,7 +10,7 @@
  * and lists; only the FleetView entries and `bg_wait` are missing.
  */
 
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -32,6 +32,17 @@ import {
   view,
   workersOf,
 } from "./pi_runs.ts";
+import {
+  type CommandOutcome,
+  commandFor,
+  currentModel,
+  DONE,
+  levelRows,
+  type Listing,
+  modelRows,
+  refusalText,
+  scopeRows,
+} from "./pi_models.ts";
 
 const SOURCE = "concorde";
 const POLL_MS = 2000;
@@ -87,7 +98,100 @@ interface Tracked {
   reported: boolean;
 }
 
+/** Run a `concorde` command of the worktree and read the one JSON value it prints. */
+function concorde(cwd: string, args: string[]): Promise<CommandOutcome> {
+  const [command, ...prefix] = concordeCommand(cwd);
+  return new Promise((resolve) => {
+    execFile(
+      command,
+      [...prefix, ...args],
+      {
+        cwd,
+        maxBuffer: 16 * 1024 * 1024,
+        env: { ...process.env, CONCORDE_CLIENT: "pi" },
+      },
+      (error, stdout, stderr) => {
+        let value: Record<string, unknown> | null = null;
+        try {
+          value = JSON.parse(stdout);
+        } catch {
+          value = null;
+        }
+        const code =
+          error && typeof error.code === "number" ? error.code : error ? 1 : 0;
+        resolve({ code, value, text: `${stdout}${stderr}`.trim() });
+      },
+    );
+  });
+}
+
+/**
+ * The worker model picker: choose, per scope (every task type, or one), a pi model and a
+ * reasoning level from what `concorde workers models` lists, and apply each choice with
+ * `concorde workers set` or `unset`. Returns what it changed, or throws the command's refusal.
+ */
+async function pickWorkerModels(
+  ctx: ExtensionContext,
+  task: string | null,
+): Promise<string[]> {
+  const cwd = task
+    ? (taskWorktree(primaryRoot(ctx.cwd), task) ?? ctx.cwd)
+    : ctx.cwd;
+  const where = task ? ["--task", task] : [];
+  const changes: string[] = [];
+  for (;;) {
+    const listed = await concorde(cwd, [
+      "workers",
+      "models",
+      "--backend",
+      "pi",
+      ...where,
+    ]);
+    if (listed.code !== 0 || !listed.value)
+      throw new Error(
+        `concorde workers models failed:\n${refusalText(listed)}`,
+      );
+    const listing = listed.value as unknown as Listing;
+    const scopes = scopeRows(listing);
+    const scopeLabel = await ctx.ui.select(
+      `Worker models (${task ? `task ${task}` : "this worktree"}, ${listing.config})`,
+      scopes.map((row) => row.label),
+    );
+    const scope = scopes.find((row) => row.label === scopeLabel)?.scope;
+    if (!scope || scope === DONE) return changes;
+    const models = modelRows(listing, scope);
+    const modelLabel = await ctx.ui.select(
+      `Model for ${scope === "default" ? "every task type" : scope}`,
+      models.map((row) => row.label),
+    );
+    const picked = models.find((row) => row.label === modelLabel);
+    if (!picked) continue;
+    let level: string | null = null;
+    if (picked.action !== "unset") {
+      const model = picked.model ?? currentModel(listing, scope);
+      level =
+        (await ctx.ui.select(
+          `Reasoning level for ${model ?? "pi's default model"}`,
+          levelRows(listing, model),
+        )) ?? null;
+      if (level === null) continue;
+    }
+    const args = commandFor(scope, picked.action, picked.model, level, task);
+    if (!args) continue;
+    const applied = await concorde(cwd, args);
+    if (applied.code !== 0)
+      throw new Error(
+        `concorde ${args.join(" ")} failed:\n${refusalText(applied)}`,
+      );
+    changes.push(args.slice(1).join(" "));
+    ctx.ui.notify(`Worker models: ${args.slice(1).join(" ")}`, "info");
+  }
+}
+
 export default function (pi: ExtensionAPI) {
+  // Workers run on the main session's agent program; every command this session starts, through
+  // bash or a tool, tells Concorde that it is pi.
+  process.env.CONCORDE_CLIENT = "pi";
   const tracked = new Map<string, Tracked>();
   let root = process.cwd();
   let sessionId = "";
@@ -245,7 +349,12 @@ export default function (pi: ExtensionAPI) {
           params.task,
           ...(params.arguments ?? []),
         ],
-        { cwd: worktree, detached: true, stdio: ["ignore", output, output] },
+        {
+          cwd: worktree,
+          detached: true,
+          stdio: ["ignore", output, output],
+          env: { ...process.env, CONCORDE_CLIENT: "pi" },
+        },
       );
       let exited: number | null = null;
       child.on("exit", (code) => (exited = code ?? -1));
@@ -282,6 +391,64 @@ export default function (pi: ExtensionAPI) {
           ? `concorde run exited with status ${exited} before its run began: ${text || "(no output)"}`
           : `concorde run (process ${child.pid}) wrote no progress file within ${START_WAIT_MS / 1000}s; see ${log}`,
       );
+    },
+  });
+
+  pi.registerTool({
+    name: "concorde_configure_workers",
+    label: "Configure worker models",
+    description:
+      "Open the developer's picker for the models Concorde's pi workers use: a default and " +
+      "optional overrides per task type, each a model and a reasoning level from the models pi " +
+      "lists. Use it when the developer asks to choose or change worker models. Without a task " +
+      "it changes this worktree's configuration, which new tasks inherit; with a task it " +
+      "changes only that task's copy. The developer makes every choice in the dialog.",
+    promptSnippet:
+      "Let the developer choose the models of Concorde's pi workers",
+    parameters: Type.Object({
+      task: Type.Optional(
+        Type.String({
+          description:
+            "A task whose own configuration to change; only when the developer asks for it",
+        }),
+      ),
+    }),
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      if (!ctx.hasUI)
+        throw new Error(
+          "the worker model picker needs pi's interactive interface; run concorde workers " +
+            "models and concorde workers set instead",
+        );
+      const changes = await pickWorkerModels(ctx, params.task ?? null);
+      return {
+        content: [
+          {
+            type: "text",
+            text: changes.length
+              ? `The developer changed the worker models: ${changes.join("; ")}. Run concorde workers show for the result.`
+              : "The developer changed nothing.",
+          },
+        ],
+        details: { changes },
+      };
+    },
+  });
+
+  pi.registerCommand("concorde-models", {
+    description:
+      "Choose the models Concorde's workers use (optionally a task identity, to change only that task)",
+    handler: async (args, ctx) => {
+      try {
+        const changes = await pickWorkerModels(ctx, args.trim() || null);
+        ctx.ui.notify(
+          changes.length
+            ? `Worker models changed: ${changes.join("; ")}`
+            : "Worker models unchanged.",
+          "info",
+        );
+      } catch (error) {
+        ctx.ui.notify(String((error as Error).message ?? error), "error");
+      }
     },
   });
 

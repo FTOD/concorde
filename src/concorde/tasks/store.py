@@ -20,6 +20,8 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..harness.models import CONFIG, inherit
+
 TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
 STATES = ("open", "active", "delivered", "closed", "failed")
 # How a task ended: closed when its goal was reached, merged or not; failed when it was not.
@@ -380,6 +382,16 @@ def _open_task(
             f"git worktree add -b {branch} {worktree} {base_commit} exited "
             f"{created.returncode}: {created.stderr.strip()}",
         )
+    try:
+        inherit(primary, worktree)
+    except OSError as error:
+        raise TaskError(
+            "config_copy_failed",
+            f"the worker model configuration {CONFIG} of {primary} could not be copied into the "
+            f"new worktree {worktree}: {error}. The worktree and branch {branch} exist but no "
+            f"task was recorded; remove them with git worktree remove {worktree} and git branch "
+            f"-D {branch} before opening the task again",
+        ) from error
     stamp = now()
     record = {
         "id": task_id,

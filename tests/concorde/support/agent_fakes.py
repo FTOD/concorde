@@ -1,0 +1,62 @@
+"""Fake ``claude`` and ``pi`` programs for the worker model configuration's command.
+
+``fake_agents`` writes both into a directory and returns an environment that makes
+``concorde workers`` use them; ``command`` runs that command in-process and parses its output.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+import os
+from pathlib import Path
+
+from concorde.harness import models
+
+FAKE_PI = """#!/usr/bin/env python3
+import sys
+arguments = sys.argv[1:]
+if arguments == ["--version"]:
+    print("0.87.1")
+elif arguments == ["--help"]:
+    print("  --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh, max")
+elif arguments == ["--no-extensions", "--list-models"]:
+    print("provider      model            context  max-out  thinking  images")
+    print("anthropic     claude-sonnet-5  1M       128K     yes       yes   ")
+    print("local-openai  plain-7          200K     64K      no        no    ")
+else:
+    sys.exit(3)
+"""
+FAKE_CLAUDE = """#!/usr/bin/env python3
+import sys
+arguments = sys.argv[1:]
+if arguments == ["--version"]:
+    print("2.1.281 (Claude Code)")
+elif arguments == ["--help"]:
+    print("  --effort <level>                      Effort level for the current session")
+    print("                                        (low, medium, high, xhigh, max)")
+else:
+    sys.exit(3)
+"""
+
+
+def fake_agents(directory: Path, home: Path) -> dict:
+    """An environment whose ``pi`` and ``claude`` are fakes and whose home is ``home``."""
+    directory.mkdir(parents=True, exist_ok=True)
+    for name, text in (("pi", FAKE_PI), ("claude", FAKE_CLAUDE)):
+        (directory / name).write_text(text)
+        (directory / name).chmod(0o755)
+    return {
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "HOME": str(home),
+        "CONCORDE_PI": str(directory / "pi"),
+        "CONCORDE_CLAUDE": str(directory / "claude"),
+    }
+
+
+def command(argv, cwd: Path, environ: dict) -> tuple[int, dict]:
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        status = models.main(list(argv), cwd=cwd, environ=environ)
+    return status, json.loads(output.getvalue())

@@ -79,7 +79,8 @@ class WorkerRequest:
     claude: str | None = None
     credentials: Path | None = None
     backend: str = "claude"
-    thinking: str | None = None
+    # The reasoning level: Claude Code's --effort, pi's --thinking.
+    reasoning: str | None = None
     pi: str | None = None
     pi_config: Path | None = None
     sandbox_runtime: Path | None = None
@@ -301,6 +302,8 @@ def run_worker(request: WorkerRequest) -> dict:
         "run_id": run_id,
         "task_type": request.task_type,
         "backend": request.backend,
+        "model": request.model,
+        "reasoning": request.reasoning,
         "worktree": worktree.as_posix(),
         "context_identity": request.grant.get("context_identity")
         if isinstance(request.grant, dict)
@@ -364,8 +367,8 @@ def run_worker(request: WorkerRequest) -> dict:
             f"the worker request names the backend {request.backend!r}; Workers knows "
             + ", ".join(sorted(BACKENDS)),
             "input",
-            "the backend comes from workers.backend of the project configuration, which "
-            "Workers does not choose",
+            "the backend is the main session's agent program, which the Operation host "
+            "names and Workers does not choose",
         )
     if (
         request.task_type not in TOOL_SETS

@@ -277,6 +277,9 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(1, claude.count("<!-- concorde:start -->"))
         self.assertIn(".concorde/runs/", (project / ".gitignore").read_text())
         self.assertIn(".claude/worktrees/", (project / ".gitignore").read_text())
+        self.assertIn(
+            ".concorde/worker-models.json", (project / ".gitignore").read_text()
+        )
         self.assertFalse((project / ".concorde/config.json").exists())
         self.assertFalse((project / ".concorde/specs.json").exists())
         self.assertFalse((project / "specs").exists())
@@ -401,6 +404,10 @@ class InstallTests(unittest.TestCase):
         extension = project / ".pi/extensions/concorde"
         self.assertIn("concorde_run", (extension / "index.ts").read_text())
         self.assertTrue((extension / "pi_runs.ts").is_file())
+        self.assertTrue((extension / "pi_models.ts").is_file())
+        self.assertIn(
+            "concorde_configure_workers", (extension / "index.ts").read_text()
+        )
         skill = (project / ".pi/skills/concorde/SKILL.md").read_text()
         self.assertTrue(skill.startswith("---\nname: concorde\n"))
         self.assertIn(".pi/extensions/concorde/index.ts", receipt["files"])

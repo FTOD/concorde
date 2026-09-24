@@ -197,25 +197,48 @@ worker's round and latest tool call, such as `implement worker (pi) round 2 · w
 -q`. When it ends, the view shows its status and summary. `/concorde` lists the recent runs, also
 without pi-subagents. The view only observes: the Operation keeps running if you close pi.
 
-### Choose the worker backend
+### Choose the worker models
 
-Workers run on Claude Code unless your project configuration says otherwise. To run them on pi, set
-the `workers` object of `.concorde/config.json`:
+Workers run on the program you talk to: a Claude Code main agent gets Claude Code workers, a pi
+main agent pi workers. Mixing the two is not supported yet. Which model and reasoning level they
+use is yours to choose; ask the main agent to change the worker models.
+
+- In pi, the main agent opens a picker (you can also type `/concorde-models`). You choose the
+  default for every task type or a task type of your choice, then a model from the ones pi lists
+  with credentials, then a reasoning level.
+- In Claude Code, the main agent lists the candidates and asks you the same three questions.
+  Claude Code cannot list the models of your account, so it offers its aliases (`fable`, `opus`,
+  `sonnet`, `haiku`) and the models your settings name; type a full model name such as
+  `claude-opus-5-5` as a free answer if you want a specific one.
+
+The choice is stored per worktree in `.concorde/worker-models.json`, which Git ignores:
 
 ```json
 {
-  "workers": {
-    "backend": "pi",
-    "model": "anthropic/claude-sonnet-5",
-    "thinking": "medium"
+  "schema_version": 1,
+  "pi": {
+    "default": { "model": "anthropic/claude-sonnet-5", "reasoning": "medium" },
+    "task_types": {
+      "implement": { "model": "local-openai/gpt-6", "reasoning": "low" }
+    }
   }
 }
 ```
 
-`model` is passed to the worker with `--model` (a pi `provider/id` for pi, a Claude model for
-Claude Code), and `thinking` with `--thinking` (pi only). The backend is independent of the client
-you talk to: a pi main agent can run Claude Code workers and the other way round. A pi worker uses
-copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.
+A task copies the primary worktree's file when it is opened and keeps it: a change you make later
+applies to tasks opened after it, and changes an existing task only if you ask for that task. The
+same commands work by hand:
+
+```bash
+concorde workers models                    # candidates and the current choice
+concorde workers set --model sonnet --reasoning medium
+concorde workers set --task-type implement --model opus
+concorde workers unset --task-type implement
+concorde workers show --task retry         # one task's own copy
+```
+
+The reasoning level is passed as `--effort` to Claude Code and as `--thinking` to pi. A pi worker
+uses copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.
 
 ## One change from idea to merge
 

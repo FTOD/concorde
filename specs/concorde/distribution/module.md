@@ -59,14 +59,15 @@ global `--project-root` and one subcommand:
 | `spec-mcp` | runs the stdio MCP server rooted at `CLAUDE_PROJECT_DIR` or the client's root; it prints no envelope | [Spec MCP server](../spec-tooling/spec-mcp/module.md) |
 | `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first Spec | [Spec core](../spec-tooling/spec/module.md) |
 | `task open`, `list`, `show` or `close` | opens, lists, shows or closes tasks; prints the task command's own JSON | [Tasks](../tasks/module.md) |
+| `workers models`, `show`, `set` or `unset` | lists the models the main session's program offers workers and reads or changes a worktree's worker model configuration; prints its own JSON | [Workers](../harness/workers/module.md) |
 | `run <operation> --task <task>` | runs one Operation; prints the Operation result | [Operations](../operations/module.md) |
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 
-Every command but `spec-mcp`, `task`, `run` and `issues` prints exactly one JSON envelope and exits
-with its status, even when refused
-([requirements](requirements.md#req.distribution.one-envelope)); those four route to their owners,
+Every command but `spec-mcp`, `task`, `workers`, `run` and `issues` prints exactly one JSON envelope
+and exits with its status, even when refused
+([requirements](requirements.md#req.distribution.one-envelope)); those five route to their owners,
 which define their own JSON and exit codes.
 
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
@@ -82,8 +83,8 @@ leaving the rest of the file untouched — and the `d2` release `concorde.json` 
 `.concorde/tools/d2`, checked against its SHA-256 before anything else is written and kept on a
 later install with the same pin
 ([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
-plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/framework/`,
-`.concorde/tools/` and `.claude/worktrees/`, where task worktrees go, and a receipt
+plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/worker-models.json`,
+`.concorde/framework/`, `.concorde/tools/` and `.claude/worktrees/`, where task worktrees go, and a receipt
 `.concorde/install.json`. The command runs the Framework copy of the worktree it belongs to; a
 task worktree has none of its own, since Git ignores it, unless the task reinstalled Concorde
 there, so its command runs the primary worktree's copy, found through Git's common directory.
@@ -94,7 +95,7 @@ their commands in — under `.concorde/tools/pi-runtime/` by copying the package
 `src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
 `npm ci --ignore-scripts`, which installs exactly the locked versions after checking each
 package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime));
-the [run view](../main-session/module.md#concept.main-session.run-view) as
+the [run view](../main-session/module.md#concept.main-session.run-view), with its model picker, as
 `.pi/extensions/concorde/`; and the skill a second time as `.pi/skills/concorde/SKILL.md`. A later
 install with the same lockfile keeps the runtime it placed. Without npm it refuses before writing
 anything else.

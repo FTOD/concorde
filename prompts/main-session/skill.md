@@ -200,6 +200,43 @@ Operations that fix it, and close the Issue on that task's branch with
 `concorde issues close <id> --reason resolved --note <text> --evidence <path>…`, so the closure is
 merged with the fix; `concorde issues reopen` reopens one that came back.
 
+## Worker models
+
+Workers run on your own agent program: Claude Code workers when you are a Claude Code session, pi
+workers when you are a pi session. A main session of one program with workers of the other is not
+supported in this version. The model and reasoning level workers use come from the worktree's
+`.concorde/worker-models.json`: for each program a default and optional overrides per task type,
+an override replacing only the fields it sets. Git ignores the file. `concorde task open` copies
+the primary worktree's file into the new task worktree, so a task keeps the configuration it
+started with, and a later change in the primary worktree never reaches it. Without a file, workers
+use the program's own default model.
+
+```bash
+concorde workers models [--task <task>]    # what your program offers and what is chosen now
+concorde workers show   [--task <task>]
+concorde workers set    [--task-type <type>] [--model <model>] [--reasoning <level>] [--task <task>] [--allow-unlisted]
+concorde workers unset  [--task-type <type>] [--task <task>]
+```
+
+Change worker models only when the developer asks. Without `--task` the commands read and change
+the worktree you run them in, which in the primary worktree means the tasks you open from now on;
+pass `--task <task>` only when the developer asks to change a task that already exists, and only
+that task's copy changes. Let the developer make the choice:
+
+- In pi, call the `concorde_configure_workers` tool (the developer can also type
+  `/concorde-models`). It opens a picker in which the developer chooses, for every task type or one
+  of them, a model from those pi lists and a reasoning level, and it tells you what changed.
+- In Claude Code, run `concorde workers models` and ask with the AskUserQuestion tool: first the
+  scope (every task type, or one task type), then the model, then the reasoning level from the
+  model's `levels`. Offer the listed models as options, and mention that a full model name can be
+  given as a free-text answer. Claude Code cannot list the models of its account, as the listing's
+  `note` says, so a model it did not list needs `--allow-unlisted`. Apply each answer with
+  `concorde workers set` and show the developer the resulting `effective` table.
+
+A refused command prints its error link; a model or level the program does not list is refused
+with the ones it does. An Operation whose worker cannot be configured ends `failed` with
+`worker_model_unavailable`, naming the file or the missing client.
+
 ## Spec queries
 
 You may configure the Spec MCP server for your own session, for example in the project's

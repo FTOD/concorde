@@ -12,9 +12,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
+from concorde.harness import models
 from concorde.operations import catalog
 from concorde.operations.host import RESULT_SCHEMA, UsageError
 from concorde.operations.provider import Continue, Provider, evidence
+from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import store
 from tests.concorde.support.operation_project import OperationProject
@@ -73,10 +75,83 @@ class HostTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def implement(self, steps, *extra):
+    def implement(self, steps, *extra, client="claude"):
         return self.project.run(
-            "implement", "--task", "t1", "--goal", OperationProject.plan(steps), *extra
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan(steps),
+            *extra,
+            client=client,
         )
+
+    def worker_record(self, envelope) -> dict:
+        [worker] = envelope["worker_runs"]
+        return json.loads(
+            (self.root / ".concorde/runs" / worker / "record.json").read_text()
+        )
+
+    def launched(self, envelope) -> list[str]:
+        """The argument list the fake claude received in the first round."""
+        work = Path(self.worker_record(envelope)["run_directory"]) / "work"
+        return json.loads((work / "fake-round-1.json").read_text())["argv"]
+
+    @verifies("scenario.operations.worker-model")
+    def test_a_worker_runs_with_the_task_worktrees_model(self):
+        (self.worktree / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "claude": {
+                        "default": {"model": "sonnet", "reasoning": "medium"},
+                        "task_types": {"implement": {"model": "opus"}},
+                    },
+                }
+            )
+        )
+        status, envelope = self.implement([{}])
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        argv = self.launched(envelope)
+        self.assertEqual("opus", argv[argv.index("--model") + 1])
+        self.assertEqual("medium", argv[argv.index("--effort") + 1])
+        record = self.worker_record(envelope)
+        self.assertEqual(
+            ("claude", "opus", "medium"),
+            (record["backend"], record["model"], record["reasoning"]),
+        )
+        [shown] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "worker-model"
+        ]
+        self.assertEqual("claude", shown["ref"])
+        self.assertIn("model opus, reasoning medium", shown["detail"])
+        (self.root / models.CONFIG).write_text(
+            json.dumps({"schema_version": 1, "claude": {"default": {"model": "haiku"}}})
+        )
+        status, envelope = self.implement([{}])
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        argv = self.launched(envelope)
+        self.assertEqual("opus", argv[argv.index("--model") + 1])
+
+    @verifies("scenario.operations.worker-model-unavailable")
+    def test_a_run_without_a_main_session_program_fails_before_launch(self):
+        status, envelope = self.implement([{}], client=None)
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        error = envelope["error"]
+        self.assertEqual("worker_model_unavailable", error["code"])
+        [cause] = error["causes"]
+        self.assertEqual(
+            ("component", "client_unknown"), (cause["level"], cause["code"])
+        )
+        self.assertIn("CLAUDECODE", cause["detail"])
+        validate(error, ERROR_SCHEMA)
+        (self.worktree / models.CONFIG).write_text("{broken")
+        status, envelope = self.implement([{}])
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("config_invalid", cause["code"])
+        self.assertIn(str(self.worktree / models.CONFIG), cause["detail"])
 
     def saved(self, envelope):
         return json.loads(

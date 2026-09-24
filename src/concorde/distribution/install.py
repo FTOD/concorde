@@ -32,6 +32,7 @@ PI_EXTENSION = ".pi/extensions/concorde"
 PI_EXTENSION_SOURCES = {
     "index.ts": "src/concorde/main_session/pi_extension.ts",
     "pi_runs.ts": "src/concorde/main_session/pi_runs.ts",
+    "pi_models.ts": "src/concorde/main_session/pi_models.ts",
 }
 CLAUDE_MD = "CLAUDE.md"
 RECEIPT = ".concorde/install.json"
@@ -41,6 +42,7 @@ RUNTIME = ("src", "scripts", "prompts", "protocol", "generated")
 IGNORED = (
     ".concorde/runs/",
     ".concorde/tasks/",
+    ".concorde/worker-models.json",
     ".concorde/framework/",
     f"{TOOLS}/",
     ".claude/worktrees/",

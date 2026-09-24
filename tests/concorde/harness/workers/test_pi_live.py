@@ -52,7 +52,7 @@ class LivePiWorkerTests(unittest.TestCase):
             "backend": "pi",
             "claude": None,
             "model": MODEL,
-            "thinking": "low",
+            "reasoning": "low",
             "check_modules": None,
             "timeout": 600,
             "max_turns": 40,

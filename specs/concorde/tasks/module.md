@@ -45,8 +45,13 @@ concorde task open severity --goal "let Issue reports carry a severity" --module
 Tasks checks the identity is new and every named Module exists in the
 [registry](../spec-tooling/spec/module.md#concept.spec.registry), creates branch
 `concorde/severity` from the primary worktree's commit (or `--base <ref>`), adds a worktree at
-`.claude/worktrees/severity` inside the primary worktree by default (or `--path <dir>`), writes the
-record and log, and prints it. A worktree path inside the primary worktree must be ignored by Git
+`.claude/worktrees/severity` inside the primary worktree by default (or `--path <dir>`), copies the
+primary worktree's [worker model
+configuration](../harness/workers/module.md#concept.workers.model-configuration) into it when there
+is one, writes the record and log, and prints it. Git ignores that configuration, so the copy is
+the task's own: the task's workers keep the models chosen when it opened, whatever the primary
+worktree chooses later, until a command names the task. A copy the file system refuses ends the
+open with `config_copy_failed`, naming the worktree and branch left behind and how to remove them. A worktree path inside the primary worktree must be ignored by Git
 there, or the open is refused with `worktree_not_ignored`; the installer adds
 `.claude/worktrees/` to `.gitignore`. From then on the task's work happens inside that worktree,
 with the worktree's own `concorde`, and the host of every Operation run for the task works there.
@@ -288,9 +293,15 @@ Delivery read and update records through it, relying on Tasks while it relies on
 ```d2
 tasks: Tasks
 spec: Spec core
+workers: Workers
 tasks -> spec
+tasks -> workers
 ```
 
+- <a id="uses-workers"></a>**Workers** names the file of the [worker model
+  configuration](../harness/workers/module.md#concept.workers.model-configuration), which Tasks
+  copies into a new task worktree. Tasks relies on it being one untracked file per worktree; it
+  never reads or changes its content.
 - <a id="uses-spec"></a>**Spec core** provides two things Tasks relies on: its registry, so a
   record never names a Module that doesn't exist at open or when a run adds one; and its
   [file transactions](../spec-tooling/spec/module.md#concept.spec.file-transaction), so every

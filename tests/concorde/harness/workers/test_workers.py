@@ -87,7 +87,7 @@ class WorkerProject:
                 "flag = pathlib.Path('src/a/flag')\n"
                 "sys.exit(0 if not flag.exists() or flag.read_text() == 'ok' else 1)\n"
             ),
-            ".gitignore": ".concorde/runs/\n.claude/worktrees/\n__pycache__/\n",
+            ".gitignore": ".concorde/runs/\n.concorde/worker-models.json\n.claude/worktrees/\n__pycache__/\n",
         }.items():
             (self.root / path).parent.mkdir(parents=True, exist_ok=True)
             (self.root / path).write_text(content)

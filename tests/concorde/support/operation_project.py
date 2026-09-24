@@ -83,12 +83,26 @@ class OperationProject(WorkerProject):
     def worktree(self, task_id: str = "t1") -> Path:
         return Path(store.load_task(self.root, task_id)["worktree"])
 
-    def run(self, *argv: str, cwd: Path | None = None) -> tuple[int, dict | None]:
-        """Run ``concorde run <argv>`` with the fake claude and this project's home."""
+    def run(
+        self, *argv: str, cwd: Path | None = None, client: str | None = "claude"
+    ) -> tuple[int, dict | None]:
+        """Run ``concorde run <argv>`` with the fake claude and this project's home, as if
+        started from a main session of ``client``, or from no main session when it is None."""
+        values = {"CONCORDE_CLAUDE": str(self.fake)}
+        if client:
+            values["CONCORDE_CLIENT"] = client
         with (
-            patch.dict(os.environ, {"CONCORDE_CLAUDE": str(self.fake)}),
+            patch.dict(os.environ, values),
             patch("pathlib.Path.home", return_value=self.home),
         ):
+            if not client:
+                for name in (
+                    "CONCORDE_CLIENT",
+                    "CLAUDECODE",
+                    "PI_SESSION_ID",
+                    "PI_CODING_AGENT",
+                ):
+                    os.environ.pop(name, None)
             return execute(list(argv), cwd=cwd or self.root)
 
     @staticmethod

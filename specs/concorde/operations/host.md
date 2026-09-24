@@ -81,11 +81,22 @@ A failed write never changes the run.
 ## Worker settings in the project configuration
 
 The optional `workers` object of `.concorde/config.json`, read from the task worktree, sets the
-backend and limits of every worker launch: `backend` (`claude`, the default, or `pi`), `model`
-(passed with `--model`), `thinking` (pi only, passed with `--thinking`), `timeout_seconds` per round
-(default 1800), `max_turns` (default 200), `max_budget_usd` (default none), `rounds` of resume
+limits of every worker launch: `timeout_seconds` per round (default 1800), `max_turns` (default 200), `max_budget_usd` (default none), `rounds` of resume
 (default 3) and `runtime`, the paths Bash may read besides the grant, relative to the task
-worktree or absolute (default `.venv` and `node_modules`, each only when it exists). A refusal of
+worktree or absolute (default `.venv` and `node_modules`, each only when it exists).
+
+## Worker backend and model
+
+No project setting chooses the agent program or the model of a worker. Before each worker launch
+the host takes the [worker backend](../harness/workers/module.md#concept.workers.backend) from its
+own environment, which the main session that started the run passed on, and the model and
+reasoning level of the worker's task type from the task worktree's [worker model
+configuration](../harness/workers/module.md#concept.workers.model-configuration). It records both
+in the run record and adds `worker-model` host evidence naming the backend, model and level the
+worker ran with. When no main session program can be found, or the configuration file cannot be
+read, the step stops `failed` with `worker_model_unavailable` before any worker starts.
+
+A refusal of
 the task before the run begins (`unknown_task`, `missing_worktree`, `input_not_admissible`,
 `task_closed`, `task_busy`, `unknown_module`) is reported as `refused` evidence.
 
@@ -110,7 +121,7 @@ The step's outcome maps to the result status as follows; the first matching row 
 
 | Outcome | Status |
 | --- | --- |
-| Grant not computable, launch error, timeout, invalid worker result, audit violation | `failed` |
+| Grant not computable, worker backend or model not settled, launch error, timeout, invalid worker result, audit violation | `failed` |
 | Checks still failing after the last round | `failed` |
 | Worker result status `failed` | `failed` |
 | Worker result status `blocked` | `blocked` |
@@ -137,6 +148,7 @@ build it as follows.
 | --- | --- | --- | --- |
 | Refusal before the run began | `refused` | `decision` for `task_busy`, `scope` for `specs_unloadable`, `input` otherwise | the Tasks refusal |
 | Grant not computable | `grant_unavailable` | `scope` | Spec core's error |
+| Worker backend or model configuration not settled | `worker_model_unavailable` | `input` | the `component` link of Workers' model configuration, with its code (`client_unknown`, `invalid_client` or `config_invalid`) and the file |
 | Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error |
 | Worker run ended with an audit violation | `audit_violation` | `permission` | the run record's error |
 | Worker run ended with checks still failing | `checks_failed` | `decision` | the run record's error |
