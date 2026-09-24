@@ -78,7 +78,7 @@ OPTIONS = {
     "unknown_module": ["name registered Modules, or register the Module first"],
     "dirty_worktree": [
         "deliver or discard the changes",
-        "close with --abandoned --force",
+        "close with --completed or --failed and --force",
     ],
     "not_merged": [
         "merge the task with concorde task merge, which closes it",
@@ -95,7 +95,7 @@ OPTIONS = {
     "merge_conflict": [
         "merge the primary branch into the task branch in the task worktree, resolve the "
         "conflicts, validate and run delivery again, then run concorde task merge again",
-        "close the task with --abandoned if its change is no longer wanted",
+        "close the task with --completed or --failed if its change is no longer wanted",
     ],
     "check_failed": [
         "read the merge log, fix the cause in the task worktree after merging the primary "
@@ -163,7 +163,13 @@ def parser() -> argparse.ArgumentParser:
     closing.add_argument("task_id")
     mode = closing.add_mutually_exclusive_group(required=True)
     mode.add_argument("--merged", action="store_true")
-    mode.add_argument("--abandoned", action="store_true")
+    mode.add_argument("--completed", action="store_true")
+    mode.add_argument("--failed", action="store_true")
+    closing.add_argument("--note")
+    closing.add_argument("--reason")
+    closing.add_argument("--run", action="append", default=[])
+    closing.add_argument("--error-file", action="append", default=[])
+    closing.add_argument("--no-error", action="store_true")
     closing.add_argument("--force", action="store_true")
     merging = commands.add_parser("merge")
     merging.add_argument("task_id")
@@ -245,6 +251,46 @@ def _escalated_error(task: dict, number: int) -> dict:
     )
 
 
+def close(here: Path, arguments) -> dict:
+    """``task close``: check the options of the chosen outcome, then end the task."""
+    outcome = (
+        "merged"
+        if arguments.merged
+        else "completed"
+        if arguments.completed
+        else "failed"
+    )
+    sources = bool(arguments.run or arguments.error_file)
+    problems = []
+    if arguments.reason is not None and outcome != "failed":
+        problems.append("--reason belongs to --failed; a completed task takes --note")
+    if arguments.note is not None and outcome == "failed":
+        problems.append("--failed takes --reason, not --note")
+    if (sources or arguments.no_error) and outcome != "failed":
+        problems.append("--run, --error-file and --no-error belong to --failed")
+    if outcome == "failed" and sources == arguments.no_error:
+        problems.append(
+            "a failed task names the errors that caused it with --run or --error-file, "
+            "or declares with --no-error that no error did"
+        )
+    if problems:
+        raise store.TaskError("invalid_input", "; ".join(problems))
+    errors = []
+    if outcome == "failed":
+        primary = store.primary_of(here)
+        task = store.load_task(primary, arguments.task_id)
+        errors = [_run_error(primary, task, run) for run in arguments.run]
+        errors += [_file_error(path) for path in arguments.error_file]
+    return store.close_task(
+        here,
+        arguments.task_id,
+        outcome,
+        note=arguments.reason if outcome == "failed" else arguments.note,
+        errors=errors,
+        force=arguments.force,
+    )
+
+
 def escalate(here: Path, arguments) -> dict:
     primary = store.primary_of(here)
     task = store.load_task(primary, arguments.task_id)
@@ -323,17 +369,7 @@ def main(argv, cwd: Path | None = None) -> int:
                 here, arguments.task_id, arguments.check, arguments.wait
             )
         else:
-            if arguments.force and not arguments.abandoned:
-                raise store.TaskError(
-                    "invalid_input", "--force applies only to --abandoned"
-                )
-            value = store.close_task(
-                here,
-                arguments.task_id,
-                merged=arguments.merged,
-                abandoned=arguments.abandoned,
-                force=arguments.force,
-            )
+            value = close(here, arguments)
     except store.TaskError as error:
         sys.stdout.write(
             json.dumps({"error": refusal(command, error)}, indent=2) + "\n"

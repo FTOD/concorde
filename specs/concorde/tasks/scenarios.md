@@ -102,7 +102,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - AND the main agent merged that branch into the primary branch
 - WHEN the main agent runs `concorde task close <task-id> --merged`
 - THEN the worktree is removed
-- AND the record's state is `merged` with the primary branch's head recorded
+- AND the record's state is `closed` with outcome `merged` and the primary branch's head recorded
 - AND the branch, the record and the decision log remain
 
 ### scenario.tasks.close-submodules — Close a task whose worktree has submodules
@@ -110,7 +110,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN a merged task whose worktree has a checked-out submodule
 - WHEN the main agent closes it with `--merged` while the submodule has a local change
 - THEN the command fails with `dirty_worktree` and the worktree stays
-- BUT once the change is undone, closing removes the worktree and records the task as `merged`
+- BUT once the change is undone, closing removes the worktree and records the task as `closed` with outcome `merged`
 
 ### scenario.tasks.close-not-merged — Refuse to close an unmerged task as merged
 
@@ -119,16 +119,25 @@ records and error codes are defined in the [contracts](contracts.md).
 - THEN the command fails with `not_merged`
 - AND the worktree and the record are unchanged
 
-### scenario.tasks.abandon — Abandon a task
+### scenario.tasks.close-completed — Close a task that reached its goal without merging
 
-- GIVEN an active task whose worktree has uncommitted changes
-- WHEN the main agent closes it with `--abandoned` and without `--force`
-- THEN the command fails with `dirty_worktree` and nothing changes
-- BUT with `--force` the worktree is removed, the state is `abandoned` and the branch is kept
+- GIVEN an open task that tried something out, whose worktree has uncommitted changes
+- WHEN the main agent closes it with `--completed` and no `--note`
+- THEN the command fails with `invalid_input`
+- AND with a note but without `--force` it fails with `dirty_worktree` and nothing changes
+- BUT with a note and `--force` the worktree is removed, the state is `closed` with outcome `completed` and the note, the branch is kept, and the decision log records the outcome and the note
+
+### scenario.tasks.close-failed — Close a failed task with its reason and error chains
+
+- GIVEN a task whose Operation run ended with an error the task cannot get past
+- WHEN the main agent closes it with `--failed` and a reason but names neither an error source nor `--no-error`, or names both
+- THEN the command fails with `invalid_input`
+- BUT with the reason and `--run <run-id>` the state is `failed`, the note is the reason and the errors hold the run's error chain unchanged, also appended to the decision log
+- AND a task that failed for no error, such as a wrong direction, closes as `failed` with `--no-error` and no errors
 
 ### scenario.tasks.closed-inert — A closed task accepts no run
 
-- GIVEN a merged or abandoned task
+- GIVEN a closed or failed task
 - WHEN the host begins a run for it
 - THEN the update fails with `task_closed`
 

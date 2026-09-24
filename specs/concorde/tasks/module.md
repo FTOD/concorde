@@ -21,7 +21,7 @@ never interprets the decision log; the main agent and its task sessions do all o
 | Task | One unit of work of the main agent, made of a branch, a worktree checked out on it, a task record and a decision log. |
 | Task record | The JSON file in the primary worktree that holds a task's identity, goal, Modules, branch, worktree path, base commit, state, Operation runs, deliveries, escalated error chains and started task sessions. |
 | Decision log | The Markdown file next to a task record in which the session working on the task writes the choices it made without the developer, and to which escalations are appended. |
-| Task state | The stage of a task's life: open, active, delivered, merged or abandoned. |
+| Task state | The stage of a task's life: open, active, delivered, then closed when the task reached its goal (merged or completed) or failed when it did not. |
 | Merge lock | The lock of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task or closes one; the kernel releases it when that process ends. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Task session](../vocabulary.md#concept.concorde.task-session) | |
@@ -96,7 +96,7 @@ Tasks writes the session's boundary under `.concorde/tasks/severity.session/` â€
 and a write hook â€” starts `claude --bg` in the task worktree with the task-session guidance and
 the task's goal, Modules, decision log and the main agent's session name as its first prompt, and
 appends the started session to the record. `--dry-run` writes the boundary and prints the command
-without starting anything. A task that is merged or abandoned, a missing worktree, or a Claude Code
+without starting anything. A task that is closed or failed, a missing worktree, or a Claude Code
 that does not report a started background session is refused (`task_closed`, `missing_worktree`,
 `session_failed`) with Claude Code's output in the detail.
 
@@ -109,26 +109,41 @@ start: "" {shape: circle; width: 16; height: 16; style.fill: black}
 open
 active
 delivered
-merged
-abandoned
+closed
+failed
 start -> open: task open
 open -> active: first Operation run
 active -> delivered: delivery commit
 delivered -> active: a writing Operation starts
-delivered -> merged: task merge, or task close --merged
-open -> abandoned: task close --abandoned
-active -> abandoned: task close --abandoned
-delivered -> abandoned: task close --abandoned
+delivered -> closed: task merge, or task close --merged
+open -> closed: task close --completed
+active -> closed: task close --completed
+delivered -> closed: task close --completed
+open -> failed: task close --failed
+active -> failed: task close --failed
+delivered -> failed: task close --failed
 ```
 
 A task is **open**, then **active** at its first Operation run. Delivery makes it **delivered**; a
 later writing Operation, such as another `implement` after a code review, returns it to active for
-another delivery. The main agent merges a delivered task, unasked, with `concorde task merge`
-(below), which closes it as merged. `concorde task close <task-id> --merged` closes a task
-merged some other way, and is accepted only when the latest delivery commit is the branch's head,
-that head is in the primary branch, and the worktree is clean. `--abandoned` ends a task that won't
-be merged, refusing uncommitted changes unless `--force`. Closing removes the worktree, keeping the
-branch, record and log; merged and abandoned tasks accept no further run. A worktree with checked-out
+another delivery. A task ends in one of two states, and the record keeps the outcome:
+
+- **closed** means the task was ended on purpose because it reached its goal. Merging is the usual
+  way: the main agent merges a delivered task, unasked, with `concorde task merge` (below), which
+  closes it with outcome `merged`. `concorde task close <task-id> --merged` closes a task merged
+  some other way, and is accepted only when the latest delivery commit is the branch's head, that
+  head is in the primary branch, and the worktree is clean. Merging is not the only way to reach a
+  goal: a task that tried something out, investigated a question or only needed `understand`
+  closes with `--completed --note "<what it achieved>"`, outcome `completed`.
+- **failed** means the task did not reach its goal. `--failed --reason "<why>"` records the reason,
+  and when an error caused the failure, the error chains too: `--run <run-id>` takes a run's error
+  and `--error-file` a saved one, each unchanged. A failure no error caused, such as a wrong
+  direction, is declared with `--no-error`; one of the two is required, so whether an error caused
+  the failure is never left unsaid.
+
+Closing without a merge refuses uncommitted changes unless `--force`. Closing appends the outcome,
+the note and any error chains to the decision log and removes the worktree, keeping the branch,
+record and log; closed and failed tasks accept no further run. A worktree with checked-out
 submodules, such as the vendored references, is removed too: its submodules are deinitialized
 first, which refuses a submodule with local changes unless `--force`, and only then is the worktree
 removed.

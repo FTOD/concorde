@@ -8,7 +8,7 @@ in the [requirements](requirements.md).
 ```concorde-contract
 {
   "id": "contract.tasks.record",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -63,8 +63,8 @@ in the [requirements](requirements.md).
           "open",
           "active",
           "delivered",
-          "merged",
-          "abandoned"
+          "closed",
+          "failed"
         ]
       },
       "created_at": {
@@ -212,6 +212,9 @@ in the [requirements](requirements.md).
         "additionalProperties": false,
         "required": [
           "state",
+          "outcome",
+          "note",
+          "errors",
           "at",
           "primary_commit",
           "worktree_removed"
@@ -219,9 +222,33 @@ in the [requirements](requirements.md).
         "properties": {
           "state": {
             "enum": [
-              "merged",
-              "abandoned"
+              "closed",
+              "failed"
             ]
+          },
+          "outcome": {
+            "enum": [
+              "merged",
+              "completed",
+              "failed"
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/error"
+            }
           },
           "at": {
             "type": "string",
@@ -407,7 +434,7 @@ in the [requirements](requirements.md).
       }
     }
   },
-  "semantics": "The task record stored as .concorde/tasks/<id>.json in the primary worktree, written only by the Task store. id is chosen by the main agent and never reused; branch is concorde/<id>; worktree is the absolute path of the task's linked worktree; base_commit is the commit the branch was created from. modules starts with the Modules named at open and grows by every Module a run names; every entry was a registered Module when added. state follows open -> active -> delivered -> merged | abandoned, where delivered returns to active when a run with writes true starts, and open, active and delivered may become abandoned. runs lists every Operation run in start order: status running while the host works, then the Operation result status, or interrupted when the host process host_pid ended without finishing the run; writes tells whether the Operation may change the worktree. deliveries lists every delivery in order, with the delivery commit on the task branch, the project-relative path of the committed evidence bundle and the run that decided the delivered readiness, which is the delivery run itself. escalations lists, in order, every error chain escalated with concorde task escalate, each with its time and the escalating session's link, a contract.concorde.error link whose causes are the escalated errors: of level task-session when a task session escalated to the main agent, of level main-agent when the main agent escalated to the developer; sessions lists, in order, every task session started for the task with concorde task session: the background session identity Claude Code reported, its name task-<id>, the main agent's session it reports to, the absolute path of its settings file and its start time; $defs error, evidence and unhandled are that contract's definitions. closed is null until the task is closed; it then records the final state, the head of the primary branch at closing and whether the worktree was removed. Timestamps are RFC 3339 in UTC.",
+  "semantics": "The task record stored as .concorde/tasks/<id>.json in the primary worktree, written only by the Task store. id is chosen by the main agent and never reused; branch is concorde/<id>; worktree is the absolute path of the task's linked worktree; base_commit is the commit the branch was created from. modules starts with the Modules named at open and grows by every Module a run names; every entry was a registered Module when added. state follows open -> active -> delivered -> closed, where delivered returns to active when a run with writes true starts; a delivered task becomes closed when it is merged, and open, active and delivered may become closed when the task reached its goal without merging, or failed when it did not. runs lists every Operation run in start order: status running while the host works, then the Operation result status, or interrupted when the host process host_pid ended without finishing the run; writes tells whether the Operation may change the worktree. deliveries lists every delivery in order, with the delivery commit on the task branch, the project-relative path of the committed evidence bundle and the run that decided the delivered readiness, which is the delivery run itself. escalations lists, in order, every error chain escalated with concorde task escalate, each with its time and the escalating session's link, a contract.concorde.error link whose causes are the escalated errors: of level task-session when a task session escalated to the main agent, of level main-agent when the main agent escalated to the developer; sessions lists, in order, every task session started for the task with concorde task session: the background session identity Claude Code reported, its name task-<id>, the main agent's session it reports to, the absolute path of its settings file and its start time; $defs error, evidence and unhandled are that contract's definitions. closed is null until the task ends; it then records the final state (closed or failed), the outcome (merged or completed for closed, failed for failed), the note (null for merged unless given, what the task achieved for completed, why it failed for failed), the error chains that caused a failure exactly as their writers wrote them (empty when no error caused it, and for closed), the head of the primary branch at closing and whether the worktree was removed. Timestamps are RFC 3339 in UTC.",
   "example": {
     "id": "severity",
     "goal": "let Issue reports carry a severity",
@@ -503,8 +530,9 @@ command line prints the same shape with the code `invalid_command` and exits wit
 | `concorde task show <task-id>` | None | `{"record": <record>, "decision_log": "<absolute path>"}` |
 | `concorde task session <task-id> --main <session> [--model <model>] [--dry-run]` | Writes `.concorde/tasks/<task-id>.session/settings.json` and its write hook, starts `claude --bg --name task-<task-id> --settings <file> --permission-mode auto [--model <model>]` in the task worktree with the rendered task-session guidance and the task's identity, goal, Modules, decision log and `--main` as first prompt, and appends the started session to the record; `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>"}` |
 | `concorde task merge <task-id> [--check <command>]… [--wait <seconds>]` | Holding the merge lock: checks that the task is delivered, that its latest delivery commit is the head of its branch and that its worktree is clean, and that the primary worktree is on a branch with no uncommitted or untracked path; runs `git merge --no-edit concorde/<task-id>` in the primary worktree; runs each check there, appending its output to `.concorde/tasks/<task-id>.merge.log`; then closes the task as `close --merged` does. The default check is `concorde validate` of the merged primary worktree, run by the same Python with the running package on its path; each `--check` is split into words as a shell would and run without a shell, and any `--check` replaces the default; a check still running after 1800 seconds is stopped and counts as failed. A conflict aborts the merge; a check that exits non-zero or cannot run, or checks that leave an uncommitted path, reset the primary branch to the commit the merge started from with `git reset --keep`, so a refusal again leaves the primary branch where it was. `--wait` (default 300) bounds how long to wait for the lock | `{"record": <record>, "merge": {"before": "<commit>", "after": "<commit>", "checks": [{"argv": ["<word>", …], "exit_code": 0, "seconds": <number>}], "waited_seconds": <number>, "log": "<absolute path>"}}` |
-| `concorde task close <task-id> --merged` | Holding the merge lock, checks the merge, removes the worktree, sets state `merged` | The updated record |
-| `concorde task close <task-id> --abandoned [--force]` | Holding the merge lock, removes the worktree, discarding uncommitted changes only with `--force`, sets state `abandoned` | The updated record |
+| `concorde task close <task-id> --merged [--note <text>]` | Holding the merge lock, checks the merge, removes the worktree, sets state `closed` with outcome `merged` | The updated record |
+| `concorde task close <task-id> --completed --note <text> [--force]` | For a task that reached its goal without merging, holding the merge lock: removes the worktree, discarding uncommitted changes only with `--force`, sets state `closed` with outcome `completed` and the note | The updated record |
+| `concorde task close <task-id> --failed --reason <text> ((--run <run-id> \| --error-file <path>)… \| --no-error) [--force]` | For a task that did not reach its goal, holding the merge lock: removes the worktree, discarding uncommitted changes only with `--force`, sets state `failed` with the reason as note and, as errors, the `error` of each named run of the task and each error read from a file, unchanged; `--no-error` declares that no error caused the failure | The updated record |
 | `concorde task escalate <task-id> [--by main-agent\|task-session] (--run <run-id> \| --error-file <path> \| --escalation <n>)… --code <code> --detail <text> --reason <reason> --explanation <text> [--attempt <text>]… [--option <text>]… [--recommendation <text>]` | Builds the escalating session's link, of level `main-agent` (the default, actor `main agent (task <task-id>)`) or `task-session` (actor `task session (task <task-id>)`), whose causes are the `error` of each named run of the task, each error read from a file (a link, or a JSON value whose `error` is one) and the error of each named earlier escalation of the task (numbered from 1 in record order), appends it to the record's `escalations` and appends it to the decision log, rendered and as JSON, under a heading naming the receiver: the main agent for `task-session`, the developer for `main-agent` | `{"escalated": <link>, "decision_log": "<absolute path>", "rendered": "<the chain as indented text>"}` |
 
 The decision log that `open` creates contains exactly a level-1 heading `Decision log: <task-id>`
@@ -528,7 +556,7 @@ refusal leaves the merge and its checked commit in place, names the merge commit
 | --- | --- |
 | `not_primary` | `open`, `close`, `merge` or `session` runs outside the primary worktree. |
 | `worktree_not_ignored` | The worktree path lies inside the primary worktree and Git does not ignore it there; the message names the path and how to ignore it. |
-| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names neither or both of `--merged` and `--abandoned`, or `--force` without `--abandoned`, or a `--check` is empty or cannot be split into words, or `--wait` is negative. |
+| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--wait` is negative. |
 | `worktree_failed` | Git refused to add or remove the worktree; the message carries Git's error. |
 | `invalid_task_id` | The identity does not match the record's `id` pattern. |
 | `task_exists` | A record with that identity exists, whatever its state. |
@@ -539,8 +567,8 @@ refusal leaves the merge and its checked commit in place, names the merge commit
 | `unknown_task` | No record has that identity. |
 | `invalid_transition` | The requested change is not allowed from the task's current state. |
 | `not_merged` | `--merged` was requested but the task is not delivered, the latest delivery commit is not the head of the task branch, or that head is not contained in the primary branch. |
-| `dirty_worktree` | The worktree has uncommitted changes and the command is `--merged`, or `--abandoned` without `--force`. |
-| `task_closed` | A run is begun, or a session started, for a task that is merged or abandoned. |
+| `dirty_worktree` | The worktree has uncommitted changes and the command is `--merged`, or `--completed` or `--failed` without `--force`. |
+| `task_closed` | A run is begun, or a session started, for a task that is closed or failed. |
 | `task_busy` | A run is begun while another run of the task is still running. |
 | `record_conflict` | The record changed concurrently three times in a row. |
 | `record_unreadable` | The task record on disk cannot be read as JSON. |

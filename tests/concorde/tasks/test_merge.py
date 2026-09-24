@@ -103,7 +103,10 @@ class MergeTests(unittest.TestCase):
         status, value = self.command("merge", "t1")
         self.assertEqual(0, status, value)
         self.assertEqual(head, self.head())
-        self.assertEqual("merged", value["record"]["state"])
+        self.assertEqual(
+            ("closed", "merged"),
+            (value["record"]["state"], value["record"]["closed"]["outcome"]),
+        )
         self.assertTrue(value["record"]["closed"]["worktree_removed"])
         self.assertFalse(self.project.worktree("t1").exists())
         merge = value["merge"]
@@ -182,7 +185,7 @@ class MergeTests(unittest.TestCase):
         )
         self.assertEqual("ready\n", holder.stdout.readline())
         with self.assertRaises(store.TaskError) as raised:
-            store.close_task(self.root, "t1", abandoned=True, wait=0)
+            store.close_task(self.root, "t1", "completed", note="n", wait=0)
         self.assertEqual("merge_busy", raised.exception.code)
         holder.kill()
         holder.wait()
@@ -191,7 +194,10 @@ class MergeTests(unittest.TestCase):
             "merge", "t1", "--wait", "0", "--check", python("pass")
         )
         self.assertEqual(0, status, value)
-        self.assertEqual("merged", value["record"]["state"])
+        self.assertEqual(
+            ("closed", "merged"),
+            (value["record"]["state"], value["record"]["closed"]["outcome"]),
+        )
 
     @verifies("scenario.tasks.merge-open-close-wait")
     def test_open_and_close_wait_for_the_lock(self):
@@ -201,7 +207,7 @@ class MergeTests(unittest.TestCase):
             with self.assertRaises(store.TaskError) as opened:
                 store.open_task(self.root, "t2", "g", ["module.a"], wait=0.2)
             with self.assertRaises(store.TaskError) as closed:
-                store.close_task(self.root, "t1", abandoned=True, wait=0.2)
+                store.close_task(self.root, "t1", "completed", note="n", wait=0.2)
         for raised in (opened, closed):
             self.assertEqual("merge_busy", raised.exception.code)
             self.assertIn("`concorde task merge` of task a", str(raised.exception))

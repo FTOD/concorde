@@ -21,7 +21,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
-STATES = ("open", "active", "delivered", "merged", "abandoned")
+STATES = ("open", "active", "delivered", "closed", "failed")
+# How a task ended: closed when its goal was reached, merged or not; failed when it was not.
+OUTCOMES = ("merged", "completed", "failed")
+ENDED = ("closed", "failed")
 ATTEMPTS = 3
 # Where task worktrees go by default, relative to the primary worktree; Git must ignore it.
 WORKTREES = ".claude/worktrees"
@@ -447,13 +450,13 @@ def begin_run(
 ) -> dict:
     """Begin a run; ``check_modules=False`` leaves the Module check to the Operation itself."""
     record = load_task(primary, task_id)
-    if record["state"] in ("merged", "abandoned"):
+    if record["state"] in ENDED:
         raise TaskError("task_closed", f"task {task_id} is {record['state']}")
     if check_modules:
         _registered(Path(record["worktree"]), modules)
 
     def change(record):
-        if record["state"] in ("merged", "abandoned"):
+        if record["state"] in ENDED:
             raise TaskError("task_closed", f"task {task_id} is {record['state']}")
         for run in record["runs"]:
             if run["status"] == "running":
@@ -570,7 +573,7 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
 def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
     """The record and branch head of a task ``close --merged`` accepts once the head is merged."""
     record = load_task(primary, task_id)
-    if record["state"] in ("merged", "abandoned"):
+    if record["state"] in ENDED:
         raise TaskError(
             "invalid_transition", f"task {task_id} is already {record['state']}"
         )
@@ -585,7 +588,8 @@ def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
         raise TaskError(
             "not_merged",
             f"{record['branch']} is at {head}, not at its last delivery commit "
-            f"{record['deliveries'][-1]['commit']}; deliver again or close it abandoned",
+            f"{record['deliveries'][-1]['commit']}; deliver again, or close it completed "
+            "or failed",
         )
     worktree = Path(record["worktree"])
     if _dirty(worktree):
@@ -596,33 +600,59 @@ def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
 def close_task(
     primary: Path,
     task_id: str,
+    outcome: str,
     *,
-    merged: bool = False,
-    abandoned: bool = False,
+    note: str | None = None,
+    errors: list[dict] | None = None,
     force: bool = False,
     wait: float = MERGE_WAIT,
 ) -> dict:
-    """Close a task as merged or abandoned, holding the merge lock."""
+    """End a task, holding the merge lock: ``closed`` as merged or completed, or ``failed``.
+
+    A merged task must have its latest delivery commit in the primary branch. A completed task
+    reached its goal without merging and says how in ``note``. A failed task gives its reason in
+    ``note`` and the error chains that caused it in ``errors``, or none when no error did.
+    """
     primary = require_primary(primary)
-    if merged == abandoned:
-        raise TaskError(
-            "invalid_input", "close needs exactly one of --merged or --abandoned"
+    problems = []
+    if outcome not in OUTCOMES:
+        problems.append(f"the outcome {outcome!r} is none of {', '.join(OUTCOMES)}")
+    if outcome in ("completed", "failed") and not (note and note.strip()):
+        problems.append(
+            "a completed task needs --note saying what it achieved"
+            if outcome == "completed"
+            else "a failed task needs --reason saying why it failed"
         )
+    if errors and outcome != "failed":
+        problems.append("only a failed task records the errors that caused it")
+    if force and outcome == "merged":
+        problems.append("--force applies only to closing without a merge")
+    if problems:
+        raise TaskError("invalid_input", "; ".join(problems))
     with merge_lock(primary, "close", task_id, wait):
-        return close_locked(primary, task_id, merged=merged, force=force)
+        return close_locked(
+            primary, task_id, outcome, note=note, errors=errors, force=force
+        )
 
 
 def close_locked(
-    primary: Path, task_id: str, *, merged: bool, force: bool = False
+    primary: Path,
+    task_id: str,
+    outcome: str,
+    *,
+    note: str | None = None,
+    errors: list[dict] | None = None,
+    force: bool = False,
 ) -> dict:
     """``close_task`` for a caller that already holds the merge lock."""
+    errors = list(errors or [])
     record = load_task(primary, task_id)
     worktree = Path(record["worktree"])
-    if record["state"] in ("merged", "abandoned"):
+    if record["state"] in ENDED:
         raise TaskError(
             "invalid_transition", f"task {task_id} is already {record['state']}"
         )
-    if merged:
+    if outcome == "merged":
         record, head = mergeable(primary, task_id)
         contained = _git(
             primary, "merge-base", "--is-ancestor", head, "HEAD", check=False
@@ -663,21 +693,47 @@ def close_locked(
         removed = True
     primary_head = _git(primary, "rev-parse", "HEAD").stdout.strip()
 
+    stamp = now()
+    state = "failed" if outcome == "failed" else "closed"
+
     def change(record):
-        record["state"] = "merged" if merged else "abandoned"
+        record["state"] = state
         record["closed"] = {
-            "state": record["state"],
-            "at": now(),
+            "state": state,
+            "outcome": outcome,
+            "note": note.strip() if note and note.strip() else None,
+            "errors": errors,
+            "at": stamp,
             "primary_commit": primary_head,
             "worktree_removed": removed,
         }
         return record
 
-    return update(primary, task_id, change)
+    closed = update(primary, task_id, change)
+    _log_closing(primary, task_id, closed["closed"])
+    return closed
+
+
+def _log_closing(primary: Path, task_id: str, closed: dict) -> None:
+    """Append how the task ended, with any error chains rendered and as JSON."""
+    from ..errors import render
+
+    lines = [f"\n## Closed: {closed['outcome']}, {closed['at']}\n"]
+    if closed["note"]:
+        lines.append(f"\n{closed['note']}\n")
+    for error in closed["errors"]:
+        lines.append(
+            f"\n{render(error)}\n\n"
+            f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
+        )
+    with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
+        stream.write("".join(lines))
 
 
 __all__ = [
+    "ENDED",
     "MERGE_WAIT",
+    "OUTCOMES",
     "TaskError",
     "begin_run",
     "close_locked",

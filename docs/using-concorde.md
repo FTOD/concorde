@@ -301,7 +301,13 @@ task and process holds the lock. The lock belongs to the running command, so it 
 when that command or its session is killed. Merge with `concorde task merge`, not with `git merge`,
 so that the lock applies.
 
-A task that will not be merged is closed with `concorde task close retry --abandoned`.
+A task ends as **closed** when it reached its goal, merged or not, or as **failed** when it did
+not. `concorde task merge` closes a merged task. A task that reached its goal without a merge,
+such as an experiment or an investigation, is closed with
+`concorde task close retry --completed --note "<what it achieved>"`. A task that failed is closed
+with `concorde task close retry --failed --reason "<why>"`, plus `--run <run-id>` for each run
+whose error caused the failure, or `--no-error` when no error did; the reason and the error chains
+stay in the task's record and decision log.
 
 ### Several tasks at once
 

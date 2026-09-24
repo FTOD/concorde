@@ -77,7 +77,7 @@ class TaskSessionTests(unittest.TestCase):
 
     @verifies("scenario.tasks.session-start")
     def test_a_closed_task_starts_no_session(self):
-        store.close_task(self.root, "t1", merged=False, abandoned=True, force=False)
+        store.close_task(self.root, "t1", "completed", note="tried it")
         with self.assertRaises(store.TaskError) as raised:
             session.start(
                 self.root, "t1", "m", run=FakeClaude(), home=self.project.home

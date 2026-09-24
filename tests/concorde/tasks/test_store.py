@@ -277,7 +277,8 @@ class TaskStoreTests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            (1, "not_primary"), self.refusal("close", "t1", "--abandoned", cwd=worktree)
+            (1, "not_primary"),
+            self.refusal("close", "t1", "--completed", "--note", "x", cwd=worktree),
         )
         self.assertEqual((1, "not_primary"), self.refusal("merge", "t1", cwd=worktree))
         self.assertEqual(
@@ -443,7 +444,9 @@ class TaskStoreTests(unittest.TestCase):
         git(self.root, "merge", "--ff-only", "concorde/t1")
         status, value = self.command("close", "t1", "--merged")
         self.assertEqual(0, status, value)
-        self.assertEqual("merged", value["state"])
+        self.assertEqual(
+            ("closed", "merged"), (value["state"], value["closed"]["outcome"])
+        )
         self.assertEqual(head, value["closed"]["primary_commit"])
         self.assertTrue(value["closed"]["worktree_removed"])
         self.assertFalse(worktree.exists())
@@ -500,24 +503,102 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(before, self.record())
         self.assertTrue(worktree.exists())
 
-    @verifies("scenario.tasks.abandon")
-    def test_abandon_a_task(self):
+    @verifies("scenario.tasks.close-completed")
+    def test_close_a_task_that_reached_its_goal_without_merging(self):
         self.project.open_task("t1")
         worktree = self.project.worktree("t1")
+        self.assertEqual(
+            (1, "invalid_input"), self.refusal("close", "t1", "--completed")
+        )
         (worktree / "src/a/calc.py").write_text("dirty = True\n")
         self.assertEqual(
-            (1, "dirty_worktree"), self.refusal("close", "t1", "--abandoned")
+            (1, "dirty_worktree"),
+            self.refusal("close", "t1", "--completed", "--note", "tried it"),
         )
         self.assertTrue(worktree.exists())
-        status, value = self.command("close", "t1", "--abandoned", "--force")
-        self.assertEqual((0, "abandoned"), (status, value["state"]))
+        status, value = self.command(
+            "close", "t1", "--completed", "--note", "the probe answered", "--force"
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            ("closed", "completed", "the probe answered", []),
+            (
+                value["state"],
+                value["closed"]["outcome"],
+                value["closed"]["note"],
+                value["closed"]["errors"],
+            ),
+        )
         self.assertFalse(worktree.exists())
         self.assertTrue(git(self.root, "branch", "--list", "concorde/t1"))
+        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        self.assertIn("## Closed: completed", log)
+        self.assertIn("the probe answered", log)
+        self.assert_contract(self.record())
+
+    def assert_contract(self, record):
+        text = (REPOSITORY_ROOT / "specs/concorde/tasks/contracts.md").read_text()
+        contract = json.loads(
+            text.split("```concorde-contract\n", 1)[1].split("```")[0]
+        )
+        validate(record, contract["schema"])
+
+    @verifies("scenario.tasks.close-failed")
+    def test_a_failed_task_keeps_its_reason_and_error_chains(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        _, failed = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan(
+                [{"writes": {f"{worktree}/src/bmod/secret.py": "SECRET = 2\n"}}]
+            ),
+        )
+        reason = ["--reason", "the change needs module.b, which is out of scope"]
+        self.assertEqual(
+            (1, "invalid_input"), self.refusal("close", "t1", "--failed", *reason)
+        )
+        self.assertEqual(
+            (1, "invalid_input"),
+            self.refusal(
+                "close", "t1", "--failed", *reason, "--no-error", "--run", "r-x"
+            ),
+        )
+        self.assertEqual(
+            (1, "invalid_input"),
+            self.refusal("close", "t1", "--failed", "--run", failed["run_id"]),
+        )
+        status, value = self.command(
+            "close", "t1", "--failed", *reason, "--run", failed["run_id"], "--force"
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            ("failed", "failed", reason[1]),
+            (value["state"], value["closed"]["outcome"], value["closed"]["note"]),
+        )
+        self.assertEqual([failed["error"]], value["closed"]["errors"])
+        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        self.assertIn("## Closed: failed", log)
+        self.assertIn(failed["error"]["code"], log)
+        self.assert_contract(self.record())
+        self.project.open_task("t2")
+        status, value = self.command(
+            "close",
+            "t2",
+            "--failed",
+            "--reason",
+            "the direction was wrong",
+            "--no-error",
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual([], value["closed"]["errors"])
 
     @verifies("scenario.tasks.closed-inert")
     def test_a_closed_task_accepts_no_run(self):
         self.project.open_task("t1")
-        self.command("close", "t1", "--abandoned", "--force")
+        self.command("close", "t1", "--completed", "--note", "done")
         with self.assertRaises(store.TaskError) as raised:
             store.begin_run(
                 self.root, "t1", "r-1", "test", ["module.a"], False, os.getpid()

@@ -24,7 +24,7 @@ Tasks SHALL NOT delete a task record or a decision log, including when the task 
 
 ### req.tasks.decision-log-untouched — The decision log belongs to the main agent
 
-Tasks SHALL NOT change a decision log after creating it except by appending an escalation the main agent requested.
+Tasks SHALL NOT change a decision log after creating it except by appending a requested escalation or the entry recording how the task ended.
 
 ### req.tasks.registered-modules — Records name only registered Modules
 
@@ -54,7 +54,13 @@ tasks ever share a branch or a worktree.
 ### req.tasks.transitions — States move only along allowed transitions
 
 Tasks SHALL change a task's state only along open to active, active to delivered, delivered to
-active for a writing run, delivered to merged, and open, active or delivered to abandoned.
+active for a writing run, delivered to closed when merged, and open, active or delivered to closed
+when completed without a merge or to failed.
+
+### req.tasks.failure-explained — A failed task says why
+
+Closing a task as failed SHALL record a reason and either the error chains that caused the
+failure, unchanged, or an explicit declaration that no error caused it.
 
 ### req.tasks.one-run — One running Operation per task
 
@@ -62,7 +68,7 @@ Tasks SHALL refuse to begin a run for a task that has a running run whose host p
 
 ### req.tasks.closed-inert — Closed tasks accept no runs
 
-Tasks SHALL refuse to begin a run for a task in state merged or abandoned.
+Tasks SHALL refuse to begin a run for a task in state closed or failed.
 
 ### req.tasks.merge-verified — Merged means contained in the primary branch
 
@@ -72,8 +78,8 @@ no uncommitted change.
 
 ### req.tasks.no-silent-discard — Uncommitted work is never discarded silently
 
-Closing a task SHALL NOT remove a worktree that has uncommitted changes unless the task is abandoned
-with `--force`.
+Closing a task SHALL NOT remove a worktree that has uncommitted changes unless the task is closed
+without a merge, as completed or failed, with `--force`.
 
 ### req.tasks.refusal-inert — A refusal changes nothing
 

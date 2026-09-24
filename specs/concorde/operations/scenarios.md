@@ -68,7 +68,7 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 
 ### scenario.operations.refused-task — A task that cannot accept a run
 
-- GIVEN a task that is unknown, merged, abandoned or already running an Operation
+- GIVEN a task that is unknown, closed, failed or already running an Operation
 - WHEN the main agent runs an Operation for it
 - THEN no provider step runs
 - AND the result has status `failed`, `refused` evidence with the reason and an error whose cause is the Tasks refusal, naming the known tasks or the running Operation

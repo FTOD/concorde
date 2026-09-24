@@ -179,8 +179,15 @@ session is merging: run it again; the lock is free the moment that session's com
 fails with `merge_conflict`, go back into the task worktree, merge the primary branch into the task
 branch, resolve the conflicts, run `validate` and `delivery` again, and merge again. A check that
 fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to
-discard someone's change. Abandon a task that will not be merged with
-`concorde task close <task> --abandoned`.
+discard someone's change.
+
+Merging is not the only way a task ends. Close a task that reached its goal without a merge, such
+as one that tried something out or answered a question, with
+`concorde task close <task> --completed --note "<what it achieved>"`. Close a task that did not
+reach its goal with `concorde task close <task> --failed --reason "<why>"` and, when an error
+caused the failure, the error chains with `--run <run-id>` or `--error-file <json>`; when no error
+did, such as a wrong direction, say so with `--no-error`. Add `--force` to discard uncommitted
+changes in either case.
 
 ## Issues
 

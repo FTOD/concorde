@@ -230,7 +230,7 @@ def merge_task(
                 f"the checks' output is in {log}; the task is still delivered",
             )
         try:
-            record = store.close_locked(primary, task_id, merged=True)
+            record = store.close_locked(primary, task_id, "merged")
         except TaskError as error:
             raise TaskError(
                 error.code,
