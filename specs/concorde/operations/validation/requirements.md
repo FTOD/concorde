@@ -43,6 +43,10 @@ Validation SHALL report as blocking every changed path that still exists, is not
 member, a control record under `.concorde/`, generated or build output or external material, and is
 bound by no Module.
 
+External material is what a Module includes as `external`. A submodule's gitlink counts as external
+material when a Module includes the submodule or a path inside it, so bumping a vendored reference
+needs no binding of its own.
+
 ### req.validation.confirmations — Filled pending entries are confirmations
 
 Validation SHALL report a pending realization entry whose file exists as a confirmation, not as a

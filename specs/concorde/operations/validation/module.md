@@ -53,7 +53,7 @@ established, not only the first, each of one kind:
 | --- | --- |
 | `load` | the Specs fail to load at all |
 | `structural` | a [structural check](../../spec-tooling/spec/module.md#concept.spec.structural-check) error, e.g. a broken link or stale registry mirror |
-| `unbound` | a changed path is not a Spec document, control record, generated/build output, external material, or Module-bound |
+| `unbound` | a changed path is not a Spec document, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
 | `check` | a changed or bound Module's [configured check](../../harness/checks/module.md#concept.checks.configured-check) failed, timed out or couldn't run |
 
 Warnings, such as missing scenario coverage, are reported but never block. A pending entry whose

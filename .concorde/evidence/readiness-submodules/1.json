@@ -1,0 +1,41 @@
+{
+  "task": "readiness-submodules",
+  "goal": "Let readiness account for a changed submodule gitlink that a Module includes as external context, as the structural check already does",
+  "modules": [
+    "module.validation"
+  ],
+  "sequence": 1,
+  "base_commit": "d4794ea3b5507e8c5cc720a2927c0dbaf2da1cf8",
+  "parent_commit": "b0328b40d3b799e71b8cda301cf474147710773f",
+  "readiness": {
+    "run_id": "r-20260924T175517-delivery-4d3888bb",
+    "input_digest": "sha256:91f536d5308c1b4b9e898cdc5857734ffd92b8bc49c2044ee9ea0f14db5f4a6a",
+    "modules": [
+      "module.validation"
+    ],
+    "checks": [
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:b8f860456f912f70d282137510f367da2ad70ec4e3c8b01f42d92b23d79acd46"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T175513-validate-9fa2475b",
+      "operation": "validate",
+      "modules": [
+        "module.validation"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:4663e6682e95729bc4694e82ce953f844b34097d2a8d0f1d3cfdbf77361c1102"
+    }
+  ],
+  "created_at": "2026-09-24T17:55:21Z"
+}

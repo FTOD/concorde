@@ -374,6 +374,8 @@ def require_accounted(ctx: RunContext):
             or generated(path, outputs)
             or build_path(path)
             or any(covers(entry, path) for entry in external)
+            # A submodule's gitlink is accounted when a Module includes it or part of it.
+            or any(covers(path + "/", entry) for entry in external)
             or any(bound_by(entry, path) for entry in entries)
         ):
             continue
