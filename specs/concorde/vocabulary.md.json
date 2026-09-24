@@ -19,6 +19,12 @@
       "meaning": "#concept.concorde.main-agent"
     },
     {
+      "id": "concept.concorde.task-session",
+      "type": "concept",
+      "title": "Task session",
+      "meaning": "#concept.concorde.task-session"
+    },
+    {
       "id": "concept.concorde.worker",
       "type": "concept",
       "title": "Worker",

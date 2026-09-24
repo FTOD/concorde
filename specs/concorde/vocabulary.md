@@ -10,7 +10,8 @@ Concorde is new to you.
 | Term | Definition |
 | --- | --- |
 | Developer | The person who uses Concorde to specify, change and understand a project. |
-| Main agent | The developer-facing Claude Code or pi session in the primary worktree that discusses the project, splits work into tasks, runs Operations and merges their results. |
+| Main agent | The developer-facing Claude Code or pi session in the primary worktree that discusses the project, splits work into tasks, carries them out or hands them to task sessions, and merges their results. |
+| Task session | A background Claude Code session the main agent starts for one task, working only inside that task's worktree until delivery and reporting to the main agent. |
 | Worker | One headless Claude Code process that performs one bounded task of one task type under a frozen grant and reports only to the Operation host that launched it. |
 | Module | One cohesive responsibility of the software, with its own Spec; it need not be a package or directory. |
 | Spec | The documents in which a Module explains what it is for, how to use it, how it is designed and what it precisely promises. |
@@ -24,7 +25,7 @@ Concorde is new to you.
 | Evidence | A recorded check or review result, bound to the exact inputs it examined. |
 | Error chain | The structured report of an error that travels up: one link per level that could not handle it, each with its detailed account and its reason for not handling it, and the errors it received from below nested as its causes. |
 
-The words fall into four groups: who works (developer, main agent, worker), what is described
+The words fall into four groups: who works (developer, main agent, task session, worker), what is described
 (Module, Spec), what a worker may know and do (task type, context and its four kinds, boundary),
 and how results and problems travel (evidence, error chain).
 
@@ -35,12 +36,25 @@ and how results and problems travel (evidence, error chain).
 The **developer** works with a **main agent**: an ordinary Claude Code or pi session opened in the
 project's primary worktree. The main agent is where understanding and decisions happen. It
 discusses the state of the project with the developer, answers questions, and sets the direction
-of larger changes. It splits work into tasks, each a branch with its own worktree, decides which
-tasks run in parallel, and runs Operations inside those worktrees. Concorde adds no permission
-limits to the main agent, but the main agent normally does not edit the project itself.
+of larger changes. It splits work into tasks, each a branch with its own worktree, and decides
+which tasks run in parallel. A single task it carries out itself: it enters the task worktree,
+changes the project there directly or through Operations, runs every Concorde command with that
+worktree's own copy, and returns to the primary worktree after delivery to merge. It is inside at
+most one task at a time. Concorde adds no permission limits to the main agent, but the main agent
+never edits the primary worktree's Specs or code.
 
 The main agent decides ordinary design uncertainties on its own, records them, and reports them at
 the end. It asks the developer only when a decision has a major impact.
+
+<a id="concept.concorde.task-session"></a>
+
+For work that splits into several tasks, the main agent starts a **task session** per task: a
+background Claude Code session whose working directory is the task worktree. It works like the
+main agent inside a task, deciding ordinary questions within the task's goal and Modules, and
+reports to the main agent when it has delivered, cannot go further, or needs a decision beyond its
+task; it never merges, closes the task or starts other sessions. Its Edit and Write tools and its
+shell may write only its own task, which guards against mistakes, not a malicious session. The
+main agent stays in the primary worktree while task sessions run, and alone merges.
 
 <a id="concept.concorde.worker"></a>
 

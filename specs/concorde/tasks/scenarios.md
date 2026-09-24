@@ -10,7 +10,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN a primary worktree whose registry lists `module.issues` and no task named `severity`
 - WHEN the main agent runs `concorde task open severity --goal "let reports carry a severity" --modules module.issues`
 - THEN branch `concorde/severity` exists at the primary worktree's head commit
-- AND a worktree checked out on that branch exists at the default path
+- AND a worktree checked out on that branch exists at `.claude/worktrees/severity` of the primary worktree
 - AND `.concorde/tasks/severity.json` holds the record in state `open` with that base commit
 - AND `.concorde/tasks/severity.decisions.md` holds the heading and the goal
 - AND the command prints the record
@@ -22,6 +22,13 @@ records and error codes are defined in the [contracts](contracts.md).
 - THEN the command fails with `task_exists`, `branch_exists` or `path_exists`
 - AND no record, branch or worktree is created or changed
 
+### scenario.tasks.open-not-ignored — Refuse a worktree the primary would track
+
+- GIVEN a primary worktree whose `.gitignore` does not ignore `.claude/worktrees/`
+- WHEN the main agent opens a task at the default path
+- THEN the command fails with `worktree_not_ignored`, naming the path and how to ignore it
+- AND no record, branch or worktree is created
+
 ### scenario.tasks.open-unknown-module — Refuse an unknown Module
 
 - GIVEN a registry without `module.billing`
@@ -29,10 +36,10 @@ records and error codes are defined in the [contracts](contracts.md).
 - THEN the command fails with `unknown_module`
 - AND nothing is created
 
-### scenario.tasks.not-primary — Refuse to open or close from a linked worktree
+### scenario.tasks.not-primary — Refuse to open, close or start sessions from a linked worktree
 
 - GIVEN a shell whose working directory is inside a task worktree
-- WHEN `concorde task open` or `concorde task close` is run there
+- WHEN `concorde task open`, `concorde task close` or `concorde task session` is run there
 - THEN the command fails with `not_primary`
 - AND nothing changes
 
@@ -127,3 +134,29 @@ records and error codes are defined in the [contracts](contracts.md).
 - THEN the printed chain's top link has the level `main-agent` and the run's error, unchanged, as its cause
 - AND the chain is appended to the task record's escalations and to the decision log, rendered and as JSON
 - BUT an escalation that names no run and no file is refused with `nothing_to_escalate` and records nothing
+
+### scenario.tasks.session-escalates — A task session escalates to the main agent
+
+- GIVEN a task whose task session met an error it may not decide
+- WHEN the task session runs `concorde task escalate --by task-session` naming the failed run
+- THEN the recorded link has the level `task-session` and the run's error as its cause
+- AND the decision log names the main agent as the receiver
+- AND when the main agent then escalates with `--escalation 1`, its `main-agent` link has the task session's link, unchanged, as its cause
+
+## Task sessions
+
+### scenario.tasks.session-start — Start a task session
+
+- GIVEN an open task `severity` and the main agent's session named `concorde-7d`
+- WHEN the main agent runs `concorde task session severity --main concorde-7d`
+- THEN `.concorde/tasks/severity.session/` holds a settings file and a write hook
+- AND `claude --bg` is started in the task worktree with those settings and a first prompt naming the task, its goal and `concorde-7d`
+- AND the task record lists the started session with its identity and name
+- BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying Claude Code's output, and the record is unchanged
+
+### scenario.tasks.session-boundary — The session's boundary confines its writes
+
+- GIVEN the settings written for a task session
+- WHEN its write hook judges an Edit of a file in the task worktree, of the decision log and of a file of the primary worktree
+- THEN the first two are allowed and the third is denied with a reason naming the task worktree
+- AND the sandbox lets Bash write only the task worktree, the Git directory, `.concorde/runs/`, `.concorde/tasks/` and package caches

@@ -24,19 +24,51 @@ class GuidanceTests(unittest.TestCase):
     def setUp(self):
         self.skill = rendered("skill")
         self.block = rendered("claude-md")
+        self.session = rendered("task-session")
 
     @verifies("scenario.main-session.change-through-task")
-    def test_changes_run_as_tasks_through_operations(self):
+    def test_changes_run_as_tasks_inside_their_worktree(self):
         self.assertIn(
             "Every change of Spec meaning or code behaviour runs as a task", self.skill
         )
-        self.assertIn(
-            "Never change Specs or code in the primary worktree yourself", self.skill
-        )
+        self.assertIn("Never change Specs or code in the primary worktree.", self.skill)
         self.assertIn("concorde task open", self.skill)
+        self.assertIn("enter its worktree with the EnterWorktree tool", self.skill)
+        self.assertIn(
+            "Inside the task worktree you may change Specs and code yourself",
+            self.skill,
+        )
         self.assertIn("in background Bash", self.skill)
         self.assertIn("`concorde_run` tool", self.skill)
-        self.assertIn("concorde run", self.block)
+        self.assertIn("runs the task worktree's own `concorde` there", self.skill)
+        self.assertIn(
+            "from the task worktree with the worktree's own command, never the primary "
+            "worktree's",
+            self.skill,
+        )
+        self.assertIn("with that worktree's own copy", self.block)
+
+    @verifies("scenario.main-session.split-into-sessions")
+    def test_split_work_goes_to_task_sessions(self):
+        self.assertIn(
+            "concorde task session <task> --main <your session name>", self.skill
+        )
+        self.assertIn("inside at most one task at a time", self.skill)
+        self.assertIn("stay in the primary worktree while any runs", self.skill)
+        self.assertIn("naming its escalation as a cause", self.skill)
+        self.assertIn("concorde task session", self.block)
+
+    @verifies("scenario.main-session.task-session-role")
+    def test_a_task_session_stays_within_its_task(self):
+        self.assertIn("You are a task session", self.session)
+        self.assertIn("with the worktree's own command", self.session)
+        self.assertIn("concorde task escalate <task> --by task-session", self.session)
+        self.assertIn("SendMessage", self.session)
+        self.assertIn(
+            "When the task is delivered, or cannot go further, send the main agent's session",
+            self.session,
+        )
+        self.assertIn("Do not merge the task branch, close the task", self.session)
 
     @verifies("scenario.main-session.parallel-tasks")
     def test_parallelism_only_between_non_overlapping_worktrees(self):
@@ -49,6 +81,8 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.merge-delivered")
     def test_delivered_tasks_are_merged_without_asking(self):
         self.assertIn("without asking the developer for authorization", self.skill)
+        self.assertIn("leave the task worktree if you are in it", self.skill)
+        self.assertIn("run `concorde validate` there", self.skill)
         self.assertIn("concorde task close <task> --merged", self.skill)
         self.assertIn("merge delivered task branches without asking", self.block)
 

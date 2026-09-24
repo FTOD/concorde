@@ -82,8 +82,11 @@ leaving the rest of the file untouched — and the `d2` release `concorde.json` 
 `.concorde/tools/d2`, checked against its SHA-256 before anything else is written and kept on a
 later install with the same pin
 ([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
-plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/framework/` and
-`.concorde/tools/`, and a receipt `.concorde/install.json`.
+plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/framework/`,
+`.concorde/tools/` and `.claude/worktrees/`, where task worktrees go, and a receipt
+`.concorde/install.json`. The command runs the Framework copy of the worktree it belongs to; a
+task worktree has none of its own, since Git ignores it, unless the task reinstalled Concorde
+there, so its command runs the primary worktree's copy, found through Git's common directory.
 
 With `--pi` the installer also prepares the project for a pi main session and pi workers: it
 places the pi runtime — the sandbox engine `@anthropic-ai/sandbox-runtime` that pi workers run

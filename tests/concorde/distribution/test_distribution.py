@@ -276,6 +276,7 @@ class InstallTests(unittest.TestCase):
         self.assertIn("Keep this.", claude)
         self.assertEqual(1, claude.count("<!-- concorde:start -->"))
         self.assertIn(".concorde/runs/", (project / ".gitignore").read_text())
+        self.assertIn(".claude/worktrees/", (project / ".gitignore").read_text())
         self.assertFalse((project / ".concorde/config.json").exists())
         self.assertFalse((project / ".concorde/specs.json").exists())
         self.assertFalse((project / "specs").exists())
@@ -329,6 +330,36 @@ class InstallTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual("success", json.loads(valid.stdout)["status"], valid.stdout)
+
+    @verifies("scenario.distribution.task-worktree-command")
+    def test_the_command_of_a_task_worktree_runs_the_primary_framework(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, d2=False)
+
+        def git(*argv):
+            subprocess.run(
+                ["git", "-c", "user.name=t", "-c", "user.email=t@t", *argv],
+                cwd=project,
+                check=True,
+                capture_output=True,
+            )
+
+        git("add", "-A")
+        git("commit", "-qm", "install")
+        worktree = project / ".claude/worktrees/t1"
+        git("worktree", "add", "-q", "-b", "concorde/t1", str(worktree))
+        self.assertFalse((worktree / ".concorde/framework").exists())
+        listed = subprocess.run(
+            [str(worktree / ".concorde/bin/concorde"), "task", "list"],
+            cwd=worktree,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, listed.returncode, listed.stdout + listed.stderr)
+        self.assertEqual([], json.loads(listed.stdout))
 
     @verifies("scenario.distribution.install")
     @verifies("scenario.distribution.install-pi")

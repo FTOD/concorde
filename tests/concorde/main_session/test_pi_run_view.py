@@ -20,7 +20,9 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 SOURCE = REPOSITORY_ROOT / "src/concorde/main_session/pi_runs.ts"
 PROBE = """
-import { operationRuns, workersOf, view, concordeCommand, alive } from %(source)s;
+import {
+  operationRuns, workersOf, view, concordeCommand, alive, taskWorktree,
+} from %(source)s;
 const root = %(root)s;
 const out = {};
 for (const operation of operationRuns(root)) {
@@ -31,6 +33,7 @@ for (const operation of operationRuns(root)) {
   };
 }
 out.command = concordeCommand(root);
+out.worktrees = ["t1", "gone", "missing", "../t1"].map((task) => taskWorktree(root, task));
 out.self = alive(process.pid);
 out.gone = alive(2 ** 22 + 12345);
 console.log(JSON.stringify(out));
@@ -185,6 +188,20 @@ class RunViewTests(unittest.TestCase):
         (self.root / ".concorde/bin/concorde").write_text("")
         self.assertEqual(
             [(self.root / ".concorde/bin/concorde").as_posix()], self.probe()["command"]
+        )
+
+    @verifies("scenario.main-session.pi-task-worktree")
+    def test_a_task_runs_in_its_own_worktree(self):
+        tasks = self.root / ".concorde/tasks"
+        tasks.mkdir(parents=True)
+        worktree = self.root / ".claude/worktrees/t1"
+        worktree.mkdir(parents=True)
+        (tasks / "t1.json").write_text(json.dumps({"worktree": worktree.as_posix()}))
+        (tasks / "gone.json").write_text(
+            json.dumps({"worktree": (self.root / "removed").as_posix()})
+        )
+        self.assertEqual(
+            [worktree.as_posix(), None, None, None], self.probe()["worktrees"]
         )
 
 

@@ -8,11 +8,35 @@ establish. The [scenarios](scenarios.md) show the intended behaviour.
 
 ### req.main-session.tasks-own-changes — Changes run in tasks
 
-The guidance SHALL tell the main agent to make every change of Spec meaning or code behaviour
-through Operations run in a task worktree, never by editing the project itself.
+The guidance SHALL tell the main agent to make every change of Spec meaning or code behaviour in a
+task, from inside the task worktree, directly or through Operations, and never in the primary
+worktree.
 
-Trivial housekeeping that changes neither, such as regenerating the registry mirror, is the only
-exception.
+Trivial housekeeping that changes neither, such as regenerating the registry mirror after a merge,
+is the only exception.
+
+### req.main-session.worktree-own-concorde — A task runs its worktree's Concorde
+
+The guidance SHALL tell whoever works on a task to run every `concorde` command for it from the
+task worktree with that worktree's own copy, never the primary worktree's.
+
+### req.main-session.one-task-at-a-time — One task per session at a time
+
+The guidance SHALL tell the main agent to enter a task worktree to carry out a single task, to be
+inside at most one task at a time, and to leave it after delivery.
+
+### req.main-session.task-sessions — Split work goes to task sessions
+
+The guidance SHALL tell the main agent to start a task session per task, with
+`concorde task session`, for work split into several tasks, and to stay in the primary worktree
+while any runs.
+
+### req.main-session.task-session-guidance — A task session is told its role
+
+The task-session guidance SHALL tell a task session to work only inside its task, to decide
+ordinary questions within the task's goal and Modules, to escalate the rest to the main agent with
+its own link on top of the error chain, to report to the main agent when it has delivered or cannot
+go further, and never to merge or close the task.
 
 ### req.main-session.parallel-by-worktree — Parallelism only between worktrees
 
@@ -32,7 +56,8 @@ made without the developer in the task's decision log.
 ### req.main-session.merge-without-authorization — Delivered tasks are merged
 
 The guidance SHALL tell the main agent to merge a task branch that `delivery` committed without
-asking the developer for authorization.
+asking the developer for authorization, from the primary worktree, and to validate the primary
+branch after merging.
 
 ## Escalation
 

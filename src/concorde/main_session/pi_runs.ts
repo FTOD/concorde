@@ -192,6 +192,17 @@ export function view(
 }
 
 /** The `concorde` command of a project: its installed command, a source checkout, or PATH. */
+/**
+ * The worktree of `task` from its record in the primary worktree `root`, when the record names
+ * one that exists: every Concorde command of a task runs there, with that worktree's own copy.
+ */
+export function taskWorktree(root: string, task: string): string | null {
+  if (!/^[a-z0-9][a-z0-9-]{0,47}$/.test(task)) return null;
+  const record = readJson(join(root, ".concorde", "tasks", `${task}.json`));
+  const worktree = record?.worktree;
+  return typeof worktree === "string" && existsSync(worktree) ? worktree : null;
+}
+
 export function concordeCommand(root: string): string[] {
   const installed = join(root, ".concorde", "bin", "concorde");
   if (existsSync(installed)) return [installed];

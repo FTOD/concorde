@@ -33,10 +33,15 @@ checks.
 
 ## Lifecycle
 
-### req.tasks.primary-only — Tasks open and close only from the primary
+### req.tasks.primary-only — Tasks open, close and start sessions only from the primary
 
-The `concorde task open` and `concorde task close` commands SHALL refuse to run outside the primary
-worktree.
+The `concorde task open`, `concorde task close` and `concorde task session` commands SHALL refuse
+to run outside the primary worktree.
+
+### req.tasks.worktree-ignored — A worktree inside the primary is ignored there
+
+Tasks SHALL refuse to open a task whose worktree path lies inside the primary worktree unless Git
+ignores that path in the primary worktree.
 
 ### req.tasks.one-worktree — One branch and one worktree per task
 
@@ -80,4 +85,19 @@ Every refusal of a `concorde task` command SHALL print an error link that names 
 
 ### req.tasks.escalation-kept — Escalations keep their whole chain
 
-An escalation SHALL record the escalated errors unchanged as the causes of the main agent's link, in the task record and the decision log.
+An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task record and the decision log.
+
+## Task sessions
+
+### req.tasks.session-boundary — A task session writes only its task
+
+The settings Tasks writes for a task session SHALL let the session's Edit and Write tools change
+only the task worktree and its decision log, and its Bash commands write only the task worktree,
+the repository's Git directory, `.concorde/runs/`, `.concorde/tasks/` and the user's package
+caches.
+
+### req.tasks.session-recorded — A started session is recorded
+
+Tasks SHALL append a task session to the task record only after Claude Code reported it started.
+
+A session Claude Code did not report as started leaves the record unchanged.

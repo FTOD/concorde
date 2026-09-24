@@ -43,7 +43,8 @@ The main agent agrees the direction with you, then works through a task; it deci
 questions itself and escalates only decisions with major impact.
 
 1. **Discuss and open.** Agree the change and open a task: a branch and worktree for the Modules
-   it touches.
+   it touches. The main agent works inside that worktree, or starts a task session per task when
+   the work splits into several.
 2. **Understand and specify.** Run `understand` to assess and plan; run `specify` when the Spec
    must change first.
 3. **Implement and test.** Run `implement` and `test`; the host audits every write and runs the
@@ -73,15 +74,15 @@ cd /absolute/path/to/project
 
 In an installed project the command is `.concorde/bin/concorde`; Operations print one JSON result.
 
-| Command                                             | Use                                                      |
-| --------------------------------------------------- | -------------------------------------------------------- |
-| `concorde validate`                                 | Check every structural rule of the Specs.                |
-| `concorde grant --modules <ids> --type <task type>` | Print the grant of a task type for some Modules.         |
-| `concorde spec-mcp`                                 | Run the local stdio MCP server rooted at the project.    |
-| `concorde task open\|list\|show\|close`             | Manage tasks: branch, worktree, record and decision log. |
-| `concorde run <operation> --task <task>`            | Run one Operation and print its result.                  |
-| `concorde init --propose\|--apply`                  | Propose and apply a project's first Spec.                |
-| `concorde docsite --propose\|--apply`               | Scaffold a documentation site for the project's Specs.   |
+| Command                                             | Use                                                                     |
+| --------------------------------------------------- | ----------------------------------------------------------------------- |
+| `concorde validate`                                 | Check every structural rule of the Specs.                               |
+| `concorde grant --modules <ids> --type <task type>` | Print the grant of a task type for some Modules.                        |
+| `concorde spec-mcp`                                 | Run the local stdio MCP server rooted at the project.                   |
+| `concorde task open\|list\|show\|session\|close`    | Manage tasks: branch, worktree, record, decision log and task sessions. |
+| `concorde run <operation> --task <task>`            | Run one Operation and print its result.                                 |
+| `concorde init --propose\|--apply`                  | Propose and apply a project's first Spec.                               |
+| `concorde docsite --propose\|--apply`               | Scaffold a documentation site for the project's Specs.                  |
 
 | Operation     | Result and boundary                                                                           |
 | ------------- | --------------------------------------------------------------------------------------------- |

@@ -1,0 +1,68 @@
+{
+  "task": "task-sessions",
+  "goal": "Run each task inside its own worktree with that worktree's Concorde code: task worktrees under .claude/worktrees/<task>, a session enters one task at a time, and the main session may start sandboxed task sessions (claude --bg) for complex multi-task work; they edit directly, decide inside their task and escalate the rest",
+  "modules": [
+    "module.concorde",
+    "module.tasks",
+    "module.main-session",
+    "module.distribution"
+  ],
+  "sequence": 2,
+  "base_commit": "e23aa303eae8b7591793906de73c8dc247d93ecb",
+  "parent_commit": "0bbc1e082c692ef01c90acb8ee889aebcb65b8f9",
+  "readiness": {
+    "run_id": "r-20260924T175705-delivery-24aae795",
+    "input_digest": "sha256:acc9c5e0b55eab0fd8ce1f6dec7a55fd8bc881cb41521bffee0584129ca225e0",
+    "modules": [
+      "module.concorde",
+      "module.distribution",
+      "module.harness",
+      "module.harness.workers",
+      "module.main-session",
+      "module.operations",
+      "module.tasks"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:82b18286046a0c46471da3e4839d9c3e0195e45edf4a8085ec832adaad6c70ef"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:7c85ffcb52bf2a63138f3660ffd56ed25ed816ba78fe5f72a6ebc85010cab906"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:91433229766d55c5e3d6c56a7396aff7f85a65fa816174c0a3b26de994f354b8"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:b15cd2000b5f8f1380cf57f51b14205d3ce981665ac06d4f5273bc9c0aa2061f"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:b27034f68a5da381c7f105d9e6b0694b60383982168ca0df64f681abae6bf38e"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d326964f4e04033848eb0123c4b47f19dcde82607ace7ac8d0e478e569b848f7"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [],
+  "created_at": "2026-09-24T17:57:23Z"
+}

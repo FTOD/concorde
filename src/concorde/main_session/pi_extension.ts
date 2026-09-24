@@ -28,6 +28,7 @@ import {
   primaryRoot,
   runsDirectory,
   type RunView,
+  taskWorktree,
   view,
   workersOf,
 } from "./pi_runs.ts";
@@ -223,7 +224,10 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_id, params, signal, _onUpdate, ctx) {
       root = primaryRoot(ctx.cwd);
-      const [command, ...prefix] = concordeCommand(ctx.cwd);
+      // The task worktree's own copy knows the task's Specs and checks; an unknown task is
+      // refused by the command of the session's own worktree.
+      const worktree = taskWorktree(root, params.task) ?? ctx.cwd;
+      const [command, ...prefix] = concordeCommand(worktree);
       mkdirSync(runsDirectory(root), { recursive: true });
       const log = join(runsDirectory(root), `launch-${Date.now()}.log`);
       const output = openSync(log, "a");
@@ -237,7 +241,7 @@ export default function (pi: ExtensionAPI) {
           params.task,
           ...(params.arguments ?? []),
         ],
-        { cwd: ctx.cwd, detached: true, stdio: ["ignore", output, output] },
+        { cwd: worktree, detached: true, stdio: ["ignore", output, output] },
       );
       let exited: number | null = null;
       child.on("exit", (code) => (exited = code ?? -1));

@@ -8,7 +8,7 @@ in [How the host runs an Operation](host.md).
 ```concorde-contract
 {
   "id": "contract.operations.result",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -130,6 +130,7 @@ in [How the host runs an Operation](host.md).
           "level": {
             "enum": [
               "main-agent",
+              "task-session",
               "operation",
               "harness",
               "worker",

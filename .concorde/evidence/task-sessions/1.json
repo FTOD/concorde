@@ -1,0 +1,83 @@
+{
+  "task": "task-sessions",
+  "goal": "Run each task inside its own worktree with that worktree's Concorde code: task worktrees under .claude/worktrees/<task>, a session enters one task at a time, and the main session may start sandboxed task sessions (claude --bg) for complex multi-task work; they edit directly, decide inside their task and escalate the rest",
+  "modules": [
+    "module.concorde",
+    "module.tasks",
+    "module.main-session",
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "e23aa303eae8b7591793906de73c8dc247d93ecb",
+  "parent_commit": "b364466cb7d066ce7de5f1550583a002248cb66d",
+  "readiness": {
+    "run_id": "r-20260924T175341-delivery-5534bbd1",
+    "input_digest": "sha256:fae0668fdd648bd98aa4962e79f338341185eff4dc253408b8f484d09051114a",
+    "modules": [
+      "module.concorde",
+      "module.distribution",
+      "module.harness",
+      "module.harness.workers",
+      "module.main-session",
+      "module.operations",
+      "module.tasks"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:654aeb5d4b8e6f8fd416eebc5bf3e44e39b504fd01d9132a9eaca631b54883cb"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:86c431bcc13bada928ed6506375753f1d31c8b23c20b01b1b21290846c135568"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:c34377061aaffa5711fe5d36632a30c3dcd239e130532bb1240e800e2f7ce69c"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:e47b17d4ff614bd50f4ab20e4e4c2af937f70625fa938b2cb2c258d6a8978c21"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:4679c68c2768ec447ce9b9aaf85f3b3b85d17067879a1e51bcd8f0876435192f"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d8acbbf7d7e19217af3ad19213c6824ffc059b85153e46be8316298c1d32825c"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T175312-validate-b7d5bd3d",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.tasks",
+        "module.main-session",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:d3936c8ede9fab58caa13678b3fa9b41fd2912a4bb4cf1bdcea7522c3e66496b"
+    }
+  ],
+  "created_at": "2026-09-24T17:53:59Z"
+}
