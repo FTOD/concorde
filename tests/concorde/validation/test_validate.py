@@ -154,6 +154,46 @@ class ValidateTests(unittest.TestCase):
         self.assertNotIn("vendor/lib", unbound)
         self.assertIn("vendor/other", unbound)
 
+    @verifies("scenario.validation.submodule-content")
+    def test_only_a_submodules_commit_is_measured(self):
+        from concorde.validation.measurement import changed_paths, has_uncommitted
+
+        library = self.project.root.parent / "library"
+        library.mkdir()
+
+        def run(cwd, *argv):
+            subprocess.run(
+                ["git", "-c", "user.name=t", "-c", "user.email=t@t", *argv],
+                cwd=cwd,
+                check=True,
+                capture_output=True,
+            )
+
+        run(library, "init", "-q")
+        (library / "lib.py").write_text("VALUE = 1\n")
+        run(library, "add", "lib.py")
+        run(library, "commit", "-qm", "one")
+        run(
+            self.worktree,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(library),
+            "vendor/lib",
+        )
+        run(self.worktree, "commit", "-qm", "vendor")
+        head = git(self.worktree, "rev-parse", "HEAD")
+        submodule = self.worktree / "vendor/lib"
+        (submodule / "lib.py").write_text("VALUE = 2\n")
+        (submodule / "scratch.txt").write_text("x\n")
+        self.assertEqual([], changed_paths(self.worktree, head))
+        self.assertFalse(has_uncommitted(self.worktree))
+        run(submodule, "commit", "-qam", "two")
+        self.assertEqual(["vendor/lib"], changed_paths(self.worktree, head))
+        self.assertTrue(has_uncommitted(self.worktree))
+
     @verifies("scenario.validation.warnings")
     def test_warnings_do_not_block(self):
         (self.worktree / "src/a/calc.py").write_text(FIXED)

@@ -249,10 +249,11 @@ def measurement_failed(ctx: RunContext, error: MeasurementError) -> Stop:
                 "Git or the configuration could not be read",
             )
         ],
-        options=[
-            "repair the worktree's Git state",
-            "restore .concorde/config.json",
-        ],
+        options=(
+            ["restore .concorde/config.json"]
+            if error.code == "config_unreadable"
+            else ["repair the worktree's Git state"]
+        ),
     )
 
 

@@ -1,7 +1,10 @@
 """The input measurement a readiness is bound to (see the Validation contracts).
 
 The changed paths are everything Git reports as different between the base commit and the working
-tree, staged or not, plus the untracked paths Git does not ignore. Each gets the SHA-256 digest of
+tree, staged or not, plus the untracked paths Git does not ignore. A submodule counts as changed
+when its checked-out commit differs, never for changes inside its own worktree: the task commits
+only the submodule's commit, and looking inside may need objects a partial clone has to fetch
+over a network the caller may not have. Each gets the SHA-256 digest of
 its bytes, or ``None`` when it no longer exists. The input digest covers the head and base
 commits, the changed paths and the digest of ``.concorde/config.json``. Delivery measures through
 this module too, so both sides compute the same digest for the same worktree.
@@ -85,7 +88,15 @@ def changed_paths(worktree: Path, base: str) -> list[str]:
     New paths Git cannot version (see ``special_paths``) are left out.
     """
     tracked = _paths(
-        _output(worktree, "diff", "--name-only", "--no-renames", "-z", base)
+        _output(
+            worktree,
+            "diff",
+            "--name-only",
+            "--no-renames",
+            "--ignore-submodules=dirty",
+            "-z",
+            base,
+        )
     )
     new = _paths(_output(worktree, "ls-files", "--others", "--exclude-standard", "-z"))
     new = {path for path in new if not _special(worktree, path)}
@@ -148,7 +159,12 @@ def has_uncommitted(worktree: Path) -> bool:
     A new path Git cannot version (see ``special_paths``) is no change.
     """
     raw = _output(
-        worktree, "status", "--porcelain=v1", "-z", "--untracked-files=all"
+        worktree,
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
+        "--ignore-submodules=dirty",
     ).decode("utf-8", "surrogateescape")
     entries = [entry for entry in raw.split("\0") if entry]
     return any(
