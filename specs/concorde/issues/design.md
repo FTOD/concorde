@@ -1,8 +1,8 @@
 # Issues design
 
 This topic explains the choices the [Issues](module.md) entry summarizes: how the store keeps
-records safe, what its lock serializes, how the reporting service stays within its limits, and why
-store validity is a configured check. Shapes and operations are in the
+records safe, what its lock serializes, why the command supplies provenance, and why store validity
+is a configured check. Shapes and operations are in the
 [Issue interface](interface.md).
 
 ## One record, one source
@@ -37,13 +37,27 @@ The store checks shapes, digests and legal transitions; it cannot judge whether 
 That is why the decision to close or reopen an Issue stays with its caller, normally the main agent
 on the branch that fixed the problem, so that the closure and the fix are merged together.
 
-## The reporting service
+## Provenance from the command
 
-The service takes its limits from its caller before the reporter starts. Because the reporter never
-supplies provenance, a root path or a disposition, reporting cannot become a file-write grant or a
-way to forge who said what. Reports are saved the moment they are accepted, so they survive a
-reporter that later fails, times out or is cancelled; that survival says nothing about whether the
-reporter's own task succeeded.
+The main agent writes only the report; the command adds who reported, the reporting Module, the
+registry digest, the task and the Git `HEAD`. A report file therefore cannot claim another origin,
+and the main agent needs no knowledge of the provenance shape. The command refuses an unregistered
+owner and evidence that does not exist, because the store check would fail for such an Issue and
+evidence that cannot be opened helps nobody solve it. When the main agent does not know the owner,
+it says so with `null`, and the Issue falls to the root Module, which the store check always
+accepts. A report is saved the moment the command accepts it, so it survives the task that found
+the problem; that says nothing about whether the task succeeded.
+
+Every run of the command is a new invocation, so identity stays derived without a counter, but a
+repeated run records a second Issue rather than finding the first. The main agent checks `list`
+before recording a problem it may have recorded already.
+
+## Refusals that say what is wrong
+
+The command is used by a model, which can only correct a request it understands. Every refusal
+therefore names the Issue, report file and field, or argument concerned, and states what is wrong,
+and the store's own errors name the Issue so that the command can pass them on unchanged. Exit
+status 2 means the request must be rewritten; 1 means the Issue rules refused a well-formed request.
 
 ## Store validity as a configured check
 
@@ -52,14 +66,8 @@ configured check keeps that separation and still runs whenever this Module's che
 Issue whose owner was removed fails the check because nobody can be asked to solve it; a closed one
 is only noted.
 
-## Typed values and leftovers
+## Typed values
 
 The report and receipt shapes are registered with Spec core's typed-value registry as
 `concorde-issue-report@1` and `concorde-issue-receipt@1`; Spec core does not know them. The shapes
 live in `src/concorde/issues/shapes.py`.
-
-That file and the reference helpers still carry shapes of the removed autonomous Issue solving: a
-task-local blocker, a review-finding reference and the typed values `concorde-issue-selection@1`
-and `concorde-issue-context@1`. Nothing uses them, and this Specification makes no promise about
-them; they are candidates for removal, or for a contract of their own if a worker Operation comes
-to cite Issue reports in its result.

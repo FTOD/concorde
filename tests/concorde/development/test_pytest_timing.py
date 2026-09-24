@@ -43,7 +43,7 @@ class PytestTimingTests(unittest.TestCase):
                 "-n",
                 "2",
                 "tests/concorde/spec/test_typed_data.py",
-                "tests/concorde/issues/test_reporting.py",
+                "tests/concorde/issues/test_store.py",
             ]
             report = Path(directory) / "report.json"
             # A caller may pass no reason, scope, phase or attempt.

@@ -86,7 +86,6 @@
         "tests/concorde/support/issue_reports.py",
         "tests/concorde/development/",
         "scripts/development/init-references.py",
-        "scripts/development/analyze-timing.py",
         "scripts/development/check-docsite-types.py",
         "tests/concorde/support/operation_project.py"
       ],

@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import asdict
-from pathlib import Path
 from typing import Any, Iterable
 
 from .model import Finding, ToolResult
@@ -75,14 +73,3 @@ def canonical_json(value: Any) -> str:
 
 def exit_code(status: str) -> int:
     return STATUS_EXIT_CODES.get(status, 3)
-
-
-def digest_sources(root: Path, paths: Iterable[str]) -> str:
-    digest = hashlib.sha256()
-    for relative in sorted(set(paths)):
-        data = (root / relative).read_bytes()
-        digest.update(relative.encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(data.replace(b"\r\n", b"\n"))
-        digest.update(b"\0")
-    return f"sha256:{digest.hexdigest()}"

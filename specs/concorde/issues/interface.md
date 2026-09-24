@@ -1,14 +1,14 @@
 # Issue interface
 
-The canonical contracts, provenance, record file, store operations, reporting service and
-bookkeeping command of [Issues](module.md). All shapes are closed: unknown fields are refused. Both
+The canonical contracts, provenance, record file, store operations and bookkeeping command of
+[Issues](module.md). All shapes are closed: unknown fields are refused. Both
 contracts below are registered as typed values with version 1 under the name given with them.
 
 ## Report
 
-A report is what a reporter submits to its reporting service, or what a host-side caller passes to
-the store directly with the provenance it vouches for. It is at most 64 KiB as canonical JSON;
-large logs are referenced by path, not copied.
+A report is the content of the file the main agent passes to `report --file`, or what another
+caller passes to the store directly together with the provenance it vouches for. It is at most
+64 KiB as canonical JSON; large logs are referenced by path, not copied.
 
 ```concorde-contract
 {
@@ -49,7 +49,7 @@ large logs are referenced by path, not copied.
       "expected_revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
     }
   },
-  "semantics": "One observation of a concrete problem, registered as typed value concorde-issue-report. report_key is chosen by the reporter and stays the same across retries of the same observation. type bug is a defect or failure, gap an implementation/Spec mismatch, a conflict between Specs or a missing necessary promise, limitation behaviour that is consistent but insufficient; subtype is required for gap and null otherwise. owner_target_id names the Module that owns the broken promise, or null when unknown. evidence paths are canonical project-relative POSIX paths within the reporter's admitted evidence paths. issue_id and expected_revision are both absent to create an Issue and both present to append to that Issue at exactly that revision. Provenance is never part of a report. The report is at most 64 KiB as canonical JSON.",
+  "semantics": "One observation of a concrete problem, registered as typed value concorde-issue-report. report_key is chosen by the reporter and stays the same across retries of the same observation. type bug is a defect or failure, gap an implementation/Spec mismatch, a conflict between Specs or a missing necessary promise, limitation behaviour that is consistent but insufficient; subtype is required for gap and null otherwise. owner_target_id names the Module that owns the broken promise, or null when unknown. evidence paths are canonical project-relative POSIX paths; the report command also requires each to exist in the project. issue_id and expected_revision are both absent to create an Issue and both present to append to that Issue at exactly that revision. Provenance is never part of a report. The report is at most 64 KiB as canonical JSON.",
   "example": {
     "report_key": "retry-count-unspecified",
     "type": "gap",
@@ -82,7 +82,7 @@ large logs are referenced by path, not copied.
       "path": {"type": "string", "pattern": "^\\.concorde/issues/I-[0-9a-f]{32}\\.md$"}
     }
   },
-  "semantics": "The durable name of one accepted report, registered as typed value concorde-issue-receipt. report_id is the digest of the report together with its caller-supplied provenance, so the receipt always names that one immutable report, even after later reports or dispositions of the same Issue. path is the record file of issue_id. A receipt is returned only after the record is on disk. The reporting service answers {receipt, revision}, where revision is the digest of the record file after the write and is usable as a later expected_revision.",
+  "semantics": "The durable name of one accepted report, registered as typed value concorde-issue-receipt. report_id is the digest of the report together with its caller-supplied provenance, so the receipt always names that one immutable report, even after later reports or dispositions of the same Issue. path is the record file of issue_id. A receipt is returned only after the record is on disk. The report command answers {receipt, revision}, where revision is the digest of the record file after the write and is usable as a later expected_revision.",
   "example": {
     "issue_id": "I-0123456789abcdef0123456789abcdef",
     "report_id": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -93,20 +93,23 @@ large logs are referenced by path, not copied.
 
 ## Provenance
 
-The caller of the reporting service supplies the provenance of every report, never the reporter:
+Every report is stored with the provenance of its caller, never taken from the report. The report
+command supplies these values:
 
-| Field | Meaning |
-| --- | --- |
-| `invocation_id` | the invocation the reporter belongs to, such as an Operation run |
-| `agent` | who reports, such as a worker's task type, `host`, `main-agent` or `developer` |
-| `operation` | the Operation the invocation runs, or a caller-chosen name outside Operations |
-| `phase` | the step of that invocation |
-| `target_id` | the reporting Module |
-| `context_id` | digest of the reporter's context |
-| `change_id`, `head` | the task and Git `HEAD`, each nullable |
+| Field | Meaning | Value from `report` |
+| --- | --- | --- |
+| `invocation_id` | the invocation that reported | `cli-` and a random UUID, new for every run |
+| `agent` | who reports | `main-agent` |
+| `operation` | the Operation or command that reported | `issues` |
+| `phase` | the step of that invocation | `report` |
+| `target_id` | the reporting Module | the report's `owner_target_id`, or the root Module when it is `null` |
+| `context_id` | digest of the reporter's context | SHA-256 digest of the configured registry file's bytes |
+| `change_id` | the task, nullable | the `--task` argument, or `null` |
+| `head` | the Git `HEAD`, nullable | `git rev-parse --verify HEAD` in the project, or `null` when that fails |
 
-These fields are free strings apart from `context_id`; the store records them as given and derives
-the Issue identity from `invocation_id` and the report key.
+The root Module is the one registered Module that no other Module contains. The fields are free
+strings apart from `context_id`; the store records them as given and derives the Issue identity
+from `invocation_id` and the report key.
 
 ## Record file
 
@@ -136,17 +139,18 @@ the owner is `null`. Its revision is the SHA-256 digest of the file's bytes.
 
 ## Store operations
 
-These are library operations for host-side callers. None launches a model or runs Git.
+These are library operations in `concorde.issues.store`. None launches a model or runs Git. Every
+refusal is a Spec error carrying one of the codes under [Errors](#errors) and a message naming the
+Issue it concerns; a malformed value is refused with the field it concerns.
 
 | Operation | Behaviour |
 | --- | --- |
-| `report_issue(root, report, source)` | Validates, then under the lock: returns the existing receipt when the same `(invocation_id, report_key)` already holds identical content; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
-| `read_issue(root, id)` | Returns the record and its revision; `unknown_issue` when absent, `invalid_issue` when malformed or oversized. |
+| `report_issue(root, report, source)` | Validates, then under the lock: returns the existing receipt when the same `(invocation_id, report_key)` already holds identical content; fails with `issue_key_conflict` for different content; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
+| `read_issue(root, id)` | Returns the record and its revision; `invalid_issue` for a malformed identity, `unknown_issue` when absent, `invalid_issue` when malformed or oversized. |
 | `list_issues(root, target_id, status)` | Returns summary rows filtered by reporting Module or latest owner and by status, whether or not the owner is a registered Module. An absent directory yields an empty list and is not created. |
 | `resolve_report(root, receipt)` | Returns the exact report the receipt names, never the latest one; `stale_issue` when it is absent. |
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
-| `dispose_issue(root, id, expected_revision, ...)` | Under the lock, checks the revision (`stale_issue`), and for `duplicate` that the other Issue exists, is open and, when given, still has `duplicate_revision`; appends the disposition and returns the new revision. |
-| `restore_issue(root, id, original, expected_revision)` | Under the lock, writes the open `original` bytes only over exactly `expected_revision`; does nothing when `original` is already on disk; otherwise `stale_issue`. |
+| `dispose_issue(root, id, expected_revision, ...)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when given, still has `duplicate_revision` (`stale_issue`); appends the disposition and returns the new revision. |
 
 Every write runs under the exclusive lock `.concorde/runs/issues.lock` of the worktree `root`
 names, which serializes the writes into that worktree; writes into different worktrees touch
@@ -154,41 +158,37 @@ different files and take different locks. It checks the file's previous
 digest, publishes a staged file through a file transaction, and syncs the directory before
 returning. A failed write is never reported as success. No operation deletes a record file.
 
-## Reporting service
-
-A caller binds one reporting service for one reporter before the reporter starts, with:
-
-- **provenance**, as above; its `target_id` must be among the admitted owners;
-- **admitted owners**: the Modules the reporter may name as `owner_target_id`;
-- **evidence paths**: the files the reporter may cite;
-- **selected Issues**: the Issues the reporter may append to, besides those it created itself
-  through the same service;
-- **admitted receipts**: the receipts the reporter was given, kept for a later reference check.
-
-The caller derives these limits from what the reporter is working on, for example the task's bound
-Modules as owners and their Spec and implementation files as evidence paths. No command or
-Operation binds a reporting service in this version.
-
-A report naming an owner outside the admitted owners, evidence outside the evidence paths, or an
-append to an Issue neither selected nor created earlier by the same service fails with
-`permission_denied`. The service answers `{receipt, revision}`.
-
-A reference check, kept from the previous design and unused in this version, accepts in a result
-only receipts the service created or admitted, each at most once (`permission_denied`,
-`invalid_completion`), and resolves each to its exact report (`stale_issue`).
-
 ## Bookkeeping command
 
-`python3 scripts/issues.py <action> [<id>] [--root <path>]` works on the project at `--root`
-(default the current directory) and refuses, with exit status 2 and `{"error": …}`, a directory
-without `.concorde/config.json`, a `show` without an Issue identity, an identity given to another
-action, or an unreadable record.
+`python3 scripts/issues.py <action> ... [--root <path>]` works on the project at `--root` (default
+the current directory), which must contain `.concorde/config.json`. The command reads the registry
+that configuration names whenever an action needs the registered Modules.
 
-| Action | Output |
+| Action | Effect and output |
 | --- | --- |
 | `list` | `{"issues": [...]}`: the summary rows of `list_issues`, unfiltered |
 | `show <id>` | `{"issue": <record>, "revision": <digest>}` |
 | `check` | `{"errors": [...], "notes": [...]}`, exit status 1 when `errors` is nonempty and 0 otherwise |
+| `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above and prints `{"receipt": <receipt>, "revision": <digest>}` |
+| `close <id> --reason resolved\|duplicate\|not-actionable --note <text> --evidence <item>... [--duplicate-of <id>]` | Closes the open Issue at its current revision and prints `{"issue_id", "status": "closed", "revision"}` |
+| `reopen <id> --note <text> --evidence <item>...` | Reopens the closed Issue at its current revision and prints `{"issue_id", "status": "open", "revision"}` |
+
+`report` reads the file as UTF-8 JSON and validates it as a
+[report](#contract.issues.report). Its `owner_target_id`, when not `null`, must be a registered
+Module, and each evidence path must exist in the project. When the owner is `null` the registry must
+have exactly one root Module, which becomes the reporting Module. A file with `issue_id` and
+`expected_revision` appends to that Issue; the revision is the one `show`, `report`, `close` or
+`reopen` last printed for it.
+
+`close` and `reopen` read the Issue's current revision and dispose it at exactly that revision with
+actor `main-agent`. `--evidence` takes one or more items and may be repeated; the items must be
+nonblank and distinct, and `--note` must be nonblank. `--duplicate-of` is required with
+`--reason duplicate` and refused with any other reason.
+
+Every refusal prints one line `{"error": <code>, "message": <text>}` and writes nothing. The
+message names the Issue, the report file and field, or the argument concerned, and states what is
+wrong. The exit status is 2 when the request is unusable (codes `usage`, `not_a_project`,
+`unreadable_file`) and 1 when the request is refused (every other code).
 
 `check` reads the configured registry and every entry of `.concorde/issues/` except hidden files
 such as `.gitignore`. Each error names the file: an entry that is not a regular file named
@@ -199,16 +199,21 @@ passes. Concorde's configuration registers it as the configured check `check.iss
 `module.issues`, with the argument vector `["{python}", "scripts/issues.py", "check"]` and a
 60-second timeout.
 
-The command records no report and no disposition.
-
 ## Errors
 
 | Code | Meaning |
 | --- | --- |
-| `unknown_issue` | the named Issue does not exist |
-| `invalid_issue` | a malformed, oversized or inconsistent report or record |
+| `unknown_issue` | the named Issue, or the Issue a duplicate names, does not exist |
+| `invalid_issue` | a malformed identity, a malformed, oversized or inconsistent report or record, or an invalid disposition |
 | `issue_key_conflict` | a report key reused for different content |
 | `stale_issue` | the record changed since the caller's revision, or a receipt names no report |
-| `closed_issue` | an append to a closed Issue |
-| `permission_denied` | an owner, evidence path, append or reference outside the reporter's limits |
-| `invalid_completion` | a result references the same report twice |
+| `closed_issue` | an append to, or a closing of, a closed Issue |
+| `open_issue` | a reopening of an open Issue |
+| `unknown_owner` | a report's `owner_target_id` is not a registered Module |
+| `no_reporting_module` | a report names no owner and the registry has no single root Module |
+| `missing_evidence` | a report's evidence path does not exist in the project |
+| `unreadable_registry` | the configured registry cannot be read |
+| `io_error` | a file operation failed |
+| `usage` | the arguments do not form a request of the command |
+| `not_a_project` | `--root` has no `.concorde/config.json` |
+| `unreadable_file` | the report file cannot be read as UTF-8 text |

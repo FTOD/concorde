@@ -77,8 +77,8 @@ instructions, licence, repository configuration, the design documents and workfl
 <a id="realization.concorde.development-environment"></a>
 
 It binds the **development environment** of this checkout: the Python project and lock, the
-pytest configuration and its evidence plugin, shared test support, the reference initializer, the
-timing analysis script and the docsite type check, and the tests of that environment, whose
+pytest configuration and its evidence plugin, shared test support, the reference initializer and
+the docsite type check, and the tests of that environment, whose
 promises are in [Development environment](development.md).
 
 <a id="realization.concorde.acceptance-tests"></a>

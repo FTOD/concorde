@@ -55,5 +55,3 @@ reports covered time per process and never subtracts clocks of different process
 ## Open questions
 
 - Whether a worker needs more than the last 20,000 bytes of each failing check's log is undecided.
-- The timing summary reads the event-log format of the former Pi sessions; whether it should read
-  Claude Code transcripts instead is undecided.

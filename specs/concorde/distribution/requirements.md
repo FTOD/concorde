@@ -30,7 +30,7 @@ manifest.
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `task` and `run` SHALL print exactly one JSON result envelope on standard output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run` and `issues` SHALL print exactly one JSON result envelope on standard output, except `--help`.
 
 The exit status follows the envelope's status, so a caller that only checks the status and a caller
 that reads the envelope reach the same conclusion.

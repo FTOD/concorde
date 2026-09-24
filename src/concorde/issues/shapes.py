@@ -1,7 +1,7 @@
-"""Closed shapes of Issue observations, provenance, records and the Issue typed values.
+"""Closed shapes of Issue reports, provenance, records and the Issue typed values.
 
 Issues owns these shapes and registers its typed values with Spec tooling when this module is
-loaded; worker tool schemas and the persistent store use the same declarations.
+loaded; the store and the bookkeeping command use the same declarations.
 """
 
 from __future__ import annotations
@@ -41,15 +41,6 @@ PROVENANCE = obj(
     }
 )
 RECEIPT = obj({"issue_id": ISSUE_ID, "report_id": DIGEST, "path": PATH})
-# Task-local judgments reference one immutable observation; they are not another problem record.
-BLOCKER = obj({**RECEIPT["properties"], "blocked_step": STRING})
-REVIEW_ISSUE = obj(
-    {
-        **RECEIPT["properties"],
-        "severity": {"enum": ["blocking", "advisory"]},
-        "affected_task": STRING,
-    }
-)
 OBSERVATION = obj(
     {"id": DIGEST, "created_at": STRING, "report": REPORT, "source": PROVENANCE}
 )
@@ -73,35 +64,5 @@ RECORD = obj(
     }
 )
 
-SELECTION = obj(
-    {
-        "issue_id": STRING,
-        "revision": DIGEST,
-        "problem": STRING,
-        "type": {"enum": ["bug", "gap", "limitation"]},
-        "feedback": {"type": "string"},
-        "verification": {"type": "string"},
-        "duplicates": array(
-            obj({"issue_id": STRING, "revision": DIGEST, "problem": STRING})
-        ),
-    }
-)
-CONTEXT = obj(
-    {
-        "observations": array(
-            obj(
-                {
-                    "receipt": RECEIPT,
-                    "description": STRING,
-                    "impact": STRING,
-                    "basis": STRING,
-                }
-            )
-        )
-    }
-)
-
 register("concorde-issue-report", 1, REPORT)
 register("concorde-issue-receipt", 1, RECEIPT)
-register("concorde-issue-selection", 1, SELECTION)
-register("concorde-issue-context", 1, CONTEXT)

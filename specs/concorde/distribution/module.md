@@ -76,12 +76,13 @@ only reports whether the tracked manifest matches the build.
 | `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first Spec | [Spec core](../spec-tooling/spec/module.md) |
 | `task open`, `list`, `show` or `close` | opens, lists, shows or closes tasks; prints the task command's own JSON | [Tasks](../tasks/module.md) |
 | `run <operation> --task <task>` | runs one Operation; prints the Operation result | [Operations](../operations/module.md) |
+| `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 
-Every command except `spec-mcp`, `task` and `run` prints exactly one JSON result envelope and exits
+Every command except `spec-mcp`, `task`, `run` and `issues` prints exactly one JSON result envelope and exits
 with its status; a refused command line or an unexpected error still prints one `failed` envelope
-rather than a traceback. `task` and `run` hand the rest of the command line to their owners, which
+rather than a traceback. `task`, `run` and `issues` hand the rest of the command line to their owners, which
 print their own JSON and define their own exit codes; Distribution only routes them.
 
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
@@ -125,8 +126,7 @@ only Protocol text. An output is written only inside the build-owned locations
 `prompts/workers/` or `prompts/main-session/` is a root of its own; an owned
 output the build no longer produces is removed only when its bytes match the previous manifest,
 and links or unknown files stop the build before anything changes. The manifest lets any consumer
-check freshness cheaply by rehashing the recorded sources instead of rebuilding. The resolver still
-knows two source shapes of the removed Operation guidance and Agent Specs; no root uses them.
+check freshness cheaply by rehashing the recorded sources instead of rebuilding.
 
 <a id="realization.distribution.command"></a>
 

@@ -87,9 +87,8 @@ asks.
 about another Module, is worth an [Issue](../issues/module.md#concept.issues.issue) so that it
 survives the task. Solving an Issue is ordinary work: the main agent opens a task for the Issue's
 Module, runs the Operations that fix it, and closes the Issue on the task branch with the evidence,
-so the closure is merged with the fix. `python3 scripts/issues.py list` and `show` tell it what is
-open. The bookkeeping command cannot yet record a report or a disposition; until it can, those
-steps are store operations the guidance will describe once a command exposes them.
+so the closure is merged with the fix. The main agent records, lists, shows, closes and reopens
+Issues with `concorde issues report|list|show|close|reopen`, the Issues bookkeeping command.
 
 **Spec queries.** The main agent may configure the
 [Spec MCP server](../spec-tooling/spec-mcp/module.md#concept.spec-mcp.server) for its own session,

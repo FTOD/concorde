@@ -3,28 +3,61 @@
 Concrete situations that show the [requirements](requirements.md) at work. Shapes and error codes
 are defined in the [Issue interface](interface.md).
 
-## Reporting
+## Recording through the command
 
-### scenario.issues.report-unknown-owner — A reporter that does not know the owner says so
+### scenario.issues.command-report — Record a report from a file
 
-- GIVEN a reporting service bound with admitted owners and evidence paths for one reporter
-- WHEN the reporter submits one report naming no owner and another naming an admitted owner
-- THEN both reports are saved as Issues
-- AND the service keeps both receipts
+- GIVEN an initialized project and a report file naming a registered owner and existing evidence
+- WHEN the main agent runs `report --file` with that file and a task identity
+- THEN a new open Issue holds exactly that report
+- AND its provenance names `main-agent`, `issues`, `report`, the owner as reporting Module, the registry digest, the task and the Git `HEAD` or `null` outside a Git repository
+- AND the command prints the receipt and the revision that `show` reports for the Issue
 
-### scenario.issues.report-authority — A report outside the reporter's limits is refused
+### scenario.issues.command-report-unknown-owner — A report without an owner is filed under the root Module
 
-- GIVEN a reporting service bound with admitted owners, evidence paths and selected Issues
-- WHEN the reporter names an owner or evidence path outside them, supplies its own provenance, or appends to an Issue neither selected nor created earlier by the same service
-- THEN the report is refused
-- BUT nothing is written
+- GIVEN a registry with one root Module and a report file whose owner is `null`
+- WHEN the main agent runs `report --file` with that file
+- THEN the Issue is recorded with owner `null` and the root Module as reporting Module
+- AND the store check passes
 
-### scenario.issues.report-append — A reporter appends to an Issue it was given
+### scenario.issues.command-append — Append a later observation from a file
 
-- GIVEN an open Issue and a reporting service bound with that Issue among its selected Issues
-- WHEN the reporter appends a report at the Issue's current revision
-- THEN the report is added to that Issue
-- AND the service answers with the receipt and the record's new revision
+- GIVEN an open Issue and a report file naming it with its current revision
+- WHEN the main agent runs `report --file` with that file
+- THEN the Issue holds both reports and the command prints the new revision
+- BUT a report file naming the old revision is refused with `stale_issue`, naming the Issue and both revisions
+- AND nothing is written for it
+
+### scenario.issues.command-close — Close an Issue with evidence
+
+- GIVEN an open Issue
+- WHEN the main agent runs `close` with a reason, a note and evidence items, or with `duplicate` and another open Issue
+- THEN the Issue is closed with a disposition whose actor is `main-agent`
+- AND the command prints the Issue, its status and its new revision
+- BUT a duplicate naming a closed Issue is refused and the Issue stays open
+
+### scenario.issues.command-reopen — Reopen a closed Issue
+
+- GIVEN a closed Issue
+- WHEN the main agent runs `reopen` with a note and evidence items
+- THEN the Issue is open again with every report unchanged
+- AND the command prints its status and new revision
+
+### scenario.issues.command-usage — An unusable request exits with status 2
+
+- GIVEN a missing argument, an unknown reason, a `duplicate` without `--duplicate-of`, a blank note, a repeated evidence item, an unreadable report file or a directory that is not a Concorde project
+- WHEN the command runs
+- THEN it prints an error code and a message naming the argument, file or directory
+- AND exits with status 2
+- BUT writes nothing
+
+### scenario.issues.command-refused — A refused request exits with status 1
+
+- GIVEN a report file with an invalid field, an unregistered owner, missing evidence or half of an append, or an unknown, malformed, open or closed Issue for an action that needs the other state, or an Issue named as its own duplicate
+- WHEN the command runs
+- THEN it prints the error code and a message naming the report file and field or the Issue
+- AND exits with status 1
+- BUT writes nothing
 
 ## Records
 

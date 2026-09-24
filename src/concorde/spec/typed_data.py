@@ -1,11 +1,10 @@
-"""Versioned JSON values admitted at capability and Agent boundaries.
+"""Versioned JSON values that Concorde's Modules exchange.
 
 Every typed value is ``{type_id, schema_version, data}``. The owner of a type registers it here
 with its version and the schema of its ``data``; Spec tooling registers only its own types and
 imports no owner. A schema names another registered type with ``typed_schema(type_id)``, which is
 resolved when a value is checked, so an owner never imports the owner of a type it embeds. Checking
-uses the standard library only, so configuration and admission work before any managed runtime is
-installed.
+uses the standard library only.
 """
 
 from __future__ import annotations
@@ -14,7 +13,6 @@ import copy
 import hashlib
 import json
 import re
-import sys
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -62,7 +60,6 @@ ARTIFACT = obj({"id": STRING, "path": PATH, "digest": DIGEST})
 # type_id -> (schema_version, data schema). Owners fill it through ``register``.
 _TYPES: dict[str, tuple[int, dict]] = {}
 # The Python module whose code registered each type.
-_ORIGINS: dict[str, str] = {}
 
 
 def _admissible(value: Any) -> Any:
@@ -124,17 +121,6 @@ def register(type_id: str, version: int, schema: dict) -> None:
             f"{type_id} is already registered with another version or schema",
         )
     _TYPES[type_id] = (version, copy.deepcopy(schema))
-    _ORIGINS[type_id] = sys._getframe(1).f_globals.get("__name__", "")
-
-
-def registered_types() -> tuple[str, ...]:
-    return tuple(sorted(_TYPES))
-
-
-def registration_module(type_id: str) -> str:
-    """The name of the Python module whose code registered ``type_id``."""
-    _registration(type_id)
-    return _ORIGINS[type_id]
 
 
 def _registration(type_id: str, field: str = "") -> tuple[int, dict]:
@@ -358,47 +344,3 @@ def verify_artifacts(root: Path, value: Any, field: str = "") -> None:
     elif isinstance(value, list):
         for index, item in enumerate(value):
             verify_artifacts(root, item, _pointer(field, index))
-
-
-def json_schema(type_id: str) -> dict:
-    """Export a self-contained Draft 2020-12 schema of one registered type.
-
-    Every referenced type's data schema is placed in ``$defs``; each reference becomes the typed
-    envelope of that type whose ``data`` refers to its definition.
-    """
-
-    def envelope(name: str) -> dict:
-        version, _ = _registration(name)
-        return obj(
-            {
-                "type_id": {"const": name},
-                "schema_version": {"type": "integer", "const": version},
-                "data": {"$ref": "#/$defs/" + name},
-            }
-        )
-
-    pending: list[str] = []
-
-    def expand(value):
-        if isinstance(value, dict):
-            if "$ref" in value and not value["$ref"].startswith("#"):
-                pending.append(value["$ref"])
-                return expand(envelope(value["$ref"]))
-            return {key: expand(item) for key, item in value.items() if key != "format"}
-        if isinstance(value, list):
-            return [expand(item) for item in value]
-        return value
-
-    root = expand(envelope(type_id))
-    pending.append(type_id)
-    definitions: dict[str, Any] = {}
-    while pending:
-        name = pending.pop()
-        if name not in definitions:
-            definitions[name] = None
-            definitions[name] = expand(_registration(name)[1])
-    return {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        **root,
-        "$defs": definitions,
-    }

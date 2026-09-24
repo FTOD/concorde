@@ -5,7 +5,6 @@ import contextlib
 import io
 import json
 import os
-import subprocess
 import sys
 import threading
 import tempfile
@@ -14,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
+from tests.concorde.support.paths import RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.harness.timing import (
@@ -58,10 +57,18 @@ class TimingTests(unittest.TestCase):
             metadata({"argv": "SECRET", "env": "SECRET", "output": "SECRET"}), {}
         )
 
-    @verifies("scenario.checks.timing-spans")
+    @verifies("scenario.checks.timing-summary")
     def test_overlap_and_missing_are_not_wall_or_thinking(self):
         spans = [
-            {"process_id": 1, "start_ns": 0, "duration_ns": 10e9, "status": "ok"},
+            {
+                "process_id": 1,
+                "start_ns": 0,
+                "duration_ns": 10e9,
+                "status": "ok",
+                "name": "SPAN-NAME-SECRET",
+                "trace_id": "TRACE-SECRET",
+                "metadata": {"invocation_id": "LABEL-SECRET"},
+            },
             {"process_id": 1, "start_ns": 2e9, "duration_ns": 4e9, "status": "ok"},
             {"process_id": 1, "start_ns": 8e9, "duration_ns": 4e9, "status": "ok"},
             {
@@ -77,6 +84,7 @@ class TimingTests(unittest.TestCase):
         self.assertFalse(result["complete"])
         self.assertIsNone(result["wall_seconds"])
         self.assertIsNone(result["server_thinking_seconds"])
+        self.assertNotIn("SECRET", json.dumps(result))
 
     @verifies("scenario.checks.timing-spans")
     def test_concurrency_sink_failure_and_cap(self):
@@ -98,81 +106,6 @@ class TimingTests(unittest.TestCase):
         trace.emit({})
         self.assertEqual(trace.incomplete, 1)
 
-    @verifies(
-        "scenario.checks.timing-summary-fallback",
-        "scenario.checks.timing-spans",
-    )
-    def test_native_analysis_omits_payloads(self):
-        from concorde.harness.timing import analyze_native
-
-        native = [
-            {
-                "type": "tool_execution_start",
-                "toolCallId": "a",
-                "timestamp": 1000,
-                "args": {"secret": "PRIVATE"},
-            },
-            {
-                "type": "tool_execution_end",
-                "toolCallId": "a",
-                "timestamp": 3000,
-                "result": "PRIVATE",
-            },
-        ]
-        result = analyze_native(native)
-        self.assertEqual(result["covered_seconds_by_process"], {"native-wall-clock": 2})
-        self.assertIsNone(result["latest_context"]["context_capacity"])
-        self.assertNotIn("PRIVATE", json.dumps(result))
-        self.assertFalse(analyze_native([])["complete"])
-
-    @verifies("scenario.checks.timing-spans")
-    def test_cancelled_root_preserves_pending_span_identity_without_persistence(self):
-        from types import SimpleNamespace
-        from concorde.harness.timing import name_trace, traced_operation
-
-        events = []
-        with tempfile.TemporaryDirectory() as directory:
-            host = SimpleNamespace(
-                project_root=Path(directory),
-                archive_root=None,
-                mode="execute",
-                invocation_id="initial",
-                root_invocation_id=None,
-                depth=0,
-                observe=lambda event, **value: events.append(value),
-            )
-
-            def sink_for(host):
-                return lambda value: host.observe("timing", **value)
-
-            @traced_operation(sink_for)
-            def cancelled(*, host_context):
-                Span("unfinished.prepare")
-                # The request names its trace by its own run once it has one.
-                name_trace("bound-root")
-                return {
-                    "invocation_id": "bound-root",
-                    "status": "failed",
-                    "errors": [{"code": "execution_cancelled"}],
-                }
-
-            result = cancelled(host_context=host)
-            self.assertEqual(result["status"], "failed")
-            # The caller's sink decides where a trace goes; the recorder writes nothing itself.
-            self.assertFalse((Path(directory) / ".concorde/runs").exists())
-        [trace] = events
-        self.assertFalse(trace["complete"])
-        self.assertTrue(all(s["trace_id"] == "bound-root" for s in trace["spans"]))
-        self.assertEqual(
-            "cancelled",
-            next(s for s in trace["spans"] if s["name"] == "operation.total")["status"],
-        )
-        self.assertIsNone(
-            next(s for s in trace["spans"] if s["name"] == "unfinished.prepare")[
-                "duration_ns"
-            ]
-        )
-
     @verifies("scenario.checks.timing-spans")
     def test_standalone_diagnostics_and_disabled_fast_path(self):
         @timed("fixture.install")
@@ -192,52 +125,6 @@ class TimingTests(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             diagnostic_sink(Path("relative"))
-
-
-ANALYZE = REPOSITORY_ROOT / "scripts/development/analyze-timing.py"
-
-
-def analyze(records, directory):
-    """Run the analysis script on a JSONL file, as a developer would."""
-    path = Path(directory) / "session.jsonl"
-    path.write_text(
-        "".join(
-            (line if isinstance(line, str) else json.dumps(line)) + "\n"
-            for line in records
-        )
-    )
-    completed = subprocess.run(
-        [sys.executable, str(ANALYZE), str(path)],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=60,
-    )
-    return completed.stdout, json.loads(completed.stdout)
-
-
-def observer_entry(process_id, start_ns, duration_ns, **extra):
-    return {
-        "type": "custom",
-        "customType": "concorde.timing.v1",
-        "data": {
-            "schema_version": 1,
-            "trace_id": "trace-1",
-            "span_id": f"span-{process_id}-{start_ns}",
-            "parent_id": None,
-            "layer": "A",
-            "name": "session.tool",
-            "process_id": process_id,
-            "session_id": "SESSION-IDENTITY-SECRET",
-            "task_id": None,
-            "started_at": "2026-09-23T00:00:00+00:00",
-            "start_ns": start_ns,
-            "duration_ns": duration_ns,
-            "status": "ok" if duration_ns is not None else "incomplete",
-            "metadata": {},
-            **extra,
-        },
-    }
 
 
 class ObservationScenarioTests(unittest.TestCase):
@@ -342,10 +229,6 @@ class ObservationScenarioTests(unittest.TestCase):
 
     @verifies("scenario.checks.timing-sink-failure")
     def test_failing_sink_counts_incomplete_once_and_changes_no_outcome(self):
-        from types import SimpleNamespace
-
-        from concorde.harness.timing import traced_operation
-
         received = []
         attempts = []
 
@@ -355,43 +238,40 @@ class ObservationScenarioTests(unittest.TestCase):
 
         sinks = {"working": received.append, "failing": failing}
 
+        @timed("admission.request")
+        def request(outcome):
+            if outcome["status"] == "raised":
+                raise LookupError("boundary_violation")
+            return outcome
+
         def run(kind, outcome):
-            host = SimpleNamespace(invocation_id=f"{kind}-run", root_invocation_id=None)
-
-            @traced_operation(lambda _host: sinks[kind])
-            def request(*, host_context):
-                with Span("admission.request"):
-                    pass
-                return outcome
-
+            trace = Trace(sink=sinks[kind])
             stderr = io.StringIO()
             with contextlib.redirect_stderr(stderr):
-                result = request(host_context=host)
-            return result, stderr.getvalue()
+                try:
+                    with tracing(trace):
+                        result = request(outcome)
+                except LookupError as error:
+                    result = ("raised", str(error))
+            return result, stderr.getvalue(), trace
 
         for outcome in (
             {"status": "succeeded", "invocation_id": "x"},
             {"status": "failed", "errors": [{"code": "boundary_violation"}]},
+            {"status": "raised"},
         ):
             with self.subTest(outcome["status"]):
                 received.clear()
                 attempts.clear()
-                expected, quiet = run("working", json.loads(json.dumps(outcome)))
-                actual, noisy = run("failing", json.loads(json.dumps(outcome)))
+                expected, quiet, kept = run("working", json.loads(json.dumps(outcome)))
+                actual, noisy, lost = run("failing", json.loads(json.dumps(outcome)))
                 self.assertEqual(expected, actual)
                 self.assertEqual("", quiet)
                 self.assertEqual("CONCORDE_TIMING_INCOMPLETE\n", noisy)
+                self.assertEqual(0, kept.incomplete)
+                self.assertEqual(1, lost.incomplete)
                 self.assertEqual(1, len(received))
                 self.assertEqual(1, len(attempts))  # never retried
-
-        trace = Trace(sink=failing)
-        attempts.clear()
-        with contextlib.redirect_stderr(io.StringIO()):
-            with tracing(trace):
-                with Span("work"):
-                    pass
-        self.assertEqual(1, trace.incomplete)
-        self.assertEqual(1, len(attempts))
 
     @verifies("scenario.checks.timing-trace-cap")
     def test_full_trace_counts_omitted_and_open_spans(self):
@@ -471,79 +351,3 @@ class ObservationScenarioTests(unittest.TestCase):
             self.assertEqual({f"task-{index}"}, {s["trace_id"] for s in trace.records})
             self.assertEqual(["inner", "outer"], [s["name"] for s in trace.records])
             self.assertEqual(trace.records[1]["span_id"], trace.records[0]["parent_id"])
-
-    @verifies("scenario.checks.timing-summary")
-    def test_analysis_script_reports_covered_time_per_process(self):
-        records = [
-            {"type": "session", "id": "SESSION-IDENTITY-SECRET"},
-            {
-                "type": "message",
-                "message": {
-                    "role": "user",
-                    "content": [{"type": "text", "text": "PROMPT-BODY-SECRET"}],
-                    "timestamp": 1000,
-                },
-            },
-            observer_entry(11, 0, 10_000_000_000),
-            observer_entry(11, 2_000_000_000, 4_000_000_000),
-            observer_entry(11, 8_000_000_000, 4_000_000_000),
-            observer_entry(22, 5_000_000_000, 1_000_000_000),
-            observer_entry(22, 9_000_000_000, None),
-            {
-                "type": "message",
-                "message": {
-                    "role": "toolResult",
-                    "toolCallId": "call-1",
-                    "content": [{"type": "text", "text": "TOOL-OUTPUT-SECRET"}],
-                    "timestamp": 2000,
-                },
-            },
-        ]
-        with tempfile.TemporaryDirectory() as directory:
-            raw, summary = analyze(records, directory)
-        self.assertEqual("passive-monotonic", summary["source"])
-        self.assertEqual({"11": 12.0, "22": 1.0}, summary["covered_seconds_by_process"])
-        self.assertEqual(19.0, summary["summed_span_seconds"])
-        self.assertFalse(summary["complete"])  # the open span is not counted as zero
-        self.assertIsNone(summary["wall_seconds"])
-        self.assertIsNone(summary["server_thinking_seconds"])
-        for secret in ("SESSION-IDENTITY", "PROMPT-BODY", "TOOL-OUTPUT", "trace-1"):
-            self.assertNotIn(secret, raw)
-
-    @verifies("scenario.checks.timing-summary-fallback")
-    def test_analysis_script_estimates_tool_time_from_native_events(self):
-        events = [
-            {"type": "tool_execution_start", "toolCallId": "a", "timestamp": 1000},
-            {"type": "tool_execution_end", "toolCallId": "a", "timestamp": 3500},
-            {"type": "tool_execution_start", "toolCallId": "b", "timestamp": 4000},
-        ]
-        session = [
-            {
-                "type": "message",
-                "message": {
-                    "role": "assistant",
-                    "content": [{"type": "toolCall", "id": "c", "name": "read"}],
-                    "timestamp": 1000,
-                },
-            },
-            {
-                "type": "message",
-                "message": {
-                    "role": "toolResult",
-                    "toolCallId": "c",
-                    "content": [],
-                    "timestamp": 2000,
-                },
-            },
-        ]
-        with tempfile.TemporaryDirectory() as directory:
-            _, open_log = analyze(events, directory)
-            _, closed_session = analyze(session, directory)
-        self.assertEqual("native-wall-estimate", open_log["source"])
-        self.assertEqual(2.5, open_log["summed_span_seconds"])
-        self.assertEqual(1, open_log["open_tools"])
-        self.assertFalse(open_log["complete"])
-        self.assertEqual("native-wall-estimate", closed_session["source"])
-        self.assertEqual(1.0, closed_session["summed_span_seconds"])
-        self.assertEqual(0, closed_session["open_tools"])
-        self.assertTrue(closed_session["complete"])

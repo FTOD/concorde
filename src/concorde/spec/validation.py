@@ -1225,39 +1225,6 @@ DEPENDENCY_CHECKS = frozenset(
 MISSING_PROMISES = "missing local dependency promises: "
 
 
-def module_dependency_findings(
-    repository: DocumentUnitRepository, target_id: str | None = None
-) -> tuple[Finding, ...]:
-    """Findings about a Module's own collaborations, used before context assessment.
-
-    A ``contains``, ``uses`` or ``participates`` whose explanation does not resolve is a missing
-    promise (its message starts with ``MISSING_PROMISES``); a ``relies_on`` that names nodes the
-    provider does not own or omits linked ones, a self or repeated ``uses`` and an unreconciled
-    context requirement conflict with the declared topology.
-    """
-    checks = Checks(repository)
-    checks.module_relations()
-    checks.reconciliation()
-    result = []
-    for finding in checks.findings:
-        if finding.rule_id not in DEPENDENCY_CHECKS:
-            continue
-        if target_id is not None and finding.subject_id != target_id:
-            continue
-        if finding.rule_id == "CHK.relation.meaning":
-            finding = Finding(
-                finding.rule_id,
-                finding.severity,
-                finding.source,
-                MISSING_PROMISES + finding.message,
-                "Explain the collaboration at its meaning anchor: the provider's responsibility, "
-                "when it applies, the promises relied upon and this Module's own duties.",
-                subject_id=finding.subject_id,
-            )
-        result.append(finding)
-    return tuple(result)
-
-
 def definition_ids(repository: DocumentUnitRepository) -> set[str]:
     """Every Module and scenario identity a reflection may be attributed to."""
     return set(repository.modules) | set(repository.scenario_nodes)

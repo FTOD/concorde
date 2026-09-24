@@ -1,23 +1,17 @@
-"""Deterministic resolution of Concorde prompt sources (proposal section 4).
+"""Deterministic resolution of Concorde prompt sources.
 
 A prompt is a Markdown file with YAML front matter declaring ``audience: worker | ambient |
 shared``. A prompt body may reference other prompts through an explicit ``@path.md`` reference
 that occupies a whole line starting at column one:
 
-    @prompts/workflow-host/lifecycle-no-cognition.md
-    @prompts/workflow-host/invoke-operation-opener.md ACTION=validate
+    @prompts/workers/common/boundary.md
+    @prompts/workers/common/result.md KIND=review
 
-Resolution is a pure function of the source tree: given a root (a role root prompt or an operation guidance
-source), it walks references, binds per-inclusion ``{KEY}`` variables, and returns the
-fully substituted text. It performs no network or process I/O beyond reading files under
-``project_root``.
+Resolution is a pure function of the source tree: given a root prompt, it walks references,
+binds per-inclusion ``{KEY}`` variables, and returns the fully substituted text. It performs no
+network or process I/O beyond reading files under ``project_root``.
 
-Operation guidance sources (``prompts/operation-guidance/<name>.md``) are a distinct front-matter shape (``name``,
-``description``) with no ``audience`` field; they are always implicit ``ambient``
-roots and can never be included. WorkerProfile Specs (``agents/<name>/spec.md``) are a third distinct shape: no front matter at all,
-and always an implicit ``worker`` root -- an WorkerProfile Spec carries its own ``# concorde-<name>``
-heading and behavioral contract directly, not role/audience metadata. Every other prompt lives
-under ``prompts/`` and must declare its own ``audience``. Independent standard chapters under
+Every prompt lives under ``prompts/`` and must declare its own ``audience``. Independent standard chapters under
 ``protocol/`` are plain Markdown, implicitly shared, and can only be included by Protocol adapters
 or other standard chapters. They are not project Specs or agent prompt definitions.
 """
@@ -32,13 +26,9 @@ from pathlib import Path, PurePosixPath
 from ..spec.frontmatter import FrontMatterError, parse_document
 
 AUDIENCES = frozenset({"worker", "ambient", "shared"})
-RESERVED_VARIABLES = frozenset({"OPERATION", "SCRIPT", "FRAMEWORK"})
 PROTOCOL_PREFIX = "prompts/protocol/"
 PROTOCOL_TEXT_ROOT = "protocol/"
-PROMPTS_ROOT = "prompts/"
-GUIDANCE_ROOT = "prompts/operation-guidance/"
 SPECS_ROOT = "specs/"
-AGENTS_ROOT = "agents/"
 
 # Path-shaped tokens only: ordinary mentions, emails and decorators stay literal.
 _DIRECTIVE_LINE = re.compile(r"^@(?P<target>[^\s@`\"'()<>]+)(?:[ \t]+.*)?$")
@@ -181,20 +171,10 @@ def _parse_directive(rest: str | None, relative: str) -> tuple[str, dict[str, st
 
 
 def _check_scope(target: str, including: str) -> None:
-    if target.startswith(GUIDANCE_ROOT) or target == GUIDANCE_ROOT.rstrip("/"):
-        raise PromptResolverError(
-            "CONCORDE-PROMPT-SCOPE-001",
-            f"{including}: cannot include an operation guidance source: {target}",
-        )
     if target.startswith(SPECS_ROOT) or target == "specs":
         raise PromptResolverError(
             "CONCORDE-PROMPT-SCOPE-001",
             f"{including}: cannot include a Spec document: {target}",
-        )
-    if including.startswith(AGENTS_ROOT) and not target.startswith(PROMPTS_ROOT):
-        raise PromptResolverError(
-            "CONCORDE-PROMPT-SCOPE-001",
-            f"{including}: an WorkerProfile Spec may include only prompts/ files: {target}",
         )
     including_is_protocol = including.startswith((PROTOCOL_PREFIX, PROTOCOL_TEXT_ROOT))
     target_is_protocol = target.startswith((PROTOCOL_PREFIX, PROTOCOL_TEXT_ROOT))
@@ -223,8 +203,6 @@ def _check_audience(root_audience: str, target_audience: str, target: str) -> No
 def _substitute(body: str, bindings: dict[str, str], relative: str) -> str:
     def replace(match: re.Match[str]) -> str:
         name = match.group(1)
-        if name in RESERVED_VARIABLES:
-            return match.group(0)
         if name not in bindings:
             raise PromptResolverError(
                 "CONCORDE-PROMPT-UNRESOLVED-001",
@@ -294,12 +272,12 @@ def _resolve_body(
 
 
 def _finalize(body: str, relative: str) -> str:
-    for match in _VARIABLE.finditer(body):
-        if match.group(1) not in RESERVED_VARIABLES:
-            raise PromptResolverError(
-                "CONCORDE-PROMPT-UNRESOLVED-001",
-                f"{relative}: unresolved variable {{{match.group(1)}}} in output",
-            )
+    match = _VARIABLE.search(body)
+    if match:
+        raise PromptResolverError(
+            "CONCORDE-PROMPT-UNRESOLVED-001",
+            f"{relative}: unresolved variable {{{match.group(1)}}} in output",
+        )
     return body
 
 
@@ -328,75 +306,6 @@ def resolve_role_prompt(project_root: str | Path, relative_path: str) -> Resolve
     return ResolvedPrompt(body=resolved, sources=tuple(sorted({relative, *sources})))
 
 
-def resolve_operation_guidance(
-    project_root: str | Path,
-    relative_path: str,
-) -> ResolvedPrompt:
-    """Resolve one operation-guidance source as an implicit ambient root."""
-
-    root = Path(project_root)
-    relative = _safe_relative(relative_path)
-    text = _read(root, relative)
-    try:
-        metadata, body = parse_document(text, relative)
-    except FrontMatterError as error:
-        raise PromptResolverError(
-            "CONCORDE-PROMPT-AUDIENCE-002",
-            f"invalid operation guidance source front matter in {relative}: {error}",
-        ) from error
-    required = {"name", "description"}
-    if set(metadata) != required:
-        raise PromptResolverError(
-            "CONCORDE-PROMPT-AUDIENCE-002",
-            f"operation guidance source {relative} must declare exactly {sorted(required)}, found {sorted(metadata)}",
-        )
-    sources: set[str] = set()
-    resolved = _resolve_body(
-        root,
-        relative,
-        body,
-        "ambient",
-        chain=(relative,),
-        visited={relative: (relative,)},
-        sources=sources,
-    )
-    resolved = _finalize(resolved, relative)
-    return ResolvedPrompt(body=resolved, sources=tuple(sorted({relative, *sources})))
-
-
-def resolve_model_instructions(
-    project_root: str | Path, relative_path: str
-) -> ResolvedPrompt:
-    """Resolve one WorkerProfile Spec (``agents/<name>/spec.md``): an implicit ``worker`` root with no
-    front matter (workflow/agents-and-harnesses.md A1). Unlike a role root or an operation guidance source, an
-    WorkerProfile Spec carries its own ``# concorde-<name>`` heading and behavioral contract directly, so
-    there is no ``audience``/``name``/``description``/``operation`` metadata to parse -- only a
-    front-matter fence itself is rejected."""
-
-    root = Path(project_root)
-    relative = _safe_relative(relative_path)
-    text = _read(root, relative)
-    normalized = text.replace("\r\n", "\n")
-    first_line = normalized.splitlines()[0].strip() if normalized else ""
-    if first_line == "---":
-        raise PromptResolverError(
-            "CONCORDE-PROMPT-AUDIENCE-002",
-            f"WorkerProfile Spec {relative} must carry no front matter",
-        )
-    sources: set[str] = set()
-    resolved = _resolve_body(
-        root,
-        relative,
-        text,
-        "worker",
-        chain=(relative,),
-        visited={relative: (relative,)},
-        sources=sources,
-    )
-    resolved = _finalize(resolved, relative)
-    return ResolvedPrompt(body=resolved, sources=tuple(sorted({relative, *sources})))
-
-
 def find_unreachable_prompts(
     project_root: str | Path, roots: list[str] | tuple[str, ...]
 ) -> tuple[str, ...]:
@@ -414,24 +323,5 @@ def find_unreachable_prompts(
     )
     visited: set[str] = set()
     for candidate in roots:
-        if candidate.startswith(GUIDANCE_ROOT):
-            resolved = resolve_operation_guidance(root, candidate)
-        elif candidate.startswith(AGENTS_ROOT):
-            resolved = resolve_model_instructions(root, candidate)
-        else:
-            resolved = resolve_role_prompt(root, candidate)
-        visited.update(resolved.sources)
+        visited.update(resolve_role_prompt(root, candidate).sources)
     return tuple(sorted(all_prompts - visited))
-
-
-def check_reachability(
-    project_root: str | Path, roots: list[str] | tuple[str, ...]
-) -> None:
-    """Raise CONCORDE-PROMPT-UNREACHABLE-001 when some prompt is dead text given these roots."""
-
-    unreachable = find_unreachable_prompts(project_root, roots)
-    if unreachable:
-        raise PromptResolverError(
-            "CONCORDE-PROMPT-UNREACHABLE-001",
-            f"no root reaches: {list(unreachable)}",
-        )

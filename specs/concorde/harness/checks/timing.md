@@ -11,7 +11,7 @@ A span is a JSON object with these fields; all are present:
 | Field | Content |
 | --- | --- |
 | `schema_version` | `1` |
-| `trace_id`, `span_id` | UUIDs; the trace of a top-level request can be renamed to the request's own run identity |
+| `trace_id`, `span_id` | UUIDs, unless the trace was opened with a given identity |
 | `parent_id` | the enclosing span, or null |
 | `layer` | `B` for host work recorded by this library, `C` for an interval measured by an external runner and adapted to this shape |
 | `name` | the span name, such as `check.total` or `check.sandbox_setup` |
@@ -36,20 +36,13 @@ trace keeps at most 20,000 spans; the rest are counted in `omitted`.
 | --- | --- |
 | `Span(name, **labels)` / `timed(name)` | mark a unit of work as a span; a no-op without an open trace or `CONCORDE_DIAGNOSTIC_TIMING_DIR` |
 | `Trace(trace_id=None, sink=None, layer="B")` / `tracing(trace)` | open a trace in the current context; its sink receives the finished trace once |
-| `operation_trace(trace_id, sink)` / `traced_operation(sink_for)` | open one trace for a top-level request with the caller's sink, or join the trace already open; `sink_for(host)` supplies the sink of each decorated request |
-| `name_trace(trace_id)` | give the open trace and every span it holds the identity of the top-level request's own run |
 | `notice_incomplete()` | write the one `CONCORDE_TIMING_INCOMPLETE` line of a sink that could not keep its trace |
 | `diagnostic_sink(directory)` | a sink writing each trace as a new mode-0600 file in an existing directory |
 | `interval_record(...)` | adapt an interval measured elsewhere to the span shape |
-| `analyze_native(records)` / `summarize(spans)` | the timing summary of event records or spans |
+| `summarize(spans)` | the timing summary of finished span records |
 
 The timing summary is `{complete, summed_span_seconds, covered_seconds_by_process, wall_seconds:
-null, server_thinking_seconds: null, source, observed_spans, open_tools, telemetry_incomplete,
-latest_context}`, where `source` is `passive-monotonic` when the records hold `concorde.timing.v1`
-span entries and `native-wall-estimate` when only timestamped tool start and end events are present,
-and `latest_context` holds the last known context and cache figures, each possibly null. The
-development script `scripts/development/analyze-timing.py` prints it for a JSON Lines file and adds
-`malformed_records`.
+null, server_thinking_seconds: null}`.
 
 ## Requirements
 
@@ -125,17 +118,9 @@ timestamps are used only to correlate records.
 
 ### scenario.checks.timing-summary — A timing summary reports covered time per process
 
-- GIVEN an event log with span entries, some overlapping and some without a duration
-- WHEN the analysis script summarizes it
-- THEN it reports the covered seconds of each process as the union of that process's intervals, and the summed span seconds separately
+- GIVEN span records, some overlapping and some without a duration
+- WHEN they are summarized
+- THEN the summary reports the covered seconds of each process as the union of that process's intervals, and the summed span seconds separately
 - AND spans without a duration make the summary incomplete instead of counting as zero
 - AND wall time and model thinking time are reported as unknown
-- BUT no message body, prompt, tool output or session identity appears in the output
-
-### scenario.checks.timing-summary-fallback — Without span entries the summary uses tool events
-
-- GIVEN an event log that holds no span entries but timestamped tool start and end events
-- WHEN it is summarized
-- THEN tool durations are estimated from those timestamps and the source is labelled `native-wall-estimate`
-- AND tool calls without an end are counted as open and make the summary incomplete
-- BUT no tool argument or result appears in the output
+- BUT no span name, trace identity or label appears in the summary

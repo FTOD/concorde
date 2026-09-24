@@ -21,9 +21,9 @@ def report(**changes):
 def source(**changes):
     return {
         "invocation_id": "worker-1",
-        "agent": "spec-reviewer",
-        "operation": "concorde-spec-review",
-        "phase": "spec-review",
+        "agent": "main-agent",
+        "operation": "issues",
+        "phase": "report",
         "target_id": "module.service",
         "context_id": "sha256:" + "a" * 64,
         "change_id": None,

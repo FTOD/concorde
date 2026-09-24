@@ -211,6 +211,15 @@ class CommandLineTests(unittest.TestCase):
                 self.assertEqual("failed", envelope["status"])
 
 
+class RoutingTests(unittest.TestCase):
+    def test_task_run_and_issues_are_routed_to_their_owners(self):
+        listed = command("issues", "list")
+        self.assertEqual(0, listed.returncode, listed.stdout)
+        self.assertIn("issues", json.loads(listed.stdout))
+        self.assertEqual(2, command("run", "frobnicate", "--task", "t").returncode)
+        self.assertEqual(2, command("task", "frobnicate").returncode)
+
+
 class InstallTests(unittest.TestCase):
     @verifies("scenario.distribution.install")
     def test_install_places_concorde_without_touching_specs(self):

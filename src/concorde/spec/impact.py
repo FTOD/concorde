@@ -3,8 +3,8 @@
 Computed from declarations alone, through the Protocol-named repository queries
 (``selected_by``, ``referenced_by``, ``implemented_by``, ``shared_files``): the binding Modules of
 a Module and the documents and node definitions that differ between two revisions. Which Modules
-a change may edit, which need a fresh review and which a candidate edited are policies of
-Planning, Review and Validation built on these indexes.
+a task may edit, which need a fresh review and which a task edited are decisions of the Operations
+built on these indexes.
 """
 
 from __future__ import annotations

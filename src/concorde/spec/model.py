@@ -19,13 +19,6 @@ class Finding:
 
 
 @dataclass(frozen=True)
-class ProposalFile:
-    path: str
-    content: str
-    sha256: str
-
-
-@dataclass(frozen=True)
 class ToolResult:
     tool: str
     target: str

@@ -246,8 +246,8 @@ def project_proposal(
         ),
     ]
     # Initialization creates only what the user's project generates through Concorde. Everything
-    # that exists because Concorde is installed (the Protocol copy, Reflection defaults, the
-    # topology-artifact ignore file) is the installer's output.
+    # that exists because Concorde is installed (the Protocol copy, the Framework runtime and the
+    # main-session guidance) is the installer's output.
     return {
         "type_id": "concorde-project-proposal",
         "schema_version": PROPOSAL_VERSION,

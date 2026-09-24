@@ -105,9 +105,11 @@ with `--abandoned`.
 
 ## Issues
 
-A problem the current task will not fix is recorded as an Issue under `.concorde/issues/`;
-`python3 scripts/issues.py list` shows what is open. Solving an Issue is ordinary work: a task for
-its Module, the Operations that fix it, and the Issue closed on that task's branch.
+A problem the current task will not fix is recorded as an Issue under `.concorde/issues/` with
+`concorde issues report --file <report.json>`; `concorde issues list` and `show <id>` show what is
+open. Solving an Issue is ordinary work: a task for its Module, the Operations that fix it, and the
+Issue closed on that task's branch with `concorde issues close <id> --reason resolved …`, so the
+closure merges with the fix.
 
 ## Development
 

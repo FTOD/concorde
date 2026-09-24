@@ -67,17 +67,6 @@
       "pending": []
     },
     {
-      "id": "realization.issues.reporting",
-      "type": "realization",
-      "title": "Reporting service",
-      "meaning": "#realization.issues.reporting",
-      "entries": [
-        "src/concorde/issues/reporting.py",
-        "src/concorde/issues/references.py"
-      ],
-      "pending": []
-    },
-    {
       "id": "realization.issues.command",
       "type": "realization",
       "title": "Bookkeeping command",
@@ -94,7 +83,7 @@
       "meaning": "#realization.issues.tests",
       "entries": [
         "tests/concorde/issues/__init__.py",
-        "tests/concorde/issues/test_reporting.py",
+        "tests/concorde/issues/test_command.py",
         "tests/concorde/issues/test_store.py",
         "tests/concorde/issues/test_store_check.py"
       ],
@@ -122,14 +111,8 @@
     },
     {
       "type": "relates",
-      "source": "realization.issues.reporting",
-      "verb": "records reports through",
-      "target": "realization.issues.store"
-    },
-    {
-      "type": "relates",
       "source": "realization.issues.command",
-      "verb": "reads",
+      "verb": "records and reads Issues through",
       "target": "realization.issues.store"
     },
     {

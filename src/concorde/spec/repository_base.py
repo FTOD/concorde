@@ -19,7 +19,7 @@ from .frontmatter import parse_document as parse_document
 from .schema import ContractError as ContractError
 from .schema import admit as admit
 from .schema import validate as validate
-from .typed_data import canonical, checked_path, decode, safe_path
+from .typed_data import canonical, checked_path, decode
 
 PROFILE_VERSION = 17
 PROTOCOL_VERSION = "12.0.0"
@@ -184,18 +184,6 @@ def is_directory_entry(entry: str) -> bool:
 
 def entry_base(entry: str) -> str:
     return entry[:-1] if entry.endswith("/") else entry
-
-
-def check_entry(entry: str) -> str:
-    """Validate the spelling of one path literal (exact file or ``/`` directory) and return its base."""
-    if not isinstance(entry, str) or entry.endswith("//") or entry == "/":
-        raise SpecError(f"invalid path entry: {entry!r}")
-    base = entry_base(entry)
-    try:
-        safe_path(base)
-    except ValueError as error:
-        raise SpecError(f"invalid path entry: {entry!r}") from error
-    return base
 
 
 def control_path(path: str) -> bool:

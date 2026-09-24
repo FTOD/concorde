@@ -97,10 +97,13 @@ merged with `concorde task close <task> --abandoned`.
 ## Issues
 
 A problem the current task will not fix, such as a Spec gap a worker reported about another Module,
-is worth an Issue so that it survives the task; `python3 scripts/issues.py list` and `show` tell
-you what is open. Solve an Issue like any other work: open a task for the Issue's Module, run the
-Operations that fix it, and close the Issue on that task's branch with the evidence, so the
-closure is merged with the fix.
+is worth an Issue so that it survives the task. Record it with
+`concorde issues report --file <report.json> [--task <task>]` (a bug, gap or limitation, its owner
+Module when known, the basis and evidence paths); `concorde issues list` and `show <id>` tell you
+what is open. Solve an Issue like any other work: open a task for the Issue's Module, run the
+Operations that fix it, and close the Issue on that task's branch with
+`concorde issues close <id> --reason resolved --note <text> --evidence <path>…`, so the closure is
+merged with the fix; `concorde issues reopen` reopens one that came back.
 
 ## Spec queries
 

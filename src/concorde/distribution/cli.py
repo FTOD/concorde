@@ -323,6 +323,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         from ..tasks.cli import main as task_main
 
         return task_main(words[1:])
+    if words and words[0] == "issues":
+        import runpy
+
+        script = Path(__file__).resolve().parents[3] / "scripts/issues.py"
+        return runpy.run_path(str(script))["main"](words[1:])
     if words and words[0] == "run":
         from ..operations.host import main as run_main
 

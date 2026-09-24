@@ -8,7 +8,7 @@ the boundary is for and what it deliberately leaves out.
 
 ```python
 execute_check(project_root: Path, argv: Sequence[str], *, timeout: float,
-              environment: Mapping[str, str], private_tmp: bool = False,
+              environment: Mapping[str, str],
               evidence: Callable[[Path | None, CheckResult | None, BaseException | None], None] | None = None,
               cancel_event: threading.Event | None = None) -> CheckResult
 CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False,
@@ -32,12 +32,9 @@ never received a trusted successful start is an isolation error, not a failed ch
 
 `evidence`, when given, is called after every descendant has ended and the pipes are drained but
 before the scratch is removed, with the scratch path and the result or exception; with it, each
-output stream keeps only its last 2 MiB while counting all bytes. `private_tmp=True` selects a
-second profile, `tester-private-tmp-v1`, in which `/tmp` is a private directory backed by the
-scratch. That profile remains from an earlier caller; no current caller uses it, and its behaviour
-is not promised here.
+output stream keeps only its last 2 MiB while counting all bytes.
 
-`CHECK_POLICY = "project-read-only-v1"` names the default boundary. The policy name is part of every
+`CHECK_POLICY = "project-read-only-v1"` names the boundary. The policy name is part of every
 configured check's measured digest.
 
 ## Scratch and environment

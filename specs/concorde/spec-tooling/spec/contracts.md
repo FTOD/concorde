@@ -311,7 +311,6 @@ carrying the failure code. The exit code is 0 for `success` and 1 otherwise.
 ```python
 validate_repository(root, target_id=None, package_root=None, *, registry_bytes=None,
                     document_overrides=None) -> ToolResult
-module_dependency_findings(repository, target_id=None) -> tuple[Finding, ...]
 ```
 
 `python3 scripts/concorde.py validate [target]` prints the same result as JSON. The result has
@@ -342,12 +341,6 @@ The command-line envelope is canonical JSON with `schema_version: 2` and the fie
 findings are sorted by rule, source, line, column and message, and artifacts are sorted. The exit
 code is 0 for `success` and 1 for `invalid`.
 
-`module_dependency_findings` returns the subset of findings about one Module's own collaborations,
-without running the other checks: a `contains`, `uses` or `participates` whose explanation does not
-resolve, a `relies_on` naming nodes the provider does not own or omitting linked ones, a self or
-repeated `uses`, and an unreconciled context requirement. An unresolved explanation is reported
-with a message beginning `missing local dependency promises: `, so a caller can tell a missing
-promise from a conflicting declaration.
 
 ## Registry command {#registry-command}
 
@@ -399,21 +392,16 @@ are registered by their owners; Spec core registers only its own.
 
 ```python
 register(type_id: str, version: int, schema: dict) -> None
-registered_types() -> tuple[str, ...]
-registration_module(type_id: str) -> str
 typed_schema(type_id: str) -> dict
 typed(type_id: str, data: dict) -> dict
 validate_typed(value, expected: str | None = None, field: str = "") -> dict
-json_schema(type_id: str) -> dict
 ```
 
 `register` adds a type. `type_id` is a nonblank name such as `concorde-project-proposal`, `version` a
 positive integer and `schema` a schema admitted by the offline subset below, describing `data`.
 Registering an identity already registered with the same version and an equal schema changes
 nothing; with another version or schema it fails with `duplicate_type` and leaves the existing
-registration in force. `registration_module` returns the name of the Python module whose code made
-the registration in force, so a check can find the type's owner through the Module that binds that
-file. Owners call `register` when their own code is loaded. Spec core never
+registration in force. Owners call `register` when their own code is loaded. Spec core never
 imports an owner, so a caller that checks a value must have loaded the code of the value's owner.
 
 `typed_schema(type_id)` returns a schema fragment that matches a whole typed value of that type:
@@ -427,8 +415,7 @@ an existing one and, with `expected`, its type. A value with another version fai
 `unsupported_version`, an unregistered type with `unknown_type`, a value of the wrong type where
 `expected` is given with `incompatible_handoff`, and any other mismatch with `invalid_field` naming
 the JSON pointer of the offending field. Objects are closed unless their schema gives one schema for
-all additional keys. A checked value is returned as a deep copy. `json_schema` exports one type as a
-self-contained JSON Schema Draft 2020-12 document, with every referenced type in its `$defs`.
+all additional keys. A checked value is returned as a deep copy.
 
 The shared building blocks are `obj(properties, optional=())` (a closed object whose listed
 properties are required unless optional), `array(items, unique=False)`, `STRING` (a nonempty

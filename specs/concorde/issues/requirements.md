@@ -8,32 +8,41 @@ situations.
 
 ### req.issues.report-control — Reporting does not control execution
 
-Accepting an Issue report SHALL NOT stop the reporter, start a repair or change the outcome of the
-reporter's task.
+Recording an Issue report SHALL NOT stop the reporter, start a repair or change the outcome of the
+task in which the problem was found.
 
-A reporter can record several problems and still complete its task. Whether a problem stops the
-task is stated separately, in the reporter's own result.
+The main agent can record several problems and still complete its task. Whether a problem stops the
+task is decided separately.
 
-### req.issues.report-limits — Reports stay within the reporter's limits
+### req.issues.caller-provenance — Provenance comes from the command
 
-The reporting service SHALL refuse a report whose owner, evidence paths or appended Issue lie
-outside the limits its caller admitted for that reporter.
+The bookkeeping command SHALL supply every provenance field of a report itself, never take one from
+the report file.
 
-### req.issues.caller-provenance — Provenance comes from the caller
+A report file with a provenance field is refused as malformed, because a report has no such field.
 
-The reporting service SHALL take every provenance field of a report from its caller, never from the
-report.
+### req.issues.report-checked — A report names a registered owner and existing evidence
+
+The bookkeeping command SHALL refuse a report whose owner is not a registered Module or whose
+evidence path does not exist in the project.
 
 ### req.issues.durable-receipt — A receipt means the report is on disk
 
 The Issue store SHALL return a receipt only after the record holding the report is durably
 published.
 
+### req.issues.specific-refusals — Refusals name what is wrong
+
+The bookkeeping command SHALL answer every refusal with an error code and a message naming the
+Issue, file, argument or field concerned, without writing a record.
+
+The exit status is 2 when the request is unusable and 1 when the Issue rules refuse it.
+
 ## Records
 
 ### req.issues.store-writes — Only the store writes Issue records
 
-Every program write that creates, appends to, disposes or restores an Issue record SHALL go through
+Every program write that creates, appends to or disposes an Issue record SHALL go through
 the Issue store.
 
 Git operations that move committed record files between branches, such as committing on a task
@@ -43,8 +52,6 @@ branch or merging it, are not store writes, and the store never runs Git.
 
 The Issue store SHALL NOT modify or remove an accepted report, including when the Issue is closed or
 reopened.
-
-Restoring an unfinished close removes only the disposition that close added.
 
 ### req.issues.closed-kept — Closed Issues stay recorded
 
@@ -56,8 +63,8 @@ A closed Issue keeps its reports and dispositions, so it can be shown and reopen
 
 The Issue store SHALL write a record only over the exact revision its caller read.
 
-A creation requires that the record does not exist; an append, a disposition and a restoration name
-the revision they replace, and a mismatch fails with `stale_issue`.
+A creation requires that the record does not exist; an append and a disposition name the revision
+they replace, and a mismatch fails with `stale_issue`.
 
 ### req.issues.worktree-lock — One lock serializes the writes into a worktree
 
