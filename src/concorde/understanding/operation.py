@@ -19,7 +19,7 @@ from ..operations.provider import (
     Continue,
     Provider,
     RunContext,
-    component,
+    spec_cause,
     evidence,
     load_prompt,
 )
@@ -239,15 +239,7 @@ def check_assessment(ctx: RunContext):
             reason="scope",
             explanation="understand reads Specs and never repairs them",
             evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
-            causes=[
-                component(
-                    "Spec core",
-                    code,
-                    str(error),
-                    "input",
-                    "Specs that do not load cannot be queried",
-                )
-            ],
+            causes=[spec_cause(error)],
             options=["run validate for the task", "repair the Specs"],
         )
     unknown = sorted(named_modules(assessment) - known)

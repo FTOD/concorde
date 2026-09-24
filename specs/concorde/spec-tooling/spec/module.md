@@ -157,6 +157,13 @@ the Protocol. The reasons are in [How Spec core works](design.md).
 The **Spec model** loads the registry and documents and computes every set and index from
 declarations alone, never reading implementation contents.
 
+<a id="realization.spec.errors"></a>
+
+The **Spec tooling errors** are Spec tooling's own error type, in `src/concorde/spec/errors.py`:
+every error carries its code, a concrete message, its location, the reason it is an error, a
+remediation and its causes, as the [error record](errors.md) defines, with its tests. It depends on
+no other Module.
+
 <a id="realization.spec.grants"></a>
 
 The **Grant computation** applies a task type to the boundary sets of the bound Modules, computes

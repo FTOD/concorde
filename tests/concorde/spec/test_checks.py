@@ -901,6 +901,13 @@ class CheckTests(unittest.TestCase):
         errors = [f for f in report.findings if f.severity == "error"]
         self.assertEqual(["CONCORDE-SOURCE-008"], [f.rule_id for f in errors])
         self.assertIn("JSON", errors[0].message)
+        load = report.result["load_error"]
+        self.assertEqual(
+            (".concorde/specs.json", "unsupported_profile"),
+            (load["location"]["path"], load["code"]),
+        )
+        self.assertIn("strict JSON", load["reason"])
+        self.assertIn("strict JSON", errors[0].remediation)
         self.assertEqual(before, self.snapshot())
 
     @verifies("scenario.spec.node-unexplained")

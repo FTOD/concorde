@@ -20,6 +20,7 @@ from .repository_base import (
     protocol_asset_path,
     read_file,
 )
+from .errors import system_cause
 from .typed_data import TypedDataError, safe_path
 
 CONFIG_FIELDS = {"profile_version", "registry", "protocol"}
@@ -39,20 +40,31 @@ def configured_checks(config: dict) -> list[dict]:
     raw = config.get("checks", [])
     if not isinstance(raw, list):
         raise SpecError(
-            "configuration checks must be an array", "invalid_spec", "checks"
+            f"the configuration's checks must be an array, not a JSON {type(raw).__name__}",
+            "invalid_spec",
+            "/checks",
+            path=".concorde/config.json",
         )
     result, seen = [], set()
-    for check in raw:
+    for position, check in enumerate(raw):
         if not isinstance(check, dict) or not {"id", "module"} <= check.keys():
             raise SpecError(
-                "a configured check requires an id and a module",
+                f"configured check {position} needs an id and a module: {check!r}"[
+                    :300
+                ],
                 "invalid_spec",
-                "checks",
+                f"/checks/{position}",
+                path=".concorde/config.json",
+                reason="a configured check is identified by its id and belongs to one Module",
             )
         key = identifier(check["id"])
         if key in seen:
             raise SpecError(
-                f"duplicate configured check: {key}", "invalid_spec", "checks"
+                f"the configured check id {key} is used twice",
+                "invalid_spec",
+                f"/checks/{position}/id",
+                path=".concorde/config.json",
+                reason="a configured check's id identifies it uniquely in results and logs",
             )
         seen.add(key)
         identifier(check["module"])
@@ -63,7 +75,11 @@ def configured_checks(config: dict) -> list[dict]:
             or len(set(inputs)) != len(inputs)
         ):
             raise SpecError(
-                "check inputs must be a unique string array", "invalid_spec", "checks"
+                f"the inputs of configured check {key} must be an array of distinct "
+                f"strings, not {inputs!r}"[:300],
+                "invalid_spec",
+                f"/checks/{position}/inputs",
+                path=".concorde/config.json",
             )
         for path in inputs:
             try:
@@ -88,7 +104,20 @@ class SpecRepository(DocumentUnitRepository):
     ):
         root = Path(project_root)
         if root.is_symlink() or not root.is_dir():
-            raise SpecError("project root must be a real directory")
+            state = (
+                "a symbolic link"
+                if root.is_symlink()
+                else "missing"
+                if not root.exists()
+                else "not a directory"
+            )
+            raise SpecError(
+                f"the project root {root} is {state}",
+                "unsafe_path",
+                path=str(root),
+                reason="Spec tooling loads a project only from a real directory",
+                remediation="pass the real path of the project's worktree",
+            )
         self.package_root = (
             Path(package_root).resolve()
             if package_root
@@ -96,22 +125,43 @@ class SpecRepository(DocumentUnitRepository):
         )
         self.config = decode(read_file(root, ".concorde/config.json").decode("utf-8"))
         if not isinstance(self.config, dict):
-            raise SpecError("configuration must be an object")
+            raise SpecError(
+                "the configuration must be a JSON object, not a JSON "
+                f"{type(self.config).__name__}",
+                "invalid_spec",
+                path=".concorde/config.json",
+            )
         if (
             type(self.config.get("profile_version")) is not int
             or self.config["profile_version"] != PROFILE_VERSION
         ):
             raise SpecError(
-                f"Profile {PROFILE_VERSION} is required",
+                f"profile_version {PROFILE_VERSION} is required, but the configuration has "
+                f"{self.config.get('profile_version')!r}",
                 "unsupported_profile",
+                "/profile_version",
+                path=".concorde/config.json",
             )
-        if (
-            not CONFIG_FIELDS <= self.config.keys()
-            or self.config.keys() - CONFIG_FIELDS - OPTIONAL_CONFIG_FIELDS
-        ):
+        missing = sorted(CONFIG_FIELDS - self.config.keys())
+        extra = sorted(self.config.keys() - CONFIG_FIELDS - OPTIONAL_CONFIG_FIELDS)
+        if missing or extra:
             raise SpecError(
-                "configuration fields must be profile_version, registry, protocol "
-                "and optional checks and workers"
+                "the configuration's fields must be profile_version, registry, protocol and "
+                "optionally checks and workers; "
+                + "; ".join(
+                    part
+                    for part in (
+                        f"missing: {', '.join(missing)}" if missing else "",
+                        f"not allowed: {', '.join(extra)}" if extra else "",
+                    )
+                    if part
+                ),
+                "invalid_spec",
+                path=".concorde/config.json",
+                reason=f"the project configuration of profile {PROFILE_VERSION} has exactly "
+                "these fields, so an unknown field is a typo or a setting no tool reads",
+                remediation="remove or rename the field that is not allowed, and add the "
+                "missing ones",
             )
         checks = configured_checks(self.config)
         super().__init__(
@@ -125,9 +175,12 @@ class SpecRepository(DocumentUnitRepository):
         for check in checks:
             if check["module"] not in self.modules:
                 raise SpecError(
-                    f"configured check {check['id']} names an unregistered Module: {check['module']}",
-                    "invalid_spec",
-                    "checks",
+                    f"configured check {check['id']} names {check['module']}, which the "
+                    "registry does not register",
+                    "unknown_module",
+                    "/checks",
+                    path=".concorde/config.json",
+                    subject=check["id"],
                 )
         self.protocol_manifest, self.protocol_assets = self._protocol()
 
@@ -142,21 +195,31 @@ class SpecRepository(DocumentUnitRepository):
             raw = read_file(self.root, PROTOCOL_MANIFEST_PATH)
         except (SpecError, OSError) as error:
             raise SpecError(
-                "project has no Protocol copy under .concorde/protocol; run the installer",
+                f"the project has no readable Protocol copy: {PROTOCOL_MANIFEST_PATH} cannot "
+                "be read",
                 "protocol_mismatch",
+                path=PROTOCOL_MANIFEST_PATH,
+                remediation="run the Concorde installer in this project",
+                causes=[error if isinstance(error, SpecError) else system_cause(error)],
             ) from error
         manifest = decode(raw.decode())
         binding = {"version": manifest.get("version"), "digest": digest(raw)}
         if self.config["protocol"] != binding or binding["version"] != PROTOCOL_VERSION:
             raise SpecError(
-                "project Protocol binding does not match the installed Protocol copy; accept it "
-                "explicitly with concorde-configure",
+                f"the configuration binds the Protocol {self.config['protocol']!r}, but the "
+                f"installed copy is {binding!r} and this Spec tooling reads Protocol "
+                f"{PROTOCOL_VERSION}",
                 "protocol_mismatch",
+                "/protocol",
+                path=".concorde/config.json",
             )
         if read_file(self.package_root, "protocol/manifest.json") != raw:
             raise SpecError(
-                "installed package Protocol differs from the project's Protocol copy; reinstall",
+                f"the Protocol copy {PROTOCOL_MANIFEST_PATH} differs from the manifest of the "
+                f"Concorde package at {self.package_root}",
                 "protocol_mismatch",
+                path=PROTOCOL_MANIFEST_PATH,
+                remediation="reinstall Concorde so the project's copy matches the package",
             )
         assets = {}
         for item in manifest["assets"]:
@@ -165,15 +228,29 @@ class SpecRepository(DocumentUnitRepository):
                 content = read_file(self.root, path)
             except (SpecError, OSError) as error:
                 raise SpecError(
-                    f"installed Protocol asset is missing: {path}", "protocol_mismatch"
+                    f"the installed Protocol asset {path} listed by the manifest is missing",
+                    "protocol_mismatch",
+                    path=path,
+                    causes=[
+                        error if isinstance(error, SpecError) else system_cause(error)
+                    ],
                 ) from error
             if digest(content) != item["digest"]:
                 raise SpecError(
-                    f"installed Protocol asset has changed: {path}", "protocol_mismatch"
+                    f"the installed Protocol asset {path} has digest {digest(content)}, but "
+                    f"the manifest records {item['digest']}",
+                    "protocol_mismatch",
+                    path=path,
                 )
             assets[path] = content
         if f"{PROTOCOL_DIR}/principles.md" not in assets:
-            raise SpecError("Protocol manifest is missing the global principles")
+            raise SpecError(
+                f"the Protocol manifest {PROTOCOL_MANIFEST_PATH} lists no "
+                f"{PROTOCOL_DIR}/principles.md",
+                "protocol_mismatch",
+                path=PROTOCOL_MANIFEST_PATH,
+                reason="every Protocol copy carries the global principles",
+            )
         return manifest, assets
 
     def fresh(self) -> SpecRepository:

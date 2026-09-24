@@ -19,6 +19,35 @@ from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError, bound_by
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 
+
+class CheckError(SpecError):
+    """A configured check that cannot be run or whose result cannot be trusted."""
+
+    CODES = {
+        "invalid_check": (
+            "a configured check needs a nonempty argv and a positive timeout_seconds",
+            "correct the check's entry in .concorde/config.json",
+        ),
+        "check_input_missing": (
+            "every declared input of a configured check must exist as a regular file or "
+            "directory, because its result is bound to the inputs' digest",
+            "restore the input or correct the check's inputs",
+        ),
+        "check_sandbox_unavailable": (
+            "configured checks run only inside the read-only bubblewrap boundary",
+            "install a root-owned system bubblewrap, or run on a host that allows it",
+        ),
+        "stale_evidence": (
+            "a check result vouches only for inputs that stayed the same while it ran",
+            "let the worktree settle and run the checks again",
+        ),
+        "unknown_module": (
+            "checks run only for Modules the registry registers",
+            "name registered Modules",
+        ),
+    }
+
+
 FRAMEWORK_SRC = Path(__file__).resolve().parents[2]
 
 
@@ -31,7 +60,7 @@ def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
     for relative in check.get("inputs", []):
         path = root / relative
         if path.is_symlink() or not path.exists():
-            raise SpecError(
+            raise CheckError(
                 f"input {relative} of check {check['id']} ({check['module']}) is missing "
                 "or a symbolic link",
                 "check_input_missing",
@@ -47,7 +76,7 @@ def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
         elif path.is_file():
             digests.append((relative, _file_digest(path)))
         else:
-            raise SpecError(
+            raise CheckError(
                 f"input {relative} of check {check['id']} is not a regular file",
                 "check_input_missing",
             )
@@ -97,14 +126,14 @@ def _argv(check: dict) -> list[str]:
         or not argv
         or any(not isinstance(item, str) or not item for item in argv)
     ):
-        raise SpecError(f"check {check['id']} needs a nonempty argv", "invalid_check")
+        raise CheckError(f"check {check['id']} needs a nonempty argv", "invalid_check")
     return [sys.executable if item == "{python}" else item for item in argv]
 
 
 def _timeout(check: dict) -> float:
     value = check.get("timeout_seconds")
     if type(value) not in (int, float) or value <= 0:
-        raise SpecError(
+        raise CheckError(
             f"check {check['id']} needs a positive timeout_seconds", "invalid_check"
         )
     return float(value)
@@ -135,7 +164,7 @@ def run_checks(
     )
     for identity in selected:
         if identity not in repository.modules:
-            raise SpecError(f"unregistered Module: {identity}", "unknown_module")
+            raise CheckError(f"unregistered Module: {identity}", "unknown_module")
     log_directory = Path(log_directory)
     log_directory.mkdir(parents=True, exist_ok=True)
     results = []
@@ -156,13 +185,13 @@ def run_checks(
                 + (error.stderr or b"")
                 + str(error).encode()
             )
-            raise SpecError(
+            raise CheckError(
                 f"check {check['id']} could not run in the read-only boundary: {error}",
                 "check_sandbox_unavailable",
             ) from error
         log.write_bytes(outcome.stdout + b"\n" + outcome.stderr)
         if check_revision(SpecRepository(worktree), check["module"]) != before:
-            raise SpecError(
+            raise CheckError(
                 f"the input of check {check['id']} changed while it ran",
                 "stale_evidence",
             )

@@ -135,8 +135,15 @@ class ValidateTests(unittest.TestCase):
         self.assertFalse(readiness["ready"])
         [load] = [item for item in readiness["blocking"] if item["kind"] == "load"]
         [cause] = envelope["error"]["causes"]
-        self.assertEqual(("component", "load_finding"), (cause["level"], cause["code"]))
-        self.assertIn(load["detail"], cause["detail"])
+        # Spec tooling's own error arrives with its code, location, reason and remediation.
+        self.assertEqual(
+            ("component", "unsupported_profile"), (cause["level"], cause["code"])
+        )
+        self.assertIn("registry is not JSON", cause["detail"])
+        self.assertIn(".concorde/specs.json", cause["detail"])
+        self.assertIn("strict JSON", cause["unhandled"]["explanation"])
+        self.assertIn("restore it from Git", cause["recommendation"])
+        self.assertIn("why:", load["detail"])
         self.assertTrue(load["detail"])
         self.assertEqual(readiness["checks"], [])
 

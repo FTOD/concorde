@@ -299,7 +299,17 @@ class GrantTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(1, bad.returncode)
-        self.assertEqual("invalid", json.loads(bad.stdout)["status"])
+        refused = json.loads(bad.stdout)
+        self.assertEqual("invalid", refused["status"])
+        # The refusal is Spec tooling's own error record: what, where, why and how to fix.
+        error = refused["error"]
+        self.assertEqual(
+            ("invalid_task_type", "task_type"),
+            (error["code"], error["location"]["field"]),
+        )
+        self.assertIn("'plan'", error["message"])
+        self.assertIn("six task types", error["reason"])
+        self.assertIn("review-code", error["remediation"])
 
 
 class ProtocolTableTests(unittest.TestCase):

@@ -163,12 +163,9 @@ def _registered(root: Path, modules: list[str]) -> None:
     try:
         repository = SpecRepository(root)
     except (SpecError, OSError, ValueError) as error:
-        code = getattr(error, "code", None)
+        detail = error.describe() if isinstance(error, SpecError) else str(error)
         raise TaskError(
-            "specs_unloadable",
-            f"the Specs of {root} cannot be loaded"
-            + (f" ({code})" if code else "")
-            + f": {error}",
+            "specs_unloadable", f"the Specs of {root} cannot be loaded: {detail}"
         ) from error
     unknown = sorted(item for item in modules if item not in repository.modules)
     if unknown:

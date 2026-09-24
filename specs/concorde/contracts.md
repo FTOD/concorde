@@ -219,6 +219,10 @@ started.
 | `{"error": …}` printed by a refused `concorde task` or `concorde issues` command | the refusing component (`component`) |
 | an escalation recorded with `concorde task escalate` | the main agent (`main-agent`) |
 
+Spec tooling is the exception: it depends on no other Module and reports with its
+[own error record](spec-tooling/spec/errors.md). A Module that receives a Spec tooling error and
+cannot handle it translates it into a `component` link and keeps its causes as nested links.
+
 ## Reasons
 
 | Reason | The actor cannot handle the error because |

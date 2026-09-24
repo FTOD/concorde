@@ -15,7 +15,14 @@ class _Parser(argparse.ArgumentParser):
     """Refuses a command line with argparse's own message instead of exiting."""
 
     def error(self, message):
-        raise ValueError(f"invalid command line: {self.prog}: {message}")
+        from ..spec.errors import SpecError
+
+        raise SpecError(
+            f"invalid command line: {self.prog}: {message}",
+            "invalid_input",
+            reason="the command line does not match the command's arguments",
+            remediation=f"correct the command line; see `{self.prog} --help`",
+        )
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -166,15 +173,40 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
     if arguments.tool == "init":
         import json as json_module
 
+        from ..spec.errors import SpecError, system_cause
         from ..spec.initialize import initialize
 
         package = Path(__file__).resolve().parents[3]
         if arguments.apply:
             if not arguments.proposal:
-                raise ValueError("init --apply requires --proposal <file>")
-            proposed = json_module.loads(
-                (root / arguments.proposal).read_text(encoding="utf-8")
-            )
+                raise SpecError(
+                    "init --apply requires --proposal <file>",
+                    "invalid_input",
+                    "--proposal",
+                )
+            try:
+                proposed = json_module.loads(
+                    (root / arguments.proposal).read_text(encoding="utf-8")
+                )
+            except (OSError, ValueError) as error:
+                raise SpecError(
+                    f"the proposal file {arguments.proposal} cannot be read as JSON",
+                    "invalid_input",
+                    "--proposal",
+                    path=arguments.proposal,
+                    causes=[system_cause(error, path=arguments.proposal)],
+                ) from error
+            if not isinstance(proposed, dict) or not {
+                "proposal",
+                "proposal_digest",
+            } <= set(proposed):
+                raise SpecError(
+                    f"the proposal file {arguments.proposal} must hold the proposal and its "
+                    "proposal_digest, as `concorde init --propose` prints them under result",
+                    "invalid_proposal",
+                    "--proposal",
+                    path=arguments.proposal,
+                )
             data = {
                 "action": "apply",
                 "proposal": proposed["proposal"],
@@ -182,7 +214,11 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             }
         else:
             if not arguments.name:
-                raise ValueError("init --propose requires --name")
+                raise SpecError(
+                    "init --propose requires --name <project name>",
+                    "invalid_input",
+                    "--name",
+                )
             data = {
                 "action": "propose",
                 "name": arguments.name,
@@ -304,37 +340,10 @@ TOOLS = frozenset(
 
 
 def _failed(tool: str, error: BaseException) -> dict:
-    """The envelope of a command that raised: the exception, its output and where it rose."""
-    import traceback
+    """The envelope of a command that raised, with Spec tooling's record of the error."""
+    from ..spec.errors import unexpected
 
-    from ..errors import exception_detail
-
-    usage = isinstance(error, ValueError) and str(error).startswith(
-        "invalid command line"
-    )
-    message = str(error) if usage else exception_detail(error)
-    frames = traceback.extract_tb(error.__traceback__)
-    if frames and not usage:
-        last = frames[-1]
-        message += f" (raised at {last.filename}:{last.lineno} in {last.name})"
-    return envelope(
-        tool,
-        ".",
-        "failed",
-        [],
-        [
-            Finding(
-                "CONCORDE-RUN-001",
-                "error",
-                ".concorde/config.json",
-                message,
-                "Correct the command line; see concorde <tool> --help."
-                if usage
-                else "Correct the project configuration or runtime environment and retry.",
-            )
-        ],
-        {},
-    )
+    return envelope(tool, ".", "failed", [], [], {}, unexpected(error))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -364,7 +373,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             # and still prints exactly one envelope rather than only argparse's usage text.
             if exit_.code in (0, None):
                 raise
-            raise ValueError(f"invalid command line: {' '.join(words)}") from None
+            from ..spec.errors import SpecError
+
+            raise SpecError(
+                f"invalid command line: {' '.join(words)}", "invalid_input"
+            ) from None
         if arguments.tool == "spec-mcp":
             # The stdio MCP session owns standard output; it prints no envelope.
             from ..spec_mcp.server import main as serve

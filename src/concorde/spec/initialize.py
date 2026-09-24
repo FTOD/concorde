@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from .changes import apply_files, file_change
+from .errors import from_finding, system_cause
 from .repository import (
     PROFILE_VERSION,
     PROTOCOL_MANIFEST_PATH,
@@ -63,9 +64,10 @@ def installed_protocol_binding(root: Path) -> dict:
         raw = read_file(root, PROTOCOL_MANIFEST_PATH)
     except (SpecError, OSError) as error:
         raise SpecError(
-            "Concorde is not installed in this project: .concorde/protocol/ is missing; "
-            "run the installer first",
+            f"Concorde is not installed in {root}: {PROTOCOL_MANIFEST_PATH} cannot be read",
             "not_installed",
+            path=PROTOCOL_MANIFEST_PATH,
+            causes=[error if isinstance(error, SpecError) else system_cause(error)],
         ) from error
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
@@ -212,11 +214,16 @@ def project_proposal(
 ) -> dict:
     identifier(target_id)
     if not isinstance(name, str) or not name.strip():
-        raise SpecError("project name is required", "invalid_input")
+        raise SpecError(
+            f"initialization needs a nonblank project name, not {name!r}",
+            "invalid_input",
+            "name",
+        )
     if checked_path(root, ".concorde/config.json").exists():
         raise SpecError(
-            "project already configured; use configure to change settings",
+            f"{root} already has .concorde/config.json, so it is initialized",
             "already_initialized",
+            path=".concorde/config.json",
         )
     path = "specs/project/module.md"
     registry = initial_registry(target_id, name.strip(), path)
@@ -278,7 +285,20 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         or proposal["schema_version"] != PROPOSAL_VERSION
         or proposal["action"] not in {"initialize"}
     ):
-        raise SpecError("invalid project proposal envelope", "invalid_proposal")
+        raise SpecError(
+            "the project proposal's envelope is not a concorde-project-proposal of "
+            f"schema_version {PROPOSAL_VERSION} with action initialize; its fields are "
+            + (
+                ", ".join(
+                    f"{key}={proposal.get(key)!r}"
+                    for key in ("type_id", "schema_version", "action")
+                )
+                if isinstance(proposal, dict)
+                else f"a JSON {type(proposal).__name__}"
+            ),
+            "invalid_proposal",
+            "/proposal",
+        )
     files = proposal["files"]
     proposed = {item["path"]: item for item in files}
     if (
@@ -286,8 +306,15 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         or ".concorde/specs.json" not in proposed
     ):
         raise SpecError(
-            "project proposal must include configuration and registry",
+            "the project proposal lacks "
+            + " and ".join(
+                path
+                for path in (".concorde/config.json", ".concorde/specs.json")
+                if path not in proposed
+            )
+            + f"; it proposes {', '.join(sorted(proposed))}",
             "invalid_proposal",
+            "/proposal/files",
         )
     config = decode(proposed[".concorde/config.json"]["content"])
     registry = decode(proposed[".concorde/specs.json"]["content"])
@@ -295,8 +322,13 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         "protocol"
     ) != installed_protocol_binding(root):
         raise SpecError(
-            "project proposal has a mismatched registry or Protocol binding",
+            f"the proposed configuration names the registry {config.get('registry')!r} and "
+            f"the Protocol {config.get('protocol')!r}, but initialization needs "
+            "'.concorde/specs.json' and the installed Protocol copy "
+            f"{installed_protocol_binding(root)!r}",
             "invalid_proposal",
+            "/proposal/files",
+            path=".concorde/config.json",
         )
     try:
         allowed = {
@@ -311,21 +343,31 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         }
     except (KeyError, TypeError) as error:
         raise SpecError(
-            "project proposal registry is not a Protocol 12 registry",
+            f"the proposed registry is not a Protocol 12 registry: missing or malformed "
+            f"{error}",
             "invalid_proposal",
+            "/proposal/files",
+            path=".concorde/specs.json",
         ) from error
     if proposal["base_digest"] is not None or any(
         item["before_digest"] is not None for item in files
     ):
+        existing = [item["path"] for item in files if item["before_digest"] is not None]
         raise SpecError(
-            "initialization cannot replace existing files", "invalid_proposal"
+            "initialization would replace existing files: "
+            + (", ".join(existing) or "the proposal has a base digest"),
+            "invalid_proposal",
+            "/proposal/files",
+            reason="initialization only creates files; it never replaces one",
         )
     documents = allowed - {".concorde/config.json", ".concorde/specs.json"}
     if source_digest(root, documents) != proposal["source_digest"]:
         # The project's files changed since propose: it would now propose something else.
         raise SpecError(
-            "the project changed since this proposal was made; propose again",
+            "the project's files changed since this proposal was made, so it would now "
+            "propose something else",
             "stale_proposal",
+            "/proposal/source_digest",
         )
 
     def verify():
@@ -333,8 +375,11 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         errors = [finding for finding in report.findings if finding.severity == "error"]
         if errors:
             raise SpecError(
-                "target-state validation failed: "
-                + "; ".join(f"{f.rule_id}: {f.message}" for f in errors)
+                f"the initialized project would not validate: {len(errors)} error(s), each a "
+                "cause; nothing was kept",
+                "invalid_proposal",
+                reason="initialization keeps only a project that validates",
+                causes=[from_finding(item) for item in errors],
             )
 
     changed = apply_files(root, files, allowed, verify=verify)
@@ -384,7 +429,11 @@ def initialize(root: Path, package: Path, data: dict) -> dict:
             "files": value["files"],
         }
     if data.get("action") != "propose" or "name" not in data:
-        raise SpecError("initialization proposal requires a name", "invalid_input")
+        raise SpecError(
+            f"initialization needs action propose with a name, or action apply; got action "
+            f"{data.get('action')!r} with fields {sorted(data)}",
+            "invalid_input",
+        )
     value = project_proposal(
         root, package, data["name"], data.get("target_id", "module.project")
     )

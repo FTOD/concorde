@@ -21,7 +21,8 @@ class StructuredResultTests(unittest.TestCase):
         )
         encoded = canonical_json(result)
         decoded = json.loads(encoded)
-        self.assertEqual(decoded["schema_version"], 2)
+        self.assertEqual(decoded["schema_version"], 3)
+        self.assertIsNone(decoded["error"])
         self.assertEqual(decoded["tool"], "validate")
         self.assertNotIn("operation", decoded)
         self.assertEqual(decoded["artifacts"], ["a.md", "z.md"])
@@ -56,9 +57,10 @@ class StructuredResultTests(unittest.TestCase):
                 "artifacts",
                 "findings",
                 "result",
+                "error",
             },
         )
-        self.assertEqual(payload["schema_version"], 2)
+        self.assertEqual(payload["schema_version"], 3)
         self.assertEqual(
             set(payload["result"]),
             {"summary", "source_digest", "claims", "semantic_completeness"},

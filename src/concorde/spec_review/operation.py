@@ -26,7 +26,7 @@ from ..operations.provider import (
     Provider,
     RunContext,
     Stop,
-    component,
+    spec_cause,
     evidence,
     load_prompt,
     spec_finding,
@@ -236,11 +236,13 @@ def validate_modules(ctx: RunContext):
             explanation="spec_review reviews loadable Specs and never repairs them",
             evidence=[evidence("structural", ".concorde/config.json", detail)],
             causes=[
-                component(
-                    "Spec core",
-                    getattr(item, "code", None) or "specs_unloadable",
-                    getattr(item, "message", str(item)),
-                    "input",
+                spec_cause(item)
+                if isinstance(item, BaseException)
+                else spec_finding(
+                    item.rule_id,
+                    item.source,
+                    item.line,
+                    item.message,
                     "Specs that do not load cannot be validated or granted",
                 )
                 for item in load

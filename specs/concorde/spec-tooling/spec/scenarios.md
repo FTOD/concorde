@@ -28,6 +28,7 @@ they illustrate are in the [requirements](requirements.md).
 - GIVEN a project whose registry is not valid JSON
 - WHEN the validator runs
 - THEN it returns status `invalid` with one `CONCORDE-SOURCE-008` error naming the problem
+- AND `result.load_error` is the error record with the registry's path, the parser's message, the reason and the remediation
 - BUT it raises no exception and writes no file
 
 ### scenario.spec.reject-unsupported-profile — Refusing an unaccepted Protocol
@@ -468,6 +469,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - GIVEN a request with an unknown task type, an unregistered Module identity or an empty Module list
 - WHEN a grant is computed
 - THEN it fails with `invalid_task_type`, `unknown_module` or `invalid_input` respectively
+- AND the `concorde grant` command prints that error's record, with its message, reason and remediation, as the envelope's `error`
 - AND no grant is returned and no file is written
 
 ### scenario.spec.grant-worktree — A grant comes from the worktree it names

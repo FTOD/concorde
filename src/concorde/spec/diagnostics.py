@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict
 from typing import Any, Iterable
 
+from .errors import SpecError
 from .model import Finding, ToolResult
 
 
@@ -41,15 +42,17 @@ def envelope(
     artifacts: Iterable[str],
     findings: Iterable[Finding],
     result: dict[str, Any],
+    error: SpecError | None = None,
 ) -> dict[str, Any]:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "tool": tool,
         "target": target,
         "status": status,
         "artifacts": sorted(set(artifacts)),
         "findings": [finding_dict(item) for item in sorted(findings, key=finding_key)],
         "result": result,
+        "error": error.record() if error is not None else None,
     }
 
 
@@ -61,6 +64,7 @@ def tool_envelope(value: ToolResult) -> dict[str, Any]:
         value.artifacts,
         value.findings,
         dict(value.result),
+        value.error,
     )
 
 

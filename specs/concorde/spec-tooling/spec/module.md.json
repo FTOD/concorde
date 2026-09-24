@@ -13,7 +13,8 @@
       "specs/concorde/spec-tooling/spec/validation.md",
       "specs/concorde/spec-tooling/spec/requirements.md",
       "specs/concorde/spec-tooling/spec/scenarios.md",
-      "specs/concorde/spec-tooling/spec/contracts.md"
+      "specs/concorde/spec-tooling/spec/contracts.md",
+      "specs/concorde/spec-tooling/spec/errors.md"
     ],
     "contains": [],
     "uses": [],
@@ -115,6 +116,17 @@
         "src/concorde/spec/repository.py",
         "src/concorde/spec/repository_base.py",
         "src/concorde/spec/syntax.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.spec.errors",
+      "type": "realization",
+      "title": "Spec tooling errors",
+      "meaning": "#realization.spec.errors",
+      "entries": [
+        "src/concorde/spec/errors.py",
+        "tests/concorde/spec/test_errors.py"
       ],
       "pending": []
     },

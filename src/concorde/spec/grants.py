@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
-from .model import Finding, ToolResult
+from .model import ToolResult
 from .repository_base import SpecError, digest, is_directory_entry
 
 TASK_TYPES = (
@@ -104,12 +104,19 @@ def _modules(repository, modules: Sequence[str]) -> list[str]:
         or len(set(modules)) != len(modules)
     ):
         raise SpecError(
-            "a grant needs a nonempty list of distinct Module identities",
+            f"a grant needs a nonempty list of distinct Module identities, not {modules!r}",
             "invalid_input",
+            "modules",
         )
     unknown = sorted(item for item in modules if item not in repository.modules)
     if unknown:
-        raise SpecError(f"unregistered Module: {', '.join(unknown)}", "unknown_module")
+        raise SpecError(
+            f"{', '.join(unknown)} {'is' if len(unknown) == 1 else 'are'} not registered in "
+            f"{repository.root}; registered: {', '.join(sorted(repository.modules))}",
+            "unknown_module",
+            "modules",
+            path=repository.registry_path,
+        )
     return sorted(modules)
 
 
@@ -151,6 +158,7 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
         raise SpecError(
             f"unknown task type: {task_type!r}; expected one of {', '.join(TASK_TYPES)}",
             "invalid_task_type",
+            "task_type",
         )
     bound = _modules(repository, modules)
     levels: dict[str, str] = {}
@@ -170,9 +178,11 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
                     shared.extend(f"{path} (also bound by {other})" for path in files)
         if shared:
             raise SpecError(
-                "a writable file is also bound by a Module outside the grant: "
+                f"the {task_type} grant for {', '.join(bound)} would make files writable "
+                "that Modules outside the grant also bind: "
                 + "; ".join(sorted(set(shared))),
                 "shared_file",
+                "modules",
             )
     directories = [
         (path, level) for path, level in levels.items() if is_directory_entry(path)
@@ -207,20 +217,7 @@ def grant_command(root, modules: str, task_type: str) -> ToolResult:
             task_type,
         ).value
     except SpecError as error:
-        return ToolResult(
-            "grant",
-            ".",
-            "invalid",
-            findings=(
-                Finding(
-                    f"CONCORDE-GRANT-{error.code}",
-                    "error",
-                    ".concorde/specs.json",
-                    str(error),
-                    "Name registered Modules and one of the six task types.",
-                ),
-            ),
-        )
+        return ToolResult("grant", ".", "invalid", error=error)
     return ToolResult("grant", ".", "success", result=value)
 
 

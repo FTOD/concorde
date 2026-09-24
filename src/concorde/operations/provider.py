@@ -76,6 +76,36 @@ def component(
     )
 
 
+def spec_cause(error: BaseException, actor: str = "Spec core") -> dict:
+    """Spec tooling's own error as a component link: its message and location, its reason
+    as the explanation, its remediation as the option, and its causes as nested links."""
+    from ..spec.errors import SpecError
+
+    if not isinstance(error, SpecError):
+        return component(
+            actor,
+            "system_error",
+            f"{type(error).__name__}: {error}",
+            "environment",
+            "the operating system refused an operation Spec tooling needed",
+        )
+    where = error.where()
+    return link(
+        "component",
+        actor,
+        error.code,
+        str(error) + (f" (at {where})" if where else ""),
+        reason={"system_error": "environment", "unexpected_error": "capability"}.get(
+            error.code, "input"
+        ),
+        explanation=error.reason,
+        evidence=[evidence("location", where, "")] if where else [],
+        options=[error.remediation],
+        recommendation=error.remediation,
+        causes=[spec_cause(cause, actor) for cause in error.causes],
+    )
+
+
 def spec_finding(rule_id: str, source: str, line, message: str, explanation: str):
     """The link of one Spec validation finding, as Spec core reported it."""
     location = (source or "-") + (f":{line}" if line else "")
@@ -285,16 +315,7 @@ class RunContext:
             explanation="an Operation computes grants from the task worktree's Specs and never "
             "repairs them; the Specs or the bound Modules must change first",
             evidence=[evidence("grant", names, f"{code}: {error}")],
-            causes=[
-                component(
-                    "Spec core (grant)",
-                    code,
-                    str(error),
-                    "input",
-                    "a grant exists only for registered Modules whose Specs load and whose "
-                    "shared files are bound by every Module that binds them",
-                )
-            ],
+            causes=[spec_cause(error, "Spec core (grant)")],
             options=[
                 "bind every Module that binds the shared file",
                 "repair the Specs with specify or by hand",
@@ -428,5 +449,6 @@ __all__ = [
     "component",
     "evidence",
     "load_prompt",
+    "spec_cause",
     "spec_finding",
 ]

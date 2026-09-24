@@ -13,6 +13,8 @@ from pathlib import Path
 
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
+from concorde.spec.errors import ERROR_SCHEMA
+from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.spec.test_grants import document, realization
 from tests.concorde.support.environment import child_environment
@@ -163,7 +165,7 @@ class SpecMcpTests(unittest.TestCase):
                 client = self.client(roots=roots)
                 value, error = client.call("modules")
                 self.assertTrue(error)
-                self.assertEqual("no_root", value["code"])
+                self.assertEqual("no_root", value["error"]["code"])
 
     @verifies("scenario.spec-mcp.boundary")
     def test_boundary_is_spec_cores_grant(self):
@@ -198,10 +200,13 @@ class SpecMcpTests(unittest.TestCase):
             "boundary", modules=["module.a"], task_type="implement"
         )
         self.assertTrue(error)
-        self.assertEqual("shared_file", result["code"])
-        self.assertIn("src/shared.py", result["message"])
-        self.assertIn("module.d", result["message"])
+        self.assertEqual("shared_file", result["error"]["code"])
+        self.assertIn("src/shared.py", result["error"]["message"])
+        self.assertIn("module.d", result["error"]["message"])
         self.assertNotIn("entries", result)
+        validate(result["error"], ERROR_SCHEMA)
+        self.assertIn("every Module that binds it", result["error"]["reason"])
+        self.assertTrue(result["error"]["remediation"])
 
     @verifies("scenario.spec-mcp.queries")
     def test_queries_equal_spec_core(self):
@@ -284,7 +289,7 @@ class SpecMcpTests(unittest.TestCase):
             with self.subTest(path=path):
                 value, error = client.call("impact", paths=[path])
                 self.assertTrue(error)
-                self.assertEqual("outside_root", value["code"])
+                self.assertEqual("outside_root", value["error"]["code"])
 
     @verifies("scenario.spec-mcp.unloadable-specs")
     def test_specs_that_cannot_be_loaded_answer_nothing(self):
@@ -302,7 +307,7 @@ class SpecMcpTests(unittest.TestCase):
             with self.subTest(tool=name):
                 value, error = client.call(name, **arguments)
                 self.assertTrue(error)
-                self.assertEqual("protocol_mismatch", value["code"])
+                self.assertEqual("protocol_mismatch", value["error"]["code"])
 
 
 if __name__ == "__main__":

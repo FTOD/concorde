@@ -34,6 +34,13 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND its host evidence names the check, its exit code, its log and the rounds used
 - AND its error chain runs from the Operation's link (`decision`) through the Workers harness's link (`exhausted`) to the check's link with its exit code and the end of its log
 
+### scenario.operations.spec-error — A Spec tooling error keeps its reason and causes
+
+- GIVEN a run whose grant Spec core refuses with its own error, which has a cause
+- WHEN the Operation ends
+- THEN the Operation's link has that error as a `component` cause with its code and message
+- AND the cause's explanation is the error's reason, its option is the error's remediation, and the error's own cause is nested below it
+
 ### scenario.operations.audit-violation — A write outside the grant fails the run
 
 - GIVEN a worker that changed a file outside its grant's writable paths

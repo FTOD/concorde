@@ -11,13 +11,14 @@ import json
 import os
 from pathlib import Path
 
-from ..spec.repository_base import SpecError
+from ..spec.errors import SpecError, system_cause, unexpected
 
 
-class ToolError(Exception):
-    def __init__(self, code: str, message: str):
-        super().__init__(message)
-        self.code = code
+class ToolError(SpecError):
+    """A Spec MCP tool call that cannot be answered."""
+
+    def __init__(self, code: str, message: str, field: str = "", **details):
+        super().__init__(message, code, field, **details)
 
 
 STRINGS = {"type": "array", "items": {"type": "string"}, "minItems": 1}
@@ -104,7 +105,11 @@ def _strings(arguments: dict, name: str) -> list[str]:
         or not value
         or any(not isinstance(item, str) or not item for item in value)
     ):
-        raise ToolError("invalid_input", f"{name} must be a nonempty array of strings")
+        raise ToolError(
+            "invalid_input",
+            f"{name} must be a nonempty array of nonempty strings, not {value!r}"[:300],
+            name,
+        )
     return value
 
 
@@ -113,7 +118,11 @@ def _string(arguments: dict, name: str, required: bool = True) -> str | None:
     if value is None and not required:
         return None
     if not isinstance(value, str) or not value:
-        raise ToolError("invalid_input", f"{name} must be a nonempty string")
+        raise ToolError(
+            "invalid_input",
+            f"{name} must be a nonempty string, not {value!r}"[:300],
+            name,
+        )
     return value
 
 
@@ -126,11 +135,19 @@ def confine(root: Path, path: str) -> str:
         relative = resolved.relative_to(root)
     except ValueError:
         raise ToolError(
-            "outside_root", f"path is outside the server root: {path}"
+            "outside_root",
+            f"{path} resolves to {resolved}, which is outside the server root {root}",
+            "paths",
+            path=path,
         ) from None
     text = relative.as_posix()
     if text in ("", "."):
-        raise ToolError("invalid_input", f"not a file path: {path}")
+        raise ToolError(
+            "invalid_input",
+            f"{path} names the server root itself, not a path inside it",
+            "paths",
+            path=path,
+        )
     return text + ("/" if path.endswith("/") and not text.endswith("/") else "")
 
 
@@ -162,7 +179,13 @@ def module(root: Path, arguments: dict) -> dict:
     identity = _string(arguments, "id")
     repository = _repository(root)
     if identity not in repository.modules:
-        raise ToolError("unknown_module", f"unregistered Module: {identity}")
+        raise ToolError(
+            "unknown_module",
+            f"{identity} is not registered in {root}; registered: "
+            + ", ".join(sorted(repository.modules)),
+            "id",
+            subject=identity,
+        )
     record = next(
         item for item in repository.registry["modules"] if item["id"] == identity
     )
@@ -246,19 +269,32 @@ HANDLERS = {
 
 
 def call(root: Path, name: str, arguments: dict) -> dict:
-    """Run one tool; raise ToolError with the failure's code."""
+    """Run one tool; raise a ``SpecError`` that says what failed, where and why."""
     if name not in HANDLERS:
-        raise ToolError("invalid_input", f"unknown tool: {name}")
+        raise ToolError(
+            "invalid_input",
+            f"unknown tool {name!r}; the tools are {', '.join(HANDLERS)}",
+            "name",
+        )
     if not isinstance(arguments, dict):
-        raise ToolError("invalid_input", "arguments must be an object")
+        raise ToolError(
+            "invalid_input",
+            f"the arguments of {name} must be an object, not a JSON "
+            f"{type(arguments).__name__}",
+            "arguments",
+        )
     try:
         return HANDLERS[name](root, arguments)
-    except ToolError:
+    except SpecError:
         raise
-    except SpecError as error:
-        raise ToolError(error.code, str(error)) from error
-    except (OSError, ValueError, KeyError, TypeError) as error:
-        raise ToolError("invalid_input", str(error)) from error
+    except OSError as error:
+        raise ToolError(
+            "system_error",
+            f"{name} could not read the Specs of {root}",
+            causes=[system_cause(error)],
+        ) from error
+    except Exception as error:  # noqa: BLE001 -- a defect still answers with its location
+        raise unexpected(error) from error
 
 
 def canonical(value) -> str:

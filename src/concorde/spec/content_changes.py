@@ -61,7 +61,16 @@ def confirm_pending_units(
     """Confirm materialized entries without editing reading prose or losing pending intentions."""
     if repository.document_overrides or repository._registry_override is not None:
         raise SpecError(
-            "pending confirmation requires an on-disk base", "invalid_proposal"
+            "pending confirmation was asked of a repository with "
+            + (
+                "document overrides"
+                if repository.document_overrides
+                else "a registry override"
+            ),
+            "invalid_proposal",
+            reason="pending entries are confirmed only against the files on disk, which the "
+            "confirmation rewrites",
+            remediation="open the repository without overrides and confirm again",
         )
     changes, confirmed, missing = pending_changes(repository)
     if not changes:
@@ -83,8 +92,18 @@ def confirm_pending_units(
             if member.path not in written
         }
         if current.registry_bytes != repository.registry_bytes or observed != before:
+            moved = sorted(
+                path
+                for path in observed.keys() | before.keys()
+                if observed.get(path) != before.get(path)
+            )
+            if current.registry_bytes != repository.registry_bytes:
+                moved.insert(0, repository.registry_path)
             raise SpecError(
-                "Spec sources changed during pending confirmation", "stale_proposal"
+                "Spec sources changed while pending entries were confirmed: "
+                + ", ".join(moved),
+                "stale_proposal",
+                path=moved[0] if moved else None,
             )
 
     apply_files(

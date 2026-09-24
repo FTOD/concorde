@@ -26,3 +26,5 @@ class ToolResult:
     artifacts: tuple[str, ...] = ()
     findings: tuple[Finding, ...] = ()
     result: Mapping[str, Any] = field(default_factory=dict)
+    # The command's own failure, a SpecError; findings stay the diagnostics of the Specs.
+    error: Any = None

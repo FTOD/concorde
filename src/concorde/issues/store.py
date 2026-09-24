@@ -28,6 +28,40 @@ from .shapes import (
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import TypedDataError, canonical, check_schema, decode
 
+
+class IssueError(SpecError):
+    """A refused Issue record, report or disposition, with the Issue rule it breaks."""
+
+    DEFAULT_CODE = "invalid_issue"
+    CODES = {
+        "invalid_issue": (
+            "an Issue record or report has exactly the fields, values and front matter the "
+            "Issue contracts define",
+            "correct the named field of the report or record",
+        ),
+        "unknown_issue": (
+            "the identity names no Issue record under .concorde/issues/",
+            "run `concorde issues list` and use an existing identity",
+        ),
+        "closed_issue": (
+            "only an open Issue may be closed or reported against",
+            "reopen the Issue first, or record a new report",
+        ),
+        "open_issue": (
+            "only a closed Issue may be reopened",
+            "close the Issue first, or leave it open",
+        ),
+        "stale_issue": (
+            "an Issue is changed only from the bytes it was read from",
+            "read the Issue again and repeat the change",
+        ),
+        "issue_key_conflict": (
+            "one report key identifies one Issue",
+            "use the existing Issue with that key, or change the report's key",
+        ),
+    }
+
+
 DIRECTORY = ".concorde/issues"
 MAX_REPORT_BYTES = 64 * 1024
 MAX_RECORD_BYTES = 16 * 1024 * 1024
@@ -37,7 +71,7 @@ def issue_path(identifier: str) -> str:
     if not isinstance(identifier, str) or not re.fullmatch(
         ISSUE_ID["pattern"], identifier
     ):
-        raise SpecError(
+        raise IssueError(
             f"{identifier!r} is not an Issue identity (I- followed by 32 lowercase hex digits)",
             "invalid_issue",
         )
@@ -51,17 +85,17 @@ def _now() -> str:
 def validate_report(report: dict) -> None:
     check_schema(report, REPORT)
     if (report["type"] == "gap") != (report["subtype"] is not None):
-        raise SpecError(
+        raise IssueError(
             "field subtype: a gap report requires a gap subtype, a bug or limitation report null",
             "invalid_issue",
         )
     if ("issue_id" in report) != ("expected_revision" in report):
-        raise SpecError(
+        raise IssueError(
             "fields issue_id and expected_revision: appending a report requires both, creating an Issue neither",
             "invalid_issue",
         )
     if len(canonical(report).encode()) > MAX_REPORT_BYTES:
-        raise SpecError(
+        raise IssueError(
             "issue report exceeds 64 KiB; reference evidence instead of copying logs",
             "invalid_issue",
         )
@@ -75,20 +109,20 @@ def validate_record(record: dict) -> None:
         report, source = observation["report"], observation["source"]
         validate_report(report)
         if report.get("issue_id", record["id"]) != record["id"]:
-            raise SpecError("report belongs to another issue", "invalid_issue")
+            raise IssueError("report belongs to another issue", "invalid_issue")
         if observation["id"] != digest({"report": report, "source": source}):
-            raise SpecError(
+            raise IssueError(
                 "issue observation digest differs from its content", "invalid_issue"
             )
         identifiers.append(observation["id"])
         keys.append((source["invocation_id"], report["report_key"]))
     if len(set(identifiers)) != len(identifiers) or len(set(keys)) != len(keys):
-        raise SpecError("issue contains duplicate observations", "invalid_issue")
+        raise IssueError("issue contains duplicate observations", "invalid_issue")
     original = record["reports"][0]
     if "issue_id" in original["report"] or record["id"] != _allocated_id(
         original["report"], original["source"]
     ):
-        raise SpecError(
+        raise IssueError(
             "issue identity differs from its original report", "invalid_issue"
         )
     state = "open"
@@ -98,19 +132,19 @@ def validate_record(record: dict) -> None:
                 not disposition["duplicate_of"]
                 or disposition["duplicate_of"] == record["id"]
             ):
-                raise SpecError(
+                raise IssueError(
                     "duplicate disposition requires another issue", "invalid_issue"
                 )
         elif disposition["duplicate_of"] is not None:
-            raise SpecError(
+            raise IssueError(
                 "only duplicate dispositions name another issue", "invalid_issue"
             )
         reopened = disposition["reason"] == "reopened"
         if reopened != (state == "closed"):
-            raise SpecError("invalid issue disposition transition", "invalid_issue")
+            raise IssueError("invalid issue disposition transition", "invalid_issue")
         state = "open" if reopened else "closed"
     if record["status"] != state:
-        raise SpecError(
+        raise IssueError(
             "issue status differs from its disposition history", "invalid_issue"
         )
 
@@ -130,7 +164,7 @@ def parse(text: str, identifier: str) -> dict:
     """Parse one record file; every refusal names the Issue it concerns."""
     prefix = f"# {identifier}\n\n```json\n"
     if not text.startswith(prefix) or not text.endswith("\n```\n"):
-        raise SpecError(
+        raise IssueError(
             f"Issue {identifier} must contain its identity heading and one JSON record",
             "invalid_issue",
         )
@@ -139,13 +173,13 @@ def parse(text: str, identifier: str) -> dict:
         validate_record(record)
     except TypedDataError as error:
         where = f" field {error.field}" if error.field else ""
-        raise SpecError(
+        raise IssueError(
             f"Issue {identifier}{where}: {error}", "invalid_issue"
         ) from error
     except SpecError as error:
-        raise SpecError(f"Issue {identifier}: {error}", error.code) from error
+        raise IssueError(f"Issue {identifier}: {error}", error.code) from error
     if record["id"] != identifier:
-        raise SpecError(
+        raise IssueError(
             f"Issue {identifier}: file name and record id {record['id']} disagree",
             "invalid_issue",
         )
@@ -155,12 +189,12 @@ def parse(text: str, identifier: str) -> dict:
 def read_issue(root: Path, identifier: str) -> tuple[dict, str]:
     path = checked_path(root, issue_path(identifier))
     if not path.is_file():
-        raise SpecError(
+        raise IssueError(
             f"Issue {identifier} does not exist: no {issue_path(identifier)}",
             "unknown_issue",
         )
     if path.stat().st_size > MAX_RECORD_BYTES:
-        raise SpecError(
+        raise IssueError(
             f"Issue {identifier} exceeds the admitted record size of 16 MiB",
             "invalid_issue",
         )
@@ -168,7 +202,7 @@ def read_issue(root: Path, identifier: str) -> tuple[dict, str]:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as error:
-        raise SpecError(
+        raise IssueError(
             f"Issue {identifier} is not UTF-8 text: {error.reason} at byte {error.start}",
             "invalid_issue",
         ) from error
@@ -180,7 +214,7 @@ def list_issues(
 ) -> list[dict]:
     """Read-only metadata; an absent collection is empty and is never created by a query."""
     if status not in {None, "open", "closed"}:
-        raise SpecError("unknown issue status", "invalid_issue")
+        raise IssueError("unknown issue status", "invalid_issue")
     directory = checked_path(root, DIRECTORY)
     if not directory.exists():
         return []
@@ -231,7 +265,7 @@ def _publish(root: Path, record: dict, before: str | None) -> None:
 def _publish_text(root: Path, identifier: str, text: str, before: str | None) -> None:
     path = issue_path(identifier)
     if len(text.encode()) > MAX_RECORD_BYTES:
-        raise SpecError("issue record exceeds the admitted size", "invalid_issue")
+        raise IssueError("issue record exceeds the admitted size", "invalid_issue")
     apply_files(
         root, [{"path": path, "before_digest": before, "content": text}], {path}
     )
@@ -281,7 +315,7 @@ def report_issue(root: Path, report: dict, source: dict) -> dict:
                     and previous["report"]["report_key"] == report["report_key"]
                 ):
                     if previous["id"] != observation_id:
-                        raise SpecError(
+                        raise IssueError(
                             f"report key {report['report_key']!r} of invocation "
                             f"{source['invocation_id']} already names a different observation "
                             f"in Issue {identifier}",
@@ -289,23 +323,23 @@ def report_issue(root: Path, report: dict, source: dict) -> dict:
                         )
                     return receipt
             if "issue_id" not in report:
-                raise SpecError(
+                raise IssueError(
                     f"allocated Issue identity {identifier} is already occupied",
                     "issue_key_conflict",
                 )
             if revision != report["expected_revision"]:
-                raise SpecError(
+                raise IssueError(
                     f"Issue {identifier} changed before this observation: expected revision "
                     f"{report['expected_revision']}, current revision {revision}",
                     "stale_issue",
                 )
             if record["status"] != "open":
-                raise SpecError(
+                raise IssueError(
                     f"Issue {identifier} is closed; reopen it before reporting another observation",
                     "closed_issue",
                 )
         elif "issue_id" in report:
-            raise SpecError(
+            raise IssueError(
                 f"cannot append to Issue {identifier}: it does not exist",
                 "unknown_issue",
             )
@@ -376,11 +410,11 @@ def dispose_issue(
     that tests passed or that a human/product decision was authorized.
     """
     if reason == "duplicate" and duplicate_of == identifier:
-        raise SpecError(
+        raise IssueError(
             f"Issue {identifier} cannot be a duplicate of itself", "invalid_issue"
         )
     if (reason == "duplicate") != (duplicate_of is not None):
-        raise SpecError(
+        raise IssueError(
             f"closing Issue {identifier} as duplicate requires duplicate_of, and only a "
             "duplicate disposition names another Issue",
             "invalid_issue",
@@ -388,31 +422,31 @@ def dispose_issue(
     with _lock(root):
         record, revision = read_issue(root, identifier)
         if revision != expected_revision:
-            raise SpecError(
+            raise IssueError(
                 f"Issue {identifier} changed before disposition: expected revision "
                 f"{expected_revision}, current revision {revision}",
                 "stale_issue",
             )
         if reason == "reopened" and record["status"] != "closed":
-            raise SpecError(
+            raise IssueError(
                 f"Issue {identifier} is open; only a closed Issue can be reopened",
                 "open_issue",
             )
         if reason != "reopened" and record["status"] != "open":
-            raise SpecError(
+            raise IssueError(
                 f"Issue {identifier} is already closed; reopen it before closing it again",
                 "closed_issue",
             )
         if reason == "duplicate":
             other, other_revision = read_issue(root, duplicate_of)
             if duplicate_revision is not None and other_revision != duplicate_revision:
-                raise SpecError(
+                raise IssueError(
                     f"duplicate target changed before disposition: Issue {duplicate_of} "
                     f"expected revision {duplicate_revision}, current revision {other_revision}",
                     "stale_issue",
                 )
             if other["status"] != "open":
-                raise SpecError(
+                raise IssueError(
                     f"duplicate target {duplicate_of} is closed; a duplicate must name an "
                     "open Issue",
                     "invalid_issue",
@@ -434,7 +468,7 @@ def resolve_report(root: Path, receipt: dict) -> dict:
     """Resolve an immutable observation, not the issue's possibly changed latest classification."""
     check_schema(receipt, RECEIPT)
     if receipt["path"] != issue_path(receipt["issue_id"]):
-        raise SpecError(
+        raise IssueError(
             f"receipt path differs from the path of Issue {receipt['issue_id']}: "
             f"{receipt['path']}",
             "invalid_issue",
@@ -443,7 +477,7 @@ def resolve_report(root: Path, receipt: dict) -> dict:
     for observation in record["reports"]:
         if observation["id"] == receipt["report_id"]:
             return observation
-    raise SpecError(
+    raise IssueError(
         f"Issue {receipt['issue_id']} holds no report {receipt['report_id']}",
         "stale_issue",
     )

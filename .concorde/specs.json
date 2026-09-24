@@ -93,7 +93,8 @@
         "specs/concorde/spec-tooling/spec/validation.md",
         "specs/concorde/spec-tooling/spec/requirements.md",
         "specs/concorde/spec-tooling/spec/scenarios.md",
-        "specs/concorde/spec-tooling/spec/contracts.md"
+        "specs/concorde/spec-tooling/spec/contracts.md",
+        "specs/concorde/spec-tooling/spec/errors.md"
       ],
       "contains": [],
       "uses": [],

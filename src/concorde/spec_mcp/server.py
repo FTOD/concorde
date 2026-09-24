@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import IO
 from urllib.parse import unquote, urlparse
 
+from ..spec.errors import SpecError
 from .tools import TOOLS, ToolError, call, canonical
 
 SERVER_INFO = {"name": "concorde-spec", "version": "1"}
@@ -166,10 +167,14 @@ class Session:
     def tool_result(self, name, arguments) -> dict:
         try:
             if self.root is None:
-                raise ToolError("no_root", self.root_error or "the session has no root")
+                raise ToolError(
+                    "no_root",
+                    self.root_error
+                    or "the session has no root yet: the client has not sent initialized",
+                )
             value, error = call(self.root, name, arguments), False
-        except ToolError as failure:
-            value, error = {"code": failure.code, "message": str(failure)}, True
+        except SpecError as failure:
+            value, error = {"error": failure.record()}, True
         return {
             "content": [{"type": "text", "text": canonical(value)}],
             "isError": error,

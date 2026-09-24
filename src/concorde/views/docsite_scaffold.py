@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ..spec.changes import apply_files, file_change
+from ..spec.errors import system_cause
 from ..spec.model import Finding, ToolResult
 from ..spec.repository import SpecError, SpecRepository
 from ..spec.typed_data import TypedDataError, checked_path, safe_path
@@ -356,34 +357,64 @@ def _load_accepted(
     root: Path, package: Path, proposal_path: str
 ) -> tuple[dict[str, bytes], dict[str, Any], bool, str]:
     path = checked_path(root, safe_path(proposal_path))
+
+    def refused(message: str, field: str = "", code: str = "invalid_proposal", **more):
+        return SpecError(message, code, field, path=proposal_path, **more)
+
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        raise ValueError(f"cannot read accepted docsite proposal: {error}") from error
+        raise refused(
+            f"the accepted docsite proposal {proposal_path} cannot be read as JSON",
+            causes=[system_cause(error, path=proposal_path)],
+        ) from error
     if not isinstance(value, dict):
-        raise ValueError("accepted docsite proposal must be an object")
+        raise refused(
+            f"the accepted docsite proposal is a JSON {type(value).__name__}, not an object"
+        )
     value = value.get("result", {}).get("proposal", value.get("proposal", value))
     if not isinstance(value, dict) or value.get("proposal_version") != PROPOSAL_VERSION:
-        raise ValueError(
-            "unsupported or missing proposal_version; regenerate with docsite --propose (proposal version 2)"
+        found = value.get("proposal_version") if isinstance(value, dict) else None
+        raise refused(
+            f"the proposal has proposal_version {found!r}, but this package applies "
+            f"version {PROPOSAL_VERSION}; regenerate with docsite --propose",
+            "/proposal_version",
+            remediation="regenerate the proposal with docsite --propose and apply that",
         )
     files = value.get("files")
     if not isinstance(files, list) or not files:
-        raise ValueError("proposal files must be a non-empty list")
+        raise refused(
+            f"the proposal's files must be a non-empty list, not {files!r}"[:200],
+            "/files",
+        )
     identity = value.get("identity")
     if not isinstance(identity, dict):
-        raise ValueError("proposal identity must be an object")
+        raise refused(
+            f"the proposal's identity must be an object, not {identity!r}"[:200],
+            "/identity",
+        )
     github_pages = value.get("github_pages")
     if not isinstance(github_pages, bool):
-        raise ValueError("proposal github_pages must be a boolean")
+        raise refused(
+            f"the proposal's github_pages must be a boolean, not {github_pages!r}",
+            "/github_pages",
+        )
     if value.get("template_root") != TEMPLATE_ROOT:
-        raise ValueError("proposal template_root must be docsite")
+        raise refused(
+            f"the proposal's template_root is {value.get('template_root')!r}, not "
+            f"{TEMPLATE_ROOT!r}",
+            "/template_root",
+        )
 
     adapter = adapter_files(package)
     actual_digest = template_digest(adapter)
     if actual_digest != value.get("template_digest"):
-        raise ValueError(
-            "package bytes are stale relative to the accepted proposal template digest"
+        raise refused(
+            f"package bytes are stale relative to the accepted proposal template digest: "
+            f"the proposal was made for {value.get('template_digest')}, the package at "
+            f"{package} now has {actual_digest}",
+            "/template_digest",
+            code="stale_proposal",
         )
 
     # Reconstruct the sole permitted inventory before touching any destination.
@@ -395,8 +426,17 @@ def _load_accepted(
         for entry in entries
     ]
     if files != expected:
-        raise ValueError(
-            "proposal files must match the complete exact scaffold inventory and content hashes"
+        given = {item.get("path"): item for item in files if isinstance(item, dict)}
+        wanted = {item["path"]: item for item in expected}
+        differing = sorted(
+            str(path)
+            for path in given.keys() | wanted.keys()
+            if given.get(path) != wanted.get(path)
+        )
+        raise refused(
+            "the proposal's files differ from the exact scaffold inventory and content "
+            f"hashes in {len(differing)} entr(y/ies): " + ", ".join(differing[:20]),
+            "/files",
         )
     resolved = {entry["path"]: entry["content"] for entry in entries}
     return resolved, identity, github_pages, actual_digest
@@ -418,23 +458,26 @@ def apply_docsite(
         resolved, identity, github_pages, digest = _load_accepted(
             root, package, proposal_path
         )
-    except (
-        OSError,
-        KeyError,
-        TypeError,
-        ValueError,
-        json.JSONDecodeError,
-        DocsiteTemplateError,
-    ) as error:
+    except (OSError, KeyError, TypeError, ValueError) as error:
+        failure = (
+            error
+            if isinstance(error, SpecError)
+            else SpecError(
+                f"the accepted proposal {proposal_path} cannot be applied",
+                "invalid_proposal",
+                path=proposal_path,
+                causes=[system_cause(error)],
+            )
+        )
         finding = Finding(
             "CONCORDE-DOCSITE-004",
             "error",
             SITE_IDENTITY_PATH,
-            f"Accepted proposal is invalid: {error}",
+            f"Accepted proposal is invalid: {failure}",
             "Save the exact proposal JSON produced by the propose Tool at a safe project-relative path and retry, "
             "or run the propose Tool again if the package changed.",
         )
-        return ToolResult("docsite", ".", "invalid", findings=(finding,))
+        return ToolResult("docsite", ".", "invalid", findings=(finding,), error=failure)
 
     states = {
         relative: "missing"

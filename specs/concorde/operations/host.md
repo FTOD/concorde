@@ -132,3 +132,11 @@ build it as follows.
 
 For a worker run the Operation's options are the worker's own options, when it gave any, followed by
 the Operation's; each provider's Spec lists the links its own steps add.
+
+Spec tooling reports with [its own error record](../spec-tooling/spec/errors.md), never with a link.
+When a Spec tooling error causes an Operation's error, the host translates it into a `component`
+link of the actor `Spec core`: the record's message and location become the detail, its reason
+becomes the explanation of why Spec core could not handle it (reason `input`, or `environment` for a
+`system_error`), its remediation becomes the option and recommendation, and each of its causes
+becomes a nested link the same way. A Check execution or Issue error, which are subclasses of the
+Spec tooling error type registered by their own Modules, is translated the same way.

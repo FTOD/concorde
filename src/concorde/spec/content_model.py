@@ -43,9 +43,11 @@ def metadata_path(reading_path: str) -> str:
     safe_path(reading_path)
     if not reading_path.endswith(".md"):
         raise SpecError(
-            f"reading source must be Markdown: {reading_path}",
+            f"the reading document {reading_path} is not a Markdown file",
             "invalid_spec",
-            reading_path,
+            path=reading_path,
+            reason="a Spec document's reading member is Markdown and its metadata member is "
+            "the same path plus .json",
         )
     return reading_path + ".json"
 

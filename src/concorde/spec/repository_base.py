@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 
 # These helpers also remain available through the repository facade.
+from .errors import SpecError as SpecError
+from .errors import system_cause
 from .frontmatter import parse_document as parse_document
 from .schema import ContractError as ContractError
 from .schema import admit as admit
@@ -72,12 +74,6 @@ REFERENCE_SKIPPED_SUFFIXES = (
 )
 
 
-class SpecError(ValueError):
-    def __init__(self, message: str, code: str = "invalid_spec", field: str = ""):
-        self.code, self.field = code, field
-        super().__init__(message)
-
-
 def digest(value: bytes | Any) -> str:
     data = value if isinstance(value, bytes) else canonical(value).encode()
     return "sha256:" + hashlib.sha256(data).hexdigest()
@@ -88,7 +84,12 @@ def protocol_asset_path(asset_path: str) -> str:
     installed as ``.concorde/protocol/<name>``."""
     if not asset_path.startswith(RENDERED_PROTOCOL_PREFIX):
         raise SpecError(
-            f"unexpected Protocol asset path: {asset_path}", "protocol_mismatch"
+            f"the Protocol manifest lists {asset_path}, which is not under "
+            f"{RENDERED_PROTOCOL_PREFIX}",
+            "protocol_mismatch",
+            path=asset_path,
+            reason="every Protocol asset is rendered under "
+            f"{RENDERED_PROTOCOL_PREFIX} and installed under {PROTOCOL_DIR}/",
         )
     return PROTOCOL_DIR + "/" + asset_path[len(RENDERED_PROTOCOL_PREFIX) :]
 
@@ -100,12 +101,29 @@ def read_file(root: Path, relative: str) -> bytes:
     """
     path = checked_path(root, relative)
     if not path.is_file():
-        raise SpecError(
-            f"required regular file is missing: {relative}", "missing_source", relative
+        state = (
+            "a directory"
+            if path.is_dir()
+            else "missing"
+            if not path.exists()
+            else ("not a regular file")
         )
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-    with os.fdopen(descriptor, "rb") as stream:
-        return stream.read()
+        raise SpecError(
+            f"the required file {relative} is {state} in {root}",
+            "missing_source",
+            path=relative,
+        )
+    try:
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        with os.fdopen(descriptor, "rb") as stream:
+            return stream.read()
+    except OSError as error:
+        raise SpecError(
+            f"the required file {relative} cannot be read in {root}",
+            "missing_source",
+            path=relative,
+            causes=[system_cause(error, path=relative)],
+        ) from error
 
 
 def check_input_error(check: dict, relative: str, error: Exception) -> SpecError:
@@ -113,7 +131,12 @@ def check_input_error(check: dict, relative: str, error: Exception) -> SpecError
     return SpecError(
         f"configured check {check['id']} (Module {check['module']}) input {relative}: {error}",
         getattr(error, "code", "invalid_spec"),
-        getattr(error, "field", "") or relative,
+        path=relative,
+        subject=check["id"],
+        reason=getattr(error, "reason", None)
+        or "a configured check's inputs are canonical project-relative paths of regular "
+        "files or directories",
+        causes=[error] if isinstance(error, SpecError) else [system_cause(error)],
     )
 
 
@@ -126,28 +149,38 @@ def check_input_members(root: Path, relative: str) -> tuple[str, ...]:
     path = checked_path(root, relative, relative)
     if not path.exists():
         raise SpecError(
-            f"required check input is missing: {relative}", "missing_source", relative
+            f"the check input {relative} does not exist",
+            "missing_source",
+            path=relative,
+            reason="every declared input of a configured check must exist, because the "
+            "check's result is bound to the digest of its inputs",
         )
     if path.is_file():
         return (relative,)
     if not path.is_dir():
         raise SpecError(
-            f"check input must be a regular file or directory: {relative}",
+            f"the check input {relative} is neither a regular file nor a directory",
             "unsafe_path",
-            relative,
+            path=relative,
         )
     members = []
     for member in sorted(path.rglob("*")):
         name = member.relative_to(root).as_posix()
         if member.is_symlink():
             raise SpecError(
-                f"check input cannot contain symlinks: {name}", "unsafe_path", name
+                f"the check input {relative} contains the symbolic link {name}",
+                "unsafe_path",
+                path=name,
+                reason="a symbolic link inside a check input could make the input's digest "
+                "cover another file than the one the check reads",
             )
         if member.is_dir():
             continue
         if not member.is_file():
             raise SpecError(
-                f"check input is not a regular file: {name}", "unsafe_path", name
+                f"the check input {relative} contains {name}, which is not a regular file",
+                "unsafe_path",
+                path=name,
             )
         if "__pycache__" not in member.parts and member.suffix not in {".pyc", ".pyo"}:
             members.append(name)
@@ -162,14 +195,22 @@ def strings(value: Any, label: str, *, nonempty: bool = False) -> tuple[str, ...
         or (nonempty and not value)
     ):
         raise SpecError(
-            f"{label} must be a {'nonempty ' if nonempty else ''}unique string array"
+            f"{label} must be a {'nonempty ' if nonempty else ''}array of distinct nonblank "
+            f"strings, not {value!r}"[:300],
+            "invalid_spec",
+            label,
         )
     return tuple(value)
 
 
 def identifier(value: Any) -> str:
     if not isinstance(value, str) or not IDENTITY.fullmatch(value):
-        raise SpecError(f"invalid stable identity: {value!r}")
+        raise SpecError(
+            f"{value!r} is not a stable identity",
+            "invalid_spec",
+            reason="a stable identity is a kind prefix and lowercase dotted words, such as "
+            "module.payments or scenario.payments.retry",
+        )
     return value
 
 

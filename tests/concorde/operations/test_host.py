@@ -156,6 +156,33 @@ class HostTests(unittest.TestCase):
         host_text = json.dumps(envelope["host_evidence"]) + envelope["summary"]
         self.assertNotIn("rounding rule", host_text)
 
+    @verifies("scenario.operations.spec-error")
+    def test_a_spec_tooling_error_keeps_its_reason_and_causes(self):
+        from concorde.spec.errors import SpecError, system_cause
+
+        refused = SpecError(
+            "the implement grant would make src/shared.py writable, which module.b binds",
+            "shared_file",
+            "modules",
+            causes=[system_cause(PermissionError(13, "denied", "src/shared.py"))],
+        )
+        with patch("concorde.spec.grants.grant", side_effect=refused):
+            status, envelope = self.implement([{}])
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        error = envelope["error"]
+        self.assertEqual("grant_unavailable", error["code"])
+        [spec] = error["causes"]
+        self.assertEqual(("component", "shared_file"), (spec["level"], spec["code"]))
+        self.assertIn("src/shared.py", spec["detail"])
+        self.assertEqual(refused.reason, spec["unhandled"]["explanation"])
+        self.assertEqual([refused.remediation], spec["options"])
+        [system] = spec["causes"]
+        self.assertEqual(
+            ("system_error", "environment"),
+            (system["code"], system["unhandled"]["reason"]),
+        )
+        self.assertIn("src/shared.py", system["detail"])
+
     @verifies("scenario.operations.checks-exhausted")
     def test_checks_still_failing_after_the_last_round(self):
         status, envelope = self.implement(

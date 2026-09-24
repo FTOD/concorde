@@ -12,6 +12,8 @@ import json
 from collections.abc import Iterator, Mapping
 from pathlib import Path
 
+from ..spec.errors import SpecError
+
 TEMPLATE_ROOT = "docsite"
 EXCLUDED_DIRECTORIES = (
     "node_modules",
@@ -35,8 +37,10 @@ _COMPOUND_EXCLUDED_PREFIXES = tuple(
 )
 
 
-class DocsiteTemplateError(ValueError):
+class DocsiteTemplateError(SpecError):
     """The package docsite template root is missing, unsafe, or disagrees with the manifest."""
+
+    DEFAULT_CODE = "invalid_docsite_template"
 
 
 def _directory_excluded(parts: tuple[str, ...]) -> bool:

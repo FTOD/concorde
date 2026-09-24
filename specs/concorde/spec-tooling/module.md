@@ -11,7 +11,9 @@ publishes the Specs as a documentation site for people. Every other part of Conc
 to refuse a structure that cannot support a trustworthy boundary, and projects that use Concorde
 rely on it to understand their own Specs. Spec tooling never changes a Spec on its own, never
 decides which task type a piece of work gets, and never enforces a boundary; enforcement belongs
-to the Harness.
+to the Harness. It reports its failures with [its own error type](spec/errors.md), which says what
+failed, where, why it is an error, how to fix it and what caused it, and it depends on no other
+part of Concorde to do so; the rest of Concorde translates those errors into its own.
 
 ## Terminology
 

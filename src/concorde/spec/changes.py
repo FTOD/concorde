@@ -20,24 +20,51 @@ def apply_files(
     root: Path, changes: list[dict], allowed: set[str], *, verify=None
 ) -> list[str]:
     backups: dict[str, bytes | None] = {}
-    if not changes or len({x["path"] for x in changes}) != len(changes):
+    paths = [x.get("path") for x in changes]
+    if not changes or len(set(paths)) != len(changes):
+        repeated = sorted({path for path in paths if paths.count(path) > 1})
         raise SpecError(
-            "change set must be nonempty with unique paths", "invalid_proposal"
+            "a change set must be nonempty with unique paths; "
+            + (
+                f"repeated: {', '.join(map(str, repeated))}"
+                if repeated
+                else "it is empty"
+            ),
+            "invalid_proposal",
         )
     for item in changes:
-        if (
-            set(item) != {"path", "before_digest", "content"}
-            or item["path"] not in allowed
-        ):
+        if set(item) != {"path", "before_digest", "content"}:
             raise SpecError(
-                "change is outside its host-authorized boundary", "permission_denied"
+                f"the change of {item.get('path')!r} has fields {sorted(item)}; a change has "
+                "exactly path, before_digest and content",
+                "invalid_proposal",
+                path=str(item.get("path")),
+            )
+        if item["path"] not in allowed:
+            raise SpecError(
+                f"the change of {item['path']} lies outside the paths its caller authorized: "
+                + ", ".join(sorted(allowed))[:600],
+                "permission_denied",
+                path=item["path"],
             )
         if not isinstance(item["content"], str):
-            raise SpecError("document content must be UTF-8 text", "invalid_proposal")
+            raise SpecError(
+                f"the new content of {item['path']} is a {type(item['content']).__name__}, "
+                "not text",
+                "invalid_proposal",
+                path=item["path"],
+                reason="Spec tooling writes documents and configuration as UTF-8 text",
+            )
         path = checked_path(root, item["path"])
         before = read_file(root, item["path"]) if path.exists() else None
-        if (digest(before) if before is not None else None) != item["before_digest"]:
-            raise SpecError(f"stale change input: {item['path']}", "stale_proposal")
+        observed = digest(before) if before is not None else None
+        if observed != item["before_digest"]:
+            raise SpecError(
+                f"{item['path']} is now {observed or 'absent'}, but the change was computed "
+                f"from {item['before_digest'] or 'an absent file'}",
+                "stale_proposal",
+                path=item["path"],
+            )
         backups[item["path"]] = before
     changed = []
 
@@ -60,7 +87,12 @@ def apply_files(
             path = checked_path(root, item["path"])
             observed = read_file(root, item["path"]) if path.exists() else None
             if observed != backups[item["path"]]:
-                raise SpecError("source changed during apply", "stale_proposal")
+                raise SpecError(
+                    f"{item['path']} changed while the change set was being applied; every "
+                    "file written so far was restored",
+                    "stale_proposal",
+                    path=item["path"],
+                )
             write(path, item["content"].encode())
             changed.append(item["path"])
         if verify:

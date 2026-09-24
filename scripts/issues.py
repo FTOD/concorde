@@ -37,9 +37,9 @@ CLOSING_REASONS = ("resolved", "duplicate", "not-actionable")
 
 
 class Refusal(Exception):
-    def __init__(self, code: str, message: str, status: int = REFUSED):
+    def __init__(self, code: str, message: str, status: int = REFUSED, cause=None):
         super().__init__(message)
-        self.code, self.status = code, status
+        self.code, self.status, self.cause = code, status, cause
 
 
 class Parser(argparse.ArgumentParser):
@@ -83,12 +83,12 @@ def main(argv=None) -> int:
             )
         return ACTIONS[args.action](root, args)
     except Refusal as refusal:
-        return refuse(refusal.code, str(refusal), refusal.status)
+        return refuse(refusal.code, str(refusal), refusal.status, refusal.cause)
     except TypedDataError as error:
         where = f"field {error.field}: " if error.field else ""
-        return refuse("invalid_issue", f"{where}{error}", REFUSED)
+        return refuse("invalid_issue", f"{where}{error}", REFUSED, error)
     except SpecError as error:
-        return refuse(error.code, str(error), REFUSED)
+        return refuse(error.code, str(error), REFUSED, error)
     except OSError as error:
         return refuse(
             "io_error", f"{error.filename or 'file'}: {error.strerror}", REFUSED
@@ -106,20 +106,26 @@ def main(argv=None) -> int:
         return REFUSED
 
 
-def refuse(code: str, message: str, status: int) -> int:
+def refuse(code: str, message: str, status: int, cause=None) -> int:
+    """Print the refusal as an error link; a SpecError ``cause`` adds its location, the
+    rule it breaks and its remediation."""
     environment = code in ("io_error", "git_failed")
+    where = cause.where() if isinstance(cause, SpecError) else ""
     error = link(
         "component",
         "Issues (concorde issues)",
         code if re.fullmatch(r"[a-z][a-z0-9_]*", code) else "refused",
-        message,
+        message + (f" (at {where})" if where and where not in message else ""),
         reason="environment" if environment else "input",
         explanation=(
-            "the file system or Git refused an operation the Issues command needs"
+            cause.reason
+            if isinstance(cause, SpecError)
+            else "the file system or Git refused an operation the Issues command needs"
             if environment
             else "the request or the Issue record does not satisfy the Issue rules; only "
             "the caller can correct it"
         ),
+        options=[cause.remediation] if isinstance(cause, SpecError) else [],
     )
     print(json.dumps({"error": error}, ensure_ascii=False, indent=2))
     return status
@@ -202,12 +208,18 @@ def load_report(path: Path) -> dict:
     except TypedDataError as error:
         if error.code == "invalid_json":
             raise Refusal(
-                "invalid_issue", f"report file {path} is not valid JSON: {error}"
+                "invalid_issue",
+                f"report file {path} is not valid JSON: {error}",
+                cause=error,
             ) from error
         where = f", field {error.field.lstrip('/')}" if error.field else ""
-        raise Refusal("invalid_issue", f"report file {path}{where}: {error}") from error
+        raise Refusal(
+            "invalid_issue", f"report file {path}{where}: {error}", cause=error
+        ) from error
     except SpecError as error:
-        raise Refusal(error.code, f"report file {path}: {error}") from error
+        raise Refusal(
+            error.code, f"report file {path}: {error}", cause=error
+        ) from error
     return report
 
 

@@ -11,6 +11,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from .errors import SpecError
 from .repository_base import HEADING, IDENTITY, walk_lines
 
 READING_SECTIONS = ("Purpose", "Terminology", "Usage", "Design", "Relationships")
@@ -828,8 +829,10 @@ REVERSED_EDGES = frozenset({"<--", "<=="})
 UNDIRECTED_EDGES = frozenset({"---", "-.-", "===", "<-->", "x--x", "o--o"})
 
 
-class DiagramError(ValueError):
-    pass
+class DiagramError(SpecError):
+    """A checked Mermaid flowchart outside the supported syntax."""
+
+    DEFAULT_CODE = "invalid_diagram"
 
 
 class UndirectedEdgeError(DiagramError):

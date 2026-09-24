@@ -156,7 +156,10 @@ docs.
 
 **Apply.** Apply rebuilds the complete inventory from the installed package and the proposal's
 `identity` and `github_pages`, and requires the proposal's `template_digest` and `files` to equal it
-exactly; otherwise it returns `invalid`. Then:
+exactly; otherwise it returns `invalid` with a `CONCORDE-DOCSITE-004` finding and, as the envelope's
+`error`, Spec tooling's [error record](../spec/errors.md) naming the proposal file, the offending
+field and value (for differing files, every differing path), and `stale_proposal` when the
+package's template digest moved. Then:
 
 - every destination already has the proposed bytes: `unchanged`, nothing written;
 - any destination exists with other content: `conflict`, nothing written;

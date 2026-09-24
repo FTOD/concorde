@@ -189,7 +189,10 @@ Every refusal prints `{"error": <link>}` and writes nothing. The link is a `comp
 the Framework's [error chain](../contracts.md#contract.concorde.error) with the actor
 `Issues (concorde issues)`: its code is the refusal code, its detail names the Issue, the report
 file and field, or the argument concerned and states what is wrong, and its reason is
-`environment` for `io_error` and `input` for every other code. The exit status is 2 when the
+`environment` for `io_error` and `input` for every other code. The Issue store raises `IssueError`,
+a subclass of Spec tooling's [error type](../spec-tooling/spec/errors.md) with its own registered
+codes; when a refusal comes from one, the link's explanation is that error's reason (the Issue rule
+it breaks) and its option is the error's remediation. The exit status is 2 when the
 request is unusable (codes `usage`, `not_a_project`, `unreadable_file`) and 1 when the request is
 refused (every other code).
 

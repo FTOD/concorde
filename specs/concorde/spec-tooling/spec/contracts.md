@@ -108,13 +108,15 @@ prose a Module relation's `meaning` anchor resolves to. `realization_entries` ma
 entry of the Module to its realization, and `realization_for_path` returns the realization whose
 most specific entry covers a file; an exact entry is more specific than any directory entry.
 
-Failures raise `SpecError(ValueError)` with a `code` and a `field`; path and JSON failures raised by
-the typed values keep their own `TypedDataError`. No call writes a file.
+Failures raise Spec tooling's own [error](errors.md): a `SpecError`, or a subclass such as the
+typed values' `TypedDataError`, with its code, a concrete message, its location, the reason it is an
+error, a remediation and its causes. No call writes a file.
 
 ### Loading failures {#loading-failures}
 
-A repository opened for consumers refuses the project, raising `SpecError`, on any of these
-problems:
+A repository opened for consumers refuses the project, raising a `SpecError`, on any of these
+problems. When the Spec structure is at fault, the error counts the fatal problems and carries every
+one of them as a cause, each with its path and the statement of the check it fails:
 
 - an unreadable configuration or registry, a configuration without `profile_version`, `registry`
   or `protocol` or with a field other than those and `checks` and `workers`, or a registry with
@@ -282,7 +284,8 @@ Over every bound Module and every set, a path receives the highest level assigne
 `names`, `ro`, `rw`. An exact path that a directory entry of equal or higher level covers is then
 dropped. Entries are unique and sorted by path. A path covered by no entry is denied.
 
-Computing fails, returning no grant and writing nothing, with a `SpecError` whose `code` is:
+Computing fails, returning no grant and writing nothing, with a `SpecError` whose `code` is the one
+below; its message names the offending value, for `unknown_module` also every registered Module:
 
 | Code | When |
 | --- | --- |
@@ -303,8 +306,8 @@ the canonical JSON of `{"modules": [...]}`, one item per bound Module in sorted 
 
 `concorde grant --root <worktree> --modules <id>[,<id>...] --type <task type>` loads the
 repository at the given root, computes the grant and prints the common command-line envelope with
-`tool: "grant"`, `status` `success` with the grant value as `result`, or `invalid` with one finding
-carrying the failure code. The exit code is 0 for `success` and 1 otherwise.
+`tool: "grant"`, `status` `success` with the grant value as `result`, or `invalid` with the
+failure's [error record](errors.md) as `error`. The exit code is 0 for `success` and 1 otherwise.
 
 ## Validation result {#validation-result}
 
@@ -330,16 +333,18 @@ identities:
 | `CONCORDE-COVERAGE-002` | warning | a test declares a scenario whose owner does not bind the test |
 | `CONCORDE-COVERAGE-003` | error | a bound test cannot be parsed, or a declaration in it is malformed; reported per file |
 | `CONCORDE-CHECK-001` | error | a configured check's declared input is missing or unsafe |
-| `CONCORDE-SOURCE-008` | error | the configuration, registry or Protocol binding cannot be read, so nothing else was checked |
+| `CONCORDE-SOURCE-008` | error | the configuration, registry or Protocol binding cannot be read, so nothing else was checked; the message is the load error's, the remediation carries its remediation and reason, and `result.load_error` holds its [error record](errors.md) |
 
 `result` holds `summary` (the counts of errors and warnings), `source_digest` (a digest over the
 paths and digests of the configuration, the registry, every assessed document member, the Protocol
 binding and the state of every configured-check input), `claims` (the kinds of structure the run
 checked) and `semantic_completeness: "not_proven"`. No other Module's records enter the digest.
 
-The command-line envelope is canonical JSON with `schema_version: 2` and the fields above;
-findings are sorted by rule, source, line, column and message, and artifacts are sorted. The exit
-code is 0 for `success` and 1 for `invalid`.
+The command-line envelope is canonical JSON with `schema_version: 3`, the fields above and `error`:
+`null` when the command did its work, otherwise the [error record](errors.md) of its failure,
+including a malformed command line (`invalid_input`) and an unexpected failure
+(`unexpected_error`). Findings are sorted by rule, source, line, column and message, and artifacts
+are sorted. The exit code is 0 for `success` and 1 for `invalid`.
 
 
 ## Registry command {#registry-command}
@@ -349,8 +354,8 @@ registry so that each record's `title`, `owns`, `contains`, `uses`, `includes` a
 equal the entry's `module` block. It keeps the records' order and their `id` and `entry`, and adds
 or removes no record. It writes through a file transaction and reports `unchanged` when nothing
 differs. With `--check` it writes nothing and reports one `CHK.registry.mirror` finding per record
-that differs. The command fails with `CONCORDE-REGISTRY-001` and writes nothing when the registry
-or an entry cannot be read.
+that differs. The command fails, with the [error record](errors.md) naming the registry or the entry
+and its cause, and writes nothing when the registry or an entry cannot be read.
 
 ## Verification declarations {#verification-declarations}
 

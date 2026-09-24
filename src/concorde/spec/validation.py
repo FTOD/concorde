@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .content_model import metadata_path
 from .content_repository import DocumentUnitRepository, severity
+from .errors import system_cause
 from .model import Finding, ToolResult
 from .repository import SpecRepository
 from .repository_base import (
@@ -1245,13 +1246,13 @@ def check_input_findings(
                     Finding(
                         "CONCORDE-CHECK-001",
                         "error",
-                        error.field,
-                        f"{error.code}: {error}",
+                        error.path or relative,
+                        f"{error.code}: {error}; {error.reason}",
                         "Restore the required input or reconcile the configured check; do not skip missing inputs.",
                         subject_id=check_id,
                     )
                 )
-                state = (error.code, error.field, str(error))
+                state = (error.code, error.path or relative, str(error))
             if inputs is not None:
                 inputs.append((f"check-input:{check_id}:{relative}", digest(state)))
     return tuple(findings)
@@ -1275,6 +1276,7 @@ def validate_repository(
     findings: list[Finding] = []
     artifacts: list[str] = []
     inputs: list[tuple[str, str]] = []
+    load_error: SpecError | None = None
     try:
         repository = SpecRepository(
             root,
@@ -1286,13 +1288,24 @@ def validate_repository(
         config_digest = digest(read_file(repository.root, ".concorde/config.json"))
     except (SpecError, TypedDataError, OSError, UnicodeError) as problem:
         repository = None
+        load_error = (
+            problem
+            if isinstance(problem, SpecError)
+            else SpecError(
+                "the configuration, registry or Protocol binding cannot be read",
+                "missing_source",
+                causes=[system_cause(problem)],
+            )
+        )
         findings.append(
             Finding(
                 "CONCORDE-SOURCE-008",
                 "error",
-                ".concorde/config.json",
-                str(problem),
-                "Reconcile the project configuration, registry and Protocol binding and retry.",
+                load_error.path or ".concorde/config.json",
+                str(load_error),
+                f"{load_error.remediation} (why: {load_error.reason})",
+                line=load_error.line,
+                subject_id=load_error.subject,
             )
         )
     if repository is not None:
@@ -1333,6 +1346,7 @@ def validate_repository(
                 "scenario verification declarations and coverage",
             ],
             "semantic_completeness": "not_proven",
+            **({"load_error": load_error.record()} if load_error is not None else {}),
         },
     )
 

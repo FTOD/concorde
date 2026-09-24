@@ -23,6 +23,7 @@ from .content_model import (
     envelope_problems,
     metadata_path,
 )
+from .errors import from_finding, system_cause
 from .model import Finding
 from .repository_base import (
     REFERENCE_SKIPPED_SUFFIXES,
@@ -198,7 +199,13 @@ class DocumentUnitRepository:
     ):
         root = Path(project_root)
         if root.is_symlink() or not root.is_dir():
-            raise SpecError("project root must be a real directory")
+            raise SpecError(
+                f"the project root {root} is not a real directory",
+                "unsafe_path",
+                path=str(root),
+                reason="Spec tooling loads a project only from a real directory",
+                remediation="pass the real path of the project's worktree",
+            )
         self.root = root.resolve()
         self.registry_path = safe_path(registry_path)
         self._registry_override = (
@@ -214,7 +221,10 @@ class DocumentUnitRepository:
         for path, raw in (document_overrides or {}).items():
             if not isinstance(raw, bytes):
                 raise SpecError(
-                    "source overrides must contain exact bytes", "invalid_proposal"
+                    f"the source override of {path} is a {type(raw).__name__}, not bytes",
+                    "invalid_proposal",
+                    path=str(path),
+                    reason="a source override replaces a document's exact bytes",
                 )
             self.document_overrides[safe_path(path)] = raw
         self.protocol_assets: dict[str, bytes] = getattr(self, "protocol_assets", {})
@@ -239,16 +249,30 @@ class DocumentUnitRepository:
         self._registry()
         self._documents()
         self._targets(configured_checks or [])
-        if self.document_overrides.keys() - self.source_documents.keys():
+        outside = sorted(self.document_overrides.keys() - self.source_documents.keys())
+        if outside:
             raise SpecError(
-                "source override is outside registered documents", "permission_denied"
+                "source overrides name paths that are no registered document member: "
+                + ", ".join(outside),
+                "permission_denied",
+                path=outside[0],
+                reason="an override may only replace the bytes of a registered Spec document",
             )
         if self._load.fatal and not _defer_document_admission:
-            first = self._load.fatal[0]
+            fatal = self._load.fatal
+            first = fatal[0]
             raise SpecError(
-                f"{first.rule_id}: {first.source}: {first.message}",
+                f"the Specs of {self.root} cannot be loaded: {len(fatal)} fatal "
+                f"problem(s), each a cause; the first is {first.rule_id} at "
+                f"{first.source}: {first.message}",
                 _error_code(first.rule_id),
-                first.source,
+                path=first.source or None,
+                reason="a registry, entry or document structure that breaks these checks "
+                "cannot support a trustworthy boundary, so the repository is refused",
+                remediation="repair every cause, then run `concorde validate`",
+                causes=[
+                    from_finding(item, _error_code(item.rule_id)) for item in fatal
+                ],
             )
 
     # --- loading ------------------------------------------------------------------------
@@ -293,7 +317,11 @@ class DocumentUnitRepository:
             value = decode(self.registry_bytes.decode("utf-8"))
         except (ValueError, UnicodeError) as error:
             raise SpecError(
-                f"registry is not JSON: {error}", "unsupported_profile"
+                f"registry is not JSON: {error}",
+                "unsupported_profile",
+                path=self.registry_path,
+                reason="the Spec registry is a strict JSON document",
+                remediation="repair the JSON syntax of the registry, or restore it from Git",
             ) from error
         if (
             not isinstance(value, dict)
@@ -859,17 +887,33 @@ class DocumentUnitRepository:
 
     def document_path(self, document_id: str) -> str:
         if document_id not in self._identity_paths:
-            raise SpecError(f"unknown document: {document_id}", "invalid_target")
+            raise SpecError(
+                f"{document_id} names no registered Spec document",
+                "invalid_target",
+                subject=document_id,
+            )
         return self._identity_paths[document_id]
 
     def unit(self, path: str) -> DocumentUnit:
         if path not in self.document_targets:
             raise SpecError(
-                f"unregistered reading document: {path}", "permission_denied"
+                f"{path} is not the reading document of any registered Spec document",
+                "permission_denied",
+                path=path,
+                reason="only registered Spec documents are admitted",
             )
         if path not in self.units:
+            problems = [
+                item
+                for item in self._load.findings
+                if item.source in (path, metadata_path(path))
+            ]
             raise SpecError(
-                f"document cannot be admitted: {path}", "invalid_spec", path
+                f"the document {path} cannot be admitted"
+                + (f"; {len(problems)} problem(s), each a cause" if problems else ""),
+                "invalid_spec",
+                path=path,
+                causes=[from_finding(item) for item in problems],
             )
         return self.units[path]
 
@@ -898,7 +942,10 @@ class DocumentUnitRepository:
         reading = self.source_documents.get(path)
         if reading is None:
             raise SpecError(
-                f"unregistered document source: {path}", "permission_denied"
+                f"{path} is not a member of any registered Spec document",
+                "permission_denied",
+                path=path,
+                reason="only registered Spec document members are served as sources",
             )
         self.unit(reading)
         # Return current bytes, not cached bytes: materialization must detect changes after freeze.
@@ -935,7 +982,14 @@ class DocumentUnitRepository:
             reading = self.source_documents.get(path)
             if reading is None or path in seen:
                 raise SpecError(
-                    "duplicate or unregistered context source", "invalid_context"
+                    f"the context lists {path} "
+                    + (
+                        "twice"
+                        if path in seen
+                        else "although it is no registered document member"
+                    ),
+                    "invalid_context",
+                    path=path,
                 )
             unit = self.unit(reading)
             role = "reading" if path == reading else "metadata"
@@ -945,24 +999,35 @@ class DocumentUnitRepository:
                 or record.get("role") != role
             ):
                 raise SpecError(
-                    "context member role, identity or owner differs from its document",
+                    f"the context record of {path} says role {record.get('role')!r}, document "
+                    f"{record.get('document_id')!r}, owner {record.get('owner')!r}; the document "
+                    f"has role {role!r}, identity {unit.document_id!r}, owner {unit.owner!r}",
                     "invalid_context",
+                    path=path,
                 )
             reasons = record.get("reasons")
             if reading in provenance and provenance[reading] != reasons:
                 raise SpecError(
-                    "document members have inconsistent selection provenance",
+                    f"the two members of {reading} carry different selection reasons: "
+                    f"{provenance[reading]!r} and {reasons!r}"[:400],
                     "invalid_context",
+                    path=path,
                 )
             provenance[reading] = reasons
             seen.add(path)
             selected.add(reading)
-        if seen != {
+        expected = {
             member for path in selected for member in (path, metadata_path(path))
-        }:
+        }
+        if seen != expected:
+            missing = sorted(expected - seen)
             raise SpecError(
-                "context cannot grant a reading-only or metadata-only document",
+                "the context grants a document without its other member: "
+                + ", ".join(missing),
                 "invalid_context",
+                path=missing[0] if missing else None,
+                reason="a document is granted with both its reading and its metadata, never "
+                "one of them alone",
             )
 
     # --- Modules and composition ---------------------------------------------------------
@@ -970,7 +1035,13 @@ class DocumentUnitRepository:
     def _resolve(self, module: ModuleRef) -> Module:
         identity = module.id if isinstance(module, Module) else module
         if identity not in self.modules:
-            raise SpecError(f"unknown Spec target: {identity}", "unknown_target")
+            raise SpecError(
+                f"{identity} is not a registered Module; registered: "
+                + ", ".join(sorted(self.modules)),
+                "unknown_target",
+                subject=str(identity),
+                path=self.registry_path,
+            )
         return self.modules[identity]
 
     def module(self, module_id: str, scenario: str | None = None) -> Module:
@@ -980,13 +1051,25 @@ class DocumentUnitRepository:
             node = self.scenario_nodes.get(scenario)
             if node is None or node.owner != module.id:
                 raise SpecError(
-                    "scenario focus must belong to the selected target", "invalid_focus"
+                    f"the focus {scenario} "
+                    + (
+                        "is no declared scenario"
+                        if node is None
+                        else f"belongs to {node.owner}, not to {module.id}"
+                    ),
+                    "invalid_focus",
+                    subject=scenario,
                 )
         return module
 
     def module_declaration(self, module_id: str) -> ModuleDeclaration:
         if module_id not in self.declarations:
-            raise SpecError(f"unknown Spec target: {module_id}", "unknown_target")
+            raise SpecError(
+                f"{module_id} is not a declared Module; declared: "
+                + ", ".join(sorted(self.declarations)),
+                "unknown_target",
+                subject=module_id,
+            )
         return self.declarations[module_id]
 
     def contained(self, module: ModuleRef) -> tuple[Module, ...]:
@@ -1031,9 +1114,10 @@ class DocumentUnitRepository:
         if scenario is not None:
             return self.modules[scenario.owner], "scenario"
         raise SpecError(
-            f"unsupported or unknown context identity: {query_id}",
+            f"{query_id} names neither a registered Module nor a declared scenario",
             "invalid_target",
-            query_id,
+            subject=query_id,
+            reason="a context is computed for a Module or for the owner of a scenario",
         )
 
     def _context_paths(self, module: ModuleRef) -> dict[str, list[dict]]:
@@ -1147,15 +1231,33 @@ class DocumentUnitRepository:
         try:
             current = self.fresh().spec_context(value["query_id"])
             if current.serialized != context.serialized:
+                before = {item["path"]: item["digest"] for item in value["sources"]}
+                after = {
+                    item["path"]: item["digest"] for item in current.value["sources"]
+                }
+                changed = sorted(
+                    path
+                    for path in before.keys() | after.keys()
+                    if before.get(path) != after.get(path)
+                )
                 raise SpecError(
-                    "context declarations, member roles or source bytes changed",
+                    f"the context of {value['query_id']} changed since it was computed: "
+                    + (
+                        "changed, added or removed sources: " + ", ".join(changed)
+                        if changed
+                        else "its declarations or member roles changed"
+                    ),
                     "stale_context",
+                    subject=value["query_id"],
                 )
         except (ValueError, OSError, KeyError) as error:
             if isinstance(error, SpecError) and error.code == "stale_context":
                 raise
             raise SpecError(
-                f"document context is stale: {error}", "stale_context"
+                f"the context of {value.get('query_id')} can no longer be computed",
+                "stale_context",
+                subject=value.get("query_id"),
+                causes=[error if isinstance(error, SpecError) else system_cause(error)],
             ) from error
 
     def context_bytes(self, context: SpecContext) -> dict[str, bytes]:
@@ -1347,7 +1449,11 @@ class DocumentUnitRepository:
     def selected_by(self, document_id: str) -> tuple[str, ...]:
         """``selected-by``: the Modules whose SpecContext contains a document."""
         if document_id not in self._identity_paths:
-            raise SpecError(f"unknown document: {document_id}", "invalid_target")
+            raise SpecError(
+                f"{document_id} names no registered Spec document",
+                "invalid_target",
+                subject=document_id,
+            )
         path = self._identity_paths[document_id]
         return tuple(
             sorted(
@@ -1469,7 +1575,9 @@ class DocumentUnitRepository:
         scenario = self.scenario_nodes.get(scenario_id)
         if scenario is None:
             raise SpecError(
-                f"unknown scenario: {scenario_id}", "invalid_target", scenario_id
+                f"{scenario_id} is no declared scenario",
+                "invalid_target",
+                subject=scenario_id,
             )
         return self.coverage(scenario.owner)[scenario_id]
 
@@ -1494,7 +1602,12 @@ class DocumentUnitRepository:
         errors = [item for item in spec_findings(self) if item.severity == "error"]
         if errors:
             first = errors[0]
-            raise SpecError(f"{first.rule_id}: {first.source}: {first.message}")
+            raise SpecError(
+                f"{len(errors)} structural error(s), each a cause; the first is "
+                f"{first.rule_id} at {first.source}: {first.message}",
+                path=first.source or None,
+                causes=[from_finding(item) for item in errors],
+            )
 
 
 RepositoryCore = DocumentUnitRepository

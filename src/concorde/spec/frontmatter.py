@@ -4,17 +4,22 @@ from __future__ import annotations
 
 import json
 import re
+
+from .errors import SpecError
 from typing import Any
 
 
-class FrontMatterError(ValueError):
+class FrontMatterError(SpecError):
+    """Front matter outside the supported YAML subset."""
+
+    DEFAULT_CODE = "invalid_front_matter"
+
     def __init__(self, message: str, source: str = "", line: int | None = None):
         self.source = source
-        self.line = line
         location = (
             f"{source}:{line}: " if source and line else f"{source}: " if source else ""
         )
-        super().__init__(location + message)
+        super().__init__(location + message, path=source or None, line=line)
 
 
 _KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")

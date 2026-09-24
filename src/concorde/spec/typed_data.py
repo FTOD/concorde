@@ -17,12 +17,14 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from . import schema as _subset
+from .errors import SpecError
 
 
-class TypedDataError(ValueError):
+class TypedDataError(SpecError):
+    """A typed value, path or JSON text that its registered type or schema refuses."""
+
     def __init__(self, code: str, field: str, message: str):
-        super().__init__(message)
-        self.code, self.field = code, field
+        super().__init__(message, code, field)
 
     def to_dict(self) -> dict[str, str]:
         return {"code": self.code, "field": self.field, "message": str(self)}

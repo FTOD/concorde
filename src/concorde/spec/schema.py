@@ -11,11 +11,16 @@ import math
 import re
 from typing import Any
 
+from .errors import SpecError
 
-class ContractError(ValueError):
+
+class ContractError(SpecError):
+    """A value or schema that does not satisfy the published schema subset."""
+
+    DEFAULT_CODE = "contract_violation"
+
     def __init__(self, message: str, field: str = ""):
-        self.field = field
-        super().__init__(f"{field or '/'}: {message}")
+        super().__init__(f"{field or '/'}: {message}", field=field)
 
 
 KEYWORDS = frozenset(

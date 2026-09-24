@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, TypeVar
 
+from .errors import SpecError
 from .typed_data import checked_path
 
 DECORATOR = "verifies"
@@ -57,12 +58,17 @@ class Verification:
     name: str
 
 
-class DeclarationError(ValueError):
+class DeclarationError(SpecError):
     """A listed test file cannot be read for declarations, or a declaration is malformed."""
 
+    DEFAULT_CODE = "invalid_declaration"
+
     def __init__(self, path: str, line: int | None, message: str):
-        self.path, self.line = path, line
-        super().__init__(f"{path}:{line}: {message}" if line else f"{path}: {message}")
+        super().__init__(
+            f"{path}:{line}: {message}" if line else f"{path}: {message}",
+            path=path,
+            line=line,
+        )
 
 
 def _decorator_name(node: ast.expr) -> str | None:

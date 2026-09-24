@@ -26,7 +26,7 @@ from ..operations.provider import (
     Provider,
     RunContext,
     Stop,
-    component,
+    spec_cause,
     evidence,
     load_prompt,
     spec_finding,
@@ -245,15 +245,7 @@ def baseline(ctx: RunContext):
             "loadable Specs; repairing the configuration, registry or Protocol binding is "
             "outside what specify may change",
             evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
-            causes=[
-                component(
-                    "Spec core",
-                    code,
-                    str(error),
-                    "input",
-                    "Specs that do not load cannot be validated or granted",
-                )
-            ],
+            causes=[spec_cause(error)],
             options=["repair the configuration, registry or Protocol binding by hand"],
         )
     errors = {key(f) for f in result.findings if f.severity == "error"}

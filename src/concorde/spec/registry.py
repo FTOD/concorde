@@ -15,6 +15,7 @@ from pathlib import Path
 from .changes import apply_files, file_change
 from .content_model import MODULE_FIELDS, metadata_path
 from .model import Finding, ToolResult
+from .errors import system_cause
 from .repository_base import SpecError, decode, read_file
 
 MIRRORED = MODULE_FIELDS
@@ -29,10 +30,14 @@ RECORD_FIELDS = (
 def _registry_path(root: Path) -> str:
     config = decode(read_file(root, ".concorde/config.json").decode("utf-8"))
     if not isinstance(config, dict) or not isinstance(config.get("registry"), str):
+        found = config.get("registry") if isinstance(config, dict) else config
         raise SpecError(
-            "configuration names no registry path",
+            f"the configuration names no registry path; its registry field is {found!r}",
             "invalid_spec",
-            ".concorde/config.json",
+            "/registry",
+            path=".concorde/config.json",
+            reason="the configuration's registry field is the project-relative path of the "
+            "Spec registry",
         )
     return config["registry"]
 
@@ -50,10 +55,17 @@ def mirrored_registry(
         or registry.get("schema_version") != 3
         or not isinstance(registry.get("modules"), list)
     ):
+        shape = (
+            f"its fields are {sorted(registry)} and schema_version is "
+            f"{registry.get('schema_version')!r}"
+            if isinstance(registry, dict)
+            else f"it is a JSON {type(registry).__name__}"
+        )
         raise SpecError(
-            'the registry must be {"schema_version": 3, "modules": [...]}',
+            'the registry must be {"schema_version": 3, "modules": [...]}, but '
+            + shape,
             "unsupported_profile",
-            registry_path,
+            path=registry_path,
         )
     records, stale = [], []
     for record in registry["modules"]:
@@ -64,23 +76,31 @@ def mirrored_registry(
             raise SpecError(
                 f"registry record needs id, title and entry: {record!r}"[:300],
                 "invalid_spec",
-                registry_path,
+                path=registry_path,
+                reason="every registry record names its Module's id, title and entry",
             )
         entry = record["entry"]
         try:
             metadata = decode(read_file(root, metadata_path(entry)).decode("utf-8"))
         except (SpecError, ValueError, OSError, UnicodeError) as error:
             raise SpecError(
-                f"entry of {record['id']} cannot be read: {error}",
+                f"the metadata of {record['id']}'s entry cannot be read: {error}",
                 "missing_source",
-                entry,
+                path=metadata_path(entry),
+                subject=record["id"],
+                causes=[error if isinstance(error, SpecError) else system_cause(error)],
             ) from error
         block = metadata.get("module") if isinstance(metadata, dict) else None
         if not isinstance(block, dict) or not set(MIRRORED) <= block.keys():
+            missing = sorted(set(MIRRORED) - set(block or {}))
             raise SpecError(
-                f"entry of {record['id']} has no complete module block",
+                f"the metadata of {record['id']}'s entry has no complete module block; "
+                f"missing: {', '.join(missing)}",
                 "invalid_spec",
-                entry,
+                path=metadata_path(entry),
+                subject=record["id"],
+                reason="the registry mirrors each entry's module block, so the entry "
+                "must declare every mirrored field",
             )
         regenerated = {
             "id": record["id"],
@@ -104,19 +124,18 @@ def registry_command(root: str | Path, *, write: bool) -> ToolResult:
     try:
         registry_path = _registry_path(root)
         value, stale = mirrored_registry(root, registry_path)
-    except (SpecError, ValueError, OSError) as error:
+    except SpecError as error:
+        return ToolResult("registry", ".", "failed", error=error)
+    except (ValueError, OSError) as error:
         return ToolResult(
             "registry",
             ".",
             "failed",
-            findings=(
-                Finding(
-                    "CONCORDE-REGISTRY-001",
-                    "error",
-                    getattr(error, "field", "") or ".concorde/specs.json",
-                    str(error),
-                    "Repair the registry or the entry it names; nothing was written.",
-                ),
+            error=SpecError(
+                f"the registry cannot be read: {error}",
+                "missing_source",
+                path=".concorde/specs.json",
+                causes=[system_cause(error)],
             ),
         )
     content = serialize(value)

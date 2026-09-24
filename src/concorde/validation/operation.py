@@ -26,6 +26,7 @@ from ..operations.provider import (
     Stop,
     component,
     evidence,
+    spec_cause,
 )
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError, bound_by, control_path, covers
@@ -285,9 +286,15 @@ def validate_structure(ctx: RunContext):
         block(
             state,
             "load",
-            getattr(error, "field", "") or ".concorde/specs.json",
-            str(error),
+            getattr(error, "path", None) or ".concorde/specs.json",
+            error.describe() if isinstance(error, SpecError) else str(error),
+            spec_cause(error),
         )
+    # The load error's own causes are the fatal problems; validation reports them again.
+    reported = {
+        (getattr(cause, "rule_id", None), cause.path, str(cause))
+        for cause in getattr(load_error, "causes", ())
+    }
     if state.repository is not None:
         for module in ctx.modules:
             if module not in state.repository.modules:
@@ -307,8 +314,8 @@ def validate_structure(ctx: RunContext):
             if load_error is None:
                 block(state, "load", item.source, item.message)
             continue
-        if load_error is not None and str(load_error) == (
-            f"{item.rule_id}: {item.source}: {item.message}"
+        if (item.rule_id, item.source or None, f"{item.rule_id}: {item.message}") in (
+            reported
         ):
             continue
         if item.severity == "error":
