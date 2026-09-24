@@ -42,8 +42,7 @@ session per task with `python3 scripts/concorde.py task session <task> --main <i
 each works through steps 3 to 5 in its own worktree and reports back, and the main agent merges.
 Before starting a session, the main agent runs `python3 scripts/development/init-references.py` in
 the task worktree itself: it registers submodules in the shared `.git/config`, which the session's
-sandbox keeps read-only. A task session names the hosts its commands reach, such as `pypi.org` and
-`files.pythonhosted.org` for `uv`, `registry.npmjs.org` for `npm`.
+sandbox keeps read-only. A task session's network is open to every host.
 
 Only a very small change, such as a typo, a one-line fix or a wording correction, may be made
 directly in the primary worktree, and only after the developer approves that specific change: say

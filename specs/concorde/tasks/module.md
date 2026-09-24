@@ -173,9 +173,11 @@ refuses each action instead of asking, an extra check inside the hook and sandbo
 boundary. `bypassPermissions` would skip that check, and Claude Code starts a background session
 in it only after the developer accepted a disclaimer once. A model without `auto` mode would fall
 back to asking and stall, so `--model` must name one that has it. Reads stay open, because the
-session needs the whole project's context. The network does not: a sandboxed command reaches only
-the hosts it names, such as a package registry or GitHub, and the `auto` classifier reviews those
-hosts together with the command, so no host is allowed wholesale in the settings. Claude Code's
+session needs the whole project's context, and so does the network: the settings allow every host
+(`allowedDomains` is `*`). Claude Code's sandbox otherwise admits only the hosts a command names,
+and a command that did not foresee one fails, sometimes only partly, as when a package manager
+falls back to its cache or Git cannot fetch an object of a partial clone. Keeping the network
+closed would guard against exfiltration, which is outside what this boundary is for. Claude Code's
 sandbox also keeps the repository's `.git/config` and Git's hooks read-only inside the writable Git
 directory, since writing them could run code outside the sandbox; a session commits but cannot
 register a submodule, so the main agent prepares that before starting it.

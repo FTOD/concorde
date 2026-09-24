@@ -119,6 +119,7 @@ class TaskSessionTests(unittest.TestCase):
         sandbox = settings["sandbox"]
         self.assertTrue(sandbox["enabled"])
         self.assertFalse(sandbox["allowUnsandboxedCommands"])
+        self.assertEqual({"allowedDomains": ["*"]}, sandbox["network"])
         home = Path(os.path.realpath(self.project.home))
         self.assertEqual(
             sorted(

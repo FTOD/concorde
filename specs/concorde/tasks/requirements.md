@@ -96,6 +96,8 @@ only the task worktree and its decision log, and its Bash commands write only th
 the repository's Git directory, `.concorde/runs/`, `.concorde/tasks/` and the user's package
 caches.
 
+The same settings leave reads and the network open, allowing every host.
+
 ### req.tasks.session-recorded — A started session is recorded
 
 Tasks SHALL append a task session to the task record only after Claude Code reported it started.

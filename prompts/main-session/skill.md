@@ -152,7 +152,8 @@ commit.
 
 Your session name is the one the ListAgents tool reports for this session. The command writes the
 session's boundary (its Edit and Write tools may change only the task worktree and decision log,
-and its Bash only the worktree, Git, Concorde's records and package caches), starts
+and its Bash only the worktree, Git, Concorde's records and package caches; reads and the network
+stay open), starts
 `claude --bg` with the task's goal and records the session in the task. Start sessions only for
 tasks that may run in parallel, and stay in the primary worktree while any runs. `claude agents`
 lists them, `claude logs <id>` shows one's recent output and `claude stop <id>` stops one. A task
