@@ -1,0 +1,138 @@
+{
+  "task": "pi-main-session",
+  "goal": "Support a pi main session: the Operation host keeps a progress file, a Concorde pi extension launches Operations in the background and shows every run in pi-subagents' FleetView (with bg_wait and a completion wake), the guidance works for pi, and the installer places the pinned sandbox-runtime and the pi extension",
+  "modules": [
+    "module.concorde",
+    "module.operations",
+    "module.main-session",
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "132c6a984a564e67b6e1047c3c8197b24e67ef3c",
+  "parent_commit": "a57e9127a774950b5387c9724d798175b68de575",
+  "readiness": {
+    "run_id": "r-20260924T174243-delivery-115d921b",
+    "input_digest": "sha256:8f5745587a2773a52a037a5ccfd86cdb42c151feebdaff95cac3357f2dc8cb0e",
+    "modules": [
+      "module.concorde",
+      "module.distribution",
+      "module.harness",
+      "module.harness.checks",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.spec"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:f03d9b36ca24bec86c2491be386a121e59e7252e231c1a14d5f096faad20f5df"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:fd3689497401b12f2e6cb91633de872e7da22a058d239048cd1a1b7d23b92c22"
+      },
+      {
+        "check": "check.checks.runtime",
+        "module": "module.harness.checks",
+        "status": "passed",
+        "measured_digest": "sha256:a9bef7b17eb6d50adea23628907c15ee3dfdbce690ab9ba92c2643559cbe99e6"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:106043a49db74380fddee625266cc267cfe7c6191b0e5da7b226134aa04f5ce1"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:106043a49db74380fddee625266cc267cfe7c6191b0e5da7b226134aa04f5ce1"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:b4fb11d3da0aacc8a4d3db6f6291ae4e8cb96d060a684aa0a97cc3d817d3d05f"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:781f94ecace11efdd8df05aaba6835e8a35d1d3764113521802e2c492144ba62"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:caa069762d82fc376eaa1e178b8fed25d0fa563277c3fe290f917153e64c009f"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T171932-validate-cf9300a4",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.operations",
+        "module.main-session",
+        "module.distribution"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 1 blocking finding(s). load .concorde/protocol/manifest.json: protocol_mismatch: the Protocol copy .concorde/protocol/manifest.json differs from the manifest of the Concorde package at /home/zhenyu/concorde (at .concorde/protocol/manifest.json); why: the project's Protocol binding must name exactly the Protocol copy installed under .concorde/protocol/, and that copy must be unchanged; to fix: reinstall Concorde so the project's copy matches the package",
+      "worker_runs": [],
+      "result_digest": "sha256:290cc5d2e6978332de43971a85992191a9d0d03da78d2160fc9e4d96c4238506"
+    },
+    {
+      "run_id": "r-20260924T173002-validate-5cff95e6",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.operations",
+        "module.main-session",
+        "module.distribution"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 3 blocking finding(s). structural CHK.verifies.resolves tests/concorde/operations/test_host.py:116: test HostTests.test_the_progress_file_follows_the_run declares unknown scenario scenario.operations.progress-file | unbound src/concorde/main_session/pi_extension.ts: no Module binds this changed path and it is neither a Spec document member nor a control record | unbound src/concorde/main_session/pi_runs.ts: no Module binds this changed path and it is neither a Spec document member nor a control record",
+      "worker_runs": [],
+      "result_digest": "sha256:479caa41563f1ac97766080d470f7f7cf12a11ad273a39fa7d0eab11258a84aa"
+    },
+    {
+      "run_id": "r-20260924T173719-validate-87c1b200",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.operations",
+        "module.main-session",
+        "module.distribution"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 3 blocking finding(s). structural CHK.verifies.resolves tests/concorde/operations/test_host.py:116: test HostTests.test_the_progress_file_follows_the_run declares unknown scenario scenario.operations.progress-file | unbound src/concorde/main_session/pi_extension.ts: no Module binds this changed path and it is neither a Spec document member nor a control record | unbound src/concorde/main_session/pi_runs.ts: no Module binds this changed path and it is neither a Spec document member nor a control record",
+      "worker_runs": [],
+      "result_digest": "sha256:97272a937dfeae38ee436156cd68ab92da3242705747485f50b1a7755c7098f9"
+    },
+    {
+      "run_id": "r-20260924T174218-validate-43c1489f",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.operations",
+        "module.main-session",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:43c027efafcc5b7be8eacd9db45a08dd054ae563782b884152cb111f8074605d"
+    }
+  ],
+  "created_at": "2026-09-24T17:43:03Z"
+}
