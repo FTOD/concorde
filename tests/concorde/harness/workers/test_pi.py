@@ -167,7 +167,8 @@ class PiRunTests(unittest.TestCase):
         error = record["error"]
         self.assertEqual("pi_runtime_missing", error["code"])
         self.assertIn("sandbox-runtime", error["detail"])
-        self.assertIn("concorde tools install pi-runtime", error["detail"])
+        self.assertIn("npm install --prefix", error["detail"])
+        self.assertIn("@anthropic-ai/sandbox-runtime@0.0.77", error["detail"])
         self.assertEqual([], record["rounds"])
         self.assertTrue((Path(record["run_directory"]) / "record.json").is_file())
 

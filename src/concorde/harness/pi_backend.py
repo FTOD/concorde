@@ -29,6 +29,7 @@ POLICY_SOURCE = HERE / "pi_policy.ts"
 POLICY_MARKER = "const POLICY: Policy = {} as Policy;"
 RUNTIME_MARKER = '"@concorde/sandbox-runtime"'
 RUNTIME_PACKAGE = "node_modules/@anthropic-ai/sandbox-runtime"
+RUNTIME_VERSION = "0.0.77"
 RESULT_TOOL = "concorde_result"
 LIMIT_ENTRY = "concorde-limit"
 
@@ -103,9 +104,11 @@ def prerequisites(request, worktree: Path) -> tuple[dict, list[str]]:
     package = sandbox_runtime(request, worktree)
     entry = package / "dist/index.js"
     if not entry.is_file():
+        prefix = package.parent.parent.parent
         missing.append(
-            f"the sandbox-runtime package is missing at {package} (no dist/index.js); run "
-            "`concorde tools install pi-runtime` in the primary worktree, or set "
+            f"the sandbox-runtime package is missing at {package} (no dist/index.js); install "
+            f"it with `npm install --prefix {prefix} "
+            f"@anthropic-ai/sandbox-runtime@{RUNTIME_VERSION}`, or set "
             "CONCORDE_SANDBOX_RUNTIME to an installed @anthropic-ai/sandbox-runtime directory"
         )
     programs["sandbox_runtime"] = package.as_posix()
