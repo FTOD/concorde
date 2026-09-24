@@ -169,8 +169,10 @@ prompts in a background session, so it runs in Claude Code's `auto` mode: a clas
 refuses each action instead of asking, an extra check inside the hook and sandbox, which stay the
 boundary. `bypassPermissions` would skip that check, and Claude Code starts a background session
 in it only after the developer accepted a disclaimer once. A model without `auto` mode would fall
-back to asking and stall, so `--model` must name one that has it. Reads and the network stay open,
-because the session needs the whole project's context and its dependencies.
+back to asking and stall, so `--model` must name one that has it. Reads stay open, because the
+session needs the whole project's context. The network does not: a sandboxed command reaches only
+the hosts it names, such as a package registry or GitHub, and the `auto` classifier reviews those
+hosts together with the command, so no host is allowed wholesale in the settings.
 
 Records live in the primary worktree, not the task worktrees: the main agent works there and must
 see every task in one place, including ones whose worktree is gone; and a task worktree is exactly

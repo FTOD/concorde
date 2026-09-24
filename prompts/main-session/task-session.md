@@ -20,7 +20,10 @@ own source checkout it is `python3 scripts/concorde.py`).
 Your settings enforce this boundary: Edit and Write refuse any path outside the task worktree and
 its decision log, and Bash commands may write only the worktree, the repository's Git directory,
 Concorde's run and task records and package caches. A refusal is a sign you left your task, not an
-obstacle to work around.
+obstacle to work around. Bash commands have no network unless they name the hosts they reach,
+such as a package registry or GitHub; name them on the command that needs them, since a command
+without them fails when it reaches the network, sometimes only partly, as when a package manager
+falls back to its cache or Git cannot fetch an object of a partial clone.
 
 ## Decide within the task, escalate the rest
 

@@ -11,7 +11,8 @@ Its boundary is generated here, next to the task record in
 - a PreToolUse hook lets Edit and Write change only the task worktree and its decision log;
 - the Bash sandbox lets commands write only the task worktree, the repository's Git directory
   (commits on the task branch), ``.concorde/runs/`` and ``.concorde/tasks/`` (Operation runs and
-  task records) and the user's package caches; reads and the network stay open;
+  task records) and the user's package caches; reads stay open, and a command reaches the
+  network only through hosts it names, which the ``auto`` classifier reviews with it;
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
   ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
   and sandbox stay the boundary, and ``auto`` needs no one-time consent the way
