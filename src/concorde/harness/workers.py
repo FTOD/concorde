@@ -1,8 +1,9 @@
-"""Run one worker: prepare its run directory, launch and resume ``claude -p``, audit and check.
+"""Run one worker: prepare its run directory, launch and resume it, audit and check.
 
-``run_worker`` performs the standard sequence of the Workers Module: freeze the grant, pre-create
-the pending files it makes writable, generate the settings, write hook, tool list and brief, launch
-the worker in its own process group, audit the task worktree after every round, run the configured
+``run_worker`` performs the standard sequence of the Workers Module on the backend the request
+names, Claude Code or pi: freeze the grant, pre-create the pending files it makes writable, let the
+backend generate its configuration from the grant, launch the worker in its own process group while
+keeping the progress file current, audit the task worktree after every round, run the configured
 checks outside the worker, resume the same session when a check fails, perform the deletions it
 proposed, and write the run record. The returned record keeps the worker's answer verbatim and
 apart from what the host observed itself.
@@ -14,10 +15,9 @@ import copy
 import hashlib
 import json
 import os
-import shutil
 import signal
 import subprocess
-import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,14 +26,13 @@ from ..errors import WORKER_ERROR_SCHEMA, evidence, link
 from ..spec.repository_base import SpecError
 from ..spec.schema import ContractError, validate
 from .audit import audit, rw_allows, snapshot
+from .claude_backend import BackendRefusal, ClaudeBackend
+from .pi_backend import PiBackend
+from .progress import Progress
 from .runs import create_run, now, remove_short_tmp, write_record
-from .settings import (
-    TOOL_SETS,
-    GrantView,
-    SettingsError,
-    worker_settings,
-    write_hook_source,
-)
+from .settings import TOOL_SETS, GrantView
+
+BACKENDS = {"claude": ClaudeBackend, "pi": PiBackend}
 
 TAIL = 20_000
 
@@ -79,11 +78,12 @@ class WorkerRequest:
     home: Path | None = None
     claude: str | None = None
     credentials: Path | None = None
+    backend: str = "claude"
+    thinking: str | None = None
+    pi: str | None = None
+    pi_config: Path | None = None
+    sandbox_runtime: Path | None = None
     extra: dict = field(default_factory=dict)
-
-
-def claude_command(request: WorkerRequest) -> str:
-    return request.claude or os.environ.get("CONCORDE_CLAUDE") or "claude"
 
 
 def _digest(path: Path) -> str:
@@ -93,6 +93,14 @@ def _digest(path: Path) -> str:
 def brief(request: WorkerRequest, worktree: Path) -> str:
     """The worker's only instruction: the task, then its boundary as absolute paths."""
     view = GrantView(request.grant["entries"])
+    pi = request.backend == "pi"
+    shell, writer = ("bash", "write tool") if pi else ("Bash", "Write tool")
+    ending = (
+        "- End by calling the `concorde_result` tool exactly once with the structured result; "
+        "it ends your session."
+        if pi
+        else "- End with the structured result."
+    )
 
     def listing(level: str) -> str:
         paths = view.paths(level)
@@ -122,11 +130,11 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
         "## Rules\n\n"
         "- Never use Git and never try to read `.git`.\n"
         "- You cannot delete files. List files that should be deleted in `proposed_deletions`.\n"
-        "- A file you create with Bash outside the writable paths is lost when you finish; "
-        "create files with the Write tool instead.\n"
+        f"- A file you create with {shell} outside the writable paths is lost when you finish; "
+        f"create files with the {writer} instead.\n"
         "- When the Spec does not state a promise you need, do not infer it from code: return "
         "`blocked` and describe the missing promise.\n"
-        "- End with the structured result. For `ok`, `error` is null. For `blocked` or `failed`, "
+        f"{ending} For `ok`, `error` is null. For `blocked` or `failed`, "
         "`error` is required and must let the host reason about it without asking you: a code, "
         "the complete detail (what failed, where, with the exact message or output), your "
         "evidence, everything you tried, why you could not handle it yourself (`unhandled`: "
@@ -151,66 +159,15 @@ def _precreate(worktree: Path, grant: dict) -> list[str]:
     return created
 
 
-def _credentials(request: WorkerRequest) -> Path | None:
-    if request.credentials is not None:
-        return request.credentials
-    base = os.environ.get("CLAUDE_CONFIG_DIR")
-    candidate = (Path(base) if base else Path.home() / ".claude") / ".credentials.json"
-    return candidate if candidate.is_file() else None
-
-
-def _environment(request: WorkerRequest, paths) -> dict[str, str]:
-    environment = {
-        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-        "LANG": os.environ.get("LANG", "C.UTF-8"),
-        "HOME": paths.home.as_posix(),
-        "TMPDIR": paths.tmp.as_posix(),
-        "CLAUDE_CONFIG_DIR": paths.config.as_posix(),
-        "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1",
-        "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
-        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-    }
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        environment["ANTHROPIC_API_KEY"] = os.environ["ANTHROPIC_API_KEY"]
-    return environment
-
-
-def _command(request, paths, schema_text: str, session: str | None) -> list[str]:
-    command = [
-        claude_command(request),
-        "-p",
-        "--settings",
-        (paths.control / "settings.json").as_posix(),
-        "--tools",
-        TOOL_SETS[request.task_type],
-        "--json-schema",
-        schema_text,
-        "--output-format",
-        "json",
-        "--permission-mode",
-        "bypassPermissions",
-        "--allow-dangerously-skip-permissions",
-        "--strict-mcp-config",
-        "--max-turns",
-        str(request.max_turns),
-    ]
-    if request.max_budget_usd is not None:
-        command += ["--max-budget-usd", str(request.max_budget_usd)]
-    if request.model:
-        command += ["--model", request.model]
-    if session:
-        command += ["--resume", session]
-    return command
-
-
-def _launch(request, paths, command, prompt: str) -> dict:
-    """One round: run the command in its own process group, always killing the group after."""
+def _launch(request, paths, command, environment, prompt: str, on_line) -> dict:
+    """One round: run the command in its own process group, reading standard output as it
+    arrives, and always kill the group after."""
     started = time.monotonic()
     try:
         process = subprocess.Popen(
             command,
             cwd=paths.work,
-            env=_environment(request, paths),
+            env=environment,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -223,18 +180,47 @@ def _launch(request, paths, command, prompt: str) -> dict:
             "stdout": b"",
             "stderr": b"",
         }
+    stdout: list[bytes] = []
+    stderr: list[bytes] = []
+
+    def feed() -> None:
+        try:
+            process.stdin.write(prompt.encode())
+            process.stdin.close()
+        except OSError:
+            pass
+
+    def read_stdout() -> None:
+        for line in process.stdout:
+            stdout.append(line)
+            try:
+                on_line(line.decode("utf-8", "replace"))
+            except Exception:  # noqa: BLE001 -- progress never changes the run
+                pass
+
+    def read_stderr() -> None:
+        for chunk in iter(lambda: process.stderr.read(65536), b""):
+            stderr.append(chunk)
+
+    threads = [
+        threading.Thread(target=target, daemon=True)
+        for target in (feed, read_stdout, read_stderr)
+    ]
+    for thread in threads:
+        thread.start()
     timed_out = False
     try:
-        stdout, stderr = process.communicate(prompt.encode(), timeout=request.timeout)
+        process.wait(timeout=request.timeout)
     except subprocess.TimeoutExpired:
         timed_out = True
-        _kill_group(process)
-        stdout, stderr = process.communicate()
     finally:
         _kill_group(process)
+    process.wait()
+    for thread in threads:
+        thread.join(timeout=10)
     return {
-        "stdout": stdout,
-        "stderr": stderr,
+        "stdout": b"".join(stdout),
+        "stderr": b"".join(stderr)[-4 * TAIL :],
         "exit": process.returncode,
         "timed_out": timed_out,
         "duration": round(time.monotonic() - started, 3),
@@ -246,29 +232,6 @@ def _kill_group(process) -> None:
         os.killpg(process.pid, signal.SIGKILL)
     except (ProcessLookupError, PermissionError):
         pass
-
-
-def _envelope(stdout: bytes) -> dict | None:
-    text = stdout.decode("utf-8", "replace").strip()
-    for line in reversed(text.splitlines() or [""]):
-        try:
-            value = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(value, dict) and value.get("type") == "result":
-            return value
-    try:
-        value = json.loads(text)
-    except ValueError:
-        return None
-    return value if isinstance(value, dict) else None
-
-
-def _transcript(paths, session: str | None) -> str | None:
-    if not session:
-        return None
-    found = sorted((paths.config / "projects").glob(f"*/{session}.jsonl"))
-    return found[0].as_posix() if found else None
 
 
 def _resume_prompt(failures: list[dict]) -> str:
@@ -283,55 +246,6 @@ def _resume_prompt(failures: list[dict]) -> str:
             f"```text\n{log}\n```\n"
         )
     return "".join(parts)
-
-
-def _tail(data: bytes, size: int = 4000) -> str:
-    return data[-size:].decode("utf-8", "replace").strip()
-
-
-def claude_failure(outcome: dict, envelope: dict | None) -> dict | None:
-    """A component link when the Claude Code process itself reported an error, else ``None``."""
-    actor = "Claude Code process (claude -p)"
-    if envelope is None:
-        return link(
-            "component",
-            actor,
-            "no_result_envelope",
-            f"the process exited with code {outcome.get('exit')} and printed no JSON result "
-            f"envelope; standard output ends with: {_tail(outcome['stdout']) or '(empty)'}; "
-            f"standard error ends with: {_tail(outcome['stderr']) or '(empty)'}",
-            reason="environment",
-            explanation="the process ended without a result; it cannot report more",
-        )
-    subtype = str(envelope.get("subtype") or "success")
-    if subtype == "success" and not envelope.get("is_error"):
-        return None
-    text = envelope.get("result")
-    detail = (
-        f"the result envelope has subtype {subtype}, is_error {bool(envelope.get('is_error'))}, "
-        f"{envelope.get('num_turns', '?')} turn(s), cost {envelope.get('total_cost_usd', '?')} "
-        f"USD, exit code {outcome.get('exit')}"
-    )
-    if isinstance(text, str) and text.strip():
-        detail += f"; its final text: {text.strip()[-2000:]}"
-    if envelope.get("errors"):
-        detail += f"; errors: {json.dumps(envelope['errors'])[-2000:]}"
-    stderr = _tail(outcome["stderr"], 2000)
-    if stderr:
-        detail += f"; standard error ends with: {stderr}"
-    exhausted = subtype in ("error_max_turns", "error_max_budget_usd")
-    return link(
-        "component",
-        actor,
-        "claude_" + "".join(c if c.isalnum() else "_" for c in subtype.lower()),
-        detail,
-        reason="exhausted" if exhausted else "environment",
-        explanation=(
-            "the session reached the turn or budget limit it was started with"
-            if exhausted
-            else "Claude Code reported an error of the model service or its own execution"
-        ),
-    )
 
 
 def worker_link(record: dict, result: dict) -> dict | None:
@@ -375,15 +289,28 @@ def run_worker(request: WorkerRequest) -> dict:
     worktree = Path(os.path.realpath(request.worktree))
     run_id, paths = create_run(worktree)
     actor = f"Workers run {run_id} ({request.task_type} worker)"
+    backend = BACKENDS[request.backend]() if request.backend in BACKENDS else None
+    progress = Progress(
+        paths.root,
+        run_id=run_id,
+        task_type=request.task_type,
+        backend=request.backend,
+        worktree=worktree.as_posix(),
+    )
     record: dict = {
         "run_id": run_id,
         "task_type": request.task_type,
+        "backend": request.backend,
         "worktree": worktree.as_posix(),
-        "context_identity": request.grant.get("context_identity"),
+        "context_identity": request.grant.get("context_identity")
+        if isinstance(request.grant, dict)
+        else None,
         "grant_digest": None,
         "settings_digest": None,
         "brief_digest": None,
-        "tools": TOOL_SETS.get(request.task_type),
+        "tools": backend.tools(request.task_type)
+        if backend and request.task_type in TOOL_SETS
+        else None,
         "started_at": now(),
         "ended_at": None,
         "rounds": [],
@@ -407,6 +334,7 @@ def run_worker(request: WorkerRequest) -> dict:
         record["error"] = error
         record["ended_at"] = now()
         write_record(paths, record)
+        progress.finish(status)
         return record
 
     def fail(code: str, detail: str, reason: str, explanation: str, **extra) -> dict:
@@ -430,6 +358,15 @@ def run_worker(request: WorkerRequest) -> dict:
             ),
         )
 
+    if backend is None:
+        return fail(
+            "unknown_backend",
+            f"the worker request names the backend {request.backend!r}; Workers knows "
+            + ", ".join(sorted(BACKENDS)),
+            "input",
+            "the backend comes from workers.backend of the project configuration, which "
+            "Workers does not choose",
+        )
     if (
         request.task_type not in TOOL_SETS
         or not isinstance(request.grant, dict)
@@ -465,40 +402,18 @@ def run_worker(request: WorkerRequest) -> dict:
     grant_file.write_text(json.dumps(request.grant, indent=2, sort_keys=True))
     record["grant_digest"] = _digest(grant_file)
     rw = GrantView(request.grant["entries"]).paths("rw")
-    try:
-        settings = worker_settings(
-            worktree,
-            request.grant,
-            paths,
-            python=sys.executable,
-            runtime=request.runtime,
-            home=request.home,
-        )
-    except SettingsError as error:
-        return fail(
-            error.code,
-            f"the worker settings cannot be generated: {error}",
-            "environment",
-            "the settings follow from the grant and the file layout, which Workers cannot "
-            "change",
-        )
-    settings_file = paths.control / "settings.json"
-    settings_file.write_text(json.dumps(settings, indent=2, sort_keys=True))
-    (paths.control / "write_hook.py").write_text(
-        write_hook_source(worktree, request.grant)
-    )
-    brief_file = paths.control / "brief.md"
-    brief_file.write_text(brief(request, worktree))
     schema = result_schema(request.output_schema)
     schema_text = json.dumps(schema, separators=(",", ":"))
     (paths.control / "result.schema.json").write_text(schema_text)
+    try:
+        configuration = backend.prepare(request, worktree, paths, schema)
+    except BackendRefusal as refusal:
+        return fail(refusal.code, refusal.detail, refusal.reason, refusal.explanation)
+    brief_file = paths.control / "brief.md"
+    brief_file.write_text(brief(request, worktree))
     record.update(
-        settings_digest=_digest(settings_file), brief_digest=_digest(brief_file)
+        settings_digest=_digest(configuration), brief_digest=_digest(brief_file)
     )
-    credentials = _credentials(request)
-    if credentials is not None:
-        shutil.copy2(credentials, paths.config / ".credentials.json")
-        os.chmod(paths.config / ".credentials.json", 0o600)
     try:
         record["pending_created"] = _precreate(worktree, request.grant)
     except OSError as error:
@@ -524,12 +439,20 @@ def run_worker(request: WorkerRequest) -> dict:
 
     session: str | None = None
     attempts: list[str] = []
+    environment = backend.environment(request, paths)
     prompt, kind = brief_file.read_text(), "initial"
     for number in range(1, request.rounds + 2):
         round_record: dict = {"round": number, "prompt": kind}
         record["rounds"].append(round_record)
-        command = _command(request, paths, schema_text, session)
-        outcome = _launch(request, paths, command, prompt)
+        command = backend.command(request, paths, schema_text, session)
+        stream = backend.stream()
+
+        def on_line(line: str, stream=stream) -> None:
+            for tool, arguments in stream.feed(line):
+                progress.action(tool, arguments)
+
+        progress.phase("worker", round=number)
+        outcome = _launch(request, paths, command, environment, prompt, on_line)
         record["stderr_tail"] = outcome["stderr"][-TAIL:].decode("utf-8", "replace")
         round_record.update(exit=outcome.get("exit"), duration=outcome.get("duration"))
         if outcome.get("error"):
@@ -538,20 +461,16 @@ def run_worker(request: WorkerRequest) -> dict:
                 f"round {number}: the command {command[0]} could not be started: "
                 f"{outcome.get('detail', '')}",
                 "environment",
-                "Workers cannot install or repair the claude command; set CONCORDE_CLAUDE "
-                "or PATH",
+                backend.missing_command,
                 attempts=attempts,
             )
-        envelope = _envelope(outcome["stdout"])
-        if envelope and envelope.get("session_id"):
-            session = envelope["session_id"]
+        concluded = stream.conclude(outcome)
+        if concluded.session:
+            session = concluded.session
         round_record["session"] = session
-        if envelope:
-            round_record["claude"] = {
-                key: envelope.get(key)
-                for key in ("subtype", "is_error", "num_turns", "total_cost_usd")
-            }
-        record["transcript"] = _transcript(paths, session)
+        round_record.update(concluded.info)
+        record["transcript"] = backend.transcript(paths, session)
+        progress.phase("audit")
         verdict = audit(worktree, before, rw)
         round_record["audit"] = verdict.record()
         # A write outside the grant is reported whatever else went wrong in the round.
@@ -571,28 +490,28 @@ def run_worker(request: WorkerRequest) -> dict:
                 "workers.timeout_seconds) and does not extend it",
                 attempts=attempts,
             )
-        failure = claude_failure(outcome, envelope)
+        failure = concluded.failure
         if failure is not None:
-            exhausted = failure["unhandled"]["reason"] == "exhausted"
+            exhausted = concluded.exhausted
             return fail(
-                "worker_limit_reached" if exhausted else "claude_failed",
-                f"round {number}: the Claude Code process ended with an error "
+                "worker_limit_reached" if exhausted else backend.failure_code,
+                f"round {number}: the {backend.process} process ended with an error "
                 f"({failure['code']}) before a structured result{outside}",
                 "exhausted" if exhausted else "environment",
                 (
                     f"Workers does not raise the limits it was given (max_turns "
                     f"{request.max_turns}, max_budget_usd {request.max_budget_usd})"
                     if exhausted
-                    else "Workers does not retry a failed Claude Code process"
+                    else f"Workers does not retry a failed {backend.process} process"
                 ),
                 attempts=attempts,
                 causes=[failure],
             )
-        result = envelope.get("structured_output")
+        result = concluded.result
         invalid = None
         try:
             if result is None:
-                text = str(envelope.get("result") or "").strip()
+                text = concluded.final_text
                 raise ContractError(
                     "the worker ended without a structured result"
                     + (f"; its final text: {text[-2000:]}" if text else "")
@@ -668,6 +587,7 @@ def run_worker(request: WorkerRequest) -> dict:
         if request.check_modules is None:
             _finalize(worktree, record, result, clean=True)
             return finish("ok")
+        progress.phase("checks")
         try:
             from .checks import run_checks
 

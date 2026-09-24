@@ -297,6 +297,26 @@ class WorkerRunTests(unittest.TestCase):
         self.project = WorkerProject(self)
         self.root = self.project.root
 
+    def test_the_progress_file_follows_a_claude_run(self):
+        command = f"pytest -q {self.root}/tests\nsecond line"
+        record = self.project.run([{"actions": [["Bash", {"command": command}]]}])
+        self.assertEqual("ok", record["status"], record["error"])
+        [first] = self.project.rounds(record)
+        self.assertEqual(
+            "stream-json", first["argv"][first["argv"].index("--output-format") + 1]
+        )
+        self.assertIn("--verbose", first["argv"])
+        status = json.loads((Path(record["run_directory"]) / "status.json").read_text())
+        self.assertEqual(
+            ("finished", "ok", "claude", 1),
+            (status["phase"], status["status"], status["backend"], status["round"]),
+        )
+        self.assertEqual(
+            {"tool": "Bash", "target": f"pytest -q {self.root}/tests"},
+            {k: status["last_action"][k] for k in ("tool", "target")},
+        )
+        self.assertEqual(record["run_id"], status["run_id"])
+
     @verifies("scenario.workers.fenced-run")
     def test_a_fenced_run_changes_only_writable_files(self):
         record = self.project.run(

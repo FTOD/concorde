@@ -7,7 +7,7 @@ what it may touch and how the run is controlled, and runs configured checks outs
 a check result is never a worker's claim. Operation hosts rely on it to turn a grant and worktree
 into a confined process, audited changes and a trustworthy run record. It does not choose the task
 type, compute grants or judge output; enforcement guards against scope drift and mistakes, not a
-malicious worker, and this version supports only Claude Code.
+malicious worker. A worker runs on Claude Code or on pi; both are confined by the same grant.
 
 ## Terminology
 
@@ -21,17 +21,20 @@ malicious worker, and this version supports only Claude Code.
 | [Write hook](workers/module.md#concept.workers.write-hook) | |
 | [Write audit](workers/module.md#concept.workers.audit) | |
 | [Run record](workers/module.md#concept.workers.run-record) | |
+| [Worker backend](workers/module.md#concept.workers.backend) | |
+| [Permission extension](workers/module.md#concept.workers.permission-extension) | |
 | [Configured check](checks/module.md#concept.checks.configured-check) | |
 | [Read-only check boundary](checks/module.md#concept.checks.read-only-boundary) | |
 
-A worker's boundary lives in its settings — deny rules, write hook, Bash sandbox. The write audit
-and checks happen outside the worker; the run record keeps what the host observed.
+A worker's boundary lives in its settings — deny rules, write hook, Bash sandbox — on Claude Code,
+and in its permission extension and the same sandbox engine on pi. The write audit and checks
+happen outside the worker; the run record keeps what the host observed.
 
 ## Usage
 
 The Harness has no command of its own; an Operation host uses its two children in sequence, handing
 a frozen grant, worktree and brief to [Workers](workers/module.md) — which pre-creates pending
-files, generates settings, launches `claude -p`, audits, runs checks through
+files, generates settings or the permission extension, launches `claude -p` or `pi -p`, audits, runs checks through
 [Check execution](checks/module.md), resumes the same session when checks fail, and returns the run
 record. Operations needing only checks, such as validation, call Check execution directly.
 
@@ -42,9 +45,13 @@ denials its tools return when it strays.
 
 The Harness exists so a worker's answer stays a proposal until the host checks it: the host, not
 the worker, reads Git, audits changes, runs checks, writes records, and permissions never widen
-mid-run. v1 uses only Claude Code's own configuration, with no OS sandbox around the process.
+mid-run. Neither backend puts an OS sandbox around the agent process itself.
 
 ### What is enforced in v1
+
+The table describes the Claude Code backend; the pi backend enforces the same surfaces with its
+permission extension and sandbox-runtime, as [Workers](workers/module.md#concept.workers.backend)
+compares.
 
 | Surface | Mechanism | What it stops |
 | --- | --- | --- |
@@ -64,8 +71,9 @@ Exact mechanics: [Workers](workers/module.md); check boundary: [Check execution]
 
 ### Known limits of v1
 
-- The Claude process and write hook are not sandboxed. The file-tool boundary is only as good as
-  the generated deny rules are complete and the hook is correct.
+- The Claude or pi process, the write hook and the permission extension are not sandboxed. The
+  file-tool boundary is only as good as the generated deny rules, hook and extension are complete
+  and correct.
 - Deny rules cover the task worktree and home directory; system directories and other paths outside
   the home stay readable to every tool, since Bash needs them to run anything.
 - A read denial's message is Claude Code's generic "denied by your permission settings", so the
@@ -76,7 +84,8 @@ Exact mechanics: [Workers](workers/module.md); check boundary: [Check execution]
 - Writes to Git-ignored paths are not audited; the host audit is the last line of defense for a
   write outside `rw`.
 
-Future work: an outer `srt` sandbox, proxied credentials, a leader tier, and Pi support.
+Future work: an outer `srt` sandbox around the agent process, proxied credentials, and a leader
+tier.
 
 <a id="realization.harness.package"></a>
 

@@ -138,3 +138,40 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the host reads its output
 - THEN the run ends `failed` with `worker_limit_reached` for a turn or budget limit and `claude_failed` otherwise
 - AND the error's cause is the Claude Code process's link with the subtype, the turn count, the cost, the final text and the tail of standard error
+
+## The pi backend
+
+### scenario.workers.pi-fenced-run — A pi worker is fenced by the same grant
+
+- GIVEN a project whose configuration selects the pi backend, and an `implement` grant with a `rw` source file, `ro` Specs, a `names` file and an ungranted file
+- WHEN the host runs a pi worker that reads the Specs, edits the source file and ends with `concorde_result`
+- THEN the edit reaches the task worktree, the audit is clean and the run ends `ok` with the worker result verbatim
+- AND the run record holds the session identifier, the transcript path and the tool set of the pi backend
+
+### scenario.workers.pi-file-tools-denied — pi file tools explain every denial
+
+- GIVEN a running pi worker
+- WHEN it reads a `names` file, an ungranted file, `.git` or a file of the run's `config/`, or writes a `ro` file or an undeclared file
+- THEN each call is denied with the reason the read or write table gives, prefixed `Concorde grant:`
+- AND no file changes
+
+### scenario.workers.pi-commands-sandboxed — pi commands see only the grant
+
+- GIVEN a running pi `implement` worker
+- WHEN it greps a directory holding ungranted files, or uses bash to read an ungranted file, to write a `ro` file or to reach the network
+- THEN grep reports matches only from readable files, the bash read finds no such file, the write fails as a read-only file system and the network request is refused
+- BUT bash can read `ro` files and write `rw` files
+
+### scenario.workers.pi-runtime-missing — A pi run without its runtime is refused
+
+- GIVEN a project that selects the pi backend on a machine without the sandbox-runtime package
+- WHEN the host is asked to start a worker
+- THEN it refuses before launch with `pi_runtime_missing`, naming the missing package and how to install it
+- AND it still writes the run record
+
+### scenario.workers.pi-limit — A pi run over its turn limit stops
+
+- GIVEN a pi worker whose turns exceed `max_turns`
+- WHEN the permission extension counts the turn
+- THEN it aborts the run and records the limit reached
+- AND the run ends `failed` with `worker_limit_reached`

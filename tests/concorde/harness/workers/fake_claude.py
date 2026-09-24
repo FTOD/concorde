@@ -4,7 +4,8 @@ The test puts a plan in the worker instructions as ``FAKE-PLAN: <json>``: a list
 with ``writes`` (absolute path to content), ``result`` (the structured output, merged over a valid
 ``ok`` result), and optional ``sleep``, ``spawn`` (start a detached sleeper that records its PID),
 ``raw`` (print this instead of an envelope), ``envelope`` (fields merged over the result envelope,
-such as an error subtype) or ``no_structured`` (omit the structured output).
+such as an error subtype), ``no_structured`` (omit the structured output) or ``actions``
+(``[tool, input]`` pairs printed first as ``stream-json`` assistant tool uses).
 The fake records its argument list, environment and prompt per round in its working directory. It
 does not enforce anything: enforcement is Claude Code's and is covered by the live test.
 """
@@ -64,6 +65,20 @@ def main() -> int:
         Path(step["spawn"]).write_text(str(child.pid))
     if step.get("sleep"):
         time.sleep(step["sleep"])
+    for tool, arguments in step.get("actions", []):
+        print(
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {"type": "tool_use", "name": tool, "input": arguments}
+                        ]
+                    },
+                }
+            ),
+            flush=True,
+        )
     if "raw" in step:
         print(step["raw"])
         return 0

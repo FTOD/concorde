@@ -1,8 +1,11 @@
 # Run mechanics
 
 The exact files, command lines, environment, audit, rounds and records of one worker run, and the
-requirements they serve. The [entry](module.md) explains why the run is shaped this way; the
-worker's answer is fixed by [the worker result contract](contracts.md).
+requirements they serve. Inputs, the run directory, the progress file, the audit, rounds, the run
+record and errors hold for both backends; the worker settings, tool sets and launch below are the
+Claude Code backend's, and [the pi run mechanics](pi.md) state what the pi backend does instead.
+The [entry](module.md) explains why the run is shaped this way; the worker's answer is fixed by
+[the worker result contract](contracts.md).
 
 ## Inputs
 
@@ -10,6 +13,7 @@ A run is requested with:
 
 | Input | Meaning |
 | --- | --- |
+| backend | `claude` (the default) or `pi`, from `workers.backend` of the project configuration |
 | task worktree | Absolute path of the Git worktree the worker works in |
 | task type | One of the six Protocol task types; it selects the tool set |
 | grant | The frozen grant: every path with its level `rw`, `ro` or `names`, relative to the task worktree, and its context identity |
@@ -18,6 +22,7 @@ A run is requested with:
 | runtime paths | Extra absolute paths Bash may read, such as the toolchain, `.venv` or `node_modules` |
 | limits | Timeout per round, `--max-turns`, `--max-budget-usd`, and the number of resume rounds (default 3) |
 | model | Optionally the model passed with `--model` |
+| thinking | Optionally the thinking level passed with `--thinking`; pi backend only |
 
 ## Run directory layout
 
@@ -27,12 +32,13 @@ worktree's Git common directory. `<run-id>` is unique and chosen by the host.
 | Path | Content | Worker access |
 | --- | --- | --- |
 | `record.json` | The run record | none |
-| `control/settings.json` | The worker settings | none |
-| `control/write_hook.py` | The write hook with the `rw` list embedded | none |
+| `status.json` | The progress file | none |
+| `control/settings.json` | The worker settings (Claude Code backend) | none |
+| `control/write_hook.py` | The write hook with the `rw` list embedded (Claude Code backend) | none |
 | `control/grant.json` | The frozen grant and its context identity | none |
 | `control/brief.md` | The brief as sent | none |
 | `control/result.schema.json` | The worker result schema | none |
-| `config/` | `CLAUDE_CONFIG_DIR`: the credential copy, sessions and transcripts | none |
+| `config/` | The agent's own configuration directory: on the Claude Code backend `CLAUDE_CONFIG_DIR` with the credential copy, sessions and transcripts; on the pi backend see [pi](pi.md#run-directory) | none |
 | `home/` | `HOME` | Bash read and write |
 | `tmp/` | unused; see below | none |
 | `work/` | The working directory | Bash read and write |
@@ -46,9 +52,27 @@ run directory the sandbox fails to start and every Bash command is refused.
 
 The host refuses to launch when any deny rule it generated covers `work/`, `home/` or `TMPDIR`.
 
+## Progress file
+
+`status.json` tells an observer, such as the main session's run view, what the run is doing while
+it runs. The host rewrites it atomically at every phase change and at most once a second for worker
+activity:
+
+| Field | Content |
+| --- | --- |
+| `run_id`, `task_type`, `backend`, `worktree` | the run's identity, task type, backend and task worktree |
+| `phase` | `preparing`, `worker`, `audit`, `checks` or `finished` |
+| `round` | the current round, from 1 |
+| `last_action` | the worker's latest tool call as `tool` and `target` (a path, pattern or the first line of a command, at most 200 characters) with its time, or null |
+| `status` | null while running; the final status once `phase` is `finished` |
+| `host_pid` | the process identifier of the host running the run |
+| `started_at`, `updated_at` | UTC times |
+
+It is an observation aid only: the run record, not the progress file, is the run's evidence.
+
 ## Worker settings
 
-`control/settings.json` has this shape; paths are absolute:
+On the Claude Code backend `control/settings.json` has this shape; paths are absolute:
 
 ```json
 {
@@ -117,6 +141,8 @@ A denial is the PreToolUse output with `permissionDecision: "deny"` and the reas
 
 ## Tool sets
 
+On the Claude Code backend:
+
 | Task type | `--tools` |
 | --- | --- |
 | `understand`, `review-spec`, `review-code`, `test` | `Read,Glob,Grep` |
@@ -128,11 +154,11 @@ command itself: the host runs the configured checks and gives it their results.
 
 ## Launch
 
-The first round runs, with `work/` as working directory and the brief on standard input:
+On the Claude Code backend the first round runs, with `work/` as working directory and the brief on standard input:
 
 ```text
 claude -p --settings <run>/control/settings.json --tools <tool set>
-       --json-schema <worker result schema> --output-format json
+       --json-schema <worker result schema> --output-format stream-json --verbose
        --permission-mode bypassPermissions --allow-dangerously-skip-permissions
        --strict-mcp-config --max-turns <n> --max-budget-usd <x> [--model <model>]
 ```
@@ -156,7 +182,8 @@ The environment is cleared and then set to exactly:
 Before the first round the host copies the user's Claude Code credentials file into `config/`.
 
 The process starts in a new process group. When the round ends for any reason, including a timeout,
-the host kills the whole group. From standard output the host reads the JSON envelope's session
+the host kills the whole group. The host reads standard output as it arrives: each tool use in an
+assistant message updates the progress file, and the final `result` record gives the session
 identifier, exit status and schema-validated structured output; standard error is kept in the run
 record as a bounded tail.
 
@@ -204,10 +231,12 @@ its log.
 | `run_id`, `task_type`, `worktree` | the run's identity, task type and task worktree |
 | `run_directory`, `tmp` | the run directory and the run's `TMPDIR` |
 | `context_identity`, `grant_digest` | the grant's context identity and the digest of `control/grant.json` |
-| `settings_digest`, `brief_digest`, `tools` | what the worker was given |
+| `backend` | `claude` or `pi` |
+| `settings_digest`, `brief_digest`, `tools` | what the worker was given; `settings_digest` is the digest of `control/settings.json` on the Claude Code backend and of `control/permission.ts` on the pi backend |
 | `started_at`, `ended_at` | UTC times |
 | `rounds` | per round: session identifier, prompt kind (`initial` or `check_failures`), exit status, duration, audit verdict with violating paths, and check results with log paths |
 | `transcript` | the path of the latest session's transcript under `config/` |
+| `rounds[].pi` | pi backend only: per round, the last assistant stop reason, the turn count and the reported cost |
 | `stderr_tail` | the last 20,000 bytes of the worker's standard error |
 | `worker_result` | the last worker result, verbatim, or null |
 | `pending_created`, `pending_removed`, `deleted`, `deletions_refused` | paths the host pre-created, removed or refused to remove |
@@ -232,7 +261,8 @@ by every code whose round had one, even when the round also timed out or failed 
 | `launch_failed` | the command that could not be started and the operating system's error | `environment` | none |
 | `worker_timeout` | the round and the timeout | `exhausted` | none |
 | `worker_limit_reached` | the round and the limit Claude Code reported | `exhausted` | the Claude Code process's link |
-| `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope | `environment` | the Claude Code process's link |
+| `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope (Claude Code backend) | `environment` | the Claude Code process's link |
+| `pi_runtime_missing`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment` | the pi process's link for `pi_failed` |
 | `worker_result_invalid` | the schema violation, or the worker's final text when it gave no structured result | `capability` | none |
 | `audit_violation` | every violating path and the worker's own reported status | `permission` | the worker's link, when its result was valid |
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
@@ -270,7 +300,7 @@ A worker's working directory SHALL be its run's `work/` directory, outside the t
 
 ### req.workers.clean-environment — Nothing ambient reaches the worker
 
-The host SHALL start every worker round with only the environment variables listed in [Launch](#launch).
+The host SHALL start every worker round with only the environment variables listed in [Launch](#launch), or on the pi backend in [the pi launch](pi.md#launch).
 
 ### req.workers.no-git — Workers never see Git
 
@@ -307,6 +337,10 @@ The host SHALL delete a file only when the worker proposed it, the file is in th
 ### req.workers.process-group — No worker process outlives its round
 
 The host SHALL kill the worker's whole process group when a round ends.
+
+### req.workers.progress — A running run shows its progress
+
+The host SHALL keep a run's progress file current from preparation until the run is finished, on both backends.
 
 ### req.workers.always-recorded — Every run leaves a record
 

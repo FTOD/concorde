@@ -252,6 +252,8 @@ class RunContext:
                 max_turns=int(config.get("max_turns", 200)),
                 max_budget_usd=config.get("max_budget_usd"),
                 model=config.get("model"),
+                backend=config.get("backend", "claude"),
+                thinking=config.get("thinking"),
             )
         )
         return self.absorb(record)
