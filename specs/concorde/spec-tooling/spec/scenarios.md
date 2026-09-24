@@ -232,6 +232,7 @@ to it.
 - WHEN the validator runs
 - THEN no view finding is reported
 - AND a block marked `d2 illustrative` in the same document, even one that sets styles, is not checked
+- AND in the Module's own document its title names the Module even when one of its concepts shares it, and that concept is drawn as `Title / Title`
 
 ### scenario.spec.validate-architecture-mismatch — A diagram that asserts something undeclared
 

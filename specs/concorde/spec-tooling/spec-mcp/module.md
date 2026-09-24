@@ -77,8 +77,12 @@ The server is a thin presentation of Spec core: every call loads a fresh reposit
 same functions the rest of Concorde uses, trading speed for never answering from a stale model.
 
 ```d2
-server: Server program {
-  "src/concorde/spec_mcp/"
+mcp: Spec MCP server {
+  server: Server program {
+    "src/concorde/spec_mcp/"
+  }
+  concept: Spec MCP server / Spec MCP server
+  server -> concept: implements
 }
 ```
 
@@ -105,9 +109,13 @@ only.
 ## Relationships
 
 ```d2
-server: Server program
-core: Spec core
-server -> core: answers with
+tooling: Spec tooling {
+  mcp: Spec MCP server
+  core: Spec core
+  mcp -> core
+}
+session: Main session
+session -> tooling.mcp
 ```
 
 <a id="uses-spec"></a>

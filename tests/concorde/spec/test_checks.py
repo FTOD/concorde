@@ -1153,6 +1153,46 @@ class CheckTests(unittest.TestCase):
             [f.rule_id for f in report.findings if f.rule_id.startswith("CHK.view.")],
         )
 
+    @verifies("scenario.spec.checked-diagram")
+    def test_a_modules_own_title_names_the_module_in_its_own_diagram(self):
+        # The provider defines a concept with its own title, as a Module may.
+        self.edit(
+            self.entry("provider"),
+            "| Thing | One stored value with an identity. |",
+            "| Provider | The service that keeps things. |\n"
+            "| Thing | One stored value with an identity. |",
+        )
+        self.metadata(
+            "provider",
+            lambda value: value["defines"].append(
+                {
+                    "id": "concept.provider.provider",
+                    "type": "concept",
+                    "title": "Provider",
+                    "meaning": "#concept.provider.thing",
+                }
+            ),
+        )
+        # The bare title names the Module, so it may hold the Module's nodes.
+        self.edit(
+            self.entry("provider"),
+            'store: Store {\n  "provider.py"\n}\nthing: Thing\nstore -> thing: holds',
+            'provider: Provider {\n  store: Store {\n    "provider.py"\n  }\n  thing: Thing\n'
+            "  store -> thing: holds\n}",
+        )
+        self.assertEqual(set(), {r for r in self.rules() if r.startswith("CHK.view.")})
+        # The concept is reached with the qualified form and is owned by the Module.
+        self.edit(
+            self.entry("provider"),
+            "  thing: Thing\n",
+            "  thing: Thing\n  own: Provider / Provider\n",
+        )
+        self.assertEqual(set(), {r for r in self.rules() if r.startswith("CHK.view.")})
+        # Another Module's diagram still sees only the Module under that title.
+        self.assertIn(
+            "provider: Provider\n", (self.root / self.entry("consumer")).read_text()
+        )
+
     @verifies("scenario.spec.check-input-missing")
     def test_a_configured_check_with_a_missing_or_linked_input_is_an_error(self):
         (self.root / "data").mkdir()

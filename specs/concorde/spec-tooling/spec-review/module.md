@@ -79,13 +79,15 @@ grant per Module; launches one reviewer per Module; audits for changes; optional
 checker; and derives the verdict ([step table](operation.md#host-sequence)).
 
 ```d2
-host: Review host {
-  "src/concorde/spec_review/"
+review: Spec review {
+  host: Review host {
+    "src/concorde/spec_review/"
+  }
+  checklist: Reviewer brief {
+    "prompts/workers/review-spec.md"
+  }
+  host -> checklist: hands reviewers
 }
-checklist: Reviewer brief {
-  "prompts/workers/review-spec.md"
-}
-host -> checklist: hands reviewers
 ```
 
 <a id="realization.spec-review.operation"></a>
@@ -114,13 +116,18 @@ work.
 ## Relationships
 
 ```d2
-host: Review host
-core: Spec core
-workers: Workers
+tooling: Spec tooling {
+  review: Spec review
+  core: Spec core
+  review -> core
+}
+harness: Harness {
+  workers: Workers
+}
 operations: Operations
-host -> core: validates and computes grants with
-host -> workers: launches reviewers through
-host -> operations: returns its result through
+tooling.review -> harness.workers
+tooling.review -> operations
+operations -> tooling.review
 ```
 
 Operations also uses Spec review in turn, since `spec_review` is one of its own Operations —

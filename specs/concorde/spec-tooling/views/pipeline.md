@@ -111,8 +111,10 @@ no other route.
      concept, a realization, a realization with file rows, a qualified node) and each edge the class
      `uses` when it joins two Modules without a label, and `relates` otherwise. A container of five
      or more children that no edge touches is laid out as a near-square grid instead of one long
-     row. A `d2 illustrative` block is rendered as written and preceded by the label "Illustrative,
-     non-normative. This diagram explains; it declares no relationship.";
+     row. A qualified shape that names one of the page's own nodes shows only the node's title,
+     since the enclosing Module already shows the owner. A `d2 illustrative` block is rendered as
+     written and preceded by the label "Illustrative, non-normative. This diagram explains; it
+     declares no relationship.";
    - **page anchors**: the Module identity (on its entry) and the document identity are inserted
      as anchors after the level-1 title, unless the reading already carries them.
 3. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` and, when any page has the

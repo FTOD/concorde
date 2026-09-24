@@ -895,6 +895,13 @@ class Checks:
     def resolve_label(self, owner: str, label: str) -> list[str]:
         repository = self.repository
         text = label.strip()
+        # In a Module's own reading its title names the Module, even when one of its concepts
+        # shares the title; that concept is drawn with the qualified form.
+        if (
+            owner in repository.declarations
+            and repository.declarations[owner].title == text
+        ):
+            return [owner]
         matches = [
             node.id
             for node in (

@@ -61,10 +61,13 @@ function classify(
   registry: ScopedRegistry,
   page: Page,
   shapes: SourceShape[],
-): Map<string, string> {
+): { kinds: Map<string, string>; titles: Map<string, string> } {
   const owner = registry.modules.find((m) => m.id === page.owner)!;
   const inside = descendants(registry, owner);
   const kinds = new Map<string, string>();
+  // A qualified shape naming one of the page's own nodes displays the node's title alone: the
+  // enclosing Module already shows the owner.
+  const titles = new Map<string, string>();
   const key = (path: string[]) => JSON.stringify(path);
   for (const shape of [...shapes].sort(
     (a, b) => a.path.length - b.path.length,
@@ -88,10 +91,22 @@ function classify(
             : "foreign",
       );
     else if (node) kinds.set(key(shape.path), node.type);
-    else if (shape.label.includes(" / "))
-      kinds.set(key(shape.path), "foreign-node");
+    else if (shape.label.includes(" / ")) {
+      // The qualified form names another Module's node, or one of the page's own nodes whose
+      // title the page's Module shares.
+      const [moduleTitle, nodeTitle] = shape.label
+        .split(" / ", 2)
+        .map((t) => t.trim());
+      const own =
+        moduleTitle === owner.title &&
+        registry.nodes.find(
+          (n) => n.owner === owner.id && n.title === nodeTitle,
+        );
+      kinds.set(key(shape.path), own ? own.type : "foreign-node");
+      if (own) titles.set(key(shape.path), own.title);
+    }
   }
-  return kinds;
+  return { kinds, titles };
 }
 
 /** Run `d2` on `input` and return the SVG it writes to stdout. */
@@ -151,10 +166,14 @@ export function styledDiagramInput(
   source: string,
 ): string {
   const parsed = parseDiagramSource(source);
-  const kinds = classify(registry, page, parsed.shapes);
+  const { kinds, titles } = classify(registry, page, parsed.shapes);
   const classes = parsed.shapes.flatMap((shape) => {
     const kind = kinds.get(JSON.stringify(shape.path));
-    return kind ? [`${reference(shape.path)}.class: ${kind}`] : [];
+    const own = titles.get(JSON.stringify(shape.path));
+    const title = own
+      ? [`${reference(shape.path)}.label: ${JSON.stringify(own)}`]
+      : [];
+    return kind ? [`${reference(shape.path)}.class: ${kind}`, ...title] : title;
   });
   for (const edge of parsed.edges) {
     const uses =

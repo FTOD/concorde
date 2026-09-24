@@ -139,6 +139,7 @@ describe("scenario.views.diagram-style", () => {
         "transfer -> transfer.ledger: refers",
         "transfer.ledger -> hold",
         "service -> hold: records",
+        "own: Transfer / Hold",
       ].join("\n");
       const input = styledDiagramInput(registry, page, source);
       // The source is carried through unchanged; only class declarations are appended.
@@ -148,6 +149,10 @@ describe("scenario.views.diagram-style", () => {
       expect(input).toContain('"transfer".class: owner');
       expect(input).toContain('"transfer"."ledger".class: module');
       expect(input).toContain('"hold".class: concept');
+      // The qualified form of one of the page's own nodes keeps that node's look.
+      expect(input).toContain('"own".class: concept');
+      // It displays the node's title alone; the enclosing Module already shows the owner.
+      expect(input).toContain('"own".label: "Hold"');
       expect(input).toContain('"service".class: realization-files');
       // A file nested in a realization gets no class of its own: it becomes a table row.
       expect(input).not.toMatch(/"service"\."entry".*\.class:/);

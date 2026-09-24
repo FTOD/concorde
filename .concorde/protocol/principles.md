@@ -1525,7 +1525,9 @@ edge other than `->`.
 a concept or realization of the owning Module, by title; a Module, by title; a node of another
 Module, by the qualified form `Module title / node title`; or, only directly inside a realization
 shape, a **file** of that realization: a bound entry path, or a suffix of exactly one bound entry
-that begins after a `/`. An unresolved or ambiguous shape is an error.
+that begins after a `/`. An unresolved or ambiguous shape is an error. In a Module's own reading,
+its own title always names the Module, even when one of its concepts shares that title; such a
+concept is drawn with the qualified form, `Checkout / Checkout`.
 
 **Nesting** asserts what it encloses:
 

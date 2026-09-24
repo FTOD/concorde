@@ -112,12 +112,6 @@
     {
       "type": "relates",
       "source": "realization.spec-review.operation",
-      "verb": "returns its result through",
-      "target": "module.operations"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec-review.operation",
       "verb": "hands reviewers",
       "target": "realization.spec-review.checklist"
     },
