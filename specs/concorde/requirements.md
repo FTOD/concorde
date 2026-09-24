@@ -5,12 +5,12 @@ contributes; a requirement here promises what the Modules achieve together.
 
 ## Runtime
 
-### req.concorde.claude-code-only — Claude Code is the only agent runtime
+### req.concorde.agent-runtimes — Claude Code and pi are the agent runtimes
 
-The Framework SHALL run its main-agent guidance and every worker on Claude Code only in this version.
+The Framework SHALL support a main agent in Claude Code or in pi and run every worker on the backend the project configuration selects, Claude Code or pi, under the same grant.
 
-Pi and pi-subagents are not supported. A future version may add them without changing the Spec
-Protocol, because the Protocol defines visibility, not how an agent is run.
+The Spec Protocol needs no change for this, because it defines visibility, not how an agent is
+run; each backend compiles the same grant into its own mechanism.
 
 ## Boundaries
 

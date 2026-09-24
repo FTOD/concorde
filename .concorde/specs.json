@@ -278,6 +278,7 @@
       "owns": [
         "specs/concorde/harness/workers/module.md",
         "specs/concorde/harness/workers/launch.md",
+        "specs/concorde/harness/workers/pi.md",
         "specs/concorde/harness/workers/contracts.md",
         "specs/concorde/harness/workers/scenarios.md"
       ],

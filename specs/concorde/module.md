@@ -2,12 +2,13 @@
 
 ## Purpose
 
-Concorde helps a developer and a Claude Code main agent change a project that describes itself in
+Concorde helps a developer and a main agent change a project that describes itself in
 Specs. Spec tooling checks and publishes those Specs and computes what a task may read and write.
 Operations carry out bounded jobs, assessing, specifying, implementing, testing, reviewing,
 validating and delivering, under Spec-derived permissions, and the main agent stays in charge: it
 splits work into tasks, runs Operations and merges what is delivered. Concorde never chooses the
-developer's direction or repairs a Spec on its own; this version supports only Claude Code.
+developer's direction or repairs a Spec on its own. The main agent and the workers run on Claude
+Code or on pi.
 
 ## Terminology
 
@@ -51,8 +52,9 @@ do bounded work under a Spec-computed boundary. Between the main agent and the w
 Operation host computes the grant, launches and audits the worker, runs the checks and turns the
 outcome into a trustworthy result.
 
-Worker permissions are enforced by the worker's own Claude Code settings — deny rules, a write hook
-and the Bash sandbox — which guard against scope drift and mistakes, not a malicious actor; known
+Worker permissions are compiled from the grant into the worker's own configuration — on Claude
+Code its settings with deny rules, a write hook and the Bash sandbox, on pi a permission extension
+with the same sandbox engine — which guard against scope drift and mistakes, not a malicious actor; known
 limits are in the [Harness](harness/module.md), reasons in the [design topic](design.md).
 
 The root also binds files of its own, shown with its children in

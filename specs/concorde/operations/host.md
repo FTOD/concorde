@@ -64,7 +64,8 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 ## Worker settings in the project configuration
 
 The optional `workers` object of `.concorde/config.json`, read from the task worktree, sets the
-limits of every worker launch: `model` (passed with `--model`), `timeout_seconds` per round
+backend and limits of every worker launch: `backend` (`claude`, the default, or `pi`), `model`
+(passed with `--model`), `thinking` (pi only, passed with `--thinking`), `timeout_seconds` per round
 (default 1800), `max_turns` (default 200), `max_budget_usd` (default none), `rounds` of resume
 (default 3) and `runtime`, the paths Bash may read besides the grant, relative to the task
 worktree or absolute (default `.venv` and `node_modules`, each only when it exists). A refusal of

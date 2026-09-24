@@ -10,7 +10,7 @@ Concorde is new to you.
 | Term | Definition |
 | --- | --- |
 | Developer | The person who uses Concorde to specify, change and understand a project. |
-| Main agent | The developer-facing Claude Code session in the primary worktree that discusses the project, splits work into tasks, runs Operations and merges their results. |
+| Main agent | The developer-facing Claude Code or pi session in the primary worktree that discusses the project, splits work into tasks, runs Operations and merges their results. |
 | Worker | One headless Claude Code process that performs one bounded task of one task type under a frozen grant and reports only to the Operation host that launched it. |
 | Module | One cohesive responsibility of the software, with its own Spec; it need not be a package or directory. |
 | Spec | The documents in which a Module explains what it is for, how to use it, how it is designed and what it precisely promises. |
@@ -32,7 +32,7 @@ and how results and problems travel (evidence, error chain).
 
 <a id="concept.concorde.developer"></a><a id="concept.concorde.main-agent"></a>
 
-The **developer** works with a **main agent**: an ordinary Claude Code session opened in the
+The **developer** works with a **main agent**: an ordinary Claude Code or pi session opened in the
 project's primary worktree. The main agent is where understanding and decisions happen. It
 discusses the state of the project with the developer, answers questions, and sets the direction
 of larger changes. It splits work into tasks, each a branch with its own worktree, decides which

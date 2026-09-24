@@ -2,24 +2,27 @@
 
 ## Purpose
 
-Workers runs one headless Claude Code worker for one task under one frozen grant, and turns what
-happened into a run record the Operation host can trust. It does not compute the grant, choose the
-task type or write the task-specific brief, and never commits or judges whether the worker's work
-is correct. Its boundary guards against scope drift and mistakes, not a malicious worker, and it
-supports only Claude Code. None of its code exists yet: everything here is the design its
-implementation must follow.
+Workers runs one headless worker for one task under one frozen grant, on Claude Code or on pi, and
+turns what happened into a run record the Operation host can trust. Each run is its own session,
+its own process and its own permissions, compiled from the grant for the backend the project
+selects. It does not compute the grant, choose the task type or write the task-specific brief, and
+never commits or judges whether the worker's work is correct. Its boundary guards against scope
+drift and mistakes, not a malicious worker.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
+| Worker backend | The agent program a worker runs on, Claude Code or pi, chosen by `workers.backend` of the project configuration; both enforce the same grant. |
 | Worker settings | The Claude Code settings file the host generates from a grant, carrying the Bash sandbox, the deny rules and the write hook of one worker run. |
+| Permission extension | The pi extension the host generates from a grant, which checks every file tool against it, runs every command in the sandbox and receives the worker result. |
+| Progress file | The run's `status.json`, which the host keeps current while the run goes on so the main session can show what it is doing. |
 | Deny rules | The `permissions.deny` entries of the worker settings that forbid the file tools every path the grant does not make readable or writable. |
 | Write hook | A small PreToolUse hook on Edit and Write that denies every path outside the grant's `rw` list and explains the denial. |
 | Brief | The prompt a worker receives: the Operation's task instructions followed by the grant's `rw`, `ro` and `names` lists as absolute paths and the rules of its boundary. |
 | Worker result | The structured answer a worker ends with, validated against a fixed schema, reporting its status, a summary, its own error link when it could not finish, and the deletions it proposes. |
 | Write audit | The host's comparison, after each round and outside the worker, of the task worktree's changes with the grant's `rw` list. |
-| Resume round | One continuation of the same worker session with the failures of the configured checks, started by `claude -p --resume`. |
+| Resume round | One continuation of the same worker session with the failures of the configured checks. |
 | Run record | The host's durable record of one worker run: its grant and context identity, settings, transcript path, audits, checks, rounds and result. |
 | Run directory | The directory `.concorde/runs/<run-id>/` of the primary worktree that holds one run's record, generated configuration and the worker's private state and working directory. |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
@@ -72,6 +75,38 @@ files that already exist — generates settings/tools/brief, launches `claude -p
 `bypassPermissions`, the result schema, no MCP servers and a cleared environment, audits every
 change against `rw`, runs checks through Check execution, resumes the same session when a check
 fails, up to three rounds by default, then performs proposed deletions and writes the run record.
+
+<a id="concept.workers.progress-file"></a>
+
+Throughout, the host keeps the run's **progress file** `status.json` current: the phase, the round
+and the worker's latest tool call. The main session's run view reads it; the run record, not the
+progress file, is the run's evidence.
+
+### Two backends from one grant
+
+<a id="concept.workers.backend"></a>
+
+The **worker backend** is Claude Code unless the project configuration sets `workers.backend` to
+`pi`. Everything but the agent process is shared: the grant, the brief, the run directory, the
+progress file, the audit, the checks, the rounds and the run record.
+
+<a id="concept.workers.permission-extension"></a>
+
+The pi backend replaces the worker settings with the **permission extension**, generated from the
+same grant by the same code:
+
+| Surface | Claude Code backend | pi backend |
+| --- | --- | --- |
+| Reading files | deny rules on Read, Glob and Grep | the extension checks `read` and explains each denial |
+| Writing files | deny rules plus the write hook | the extension checks `write` and `edit` with the write hook's table |
+| Searching | Grep silently omits denied files | `grep`, `find` and `ls` run inside the sandbox, so denied files do not exist for them |
+| Commands | Claude Code's Bash sandbox | `bash` through the same sandbox engine, sandbox-runtime |
+| Network | none, strict allowlist | none, strict allowlist |
+| Worker result | `--json-schema` | the `concorde_result` tool |
+| Limits | `--max-turns`, `--max-budget-usd` | counted and enforced by the extension |
+| Instructions and state | own `CLAUDE_CONFIG_DIR`, no `CLAUDE.md` | own `PI_CODING_AGENT_DIR`, no extensions, context files, skills or templates |
+
+The pi command line, environment and tables are in [the pi run mechanics](pi.md).
 
 <a id="concept.workers.worker-settings"></a><a id="concept.workers.deny-rules"></a><a id="concept.workers.write-hook"></a>
 
@@ -148,22 +183,50 @@ separate from host evidence.
 workers: Workers {
   runtime: Worker runtime {
     "settings.py"
-    "write_hook.py"
     "workers.py"
+    "progress.py"
     "audit.py"
     "runs.py"
     "prompts/workers/common/"
   }
+  claude: Claude Code backend {
+    "claude_backend.py"
+    "write_hook.py"
+  }
+  pi: pi backend {
+    "pi_backend.py"
+    "pi_permission.ts"
+    "pi_policy.ts"
+  }
+  runtime -> claude: launches
+  runtime -> pi: launches
 }
 ```
 
-- <a id="realization.workers.runtime"></a>The **worker runtime** generates settings (deny rules,
-  sandbox, hook registration), enforces the write hook, launches/resumes the worker while deciding
-  rounds, runs the write audit, manages run directories/records, and supplies the worker prompt
-  snippets every Operation includes, e.g. reporting an error. Tests fake `claude` for host behaviour
-  and, with `CONCORDE_LIVE_CLAUDE=1`, run a real worker for what only Claude Code enforces.
+- <a id="realization.workers.runtime"></a>The **worker runtime** computes the boundary lists from
+  the grant (deny rules, sandbox lists), decides rounds, runs the write audit, keeps the progress
+  file, manages run directories/records, and supplies the worker prompt snippets every Operation
+  includes, e.g. reporting an error.
+- <a id="realization.workers.claude"></a>The **Claude Code backend** writes the worker settings and
+  the write hook, launches and resumes `claude -p`, and reads its event stream. Tests fake `claude`
+  for host behaviour and, with `CONCORDE_LIVE_CLAUDE=1`, run a real worker for what only Claude Code
+  enforces.
+- <a id="realization.workers.pi"></a>The **pi backend** checks its prerequisites, prepares the pi
+  configuration directory, generates the permission extension (`pi_permission.ts`, with the pure
+  path decisions in `pi_policy.ts`), launches and resumes `pi -p` and reads its event stream. Tests
+  fake `pi` for host behaviour, run the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`,
+  run a real pi worker.
 
-Three layers exist since each alone failed in a spike against Claude Code 2.1.280: the Bash sandbox
+Both backends are compiled from the grant rather than one being translated into the other: Claude
+Code's permission-rule language is closed and changes between versions, and pi has no permission
+system of its own, so the grant is the one source and each backend gets the mechanism that fits it.
+On pi the file tools are checked by an extension because an extension sees every tool call before
+it runs and can explain a denial; searching and commands go through the sandbox because only an
+OS boundary confines what a command or a search actually opens. Tools are replaced rather than
+merely intercepted so the check sees the final arguments, which a later `tool_call` handler could
+otherwise still change.
+
+Three layers exist on Claude Code since each alone failed in a spike against Claude Code 2.1.280: the Bash sandbox
 governs only Bash and its children — alone it let Read return ungranted files and the credential,
 and Edit change a read-only Spec; deny rules alone confine reads but can't stop a Write creating an
 undeclared file, since a deny rule always beats an allow rule, so "only these files are writable"
@@ -223,6 +286,13 @@ dir -> record: holds
 record -> audit: records
 record -> round: records
 record -> result: keeps
+runtime -> progress: keeps
+dir -> progress: holds
+backend -> ext: pi generates
+backend -> settings: Claude Code generates
+progress: Progress file
+backend: Worker backend
+ext: Permission extension
 ```
 
 The Operation providers, Spec review and Delivery use this Module; it knows none of them. They rely

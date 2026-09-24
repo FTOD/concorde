@@ -6,12 +6,12 @@ sources. Specs and their paired metadata use English.
 
 ## How work is organized
 
-Concorde supports only Claude Code in this version. The developer works with a main agent: the
-Claude Code session in the primary worktree. The main agent discusses the project, splits work
+Concorde supports Claude Code and pi. The developer works with a main agent: the Claude Code or pi
+session in the primary worktree. The main agent discusses the project, splits work
 into tasks (a branch and its worktree each), runs Operations in those worktrees, keeps each task's
 decision log and merges delivered task branches. It normally does not edit the project itself.
 
-Workers are headless `claude -p` processes launched by an Operation host for one bounded task of
+Workers are headless `claude -p` or `pi -p` processes launched by an Operation host for one bounded task of
 one task type (understand, specify, implement, test, review-spec, review-code) under a grant
 computed from the task worktree's Specs. Workers never touch Git, never run Operations and never
 start agents; their settings deny everything outside the grant.

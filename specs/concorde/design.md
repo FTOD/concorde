@@ -15,7 +15,7 @@ trusted, and a missing promise stops work instead of being inferred from code.
 
 ## Two tiers of agents
 
-The main agent is the developer's Claude Code session. It has the global view and the developer's
+The main agent is the developer's Claude Code or pi session. It has the global view and the developer's
 trust, so Concorde does not restrict it. Workers are the opposite: each has one bounded task, no
 human to ask, and a boundary derived from the Specs. Keeping the tiers apart is what lets a large
 change be split into small, checkable steps without the developer supervising each one.
