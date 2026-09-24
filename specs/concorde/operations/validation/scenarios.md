@@ -42,6 +42,13 @@ readiness is defined in the [contracts](contracts.md).
 - WHEN `validate` runs
 - THEN the configured checks of both Modules are run
 
+### scenario.validation.submodule-reference — A vendored reference is accounted for
+
+- GIVEN a task that adds two submodules, one of which a Module includes a directory of as `external`
+- WHEN `validate` runs
+- THEN the included submodule's gitlink is no blocking finding
+- BUT the other submodule's gitlink is reported as `unbound`
+
 ### scenario.validation.confirmation — A filled pending entry becomes a confirmation
 
 - GIVEN a realization entry marked pending whose file an `implement` run created

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -112,6 +113,46 @@ class ValidateTests(unittest.TestCase):
         )
         self.assertIn("check.a", [i["ref"] for i in readiness["blocking"]])
         self.assertEqual(readiness["checks"][0]["status"], "failed")
+
+    @verifies("scenario.validation.submodule-reference")
+    def test_a_submodule_a_module_includes_is_accounted(self):
+        from tests.concorde.support.spec_project import include_external
+
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        include_external(self.worktree, "module.a", "vendor/lib/docs/")
+        for path in ("vendor/lib", "vendor/other"):
+            subprocess.run(
+                [
+                    "git",
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    f"160000,{'a' * 40},{path}",
+                ],
+                cwd=self.worktree,
+                check=True,
+            )
+            (self.worktree / path).mkdir(parents=True)
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "commit",
+                "-qam",
+                "vendor",
+            ],
+            cwd=self.worktree,
+            check=True,
+        )
+        readiness = self.project.validate()[1]["output"]
+        unbound = [
+            item["ref"] for item in readiness["blocking"] if item["kind"] == "unbound"
+        ]
+        self.assertNotIn("vendor/lib", unbound)
+        self.assertIn("vendor/other", unbound)
 
     @verifies("scenario.validation.warnings")
     def test_warnings_do_not_block(self):
