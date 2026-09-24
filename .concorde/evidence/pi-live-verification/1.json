@@ -1,0 +1,138 @@
+{
+  "task": "pi-live-verification",
+  "goal": "Verify the pi run view live (bg_wait, a worker-backed run's progress in FleetView, the FleetView screen) and fix what the verification finds",
+  "modules": [
+    "module.concorde",
+    "module.main-session",
+    "module.harness.workers"
+  ],
+  "sequence": 1,
+  "base_commit": "aac5b929587e44c0a2487131e1b307f1153468c8",
+  "parent_commit": "5a68d05a667d670872b24cc978fb1d82e442a757",
+  "readiness": {
+    "run_id": "r-20260924T182437-delivery-81621c4b",
+    "input_digest": "sha256:8afda697b54247cd4f3e9426b3256836894ec877703814b08f86c34c91bf254b",
+    "modules": [
+      "module.concorde",
+      "module.delivery",
+      "module.harness.workers",
+      "module.main-session",
+      "module.tasks",
+      "module.validation"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:9db0654c4a0519d5c18ec87b69b3c5215f97012606b8ab8ae4f668a4d1f5a00e"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:78b10d2f8e5aba68dca0736e2443320ad34415bad9ed4fc325254b27852c979b"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:434a24aab7726f9a8322bbe05acdada96e52509889ec785a026d6cbdbe572ac8"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:5e879810a03da903ed03e8086f3a8bd3206a43d849d0eb93580495e35163417b"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:76be82367d12791b39fb5072c9a7af9b620f63c08a4c0e82e8dacb6a354271db"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:2ec50e79d5a9b14999eecf403fdb43658a471ffd8b66a641d24b97b41dd2c040"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260924T180715-understand-60d84551",
+      "operation": "understand",
+      "modules": [
+        "module.concorde",
+        "module.main-session",
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "understand finished for module.concorde, module.main-session, module.harness.workers.",
+      "worker_runs": [
+        "w-20260924T180716-9dc351"
+      ],
+      "result_digest": "sha256:44722042c7a6221b2bc64fd72dccbc5f493e47293f4a5337fb95872d15864616"
+    },
+    {
+      "run_id": "r-20260924T180840-understand-44ebf24a",
+      "operation": "understand",
+      "modules": [
+        "module.concorde",
+        "module.main-session",
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "understand finished for module.concorde, module.main-session, module.harness.workers.",
+      "worker_runs": [
+        "w-20260924T180841-bcedc1"
+      ],
+      "result_digest": "sha256:289c886230aa5979e1ad72ace2dea5d943cf7568a5446f9af83b0b0c4cc52c1d"
+    },
+    {
+      "run_id": "r-20260924T180929-validate-6de233ac",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.main-session",
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:9a839fb77e18de56ce15c3e357f8118e8fc5ad03a276bfcabc2f1f83fa956e7e"
+    },
+    {
+      "run_id": "r-20260924T182137-understand-4a92013f",
+      "operation": "understand",
+      "modules": [
+        "module.concorde",
+        "module.main-session",
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "understand finished for module.concorde, module.main-session, module.harness.workers.",
+      "worker_runs": [
+        "w-20260924T182138-c65cf9"
+      ],
+      "result_digest": "sha256:d5793adc9dfe38e5389ff7b8dd2b41f5bedea1ad7e418a314a9469f06bd6c74d"
+    },
+    {
+      "run_id": "r-20260924T182417-validate-7d9540ae",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.main-session",
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:54479457b6a367a39da445a2ff99628f05b1a74eedeed3a56294dbf21a878912"
+    }
+  ],
+  "created_at": "2026-09-24T18:24:56Z"
+}
