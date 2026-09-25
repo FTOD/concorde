@@ -220,6 +220,25 @@ class AdoptionTests(unittest.TestCase):
             [], list((self.project.root / ".concorde/tasks").glob("*.json"))
         )
 
+    @verifies("scenario.adoption.survey-checks")
+    def test_proposed_checks_take_the_configurations_form(self):
+        self.open()
+        slashed = json.loads(json.dumps(PROPOSAL))
+        slashed["checks"][0]["inputs"] = ["src/checkout/", "tests/"]
+        slashed["checks"][0]["env"] = {"PYTHONPATH": "src"}
+        status, envelope = self.survey(slashed)
+        self.assertEqual(0, status, envelope)
+        [proposed] = envelope["output"]["checks"]
+        self.assertEqual(["src/checkout", "tests"], proposed["inputs"])
+        self.assertEqual({"PYTHONPATH": "src"}, proposed["env"])
+        outside = json.loads(json.dumps(PROPOSAL))
+        outside["checks"][0]["inputs"] = ["../elsewhere"]
+        _, envelope = self.survey(outside)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn("'../elsewhere'", envelope["error"]["detail"])
+        prompt = self.fake_round(envelope)["prompt"]
+        self.assertIn('["{python}", "-m", "pytest", "tests"]', prompt)
+
     @verifies("scenario.adoption.survey-inconsistent")
     def test_a_proposal_that_does_not_fit_fails(self):
         self.open()

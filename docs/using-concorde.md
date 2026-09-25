@@ -199,8 +199,17 @@ Declare them in `.concorde/config.json` under `checks`:
 }
 ```
 
-`inputs` are the paths the result depends on; if they change while the check runs, its result is
-refused as stale. Checks run in a sandbox in which the whole filesystem is read-only except a fresh
+`{python}` is your project's own interpreter, which `.concorde/config.json` names in `python`.
+`concorde init` records `.venv/bin/python` (or `venv/bin/python`) when your project has one, or the
+interpreter you name with `init --python`. A relative path is looked up in the worktree the check
+runs in and then in your primary checkout, so task worktrees use your primary checkout's
+environment. Concorde itself never runs in your project's environment, and your checks never run
+in Concorde's. A check may set its own variables in `env`, for example
+`"env": {"PYTHONPATH": "src"}` for code under `src/`: the check then tests the code of the worktree
+it runs in, not a copy installed in your environment.
+
+`inputs` are the paths the result depends on, without a trailing `/`; if they change while the
+check runs, its result is refused as stale. Checks run in a sandbox in which the whole filesystem is read-only except a fresh
 scratch directory, named by `TMPDIR`, `XDG_CACHE_HOME`, `CONCORDE_CHECK_TMPDIR` and
 `CONCORDE_CHECK_REPORT_DIR`. A check that writes caches or reports into the project fails and must
 be pointed at the scratch; a tool that rewrites sources, such as a formatter in fix mode, is not a

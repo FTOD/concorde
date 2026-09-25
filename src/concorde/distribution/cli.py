@@ -66,6 +66,11 @@ def create_parser() -> argparse.ArgumentParser:
     init_mode.add_argument("--apply", action="store_true")
     init.add_argument("--name")
     init.add_argument("--target", default="module.project")
+    init.add_argument(
+        "--python",
+        help="the project's own interpreter, which its checks run as {python} "
+        "(default: .venv/bin/python or venv/bin/python when present)",
+    )
     init.add_argument("--proposal")
     init.add_argument("--format", choices=["json"], default="json")
 
@@ -223,6 +228,7 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                 "action": "propose",
                 "name": arguments.name,
                 "target_id": arguments.target,
+                **({"python": arguments.python} if arguments.python else {}),
             }
         return ToolResult(
             "init", ".", "success", result=initialize(root, package, data)

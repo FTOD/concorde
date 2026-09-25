@@ -263,11 +263,29 @@ def initial_module_text(
     )
 
 
+# Where a project's own environment usually is; the first that exists becomes `python`.
+PROJECT_PYTHONS = (".venv/bin/python", "venv/bin/python")
+
+
+def project_python(root: Path, python: str | None) -> str | None:
+    """The project interpreter the configuration records: the one named, else a usual one."""
+    if python is not None:
+        if not isinstance(python, str) or not python.strip():
+            raise SpecError(
+                f"the project interpreter must be a nonblank path, not {python!r}",
+                "invalid_input",
+                "python",
+            )
+        return python
+    return next((path for path in PROJECT_PYTHONS if (root / path).exists()), None)
+
+
 def project_proposal(
     root: Path,
     package: Path,
     name: str,
     target_id: str = "module.project",
+    python: str | None = None,
 ) -> dict:
     identifier(target_id)
     if not isinstance(name, str) or not name.strip():
@@ -292,6 +310,10 @@ def project_proposal(
         "protocol": installed_protocol_binding(root),
         "checks": [],
     }
+    # The project's own interpreter, for its checks' {python}; Concorde runs in its own.
+    interpreter = project_python(root, python)
+    if interpreter is not None:
+        config["python"] = interpreter
     files = [
         file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
         file_change(
@@ -459,7 +481,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
 def initialize(root: Path, package: Path, data: dict) -> dict:
     """Propose or apply the first Spec of a project; apply accepts only the exact proposal.
 
-    ``data`` is ``{"action": "propose", "name": ..., "target_id"?: ...}`` or
+    ``data`` is ``{"action": "propose", "name": ..., "target_id"?: ..., "python"?: ...}`` or
     ``{"action": "apply", "proposal": ..., "proposal_digest": ...}``.
     """
     if data.get("action") == "apply":
@@ -499,7 +521,11 @@ def initialize(root: Path, package: Path, data: dict) -> dict:
             "invalid_input",
         )
     value = project_proposal(
-        root, package, data["name"], data.get("target_id", "module.project")
+        root,
+        package,
+        data["name"],
+        data.get("target_id", "module.project"),
+        data.get("python"),
     )
     proposal = typed(
         "concorde-project-proposal",

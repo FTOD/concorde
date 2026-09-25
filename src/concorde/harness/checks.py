@@ -11,13 +11,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import sys
+import re
+import subprocess
 from pathlib import Path
 
 from ..errors import evidence, link
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError, bound_by
 from .check_executor import CHECK_POLICY, CheckSandboxError, execute_check
+from .runs import primary_root
 
 
 class CheckError(SpecError):
@@ -45,10 +47,13 @@ class CheckError(SpecError):
             "checks run only for Modules the registry registers",
             "name registered Modules",
         ),
+        "project_python_missing": (
+            "{python} in a check stands for the project's own interpreter, named by `python` "
+            "in .concorde/config.json, never Concorde's",
+            "set `python` in .concorde/config.json to the project's interpreter, or create it "
+            "where the configuration says",
+        ),
     }
-
-
-FRAMEWORK_SRC = Path(__file__).resolve().parents[2]
 
 
 def _file_digest(path: Path) -> str:
@@ -119,7 +124,40 @@ def affected_modules(repository: SpecRepository, changed) -> list[str]:
     return result
 
 
-def _argv(check: dict) -> list[str]:
+def project_python(worktree: Path, config: dict, check_id: str) -> str:
+    """The project's interpreter, ``python`` in the configuration: an absolute path as it is, a
+    relative one in the worktree the check runs in or, when that has none (a task worktree
+    rarely has an environment of its own), in the primary worktree."""
+    configured = config.get("python")
+    if not isinstance(configured, str) or not configured.strip():
+        raise CheckError(
+            f"check {check_id} uses {{python}}, but .concorde/config.json names no project "
+            "interpreter in `python`",
+            "project_python_missing",
+        )
+    if os.path.isabs(configured):
+        candidates = [Path(configured)]
+    else:
+        candidates = [worktree / configured]
+        try:
+            primary = primary_root(worktree)
+        except (OSError, subprocess.CalledProcessError):
+            primary = None
+        if primary is not None and primary != worktree.resolve():
+            candidates.append(primary / configured)
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate.as_posix()
+    raise CheckError(
+        f"check {check_id} uses {{python}}, the project interpreter {configured!r}, which is "
+        "not an executable file at "
+        + " or at ".join(candidate.as_posix() for candidate in candidates),
+        "project_python_missing",
+    )
+
+
+def _argv(check: dict, python) -> list[str]:
+    """The check's command; ``python`` gives the project interpreter for ``{python}``."""
     argv = check.get("argv")
     if (
         not isinstance(argv, list)
@@ -127,7 +165,7 @@ def _argv(check: dict) -> list[str]:
         or any(not isinstance(item, str) or not item for item in argv)
     ):
         raise CheckError(f"check {check['id']} needs a nonempty argv", "invalid_check")
-    return [sys.executable if item == "{python}" else item for item in argv]
+    return [python() if item == "{python}" else item for item in argv]
 
 
 def _timeout(check: dict) -> float:
@@ -139,12 +177,29 @@ def _timeout(check: dict) -> float:
     return float(value)
 
 
-def environment() -> dict[str, str]:
-    return {
+ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def environment(check: dict | None = None) -> dict[str, str]:
+    """The environment of a check: ``PATH`` and ``LANG`` of the host, then the check's own
+    ``env``. Nothing of Concorde's own runtime is added: a check runs the project's tools."""
+    base = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "LANG": os.environ.get("LANG", "C.UTF-8"),
-        "PYTHONPATH": str(FRAMEWORK_SRC),
     }
+    own = (check or {}).get("env", {})
+    if not isinstance(own, dict) or any(
+        not isinstance(key, str)
+        or not ENV_NAME.match(key)
+        or not isinstance(value, str)
+        for key, value in own.items()
+    ):
+        raise CheckError(
+            f"check {check['id']} has an env that is not an object of variable names to "
+            "strings",
+            "invalid_check",
+        )
+    return {**base, **own}
 
 
 def run_checks(
@@ -171,12 +226,18 @@ def run_checks(
     for check in repository.checks.values():
         if check["module"] not in selected:
             continue
-        argv, timeout = _argv(check), _timeout(check)
+        argv = _argv(
+            check,
+            lambda check=check: project_python(
+                worktree, repository.config, check["id"]
+            ),
+        )
+        timeout = _timeout(check)
         before = check_revision(repository, check["module"])
         log = log_directory / f"{check['id']}.log"
         try:
             outcome = execute_check(
-                worktree, argv, timeout=timeout, environment=environment()
+                worktree, argv, timeout=timeout, environment=environment(check)
             )
         except CheckSandboxError as error:
             log.write_bytes(

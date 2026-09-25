@@ -9,6 +9,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN a checkout whose prompt roots include other prompt files through include lines
 - WHEN the developer runs `build`
 - THEN each root is written to its path under `generated/` with every include expanded
+- AND a `{{name}}` in a prompt is written as the literal `{name}`, while other braces stay as they are
 - AND `generated/build-manifest.json` records the digest of every source and output
 - AND a following `build --check` reports no differences
 

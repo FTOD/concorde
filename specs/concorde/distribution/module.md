@@ -38,7 +38,8 @@ too, so a changed descriptor makes every render stale.
 <a id="concept.distribution.build"></a><a id="concept.distribution.build-manifest"></a>
 
 **Building.** `python3 scripts/concorde.py build` expands every prompt root into `generated/`
-([requirements](requirements.md#req.distribution.build-reachable)), and wraps every
+([requirements](requirements.md#req.distribution.build-reachable)), `{{name}}` becoming the literal
+text `{name}` so that a prompt can show a placeholder such as a check's `{python}`, and wraps every
 [workflow script](../workflows/module.md#concept.workflows.script) of the workflow catalog for each
 client: `generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step
 adapter, `generated/workflows/pi/<name>.js` with the pi step adapter, and the pi command-runner agents

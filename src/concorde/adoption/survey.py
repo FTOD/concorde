@@ -191,6 +191,13 @@ def check(ctx: RunContext):
     """Step 3: the proposal fits the worktree and the answers; add the remaining entries."""
     module = ctx.modules[0]
     claims = ctx.output or {}
+    # The configuration names a directory input without the trailing `/` a realization entry
+    # carries; the proposal is made to fit the configuration, not the other way round.
+    for proposed in claims.get("checks") or []:
+        proposed["inputs"] = [
+            path.rstrip("/") if path.rstrip("/") else path
+            for path in proposed["inputs"]
+        ]
     repository = repository_of(ctx)
     problems = proposal_problems(
         repository, module, claims, configured_check_ids(ctx.worktree)

@@ -582,6 +582,14 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ## Initialization
 
+### scenario.spec.project-python — Initialization records the project's interpreter
+
+- GIVEN a project where the installer has placed the Protocol copy but no configuration exists
+- WHEN it is initialized without an interpreter, while it has no `.venv/bin/python`
+- THEN the proposed configuration has no `python`
+- AND once `.venv/bin/python` exists, the proposed configuration's `python` is `.venv/bin/python`
+- AND an interpreter named on initialization is recorded as it was given
+
 ### scenario.spec.propose-initialization — Proposing a new project
 
 - GIVEN a project where the installer has placed the Protocol copy but no configuration exists

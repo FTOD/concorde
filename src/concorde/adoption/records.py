@@ -24,6 +24,7 @@ from ..spec.repository_base import (
     skipped_path,
 )
 from ..spec.schema import ContractError, validate
+from ..spec.typed_data import TypedDataError, safe_path
 
 S = {"type": "string", "minLength": 1}
 MODULE_ID = {
@@ -81,10 +82,12 @@ CHECK = obj(
         },
         "module": MODULE_ID,
         "argv": {"type": "array", "minItems": 1, "items": S},
+        "env": {"type": "object", "additionalProperties": S},
         "timeout_seconds": {"type": "integer", "minimum": 1},
         "inputs": {"type": "array", "items": S},
         "reason": S,
-    }
+    },
+    required=["id", "module", "argv", "timeout_seconds", "inputs", "reason"],
 )
 CHILD = obj(
     {
@@ -109,7 +112,7 @@ SURVEY_WORKER_SCHEMA = obj(
         "open_questions": {"type": "array", "items": QUESTION},
     }
 )
-# contract.adoption.decomposition, version 1
+# contract.adoption.decomposition, version 2
 DECOMPOSITION_SCHEMA = obj(
     {
         "module": MODULE_ID,
@@ -402,6 +405,14 @@ def proposal_problems(
                 )
     check_ids = [check["id"] for check in proposal["checks"]]
     for check in proposal["checks"]:
+        for path in check["inputs"]:
+            try:
+                safe_path(path, f"/checks/{check['id']}/inputs")
+            except TypedDataError:
+                problems.append(
+                    f"check {check['id']} input {path!r} is not a canonical project-relative "
+                    "path, as the configuration's check inputs must be"
+                )
         if check["module"] != module and check["module"] not in child_ids:
             problems.append(
                 f"check {check['id']} is for {check['module']}, which is neither {module} "

@@ -117,9 +117,11 @@ def prepare(
     task: str,
     allow_any: bool = False,
     name: str | None = None,
+    python: str | None = None,
 ) -> dict:
     """Clone ``repo`` at ``rev`` under ``root`` as ``name`` (the repository's name by default),
-    install and initialize Concorde, open ``task``."""
+    install and initialize Concorde, recording ``python`` as the project's interpreter when
+    given, and open ``task``."""
     if not allow_any and repo not in repositories():
         raise E2EError(
             "unknown_repository",
@@ -146,7 +148,17 @@ def prepare(
     )
     concorde = str(project / ".concorde/bin/concorde")
     proposed = json.loads(
-        run([concorde, "init", "--propose", "--name", project.name], cwd=project).stdout
+        run(
+            [
+                concorde,
+                "init",
+                "--propose",
+                "--name",
+                project.name,
+                *(["--python", python] if python else []),
+            ],
+            cwd=project,
+        ).stdout
     )
     proposal = project.parent / f".{project.name}-proposal.json"
     proposal.write_text(json.dumps(proposed["result"]))
@@ -490,6 +502,9 @@ def main(argv) -> int:
     prepare_.add_argument("--task", default="adopt")
     prepare_.add_argument("--any", action="store_true")
     prepare_.add_argument("--name")
+    prepare_.add_argument(
+        "--python", help="the case's own interpreter, recorded for its checks' {python}"
+    )
     trust_ = sub.add_parser("trust")
     trust_.add_argument("projects", nargs="+", type=Path)
     run_ = sub.add_parser("run")
@@ -521,6 +536,7 @@ def main(argv) -> int:
                 arguments.task,
                 arguments.any,
                 arguments.name,
+                arguments.python,
             )
         elif arguments.command == "trust":
             value = trust(arguments.projects)

@@ -33,7 +33,7 @@ command and `{"error": …}` with the failed command and its output otherwise:
 
 ```text
 python3 scripts/e2e/e2e.py repos
-python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--name <dir>] [--task <task>] [--any]
+python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--name <dir>] [--python <interpreter>] [--task <task>] [--any]
 python3 scripts/e2e/e2e.py trust <project>…
 python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
 python3 scripts/e2e/e2e.py watch <project>
@@ -82,8 +82,11 @@ task's workflow steps with their runs and whether they were superseded.
 <a id="concept.e2e.case"></a>
 
 **Grading a case.** A **case** tests Concorde's whole change flow on a real issue: the developer
-prepares the case's repository at its base commit under the case's name, adopts it with the
-brownfield workflow, sets the project's environment and checks up, and then works the issue
+builds the case's own Python environment outside the project (its interpreter and pinned
+dependencies, never the project installed in it), prepares the case's repository at its base
+commit under the case's name with `--python` naming that interpreter, which `concorde init`
+records as the project's for its checks' `{python}`, adopts it with the brownfield workflow,
+configures its checks, and then works the issue
 through Concorde as a main agent would, from `understand` to the merge. `grade` then decides
 whether the merged change resolves the issue the way SWE-bench does: in a throwaway worktree of
 `--ref` it puts every file the case's test patch touches back as it was at the case's base commit,

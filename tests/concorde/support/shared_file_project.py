@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from pathlib import Path
 
@@ -137,6 +138,7 @@ class SharedFileProject:
                     "profile_version": 17,
                     "registry": ".concorde/specs.json",
                     "protocol": protocol_binding(PACKAGE),
+                    "python": sys.executable,
                     "checks": [],
                 }
             ),

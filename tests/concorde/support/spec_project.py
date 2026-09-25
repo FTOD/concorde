@@ -1,6 +1,7 @@
 """Protocol 13 consumer fixture shared by the test suite."""
 
 import json
+import sys
 from pathlib import Path
 
 from concorde.distribution.project_defaults import install_project_defaults
@@ -574,6 +575,7 @@ class SpecProject:
                 "profile_version": 17,
                 "registry": ".concorde/specs.json",
                 "protocol": protocol_binding(PACKAGE),
+                "python": sys.executable,
                 "checks": list(checks),
             },
         )

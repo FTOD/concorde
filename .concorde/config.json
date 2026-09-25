@@ -5,6 +5,7 @@
     "version": "13.1.0",
     "digest": "sha256:28bf3bf6a98505dcefe77699bc100d186fbff9ac8e8cb139e64924e93c0e8404"
   },
+  "python": ".venv/bin/python",
   "checks": [
     {
       "id": "check.spec.model",

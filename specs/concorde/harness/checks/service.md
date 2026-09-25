@@ -12,14 +12,24 @@ The project configuration lists checks under `checks`. Each has:
 | --- | --- |
 | `id` | The check's identity, unique in the project |
 | `module` | The Module the check belongs to |
-| `argv` | The command as an argument list; a first element `{python}` is replaced by the host's interpreter |
+| `argv` | The command as an argument list; an element `{python}` is replaced by the project's interpreter |
+| `env` | Optional variables of the command, names to strings, such as `{"PYTHONPATH": "src"}` |
 | `timeout_seconds` | A positive time limit |
 | `inputs` | Project-relative files or directories the result depends on, beyond the Module's own implementation files |
 
 The Spec core validates `id`, `module` and `inputs` when it loads the configuration; the service
-validates `argv` and `timeout_seconds` when it runs the check. `PYTHONPATH` points at the Framework's
-`src/`. An input that is missing, a symbolic link or not a regular file stops the run before any
-command and names the check, its Module and the path.
+validates `argv`, `env` and `timeout_seconds` when it runs the check. An input that is missing, a
+symbolic link or not a regular file stops the run before any command and names the check, its
+Module and the path.
+
+The project's interpreter is the configuration's `python`: an absolute path as it is, a relative
+one in the worktree the check runs in or, when that has none, in the primary worktree, since a
+task worktree rarely has an environment of its own. It is never Concorde's interpreter, which runs
+in its own environment. A check that uses `{python}` without one, or with one that is not an
+executable file there, stops with `project_python_missing`, naming every place looked at. A check
+runs with the host's `PATH` and `LANG` and its own `env`, and nothing of Concorde's runtime: a
+relative `PYTHONPATH` such as `src` is resolved in the worktree the check runs in, so an installed
+copy of the project's code in its environment does not stand in for the code under test.
 
 ## Running checks
 
@@ -76,6 +86,10 @@ measures the code it runs against.
 
 ## Requirements
 
+### req.checks.project-python — Checks run the project's interpreter, never Concorde's
+
+The service SHALL replace `{python}` with the project's interpreter named by the configuration's `python` and give a check no part of Concorde's own runtime in its environment.
+
 ### req.checks.measured-input-unchanged — A check cannot vouch for input that changed
 
 A configured check run SHALL fail with `stale_evidence` when the implementation files or check
@@ -104,6 +118,15 @@ start.
 - THEN it selects A, runs its check read-only and returns one result with its status, exit code, source digest and log path
 - AND the log is written into the caller's log directory
 - BUT asked for Module B it returns no result
+
+### scenario.checks.project-python — A check runs with the project's interpreter and its own env
+
+- GIVEN a check `["{python}", "-c", …]` with `env` `{"MARK": "yes"}` and a configuration whose `python` is `env/bin/python`
+- WHEN the check runs while `env/bin/python` does not exist
+- THEN the run stops with `project_python_missing` naming the path it looked at
+- AND once `env/bin/python` exists, the check runs with it, sees `MARK` and has no `PYTHONPATH`
+- AND in a task worktree without its own `env/bin/python`, the primary worktree's is used
+- BUT an `env` whose names are not variable names is refused with `invalid_check`
 
 ### scenario.checks.service-read-only — A check cannot change the worktree
 

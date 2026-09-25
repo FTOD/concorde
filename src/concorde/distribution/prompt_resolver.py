@@ -32,7 +32,10 @@ SPECS_ROOT = "specs/"
 
 # Path-shaped tokens only: ordinary mentions, emails and decorators stay literal.
 _DIRECTIVE_LINE = re.compile(r"^@(?P<target>[^\s@`\"'()<>]+)(?:[ \t]+.*)?$")
-_VARIABLE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+# A variable is {name}; {{name}} is the literal text {name}, such as a placeholder the prompt
+# explains to its reader.
+_VARIABLE = re.compile(r"(?<!\{)\{([A-Za-z_][A-Za-z0-9_]*)\}(?!\})")
+_ESCAPED = re.compile(r"\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}")
 _KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -278,7 +281,7 @@ def _finalize(body: str, relative: str) -> str:
             "CONCORDE-PROMPT-UNRESOLVED-001",
             f"{relative}: unresolved variable {{{match.group(1)}}} in output",
         )
-    return body
+    return _ESCAPED.sub(r"{\1}", body)
 
 
 def resolve_role_prompt(project_root: str | Path, relative_path: str) -> ResolvedPrompt:

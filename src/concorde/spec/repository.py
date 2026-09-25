@@ -24,8 +24,9 @@ from .errors import system_cause
 from .typed_data import TypedDataError, safe_path
 
 CONFIG_FIELDS = {"profile_version", "registry", "protocol"}
-# Optional sections: configured checks, read here, and the worker settings the harness reads.
-OPTIONAL_CONFIG_FIELDS = {"checks", "workers"}
+# Optional sections: configured checks, read here, and the worker settings and the project
+# interpreter (`python`) that the harness reads.
+OPTIONAL_CONFIG_FIELDS = {"checks", "workers", "python"}
 
 
 def configured_checks(config: dict) -> list[dict]:
@@ -147,7 +148,7 @@ class SpecRepository(DocumentUnitRepository):
         if missing or extra:
             raise SpecError(
                 "the configuration's fields must be profile_version, registry, protocol and "
-                "optionally checks and workers; "
+                "optionally checks, workers and python; "
                 + "; ".join(
                     part
                     for part in (

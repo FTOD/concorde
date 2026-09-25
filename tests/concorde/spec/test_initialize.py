@@ -96,6 +96,37 @@ class InitialModuleTests(unittest.TestCase):
                 "success", validate_repository(root, package_root=PACKAGE).status
             )
 
+    @verifies("scenario.spec.project-python")
+    def test_the_configuration_records_the_projects_own_interpreter(self):
+        def config(root, **options) -> dict:
+            proposal = project_proposal(root, PACKAGE, "New project", **options)
+            content = next(
+                f["content"]
+                for f in proposal["files"]
+                if f["path"] == ".concorde/config.json"
+            )
+            return json.loads(content)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            install_project_defaults(root, PACKAGE)
+            self.assertNotIn("python", config(root))
+            (root / ".venv/bin").mkdir(parents=True)
+            (root / ".venv/bin/python").write_text("")
+            self.assertEqual(".venv/bin/python", config(root)["python"])
+            self.assertEqual(
+                "/opt/env/bin/python",
+                config(root, python="/opt/env/bin/python")["python"],
+            )
+            proposal = project_proposal(root, PACKAGE, "New project")
+            self.assertEqual(
+                "applied", apply_project_proposal(root, PACKAGE, proposal)["status"]
+            )
+            self.assertEqual(
+                ".venv/bin/python",
+                json.loads((root / ".concorde/config.json").read_text())["python"],
+            )
+
     @verifies("scenario.spec.init-installation")
     def test_concorde_installed_files_are_bound_apart(self):
         with tempfile.TemporaryDirectory() as directory:

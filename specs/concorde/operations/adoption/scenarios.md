@@ -30,6 +30,14 @@ shapes are in the [contracts](contracts.md).
 - THEN the result is `ok` with `task` null and a decomposition proposal
 - AND no task record exists or changes
 
+### scenario.adoption.survey-checks — Proposed checks take the configuration's form
+
+- GIVEN a survey whose worker proposes a check with the inputs `src/checkout/` and `tests/` and the env `{"PYTHONPATH": "src"}`
+- WHEN the survey ends
+- THEN the proposed check's inputs are `src/checkout` and `tests`, as configured check inputs are written, and its env is kept
+- AND the worker was asked to name the project's interpreter as `{python}` rather than an interpreter on `PATH`
+- BUT a proposed input that is not a canonical project-relative path, such as `../elsewhere`, fails the survey with `inconsistent_proposal` naming it
+
 ### scenario.adoption.survey-inconsistent — A proposal that does not fit
 
 - GIVEN a survey worker whose proposal gives a child the entry `lib/` that `module.shop` does not bind, and reuses the registered title `Shop`

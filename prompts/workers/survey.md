@@ -41,8 +41,12 @@ change together.
     `reason`.
 - `checks`: configured checks, each with an `id` `check.<module name>.<name>`, the `module` it
   checks (the surveyed Module or a child), the `argv` to run from the project root, a
-  `timeout_seconds`, the `inputs` (paths whose change makes it worth running again) and the
-  `reason` you found it.
+  `timeout_seconds`, the `inputs` (paths whose change makes it worth running again, without a
+  trailing `/`) and the `reason` you found it. A check runs with the project's own interpreter,
+  never Concorde's and never one found on `PATH`: write `{{python}}` for it, such as
+  `["{{python}}", "-m", "pytest", "tests"]`, not a bare `python`, `pytest` or `py.test`. When the
+  code is imported from a directory such as `src/`, add `env` `{"PYTHONPATH": "src"}`, so that the
+  check tests the code of the worktree it runs in rather than an installed copy.
 - `decisions`: every choice the code left open and you took, such as whether two directories are
   one Module or two, or where a shared helper belongs. Give each an `id` `d.<name>`, the `module`
   it concerns, the `question`, at least two `options`, the `chosen` option, the `reason` and

@@ -116,11 +116,14 @@ class BuildTests(unittest.TestCase):
         )
         (root / "prompts/workers/common.md").rename(root / "prompts/common.md")
         (root / "prompts/workers/probe.md").write_text(
-            "---\naudience: worker\n---\n\nProbe.\n\n@prompts/common.md\n"
+            "---\naudience: worker\n---\n\nProbe.\n\nWrite {{python}}, "
+            '{"a": {"b": 1}}.\n\n@prompts/common.md\n'
         )
         result = write_build(root)
         rendered = (root / "generated/workers/probe.md").read_text()
         self.assertIn("Probe.", rendered)
+        # {{name}} is the literal {name}; other braces stay as they are.
+        self.assertIn('Write {python}, {"a": {"b": 1}}.', rendered)
         self.assertIn("Shared rule.", rendered)
         manifest = json.loads((root / "generated/build-manifest.json").read_text())
         self.assertIn("prompts/common.md", manifest["sources"])
