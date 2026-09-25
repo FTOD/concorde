@@ -14,3 +14,7 @@
 	path = references/pi-packages
 	url = https://github.com/gotgenes/pi-packages.git
 	concorde-sparse = /LICENSE /README.md /packages/pi-permission-system/ !/packages/pi-permission-system/test/ !/packages/pi-permission-system/docs/plans/ !/packages/pi-permission-system/docs/retro/ !/packages/pi-permission-system/CHANGELOG.md !*.png !*.jpg !*.gif !*.webp !*.mp4
+[submodule "references/swe-bench"]
+	path = references/swe-bench
+	url = https://github.com/SWE-bench/SWE-bench.git
+	concorde-sparse = /LICENSE /README.md /docs/ /swebench/ !*.png !*.jpg !*.gif !*.webp !*.mp4 !*.svg
