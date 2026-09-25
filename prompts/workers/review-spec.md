@@ -74,8 +74,11 @@ all. Do not pad the list either; a finding without evidence in the Spec is not a
 
 ## Your result
 
-As a `reviewer`, end with status `ok` and `output` set to `{"findings": [...]}`; an empty list
-means you found nothing. As a `checker`, you receive the reviewer's numbered findings. Check each
+As a `reviewer`, end with status `ok` and `output` set to `{"findings": [...], "resolved": [...]}`.
+`findings` holds every new finding and every earlier finding that changed, the latter with
+`earlier` set to its id; `resolved` holds `{"id": ..., "reason": ...}` for each earlier finding the
+Specs no longer have. An earlier finding that still stands as written appears in neither: it stays
+open. Empty lists mean you found nothing new and resolved nothing. As a `checker`, you receive the reviewer's numbered findings. Check each
 one against the same Specs, independently of how confident it sounds, and end with status `ok`
 and `output` set to `{"checks": [...]}`, one `{"finding": <number>, "status": "confirmed" |
 "disputed", "reason": "..."}` per finding: `confirmed` when the Spec text supports the finding as

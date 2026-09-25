@@ -26,9 +26,9 @@ from ..operations.provider import (
     Provider,
     RunContext,
     Stop,
-    spec_cause,
     evidence,
     load_prompt,
+    spec_cause,
     spec_finding,
 )
 from ..spec.repository import SpecRepository
@@ -36,6 +36,7 @@ from ..spec.repository_base import SpecError
 from ..spec.schema import ContractError, validate
 from ..spec.typed_data import TypedDataError, safe_path
 from ..spec.validation import validate_repository
+from . import memory as review_memory
 
 TASK_TYPE = "review-spec"
 DIMENSIONS = ["readability", "obligations", "design", "views", "terminology", "context"]
@@ -65,13 +66,27 @@ REVIEWER_FINDING: dict = {
         "problem": {"type": "string", "minLength": 1},
         "evidence": {"type": "string", "minLength": 1},
         "suggestion": {"type": "string", "minLength": 1},
+        # The id of an earlier finding of the review memory this finding updates.
+        "earlier": {"type": "string", "pattern": review_memory.IDENTITY},
+    },
+}
+RESOLVED: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["id", "reason"],
+    "properties": {
+        "id": {"type": "string", "pattern": review_memory.IDENTITY},
+        "reason": {"type": "string", "minLength": 1},
     },
 }
 REVIEWER_OUTPUT: dict = {
     "type": "object",
     "additionalProperties": False,
     "required": ["findings"],
-    "properties": {"findings": {"type": "array", "items": REVIEWER_FINDING}},
+    "properties": {
+        "findings": {"type": "array", "items": REVIEWER_FINDING},
+        "resolved": {"type": "array", "items": RESOLVED},
+    },
 }
 CHECK_STATUS: dict = {
     "type": "object",
@@ -102,7 +117,49 @@ CHECKER_OUTPUT: dict = {
     },
 }
 
-# contract.spec-review.payload, version 1 (operation.md); a test keeps the two equal.
+CARRIED: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "id",
+        "path",
+        "dimension",
+        "severity",
+        "problem",
+        "evidence",
+        "suggestion",
+    ],
+    "properties": {
+        "id": {"type": "string", "pattern": review_memory.IDENTITY},
+        "path": {"type": "string", "minLength": 1},
+        "anchor": {"type": "string", "minLength": 1},
+        "line": {"type": "integer", "minimum": 1},
+        "dimension": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["blocking", "advisory"]},
+        "problem": {"type": "string", "minLength": 1},
+        "evidence": {"type": "string", "minLength": 1},
+        "suggestion": {"type": "string", "minLength": 1},
+    },
+}
+MEMORY_SUMMARY: dict = {
+    "anyOf": [
+        {"type": "null"},
+        {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["new", "updated", "resolved", "carried", "ignored"],
+            "properties": {
+                "new": {"type": "array", "items": {"type": "string"}},
+                "updated": {"type": "array", "items": {"type": "string"}},
+                "resolved": {"type": "array", "items": RESOLVED},
+                "carried": {"type": "array", "items": CARRIED},
+                "ignored": {"type": "array", "items": RESOLVED},
+            },
+        },
+    ]
+}
+
+# contract.spec-review.payload, version 2 (operation.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "modules"],
@@ -114,7 +171,13 @@ PAYLOAD_SCHEMA: dict = {
             "minItems": 1,
             "items": {
                 "type": "object",
-                "required": ["module", "outcome", "context_identity", "findings"],
+                "required": [
+                    "module",
+                    "outcome",
+                    "context_identity",
+                    "findings",
+                    "memory",
+                ],
                 "additionalProperties": False,
                 "properties": {
                     "module": {"type": "string", "minLength": 1},
@@ -138,9 +201,23 @@ PAYLOAD_SCHEMA: dict = {
                                 "evidence",
                                 "suggestion",
                                 "check",
+                                "id",
                             ],
                             "additionalProperties": False,
                             "properties": {
+                                "id": {
+                                    "anyOf": [
+                                        {"type": "null"},
+                                        {
+                                            "type": "string",
+                                            "pattern": review_memory.IDENTITY,
+                                        },
+                                    ]
+                                },
+                                "earlier": {
+                                    "type": "string",
+                                    "pattern": review_memory.IDENTITY,
+                                },
                                 "module": {"type": "string", "minLength": 1},
                                 "path": {"type": "string", "format": "project-path"},
                                 "anchor": {"type": "string", "minLength": 1},
@@ -154,6 +231,7 @@ PAYLOAD_SCHEMA: dict = {
                             },
                         },
                     },
+                    "memory": MEMORY_SUMMARY,
                 },
             },
         },
@@ -170,11 +248,25 @@ class ModuleReview:
     context_identity: str | None = None
     findings: list[dict] = field(default_factory=list)
     stop: Stop | None = None
+    # The review memory before and after this review, and what the review did to it.
+    memory: dict | None = None
+    merged: dict | None = None
+    summary: dict | None = None
 
     @property
     def outcome(self) -> str:
         if self.stop is not None:
             return "incomplete"
+        if self.merged is not None:
+            # The Module's whole state decides: every open blocking finding, however old.
+            return (
+                "changes_required"
+                if any(
+                    item["severity"] == "blocking"
+                    for item in review_memory.open_findings(self.merged)
+                )
+                else "accepted"
+            )
         standing = [
             item
             for item in self.findings
@@ -377,7 +469,7 @@ def _normalize(ctx: RunContext, review: ModuleReview, claimed: list[dict]):
                     "task worktree",
                 )
             ]
-        finding = {**item, "path": path, "check": None}
+        finding = {**item, "path": path, "check": None, "id": None}
         owners = repository.document_targets.get(path.removesuffix(".json"))
         if owners:
             finding["module"] = owners[0]
@@ -411,9 +503,35 @@ def _checker_material(findings: list[dict]) -> str:
 def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
     """Steps 2 to 6 for one Module; returns the host evidence and sets the review's state."""
     found: list[dict] = []
+    try:
+        review.memory = review_memory.load(ctx.worktree, review.module)
+    except SpecError as error:
+        review.stop = ctx.fail(
+            "failed",
+            "review_memory_unusable",
+            f"The review memory of {review.module} cannot be used.",
+            str(error),
+            reason="input",
+            explanation="a review builds on the Module's earlier findings, which it must be "
+            "able to read as recorded",
+            evidence=[
+                evidence("review-memory", review_memory.memory_path(review.module), "")
+            ],
+            options=[
+                (
+                    f"repair or remove {review_memory.memory_path(review.module)}, then "
+                    "run spec_review again"
+                )
+            ],
+        )
+        return found
     launched = len(ctx.worker_runs)
     outcome = ctx.run_worker(
-        prompt + "\n" + _task_section(ctx, review, "reviewer"),
+        prompt
+        + "\n"
+        + _task_section(ctx, review, "reviewer")
+        + "\n"
+        + review_memory.material(review.memory),
         task_type=TASK_TYPE,
         output_schema=REVIEWER_OUTPUT,
         rounds=0,
@@ -446,8 +564,39 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
         )
         return found
     review.findings = findings
-    if not ctx.arguments.check_findings or not findings:
-        return found
+    resolved = list((outcome.output or {}).get("resolved") or [])
+    if ctx.arguments.check_findings and findings:
+        found.extend(_check(ctx, review, prompt, findings))
+        if review.stop is not None:
+            return found
+    review.merged, review.summary = review_memory.merge(
+        review.memory, ctx.run_id, findings, resolved
+    )
+    if ctx.project_scope:
+        found.append(
+            evidence(
+                "review-memory",
+                review_memory.memory_path(review.module),
+                "read only: a review without a task records nothing",
+            )
+        )
+    else:
+        written = review_memory.write(ctx.worktree, review.module, review.merged)
+        found.append(
+            evidence(
+                "review-memory",
+                written,
+                f"{len(review.summary['new'])} new, {len(review.summary['updated'])} "
+                f"updated, {len(review.summary['resolved'])} resolved, "
+                f"{len(review.summary['carried'])} carried",
+            )
+        )
+    return found
+
+
+def _check(ctx: RunContext, review: ModuleReview, prompt: str, findings: list[dict]):
+    """The checker of one Module's findings; sets their ``check`` or the review's stop."""
+    found: list[dict] = []
     outcome = ctx.run_worker(
         prompt
         + "\n"
@@ -494,6 +643,7 @@ def derive_verdict(ctx: RunContext):
             "outcome": review.outcome,
             "context_identity": review.context_identity,
             "findings": review.findings,
+            "memory": review.summary,
         }
         for review in reviews
     ]
@@ -505,10 +655,10 @@ def derive_verdict(ctx: RunContext):
     incomplete = [review for review in reviews if review.stop is not None]
     standing = sum(
         1
-        for item in modules
-        for finding in item["findings"]
-        if finding["severity"] == "blocking"
-        and (finding["check"] is None or finding["check"]["status"] != "disputed")
+        for review in reviews
+        if review.merged is not None
+        for item in review_memory.open_findings(review.merged)
+        if item["severity"] == "blocking"
     )
     counts = f"{standing} blocking finding(s) stand"
     if not incomplete:

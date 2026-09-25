@@ -12,6 +12,7 @@ from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
+from concorde.spec_review.memory import MEMORY_SCHEMA
 from concorde.spec_review.operation import PAYLOAD_SCHEMA
 from tests.concorde.support.operation_project import (
     OperationProject,
@@ -108,7 +109,15 @@ class SpecReviewTests(unittest.TestCase):
             ["advisory"], [item["severity"] for item in module["findings"]]
         )
         self.assertIsNone(module["findings"][0]["check"])
-        self.assertEqual("", self.status())
+        # The review changes nothing but the Module's review memory, which keeps the advisory.
+        self.assertEqual("?? .concorde/reviews/\n", self.status())
+        memory = json.loads(
+            (self.worktree / ".concorde/reviews/spec/module.a.json").read_text()
+        )
+        self.assertEqual(
+            [("f.1", "open", "advisory")],
+            [(f["id"], f["status"], f["severity"]) for f in memory["findings"]],
+        )
         self.assertEqual(1, len(envelope["worker_runs"]))
         brief = self.brief(envelope["worker_runs"][0])
         self.assertIn("You are a Concorde Spec reviewer", brief)
@@ -183,6 +192,110 @@ class SpecReviewTests(unittest.TestCase):
         self.assertIn("Finding 1:", brief)
         checker_grant = self.record(envelope["worker_runs"][1])
         self.assertEqual(self.identity("module.a"), checker_grant["context_identity"])
+
+    def remembered(self, *findings):
+        """A task whose worktree holds a review memory with ``findings`` open."""
+        return {
+            "schema_version": 1,
+            "module": "module.a",
+            "findings": [
+                {
+                    "id": identity,
+                    "status": "open",
+                    "path": "specs/a/module.md",
+                    "dimension": "obligations",
+                    "severity": severity,
+                    "problem": f"Earlier problem {identity}.",
+                    "evidence": "Quoted text.",
+                    "suggestion": "Rewrite it.",
+                    "first_run": "r-earlier",
+                    "last_run": "r-earlier",
+                    "resolution": None,
+                }
+                for identity, severity in findings
+            ],
+        }
+
+    def review_with_memory(self, memory, plans):
+        goal = "Review the Specs.\nFAKE-PLANS: " + json.dumps(plans)
+        self.project.open_task("t1", modules=("module.a",), goal=goal)
+        self.worktree = self.project.worktree("t1")
+        path = self.worktree / ".concorde/reviews/spec/module.a.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(memory))
+        status, envelope = self.project.run(
+            "spec_review", "--task", "t1", "--modules", "module.a"
+        )
+        return status, envelope, json.loads(path.read_text())
+
+    @verifies("scenario.spec-review.memory")
+    def test_a_repeated_review_adds_updates_resolves_and_carries(self):
+        memory = self.remembered(
+            ("f.1", "blocking"), ("f.2", "blocking"), ("f.3", "advisory")
+        )
+        updated = finding(
+            "specs/a/module.md", earlier="f.2", problem="Changed problem."
+        )
+        status, envelope, after = self.review_with_memory(
+            memory,
+            {
+                "reviewer module.a": [
+                    {
+                        "result": {
+                            "output": {
+                                "findings": [
+                                    updated,
+                                    finding("specs/a/module.md", "advisory"),
+                                ],
+                                "resolved": [
+                                    {"id": "f.3", "reason": "The Usage was rewritten."},
+                                    {"id": "f.9", "reason": "No such finding."},
+                                ],
+                            }
+                        }
+                    }
+                ]
+            },
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        # f.1 was not mentioned: it is carried, still open and blocking, so changes are required.
+        self.assertEqual("changes_required", module["outcome"])
+        self.assertEqual(["f.2", "f.4"], [item["id"] for item in module["findings"]])
+        summary = module["memory"]
+        self.assertEqual((["f.4"], ["f.2"]), (summary["new"], summary["updated"]))
+        self.assertEqual(
+            [{"id": "f.3", "reason": "The Usage was rewritten."}], summary["resolved"]
+        )
+        self.assertEqual(["f.1"], [item["id"] for item in summary["carried"]])
+        self.assertEqual(["f.9"], [item["id"] for item in summary["ignored"]])
+        state = {item["id"]: item for item in after["findings"]}
+        self.assertEqual("Changed problem.", state["f.2"]["problem"])
+        self.assertEqual("resolved", state["f.3"]["status"])
+        self.assertEqual(envelope["run_id"], state["f.4"]["first_run"])
+        brief = self.brief(envelope["worker_runs"][0])
+        self.assertIn("Earlier problem f.1.", brief)
+        self.assertNotIn("r-earlier", brief)
+
+    @verifies("scenario.spec-review.memory")
+    def test_resolving_every_earlier_blocking_finding_accepts_the_module(self):
+        _, envelope, after = self.review_with_memory(
+            self.remembered(("f.1", "blocking")),
+            {
+                "reviewer module.a": [
+                    {
+                        "result": {
+                            "output": {
+                                "findings": [],
+                                "resolved": [{"id": "f.1", "reason": "Split."}],
+                            }
+                        }
+                    }
+                ]
+            },
+        )
+        self.assertEqual("accepted", envelope["output"]["verdict"], envelope)
+        self.assertEqual("resolved", after["findings"][0]["status"])
 
     @verifies("scenario.spec-review.checker")
     def test_a_confirmed_finding_still_requires_changes(self):
@@ -278,6 +391,7 @@ class SpecReviewTests(unittest.TestCase):
                 "outcome": "incomplete",
                 "context_identity": None,
                 "findings": [],
+                "memory": None,
             },
             output["modules"][0],
         )
@@ -379,6 +493,13 @@ class PayloadContractTests(unittest.TestCase):
         ]
         self.assertEqual(contract["schema"], PAYLOAD_SCHEMA)
         validate(contract["example"], PAYLOAD_SCHEMA)
+        (memory,) = [
+            item
+            for item in repository.contracts("module.spec-review")
+            if item["id"] == "contract.spec-review.memory"
+        ]
+        self.assertEqual(memory["schema"], MEMORY_SCHEMA)
+        validate(memory["example"], MEMORY_SCHEMA)
 
 
 if __name__ == "__main__":

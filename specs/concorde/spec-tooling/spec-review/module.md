@@ -16,6 +16,7 @@ code (Code review).
 | Spec review | One run of the `spec_review` Operation, which judges the Specs of the named Modules of one task worktree and returns findings and a verdict. |
 | Review finding | One problem a reviewer establishes in a reviewed Module's documents, with its location, dimension, severity, evidence and a suggested repair. |
 | Review verdict | The outcome of a Spec review, derived by the host from the findings: `accepted`, `changes_required` or `incomplete`. |
+| Review memory | The findings the Spec reviews of one Module have kept, open or resolved, each under a stable id, tracked with the project so that a repeated review builds on them. |
 | [Operation](../../operations/module.md#concept.operations.operation) | |
 | [Operation host](../../operations/module.md#concept.operations.host) | |
 | [Operation result](../../operations/module.md#concept.operations.result) | |
@@ -63,12 +64,26 @@ Module without findings needs no checker.
 
 <a id="concept.spec-review.verdict"></a>
 
-The **review verdict** is `accepted` when no blocking finding stands (none existed, or the checker
-disputed every one), `changes_required` when one does, and `incomplete` when a Module could not be
-reviewed — failed structural validation, a blocked/failed worker, or an audit-found change. It
-carries every reviewed Module's context identity and stops applying once any of those Specs
-changes. The main agent decides what to act on, logs that decision, and reruns `specify` for
-changes; Spec review itself changes nothing.
+The **review verdict** is `accepted` when no blocking finding stands in any reviewed Module's
+review memory, `changes_required` when one does, whether this review reported it or an earlier
+one did and it still stands, and `incomplete` when a Module could not be reviewed — failed
+structural validation, a blocked/failed worker, or an audit-found change. It carries every
+reviewed Module's context identity and stops applying once any of those Specs changes. The main
+agent decides what to act on, logs that decision, and reruns `specify` for changes; Spec review
+itself changes no Spec.
+
+<a id="concept.spec-review.memory"></a>
+
+The **review memory** keeps a Module's review history, so that a repeated review neither forgets
+earlier findings nor reports them again as new
+([contract](operation.md#contract.spec-review.memory)). It is one file per Module,
+`.concorde/reviews/spec/<module>.json`, tracked with the project and committed by the task's
+delivery, so every task and every collaborator reviews against the same history. The reviewer
+receives the Module's open earlier findings and returns only new findings, earlier findings that
+changed (naming their id) and earlier findings the Specs no longer have (with the reason); an
+earlier finding it leaves out still stands. The host merges that into the memory, giving each new
+finding the next id, keeps out a finding the checker disputed, and reports what was new, updated,
+resolved and carried. A review without a task reads the memory and writes nothing.
 
 ## Design
 

@@ -54,6 +54,15 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 - THEN A's outcome is `incomplete` and the verdict is `incomplete`
 - AND the result's error is the Operation's `review_incomplete` link whose cause for A ends in the reviewer's own link with its detail, attempts and options unchanged
 
+### scenario.spec-review.memory — A repeated review builds on the memory
+
+- GIVEN a task whose review memory of `module.a` holds the open blocking findings `f.1` and `f.2` and the open advisory `f.3`
+- WHEN a reviewer, given those earlier findings, reports `f.2` changed, one new advisory finding, and `f.3` and an unknown `f.9` resolved
+- THEN the memory keeps `f.2` with its new content, adds the new finding as `f.4`, marks `f.3` resolved with the reason and keeps `f.1` open
+- AND the result lists `f.4` as new, `f.2` as updated, `f.3` as resolved, `f.1` as carried in full and `f.9` as ignored
+- AND the outcome is `changes_required`, since `f.1` still stands
+- BUT once every earlier blocking finding is resolved, the outcome is `accepted`
+
 ### scenario.spec-review.audit-change — A reviewer that changed a file
 
 - GIVEN a reviewer after which the worktree has a changed file

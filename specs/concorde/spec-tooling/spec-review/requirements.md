@@ -5,9 +5,13 @@ requirement belongs to the Module as a whole.
 
 ## Scope
 
-### req.spec-review.never-edits — Review never changes a file
+### req.spec-review.never-edits — Review changes no file but its memory
 
-Spec review SHALL NOT create, change or delete any file of the task worktree.
+Spec review SHALL NOT create, change or delete any file of the task worktree other than the reviewed Modules' review memories.
+
+### req.spec-review.memory — A repeated review builds on the memory
+
+A Spec review inside a task SHALL merge its findings into each reviewed Module's review memory, keeping every earlier finding it does not update or resolve open.
 
 ### req.spec-review.review-spec-grant — Reviewers read under a review-spec grant
 
@@ -28,7 +32,8 @@ one run rather than stopping at the first.
 ### req.spec-review.host-verdict — The host derives the verdict
 
 The verdict SHALL be derived by the host from the Modules' outcomes by the rule of the review
-payload contract, never taken from a worker's statement.
+payload contract, a Module's outcome from every open finding of its review memory, never taken
+from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
 

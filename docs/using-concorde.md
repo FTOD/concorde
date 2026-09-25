@@ -369,16 +369,20 @@ concorde run validate    --task retry
 concorde run delivery    --task retry
 ```
 
-| Operation     | Worker       | What it does                                                                                                                  |
-| ------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `understand`  | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                |
-| `specify`     | writes Specs | Changes the bound Modules' own Spec documents, including declaring files that do not exist yet.                               |
-| `implement`   | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds). |
-| `test`        | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                          |
-| `spec_review` | reads only   | Reviews the bound Modules' Specs and reports every blocking finding (`--check-findings` has each finding checked).            |
-| `code_review` | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                      |
-| `validate`    | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                |
-| `delivery`    | none         | Deterministic: validates the whole task again, then commits its evidence bundle on the task branch.                           |
+| Operation     | Worker       | What it does                                                                                                                                                         |
+| ------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `understand`  | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                       |
+| `specify`     | writes Specs | Changes the bound Modules' own Spec documents, including declaring files that do not exist yet.                                                                      |
+| `implement`   | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                        |
+| `test`        | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                 |
+| `spec_review` | reads only   | Reviews the bound Modules' Specs against their review memory: reports new findings, updates and resolves earlier ones (`--check-findings` has each finding checked). |
+| `code_review` | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                                                             |
+| `validate`    | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                       |
+| `delivery`    | none         | Deterministic: validates the whole task again, then commits its evidence bundle on the task branch.                                                                  |
+
+Spec reviews keep a **review memory** per Module in `.concorde/reviews/spec/`, committed with the
+task. A repeated review reports only what is new, what changed and what was fixed, and a Module
+stays `changes_required` while any earlier blocking finding is still open.
 
 A typical task runs `understand`, `specify` when the Spec must change first, `implement` and `test`,
 the reviews when the change deserves them, and then `validate` and `delivery`. Steps are repeated

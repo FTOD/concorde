@@ -25,11 +25,11 @@ another. Step 1 validates the task worktree once for all Modules.
 | --- | --- | --- | --- |
 | 1 | Load the task worktree's Specs and validate the Module | host (Spec core) | loading error: the Operation fails; structural error in the Module's own documents or about the Module or a node it defines: the Module is `incomplete`, with the findings as host evidence |
 | 2 | Compute the `review-spec` grant for the Module with the task worktree as root and freeze it with its context identity | host (Spec core) | the Module is `incomplete` |
-| 3 | Generate the reviewer's settings, tool list and brief from the grant and the Reviewer brief | host (Workers) | the Operation fails |
+| 3 | Read the Module's review memory; generate the reviewer's settings, tool list and brief from the grant, the Reviewer brief and the memory's open findings | host (Workers) | an unusable memory: the Module is `incomplete` (`review_memory_unusable`); otherwise the Operation fails |
 | 4 | Launch the reviewer and wait for its worker result with findings; there is one round and no resume | host (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
 | 5 | Audit that the worktree has no change | host (Workers) | any change: the Module is `incomplete`, with the audit violations as host evidence |
 | 6 | With `--check-findings` and at least one finding, launch the checker under the same grant with the reviewer's numbered findings as task material, then audit again | host (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
-| 7 | Normalize the findings and derive the Module's outcome from them | host | a finding whose path is not in the task worktree: the Module is `incomplete`, with `invalid-output` evidence |
+| 7 | Normalize the findings, merge them and the resolutions into the review memory (written only inside a task), and derive the Module's outcome from the memory's open findings | host | a finding whose path is not in the task worktree: the Module is `incomplete`, with `invalid-output` evidence |
 | 8 | Write a run record per worker | host (Workers) | the Operation fails |
 
 After every Module is done, the host derives the verdict and returns the Operation result. No step
@@ -82,54 +82,300 @@ The Operation result carries this payload:
 ```concorde-contract
 {
   "id": "contract.spec-review.payload",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
-    "required": ["verdict", "modules"],
+    "required": [
+      "verdict",
+      "modules"
+    ],
     "additionalProperties": false,
     "properties": {
-      "verdict": {"enum": ["accepted", "changes_required", "incomplete"]},
+      "verdict": {
+        "enum": [
+          "accepted",
+          "changes_required",
+          "incomplete"
+        ]
+      },
       "modules": {
         "type": "array",
         "minItems": 1,
         "items": {
           "type": "object",
-          "required": ["module", "outcome", "context_identity", "findings"],
+          "required": [
+            "module",
+            "outcome",
+            "context_identity",
+            "findings",
+            "memory"
+          ],
           "additionalProperties": false,
           "properties": {
-            "module": {"type": "string", "minLength": 1},
-            "outcome": {"enum": ["accepted", "changes_required", "incomplete"]},
-            "context_identity": {"anyOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]},
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outcome": {
+              "enum": [
+                "accepted",
+                "changes_required",
+                "incomplete"
+              ]
+            },
+            "context_identity": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "findings": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["module", "path", "dimension", "severity", "problem", "evidence", "suggestion", "check"],
+                "required": [
+                  "module",
+                  "path",
+                  "dimension",
+                  "severity",
+                  "problem",
+                  "evidence",
+                  "suggestion",
+                  "check",
+                  "id"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "module": {"type": "string", "minLength": 1},
-                  "path": {"type": "string", "format": "project-path"},
-                  "anchor": {"type": "string", "minLength": 1},
-                  "line": {"type": "integer", "minimum": 1},
-                  "dimension": {"enum": ["readability", "obligations", "design", "views", "terminology", "context"]},
-                  "severity": {"enum": ["blocking", "advisory"]},
-                  "problem": {"type": "string", "minLength": 1},
-                  "evidence": {"type": "string", "minLength": 1},
-                  "suggestion": {"type": "string", "minLength": 1},
-                  "check": {"anyOf": [
-                    {"type": "null"},
-                    {"type": "object", "required": ["status", "reason"], "additionalProperties": false,
-                     "properties": {"status": {"enum": ["confirmed", "disputed"]}, "reason": {"type": "string", "minLength": 1}}}
-                  ]}
+                  "id": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^f\\.[1-9][0-9]*$"
+                      }
+                    ]
+                  },
+                  "earlier": {
+                    "type": "string",
+                    "pattern": "^f\\.[1-9][0-9]*$"
+                  },
+                  "module": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "path": {
+                    "type": "string",
+                    "format": "project-path"
+                  },
+                  "anchor": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "dimension": {
+                    "enum": [
+                      "readability",
+                      "obligations",
+                      "design",
+                      "views",
+                      "terminology",
+                      "context"
+                    ]
+                  },
+                  "severity": {
+                    "enum": [
+                      "blocking",
+                      "advisory"
+                    ]
+                  },
+                  "problem": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "suggestion": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "check": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "status",
+                          "reason"
+                        ],
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "confirmed",
+                              "disputed"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ]
+                  }
                 }
               }
+            },
+            "memory": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "new",
+                    "updated",
+                    "resolved",
+                    "carried",
+                    "ignored"
+                  ],
+                  "properties": {
+                    "new": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "updated": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "resolved": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "reason"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^f\\.[1-9][0-9]*$"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    },
+                    "carried": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "path",
+                          "dimension",
+                          "severity",
+                          "problem",
+                          "evidence",
+                          "suggestion"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^f\\.[1-9][0-9]*$"
+                          },
+                          "path": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "anchor": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "line": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "dimension": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "severity": {
+                            "enum": [
+                              "blocking",
+                              "advisory"
+                            ]
+                          },
+                          "problem": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "evidence": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "suggestion": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    },
+                    "ignored": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "reason"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^f\\.[1-9][0-9]*$"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
             }
           }
         }
       }
     }
   },
-  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed, changes_required when a blocking finding about its own documents is not disputed, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings are reviewer claims; check is null when no checker ran. context_identity is null only when no grant could be computed.",
+  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed, changes_required when a blocking finding about its own documents is not disputed, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings are reviewer claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each Module's outcome is the state of its review memory after this review: any open blocking finding, reported now or carried from an earlier review, requires changes. Each reported finding has the memory id it was kept under, or null when a checker disputed it; earlier names the earlier finding it updates. memory lists the ids this review added and updated, the earlier findings it resolved with their reasons, the open earlier findings it carried unchanged in full, and resolutions it ignored because they named no open finding; it is null when the Module was not reviewed. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -147,9 +393,170 @@ The Operation result carries this payload:
             "problem": "The requirement states two obligations in one sentence.",
             "evidence": "Checkout SHALL create one order and SHALL notify the customer.",
             "suggestion": "Split the notification into its own requirement.",
-            "check": {"status": "confirmed", "reason": "Both obligations are independently testable."}
+            "check": {
+              "status": "confirmed",
+              "reason": "Both obligations are independently testable."
+            },
+            "id": "f.1"
           }
-        ]
+        ],
+        "memory": {
+          "new": [
+            "f.1"
+          ],
+          "updated": [],
+          "resolved": [],
+          "carried": [],
+          "ignored": []
+        }
+      }
+    ]
+  }
+}
+```
+
+### Review memory
+
+<a id="contract.spec-review.memory"></a>
+
+```concorde-contract
+{
+  "id": "contract.spec-review.memory",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "module",
+      "findings"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": 1
+      },
+      "module": {
+        "type": "string",
+        "minLength": 1
+      },
+      "findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "status",
+            "path",
+            "dimension",
+            "severity",
+            "problem",
+            "evidence",
+            "suggestion",
+            "first_run",
+            "last_run",
+            "resolution"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^f\\.[1-9][0-9]*$"
+            },
+            "status": {
+              "enum": [
+                "open",
+                "resolved"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "anchor": {
+              "type": "string",
+              "minLength": 1
+            },
+            "line": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "dimension": {
+              "type": "string",
+              "minLength": 1
+            },
+            "severity": {
+              "enum": [
+                "blocking",
+                "advisory"
+              ]
+            },
+            "problem": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence": {
+              "type": "string",
+              "minLength": 1
+            },
+            "suggestion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "first_run": {
+              "type": "string",
+              "minLength": 1
+            },
+            "last_run": {
+              "type": "string",
+              "minLength": 1
+            },
+            "resolution": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "minLength": 1
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "semantics": "The review memory of one Module, .concorde/reviews/spec/<module>.json, tracked with the project: every finding the Spec reviews of the Module kept, each with a stable id f.<n> never reused, its content as last reported, status open or resolved, the runs that first and last reported or resolved it, and the resolution reason once resolved. Only a spec_review inside a task writes it, merging its review into it; a review without a task reads it. A behaviour or field change increments the version.",
+  "example": {
+    "schema_version": 1,
+    "module": "module.checkout",
+    "findings": [
+      {
+        "id": "f.1",
+        "status": "resolved",
+        "path": "specs/checkout/requirements.md",
+        "anchor": "req.checkout.single-order",
+        "dimension": "obligations",
+        "severity": "blocking",
+        "problem": "The requirement holds two obligations.",
+        "evidence": "The checkout SHALL hold stock and SHALL create one order.",
+        "suggestion": "Split it into two requirements.",
+        "first_run": "r-20260926T101500-spec_review-0a1b2c3d",
+        "last_run": "r-20260926T113000-spec_review-4e5f6a7b",
+        "resolution": "The requirement was split into two."
+      },
+      {
+        "id": "f.2",
+        "status": "open",
+        "path": "specs/checkout/module.md",
+        "dimension": "readability",
+        "severity": "advisory",
+        "problem": "Usage names the retry limit before defining it.",
+        "evidence": "Retries stop at the limit.",
+        "suggestion": "Define the retry limit first.",
+        "first_run": "r-20260926T113000-spec_review-4e5f6a7b",
+        "last_run": "r-20260926T113000-spec_review-4e5f6a7b",
+        "resolution": null
       }
     ]
   }

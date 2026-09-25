@@ -77,6 +77,12 @@
       "meaning": "#concept.spec-review.verdict"
     },
     {
+      "id": "concept.spec-review.memory",
+      "type": "concept",
+      "title": "Review memory",
+      "meaning": "#concept.spec-review.memory"
+    },
+    {
       "id": "realization.spec-review.operation",
       "type": "realization",
       "title": "Review host",
