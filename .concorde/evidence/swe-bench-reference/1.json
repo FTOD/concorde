@@ -1,0 +1,42 @@
+{
+  "task": "swe-bench-reference",
+  "goal": "Vendor SWE-bench as an external reference of Adoption, the benchmark whose projects the brownfield workflow is tried on",
+  "modules": [
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "58907cd082b6cef0f38b1423c3855e4cd41a63cb",
+  "parent_commit": "6c9c993f0dac94c1673740d0bfe4ca54822a7852",
+  "readiness": {
+    "run_id": "r-20260925T121948-delivery-f9a20429",
+    "input_digest": "sha256:a96d9758acd08dafa3a521019edd6b208aa94f34f28263627c5e67bb3430de55",
+    "modules": [
+      "module.adoption",
+      "module.concorde"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:466a3443e585e7c52de5d0414e19011a055bdc0779f63635daf99af565d607a6"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T121934-validate-e53030c2",
+      "operation": "validate",
+      "modules": [
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:93c9e7a222fd03b52e4eda37109aeaa01a087dc4aa813d338016eda3f9080236"
+    }
+  ],
+  "created_at": "2026-09-25T12:20:02Z"
+}
