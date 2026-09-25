@@ -88,6 +88,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the developer's rules and other settings are unchanged, the missing workflow rules are added and the rule no longer shipped is removed
 - BUT a `.claude/settings.json` that is not a JSON object is refused with `settings_invalid` before anything is written
 
+### scenario.distribution.update — Updating Concorde in a project
+
+- GIVEN an initialized project with an open task, installed from a checkout whose Protocol has since changed
+- WHEN the developer runs `concorde update`
+- THEN the configuration binds the new Protocol copy, the result names the bindings before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
+- AND while a Spec is broken, `concorde validate` also reports `CONCORDE-UPDATE-001` and the mark stays
+- AND the first validation that passes reports `CONCORDE-UPDATE-002` and removes the mark
+
 ### scenario.distribution.own-python — Concorde ignores the caller's Python
 
 - GIVEN a project where Concorde is installed

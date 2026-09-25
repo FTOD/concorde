@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -239,7 +240,99 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
         return registry_command(root, write=arguments.write)
     from ..spec.validation import validate_repository
 
-    return validate_repository(root, arguments.target)
+    return with_update_state(root, validate_repository(root, arguments.target))
+
+
+def with_update_state(root: Path, result):
+    """A validation of a project Concorde was updated in: while `concorde update`'s state is
+    there, the project is Concorde unvalidated, which is an error; the first validation that
+    passes removes the state. Only the update sets it, so the project's own changes never do."""
+    from dataclasses import replace
+
+    from ..spec.model import Finding
+    from .install import UPDATE_STATE
+
+    path = root / UPDATE_STATE
+    if not path.is_file():
+        return result
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        state = {}
+    versions = f"from {state.get('from')} to {state.get('to')}"
+    if result.status == "success":
+        path.unlink(missing_ok=True)
+        return replace(
+            result,
+            findings=tuple(result.findings)
+            + (
+                Finding(
+                    "CONCORDE-UPDATE-002",
+                    "info",
+                    UPDATE_STATE,
+                    f"the update of Concorde {versions} is validated: the project validates "
+                    "with the new Concorde",
+                    "Nothing to do.",
+                ),
+            ),
+        )
+    return replace(
+        result,
+        status="invalid",
+        findings=tuple(result.findings)
+        + (
+            Finding(
+                "CONCORDE-UPDATE-001",
+                "error",
+                UPDATE_STATE,
+                f"Concorde was updated {versions} and the project has not validated since: "
+                "it is Concorde unvalidated until the other findings are repaired",
+                "Repair the other findings and run `concorde validate` again.",
+            ),
+        ),
+    )
+
+
+def update_main(words: list[str]) -> int:
+    """`concorde update [--from <checkout>] [--python <interpreter>]`: run the installer of the
+    Concorde checkout this project was installed from (or ``--from``) in update mode."""
+    import subprocess
+
+    parser = argparse.ArgumentParser(prog="concorde update")
+    parser.add_argument("--from", dest="source")
+    parser.add_argument("--python")
+    parser.add_argument("--project-root", default=".")
+    arguments = parser.parse_args(words)
+    root = Path(arguments.project_root).resolve()
+    try:
+        receipt = json.loads((root / ".concorde/install.json").read_text())
+    except (OSError, ValueError) as error:
+        receipt = {}
+        problem = f"{root / '.concorde/install.json'} cannot be read ({error})"
+    else:
+        problem = None
+    source = arguments.source or receipt.get("source")
+    installer = Path(source or ".") / "scripts/install-concorde.py"
+    if not source or not installer.is_file():
+        detail = problem or (
+            "the receipt names no Concorde checkout to update from"
+            if not source
+            else f"{installer} does not exist"
+        )
+        sys.stdout.write(
+            json.dumps(
+                {
+                    "error": "update_source_missing",
+                    "message": f"{detail}; pass the checkout with --from",
+                }
+            )
+            + "\n"
+        )
+        return 1
+    command = [sys.executable, str(installer), str(root), "--update"]
+    if arguments.python:
+        command += ["--python", arguments.python]
+    return subprocess.run(command, check=False).returncode
 
 
 def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
@@ -373,6 +466,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         from ..operations.host import main as run_main
 
         return run_main(words[1:])
+    if words and words[0] == "update":
+        return update_main(words[1:])
     requested = next((word for word in words if word in TOOLS), "validate")
     arguments: argparse.Namespace | None = None
     try:
