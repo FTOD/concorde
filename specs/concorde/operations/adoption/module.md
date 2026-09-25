@@ -275,8 +275,9 @@ apply to a proposal.
 
 <a id="realization.adoption.tests"></a>
 
-The **Adoption tests**, under `tests/concorde/adoption/`, run the three Operations against small
-existing codebases with a fake worker, verifying the [requirements](requirements.md) and
+The **Adoption tests**, under `tests/concorde/adoption/` with the existing-codebase fixture
+`tests/concorde/support/brownfield_project.py` they share with Workflows, run the three Operations
+against a small existing codebase with a fake worker, verifying the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
 ## Relationships

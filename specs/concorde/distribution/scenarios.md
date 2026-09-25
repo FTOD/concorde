@@ -17,8 +17,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN a workflow catalog with the brownfield workflow
 - WHEN the developer runs `build`
 - THEN `generated/workflows/claude/concorde-brownfield.js` starts with a `meta` block naming `concorde-brownfield`, followed by the Claude Code step adapter and the procedure
-- AND `generated/workflows/pi/brownfield.js` holds the pi step adapter and the same procedure, and `generated/workflows/pi/agents/concorde-step.md` the command-runner agent
-- AND the build manifest records all three
+- AND `generated/workflows/pi/brownfield.js` holds the pi step adapter and the same procedure, and `generated/workflows/pi/agents/` the command-runner agents `concorde-step.md` and `concorde-report.md`
+- AND the build manifest records all four
 
 ### scenario.distribution.build-check-stale — Report a stale build without writing
 
@@ -107,6 +107,6 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer installs Concorde with `--pi`
 - THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile
 - AND the run view is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
-- AND every rendered pi workflow script is under `.concorde/workflows/pi/` and the command-runner agent at `.pi/agents/concorde-step.md`
+- AND every rendered pi workflow script is under `.concorde/workflows/pi/` and the command-runner agents `concorde-step` and `concorde-report` under `.pi/agents/`
 - AND a second install with the same lockfile does not run npm again
 - BUT without npm the install is refused before anything else is written

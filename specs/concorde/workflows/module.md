@@ -128,8 +128,9 @@ helper functions, so that the same source runs in both clients. The build wraps 
 Claude Code with a `meta` block and a step function whose **step agent** is a subagent that runs the
 step command, runs it again while it exits with 3, and returns the JSON it printed; for pi with a
 step function whose step agent is the installed command-runner agent `concorde-step`, which runs
-`concorde workflow step --stdin` without a model. A step agent only relays; what counts is what the
-host recorded.
+`concorde workflow step --stdin` without a model, and a report through its twin `concorde-report`,
+which runs `concorde workflow report --stdin`. Both read the JSON object in the prompt pi-subagents
+hands them. A step agent only relays; what counts is what the host recorded.
 
 <a id="concept.workflows.result"></a>
 
@@ -254,13 +255,14 @@ outcome and workflow result schemas.
 <a id="realization.workflows.scripts"></a>
 
 The **Workflow scripts** realization holds each workflow's procedure (`brownfield.js`), the Claude
-Code and pi step adapters the build wraps it with, and the definition of the pi command-runner agent
-`concorde-step`.
+Code and pi step adapters the build wraps it with, and the definitions of the pi command-runner
+agents `concorde-step` and `concorde-report`.
 
 <a id="realization.workflows.tests"></a>
 
-The **Workflows tests**, under `tests/concorde/workflows/`, run the step and report commands against
-real task records and fake Operation hosts, and run the rendered scripts with both adapters in a
+The **Workflows tests**, under `tests/concorde/workflows/` with the existing-codebase fixture
+`tests/concorde/support/brownfield_project.py`, run the step and report commands against real task
+records and stand-in Operation results, one step through a real detached run, and run the rendered scripts with both adapters in a
 small JavaScript sandbox that stands in for the client runtime, verifying the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 

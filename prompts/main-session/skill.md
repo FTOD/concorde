@@ -64,8 +64,8 @@ Start each Operation in the background; you are woken when it ends:
 Each run prints or reports one JSON Operation result and saves it as
 `.concorde/runs/<run-id>/result.json` of the primary worktree.
 
-Some Operations also run without a task: `understand`, `spec_review`, `code_review` (with
-`--base`) and `configure_workers`. Without `--task` they run only from the primary worktree and
+Some Operations also run without a task: `understand`, `survey`, `spec_review`, `code_review`
+(with `--base`) and `configure_workers`. Without `--task` they run only from the primary worktree and
 work on it, with the Modules you name in `--modules`; their result has `task`
 null, and they change no Spec or code, since a run without a task launches only reading workers.
 Use them for a question or a review that does not justify a task, such as understanding a Module
@@ -91,6 +91,45 @@ again itself, so `validate` before it is a preview of what would block.
 `--input <run-id>` passes the output of an earlier `ok` run of the same task, such as a plan, to
 the next worker. In the primary worktree you may do housekeeping that changes no Spec meaning and
 no code behaviour directly, such as `concorde registry --write`.
+
+## Workflows
+
+A task that follows a known procedure runs as a **workflow**: a preset task whose Operations run
+in a fixed order, one at a time, ending with one workflow result. Open the task as usual, then
+start the workflow from the primary worktree and stay there while it runs: in Claude Code the
+installed workflow `/concorde-<name>` (the Workflow tool with that name), in pi the `subagent` tool
+with `workflowScriptPath: ".concorde/workflows/pi/<name>.js"`. Both take `args`:
+
+```json
+{"task": "<task>", "module": "<module>", "mode": "interactive", "answers": {}, "retry": []}
+```
+
+Ask the developer which **mode** to use unless they already said: `interactive` when they are
+present (the workflow ends at every point that needs them), `no-ask` when they want the result
+later (the workflow decides those points itself and reports every decision at the end).
+
+The workflow ends with `concorde workflow report`, saved as `.concorde/tasks/<task>.workflow.json`
+and appended to the decision log; read that file rather than what the workflow's agents relayed.
+Treat it like an Operation result: read every problem's chain, and merge the task when `delivery`
+ended `ok`. When its status is `awaiting_decision`, put every point in `pending` to the developer
+at once, with its options and recommendation (AskUserQuestion in Claude Code), and start the same
+workflow again with `answers` mapping each step's base key (such as `survey` or
+`describe:module.checkout`) to every answer given for it so far, each
+`{"id": "<d. or q. identity>", "question": "<its text>", "answer": "<the answer>"}`. Steps that
+finished are not run again. When a step failed, repair the cause and start it again with its base
+key in `retry`; everything after it runs again. `concorde workflow report --task <task>` rebuilds
+the result at any time.
+
+**Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in
+a project whose code came before its Specs, describe that code with the `brownfield` workflow: open
+a task bound to the root Module (or to the Module to split) and run it with `module` set to that
+Module. It surveys the code, scaffolds child Modules, describes each Module's code with
+`code_to_spec`, reviews, validates and delivers. Its workers write down behaviour as it is and
+report doubtful intent as open questions instead of promises; show the developer the open
+questions, the decisions and the checks the survey proposed, which are never configured
+automatically: add the ones the developer accepts to `.concorde/config.json` in a task. Splitting a
+created Module further is a new task running the workflow on that Module. Never use `code_to_spec`
+for a project that is already specified: there, a missing promise is a Spec gap for `specify`.
 
 ## Read results
 

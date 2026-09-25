@@ -129,6 +129,38 @@ class BuildTests(unittest.TestCase):
         )
         self.assertEqual((True, ()), check_build(root))
 
+    @verifies("scenario.distribution.build-workflows")
+    def test_the_build_renders_every_workflow_for_both_clients(self):
+        root = package_copy(self)
+        claude = (
+            root / "generated/workflows/claude/concorde-brownfield.js"
+        ).read_text()
+        pi = (root / "generated/workflows/pi/brownfield.js").read_text()
+        self.assertTrue(claude.startswith("export const meta = {"))
+        self.assertIn('"name": "concorde-brownfield"', claude)
+        procedure = (
+            (root / "src/concorde/workflows/scripts/brownfield.js").read_text().strip()
+        )
+        self.assertIn(procedure, claude)
+        self.assertIn(procedure, pi)
+        self.assertIn("function step(key, argv)", pi)
+        manifest = json.loads((root / "generated/build-manifest.json").read_text())
+        for path in (
+            "generated/workflows/claude/concorde-brownfield.js",
+            "generated/workflows/pi/brownfield.js",
+            "generated/workflows/pi/agents/concorde-step.md",
+            "generated/workflows/pi/agents/concorde-report.md",
+        ):
+            self.assertIn(path, manifest["outputs"])
+        self.assertIn(
+            "src/concorde/workflows/scripts/brownfield.js", manifest["sources"]
+        )
+        script = root / "src/concorde/workflows/scripts/brownfield.js"
+        script.write_text(script.read_text() + "\n// changed\n")
+        ok, differences = check_build(root)
+        self.assertFalse(ok)
+        self.assertIn("generated/workflows/pi/brownfield.js", " ".join(differences))
+
     @verifies("scenario.distribution.build-check-stale")
     def test_a_stale_build_is_reported_without_writing(self):
         root = package_copy(self)
@@ -432,6 +464,81 @@ class InstallTests(unittest.TestCase):
         skill = (project / ".pi/skills/concorde/SKILL.md").read_text()
         self.assertEqual({"name", "description"}, set(strict_frontmatter(self, skill)))
         self.assertIn(".pi/extensions/concorde/index.ts", receipt["files"])
+
+    @verifies("scenario.distribution.install")
+    @verifies("scenario.distribution.install-settings-kept")
+    def test_install_places_workflows_and_only_its_own_permission_rules(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        settings = project / ".claude/settings.json"
+        settings.parent.mkdir(parents=True)
+        mine = "Bash(.concorde/bin/concorde workflow report:*)"
+        settings.write_text(
+            json.dumps({"model": "x", "permissions": {"allow": ["Bash(ls:*)", mine]}})
+        )
+        receipt = install(project, package, d2=False)
+        workflow = project / ".claude/workflows/concorde-brownfield.js"
+        self.assertTrue(workflow.read_text().startswith("export const meta = {"))
+        self.assertIn(".claude/workflows/concorde-brownfield.js", receipt["files"])
+        self.assertFalse((project / ".pi/agents").exists())
+        value = json.loads(settings.read_text())
+        self.assertEqual("x", value["model"])
+        allow = value["permissions"]["allow"]
+        self.assertEqual(["Bash(ls:*)", mine], allow[:2])
+        self.assertIn("Workflow(concorde-brownfield)", allow)
+        self.assertIn("Bash(.concorde/bin/concorde workflow step:*)", allow)
+        self.assertEqual(1, allow.count(mine))
+        # The developer's own rule was there first, so Concorde does not own it.
+        self.assertNotIn(mine, receipt["permissions"])
+        # A rule Concorde recorded and no longer ships is removed; the developer's rules stay.
+        recorded = json.loads((project / ".concorde/install.json").read_text())
+        recorded["permissions"].append("Workflow(concorde-retired)")
+        (project / ".concorde/install.json").write_text(json.dumps(recorded))
+        value["permissions"]["allow"].append("Workflow(concorde-retired)")
+        settings.write_text(json.dumps(value))
+        install(project, package, d2=False)
+        allow = json.loads(settings.read_text())["permissions"]["allow"]
+        self.assertNotIn("Workflow(concorde-retired)", allow)
+        self.assertIn("Bash(ls:*)", allow)
+        self.assertIn(mine, allow)
+        # Settings that are not a JSON object are refused before anything is written.
+        settings.write_text("[1, 2]")
+        (project / ".claude/workflows/concorde-brownfield.js").unlink()
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, d2=False)
+        self.assertEqual("settings_invalid", raised.exception.code)
+        self.assertFalse(
+            (project / ".claude/workflows/concorde-brownfield.js").exists()
+        )
+
+    @verifies("scenario.distribution.install-pi")
+    def test_install_with_pi_places_workflow_scripts_and_agents(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+
+        def fake_npm(command, cwd, **options):
+            entry = (
+                Path(cwd) / "node_modules/@anthropic-ai/sandbox-runtime/dist/index.js"
+            )
+            entry.parent.mkdir(parents=True)
+            entry.write_text("export {};\n")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with patch(
+            "concorde.distribution.tools.shutil.which", return_value="/usr/bin/npm"
+        ):
+            receipt = install(project, package, d2=False, pi=True, run=fake_npm)
+        self.assertIn(
+            "runs.run", (project / ".concorde/workflows/pi/brownfield.js").read_text()
+        )
+        for name in ("concorde-step", "concorde-report"):
+            agent = (project / f".pi/agents/{name}.md").read_text()
+            self.assertIn("type: external-cli", agent)
+            self.assertIn(f".pi/agents/{name}.md", receipt["files"])
 
     def test_install_with_pi_without_npm_installs_nothing(self):
         package = package_copy(self)

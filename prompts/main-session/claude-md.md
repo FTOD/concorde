@@ -19,6 +19,8 @@ your own link to the chain with `concorde task escalate` instead of summarizing 
 task branches without asking, always with `concorde task merge <task>`, never `git merge`;
 change the models workers use only when the developer asks, letting them choose (the
 `configure_workers` Operation, the skill's "Worker models"); run a question or review that needs no
-task as an Operation without `--task`. A
+task as an Operation without `--task`; run a task that follows a known procedure as its workflow
+(the skill's "Workflows"), such as `brownfield` right after adopting Concorde in a codebase whose
+code came before its Specs. A
 session started by `concorde task session` is a task session, not the main agent: its first prompt
 says how it works.

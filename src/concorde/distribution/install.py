@@ -8,6 +8,9 @@ defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, igno
 state and task worktrees, and a receipt ``.concorde/install.json``. With ``pi`` it also places
 the locked pi runtime under ``.concorde/tools/pi-runtime/``, Concorde's pi extension under
 ``.pi/extensions/concorde/`` and the guidance as the pi skill ``.pi/skills/concorde/SKILL.md``.
+Every rendered workflow is installed for Claude Code under ``.claude/workflows/`` with the
+permission rules its step agents need in ``.claude/settings.json``, and with ``pi`` under
+``.concorde/workflows/pi/`` with the command-runner agents under ``.pi/agents/``.
 It refuses a package whose build is stale, fetches
 and verifies ``d2`` before writing anything else, and never writes a Spec document, the registry or
 the project configuration.
@@ -35,6 +38,15 @@ PI_EXTENSION_SOURCES = {
     "pi_models.ts": "src/concorde/main_session/pi_models.ts",
 }
 CLAUDE_MD = "CLAUDE.md"
+CLAUDE_WORKFLOWS = ".claude/workflows"
+CLAUDE_SETTINGS = ".claude/settings.json"
+PI_WORKFLOWS = ".concorde/workflows/pi"
+PI_AGENTS = ".pi/agents"
+# The Bash commands every workflow's Claude Code step agents run.
+STEP_RULES = (
+    f"Bash({COMMAND} workflow step:*)",
+    f"Bash({COMMAND} workflow report:*)",
+)
 RECEIPT = ".concorde/install.json"
 START = "<!-- concorde:start -->"
 END = "<!-- concorde:end -->"
@@ -98,6 +110,73 @@ def _claude_md(project: Path, block: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def _rendered_workflows(package: Path) -> dict[str, Path]:
+    """The build's workflow renders, by the path the installer places each at."""
+    rendered = package / "generated/workflows"
+    placed = {}
+    for path in sorted((rendered / "claude").glob("*.js")):
+        placed[f"{CLAUDE_WORKFLOWS}/{path.name}"] = path
+    for path in sorted((rendered / "pi").glob("*.js")):
+        placed[f"{PI_WORKFLOWS}/{path.name}"] = path
+    for path in sorted((rendered / "pi/agents").glob("*.md")):
+        placed[f"{PI_AGENTS}/{path.name}"] = path
+    return placed
+
+
+def _permission_rules(placed: dict[str, Path]) -> list[str]:
+    names = [
+        Path(path).stem for path in placed if path.startswith(f"{CLAUDE_WORKFLOWS}/")
+    ]
+    return [f"Workflow({name})" for name in names] + (list(STEP_RULES) if names else [])
+
+
+def _read_settings(project: Path) -> dict:
+    """The project's Claude Code settings, refused before any write when not a JSON object."""
+    path = project / CLAUDE_SETTINGS
+    if not path.exists():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as error:
+        raise InstallError(
+            "settings_invalid",
+            f"{path} cannot be read as JSON: {error}; nothing was written",
+        ) from error
+    permissions = value.get("permissions") if isinstance(value, dict) else None
+    if (
+        not isinstance(value, dict)
+        or not isinstance(permissions or {}, dict)
+        or not isinstance((permissions or {}).get("allow", []), list)
+    ):
+        raise InstallError(
+            "settings_invalid",
+            f"{path} is not a JSON object with an optional permissions.allow list; nothing was "
+            "written",
+        )
+    return value
+
+
+def _settings(
+    project: Path, settings: dict, rules: list[str], recorded: list[str]
+) -> list[str]:
+    """Add the missing rules, remove recorded ones no longer shipped; the rules Concorde owns."""
+    permissions = settings.setdefault("permissions", {})
+    before = list(permissions.get("allow", []))
+    owned = [rule for rule in recorded if rule in rules]
+    allow = [rule for rule in before if rule in rules or rule not in recorded]
+    for rule in rules:
+        if rule not in allow:
+            allow.append(rule)
+            owned.append(rule)
+    if allow == before:
+        return sorted(set(owned))
+    permissions["allow"] = allow
+    path = project / CLAUDE_SETTINGS
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    return sorted(set(owned))
+
+
 def _ignore(project: Path) -> None:
     path = project / ".gitignore"
     text = path.read_text(encoding="utf-8") if path.exists() else ""
@@ -132,6 +211,18 @@ def install(
     skill = _guidance(package, "skill")
     block = _guidance(package, "claude-md")
     descriptor = json.loads((package / "concorde.json").read_text())
+    settings = _read_settings(project)
+    previous = {}
+    if (project / RECEIPT).is_file():
+        try:
+            previous = json.loads((project / RECEIPT).read_text())
+        except ValueError:
+            previous = {}
+    placed = {
+        path: source
+        for path, source in _rendered_workflows(package).items()
+        if pi or not path.startswith((PI_WORKFLOWS, PI_AGENTS))
+    }
     tools = {}
     if d2:
         try:
@@ -179,13 +270,25 @@ def install(
             PI_SKILL,
             *(f"{PI_EXTENSION}/{name}" for name in PI_EXTENSION_SOURCES),
         ]
+    for path, source in placed.items():
+        (project / path).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, project / path)
+    owned_rules = _settings(
+        project,
+        settings,
+        _permission_rules(placed),
+        list(previous.get("permissions") or []),
+    )
     _ignore(project)
     receipt = {
         "version": descriptor["version"],
         "framework": FRAMEWORK,
         "command": COMMAND,
         "tools": tools,
-        "files": sorted({*written, COMMAND, SKILL, CLAUDE_MD, ".gitignore", *pi_files}),
+        "files": sorted(
+            {*written, COMMAND, SKILL, CLAUDE_MD, ".gitignore", *pi_files, *placed}
+        ),
+        "permissions": owned_rules,
     }
     (project / RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
     return receipt

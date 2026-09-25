@@ -359,6 +359,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         script = Path(__file__).resolve().parents[3] / "scripts/issues.py"
         return runpy.run_path(str(script))["main"](words[1:])
+    if words and words[0] == "workflow":
+        from ..workflows.cli import main as workflow_main
+
+        return workflow_main(words[1:])
     if words and words[0] == "run":
         from ..operations.host import main as run_main
 

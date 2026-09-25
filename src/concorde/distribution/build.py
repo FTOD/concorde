@@ -45,6 +45,7 @@ GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/protocol",
     "generated/workers",
     "generated/main-session",
+    "generated/workflows",
 )
 
 
@@ -124,11 +125,26 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     return (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
 
 
+def render_workflows(project_root: Path) -> list[BuildOutput]:
+    """Every workflow of the catalog, wrapped for each client, when the tree holds their sources."""
+    from ..workflows.catalog import SCRIPTS, WorkflowError, renders
+
+    if not (project_root / SCRIPTS).is_dir():
+        return []
+    try:
+        return [
+            BuildOutput(path=path, content=content.encode("utf-8"), sources=sources)
+            for path, (content, sources) in renders(project_root).items()
+        ]
+    except WorkflowError as error:
+        raise BuildError(f"workflow render: {error}") from error
+
+
 def build(project_root: str | Path) -> BuildResult:
-    """Render every prompt root; raise BuildError on any failure. Writes nothing."""
+    """Render every prompt root and workflow; raise BuildError on any failure. Writes nothing."""
     root = Path(project_root)
     roots = prompt_roots(root)
-    outputs = [render_prompt(root, item) for item in roots]
+    outputs = [render_prompt(root, item) for item in roots] + render_workflows(root)
     unreachable = find_unreachable_prompts(root, list(roots))
     if unreachable:
         raise BuildError(

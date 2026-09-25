@@ -589,52 +589,92 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
     return record
 
 
+def base_key(key: str) -> str:
+    """A step key without its answers digest."""
+    return key.split("@", 1)[0]
+
+
+def current_steps(record: dict) -> list[dict]:
+    """The workflow steps of a task record that no later rerun superseded, in record order."""
+    workflow = record.get("workflow") or {}
+    return [step for step in workflow.get("steps", []) if not step.get("superseded")]
+
+
+def check_workflow_step(record: dict, workflow: str, key: str, operation: str) -> None:
+    """Refuse a workflow step the task cannot take, before anything is started for it.
+
+    ``task_closed`` for an ended task, ``workflow_conflict`` when the record names another
+    workflow and ``step_conflict`` when the key is recorded for another Operation.
+    """
+    task_id = record["id"]
+    if record["state"] in ENDED:
+        raise TaskError(
+            "task_closed",
+            f"task {task_id} is {record['state']}; no workflow step is recorded for it",
+        )
+    current = record.get("workflow")
+    if current is not None and current["name"] != workflow:
+        raise TaskError(
+            "workflow_conflict",
+            f"task {task_id} runs the workflow {current['name']}; a step of {workflow} is "
+            "refused, since a task runs at most one workflow",
+        )
+    for step in (current or {}).get("steps", []):
+        if step["key"] == key and step["operation"] != operation:
+            raise TaskError(
+                "step_conflict",
+                f"step key {key} of task {task_id} is recorded for {step['operation']} "
+                f"(run {step['run_id']}), not {operation}",
+            )
+
+
 def record_workflow_step(
     primary: Path,
     task_id: str,
     workflow: str,
     key: str,
     operation: str,
-    run_id: str,
+    run_id: str | None,
     mode: str,
     answers: str | None,
+    error: dict | None = None,
 ) -> dict:
-    """Record one workflow step of a task: name the workflow on the first step, append the step.
+    """Record one workflow step: name the workflow on the first step, supersede, append.
 
-    Refused with ``task_closed`` for an ended task, ``workflow_conflict`` when the record names
-    another workflow and ``step_conflict`` when the key is recorded for another Operation.
+    When a current step has the same base key, it and every step recorded after it are marked
+    superseded, so a retried or answered step makes the procedure's later steps run again.
+    Refused as ``check_workflow_step`` refuses.
     """
     stamp = now()
 
     def change(record):
-        if record["state"] in ENDED:
-            raise TaskError(
-                "task_closed",
-                f"task {task_id} is {record['state']}; no workflow step is recorded for it",
-            )
-        current = record.get("workflow")
-        if current is None:
-            current = {"name": workflow, "steps": [], "reports": []}
-        elif current["name"] != workflow:
-            raise TaskError(
-                "workflow_conflict",
-                f"task {task_id} runs the workflow {current['name']}; a step of {workflow} is "
-                "refused, since a task runs at most one workflow",
-            )
-        for step in current["steps"]:
-            if step["key"] == key and step["operation"] != operation:
-                raise TaskError(
-                    "step_conflict",
-                    f"step key {key} of task {task_id} is recorded for {step['operation']} "
-                    f"(run {step['run_id']}), not {operation}",
-                )
-        current["steps"].append(
+        check_workflow_step(record, workflow, key, operation)
+        current = record.get("workflow") or {
+            "name": workflow,
+            "steps": [],
+            "reports": [],
+        }
+        steps = current["steps"]
+        earlier = next(
+            (
+                index
+                for index, step in enumerate(steps)
+                if not step.get("superseded") and base_key(step["key"]) == base_key(key)
+            ),
+            None,
+        )
+        if earlier is not None:
+            for step in steps[earlier:]:
+                step["superseded"] = True
+        steps.append(
             {
                 "key": key,
                 "operation": operation,
                 "run_id": run_id,
                 "mode": mode,
                 "answers": answers,
+                "error": error,
+                "superseded": False,
                 "at": stamp,
             }
         )
@@ -847,6 +887,9 @@ __all__ = [
     "record_delivery",
     "record_session",
     "record_workflow_report",
+    "base_key",
+    "check_workflow_step",
+    "current_steps",
     "record_workflow_step",
     "require_primary",
     "show_task",

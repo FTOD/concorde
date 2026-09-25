@@ -152,7 +152,8 @@
       "title": "Adoption tests",
       "meaning": "#realization.adoption.tests",
       "entries": [
-        "tests/concorde/adoption/"
+        "tests/concorde/adoption/",
+        "tests/concorde/support/brownfield_project.py"
       ]
     }
   ],

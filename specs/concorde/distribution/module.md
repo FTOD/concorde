@@ -41,8 +41,8 @@ too, so a changed descriptor makes every render stale.
 ([requirements](requirements.md#req.distribution.build-reachable)), and wraps every
 [workflow script](../workflows/module.md#concept.workflows.script) of the workflow catalog for each
 client: `generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step
-adapter, `generated/workflows/pi/<name>.js` with the pi step adapter, and
-`generated/workflows/pi/agents/concorde-step.md`, the pi command-runner agent, and writes
+adapter, `generated/workflows/pi/<name>.js` with the pi step adapter, and the pi command-runner agents
+`generated/workflows/pi/agents/concorde-step.md` and `concorde-report.md`, and writes
 `generated/build-manifest.json` with every source's and output's digest; `build --check` only
 reports what is stale, writing nothing
 ([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
@@ -107,8 +107,9 @@ their commands in — under `.concorde/tools/pi-runtime/` by copying the package
 package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime));
 the [run view](../main-session/module.md#concept.main-session.run-view), with its model picker, as
 `.pi/extensions/concorde/`; the skill a second time as `.pi/skills/concorde/SKILL.md`; every
-rendered pi workflow script under `.concorde/workflows/pi/`; and the command-runner agent
-`concorde-step` as `.pi/agents/concorde-step.md`, which pi-subagents finds among the project's agents. A later
+rendered pi workflow script under `.concorde/workflows/pi/`; and the command-runner agents
+`concorde-step` and `concorde-report` under `.pi/agents/`, where pi-subagents finds the project's
+agents. A later
 install with the same lockfile keeps the runtime it placed. Without npm it refuses before writing
 anything else. Both skills carry the same frontmatter, whose values are bare names or
 double-quoted strings, because pi parses it as strict YAML and drops a skill it cannot parse. pi

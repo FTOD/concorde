@@ -108,13 +108,6 @@
         "src/concorde/workflows/cli.py",
         "src/concorde/workflows/step.py",
         "src/concorde/workflows/report.py"
-      ],
-      "pending": [
-        "src/concorde/workflows/__init__.py",
-        "src/concorde/workflows/catalog.py",
-        "src/concorde/workflows/cli.py",
-        "src/concorde/workflows/step.py",
-        "src/concorde/workflows/report.py"
       ]
     },
     {
@@ -124,9 +117,6 @@
       "meaning": "#realization.workflows.scripts",
       "entries": [
         "src/concorde/workflows/scripts/"
-      ],
-      "pending": [
-        "src/concorde/workflows/scripts/"
       ]
     },
     {
@@ -135,10 +125,8 @@
       "title": "Workflows tests",
       "meaning": "#realization.workflows.tests",
       "entries": [
-        "tests/concorde/workflows/"
-      ],
-      "pending": [
-        "tests/concorde/workflows/"
+        "tests/concorde/workflows/",
+        "tests/concorde/support/brownfield_project.py"
       ]
     }
   ],

@@ -93,6 +93,31 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("merge delivered task branches without asking", self.block)
 
+    @verifies("scenario.main-session.brownfield")
+    def test_existing_code_is_adopted_through_the_brownfield_workflow(self):
+        self.assertIn(
+            "the `brownfield` workflow: open a task bound to the root Module",
+            self.skill,
+        )
+        self.assertIn(
+            "start the workflow from the primary worktree and stay there", self.skill
+        )
+        self.assertIn(
+            "Ask the developer which **mode** to use unless they already said",
+            self.skill,
+        )
+        self.assertIn(
+            "put every point in `pending` to the developer at once", self.skill
+        )
+        self.assertIn("start the same workflow again with `answers`", self.skill)
+        self.assertIn(".concorde/tasks/<task>.workflow.json", self.skill)
+        self.assertIn("Treat it like an Operation result", self.skill)
+        self.assertIn("never configured automatically", self.skill)
+        self.assertIn("`survey`", self.skill)
+        self.assertIn(
+            "run a task that follows a known procedure as its workflow", self.block
+        )
+
     @verifies("scenario.main-session.ordinary-decision")
     def test_ordinary_decisions_are_made_recorded_and_reported(self):
         self.assertIn(
