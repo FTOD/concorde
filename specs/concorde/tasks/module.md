@@ -71,15 +71,16 @@ while one is going is refused with `task_busy`; one left `running` by a dead hos
 `interrupted` at the next run.
 
 A task may also run a [workflow](../workflows/module.md), which presets the Operations it runs.
-Workflows then records in the task record the workflow's name, each step key with its run, and
-each report, and appends every report to the decision log. A task runs at most one workflow:
+Workflows then records in the task record the workflow's name, each step key with its run (or,
+for a step that could not start, its error) and whether a later rerun superseded it, and each
+report, and appends every report to the decision log. A task runs at most one workflow:
 a step naming another is refused with `workflow_conflict`, and a key already recorded for another
 Operation with `step_conflict`. Tasks keeps these entries but never interprets them.
 
 <a id="concept.tasks.decision-log"></a>
 
 The **decision log** lives at `.concorde/tasks/<task-id>.decisions.md`. Tasks creates it with a
-heading and the goal at open, then only appends escalations; the session working on the task — the
+heading and the goal at open, then only appends escalations and workflow reports; the session working on the task — the
 main agent, or the task's task session — appends directly: every uncertainty it decided alone, with
 options and reason, and every non-`ok` Operation result and what it did about it. The main agent
 reads the log when it reports to the developer at the end of the task.

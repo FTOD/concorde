@@ -94,6 +94,20 @@ def _digest(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def spec_rule(task_type: str) -> str:
+    """The brief's rule about promises the Spec does not state, which depends on the task type."""
+    if task_type == "code-to-spec":
+        return (
+            "- Describing the code you read in the bound Modules' Specs is your task. Record "
+            "behaviour as it is; behaviour whose intent the code does not settle is reported as "
+            "an open question, never written as a promise.\n"
+        )
+    return (
+        "- When the Spec does not state a promise you need, do not infer it from code: return "
+        "`blocked` and describe the missing promise.\n"
+    )
+
+
 def brief(request: WorkerRequest, worktree: Path) -> str:
     """The worker's only instruction: the task, then its boundary as absolute paths."""
     view = GrantView(request.grant["entries"])
@@ -136,8 +150,7 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
         "- You cannot delete files. List files that should be deleted in `proposed_deletions`.\n"
         f"- A file you create with {shell} outside the writable paths is lost when you finish; "
         f"create files with the {writer} instead.\n"
-        "- When the Spec does not state a promise you need, do not infer it from code: return "
-        "`blocked` and describe the missing promise.\n"
+        f"{spec_rule(request.task_type)}"
         f"{ending} For `ok`, `error` is null. For `blocked` or `failed`, "
         "`error` is required and must let the host reason about it without asking you: a code, "
         "the complete detail (what failed, where, with the exact message or output), your "
@@ -316,7 +329,7 @@ def run_worker(request: WorkerRequest) -> dict:
         "grant_digest": None,
         "settings_digest": None,
         "brief_digest": None,
-        "tools": backend.tools(request.task_type)
+        "tools": backend.tools(request.task_type, request.grant)
         if backend and request.task_type in TOOL_SETS
         else None,
         "started_at": now(),

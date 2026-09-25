@@ -7,7 +7,7 @@ in concrete situations.
 
 ### req.distribution.build-owned-outputs — The build writes only where it owns
 
-The build SHALL write only inside `generated/protocol/`, `generated/workers/` and `generated/main-session/` and to `generated/build-manifest.json`.
+The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/` and `generated/workflows/` and to `generated/build-manifest.json`.
 
 Other locations under `generated/` belong to other producers, and the build never judges or removes
 them. Each new prompt root adds its own owned location in the same change.
@@ -30,12 +30,19 @@ manifest.
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run` and `issues` SHALL print exactly one JSON result envelope on standard output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run`, `workflow` and `issues` SHALL print exactly one JSON result envelope on standard output, except `--help`.
 
 The exit status follows the envelope's status, so a caller that only checks the status and a caller
 that reads the envelope reach the same conclusion.
 
 ## Installation
+
+### req.distribution.installer-own-permissions — The installer adds only its own permission rules
+
+The installer SHALL change the project's `.claude/settings.json` only by adding the missing permission rules its workflows need and removing the rules it recorded in its receipt and no longer ships.
+
+Every other setting, including rules the developer wrote that equal one of Concorde's, stays as
+it was; a file that is not a JSON object is refused before anything is written.
 
 ### req.distribution.installer-no-specs — The installer never writes Specs
 

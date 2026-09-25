@@ -115,10 +115,6 @@
       "entries": [
         "src/concorde/adoption/survey.py",
         "prompts/workers/survey.md"
-      ],
-      "pending": [
-        "src/concorde/adoption/survey.py",
-        "prompts/workers/survey.md"
       ]
     },
     {
@@ -128,9 +124,6 @@
       "meaning": "#realization.adoption.scaffold",
       "entries": [
         "src/concorde/adoption/scaffold.py"
-      ],
-      "pending": [
-        "src/concorde/adoption/scaffold.py"
       ]
     },
     {
@@ -139,10 +132,6 @@
       "title": "Code to spec Operation",
       "meaning": "#realization.adoption.code-to-spec",
       "entries": [
-        "src/concorde/adoption/code_to_spec.py",
-        "prompts/workers/code-to-spec.md"
-      ],
-      "pending": [
         "src/concorde/adoption/code_to_spec.py",
         "prompts/workers/code-to-spec.md"
       ]
@@ -155,10 +144,6 @@
       "entries": [
         "src/concorde/adoption/__init__.py",
         "src/concorde/adoption/records.py"
-      ],
-      "pending": [
-        "src/concorde/adoption/__init__.py",
-        "src/concorde/adoption/records.py"
       ]
     },
     {
@@ -167,9 +152,6 @@
       "title": "Adoption tests",
       "meaning": "#realization.adoption.tests",
       "entries": [
-        "tests/concorde/adoption/"
-      ],
-      "pending": [
         "tests/concorde/adoption/"
       ]
     }

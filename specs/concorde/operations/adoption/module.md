@@ -16,9 +16,9 @@ an open question for the developer.
 | Term | Definition |
 | --- | --- |
 | Survey | The read-only Operation in which a worker reads one Module's code and proposes a decomposition, without writing anything. |
-| Decomposition proposal | The output of a survey: the child Modules to create with their purposes, bound entries and uses, the configured checks it found, the decisions it took and its open questions. |
-| Scaffold | The deterministic Operation that turns one accepted decomposition proposal into child Module stubs, a narrower parent realization, registry records and configured checks. |
-| Scaffold record | The output of a scaffold: the Modules and documents it created, the parent's realization entries before and after, and the checks it added. |
+| Decomposition proposal | The output of a survey: the child Modules to create with their purposes, bound entries and uses, the checks it proposes, the decisions it took and its open questions. |
+| Scaffold | The deterministic Operation that turns one accepted decomposition proposal into child Module stubs, a narrower parent realization and registry records. |
+| Scaffold record | The output of a scaffold: the Modules and documents it created and the parent's realization entries before and after. |
 | Code to spec | The Operation in which a worker of task type `code-to-spec` reads the bound Modules' code and writes their own documents to describe it. |
 | Spec description | The output of a code_to_spec run: the documents changed, the promises written, the decisions taken, the open questions, the deviations between stated intent and code, and the validation outcome. |
 | Decision | A choice between named options that a worker took where the code allowed several, recorded with its reason and whether the worker or the developer made it. |
@@ -87,7 +87,7 @@ answers -> decision: settle
 **Survey.** A worker reads the code of one Module, usually the root, and returns a **decomposition
 proposal** ([contract](contracts.md#contract.adoption.decomposition)): for each child Module to
 create, its identity, title, a one-paragraph purpose, the paths it should bind and the Modules it
-uses with the reason; the test and lint commands it found, as
+uses with the reason; the test and lint commands it found, proposed in the shape of
 [configured checks](../../harness/checks/module.md#concept.checks.configured-check) of the Modules
 they check; the decisions it took; and its open questions. The host adds the entries that stay with
 the surveyed Module. A proposal with no children is valid: the Module is small enough to describe as
@@ -108,9 +108,11 @@ from an `ok` survey of the same task, and returns a **scaffold record**
 entry, stating the survey's purpose, a realization binding the proposed entries, and the proposed
 `uses`, with every other section saying honestly that it is not specified yet. It adds the children
 to the parent's `contains` with one explaining paragraph each, removes the children's paths from the
-parent's realizations, adds the registry records and appends the configured checks. Adding Modules is
-the project-level step the Protocol reserves for the registry and the parent's `contains`, which is
-why it is a host step and not a worker's. Everything is written in one
+parent's realizations and adds the registry records. Adding Modules is the project-level step the
+Protocol reserves for the registry and the parent's `contains`, which is why it is a host step and
+not a worker's. It never configures the proposed checks: a check is a command the host later runs,
+and a command a model chose after reading code nobody vouched for must be accepted by the developer
+first, so the checks stay a proposal the workflow reports. Everything is written in one
 [file transaction](../../spec-tooling/spec/module.md#concept.spec.file-transaction) that is kept
 only if validation finds no new error.
 
@@ -120,8 +122,8 @@ only if validation finds no new error.
 and rewrites their own documents: Purpose, Terminology, Usage, Design and Relationships of each
 entry, and requirements, scenarios and contracts in implementation documents. The host prepares the
 implementation documents the worker may need, `requirements.md`, `scenarios.md` and `contracts.md`,
-as owned stubs before the grant is frozen, and removes again every stub the worker left unchanged. The
-result's output is a **Spec description**
+as owned stubs before the grant is frozen, and removes again every stub the worker left unchanged,
+however the run ends. The answers are checked before anything is written. The result's output is a **Spec description**
 ([contract](contracts.md#contract.adoption.spec-description)). Describing the root after its
 children are scaffolded describes how the children compose and the files that stayed with it.
 
@@ -147,7 +149,8 @@ questions to the developer.
 **Answers.** The developer's answers reach a later run as an **answers** file
 ([contract](contracts.md#contract.adoption.answers)) with `--answers`, each naming the decision or
 question it answers, the question's text and the answer; `--input` admits the run that asked, so the
-worker sees the earlier proposal or description. A survey rerun follows every answered decision. A
+worker sees the earlier proposal or description. An answers file lists every answer given so far for
+that step, not only the latest. A survey rerun follows every answered decision. A
 code_to_spec rerun writes an answered question as the promise the developer stated. When that intent
 differs from what the code does, the Spec states the intent, and the result lists a **deviation**
 with the intended and the observed behaviour, for later `implement` work: the Spec is again ahead of
@@ -157,9 +160,10 @@ Status follows the other worker-backed Operations. A survey or code_to_spec run 
 worker completed its proposal or description, whatever decisions and open questions it lists. It is
 `blocked` when the worker could not do the work at all, when a code_to_spec change adds a structural
 error, or, for a scaffold, when the proposal no longer fits the worktree; the error chain then names
-each finding or mismatch. It is `failed` when the host could not run the worker, the audit found a
-write outside the grant, or the output is inconsistent, with every inconsistency listed in the
-Operation's own link.
+each finding or mismatch as a cause. It is `failed` when the request or the answers are invalid, the
+host could not run the worker, the audit found a write outside the grant, or the output is
+inconsistent, with every inconsistency listed in the Operation's own link. Every code is in the
+[error table](contracts.md#errors).
 
 ## Design
 
@@ -179,6 +183,11 @@ describes. What the code does is taken from reading it.
 The survey and code_to_spec results hold decisions and open questions as structured lists, not prose,
 because a workflow must count them to decide whether to stop in interactive mode, and must copy them
 unchanged into its report in no-ask mode.
+
+The code_to_spec host writes Specs itself before its worker runs, when it prepares the stubs. So it
+checks the answers first, and removes every stub left unchanged on every way out of the run, a
+failed grant or a stopped worker included: a run that ends early leaves behind only what its worker
+changed.
 
 Scaffold writes where it can decide by rules alone. A child's folder is the parent entry's folder
 plus the child identity's last segment. The parent keeps every path its realizations covered that no
@@ -218,12 +227,12 @@ The **Survey Operation** realization declares the `SURVEY` provider and its step
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Compute the inventory of the surveyed Module's bound files | host, Spec core | Specs cannot load, or not exactly one Module (`failed`) |
-| 2 | Compute and freeze the `code-to-spec` grant with the Spec side withheld | Workers, Spec core | — |
-| 3 | Generate settings, tools and the brief with inventory, answers and inputs | Workers | invalid answers (`failed`) |
+| 1 | Check the answers; compute the inventory of the surveyed Module's bound files | host, Spec core | invalid answers (`failed`, `invalid_answers`); not exactly one Module (`failed`, `invalid_request`); Specs cannot load (`failed`, `specs_unloadable`) |
+| 2 | Compute and freeze the `code-to-spec` grant with every writable level withheld | Workers, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`) |
+| 3 | Generate settings, tools and the brief with inventory, answers and inputs | Workers | — |
 | 4 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on) |
 | 5 | Audit: nothing is writable, so any change is a violation | Workers | any change (`failed`) |
-| 6 | Check the proposal against the worktree and the answers; add the remaining entries | host | an inconsistency (`failed`) |
+| 6 | Check the proposal against the worktree and the answers; add the remaining entries | host | an inconsistency or an answer not followed (`failed`, `inconsistent_proposal`) |
 | 7 | Return the Operation result | host | — |
 
 <a id="realization.adoption.scaffold"></a>
@@ -234,7 +243,7 @@ The **Scaffold Operation** realization declares the `SCAFFOLD` provider, which l
 | --- | --- | --- | --- |
 | 1 | Admit exactly one `ok` survey of the same task as input | host | none or several, or not a survey (`failed`, `invalid_request`) |
 | 2 | Validate the worktree as a baseline and check the proposal against it again | host, Spec core | the proposal no longer fits (`blocked`, `stale_proposal`) |
-| 3 | Compute every file change: child entries, parent entry and realization, registry, configuration | host | a target file already exists (`blocked`, `stale_proposal`) |
+| 3 | Compute every file change: child entries, parent entry and realization, registry | host | a target file already exists (`blocked`, `stale_proposal`) |
 | 4 | Apply them as one file transaction, kept only if validation finds no new error | host, Spec core | a new error (`failed`, `scaffold_invalid`), nothing kept |
 | 5 | Return the Operation result with the scaffold record | host | — |
 
@@ -244,15 +253,15 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Validate the task worktree's Specs as a baseline | host, Spec core | Specs cannot load (`failed`) |
-| 2 | Create the missing implementation document stubs of each bound Module and reconcile the registry mirror | host, Spec core | — |
-| 3 | Compute and freeze the `code-to-spec` grant | Workers, Spec core | unknown Module (`failed`) |
-| 4 | Generate settings, tools and the brief with the registered Modules, answers and inputs | Workers | invalid answers (`failed`) |
-| 5 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on) |
-| 6 | Audit and write the run record | Workers | a write outside the grant (`failed`) |
-| 7 | Remove the stubs left unchanged; reconcile the registry mirror | host, Spec core | — |
-| 8 | Validate again and compare with the baseline | host, Spec core | a new error (`blocked`) |
-| 9 | Check the description against the answers and the bound Modules | host | an inconsistency (`failed`) |
+| 1 | Check the answers; validate the task worktree's Specs as a baseline | host, Spec core | invalid answers (`failed`, `invalid_answers`); Specs cannot load (`failed`, `specs_unloadable`) |
+| 2 | Create the missing implementation document stubs of each bound Module and reconcile the registry mirror | host, Spec core | unknown Module (`failed`, `unknown_modules`) |
+| 3 | Compute and freeze the `code-to-spec` grant | Workers, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`, after step 7) |
+| 4 | Generate settings, tools and the brief with the registered Modules, answers and inputs | Workers | — |
+| 5 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on, after step 7) |
+| 6 | Audit and write the run record | Workers | a write outside the grant (`failed`, after step 7) |
+| 7 | Remove the stubs left unchanged, whatever steps 3 to 6 found; reconcile the registry mirror | host, Spec core | — |
+| 8 | Validate again and compare with the baseline | host, Spec core | a new error (`blocked`, `new_structural_errors`) |
+| 9 | Check the description against the answers and the bound Modules | host | an inconsistency or an answer not followed (`failed`, `inconsistent_description`) |
 | 10 | Return the Operation result | host | — |
 
 As with `specify`, a failed structural check starts no resume round: repairing a Spec needs a
@@ -301,9 +310,9 @@ audits the worktree and writes the run records; any change beyond the grant fail
 <a id="uses-checks"></a>
 
 **Check execution** defines the [configured check](../../harness/checks/module.md#concept.checks.configured-check)
-entries of the project configuration. A survey proposes checks in that shape and the scaffold
-appends them unchanged; Adoption never runs a check, because it changes no code a check could
-measure.
+entries of the project configuration. A survey proposes checks in that shape so that the
+developer can configure the ones they accept unchanged; Adoption itself never runs or configures a
+check.
 
 <a id="uses-spec"></a>
 

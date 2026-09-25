@@ -185,4 +185,6 @@ Its readable subset must supply the meaning the task needs.
 A schema, a heading, a rendered table, a checked diagram or a correctly registered file set is not
 proof of sufficient meaning. Honest drafts name their unknowns. Missing necessary meaning remains a
 gap until an explicit change to the specification repairs it: source code, another Module's own selections and
-publisher summaries cannot silently supply a missing contract.
+publisher summaries cannot silently supply a missing contract. The one explicit route from code to
+specification is a `code-to-spec` task (see [Boundaries](boundaries.md#task-types)), whose changes
+are ordinary specification changes and leave every doubtful intent a reported gap.

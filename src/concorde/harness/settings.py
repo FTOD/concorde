@@ -36,6 +36,21 @@ TOOL_SETS = {
     "implement": "Read,Glob,Grep,Edit,Write,Bash",
 }
 RANK = {"names": 1, "ro": 2, "rw": 3}
+# The tool set of a grant with no writable path, whatever its task type.
+READ_ONLY_TASK_TYPE = "understand"
+
+
+def tool_set(tool_sets: dict, task_type: str, grant: dict | None) -> str:
+    """The tool set of one backend for a task type, read-only when the grant writes nothing.
+
+    A harness may give less than a task type assigns, such as a survey's ``code-to-spec`` grant
+    with the Spec side withheld; such a worker gets no tool that changes files.
+    """
+    if grant is not None and not any(
+        entry.get("level") == "rw" for entry in grant.get("entries") or []
+    ):
+        return tool_sets[READ_ONLY_TASK_TYPE]
+    return tool_sets[task_type]
 
 
 class SettingsError(ValueError):

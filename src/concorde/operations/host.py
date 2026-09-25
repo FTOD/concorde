@@ -16,9 +16,12 @@ import argparse
 import copy
 import json
 import os
+import re
 import secrets
 import signal
+import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -108,6 +111,13 @@ def run_id(operation: str) -> str:
     return f"r-{stamp}-{operation}-{secrets.token_hex(4)}"
 
 
+RUN_ID = re.compile(RESULT_SCHEMA["properties"]["run_id"]["pattern"])
+# How long ``--detach`` waits for the detached host to write its progress file.
+DETACH_WAIT = 60.0
+# The environment variable through which a detaching parent hands the host its run identity.
+RUN_ID_VARIABLE = "CONCORDE_RUN_ID"
+
+
 class UsageError(Exception):
     """A malformed command line; no run is created."""
 
@@ -135,6 +145,7 @@ def parse(argv) -> tuple[argparse.Namespace, object]:
     command.add_argument("--task", required=chosen.task_scope == "required")
     command.add_argument("--modules")
     command.add_argument("--input", action="append", default=[])
+    command.add_argument("--detach", action="store_true")
     if chosen.add_arguments:
         chosen.add_arguments(command)
     return command.parse_args(words[1:]), chosen
@@ -275,19 +286,31 @@ def _resolve_project(
     return None
 
 
-def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
-    """Run one Operation; return the exit status and the envelope; ``UsageError`` otherwise."""
-    arguments, chosen = parse(argv)
-    here = Path(os.path.realpath(cwd or Path.cwd()))
+def _primary(here: Path) -> Path:
     try:
-        primary = store.primary_of(here)
+        return store.primary_of(here)
     except Exception as error:  # noqa: BLE001 -- not a Git repository
         raise UsageError(
             f"{here} is not inside a Git repository: {errors.exception_detail(error)}"
         ) from None
-    identity = run_id(chosen.name)
+
+
+def execute(
+    argv, cwd: Path | None = None, identity: str | None = None
+) -> tuple[int, dict]:
+    """Run one Operation; return the exit status and the envelope; ``UsageError`` otherwise.
+
+    ``identity`` is the run identity a detaching parent chose and announced; its run directory
+    may already exist, holding the detached host's own output files.
+    """
+    arguments, chosen = parse(argv)
+    here = Path(os.path.realpath(cwd or Path.cwd()))
+    primary = _primary(here)
+    if identity is not None and not RUN_ID.match(identity):
+        raise UsageError(f"invalid run identity {identity!r}")
+    identity = identity or run_id(chosen.name)
     run_dir = primary / ".concorde/runs" / identity
-    run_dir.mkdir(parents=True)
+    run_dir.mkdir(parents=True, exist_ok=True)
     started = now()
     context = RunContext(
         operation=chosen.name,
@@ -491,9 +514,100 @@ def _envelope(chosen, context: RunContext, stop: Stop | None, started: str) -> d
     return envelope
 
 
+SOURCE_ROOT = Path(__file__).resolve().parents[2]
+
+
+def detach(
+    argv, cwd: Path | None = None, wait: float = DETACH_WAIT
+) -> tuple[int, dict]:
+    """``concorde run --detach``: start the host as a process of its own and announce the run.
+
+    The command line is checked first, so a malformed one starts nothing (``UsageError``). The
+    run identity is chosen here and handed to the host, which writes its progress file as its
+    first act; this returns once that file exists, with status 0 and the run's identity and
+    result path, or with status 1 and an error link when the host ended or stayed silent
+    before writing it.
+    """
+    words = [word for word in argv if word != "--detach"]
+    _, chosen = parse(words)
+    here = Path(os.path.realpath(cwd or Path.cwd()))
+    primary = _primary(here)
+    identity = run_id(chosen.name)
+    run_dir = primary / ".concorde/runs" / identity
+    run_dir.mkdir(parents=True)
+    environment = dict(os.environ, **{RUN_ID_VARIABLE: identity})
+    environment["PYTHONPATH"] = os.pathsep.join(
+        [str(SOURCE_ROOT)]
+        + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
+    )
+    output = run_dir / "host.out"
+    with output.open("wb") as stream:
+        process = subprocess.Popen(
+            [sys.executable, "-m", "concorde.operations.host", *words],
+            cwd=here,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=stream,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    progress = run_dir / "status.json"
+    result = run_dir / "result.json"
+    deadline = time.monotonic() + wait
+    while not progress.exists():
+        if process.poll() is not None or time.monotonic() > deadline:
+            break
+        time.sleep(0.05)
+    announced = {
+        "run_id": identity,
+        "operation": chosen.name,
+        "host_pid": process.pid,
+        "progress": progress.as_posix(),
+        "result": result.as_posix(),
+    }
+    if progress.exists():
+        return 0, announced
+    ended = process.poll()
+    tail = output.read_bytes()[-4000:].decode("utf-8", "replace").strip()
+    detail = (
+        f"the detached host of {chosen.name} (process {process.pid}) "
+        + (
+            f"exited with status {ended}"
+            if ended is not None
+            else f"wrote no progress file within {wait:.0f} seconds"
+        )
+        + f" before announcing run {identity}; its output ends with: {tail or '(nothing)'}"
+    )
+    return 1, {
+        **announced,
+        "error": errors.link(
+            "component",
+            "Operation runner (concorde run --detach)",
+            "detach_failed",
+            detail,
+            reason="environment",
+            explanation="the runner only starts the detached host; it cannot repair a host "
+            "that ends or hangs before its first write",
+            evidence=[errors.evidence("host-output", output.as_posix(), "")],
+            options=[
+                "run the same command without --detach to see the host fail directly"
+            ],
+        ),
+    }
+
+
 def main(argv) -> int:
+    argv = list(argv)
+    if "--detach" in argv:
+        try:
+            status, announced = detach(argv)
+        except UsageError as error:
+            sys.stderr.write(f"concorde run: {error}\n")
+            return 2
+        sys.stdout.write(json.dumps(announced, indent=2) + "\n")
+        return status
     try:
-        status, envelope = execute(argv)
+        status, envelope = execute(argv, identity=os.environ.pop(RUN_ID_VARIABLE, None))
     except UsageError as error:
         sys.stderr.write(
             f"concorde run: {error}\nusage: concorde run <operation> [--task <task-id>] "
@@ -520,3 +634,7 @@ def main(argv) -> int:
 
 
 __all__ = ["RESULT_SCHEMA", "UsageError", "execute", "main"]
+
+
+if __name__ == "__main__":  # the detached host started by ``detach``
+    sys.exit(main(sys.argv[1:]))

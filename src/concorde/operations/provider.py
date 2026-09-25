@@ -62,7 +62,7 @@ class Provider:
 
 
 # Task types whose workers may change files; a project-scope run never launches one.
-WRITING_TASK_TYPES = ("specify", "implement")
+WRITING_TASK_TYPES = ("specify", "implement", "code-to-spec")
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]
@@ -204,6 +204,17 @@ ENVIRONMENT_HANDLING = (
 )
 
 
+def withhold_writes(value: dict) -> dict:
+    """A grant with every ``rw`` entry lowered to ``ro``; the entry list is otherwise unchanged."""
+    return {
+        **value,
+        "entries": [
+            {**entry, "level": "ro"} if entry["level"] == "rw" else dict(entry)
+            for entry in value["entries"]
+        ],
+    }
+
+
 @dataclass
 class RunContext:
     operation: str
@@ -245,8 +256,13 @@ class RunContext:
         rounds: int | None = None,
         modules: list[str] | None = None,
         role: str | None = None,
+        read_only: bool = False,
     ):
-        """The standard worker sequence; returns ``Continue`` or ``Stop``."""
+        """The standard worker sequence; returns ``Continue`` or ``Stop``.
+
+        ``read_only`` withholds every writable level of the task type's grant, turning it into
+        read access, as the Protocol lets a harness give less than a type assigns.
+        """
         from ..harness.workers import WorkerRequest, run_worker
         from ..spec.grants import grant
         from ..spec.repository import SpecRepository
@@ -254,7 +270,7 @@ class RunContext:
 
         bound = modules or self.modules
         role = role or self.roles[0]
-        if self.project_scope and task_type in WRITING_TASK_TYPES:
+        if self.project_scope and task_type in WRITING_TASK_TYPES and not read_only:
             return self.fail(
                 "failed",
                 "project_scope_write",
@@ -271,6 +287,15 @@ class RunContext:
             frozen = grant(SpecRepository(self.worktree), bound, task_type).value
         except (SpecError, OSError, ValueError) as error:
             return self.grant_failure(task_type, bound, error)
+        if read_only:
+            frozen = withhold_writes(frozen)
+            self.evidence.append(
+                evidence(
+                    "grant-withheld",
+                    task_type,
+                    "every writable level of the grant was lowered to read",
+                )
+            )
         try:
             backend, model = self.worker_model(role)
         except ModelConfigError as error:

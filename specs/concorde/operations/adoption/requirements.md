@@ -18,7 +18,7 @@ survey may also run without a task.
 
 ### req.adoption.no-code-change — Adoption never changes code
 
-No Adoption Operation SHALL create, change or delete a file outside the Spec documents, the project registry and the project configuration.
+No Adoption Operation SHALL create, change or delete a file of the task worktree other than Spec documents and the project registry.
 
 ### req.adoption.no-bash — Adoption workers cannot run code
 
@@ -70,7 +70,17 @@ A survey SHALL be bound to exactly one Module.
 
 ### req.adoption.scaffold-input — The scaffold applies one survey of its task
 
-The scaffold host SHALL apply exactly one proposal, from an `ok` survey run of the same task admitted with `--input`, refusing any other input with `invalid_request`.
+The scaffold host SHALL apply exactly one proposal, from an `ok` survey run admitted with `--input`, refusing no input, several inputs or an input that is not a survey with `invalid_request`.
+
+A run of another task never reaches the scaffold: the host refuses it before the run begins with
+`input_not_admissible`, as for every Operation.
+
+### req.adoption.checks-proposed-only — Proposed checks are never configured
+
+The scaffold host SHALL NOT change the project configuration.
+
+A proposed check is a command a model chose after reading code; the developer configures the ones
+they accept.
 
 ### req.adoption.scaffold-rechecked — The proposal is checked again before writing
 
@@ -95,7 +105,11 @@ Every entry the scaffold creates SHALL state the survey's purpose and say in its
 
 ### req.adoption.stubs-prepared — Implementation documents are prepared and tidied
 
-The code_to_spec host SHALL create the `requirements.md`, `scenarios.md` and `contracts.md` stubs that a bound Module lacks before freezing the grant and remove every stub the worker left unchanged before returning.
+The code_to_spec host SHALL create the `requirements.md`, `scenarios.md` and `contracts.md` stubs that a bound Module lacks before freezing the grant and remove every stub the worker left unchanged before the run ends, whichever step stops it.
+
+### req.adoption.answers-first — Answers are checked before anything happens
+
+The survey and code_to_spec hosts SHALL end a run whose answers file is unreadable or breaks its contract `failed` with `invalid_answers` before writing a file or launching a worker.
 
 ### req.adoption.no-resume-on-spec — A Spec error stops the run
 

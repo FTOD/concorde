@@ -48,7 +48,8 @@ shapes are in the [contracts](contracts.md).
 - THEN `specs/shop/checkout/module.md` and `specs/shop/inventory/module.md` exist with their metadata, each stating its purpose and that its behaviour is not yet specified
 - AND the root's entry contains both with an explaining paragraph each and its realization no longer binds `src/checkout/` or `src/inventory/`
 - AND the root still binds every other file it bound under `src/`
-- AND the registry has both records and the configuration the check
+- AND the registry has both records
+- BUT the project configuration is unchanged, and the proposed check stays in the survey's proposal
 - AND the worktree validates with no new error
 - AND the result is `ok` with a scaffold record listing every file written
 
@@ -63,9 +64,10 @@ shapes are in the [contracts](contracts.md).
 ### scenario.adoption.scaffold-refused-input — The scaffold needs one survey of its task
 
 - GIVEN a task `adopt`
-- WHEN the main agent runs the scaffold with no `--input`, with two, or with a survey of another task
+- WHEN the main agent runs the scaffold with no `--input`, with two, or with a run of the task that is not a survey
 - THEN the result is `failed` with `invalid_request` naming what was given and what is needed
 - AND no file was written
+- BUT a survey of another task is refused before the run begins with `input_not_admissible`
 
 ## Code to spec
 
@@ -93,6 +95,20 @@ shapes are in the [contracts](contracts.md).
 - THEN the Spec states that both declined and timed-out payments are retried once
 - AND the result lists that promise with source `answer`
 - AND the result lists a deviation with the intended and the observed behaviour
+
+### scenario.adoption.describe-stubs-cleaned — A run that stops early leaves no stubs
+
+- GIVEN a scaffolded Module `module.checkout` without implementation documents
+- WHEN a code_to_spec run for it prepares the stubs and its worker then ends `failed` without writing
+- THEN the result is `failed` with the worker's chain
+- AND none of the prepared stubs remains, and `module.checkout` owns only its entry again
+
+### scenario.adoption.invalid-answers — Answers that cannot be used
+
+- GIVEN an answers file that is not valid JSON, or whose answer has no `id`
+- WHEN a survey or code_to_spec run is given it with `--answers`
+- THEN the result is `failed` with `invalid_answers` naming the file and what is wrong
+- AND no worker ran and no file changed
 
 ### scenario.adoption.describe-invalid — A description that breaks the Specs
 

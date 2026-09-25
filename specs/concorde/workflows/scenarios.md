@@ -48,7 +48,7 @@ shapes are in the [contracts](contracts.md).
 - GIVEN that paused interactive workflow and the developer's answer to `d.db-helper`
 - WHEN the main agent starts the workflow again with the answer keyed by `survey`
 - THEN the first survey is not run again
-- AND a new survey step with the answers' digest in its key runs and follows the answer
+- AND a new survey step with the answers' digest in its key runs with `--answers` and with `--input` naming the first survey run, and follows the answer
 - AND the scaffold then admits that new survey run
 
 ### scenario.workflows.no-ask-complete — A no-ask run reports everything at the end
@@ -69,12 +69,35 @@ shapes are in the [contracts](contracts.md).
 - THEN no code_to_spec step runs
 - AND the workflow result has status `blocked` and its error is a `workflow` link whose cause is the scaffold's Operation link, unchanged, down to its own causes
 
-### scenario.workflows.lost — A step agent that returned nothing
+### scenario.workflows.lost — A step whose host died
 
-- GIVEN a Claude Code step agent that ended without output while its run was still recorded as running and then its host died
-- WHEN the script runs `concorde workflow report --task adopt --lost describe:module.checkout`
-- THEN the workflow result lists the step as lost with a `workflow` link naming the key and the run
-- AND the result has status `failed`
+- GIVEN a step `describe:module.checkout` whose run has no result and whose host process has ended
+- WHEN the step command is run for that key again
+- THEN it prints the step outcome with state `lost` and a `workflow` link naming the key, the run and the dead host, and exits with status 1
+- AND `concorde workflow report --task adopt --lost describe:module.checkout` lists the step as a lost problem and has status `failed`
+- BUT a key named with `--lost` whose current step has a finished run keeps that run's outcome
+
+### scenario.workflows.superseded — A retried step supersedes later steps
+
+- GIVEN a task whose steps `survey`, `scaffold`, `describe:module.checkout`, `validate` and `delivery` are recorded, the describe step `failed`
+- WHEN the describe step is asked for again with `--retry`
+- THEN a new run starts for it, and `validate` and `delivery` are superseded
+- AND asking for `validate` again starts a new validate run instead of returning the earlier one
+- AND the workflow result lists the superseded steps apart and takes nothing else from them
+
+### scenario.workflows.refused-step — A step whose run cannot start
+
+- GIVEN a task running the brownfield workflow
+- WHEN a step names an Operation argument that `concorde run` rejects
+- THEN the step is recorded without a run and with an error link carrying `concorde run`'s message, the step outcome has state `refused`, and the command exits with status 1
+- AND the workflow result lists it as a problem and has status `failed`
+
+### scenario.workflows.reviews-reported — Spec review findings reach the result
+
+- GIVEN a no-ask brownfield workflow whose `spec_review` step ends `ok` with verdict `changes_required` and two blocking findings
+- WHEN the workflow reports
+- THEN the workflow result lists that review's verdict and both findings with their step and run
+- AND the checks the survey proposed are listed for the developer to configure
 
 ### scenario.workflows.report-ignores-relay — The report reads the hosts' results
 

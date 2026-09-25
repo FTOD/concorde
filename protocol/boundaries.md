@@ -58,7 +58,8 @@ Because the registry is outside every Module's write sets, a Module-scoped task 
 own `module` block leaves the mirror stale. `CHK.registry.mirror` reports that, and a project-level
 step, which MAY regenerate the mirrored fields, reconciles it. Adding or removing a Module changes
 which Modules exist, and is always such a project-level step: it writes the registry and the
-parent's `contains`.
+parent's `contains`, together with whatever else the change of composition needs, such as the new
+Modules' first documents and the parent's realization entries that move to them.
 
 ## Impact of a write
 

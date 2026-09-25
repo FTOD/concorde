@@ -453,6 +453,41 @@ class HostTests(unittest.TestCase):
         self.assertIsNone(envelope["output"])
         self.assertEqual(before["runs"], store.load_task(self.root, "t1")["runs"])
 
+    @verifies("scenario.operations.detached")
+    def test_a_detached_run_is_announced_and_finishes_on_its_own(self):
+        from concorde.operations.host import detach
+
+        status, announced = detach(
+            ["validate", "--task", "t1", "--detach"], cwd=self.root
+        )
+        self.assertEqual(0, status, announced)
+        self.assertTrue(Path(announced["progress"]).is_file())
+        result = Path(announced["result"])
+        deadline = time.monotonic() + 120
+        while not result.is_file() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        envelope = json.loads(result.read_text())
+        validate(envelope, RESULT_SCHEMA)
+        self.assertEqual(announced["run_id"], envelope["run_id"])
+        self.assertEqual("t1", envelope["task"])
+        runs = {run["run_id"]: run for run in store.load_task(self.root, "t1")["runs"]}
+        self.assertEqual(envelope["status"], runs[announced["run_id"]]["status"])
+        # A task already running an Operation still gets its refusal as the result.
+        store.begin_run(
+            self.root, "t1", "r-other", "implement", ["module.a"], True, os.getpid()
+        )
+        status, announced = detach(["validate", "--task", "t1"], cwd=self.root)
+        self.assertEqual(0, status, announced)
+        result = Path(announced["result"])
+        deadline = time.monotonic() + 120
+        while not result.is_file() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        refused = json.loads(result.read_text())
+        self.assertEqual("failed", refused["status"])
+        self.assertEqual("task_busy", refused["host_evidence"][0]["ref"])
+        with self.assertRaises(UsageError):
+            detach(["frobnicate", "--task", "t1", "--detach"], cwd=self.root)
+
     @verifies("scenario.operations.bad-command")
     def test_a_malformed_command_line_writes_nothing(self):
         runs = self.root / ".concorde/runs"

@@ -181,8 +181,11 @@ unsandboxed-command requests. `names` files are readable by no tool — only nam
 The **brief** is the worker's only instruction — `CLAUDE.md`, auto memory and user settings are
 disabled — the Operation's task instructions plus the boundary Workers appends: `rw`/`ro`/`names` as
 absolute paths (its working directory isn't the worktree); that it can't delete, only propose
-deletions; that a Bash-created file outside `rw` is silently lost; and that a read denial means the
-path is outside its grant.
+deletions; that a Bash-created file outside `rw` is silently lost; that a read denial means the
+path is outside its grant; and, for every task type but `code-to-spec`, that a promise the Spec does
+not state is never inferred from code but returned as `blocked`. A `code-to-spec` worker is told
+instead that describing the code it reads is its task, and that doubtful intent is reported, never
+promised.
 
 <a id="concept.workers.worker-result"></a>
 

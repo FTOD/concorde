@@ -1,8 +1,9 @@
 # Workflows contracts
 
 The exact shapes of [Workflows](module.md): what one step prints, the request a pi step agent
-passes on standard input, and the workflow result. Error links follow the Framework's
-[error contract](../contracts.md#contract.concorde.error), copied here as `$defs`.
+passes on standard input, the workflow result, and the error codes of the workflow's own links.
+Error links follow the Framework's [error contract](../contracts.md#contract.concorde.error),
+copied here as `$defs`.
 
 ## Step outcome
 
@@ -13,6 +14,128 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
   "id": "contract.workflows.step",
   "version": 1,
   "schema": {
+    "$defs": {
+      "error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "level",
+          "actor",
+          "code",
+          "detail",
+          "evidence",
+          "attempts",
+          "unhandled",
+          "options",
+          "recommendation",
+          "causes"
+        ],
+        "properties": {
+          "level": {
+            "enum": [
+              "main-agent",
+              "task-session",
+              "workflow",
+              "operation",
+              "harness",
+              "worker",
+              "check",
+              "component"
+            ]
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/evidence"
+            }
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "unhandled": {
+            "$ref": "#/$defs/unhandled"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "recommendation": {
+            "type": "string"
+          },
+          "causes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/error"
+            }
+          }
+        }
+      },
+      "evidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "ref",
+          "detail"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ref": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "unhandled": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason",
+          "explanation"
+        ],
+        "properties": {
+          "reason": {
+            "enum": [
+              "permission",
+              "decision",
+              "scope",
+              "capability",
+              "exhausted",
+              "environment",
+              "input"
+            ]
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "type": "object",
     "additionalProperties": false,
     "required": [
@@ -27,7 +150,8 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
       "result_path",
       "decision_points",
       "created_modules",
-      "ready"
+      "ready",
+      "error"
     ],
     "properties": {
       "workflow": {
@@ -47,13 +171,22 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
         "pattern": "^[a-z][a-z_]*$"
       },
       "run_id": {
-        "type": "string",
-        "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "state": {
         "enum": [
           "running",
-          "finished"
+          "finished",
+          "lost",
+          "refused"
         ]
       },
       "status": {
@@ -82,8 +215,15 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
         ]
       },
       "result_path": {
-        "type": "string",
-        "minLength": 1
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "decision_points": {
         "type": "integer",
@@ -92,8 +232,25 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
       "created_modules": {
         "type": "array",
         "items": {
-          "type": "string",
-          "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "uses"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "uses": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+              }
+            }
+          }
         }
       },
       "ready": {
@@ -105,10 +262,20 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
             "type": "null"
           }
         ]
+      },
+      "error": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "$ref": "#/$defs/error"
+          }
+        ]
       }
     }
   },
-  "semantics": "The outcome of one workflow step. key is the step key, including the answers digest when answers were passed. run_id names the Operation run recorded for the key and result_path where its Operation result is or will be saved. state is running while the run has no result yet, and status and summary are then null; once finished they are the result's. decision_points counts the result's open questions, and for a survey also its decisions not decided by the developer. created_modules lists the Modules a scaffold created, empty for any other Operation. ready is a validate result's readiness and null otherwise. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one workflow step. key is the step key, including the answers digest when answers were passed. run_id names the Operation run recorded for the key, null for a refused step, and result_path where its Operation result is or will be saved. state is running while the run has no result and its host lives, finished once it has a result, lost when it has neither a result nor a living host, and refused when the run could not start; status and summary are the result's once finished and null otherwise. decision_points counts the result's open questions, and for a survey also its decisions decided by the worker. created_modules lists the Modules a scaffold created, each with the other created Modules it uses, empty for any other Operation. ready is a validate result's readiness and null otherwise. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "task": "adopt",
@@ -117,11 +284,12 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
     "run_id": "r-20260925T101500-survey-1a2b3c4d",
     "state": "finished",
     "status": "ok",
-    "summary": "proposed 2 child Module(s) of module.shop with 1 decision and 0 open question(s)",
+    "summary": "survey finished for module.shop.",
     "result_path": ".concorde/runs/r-20260925T101500-survey-1a2b3c4d/result.json",
     "decision_points": 1,
     "created_modules": [],
-    "ready": null
+    "ready": null,
+    "error": null
   }
 }
 ```
@@ -163,7 +331,7 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
       },
       "key": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+        "pattern": "^[a-z][a-z0-9_:.-]*$"
       },
       "argv": {
         "type": "array",
@@ -212,18 +380,24 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
       }
     }
   },
-  "semantics": "One step request: the task, workflow, mode and step key, argv as the Operation name followed by its arguments without --task, answers to pass to the run or null, and retry to start a new run for a key whose recorded run did not end ok. It carries the same meaning as the options of the command line. A behaviour or field change increments the version.",
+  "semantics": "One step request, with the meaning of the command line's options: the task, workflow, mode and base step key, argv as the Operation name followed by its arguments without --task, answers as the list of every answer given for this step so far or null, and retry to start a new run for a key whose current step did not end ok. A behaviour or field change increments the version.",
   "example": {
     "task": "adopt",
     "workflow": "brownfield",
-    "mode": "no-ask",
-    "key": "describe:module.checkout",
+    "mode": "interactive",
+    "key": "survey",
     "argv": [
-      "code_to_spec",
+      "survey",
       "--modules",
-      "module.checkout"
+      "module.shop"
     ],
-    "answers": null,
+    "answers": [
+      {
+        "id": "d.db-helper",
+        "question": "Does the shared database helper get a Module of its own?",
+        "answer": "a Module of its own"
+      }
+    ],
     "retry": false
   }
 }
@@ -369,9 +543,12 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
       "status",
       "summary",
       "steps",
+      "superseded",
       "decisions",
       "open_questions",
       "deviations",
+      "reviews",
+      "proposed_checks",
       "pending",
       "problems",
       "error",
@@ -397,7 +574,8 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "ok",
           "awaiting_decision",
           "blocked",
-          "failed"
+          "failed",
+          "running"
         ]
       },
       "summary": {
@@ -434,8 +612,15 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
               }
             },
             "run_id": {
-              "type": "string",
-              "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "status": {
               "enum": [
@@ -443,7 +628,72 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
                 "blocked",
                 "failed",
                 "running",
-                "lost"
+                "lost",
+                "refused"
+              ]
+            },
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "superseded": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "key",
+            "operation",
+            "modules",
+            "run_id",
+            "status",
+            "summary"
+          ],
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+            },
+            "operation": {
+              "type": "string",
+              "pattern": "^[a-z][a-z_]*$"
+            },
+            "modules": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+              }
+            },
+            "run_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "enum": [
+                "ok",
+                "blocked",
+                "failed",
+                "running",
+                "lost",
+                "refused"
               ]
             },
             "summary": {
@@ -468,13 +718,13 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "required": [
             "step",
             "run_id",
-            "kind",
             "id",
             "module",
             "question",
             "options",
             "chosen",
-            "recommendation"
+            "reason",
+            "decided_by"
           ],
           "properties": {
             "step": {
@@ -485,15 +735,9 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
               "type": "string",
               "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
             },
-            "kind": {
-              "enum": [
-                "decision",
-                "open_question"
-              ]
-            },
             "id": {
               "type": "string",
-              "pattern": "^[dq]\\.[a-z0-9-]+$"
+              "pattern": "^d\\.[a-z0-9-]+$"
             },
             "module": {
               "type": "string",
@@ -505,31 +749,24 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
             },
             "options": {
               "type": "array",
+              "minItems": 2,
               "items": {
                 "type": "string",
                 "minLength": 1
               }
             },
             "chosen": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string",
+              "minLength": 1
             },
-            "recommendation": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1
-                },
-                {
-                  "type": "null"
-                }
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "decided_by": {
+              "enum": [
+                "worker",
+                "developer"
               ]
             }
           }
@@ -543,12 +780,13 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "required": [
             "step",
             "run_id",
-            "kind",
             "id",
             "module",
-            "question",
+            "subject",
+            "observed",
+            "evidence",
+            "why_uncertain",
             "options",
-            "chosen",
             "recommendation"
           ],
           "properties": {
@@ -560,52 +798,45 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
               "type": "string",
               "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
             },
-            "kind": {
-              "enum": [
-                "decision",
-                "open_question"
-              ]
-            },
             "id": {
               "type": "string",
-              "pattern": "^[dq]\\.[a-z0-9-]+$"
+              "pattern": "^q\\.[a-z0-9-]+$"
             },
             "module": {
               "type": "string",
               "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
             },
-            "question": {
+            "subject": {
               "type": "string",
               "minLength": 1
             },
-            "options": {
+            "observed": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence": {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string",
                 "minLength": 1
               }
             },
-            "chosen": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1
-                },
-                {
-                  "type": "null"
-                }
-              ]
+            "why_uncertain": {
+              "type": "string",
+              "minLength": 1
+            },
+            "options": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
             "recommendation": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string",
+              "minLength": 1
             }
           }
         }
@@ -651,6 +882,100 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           }
         }
       },
+      "reviews": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "step",
+            "run_id",
+            "verdict",
+            "modules"
+          ],
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+            },
+            "run_id": {
+              "type": "string",
+              "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
+            },
+            "verdict": {
+              "enum": [
+                "accepted",
+                "changes_required",
+                "incomplete"
+              ]
+            },
+            "modules": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "proposed_checks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "step",
+            "run_id",
+            "id",
+            "module",
+            "argv",
+            "timeout_seconds",
+            "inputs",
+            "reason"
+          ],
+          "properties": {
+            "step": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+            },
+            "run_id": {
+              "type": "string",
+              "pattern": "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
+            },
+            "id": {
+              "type": "string",
+              "pattern": "^check\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)*$"
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "argv": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
       "pending": {
         "type": "array",
         "items": {
@@ -664,7 +989,6 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
             "module",
             "question",
             "options",
-            "chosen",
             "recommendation"
           ],
           "properties": {
@@ -701,27 +1025,9 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
                 "minLength": 1
               }
             },
-            "chosen": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
             "recommendation": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string",
+              "minLength": 1
             }
           }
         }
@@ -758,7 +1064,8 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
                 "blocked",
                 "failed",
                 "running",
-                "lost"
+                "lost",
+                "refused"
               ]
             },
             "error": {
@@ -783,13 +1090,13 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
       }
     }
   },
-  "semantics": "The result of a workflow run in one task. steps lists every recorded step in order with its run and status; a step whose run has no result and no running host is lost. decisions and open_questions gather every decision and open question of every finished step, each with its step and run, and deviations every deviation. pending lists the decision points an interactive run ended at, and is empty otherwise. problems lists every step that did not end ok, each with its Operation's error chain unchanged, or for a lost or running step the workflow's own link describing it. status is ok when the procedure's last step ended ok, awaiting_decision when an interactive run ended at decision points, blocked when it stopped at a blocked step or an unready validation, and failed when it stopped at a failed or lost step. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged. A behaviour or field change increments the version.",
+  "semantics": "The result of a workflow in one task, built from the task record and the saved Operation results. steps lists the current steps in the order recorded, each with its run and status: ok, blocked or failed from its result, running while its host lives, lost without result or host, refused without a run. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions and open_questions are every decision and open question of the finished current steps exactly as their Operations reported them, with their step and run; deviations likewise. reviews holds each spec_review step's verdict and per-Module outcomes as it reported them. proposed_checks are the checks the survey proposed, which nothing has configured. pending lists the decision points an interactive run ended at, empty otherwise. problems lists every current step that did not end ok with its Operation's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is running while a current step runs; otherwise failed when the procedure stopped at a failed, lost or refused step, blocked when it stopped at a blocked step or unready validation, awaiting_decision when an interactive run ended at decision points, and ok when its last step ended ok. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "task": "adopt",
     "mode": "no-ask",
     "status": "ok",
-    "summary": "described module.shop and 2 created Module(s); delivered; 1 Module's description is blocked; 1 decision and 1 open question reported",
+    "summary": "brownfield described module.shop and 2 created Module(s) and delivered them; 1 problem, 1 decision, 1 open question and 1 proposed check to review",
     "steps": [
       {
         "key": "survey",
@@ -799,7 +1106,17 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
         ],
         "run_id": "r-20260925T101500-survey-1a2b3c4d",
         "status": "ok",
-        "summary": "proposed 2 child Module(s)"
+        "summary": "survey finished for module.shop."
+      },
+      {
+        "key": "describe:module.checkout",
+        "operation": "code_to_spec",
+        "modules": [
+          "module.checkout"
+        ],
+        "run_id": "r-20260925T103000-code_to_spec-5a6b7c8d",
+        "status": "ok",
+        "summary": "code_to_spec finished for module.checkout."
       },
       {
         "key": "describe:module.inventory",
@@ -808,8 +1125,8 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "module.inventory"
         ],
         "run_id": "r-20260925T104000-code_to_spec-9f8e7d6c",
-        "status": "blocked",
-        "summary": "1 new structural error"
+        "status": "failed",
+        "summary": "The worker run ended failed (worker_timeout)."
       },
       {
         "key": "delivery",
@@ -819,14 +1136,14 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
         ],
         "run_id": "r-20260925T110000-delivery-0a1b2c3d",
         "status": "ok",
-        "summary": "committed the task's changes"
+        "summary": "delivery finished for module.shop."
       }
     ],
+    "superseded": [],
     "decisions": [
       {
         "step": "survey",
         "run_id": "r-20260925T101500-survey-1a2b3c4d",
-        "kind": "decision",
         "id": "d.db-helper",
         "module": "module.shop",
         "question": "Does the shared database helper get a Module of its own?",
@@ -835,56 +1152,104 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "stay with the root"
         ],
         "chosen": "stay with the root",
-        "recommendation": null
+        "reason": "it is 40 lines of connection setup with no behaviour of its own",
+        "decided_by": "worker"
       }
     ],
     "open_questions": [
       {
         "step": "describe:module.checkout",
         "run_id": "r-20260925T103000-code_to_spec-5a6b7c8d",
-        "kind": "open_question",
         "id": "q.payment-retry",
         "module": "module.checkout",
-        "question": "retrying a declined payment",
+        "subject": "retrying a declined payment",
+        "observed": "a declined payment is retried once after two seconds, but a timed-out one is not",
+        "evidence": [
+          "src/checkout/payment.py"
+        ],
+        "why_uncertain": "no comment, test or configuration says whether the difference is intended",
         "options": [
           "retry declined payments once, never timeouts",
           "retry both",
           "retry neither"
         ],
-        "chosen": null,
         "recommendation": "ask whether a timeout should be retried"
       }
     ],
     "deviations": [],
+    "reviews": [
+      {
+        "step": "spec_review",
+        "run_id": "r-20260925T105000-spec_review-1b2c3d4e",
+        "verdict": "accepted",
+        "modules": []
+      }
+    ],
+    "proposed_checks": [
+      {
+        "step": "survey",
+        "run_id": "r-20260925T101500-survey-1a2b3c4d",
+        "id": "check.checkout.tests",
+        "module": "module.checkout",
+        "argv": [
+          "python",
+          "-m",
+          "pytest",
+          "tests/checkout"
+        ],
+        "timeout_seconds": 300,
+        "inputs": [
+          "src/checkout",
+          "tests/checkout"
+        ],
+        "reason": "pyproject.toml configures pytest"
+      }
+    ],
     "pending": [],
     "problems": [
       {
         "step": "describe:module.inventory",
         "run_id": "r-20260925T104000-code_to_spec-9f8e7d6c",
-        "status": "blocked",
+        "status": "failed",
         "error": {
           "level": "operation",
           "actor": "Operation code_to_spec r-20260925T104000-code_to_spec-9f8e7d6c (task adopt)",
-          "code": "new_structural_errors",
-          "detail": "the change to module.inventory adds 1 structural error: CHK.scenario.steps in specs/shop/inventory/scenarios.md: scenario.inventory.hold has no THEN step",
-          "evidence": [
-            {
-              "kind": "finding",
-              "ref": "specs/shop/inventory/scenarios.md",
-              "detail": "CHK.scenario.steps"
-            }
-          ],
+          "code": "worker_timeout",
+          "detail": "the code-to-spec worker run w-20260925T104001-code-to-spec-0f3b2a91 ended failed: worker_timeout: the worker did not finish within 1800 seconds",
+          "evidence": [],
           "attempts": [],
           "unhandled": {
-            "reason": "decision",
-            "explanation": "a Spec that fails a structural check is repaired by a decision, not by another worker round"
+            "reason": "exhausted",
+            "explanation": "the Operation passes the configured limits to Workers and does not raise them"
           },
           "options": [
-            "repair the scenario",
-            "run code_to_spec again for module.inventory"
+            "raise workers.timeout_seconds",
+            "run the Operation with a narrower goal"
           ],
-          "recommendation": "repair the scenario",
-          "causes": []
+          "recommendation": "raise workers.timeout_seconds",
+          "causes": [
+            {
+              "level": "harness",
+              "actor": "Workers run w-20260925T104001-code-to-spec-0f3b2a91 (code-to-spec worker)",
+              "code": "worker_timeout",
+              "detail": "the worker process was stopped after 1800 seconds without a result",
+              "evidence": [
+                {
+                  "kind": "run-record",
+                  "ref": ".concorde/runs/w-20260925T104001-code-to-spec-0f3b2a91/record.json",
+                  "detail": ""
+                }
+              ],
+              "attempts": [],
+              "unhandled": {
+                "reason": "exhausted",
+                "explanation": "Workers stops a worker at the configured timeout"
+              },
+              "options": [],
+              "recommendation": "",
+              "causes": []
+            }
+          ]
         }
       }
     ],
@@ -893,3 +1258,19 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
   }
 }
 ```
+
+## Errors
+
+The codes of links whose level is `workflow`, with the actor `workflow <name> (task <task-id>)`.
+The step command's refusals by Tasks and by `concorde run` keep their own codes as causes.
+
+| Code | Where | Reason | Raised when |
+| --- | --- | --- | --- |
+| `awaiting_decision` | result | `decision` | an interactive run ended at decision points; the evidence names each pending point |
+| `step_blocked` | result | `decision` | the procedure stopped at a step that ended `blocked`, or at a validation that was not ready; the step's error is the cause |
+| `step_failed` | result | `decision` | the procedure stopped at a step that ended `failed`; the step's error is the cause |
+| `step_lost` | step outcome, result | `environment` | a step's run has no result and no living host, or the script reported the key lost with nothing recorded |
+| `step_refused` | step outcome, result | `input` | `concorde run` rejected the step's command line (its message is the cause) or its detached host did not start (the `detach_failed` link is the cause) |
+| `step_running` | result | `exhausted` | a report was taken while a current step still runs |
+| `step_rejected` | step command | `input` | Tasks refused to record the step (`workflow_conflict`, `step_conflict`, `task_closed`, `unknown_task`), its link the cause; nothing was started or recorded |
+| `invalid_request` | step command | `input` | the step command line or standard-input request breaks the step request contract; exit status 2 |

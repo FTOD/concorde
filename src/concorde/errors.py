@@ -22,6 +22,7 @@ from typing import Iterable
 LEVELS = (
     "main-agent",
     "task-session",
+    "workflow",
     "operation",
     "harness",
     "worker",

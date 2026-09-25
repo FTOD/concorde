@@ -58,8 +58,11 @@ and then, in Claude Code, the installed workflow `/concorde-brownfield` with the
 `{"task": "adopt", "module": "module.shop", "mode": "no-ask"}`, or in pi the installed script
 `.concorde/workflows/pi/brownfield.js` through pi-subagents with the same arguments. The main agent
 stays in the primary worktree while the workflow runs. Every workflow takes `task`, `mode`,
-`answers` (answers keyed by step key, for an interactive rerun) and `retry` (the step keys to run
-again after a failure), plus its own arguments such as `module`.
+`answers` and `retry`, plus its own arguments such as `module`. `answers` maps a step's base key,
+such as `survey` or `describe:module.checkout`, to the list of every answer the developer has given
+for that step so far, in the shape of
+[answers](../operations/adoption/module.md#concept.adoption.answers); a relaunch passes all of them
+again, not only the newest. `retry` lists the base keys to run again after a failure.
 
 <a id="concept.workflows.mode"></a><a id="concept.workflows.decision-point"></a>
 
@@ -67,39 +70,56 @@ The **workflow mode** decides what happens at a **decision point**, an item in a
 that is the developer's to settle: every [open
 question](../operations/adoption/module.md#concept.adoption.open-question), because only the
 developer knows what behaviour is intended, and every
-[decision](../operations/adoption/module.md#concept.adoption.decision) of a survey, because how a
-project splits into Modules shapes all later work. A code_to_spec decision, such as a concept's
-name, is ordinary: the workflow never stops for it and reports it.
+[decision](../operations/adoption/module.md#concept.adoption.decision) of a survey that the worker
+took rather than the developer, because how a project splits into Modules shapes all later work. A
+code_to_spec decision, such as a concept's name, is ordinary: the workflow never stops for it and
+reports it.
 
-- **Interactive.** After a step whose output has decision points and that was not run with answers
-  to them, the workflow reports at once with status `awaiting_decision`, listing each pending point
-  with its options and recommendation. The main agent asks the developer, writes the answers, and
-  starts the same workflow again with `answers` keyed by that step's key. Finished steps return their
-  recorded runs immediately; the answered step runs again with the answers; the workflow continues.
+- **Interactive.** The developer is present, so the workflow ends right after any step that needs
+  them: a step whose output has decision points its answers did not settle, with status
+  `awaiting_decision` and each pending point with its options and recommendation; and any step that
+  did not end `ok`, with that step's status. The main agent asks the developer, writes the answers
+  or repairs what failed, and starts the same workflow again. Steps that finished return their
+  recorded runs immediately, an answered or retried step runs again, and the workflow continues.
 - **No-ask.** The workflow never stops for a decision point. It keeps each worker's decision, leaves
-  each open question unanswered and unwritten as a promise, goes on even past a Module whose
-  description is `blocked`, and reports everything once the procedure has ended.
+  each open question unanswered and unwritten as a promise, goes on past a Module whose description
+  did not end `ok`, and reports everything once the procedure has ended. It stops early only where
+  the procedure cannot go on at all, such as a failed survey.
 
 <a id="concept.workflows.step"></a><a id="concept.workflows.step-key"></a>
 
-A **workflow step** is one Operation run. The script asks for it by **step key**:
+A **workflow step** is one Operation run. The script asks for it by a base **step key**:
 
 ```text
-concorde workflow step --task <task-id> --workflow <name> --mode <interactive|no-ask> --key <key> [--answers <file>] [--retry] [--wait <seconds>] -- <operation> [operation arguments]
+concorde workflow step --task <task-id> --workflow <name> --mode <interactive|no-ask> --key <base key> [--answers <file>] [--retry] [--wait <seconds>] -- <operation> [operation arguments]
 concorde workflow step --stdin
 ```
 
-The first time a key is asked for, the command starts `concorde run <operation> --task <task-id>
---detach` with the task worktree's own `concorde`, records the key and run in the task record, and
-waits for the result at most `--wait` seconds (default 540). Asked again, it finds the recorded run
-and only waits for it. It prints the [step outcome](contracts.md#contract.workflows.step) and exits
-with status 0 once the run has finished, or 3 while it is still running, so a caller that must not
-block longer than a few minutes simply asks again. `--answers` writes the answers next to the task
-record, passes them to the run and adds their digest to the key, so an answered rerun is a new step.
-`--retry` starts a new run for a key whose recorded run did not end `ok`. `--stdin` reads the same
-request as JSON and waits until the run has finished. A step for another workflow than the task's,
-a key recorded for another Operation or a task that is closed or already running an Operation
-outside this step is refused with an error link and status 1, and nothing is started.
+The step's key is the base key, or with `--answers` the base key followed by `@` and the first eight
+hexadecimal digits of the SHA-256 of the answers list in canonical JSON (keys sorted, no
+whitespace), so an answered rerun is a new step while the same answers find the same step again.
+Holding the task's step lock, the command looks the key up among the task's current steps. When it
+is not there, it starts `concorde run <operation> --task <task-id> --detach` with the task
+worktree's own `concorde`, adding `--answers` with the answers written next to the task record and,
+for an answered step, `--input` naming the latest run of the same base key, whose questions the
+answers settle; then it records the key and run. It waits for the result at most `--wait` seconds
+(default 540). Asked again, it finds the recorded run and only waits for it. `--retry` starts a new
+run for a key whose recorded run did not end `ok`. `--stdin` reads the same request as JSON and
+waits until the run has finished.
+
+Starting a new run for a base key that already has a step, by `--retry` or with new answers,
+**supersedes** every step recorded after that earlier step: a superseded step stays in the record
+but is never found again, so the procedure runs its later steps anew on the changed worktree and
+nothing validated or delivered before the change is taken as current.
+
+The command prints the [step outcome](contracts.md#contract.workflows.step) and exits with status 0
+once the run has finished, 3 while it is still running, so a caller that must not block longer than
+a few minutes simply asks again, and 1 when the step is lost or refused. A step is **lost** when its
+recorded run has no result and no living host. A step is **refused** when `concorde run` rejected
+the command line or the detached host did not start: the step is then recorded without a run and
+with that error. A step for another workflow than the task's, a key recorded for another Operation
+or a closed task is refused by Tasks before anything is recorded or started. Every lost or refused
+outcome carries an error link.
 
 <a id="concept.workflows.step-agent"></a><a id="concept.workflows.script"></a>
 
@@ -115,29 +135,36 @@ host recorded.
 
 The script ends by running `concorde workflow report --task <task-id>`, which builds the **workflow
 result** ([contract](contracts.md#contract.workflows.result)) from the task record and the saved
-Operation results, never from what a step agent relayed. Its status is:
+Operation results, never from what a step agent relayed. Its status is, in this order of
+precedence:
 
-- `ok` when the last step, `delivery` in the brownfield workflow, ended `ok`, even if earlier steps
-  reported problems that the procedure could go past;
-- `awaiting_decision` when an interactive run ended at a decision point;
-- `blocked` when the procedure stopped before its end at a `blocked` step or a validation that was
-  not ready;
-- `failed` when it stopped at a `failed` step, or at a step whose run was lost.
+- `running` when a current step's run is still running, for a report taken before the end;
+- `failed` when the procedure stopped at a step that ended `failed`, was refused or was lost;
+- `blocked` when it stopped at a step that ended `blocked`, or at a validation that was not ready;
+- `awaiting_decision` when an interactive run ended at decision points;
+- `ok` when the procedure's last step, `delivery` in the brownfield workflow, ended `ok`, even if
+  earlier steps reported problems the procedure could go past.
 
-Every result lists all decisions and open questions of every step, the deviations, and each problem
-with its step, run and error chain unchanged. When the status is not `ok`, `error` is the workflow's
+Every result lists, from the current steps, every decision and open question as the Operation
+reported it, with its step and run; every deviation; every Spec review's verdict and findings; the
+checks the survey proposed, for the developer to configure the ones they accept; and each step that
+did not end `ok` as a problem with its error chain unchanged. Superseded steps are listed apart,
+with their runs, and contribute nothing else. When the status is not `ok`, `error` is the workflow's
 own [error chain](../vocabulary.md#concept.concorde.error-chain) link, level `workflow`, whose causes
-are the errors of the steps that stopped it, unchanged. The report also appends the decisions, open
-questions and problems to the task's [decision log](../tasks/module.md#concept.tasks.decision-log)
-and saves the result at `.concorde/tasks/<task-id>.workflow.json`. When a step agent returned
-nothing, the script reports with `--lost <key>`, and the result names the step as lost; the main
-agent can always run the report command itself.
+are the errors of the steps that stopped it, unchanged; for `awaiting_decision` its evidence names
+every pending point. The report also appends the result, rendered, to the task's [decision
+log](../tasks/module.md#concept.tasks.decision-log) under a heading with its time, and saves it at
+`.concorde/tasks/<task-id>.workflow.json`. When a step agent returned nothing, the script reports
+with `--lost <key>`: a key whose current step has a finished run keeps that run's outcome, since
+the record wins, and any other is reported lost. The main agent can always run the report command
+itself.
 
 <a id="concept.workflows.brownfield"></a>
 
 The **brownfield workflow** describes a project whose code came before its Specs, one Module and its
-new children at a time. Its arguments add `module`, the Module to describe, usually the root. Run
-again on a created child, it splits that child further.
+new children at a time. Its arguments add `module`, the Module to describe, usually the root.
+Splitting a created child further is a new task running the workflow on that child, since a task's
+step keys, `validate` and `delivery` included, belong to one procedure.
 
 ```d2
 workflow: Workflow
@@ -187,16 +214,18 @@ Brownfield's procedure, as a step table:
 | --- | --- | --- | --- | --- |
 | 1 | `survey` | `survey --modules <module>` | always | not `ok`; interactive with decision points not answered |
 | 2 | `scaffold` | `scaffold --input <survey run>` | the survey is `ok` | not `ok` |
-| 3 | `describe:<id>` | `code_to_spec --modules <id>` | for each created Module in order, then `<module>` | interactive with open questions not answered |
-| 4 | `spec_review` | `spec_review --modules <module and created Modules>` | always after 3 | — |
-| 5 | `validate` | `validate` | always after 4 | readiness not ready |
+| 3 | `describe:<id>` | `code_to_spec --modules <id>` | for each created Module, providers before the Modules that use them, then `<module>` | interactive with open questions not answered, or not `ok` |
+| 4 | `spec_review` | `spec_review --modules <module and created Modules>` | always after 3 | interactive and not `ok` |
+| 5 | `validate` | `validate` | always after 4 | not `ok`, or readiness not ready |
 | 6 | `delivery` | `delivery` | validation ready | — |
 | 7 | — | `concorde workflow report` | always, last | — |
 
-A `describe` step that ends `blocked` or `failed` does not end a no-ask workflow: the Module keeps
-its stub or partial description, validation decides whether the task can still be delivered, and the
-problem is reported. Spec review findings are reported, not repaired, because repairing a Spec needs
-a decision.
+Created Modules are described providers first, by the `uses` the survey proposed among them, and
+otherwise in the proposal's order, so that a worker describing a consumer reads its providers'
+descriptions rather than their stubs. A `describe` step that did not end `ok` does not end a
+no-ask workflow: the Module keeps its stub or partial description, validation decides whether the
+task can still be delivered, and the problem is reported. Spec review findings are reported, not
+repaired, because repairing a Spec needs a decision.
 
 How Workflows is built:
 

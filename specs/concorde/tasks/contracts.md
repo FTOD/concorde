@@ -344,6 +344,7 @@ in the [requirements](requirements.md).
             "enum": [
               "main-agent",
               "task-session",
+              "workflow",
               "operation",
               "harness",
               "worker",
@@ -467,6 +468,8 @@ in the [requirements](requirements.md).
                 "run_id",
                 "mode",
                 "answers",
+                "error",
+                "superseded",
                 "at"
               ],
               "properties": {
@@ -479,8 +482,15 @@ in the [requirements](requirements.md).
                   "pattern": "^[a-z][a-z_]*$"
                 },
                 "run_id": {
-                  "type": "string",
-                  "minLength": 1
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  ]
                 },
                 "mode": {
                   "enum": [
@@ -498,6 +508,19 @@ in the [requirements](requirements.md).
                       "minLength": 1
                     }
                   ]
+                },
+                "error": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/$defs/error"
+                    }
+                  ]
+                },
+                "superseded": {
+                  "type": "boolean"
                 },
                 "at": {
                   "type": "string",
@@ -540,7 +563,7 @@ in the [requirements](requirements.md).
       }
     }
   },
-  "semantics": "The task record stored as .concorde/tasks/<id>.json in the primary worktree, written only by the Task store. id is chosen by the main agent and never reused; branch is concorde/<id>; worktree is the absolute path of the task's linked worktree; base_commit is the commit the branch was created from. modules starts with the Modules named at open and grows by every Module a run names; every entry was a registered Module when added. state follows open -> active -> delivered -> closed, where delivered returns to active when a run with writes true starts; a delivered task becomes closed when it is merged, and open, active and delivered may become closed when the task reached its goal without merging, or failed when it did not. runs lists every Operation run in start order: status running while the host works, then the Operation result status, or interrupted when the host process host_pid ended without finishing the run; writes tells whether the Operation may change the worktree. deliveries lists every delivery in order, with the delivery commit on the task branch, the project-relative path of the committed evidence bundle and the run that decided the delivered readiness, which is the delivery run itself. escalations lists, in order, every error chain escalated with concorde task escalate, each with its time and the escalating session's link, a contract.concorde.error link whose causes are the escalated errors: of level task-session when a task session escalated to the main agent, of level main-agent when the main agent escalated to the developer; sessions lists, in order, every task session started for the task with concorde task session: the background session identity Claude Code reported, its name task-<id>, the main agent's session it reports to, the absolute path of its settings file and its start time; $defs error, evidence and unhandled are that contract's definitions. closed is null until the task ends; it then records the final state (closed or failed), the outcome (merged or completed for closed, failed for failed), the note (null for merged unless given, what the task achieved for completed, why it failed for failed), the error chains that caused a failure exactly as their writers wrote them (empty when no error caused it, and for closed), the head of the primary branch at closing and whether the worktree was removed. workflow is null until the first workflow step of the task is recorded; then it names the workflow, lists each step with its key, Operation, run, mode, answers file and time in the order recorded (a retried key appears again, and its latest entry counts), and each report with its status, result path and time. Timestamps are RFC 3339 in UTC.",
+  "semantics": "The task record stored as .concorde/tasks/<id>.json in the primary worktree, written only by the Task store. id is chosen by the main agent and never reused; branch is concorde/<id>; worktree is the absolute path of the task's linked worktree; base_commit is the commit the branch was created from. modules starts with the Modules named at open and grows by every Module a run names; every entry was a registered Module when added. state follows open -> active -> delivered -> closed, where delivered returns to active when a run with writes true starts; a delivered task becomes closed when it is merged, and open, active and delivered may become closed when the task reached its goal without merging, or failed when it did not. runs lists every Operation run in start order: status running while the host works, then the Operation result status, or interrupted when the host process host_pid ended without finishing the run; writes tells whether the Operation may change the worktree. deliveries lists every delivery in order, with the delivery commit on the task branch, the project-relative path of the committed evidence bundle and the run that decided the delivered readiness, which is the delivery run itself. escalations lists, in order, every error chain escalated with concorde task escalate, each with its time and the escalating session's link, a contract.concorde.error link whose causes are the escalated errors: of level task-session when a task session escalated to the main agent, of level main-agent when the main agent escalated to the developer; sessions lists, in order, every task session started for the task with concorde task session: the background session identity Claude Code reported, its name task-<id>, the main agent's session it reports to, the absolute path of its settings file and its start time; $defs error, evidence and unhandled are that contract's definitions. closed is null until the task ends; it then records the final state (closed or failed), the outcome (merged or completed for closed, failed for failed), the note (null for merged unless given, what the task achieved for completed, why it failed for failed), the error chains that caused a failure exactly as their writers wrote them (empty when no error caused it, and for closed), the head of the primary branch at closing and whether the worktree was removed. workflow is null until the first workflow step of the task is recorded; then it names the workflow, lists each step with its key, Operation, run (null for a step whose run could not start, with its error), mode, answers file, whether a later rerun superseded it, and time, in the order recorded; a key's current step is its latest entry not superseded, and each report with its status, result path and time. Timestamps are RFC 3339 in UTC.",
   "example": {
     "id": "severity",
     "goal": "let Issue reports carry a severity",
@@ -706,5 +729,5 @@ its preconditions and one file transaction bound to the digest of the bytes read
 | Begin run (`task`, `run_id`, `operation`, `modules`, `writes`, `host_pid`, `check_modules`) | The task exists, its state is `open`, `active` or `delivered`, every Module is registered in the task worktree unless `check_modules` is false (for an Operation that diagnoses the Specs itself), and no run is `running` whose `host_pid` is still alive; `running` entries whose process ended are first set to `interrupted`. Otherwise `unknown_task`, `task_closed`, `unknown_module`, `specs_unloadable` or `task_busy`, each with a message naming the task, Module, file or run concerned. | Appends the run as `running`, adds new Modules to `modules`, moves `open` to `active`, and moves `delivered` to `active` when `writes` is true. |
 | Finish run (`task`, `run_id`, `status`) | The run exists and is `running`. | Sets the run's status and `finished_at`. |
 | Record delivery (`task`, `run_id`, `commit`, `bundle`, `readiness_run`) | The run exists and is `running`, and the state is `active` or `delivered`. | Appends the delivery and sets the state to `delivered`. |
-| Record workflow step (`task`, `workflow`, `key`, `operation`, `run_id`, `mode`, `answers`) | The task exists and is not `closed` or `failed`; the record names no workflow or the same one; the key is recorded for no other Operation. Otherwise `unknown_task`, `task_closed`, `workflow_conflict` or `step_conflict`, naming the recorded workflow or Operation. | Names the workflow when none was named, and appends the step. |
+| Record workflow step (`task`, `workflow`, `key`, `base_key`, `operation`, `run_id`, `mode`, `answers`, `error`) | The task exists and is not `closed` or `failed`; the record names no workflow or the same one; the key is recorded for no other Operation. Otherwise `unknown_task`, `task_closed`, `workflow_conflict` or `step_conflict`, naming the recorded workflow or Operation. | Names the workflow when none was named; when a current step has the same base key, marks every step recorded after it superseded; appends the step. |
 | Record workflow report (`task`, `status`, `path`, `log_text`) | The task exists and names a workflow. Otherwise `unknown_task` or `no_workflow`. | Appends the report and appends `log_text` to the decision log. |

@@ -5,7 +5,8 @@
 Concorde helps a developer and a main agent change a project that describes itself in
 Specs. Spec tooling checks and publishes those Specs and computes what a task may read and write.
 Operations carry out bounded jobs, assessing, specifying, implementing, testing, reviewing,
-validating and delivering, under Spec-derived permissions, and the main agent stays in charge: it
+validating and delivering, and, for a project whose code came first, describing that code, under
+Spec-derived permissions, and the main agent stays in charge: it
 splits work into tasks, carries each out inside its worktree or hands it to a task session, and
 merges what is delivered. For a recurring kind of task, a workflow presets the Operations the task
 runs, such as the brownfield workflow that describes an existing codebase in Specs. Concorde never chooses the

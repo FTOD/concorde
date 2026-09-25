@@ -413,6 +413,7 @@ def _open_task(
         "deliveries": [],
         "escalations": [],
         "sessions": [],
+        "workflow": None,
         "closed": None,
     }
     with _locked(primary):
@@ -585,6 +586,83 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
             f"\n## Escalated to the {receiver}, {stamp}\n\n{render(error)}\n\n"
             f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
         )
+    return record
+
+
+def record_workflow_step(
+    primary: Path,
+    task_id: str,
+    workflow: str,
+    key: str,
+    operation: str,
+    run_id: str,
+    mode: str,
+    answers: str | None,
+) -> dict:
+    """Record one workflow step of a task: name the workflow on the first step, append the step.
+
+    Refused with ``task_closed`` for an ended task, ``workflow_conflict`` when the record names
+    another workflow and ``step_conflict`` when the key is recorded for another Operation.
+    """
+    stamp = now()
+
+    def change(record):
+        if record["state"] in ENDED:
+            raise TaskError(
+                "task_closed",
+                f"task {task_id} is {record['state']}; no workflow step is recorded for it",
+            )
+        current = record.get("workflow")
+        if current is None:
+            current = {"name": workflow, "steps": [], "reports": []}
+        elif current["name"] != workflow:
+            raise TaskError(
+                "workflow_conflict",
+                f"task {task_id} runs the workflow {current['name']}; a step of {workflow} is "
+                "refused, since a task runs at most one workflow",
+            )
+        for step in current["steps"]:
+            if step["key"] == key and step["operation"] != operation:
+                raise TaskError(
+                    "step_conflict",
+                    f"step key {key} of task {task_id} is recorded for {step['operation']} "
+                    f"(run {step['run_id']}), not {operation}",
+                )
+        current["steps"].append(
+            {
+                "key": key,
+                "operation": operation,
+                "run_id": run_id,
+                "mode": mode,
+                "answers": answers,
+                "at": stamp,
+            }
+        )
+        record["workflow"] = current
+        return record
+
+    return update(primary, task_id, change)
+
+
+def record_workflow_report(
+    primary: Path, task_id: str, status: str, path: str, log_text: str
+) -> dict:
+    """Append a workflow report to the task record and its text to the decision log."""
+    stamp = now()
+
+    def change(record):
+        current = record.get("workflow")
+        if current is None:
+            raise TaskError(
+                "no_workflow",
+                f"task {task_id} names no workflow, so there is no workflow report to record",
+            )
+        current["reports"].append({"status": status, "path": path, "at": stamp})
+        return record
+
+    record = update(primary, task_id, change)
+    with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
+        stream.write(log_text)
     return record
 
 
@@ -768,6 +846,8 @@ __all__ = [
     "primary_of",
     "record_delivery",
     "record_session",
+    "record_workflow_report",
+    "record_workflow_step",
     "require_primary",
     "show_task",
 ]

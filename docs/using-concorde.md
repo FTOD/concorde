@@ -146,6 +146,32 @@ concorde validate            # every structural rule of the Protocol
 concorde registry --write    # refresh the registry after a Module's `module` block changed
 ```
 
+### A project whose code already exists
+
+Concorde normally works Spec first: a promise is written, then realized. When you adopt Concorde
+for a project that already has code, the **brownfield workflow** describes that code in Specs
+once, so that from then on you can work Spec first. After initialization, ask the main agent to
+run it. It opens a task bound to the root Module and runs, one after another:
+
+1. `survey`: a worker reads the code and proposes child Modules, which paths each binds, and the
+   test and lint commands it found;
+2. `scaffold`: the host creates those Modules as honest stubs and moves their paths out of the
+   root;
+3. `code_to_spec` for each Module: a worker reads its code and writes its Spec;
+4. `spec_review`, `validate` and `delivery`.
+
+The workers describe behaviour as it is. When they cannot tell whether something is intended,
+such as an error that is silently ignored, they write no promise about it and report an **open
+question** instead. Choose one of two modes when the workflow starts:
+
+- **interactive**: the workflow stops at every open question and every choice about how the
+  project splits, the main agent asks you, and the workflow continues with your answers;
+- **no-ask**: the workflow takes those choices itself and reports every choice, open question and
+  problem at the end, for you to review before the task is merged.
+
+The test and lint commands the survey found are reported, never configured automatically: add
+the ones you trust to your checks yourself (see below).
+
 ## Configure your checks
 
 **Checks** are your project's own commands, such as a test suite or a linter, each assigned to one
@@ -323,7 +349,7 @@ the same task, such as a plan, to the next worker; `--modules` binds more Module
 
 Concorde never lets a worker infer a missing promise from the code. When the Spec does not say what
 a change needs, the Operation stops with a **Spec gap**, and the Spec is changed first through
-`specify`.
+`specify`. The one exception is describing a project whose code came before its Specs, below.
 
 ### 3. Merge and close
 
@@ -413,9 +439,9 @@ full path from where the error started to the question you are asked.
 
 ## What workers can and cannot do
 
-Before a worker starts, the host computes its grant from the task worktree's Specs for one of six
-task types: `understand`, `specify`, `implement`, `test`, `review-spec` and `review-code`. You can
-see any grant yourself:
+Before a worker starts, the host computes its grant from the task worktree's Specs for one of seven
+task types: `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code` and
+`code-to-spec`. You can see any grant yourself:
 
 ```bash
 concorde grant --modules module.payments --type implement

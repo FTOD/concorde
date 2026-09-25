@@ -95,8 +95,8 @@ The **Operation catalog** of this version:
 | `validate` | [Validation](validation/module.md) | none | none | required | no | [readiness](validation/module.md#concept.validation.readiness) |
 | `delivery` | [Delivery](delivery/module.md) | none | none | required | commits on the task branch | a [delivery commit](delivery/module.md#concept.delivery.delivery-commit) |
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | optional | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
-| `scaffold` | [Adoption](adoption/module.md) | none | none | required | the surveyed Module's documents, the new child Modules' documents, the registry and configured checks | a [scaffold record](adoption/contracts.md#contract.adoption.scaffold-record) |
-| `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | required | Specs of the bound Modules | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
+| `scaffold` | [Adoption](adoption/module.md) | none | none | required | the surveyed Module's documents, the new child Modules' documents and the registry | a [scaffold record](adoption/contracts.md#contract.adoption.scaffold-record) |
+| `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | required | Specs of the bound Modules and the registry mirror | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
 | `configure_workers` | Operations | none | none | optional | the worktree's untracked [worker model configuration](../harness/workers/module.md#concept.workers.model-configuration) | the [worker configuration](contracts.md#contract.operations.worker-configuration) |
 
 A typical task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then

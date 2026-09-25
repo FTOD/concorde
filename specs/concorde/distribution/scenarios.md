@@ -12,6 +12,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND `generated/build-manifest.json` records the digest of every source and output
 - AND a following `build --check` reports no differences
 
+### scenario.distribution.build-workflows — Render every workflow for both clients
+
+- GIVEN a workflow catalog with the brownfield workflow
+- WHEN the developer runs `build`
+- THEN `generated/workflows/claude/concorde-brownfield.js` starts with a `meta` block naming `concorde-brownfield`, followed by the Claude Code step adapter and the procedure
+- AND `generated/workflows/pi/brownfield.js` holds the pi step adapter and the same procedure, and `generated/workflows/pi/agents/concorde-step.md` the command-runner agent
+- AND the build manifest records all three
+
 ### scenario.distribution.build-check-stale — Report a stale build without writing
 
 - GIVEN a checkout whose prompt source changed since the last build
@@ -68,7 +76,16 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
 - AND installing again with the same pin downloads nothing
 - AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go
+- AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
+- AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
 - BUT no Spec document, registry or Protocol binding of the project changed
+
+### scenario.distribution.install-settings-kept — A developer's settings survive the installer
+
+- GIVEN a project whose `.claude/settings.json` has its own permission rules, and a receipt recording a rule the new package no longer ships
+- WHEN the installer runs again
+- THEN the developer's rules and other settings are unchanged, the missing workflow rules are added and the rule no longer shipped is removed
+- BUT a `.claude/settings.json` that is not a JSON object is refused with `settings_invalid` before anything is written
 
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
@@ -90,5 +107,6 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer installs Concorde with `--pi`
 - THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile
 - AND the run view is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
+- AND every rendered pi workflow script is under `.concorde/workflows/pi/` and the command-runner agent at `.pi/agents/concorde-step.md`
 - AND a second install with the same lockfile does not run npm again
 - BUT without npm the install is refused before anything else is written

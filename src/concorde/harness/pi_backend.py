@@ -20,7 +20,7 @@ from pathlib import Path
 
 from ..errors import link
 from .claude_backend import BackendRefusal, RoundOutcome
-from .settings import GrantView, sandbox_filesystem
+from .settings import GrantView, sandbox_filesystem, tool_set
 
 ACTOR = "pi process (pi -p)"
 HERE = Path(__file__).resolve().parent
@@ -283,8 +283,8 @@ class PiBackend:
     def __init__(self):
         self.programs: dict = {}
 
-    def tools(self, task_type: str) -> str:
-        return TOOL_SETS[task_type]
+    def tools(self, task_type: str, grant: dict | None = None) -> str:
+        return tool_set(TOOL_SETS, task_type, grant)
 
     def prepare(self, request, worktree: Path, paths, schema: dict) -> Path:
         programs, missing = prerequisites(request, worktree)
@@ -354,7 +354,7 @@ class PiBackend:
             "--no-skills",
             "--no-prompt-templates",
             "--tools",
-            TOOL_SETS[request.task_type],
+            self.tools(request.task_type, request.grant),
             "--session-dir",
             (paths.config / "sessions").as_posix(),
             "--session-id",

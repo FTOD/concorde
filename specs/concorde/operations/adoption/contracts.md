@@ -258,7 +258,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
       }
     }
   },
-  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries are removed, computed by the host with the scaffold's rule. checks are configured checks for the surveyed Module or a child, each with the reason it was found. decisions are the choices the worker took where the code left several open, each with decided_by worker, or developer when it follows an answer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A behaviour or field change increments the version.",
+  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries are removed, computed by the host with the scaffold's rule. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, each with decided_by worker, or developer when it follows an answer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A behaviour or field change increments the version.",
   "example": {
     "module": "module.shop",
     "summary": "The shop has a checkout service and an inventory service that share one database helper; they become two Modules and the helper stays with the root.",
@@ -348,7 +348,6 @@ The `output` of a `scaffold`, entirely observed by the host.
       "created",
       "parent_entries_before",
       "parent_entries_after",
-      "checks_added",
       "files_written"
     ],
     "properties": {
@@ -408,13 +407,6 @@ The `output` of a `scaffold`, entirely observed by the host.
           "minLength": 1
         }
       },
-      "checks_added": {
-        "type": "array",
-        "items": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
       "files_written": {
         "type": "array",
         "items": {
@@ -424,7 +416,7 @@ The `output` of a `scaffold`, entirely observed by the host.
       }
     }
   },
-  "semantics": "What one scaffold did. parent is the surveyed Module and survey_run the admitted survey. created lists every Module created, with its entry path and the entries its realization binds. parent_entries_before and parent_entries_after are the union of the parent's realization entries before and after. checks_added names the configured checks appended to the project configuration. files_written lists every file the transaction wrote. A behaviour or field change increments the version.",
+  "semantics": "What one scaffold did. parent is the surveyed Module and survey_run the admitted survey. created lists every Module created, with its entry path and the entries its realization binds. parent_entries_before and parent_entries_after are the union of the parent's realization entries before and after. The scaffold never configures the proposal's checks. files_written lists every file the transaction wrote. A behaviour or field change increments the version.",
   "example": {
     "parent": "module.shop",
     "survey_run": "r-20260925T101500-survey-1a2b3c4d",
@@ -459,11 +451,7 @@ The `output` of a `scaffold`, entirely observed by the host.
       "pyproject.toml",
       "src/db.py"
     ],
-    "checks_added": [
-      "check.checkout.tests"
-    ],
     "files_written": [
-      ".concorde/config.json",
       ".concorde/specs.json",
       "specs/shop/checkout/module.md",
       "specs/shop/checkout/module.md.json",
@@ -545,7 +533,8 @@ claims, checked for consistency only.
             "kind",
             "id",
             "description",
-            "source"
+            "source",
+            "question"
           ],
           "properties": {
             "module": {
@@ -582,6 +571,17 @@ claims, checked for consistency only.
               "enum": [
                 "code",
                 "answer"
+              ]
+            },
+            "question": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^q\\.[a-z0-9-]+$"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           }
@@ -778,7 +778,7 @@ claims, checked for consistency only.
       }
     }
   },
-  "semantics": "What one code_to_spec run described for modules. changed_documents are the documents whose reading or metadata changed, created_documents the prepared stubs the worker filled, removed_stubs the stubs it left unchanged and the host removed. promises are the promises the worker wrote, each with source code when it describes behaviour read in code or answer when it states intent a developer answer gave. decisions and open_questions have the shapes of the decomposition proposal; no open question is written as a promise. deviations list every answered question whose stated intent differs from the observed code. validation holds the structural errors this run introduced and the count of errors that existed before it. A behaviour or field change increments the version.",
+  "semantics": "What one code_to_spec run described for modules. changed_documents are the documents whose reading or metadata changed, created_documents the prepared stubs the worker filled, removed_stubs the stubs it left unchanged and the host removed. promises are the promises the worker wrote, each with source code when it describes behaviour read in code or answer when it states intent a developer answer gave, and then question naming the answered question. decisions and open_questions have the shapes of the decomposition proposal; no open question is written as a promise. deviations list every answered question whose stated intent differs from the observed code. validation holds the structural errors this run introduced and the count of errors that existed before it. A behaviour or field change increments the version.",
   "example": {
     "modules": [
       "module.checkout"
@@ -802,7 +802,8 @@ claims, checked for consistency only.
         "kind": "scenario",
         "id": "scenario.checkout.submit",
         "description": "a valid basket becomes one order and its number is returned",
-        "source": "code"
+        "source": "code",
+        "question": null
       }
     ],
     "decisions": [
@@ -891,7 +892,7 @@ admitted earlier run.
       }
     }
   },
-  "semantics": "The developer's answers to decisions and open questions of an earlier survey or code_to_spec run, admitted with --input. id names the decision or question, question repeats its text so the file is readable on its own, and answer is the chosen option or the developer's own words. A later run follows every answer: a survey takes the answered choice as a decision decided_by developer, and a code_to_spec run writes an answered question as a promise with source answer, or records a deviation when the code does otherwise. A behaviour or field change increments the version.",
+  "semantics": "The developer's answers to decisions and open questions of an earlier survey or code_to_spec run, admitted with --input, listing every answer given so far for that step. id names the decision or question, question repeats its text so the file is readable on its own, and answer is the chosen option or the developer's own words. A later run follows every answer: a survey takes the answered choice as a decision decided_by developer, and a code_to_spec run writes an answered question as a promise with source answer, or records a deviation when the code does otherwise. A behaviour or field change increments the version.",
   "example": {
     "answers": [
       {
@@ -908,3 +909,24 @@ admitted earlier run.
   }
 }
 ```
+
+## Errors
+
+The codes of the Operation's own link in a result that is not `ok`. Worker, Workers and Spec core
+links below it keep their own codes.
+
+| Code | Operation | Status | Reason | Raised when |
+| --- | --- | --- | --- | --- |
+| `invalid_request` | survey, scaffold | `failed` | `input` | a survey is bound to other than one Module; a scaffold has no `--input`, several, or one that is not a survey, or the survey's output breaks its contract |
+| `invalid_answers` | survey, code_to_spec | `failed` | `input` | the answers file cannot be read, breaks `contract.adoption.answers` or answers one identity twice |
+| `specs_unloadable` | all three | `failed` | `scope` | the worktree's Specs cannot be loaded; the cause is Spec core's error |
+| `grant_unavailable` | survey, code_to_spec | `failed` | `scope` | Spec core cannot compute the `code-to-spec` grant; the cause is its error |
+| `unknown_modules` | code_to_spec | `failed` | `input` | a bound Module is not registered, listed with the registered ones |
+| `inconsistent_proposal` | survey | `failed` | `capability` | the proposal does not fit the worktree or does not follow an answer; every problem is listed |
+| `stale_proposal` | scaffold | `blocked` | `decision` | the proposal no longer fits the worktree, a file it would create exists, or a file changed while it was written; every mismatch is listed |
+| `scaffold_invalid` | scaffold | `failed` | `capability` | the scaffold's files would add structural errors; one cause per finding, and nothing is kept |
+| `new_structural_errors` | code_to_spec | `blocked` | `decision` | the description adds structural errors; one cause per finding |
+| `inconsistent_description` | code_to_spec | `failed` | `capability` | the description names another Module, repeats an identity, chooses outside its options or does not follow an answer; every problem is listed |
+
+A worker that ended `blocked` or `failed`, a launch error, a timeout and an audit violation keep
+the codes of the [standard worker sequence](../host.md).

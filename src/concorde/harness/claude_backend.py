@@ -16,7 +16,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..errors import link
-from .settings import TOOL_SETS, SettingsError, worker_settings, write_hook_source
+from .settings import (
+    TOOL_SETS,
+    SettingsError,
+    tool_set,
+    worker_settings,
+    write_hook_source,
+)
 
 ACTOR = "Claude Code process (claude -p)"
 
@@ -156,8 +162,8 @@ class ClaudeBackend:
     process = "Claude Code"
     missing_command = "Workers cannot install or repair the claude command; set CONCORDE_CLAUDE or PATH"
 
-    def tools(self, task_type: str) -> str:
-        return TOOL_SETS[task_type]
+    def tools(self, task_type: str, grant: dict | None = None) -> str:
+        return tool_set(TOOL_SETS, task_type, grant)
 
     def executable(self, request) -> str:
         return request.claude or os.environ.get("CONCORDE_CLAUDE") or "claude"
@@ -225,7 +231,7 @@ class ClaudeBackend:
             "--settings",
             (paths.control / "settings.json").as_posix(),
             "--tools",
-            TOOL_SETS[request.task_type],
+            self.tools(request.task_type, request.grant),
             "--json-schema",
             schema_text,
             "--output-format",

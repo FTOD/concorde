@@ -106,9 +106,11 @@ with `worker_model_unavailable` before any worker starts.
 
 A run without a task uses the same runner and envelope with `task` null, and records nothing in any
 task record: no task is begun, made busy or reopened. Its worker launches follow the standard worker
-sequence with the grant computed from the primary worktree's Specs, and the host refuses a
-launch of the task type `specify` or `implement` with `project_scope_write` before computing a
-grant, whatever the provider asks, since only a task's worktree may change. Its results and run
+sequence with the grant computed from the primary worktree's Specs, and the host refuses, with
+`project_scope_write` and before any worker starts, every launch whose grant would keep a writable
+path, whatever the provider asks, since only a task's worktree may change. A `specify`,
+`implement` or `code-to-spec` launch is therefore refused unless its provider withholds every
+writable level, as a survey does. Its results and run
 records live in the primary worktree's `.concorde/runs/` like every other run's.
 
 A run without a task is accepted only when the command runs in the primary worktree. Started in a
@@ -150,7 +152,7 @@ number of resume rounds (default 3). Workers performs:
 
 | # | Step | Stops the step when |
 | --- | --- | --- |
-| 1 | Compute the grant for the task type and Modules from the task worktree's Specs through Spec core and freeze it with its context identity | the Specs cannot be loaded or a Module is unknown |
+| 1 | Compute the grant for the task type and Modules from the task worktree's Specs through Spec core, lower every writable level to read when the provider withholds writes, and freeze it with its context identity | the Specs cannot be loaded or a Module is unknown |
 | 2 | Pre-create the pending files that the grant makes writable | a pending file cannot be created |
 | 3 | Generate the worker settings, the tool list and the brief from the frozen grant | — |
 | 4 | Launch the worker in its own run directory and wait for its worker result | launch error, timeout or a result that fails its schema |
@@ -168,6 +170,11 @@ The step's outcome maps to the result status as follows; the first matching row 
 | Worker result status `failed` | `failed` |
 | Worker result status `blocked` | `blocked` |
 | Worker result status `ok`, audit clean, every check passed | `ok`, unless a later provider step stops the run |
+
+A provider may withhold every writable level of a task type's grant, as the Protocol lets a harness
+give less than a type assigns; the frozen grant then has no writable path, the worker gets its
+backend's read-only tool set, and the `grant` host evidence says the writes were withheld. Spec core
+always computes the full grant of the type; only the host lowers it.
 
 The host copies the worker result into the envelope's `worker` field unchanged and adds as host
 evidence the grant, the context identity, the audit, each check with its command, exit code and
