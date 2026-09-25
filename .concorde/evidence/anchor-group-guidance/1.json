@@ -1,0 +1,50 @@
+{
+  "task": "anchor-group-guidance",
+  "goal": "Tell Spec-writing workers how anchors group, and name a following anchor in the meaning error",
+  "modules": [
+    "module.harness.workers",
+    "module.spec"
+  ],
+  "sequence": 1,
+  "base_commit": "8da14fe48e46a10128efafc5e074458f010c9cb7",
+  "parent_commit": "d9863ed1cceca9ae0d9b4bcc25682daf9ca75e16",
+  "readiness": {
+    "run_id": "r-20260925T145928-delivery-45cea125",
+    "input_digest": "sha256:b4e0fd84041c4f3a5175d22bba9729e4f72e2991c2f782ff3513df090cf8413c",
+    "modules": [
+      "module.harness.workers",
+      "module.spec"
+    ],
+    "checks": [
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:23ec81bf062f8c06dc6cbe4a760f90638dbf72ec173032b9075619aaea4b03d2"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:d31af16e7220db3d4f28ebdbee3097a7b67e510b0260ec4d7770762201e51d50"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T145918-validate-e6fe2318",
+      "operation": "validate",
+      "modules": [
+        "module.harness.workers",
+        "module.spec"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:2375117a4e4ca808454db1d6e48955d9caf6fead2931df9fdf95409b22c84b5c"
+    }
+  ],
+  "created_at": "2026-09-25T14:59:38Z"
+}
