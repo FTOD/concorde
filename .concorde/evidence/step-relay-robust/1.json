@@ -1,0 +1,34 @@
+{
+  "task": "step-relay-robust",
+  "goal": "Step requests omit defaults, the Claude step function asks again after an unusable relay, and a step left unanswered keeps what its agent relayed",
+  "modules": [
+    "module.workflows"
+  ],
+  "sequence": 1,
+  "base_commit": "1eaa3a5d3141dd26c7804bdb8ce76f26e08b6722",
+  "parent_commit": "1883d2033ddd068dd82fdaae5db5c9d4f0f1746c",
+  "readiness": {
+    "run_id": "r-20260925T152734-delivery-bc48ac29",
+    "input_digest": "sha256:f19b754a6cb97580fb367e330c353d23d7a0b5453e7b018e2bc9d642f978c042",
+    "modules": [
+      "module.workflows"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T152732-validate-41abd0e8",
+      "operation": "validate",
+      "modules": [
+        "module.workflows"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:7ea7985a2c019da3912b1972b54b4b9ce7515e80bb2bf1e4170fa10cb400d60c"
+    }
+  ],
+  "created_at": "2026-09-25T15:27:36Z"
+}
