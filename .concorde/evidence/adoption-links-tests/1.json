@@ -1,0 +1,42 @@
+{
+  "task": "adoption-links-tests",
+  "goal": "code_to_spec links the project's existing tests to the scenarios derived from them with verifies decorators the host adds",
+  "modules": [
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "67f57f34515632add12aa1e54ca48a610f06a058",
+  "parent_commit": "8c69f1e87ea841f1b84550bc4980bba594022834",
+  "readiness": {
+    "run_id": "r-20260925T185245-delivery-3d2a3af8",
+    "input_digest": "sha256:0d62f730b783d1d8702394551cea5862dcc16dfcba949bddbb6e48f72561e251",
+    "modules": [
+      "module.adoption",
+      "module.concorde"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:b3292630857b313ab3734f454ddc56e14ca5508c8174fa9124a6edaeae5751cd"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T185232-validate-0092021c",
+      "operation": "validate",
+      "modules": [
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:6748c4d0e648da2e9ad9e96b0c3f49a3c7511b7b0312edba037dec20422ab7c8"
+    }
+  ],
+  "created_at": "2026-09-25T18:52:57Z"
+}
