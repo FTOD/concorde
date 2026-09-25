@@ -4,9 +4,9 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-13.0.0-6264e8" alt="Spec Protocol 13.0.0" /></a>
-  <a href="#get-started"><img src="https://img.shields.io/badge/client-Claude_Code_%7C_pi-273449" alt="Client: Claude Code or pi" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-13.0.0-0F7ADA" alt="Spec Protocol 13.0.0" /></a>
+  <a href="#get-started"><img src="https://img.shields.io/badge/client-Claude_Code_%7C_pi-092857" alt="Client: Claude Code or pi" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-092857" alt="MIT license" /></a>
 </p>
 
 <p align="center">
