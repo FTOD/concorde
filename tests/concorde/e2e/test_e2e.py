@@ -66,6 +66,26 @@ class E2ETests(unittest.TestCase):
         self.assertIn("Bash(.concorde/bin/concorde workflow step:*)", tools)
         self.assertIn('"restart": {"scaffold": "2"}', command[2])
 
+    def test_watch_reads_task_records_and_skips_workflow_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            tasks = project / ".concorde/tasks"
+            tasks.mkdir(parents=True)
+            step = {"key": "survey", "run_id": "r-1", "superseded": False}
+            (tasks / "adopt.json").write_text(
+                json.dumps(
+                    {"id": "adopt", "workflow": {"name": "brownfield", "steps": [step]}}
+                )
+            )
+            (tasks / "adopt.workflow.json").write_text(
+                json.dumps({"workflow": "brownfield", "status": "ok"})
+            )
+            value = e2e.watch(project)
+            self.assertEqual(
+                {"adopt": [{"key": "survey", "run": "r-1", "superseded": False}]},
+                value["workflows"],
+            )
+
     def test_the_driver_needs_the_projects_rendered_script(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(e2e.E2EError) as raised:

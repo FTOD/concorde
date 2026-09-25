@@ -334,7 +334,8 @@ def watch(project: Path) -> dict:
     workflows = {}
     for record in sorted((project / ".concorde/tasks").glob("*.json")):
         value = json.loads(record.read_text())
-        if isinstance(value, dict) and value.get("workflow"):
+        # Only task records: the workflow result beside one names its workflow as a string.
+        if isinstance(value, dict) and isinstance(value.get("workflow"), dict):
             workflows[value["id"]] = [
                 {"key": s["key"], "run": s["run_id"], "superseded": s["superseded"]}
                 for s in value["workflow"]["steps"]
