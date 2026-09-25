@@ -1,0 +1,119 @@
+{
+  "task": "brownfield-workflow",
+  "goal": "Add the code-to-spec task type, the survey/scaffold/code_to_spec Operations and a Workflows layer (preset tasks) with a brownfield workflow for adopting existing projects",
+  "modules": [
+    "module.concorde",
+    "module.spec",
+    "module.operations",
+    "module.tasks",
+    "module.main-session",
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "58c94a9d50e573ea25668b02a7a8500a0388aa9f",
+  "parent_commit": "d729be503c93c053c54c1706213eac7e8ea53cca",
+  "readiness": {
+    "run_id": "r-20260925T114216-delivery-60223671",
+    "input_digest": "sha256:73b68cce59e28c212503ff7bc5c91c67f1c09f9e71ad5673eba7e3a08a46ca78",
+    "modules": [
+      "module.adoption",
+      "module.concorde",
+      "module.distribution",
+      "module.harness",
+      "module.harness.workers",
+      "module.main-session",
+      "module.operations",
+      "module.spec",
+      "module.spec-mcp",
+      "module.tasks",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:fbb88761db1cf37d9e8e48d56a7899ccefdcd573b017d4703e5ab704fb73d3ef"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:d2beb55e52ffcad580feb0c29f48b74b29b6de740b17616fa1b357cd74b818e1"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:22a175b50c04b5bbe18338f30a8e7a0d92d3481483316a3f42163cbc2ec1a7cd"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:aef9c6395f37d9fec3904bbf893b7d0cfe7d6127e101ff117ecae07a526fef6a"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:fb0573f990a29f32494963ac81402c721bacd058f57989f723e02be2a3d8402b"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:2b8f246464709bf93bab502a011285e99386b3f587010bcc7a6e45420189fb0a"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:55a54ff5ee2efd21aa1f1be0e854db72a00c68156358f423ec5aaa41e0778fb0"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:610fd33fe3e3e744c409c7f005206e38d15f09c4449b66d38a56379adb4ffe98"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T112616-validate-a0938b78",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.spec",
+        "module.operations",
+        "module.tasks",
+        "module.main-session",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:f4859620a07714cec9b2022b711ccc71b01bddb1d49451a9e07802be0c7ca965"
+    },
+    {
+      "run_id": "r-20260925T114141-validate-3e634a88",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.spec",
+        "module.operations",
+        "module.tasks",
+        "module.main-session",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:fd9da677d40788a564af55445acc314c1dbe019e382b9245f84aa34234a15703"
+    }
+  ],
+  "created_at": "2026-09-25T11:42:51Z"
+}
