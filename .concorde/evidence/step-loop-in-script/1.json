@@ -1,0 +1,34 @@
+{
+  "task": "step-loop-in-script",
+  "goal": "Claude step agents wait at most 100s per call and the workflow script, not the model, repeats a step while its run runs; reject relayed outcomes that do not match the step",
+  "modules": [
+    "module.workflows"
+  ],
+  "sequence": 1,
+  "base_commit": "ab391989e87f8d2f5a25e13f24a10a5e6013afef",
+  "parent_commit": "28ad0dcbb2f287bc112a71427b1e35f7261dfcbb",
+  "readiness": {
+    "run_id": "r-20260925T145349-delivery-312d96cb",
+    "input_digest": "sha256:0b33b4529fa9d6db054eacb8d9e054aa72878e6b524d1790c792926e6a5a33fb",
+    "modules": [
+      "module.workflows"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T145347-validate-6d5a81ff",
+      "operation": "validate",
+      "modules": [
+        "module.workflows"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:df977d923e15be7e36833d8f01efc43d29b98a611713087be184fc90c06b9f2e"
+    }
+  ],
+  "created_at": "2026-09-25T14:53:51Z"
+}
