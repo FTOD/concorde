@@ -24,6 +24,14 @@ Concrete situations that show the [requirements](requirements.md) of
 - AND after a change that makes every listed test pass and edits the same test file itself, grading reports it resolved, the test file graded as the case's test patch writes it
 - AND the project has neither the test patch's files nor an extra worktree afterwards
 
+### scenario.e2e.repair-specs — An adopted case's Specs are repaired before its issue
+
+- GIVEN an adopted case whose Spec review requires changes
+- WHEN the developer runs `repair-specs` for it
+- THEN a task over the named Modules runs `spec_review`, then `specify` with that review as input and an intent to change the Specs and never the code, then `spec_review` once more, `validate` and `delivery`, and is merged
+- AND a review that accepts the Specs is followed by `validate` and `delivery` with no repair
+- BUT a step that does not end `ok` stops the repair with its result, and the task stays open
+
 ### scenario.e2e.trust — Trusting a test project
 
 - GIVEN a test project whose repository root Claude Code does not trust, and a configuration with other settings

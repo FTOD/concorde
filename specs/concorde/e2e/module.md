@@ -37,6 +37,7 @@ python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--nam
 python3 scripts/e2e/e2e.py trust <project>…
 python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
 python3 scripts/e2e/e2e.py watch <project>
+python3 scripts/e2e/e2e.py repair-specs <project> [--modules <ids>] [--task repair-specs]
 python3 scripts/e2e/e2e.py grade <project> --instance <case.json> --python <interpreter> [--ref main] [--pythonpath <dir>]…
 ```
 
@@ -86,7 +87,7 @@ builds the case's own Python environment outside the project (its interpreter an
 dependencies, never the project installed in it), prepares the case's repository at its base
 commit under the case's name with `--python` naming that interpreter, which `concorde init`
 records as the project's for its checks' `{python}`, adopts it with the brownfield workflow,
-configures its checks, and then works the issue
+configures its checks, repairs the adopted Specs with `repair-specs`, and then works the issue
 through Concorde as a main agent would, from `understand` to the merge. `grade` then decides
 whether the merged change resolves the issue the way SWE-bench does: in a throwaway worktree of
 `--ref` it puts every file the case's test patch touches back as it was at the case's base commit,
@@ -95,6 +96,16 @@ since the change may have edited the same test files, applies the test patch, ru
 FAIL_TO_PASS and PASS_TO_PASS tests passed, each one that did not, and whether the case is
 resolved. The test patch and the case's tests stay outside the project: no worker sees them, and
 the project is left as it was. The pytest output is kept under `.concorde/runs/e2e/`.
+
+**Repairing the adopted Specs.** In a case the Specs are the test's own addition, describing code
+the test never changes, so the review findings adoption leaves are repaired before the issue:
+`repair-specs` opens a task over the adopted Modules, reviews them, runs `specify` once with that
+review as input and an intent to change only what the Specs say, keeping every promise true to
+the code and turning a repair that needs a decision about intent into an open question, reviews
+them once more, and validates, delivers and merges the task. One round bounds it; what the
+second review still finds is reported. Repairing a review's gaps automatically is otherwise a
+decision for a person; this exception holds for end-to-end cases only, which is why it lives in
+this Module and not in the workflow users run.
 
 ## Design
 

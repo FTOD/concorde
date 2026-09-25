@@ -371,6 +371,126 @@ def watch(project: Path) -> dict:
     return {"runs": runs, "workflows": workflows}
 
 
+# In a case the Specs are ours, added by adoption, and describe code we never change; so one
+# round of repairing their review findings precedes the issue. This exception to "review gaps
+# wait for a person" holds for end-to-end cases only, which is why it lives here.
+REPAIR_INTENT = (
+    "Repair every blocking finding of the Spec review given as input, in the documents of the "
+    "Modules it names. These Specs describe the project's existing code: change what the Specs "
+    "say, never the code, keep every promise true to what the code does, and where a repair "
+    "would need a decision about intended behaviour, write an open question instead of a "
+    "promise."
+)
+
+
+def concorde_run(concorde: str, worktree: Path, argv: list[str]) -> dict:
+    """One Operation run in ``worktree``; its result, whatever its exit status."""
+    done = subprocess.run(
+        [concorde, "run", *argv],
+        cwd=worktree,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        return json.loads(done.stdout)
+    except ValueError as error:
+        raise E2EError(
+            "unreadable_result",
+            f"`concorde run {' '.join(argv)}` in {worktree} printed no JSON result "
+            f"(exit {done.returncode})",
+            stdout=done.stdout[-3000:],
+            stderr=done.stderr[-3000:],
+        ) from error
+
+
+def _brief(result: dict) -> dict:
+    output = result.get("output") or {}
+    return {
+        "run": result.get("run_id"),
+        "status": result.get("status"),
+        "summary": result.get("summary"),
+        **({"verdict": output["verdict"]} if "verdict" in output else {}),
+        **({"error": result["error"]} if result.get("error") else {}),
+    }
+
+
+def repair_specs(
+    project: Path,
+    modules: list[str] | None = None,
+    task: str = "repair-specs",
+    run_operation=concorde_run,
+) -> dict:
+    """Repair an adopted case's Specs from one review round, in a task of their own: review,
+    specify with the review as input, review again, validate, deliver and merge. A step that does
+    not end ok stops the repair with its result, and the task stays open."""
+    concorde = str(project / ".concorde/bin/concorde")
+    if modules is None:
+        registry = json.loads((project / ".concorde/specs.json").read_text())
+        modules = [item["id"] for item in registry["modules"]]
+    bound = ",".join(modules)
+    opened = json.loads(
+        run(
+            [
+                concorde,
+                "task",
+                "open",
+                task,
+                "--goal",
+                "Repair the adopted Specs' review findings before the case's issue",
+                "--modules",
+                bound,
+            ],
+            cwd=project,
+        ).stdout
+    )
+    worktree = Path(opened["worktree"])
+    steps: list[dict] = []
+
+    def step(name: str, argv: list[str]) -> dict | None:
+        result = run_operation(concorde, worktree, argv)
+        steps.append({"step": name, **_brief(result)})
+        return result if result.get("status") == "ok" else None
+
+    def stopped(name: str) -> dict:
+        return {"task": task, "modules": modules, "steps": steps, "stopped_at": name}
+
+    review = step("spec_review", ["spec_review", "--task", task, "--modules", bound])
+    if review is None:
+        return stopped("spec_review")
+    if (review.get("output") or {}).get("verdict") != "accepted":
+        if (
+            step(
+                "specify",
+                [
+                    "specify",
+                    "--task",
+                    task,
+                    "--modules",
+                    bound,
+                    "--input",
+                    review["run_id"],
+                    "--intent",
+                    REPAIR_INTENT,
+                ],
+            )
+            is None
+        ):
+            return stopped("specify")
+        if (
+            step(
+                "spec_review_again", ["spec_review", "--task", task, "--modules", bound]
+            )
+            is None
+        ):
+            return stopped("spec_review_again")
+    for name in ("validate", "delivery"):
+        if step(name, [name, "--task", task]) is None:
+            return stopped(name)
+    run([concorde, "task", "merge", task], cwd=project)
+    return {"task": task, "modules": modules, "steps": steps, "stopped_at": None}
+
+
 RESULT_LINE = re.compile(r"^(PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS) (\S+)")
 PATCHED_FILE = re.compile(r"^diff --git a/(\S+) b/(\S+)$", re.MULTILINE)
 
@@ -518,6 +638,12 @@ def main(argv) -> int:
     run_.add_argument("--restart", action="append", default=[], metavar="KEY=LABEL")
     watch_ = sub.add_parser("watch")
     watch_.add_argument("project", type=Path)
+    repair_ = sub.add_parser("repair-specs")
+    repair_.add_argument("project", type=Path)
+    repair_.add_argument(
+        "--modules", help="comma-separated; every registered Module by default"
+    )
+    repair_.add_argument("--task", default="repair-specs")
     grade_ = sub.add_parser("grade")
     grade_.add_argument("project", type=Path)
     grade_.add_argument("--instance", type=Path, required=True)
@@ -556,6 +682,12 @@ def main(argv) -> int:
                 / f"{arguments.task}-{arguments.via}.jsonl"
             )
             value = run_workflow(project, arguments.via, arguments.workflow, args, log)
+        elif arguments.command == "repair-specs":
+            value = repair_specs(
+                arguments.project.resolve(),
+                arguments.modules.split(",") if arguments.modules else None,
+                arguments.task,
+            )
         elif arguments.command == "grade":
             project = arguments.project.resolve()
             instance = json.loads(arguments.instance.read_text(encoding="utf-8"))

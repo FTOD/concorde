@@ -112,6 +112,75 @@ class E2ETests(unittest.TestCase):
             )
             self.assertEqual(1, git(project, "worktree", "list").count("\n"))
 
+    @verifies("scenario.e2e.repair-specs")
+    def test_specs_are_repaired_from_one_review_round(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        def result(name, status="ok", verdict=None):
+            output = {"verdict": verdict} if verdict else {}
+            return {
+                "run_id": f"r-{name}",
+                "status": status,
+                "summary": name,
+                "output": output,
+            }
+
+        def repair(outcomes):
+            commands, operations = [], []
+
+            def fake_run(command, cwd, **options):
+                commands.append(command[1:3])
+                return SimpleNamespace(stdout=json.dumps({"worktree": "/tmp/w"}))
+
+            def operation(concorde, worktree, argv):
+                operations.append(argv)
+                return outcomes.pop(0)
+
+            with patch.object(e2e, "run", fake_run):
+                value = e2e.repair_specs(
+                    Path("/tmp/p"), ["module.a", "module.b"], run_operation=operation
+                )
+            return value, commands, operations
+
+        value, commands, operations = repair(
+            [
+                result("review", verdict="changes_required"),
+                result("specify"),
+                result("review2", verdict="changes_required"),
+                result("validate"),
+                result("delivery"),
+            ]
+        )
+        self.assertIsNone(value["stopped_at"])
+        self.assertEqual(
+            ["spec_review", "specify", "spec_review", "validate", "delivery"],
+            [argv[0] for argv in operations],
+        )
+        specify = operations[1]
+        self.assertEqual("r-review", specify[specify.index("--input") + 1])
+        self.assertIn("never the code", specify[specify.index("--intent") + 1])
+        self.assertEqual("module.a,module.b", specify[specify.index("--modules") + 1])
+        self.assertEqual([["task", "open"], ["task", "merge"]], commands)
+        # An accepted review needs no repair.
+        value, _, operations = repair(
+            [
+                result("review", verdict="accepted"),
+                result("validate"),
+                result("delivery"),
+            ]
+        )
+        self.assertEqual(
+            ["spec_review", "validate", "delivery"], [a[0] for a in operations]
+        )
+        # A step that does not end ok stops the repair, and the task is not merged.
+        value, commands, _ = repair(
+            [result("review", verdict="changes_required"), result("specify", "blocked")]
+        )
+        self.assertEqual("specify", value["stopped_at"])
+        self.assertEqual("blocked", value["steps"][-1]["status"])
+        self.assertEqual([["task", "open"]], commands)
+
     @verifies("scenario.e2e.trust")
     def test_trust_marks_each_repository_root_and_keeps_the_rest(self):
         with tempfile.TemporaryDirectory() as directory:
