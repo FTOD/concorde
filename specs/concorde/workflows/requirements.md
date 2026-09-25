@@ -99,6 +99,14 @@ The record wins over the script: a key with a finished run keeps that run's outc
 
 Each workflow's procedure SHALL be written once and rendered by the build for Claude Code and for pi without change to its steps.
 
+### req.workflows.script-repeats — The script, not a model, waits for a run
+
+The Claude Code step function SHALL ask for a step again while its outcome says the run is still running, each call waiting at most 100 seconds.
+
+### req.workflows.relay-checked — An outcome for another step is no answer
+
+The Claude Code step function SHALL treat a relayed outcome as no answer when it names another step or a run identity that is not a run's.
+
 ### req.workflows.step-agent-relays — Step agents only relay
 
 A step agent SHALL run nothing but `concorde workflow step` or `concorde workflow report`, changing no file.

@@ -139,7 +139,9 @@ carries the end of its host's output.
 A **workflow script** holds a workflow's procedure once, in plain JavaScript without asynchronous
 helper functions, so that the same source runs in both clients. The build wraps it for each: for
 Claude Code with a `meta` block and a step function whose **step agent** is a subagent that runs the
-step command, runs it again while it exits with 3, and returns the JSON it printed; for pi with a
+step command once, waiting at most 100 seconds, and returns the JSON it printed, while the step
+function itself asks again as long as the run is still running and treats an outcome that names
+another step or no real run as no answer; for pi with a
 step function whose step agent is the installed command-runner agent `concorde-step`, which runs
 `concorde workflow step --stdin` without a model, and a report through its twin `concorde-report`,
 which runs `concorde workflow report --stdin`. Both read the JSON object in the prompt pi-subagents
@@ -210,11 +212,13 @@ audited and reported exactly as if the main agent had started it.
 
 The procedure lives in the client's workflow runtime because both clients offer one and run it in
 the background while the main agent stays responsive. That runtime has no shell, so each step is
-carried by a step agent. On Claude Code that agent is a model, and a Bash command there ends after
-ten minutes, while an Operation may take longer. So a step starts a [detached
-run](../operations/module.md#concept.operations.detached-run) and waits at most nine minutes per
-call, and the step agent repeats the same call. Because a key maps to one recorded run, repeating a
-call or relaunching the whole workflow never starts an Operation twice, and a relaunched interactive
+carried by a step agent. On Claude Code that agent is a model, whose Bash command ends after two
+minutes unless it asks for more, while an Operation may take much longer. So a step starts a
+[detached run](../operations/module.md#concept.operations.detached-run) and each call waits at
+most 100 seconds, and the repetition is the script's, not the model's: a live headless run showed
+a step agent that, handed a longer wait and told to repeat, let its command go to the background
+and returned an invented outcome instead. Because a key maps to one recorded run, repeating a call
+or relaunching the whole workflow never starts an Operation twice, and a relaunched interactive
 workflow replays its finished steps at once.
 
 The result is assembled by a deterministic command from what the hosts recorded. A step agent might

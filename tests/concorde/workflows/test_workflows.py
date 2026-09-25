@@ -825,6 +825,34 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual("report", run["calls"][-1]["key"])
         self.assertEqual("describe:module.inventory", run["calls"][-2]["key"])
 
+    @verifies("scenario.workflows.step-waits")
+    def test_the_claude_script_asks_again_while_a_run_is_running(self):
+        outcomes = self.full()
+        running = dict(
+            outcomes["describe:module.inventory"], state="running", status=None
+        )
+        outcomes["describe:module.inventory"] = [
+            running,
+            running,
+            outcomes["describe:module.inventory"],
+        ]
+        run = self.run_script("claude", self.ARGS, outcomes)
+        keys = [c["key"] for c in run["calls"]]
+        self.assertEqual(3, keys.count("describe:module.inventory"))
+        self.assertIn("delivery", keys)
+        first = next(c for c in run["calls"] if c["key"] == "describe:module.inventory")
+        self.assertIn("--wait 100", first["prompt"])
+
+    @verifies("scenario.workflows.lost")
+    def test_a_relayed_outcome_that_names_no_real_run_counts_as_none(self):
+        outcomes = self.full()
+        outcomes["scaffold"] = dict(outcomes["scaffold"], run_id="bxy9nbcb9")
+        run = self.run_script("claude", self.ARGS, outcomes)
+        self.assertEqual(
+            ["survey", "scaffold", "report"], [c["key"] for c in run["calls"]]
+        )
+        self.assertEqual("scaffold", run["calls"][-1]["lost"])
+
     def test_an_unready_validation_ends_the_run_before_delivery(self):
         outcomes = self.full()
         outcomes["validate"] = self.outcome(

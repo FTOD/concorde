@@ -15,6 +15,16 @@ const input = JSON.parse(readFileSync(0, "utf-8"))
 const source = readFileSync(input.script, "utf-8")
 const calls = []
 const notes = []
+const served = {}
+
+// The outcome for a step: a list gives one element per call, its last one from then on.
+function next(key) {
+  const outcome = input.outcomes[key]
+  if (!Array.isArray(outcome)) return outcome
+  const index = Math.min(served[key] || 0, outcome.length - 1)
+  served[key] = (served[key] || 0) + 1
+  return outcome[index]
+}
 
 function requestOf(text) {
   const match = text.match(/--json '((?:[^']|'\\'')*)'/)
@@ -46,8 +56,8 @@ try {
         return Promise.resolve(input.report)
       }
       const request = requestOf(prompt)
-      calls.push({ key: request.key, request, options })
-      const outcome = input.outcomes[request.key]
+      calls.push({ key: request.key, request, options, prompt })
+      const outcome = next(request.key)
       return Promise.resolve(outcome === undefined ? null : outcome)
     }
     const run = new AsyncFunction("agent", "log", "phase", "args", body)
@@ -70,7 +80,7 @@ try {
           return Promise.resolve({ ok: true, output: JSON.stringify(input.report) })
         }
         calls.push({ key: request.key, request, agent: options.agent })
-        const outcome = input.outcomes[request.key]
+        const outcome = next(request.key)
         if (outcome === undefined || outcome === null) return Promise.resolve({ ok: false, output: "" })
         return Promise.resolve({ ok: true, output: JSON.stringify(outcome) })
       },

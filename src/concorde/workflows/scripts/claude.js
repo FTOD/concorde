@@ -1,12 +1,18 @@
-// Claude Code adapter: every step is carried by a small subagent that runs `concorde workflow
-// step` with Bash, repeats it while the run is still going (exit status 3, at most nine minutes
-// per call, under Bash's ten-minute limit), and returns the step outcome it printed. What counts
-// is what the hosts recorded: the final report is built by `concorde workflow report`.
+// Claude Code adapter: every step is carried by small subagents, each running `concorde workflow
+// step` once with Bash and returning the step outcome it printed. One call waits at most
+// WAIT_SECONDS, under the Bash tool's default two-minute limit, and the script itself, not a
+// model, asks again while the run is still going: the same key only waits, it never starts the
+// run twice. An outcome that does not match the step it asked for counts as no answer. What
+// counts is what the hosts recorded: the final report is built by `concorde workflow report`.
 
 if (!args || !args.task || !args.module || !args.mode) {
   throw new Error("concorde workflow needs args { task, module, mode } and optionally answers, retry and restart")
 }
 const CONCORDE = args.concorde || ".concorde/bin/concorde"
+const WAIT_SECONDS = 100
+// At most this many calls for one step, about five and a half hours of waiting.
+const MAX_CALLS = 200
+const RUN_ID = /^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$/
 
 function quote(word) {
   return "'" + String(word).replace(/'/g, "'\\''") + "'"
@@ -17,7 +23,7 @@ const STEP_SCHEMA = {
   required: ["key", "state"],
   properties: {
     key: { type: "string" },
-    run_id: { type: ["string", "null"] },
+    run_id: { anyOf: [{ type: "null" }, { type: "string", pattern: "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$" }] },
     state: { type: "string" },
     status: { type: ["string", "null"] },
     summary: { type: ["string", "null"] },
@@ -40,6 +46,15 @@ function relay(command, lines, label, schema) {
   )
 }
 
+// A relayed outcome is used only when it names the step asked for and a real run (or none, for a
+// refused step); anything else is treated as no answer, and the report says the step was lost.
+function checked(outcome, key) {
+  if (!outcome || typeof outcome.key !== "string") return null
+  if (outcome.key.split("@")[0].split("#")[0] !== key) return null
+  if (outcome.run_id !== null && outcome.run_id !== undefined && !RUN_ID.test(outcome.run_id)) return null
+  return outcome
+}
+
 function step(key, argv) {
   const request = {
     task: args.task,
@@ -52,17 +67,27 @@ function step(key, argv) {
     restart: (args.restart && args.restart[key]) || null,
   }
   // Only the request is quoted, so that the permission rule for `concorde workflow step` matches.
-  const command = CONCORDE + " workflow step --json " + quote(JSON.stringify(request)) + " --wait 540"
-  return relay(
-    command,
-    [
-      "It prints one JSON object. Exit status 3 means the run is still going: run exactly the same",
-      "command again, as many times as it takes. Once it exits with status 0 or 1, return the",
-      "fields of the JSON object it printed last, unchanged. Run no other command and change no file.",
-    ],
-    "step " + key,
-    STEP_SCHEMA
-  )
+  const command =
+    CONCORDE + " workflow step --json " + quote(JSON.stringify(request)) + " --wait " + WAIT_SECONDS
+  let calls = 0
+  function once() {
+    calls += 1
+    return relay(
+      command,
+      [
+        "Run it once, in the foreground: it returns within two minutes. It prints one JSON object,",
+        "whatever its exit status. Return the fields of that object exactly as printed. Do not run",
+        "it again, run no other command and change no file.",
+      ],
+      "step " + key + (calls > 1 ? " (" + calls + ")" : ""),
+      STEP_SCHEMA
+    ).then(function (outcome) {
+      const answer = checked(outcome, key)
+      if (answer && answer.state === "running" && calls < MAX_CALLS) return once()
+      return answer
+    })
+  }
+  return once()
 }
 
 function report(lost) {
