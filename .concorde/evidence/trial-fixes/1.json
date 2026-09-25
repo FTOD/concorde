@@ -1,0 +1,70 @@
+{
+  "task": "trial-fixes",
+  "goal": "Fix what the requests brownfield trial found: installer files bound as project code by init, no restart from an ok workflow step, code_to_spec baseline hiding retried errors, incomplete install receipt",
+  "modules": [
+    "module.spec",
+    "module.adoption",
+    "module.workflows",
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "da2cdf8601082082aa6c779dbc2fa8017e644a8e",
+  "parent_commit": "ff44d78ab3781120c1496967c144fbbce37d37ac",
+  "readiness": {
+    "run_id": "r-20260925T143904-delivery-4d443322",
+    "input_digest": "sha256:2dd68685cd6bfdbd9965c31460bc5d9f3db9a0c99ad2d675cafd4c60ff53e177",
+    "modules": [
+      "module.adoption",
+      "module.distribution",
+      "module.main-session",
+      "module.spec",
+      "module.tasks",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:f172a562dbbc882dce5ffee32aed95fddba244b2e8e43b715b4eb0d643f23bd9"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:ca2c14208772aeffcd878f18873d76100fddde67c2c7b83ed2f8504895e80539"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:80ddb33e517eb5ec3653b49771893ce00eb246c58abbb7f238d7364f8414703c"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:2af41ed447dfe4fdf9454befaebf123d8eccf5f0758fc3cf0753f5d4697e8a35"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T143851-validate-434ef782",
+      "operation": "validate",
+      "modules": [
+        "module.spec",
+        "module.adoption",
+        "module.workflows",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:68d0a2c7ec97988806b2729ca9264748cb62dc4cfc8c20f7f5e79235e0aad635"
+    }
+  ],
+  "created_at": "2026-09-25T14:39:17Z"
+}
