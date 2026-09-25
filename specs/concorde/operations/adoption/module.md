@@ -194,7 +194,9 @@ plus the child identity's last segment. The parent keeps every path its realizat
 child took. A directory entry of the parent that contains a child's entry is replaced by the entries
 below it that no child took: a directory stays one entry when no child took anything inside it, and
 a file is listed exactly. A directory that would bind no file, such as an empty one or one holding
-only skipped files, and a symbolic link are left out, as a directory entry never bound them. So no
+only skipped files, and a symbolic link are left out, as a directory entry never bound them.
+Conversely a file a child's directory entry does not bind, such as a dot file the parent binds
+exactly because its own directory entry skips it, stays with the parent. So no
 path is bound by both parent and child unless the proposal deliberately gives one path to several
 children.
 

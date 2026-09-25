@@ -290,6 +290,29 @@ class AdoptionTests(unittest.TestCase):
             narrowed_entries(root, ["src/"], ["src/a/x.py"]),
         )
 
+    def test_files_a_child_directory_does_not_bind_stay_with_the_parent(self):
+        from concorde.adoption.records import narrowed_entries
+
+        root = self.project.base / "site"
+        for path in ("docs/index.rst", "docs/.nojekyll", "docs/_themes/.gitignore"):
+            (root / path).parent.mkdir(parents=True, exist_ok=True)
+            (root / path).write_text("x\n")
+        # Initialization binds the dot files exactly, since the directory entry skips them.
+        self.assertEqual(
+            {
+                "docs/": [],
+                "docs/.nojekyll": ["docs/.nojekyll"],
+                "docs/_themes/.gitignore": ["docs/_themes/.gitignore"],
+            },
+            narrowed_entries(
+                root, ["docs/", "docs/.nojekyll", "docs/_themes/.gitignore"], ["docs/"]
+            ),
+        )
+        self.assertEqual(
+            {"docs/.nojekyll": []},
+            narrowed_entries(root, ["docs/.nojekyll"], ["docs/", "docs/.nojekyll"]),
+        )
+
     @verifies("scenario.adoption.describe-stubs-cleaned")
     def test_stubs_are_removed_when_the_worker_step_raises(self):
         from unittest.mock import patch

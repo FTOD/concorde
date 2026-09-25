@@ -424,7 +424,11 @@ def narrowed_entries(
     """
 
     def taken(path: str) -> bool:
-        return any(covers(child, path) for child in child_entries)
+        # A file is taken only when a child entry binds it: a child's directory entry does not
+        # bind the files the exclusion rule skips, such as dot files, which the parent keeps.
+        if is_directory_entry(path):
+            return any(covers(child, path) for child in child_entries)
+        return any(bound_by(child, path) for child in child_entries)
 
     def inside(directory: str) -> bool:
         return any(

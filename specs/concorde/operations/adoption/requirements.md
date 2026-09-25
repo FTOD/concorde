@@ -92,7 +92,10 @@ The scaffold host SHALL write all its changes in one file transaction that is ke
 
 ### req.adoption.parent-narrowed — A child's paths leave the parent
 
-After a scaffold, the parent's realizations SHALL bind no path that a created child binds.
+After a scaffold, every file the parent's realizations bound SHALL be bound by exactly one of the parent and the created children, unless the proposal gave it to several children.
+
+A child's directory entry binds only what the exclusion rule admits, so a dot file below it that
+the parent bound exactly stays with the parent.
 
 A parent directory entry that contains a child's entry is replaced by the entries below it that no
 child took, a directory staying one entry when no child took anything inside it.
