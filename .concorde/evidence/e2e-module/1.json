@@ -1,0 +1,52 @@
+{
+  "task": "e2e-module",
+  "goal": "A developer-facing End-to-end testing Module: prepare SWE-bench projects, trust them, drive workflows headless or through the driver, watch runs",
+  "modules": [
+    "module.concorde",
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "a3f7746019f8c16adfc10579a63b519d5d998936",
+  "parent_commit": "f9e47ae730bd76fd54e8c0b0616da0551cc0f9ad",
+  "readiness": {
+    "run_id": "r-20260925T144421-delivery-6653ad29",
+    "input_digest": "sha256:4b010511e4ae463e31cd5b7914b4e4544b4ef2b08bdc85bc612800063280432e",
+    "modules": [
+      "module.adoption",
+      "module.concorde",
+      "module.distribution",
+      "module.e2e"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:f210f6f748e7d57884ec3944e561e3fddf77c377b5a1464126ccc8835f77a0e8"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:03f36451e4a83c0750a746a9e4b48694ebf7f8733c5fe6674b43e464f7bf8284"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T144405-validate-edb64839",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:46e9d77e8bd46950ccc58a9f2220dbd7fd989c2ff54bc957bb6e5545ac1a0c0b"
+    }
+  ],
+  "created_at": "2026-09-25T14:44:37Z"
+}
