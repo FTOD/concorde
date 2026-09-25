@@ -1,0 +1,113 @@
+{
+  "task": "task-less-operations",
+  "goal": "Operations without a task (project scope: deterministic or read-only workers), configure_workers as such an Operation, and worker model configuration keyed by Operation and worker role",
+  "modules": [
+    "module.operations",
+    "module.harness.workers",
+    "module.main-session",
+    "module.spec-review",
+    "module.understanding",
+    "module.distribution",
+    "module.concorde",
+    "module.code-review",
+    "module.tasks"
+  ],
+  "sequence": 1,
+  "base_commit": "560d043175553ba5afba955ddc58a6a3f2477bb4",
+  "parent_commit": "234b4b48f61671fe88d63f61f4c4a7aa69db1652",
+  "readiness": {
+    "run_id": "r-20260925T030723-delivery-b835a1b2",
+    "input_digest": "sha256:996900d50bb663e9257f9581c5ddb9e6467213fe68fce85d8b85d4c6385338f6",
+    "modules": [
+      "module.code-review",
+      "module.concorde",
+      "module.distribution",
+      "module.harness.workers",
+      "module.main-session",
+      "module.operations",
+      "module.spec-review",
+      "module.tasks",
+      "module.understanding"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:737c9ead92e476da0c1f41be7e3fad5c3cb25f4d2ed67dbfbe6792104524748c"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:1cec5a2dce6bcb947a52ee1c2ba054f517050a56de388eab5e4d5720ce9dd125"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:caf12876fae871f51162309d5d0c247dab826741816da8bdde97dec91f5ad404"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:e789f527b03319cc4ffcbdfc882d4ae637b6c3bb09e2c63c467ff6dde1cd34d6"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:02077c9f35dceb6b9bae7b5a740905c7f73259df3271c20b1d8bb70537215fa3"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:0841861067ece4ebd59d2d19aad1371e6bf114ef2f72dc09f1901c61df4d4449"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:335ae6178b9703e0eefcfb55c9f89977110f8c2016549720aa7c9192c62f65d3"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:ed41ebf1025d153df6d1dc2cff819d910a3345bb8497ff9a7f9e281d29b1428d"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:bd72e53292bf422fe8ea565222c753c5ba07dac308712de368616f2f4f3d6b2b"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T030652-validate-be43d4b7",
+      "operation": "validate",
+      "modules": [
+        "module.operations",
+        "module.harness.workers",
+        "module.main-session",
+        "module.spec-review",
+        "module.understanding",
+        "module.distribution",
+        "module.concorde",
+        "module.code-review",
+        "module.tasks"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:6d4c0df19d8cc6942373246243e59ab78cbbd31fdda9ba8f3fb0fb0ac36da857"
+    }
+  ],
+  "created_at": "2026-09-25T03:07:51Z"
+}
