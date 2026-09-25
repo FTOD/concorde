@@ -20,6 +20,7 @@ check the rendered guidance against them are pending.
 - AND a worker of another host process or an earlier run is not attributed to it
 - AND a finished run shows `completed`, `stopped` or `failed` for `ok`, `blocked` or `failed` with the result's summary
 - AND a run whose host process ended without finishing shows `failed`
+- AND the result the main agent is given for a finished run names the run, its task and Operation, its status and summary, and its result file
 
 ### scenario.main-session.change-through-task — The guidance routes an agreed change through a task
 

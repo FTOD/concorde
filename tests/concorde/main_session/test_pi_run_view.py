@@ -21,15 +21,17 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 SOURCE = REPOSITORY_ROOT / "src/concorde/main_session/pi_runs.ts"
 PROBE = """
 import {
-  operationRuns, workersOf, view, concordeCommand, alive, taskWorktree,
+  operationRuns, workersOf, view, concordeCommand, alive, taskWorktree, resultText,
 } from %(source)s;
 const root = %(root)s;
 const out = {};
 for (const operation of operationRuns(root)) {
   const workers = workersOf(root, operation);
+  const shown = view(root, operation, workers, %(alive)s[operation.run_id] ?? true);
   out[operation.run_id] = {
     workers: workers.map((worker) => worker.run_id),
-    view: view(root, operation, workers, %(alive)s[operation.run_id] ?? true),
+    view: shown,
+    result: resultText(shown),
   };
 }
 out.command = concordeCommand(root);
@@ -171,6 +173,16 @@ class RunViewTests(unittest.TestCase):
             states,
         )
         self.assertEqual("ok: Implemented.", out["r-ok"]["view"]["preview"])
+        result_file = (self.runs / "r-blocked/result.json").as_posix()
+        self.assertEqual(
+            "Concorde run r-blocked (t1 · implement) finished blocked. blocked: Spec gap.\n"
+            + "Read the Operation result: "
+            + result_file,
+            out["r-blocked"]["result"],
+        )
+        self.assertIn(
+            "finished failed. failed: the Operation host", out["r-dead"]["result"]
+        )
         self.assertTrue(out["r-dead"]["view"]["finished"])
         self.assertIn("process 103", out["r-dead"]["view"]["preview"])
         self.assertTrue(out["self"])

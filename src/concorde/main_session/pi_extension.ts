@@ -26,6 +26,7 @@ import {
   operationRuns,
   type OperationStatus,
   primaryRoot,
+  resultText,
   runsDirectory,
   type RunView,
   taskWorktree,
@@ -251,13 +252,13 @@ export default function (pi: ExtensionAPI) {
       );
   }
 
+  // A result that arrives while the main agent is in a turn is steered into that turn, after its
+  // current tool calls, rather than held until the turn ends; when it is idle, it starts a turn.
   function report(shown: RunView): void {
     pi.sendMessage(
       {
         customType: "concorde-run",
-        content:
-          `Concorde run ${shown.id} (${shown.label}) finished ${shown.status}. ` +
-          `${shown.preview ?? ""}\nRead the Operation result: ${shown.reportPath}`,
+        content: resultText(shown),
         display: true,
         details: {
           runId: shown.id,
@@ -265,7 +266,7 @@ export default function (pi: ExtensionAPI) {
           result: shown.reportPath,
         },
       },
-      { triggerTurn: true, deliverAs: "followUp" },
+      { triggerTurn: true, deliverAs: "steer" },
     );
   }
 
@@ -314,9 +315,11 @@ export default function (pi: ExtensionAPI) {
       "Start a Concorde Operation in the background: `concorde run <operation> [--task <task>] [arguments]`. " +
       "Without a task, an Operation that allows it (understand, spec_review, code_review, " +
       "configure_workers) runs on this session's worktree and changes no Spec or code. " +
-      "It returns at once with the run identity; the run appears in the run view, and you are " +
-      "woken with its result when it finishes. Do not poll it. To block until every running " +
-      "Concorde run ends, call bg_wait without an id; bg_wait with an id sees only subagent runs.",
+      "It returns at once with the run identity, or with the result when the run has already " +
+      "finished; the run appears in the run view, and you are woken with its result when it " +
+      "finishes, within your current turn if you are still in one. Do not poll it. To block " +
+      "until every running Concorde run ends, call bg_wait without an id; bg_wait with an id " +
+      "sees only subagent runs.",
     promptSnippet:
       "Start a Concorde Operation in the background and be woken when it finishes",
     parameters: Type.Object({
@@ -370,19 +373,32 @@ export default function (pi: ExtensionAPI) {
           (item) => item.host_pid === child.pid,
         );
         if (operation) {
-          track(operation);
+          // A run that has already finished, such as one refused at once, is answered here and
+          // never reported again.
+          const shown = view(
+            root,
+            operation,
+            workersOf(root, operation),
+            operation.phase === "finished" || alive(operation.host_pid),
+          );
+          track(operation, shown.finished);
           refresh(ctx);
+          const started = `Started ${params.operation} ${params.task ? `for task ${params.task}` : "without a task"} as run ${operation.run_id} (host process ${child.pid}).`;
           return {
             content: [
               {
                 type: "text",
-                text:
-                  `Started ${params.operation} ${params.task ? `for task ${params.task}` : "without a task"} as run ${operation.run_id} ` +
-                  `(host process ${child.pid}). You will be woken with its result; its result will be ` +
-                  `${join(runsDirectory(root), operation.run_id, "result.json")}.`,
+                text: shown.finished
+                  ? `${started} It has already finished; there is nothing to wait for.\n${resultText(shown)}`
+                  : `${started} You will be woken with its result; its result will be ` +
+                    `${shown.reportPath}.`,
               },
             ],
-            details: { runId: operation.run_id, pid: child.pid },
+            details: {
+              runId: operation.run_id,
+              pid: child.pid,
+              finished: shown.finished,
+            },
           };
         }
         if (exited !== null) break;

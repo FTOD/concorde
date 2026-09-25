@@ -99,10 +99,13 @@ and Operation, its step, the worker's round and latest tool call, and on its end
 status and summary. A `bg_wait` call without an id waits for the running ones (with an id it
 matches only subagent runs); runs are filed under the session's file, or its identity when it is
 not persisted, the name pi-subagents gives the session. When a run ends the extension sends the
-main agent a message naming the result file, which starts its next turn. `/concorde` lists the
-recent runs. The view only launches and observes: the Operation host runs and records every run,
-so closing pi never stops or changes one. Without pi-subagents the tool, the wake and `/concorde`
-still work.
+main agent a message with the result's status and summary and the result file: while the main
+agent is in a turn the message is steered into that turn after its current tool calls, and
+otherwise it starts the next turn. A run that has already finished when `concorde_run` finds it,
+such as one refused at once, is answered in the tool's own result instead, and no message
+follows. `/concorde` lists the recent runs. The view only launches and observes: the Operation
+host runs and records every run, so closing pi never stops or changes one. Without pi-subagents
+the tool, the wake and `/concorde` still work.
 
 <a id="concept.main-session.escalation-policy"></a>
 

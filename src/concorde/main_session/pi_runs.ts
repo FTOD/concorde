@@ -191,6 +191,14 @@ export function view(
   };
 }
 
+/** What the main agent is told about a finished run: its status, summary and result file. */
+export function resultText(shown: RunView): string {
+  return (
+    `Concorde run ${shown.id} (${shown.label}) finished ${shown.status}. ` +
+    `${shown.preview ?? ""}\nRead the Operation result: ${shown.reportPath}`
+  );
+}
+
 /** The `concorde` command of a project: its installed command, a source checkout, or PATH. */
 /**
  * The worktree of `task` from its record in the primary worktree `root`, when the record names
