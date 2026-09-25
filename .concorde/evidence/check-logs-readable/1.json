@@ -1,0 +1,59 @@
+{
+  "task": "check-logs-readable",
+  "goal": "The test and code_review workers can read the check logs of their own run",
+  "modules": [
+    "module.implementation",
+    "module.code-review",
+    "module.operations"
+  ],
+  "sequence": 1,
+  "base_commit": "e4efc47264f41c9b321a9d6e371fb9125342bee6",
+  "parent_commit": "3ab506a64e07c38d63f1eb154cbc3cfaab084345",
+  "readiness": {
+    "run_id": "r-20260925T183130-delivery-9d57cd1d",
+    "input_digest": "sha256:6b11c22f48948c6b962f73446a08cb0af53ab9c08092284fbfd51e449d136bb9",
+    "modules": [
+      "module.code-review",
+      "module.implementation",
+      "module.operations"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:821b3a74dde0ebc9d0e1456992e95e99f7f27f50f9434d3d1e1fb9f40dfbb9ac"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:221355edacc30ca2eb988d4d0af12b46438663a210b4d0acda5789926930d15f"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:6d6a0acd9197219dfaa640f2a3e71424584a3818249b33d51b162fda079ba006"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T183120-validate-d6556ce6",
+      "operation": "validate",
+      "modules": [
+        "module.implementation",
+        "module.code-review",
+        "module.operations"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:0633d9758a4dabb8f379b8d4b78cbe2ff88fbe4cc086f711ed712da28e2a63bc"
+    }
+  ],
+  "created_at": "2026-09-25T18:31:40Z"
+}
