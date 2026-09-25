@@ -1,0 +1,34 @@
+{
+  "task": "e2e-watch-records",
+  "goal": "e2e watch reads only task records, not workflow results",
+  "modules": [
+    "module.e2e"
+  ],
+  "sequence": 1,
+  "base_commit": "89d1ce55dad5bcb1c1535350f974591229cf43db",
+  "parent_commit": "f9357425400267a1054db6155a9fe18bf3fff2a8",
+  "readiness": {
+    "run_id": "r-20260925T145616-delivery-5f7ed553",
+    "input_digest": "sha256:d9f9285d30f7630301060090662dbb54772d8e17bcd5ceee5caf1a60b1015af8",
+    "modules": [
+      "module.e2e"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T145614-validate-a2ba2b51",
+      "operation": "validate",
+      "modules": [
+        "module.e2e"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:10346b1d69f9ebad321e149e47e1f120a77ec02c4e9bcc4a0355d514e20a1602"
+    }
+  ],
+  "created_at": "2026-09-25T14:56:18Z"
+}
