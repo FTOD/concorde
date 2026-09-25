@@ -34,7 +34,10 @@ structural error stops your run. The rules workers most often break:
   directories ending in `/`); keep the entries the Module already binds.
 - **Identities** are lowercase and project-wide unique; `<local>` is the Module identity without
   `module.`. An anchor is `<a id="identity"></a>` on a line of its own or at the very start of a
-  paragraph; it is never inside a sentence or a table.
+  paragraph; it is never inside a sentence or a table. Every anchor needs its own prose before the
+  next heading or anchor: anchors explained by the same prose go together on one line
+  (`<a id="a"></a><a id="b"></a>`), because a blank line between two anchors leaves the first one
+  empty.
 - **The entry** `module.md` has the level-2 sections Purpose (plain prose, no lists or tables),
   Terminology, Usage, Design and Relationships, each exactly once.
 - **Diagrams** are `d2` blocks. A plain `d2` block may only nest and connect Modules, concepts and

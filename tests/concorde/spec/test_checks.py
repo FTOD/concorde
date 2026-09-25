@@ -273,6 +273,18 @@ class CheckTests(unittest.TestCase):
         )
 
     @verifies("scenario.spec.node-checks")
+    def test_an_anchor_left_empty_by_the_next_group_is_named(self):
+        self.edit(
+            self.entry("provider"),
+            '<a id="concept.provider.thing"></a>',
+            '<a id="concept.provider.thing"></a>\n\n<a id="concept.provider.spare"></a>',
+        )
+        (finding,) = self.project.findings("CHK.node.meaning")
+        self.assertIn("concept.provider.thing", finding.message)
+        self.assertIn("specs/provider/module.md:", finding.message)
+        self.assertIn("together on one line", finding.message)
+
+    @verifies("scenario.spec.node-checks")
     def test_node_meaning_definition_contract_and_explanation(self):
         self.edit(
             self.entry("provider"),

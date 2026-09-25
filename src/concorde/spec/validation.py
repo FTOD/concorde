@@ -345,11 +345,20 @@ class Checks:
             anchor_name = node.meaning[1:] if node.meaning.startswith("#") else None
             anchor = repository.readings[node.document].anchors.get(anchor_name or "")
             if anchor_name is None or anchor is None or not anchor.text.strip():
+                reason = ""
+                if anchor is not None:
+                    # The usual slip: anchors meant to share one explanation separated by blank
+                    # lines, which makes each its own group and leaves all but the last empty.
+                    reason = (
+                        f"; the anchor at {node.document}:{anchor.line} has no prose before the "
+                        "next heading or anchor group (anchors explained by the same prose go "
+                        "together on one line, since a blank line between them starts a new group)"
+                    )
                 self.add(
                     "CHK.node.meaning",
                     unit.metadata.path,
                     f"{node.id} meaning {node.meaning!r} must be a local anchor resolving to "
-                    "nonempty prose in its document",
+                    f"nonempty prose in its document{reason}",
                     subject=node.id,
                 )
         for (owner, title), identities in local.items():
