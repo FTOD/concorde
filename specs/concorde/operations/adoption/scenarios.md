@@ -30,6 +30,14 @@ shapes are in the [contracts](contracts.md).
 - THEN the result is `ok` with `task` null and a decomposition proposal
 - AND no task record exists or changes
 
+### scenario.adoption.vendored-external — Vendored code becomes external material
+
+- GIVEN a survey whose worker proposes `src/db.py` as vendored third-party code used by the proposed child `module.checkout`
+- WHEN the survey ends and the scaffold applies its proposal
+- THEN `src/db.py` is among no Module's entries and `module.checkout` includes it as external material with the worker's reason
+- AND the project validates without errors
+- BUT a vendored path that overlaps a child's entries fails the survey with `inconsistent_proposal`
+
 ### scenario.adoption.survey-checks — Proposed checks take the configuration's form
 
 - GIVEN a survey whose worker proposes a check with the inputs `src/checkout/` and `tests/` and the env `{"PYTHONPATH": "src"}`

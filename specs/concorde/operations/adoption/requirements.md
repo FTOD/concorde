@@ -16,6 +16,10 @@ The survey host SHALL give its worker no writable path and end the run `failed` 
 The survey withholds the Spec side of the `code-to-spec` grant, which the Protocol permits, so the
 survey may also run without a task.
 
+### req.adoption.vendored-external — Vendored code is never a Module
+
+The scaffold SHALL make every path the survey proposes as vendored third-party code an external inclusion of the Module that uses it, bound by no Module, so that no worker describes or reviews it as the project's code.
+
 ### req.adoption.no-code-change — Adoption never changes code
 
 No Adoption Operation SHALL create, change or delete a file of the task worktree other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.

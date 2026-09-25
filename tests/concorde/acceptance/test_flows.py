@@ -185,6 +185,7 @@ class BrownfieldFlowTests(unittest.TestCase):
                             "output": {
                                 "summary": "Two parts.",
                                 "children": children,
+                                "externals": [],
                                 "checks": [],
                                 "decisions": [
                                     {

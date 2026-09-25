@@ -232,13 +232,14 @@ def check(ctx: RunContext):
     parent_entries = sorted(repository.realization_entries(module))
     child_entries = [
         entry for child in claims["children"] for entry in child["entries"]
-    ]
+    ] + [item["path"] for item in claims["externals"]]
     replaced = narrowed_entries(ctx.worktree, parent_entries, child_entries)
     remaining = sorted({entry for items in replaced.values() for entry in items})
     output = {
         "module": module,
         "summary": claims["summary"],
         "children": claims["children"],
+        "externals": claims["externals"],
         "remaining_entries": remaining,
         "checks": claims["checks"],
         "decisions": claims["decisions"],

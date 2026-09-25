@@ -11,7 +11,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
 ```concorde-contract
 {
   "id": "contract.adoption.decomposition",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -19,6 +19,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
       "module",
       "summary",
       "children",
+      "externals",
       "remaining_entries",
       "checks",
       "decisions",
@@ -86,6 +87,32 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
                   }
                 }
               }
+            }
+          }
+        }
+      },
+      "externals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "used_by",
+            "reason"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "used_by": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
             }
           }
         }
@@ -265,7 +292,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
       }
     }
   },
-  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries are removed, computed by the host with the scaffold's rule. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, each with decided_by worker, or developer when it follows an answer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. A behaviour or field change increments the version.",
+  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries are removed, computed by the host with the scaffold's rule. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, each with decided_by worker, or developer when it follows an answer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A behaviour or field change increments the version.",
   "example": {
     "module": "module.shop",
     "summary": "The shop has a checkout service and an inventory service that share one database helper; they become two Modules and the helper stays with the root.",
@@ -296,6 +323,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
         "uses": []
       }
     ],
+    "externals": [],
     "remaining_entries": [
       "README.md",
       "pyproject.toml",
@@ -345,7 +373,7 @@ The `output` of a `scaffold`, entirely observed by the host.
 ```concorde-contract
 {
   "id": "contract.adoption.scaffold-record",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -353,6 +381,7 @@ The `output` of a `scaffold`, entirely observed by the host.
       "parent",
       "survey_run",
       "created",
+      "externals",
       "parent_entries_before",
       "parent_entries_after",
       "files_written"
@@ -400,6 +429,32 @@ The `output` of a `scaffold`, entirely observed by the host.
           }
         }
       },
+      "externals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "used_by",
+            "reason"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "used_by": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
       "parent_entries_before": {
         "type": "array",
         "items": {
@@ -423,7 +478,7 @@ The `output` of a `scaffold`, entirely observed by the host.
       }
     }
   },
-  "semantics": "What one scaffold did. parent is the surveyed Module and survey_run the admitted survey. created lists every Module created, with its entry path and the entries its realization binds. parent_entries_before and parent_entries_after are the union of the parent's realization entries before and after. The scaffold never configures the proposal's checks. files_written lists every file the transaction wrote. A behaviour or field change increments the version.",
+  "semantics": "What one scaffold did. parent is the surveyed Module and survey_run the admitted survey. created lists every Module created, with its entry path and the entries its realization binds. parent_entries_before and parent_entries_after are the union of the parent's realization entries before and after. The scaffold never configures the proposal's checks. files_written lists every file the transaction wrote. externals are the vendored paths the scaffold made external inclusions of their users. A behaviour or field change increments the version.",
   "example": {
     "parent": "module.shop",
     "survey_run": "r-20260925T101500-survey-1a2b3c4d",
@@ -447,6 +502,7 @@ The `output` of a `scaffold`, entirely observed by the host.
         ]
       }
     ],
+    "externals": [],
     "parent_entries_before": [
       "README.md",
       "pyproject.toml",

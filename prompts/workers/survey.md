@@ -39,6 +39,14 @@ change together.
     skill, workflows and agents Concorde installed), which is not the project's code;
   - `uses`: the other children, or registered Modules, whose code it calls, each with the
     `reason`.
+- `externals`: third-party code the project vendors, that is, copied in from another project
+  rather than written for it, such as a bundled copy of a library under `vendor/`,
+  `third_party/` or a `packages/` directory the build replaces wholesale. Each has its `path` (an
+  existing file, or a directory ending in `/`, among the paths the surveyed Module binds), the
+  Module that uses it (`used_by`: the surveyed Module or a child) and the `reason` you took it
+  for vendored code. Vendored code is never a child and never another child's entry: it becomes
+  external material its user reads, and nobody describes or reviews it as the project's code.
+  The project's own code that wraps or patches it stays the project's.
 - `checks`: configured checks, each with an `id` `check.<module name>.<name>`, the `module` it
   checks (the surveyed Module or a child), the `argv` to run from the project root, a
   `timeout_seconds`, the `inputs` (paths whose change makes it worth running again, without a

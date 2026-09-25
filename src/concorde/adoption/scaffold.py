@@ -205,7 +205,16 @@ def child_reading(child: dict, titles: dict[str, str]) -> str:
     ).rstrip("\n") + "\n"
 
 
-def child_metadata(child: dict, entry: str) -> dict:
+def external_includes(externals: list[dict], identity: str) -> list[dict]:
+    """The external inclusions of vendored code used by ``identity``."""
+    return [
+        {"kind": "external", "target": item["path"], "reason": item["reason"]}
+        for item in externals
+        if item["used_by"] == identity
+    ]
+
+
+def child_metadata(child: dict, entry: str, externals: list[dict] = ()) -> dict:
     identity = child["id"]
     return {
         "schema_version": 3,
@@ -222,7 +231,7 @@ def child_metadata(child: dict, entry: str) -> dict:
                 {"target": use["target"], "meaning": f"#uses-{anchor(use['target'])}"}
                 for use in child["uses"]
             ],
-            "includes": [],
+            "includes": external_includes(list(externals), identity),
             "participates": [],
         },
         "defines": [
@@ -278,13 +287,19 @@ def parent_reading(text: str, children: list[dict]) -> str:
 
 
 def parent_metadata(
-    value: dict, children: list[dict], replaced: dict[str, list[str]]
+    value: dict,
+    children: list[dict],
+    replaced: dict[str, list[str]],
+    includes: list[dict] = (),
 ) -> dict:
     value = json.loads(json.dumps(value))
     value["module"]["contains"] = list(value["module"]["contains"]) + [
         {"target": child["id"], "meaning": f"#contains-{anchor(child['id'])}"}
         for child in children
     ]
+    value["module"]["includes"] = list(value["module"].get("includes") or []) + list(
+        includes
+    )
     kept = []
     for record in value.get("defines") or []:
         if record.get("type") != "realization":
@@ -317,14 +332,18 @@ def plan(ctx: RunContext):
     module = proposal["module"]
     parent = repository.modules[module]
     children = proposal["children"]
+    externals = list(proposal.get("externals") or [])
     root = ctx.worktree
     titles = {identity: item.title for identity, item in repository.modules.items()}
     titles.update({child["id"]: child["title"] for child in children})
     before_entries = sorted(repository.realization_entries(module))
+    # Vendored code leaves the parent's entries like a child's and becomes external material of
+    # the Module that uses it.
     replaced = narrowed_entries(
         root,
         before_entries,
-        [entry for child in children for entry in child["entries"]],
+        [entry for child in children for entry in child["entries"]]
+        + [item["path"] for item in externals],
     )
     changes, created = [], []
     for child in children:
@@ -347,7 +366,11 @@ def plan(ctx: RunContext):
             file_change(
                 root,
                 entry + ".json",
-                json.dumps(child_metadata(child, entry), indent=2, ensure_ascii=False)
+                json.dumps(
+                    child_metadata(child, entry, externals),
+                    indent=2,
+                    ensure_ascii=False,
+                )
                 + "\n",
             )
         )
@@ -359,11 +382,13 @@ def plan(ctx: RunContext):
                 "entries": child["entries"],
             }
         )
+    parent_includes = external_includes(externals, module)
     if children:
         parent_text = (root / parent.entry).read_text(encoding="utf-8")
         changes.append(
             file_change(root, parent.entry, parent_reading(parent_text, children))
         )
+    if children or externals:
         parent_value = json.loads(
             (root / (parent.entry + ".json")).read_text(encoding="utf-8")
         )
@@ -372,7 +397,7 @@ def plan(ctx: RunContext):
                 root,
                 parent.entry + ".json",
                 json.dumps(
-                    parent_metadata(parent_value, children, replaced),
+                    parent_metadata(parent_value, children, replaced, parent_includes),
                     indent=2,
                     ensure_ascii=False,
                 )
@@ -390,8 +415,11 @@ def plan(ctx: RunContext):
                     }
                     for child in children
                 ]
+                record["includes"] = (
+                    list(record.get("includes") or []) + parent_includes
+                )
         for child, item in zip(children, created):
-            block = child_metadata(child, item["entry"])["module"]
+            block = child_metadata(child, item["entry"], externals)["module"]
             registry["modules"].append(
                 {
                     "id": child["id"],
@@ -405,7 +433,7 @@ def plan(ctx: RunContext):
     # code runs only once the developer accepted it.
     after_entries = (
         sorted({entry for items in replaced.values() for entry in items})
-        if children
+        if children or externals
         else before_entries
     )
     ctx.state["changes"] = changes
@@ -413,6 +441,7 @@ def plan(ctx: RunContext):
         "parent": module,
         "survey_run": ctx.state["survey_run"],
         "created": created,
+        "externals": externals,
         "parent_entries_before": before_entries,
         "parent_entries_after": after_entries,
         "files_written": sorted(change["path"] for change in changes),

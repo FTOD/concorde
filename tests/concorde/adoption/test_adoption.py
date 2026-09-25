@@ -30,6 +30,7 @@ DB_HELPER = {
 }
 PROPOSAL = {
     "summary": "Checkout and inventory are separate responsibilities.",
+    "externals": [],
     "children": [
         {
             "id": "module.checkout",
@@ -564,6 +565,59 @@ class AdoptionTests(unittest.TestCase):
         self.assertEqual(
             [], [f.message for f in report.findings if f.severity == "error"]
         )
+
+    @verifies("scenario.adoption.vendored-external")
+    def test_vendored_code_becomes_external_material_of_its_user(self):
+        worktree = self.open()
+        vendored = json.loads(json.dumps(PROPOSAL))
+        vendored["externals"] = [
+            {
+                "path": "src/db.py",
+                "used_by": "module.checkout",
+                "reason": "a copy of another project's connection helper",
+            }
+        ]
+        status, survey = self.survey(vendored)
+        self.assertEqual(0, status, survey)
+        self.assertNotIn("src/db.py", survey["output"]["remaining_entries"])
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertEqual(vendored["externals"], envelope["output"]["externals"])
+        checkout = json.loads(
+            (worktree / "specs/project/checkout/module.md.json").read_text()
+        )
+        self.assertEqual(
+            [
+                {
+                    "kind": "external",
+                    "target": "src/db.py",
+                    "reason": "a copy of another project's connection helper",
+                }
+            ],
+            checkout["module"]["includes"],
+        )
+        root = json.loads((worktree / "specs/project/module.md.json").read_text())
+        entries = [
+            e
+            for r in root["defines"]
+            if r["type"] == "realization"
+            for e in r["entries"]
+        ]
+        self.assertNotIn("src/db.py", entries)
+        report = validate_repository(worktree)
+        self.assertEqual(
+            [], [f.message for f in report.findings if f.severity == "error"]
+        )
+        # Vendored code is never also a child's entry.
+        overlapping = json.loads(json.dumps(PROPOSAL))
+        overlapping["externals"] = [
+            {"path": "src/checkout/api.py", "used_by": "module.checkout", "reason": "r"}
+        ]
+        _, envelope = self.survey(overlapping)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn("overlaps a child's entries", envelope["error"]["detail"])
 
     @verifies("scenario.adoption.scaffold-stale")
     def test_a_stale_proposal_writes_nothing(self):

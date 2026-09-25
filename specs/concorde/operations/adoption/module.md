@@ -88,7 +88,9 @@ answers -> decision: settle
 **Survey.** A worker reads the code of one Module, usually the root, and returns a **decomposition
 proposal** ([contract](contracts.md#contract.adoption.decomposition)): for each child Module to
 create, its identity, title, a one-paragraph purpose, the paths it should bind and the Modules it
-uses with the reason; the test and lint commands it found, proposed in the shape of
+uses with the reason; the third-party code the project vendors, such as a bundled copy of a
+library, each with the Module that uses it; the test and lint commands it found, proposed in the
+shape of
 [configured checks](../../harness/checks/module.md#concept.checks.configured-check) of the Modules
 they check; the decisions it took; and its open questions. The host adds the entries that stay with
 the surveyed Module. A proposal with no children is valid: the Module is small enough to describe as
@@ -109,7 +111,10 @@ from an `ok` survey of the same task, and returns a **scaffold record**
 entry, stating the survey's purpose, a realization binding the proposed entries, and the proposed
 `uses`, with every other section saying honestly that it is not specified yet. It adds the children
 to the parent's `contains` with one explaining paragraph each, removes the children's paths from the
-parent's realizations and adds the registry records. Adding Modules is the project-level step the
+parent's realizations and adds the registry records. Vendored code leaves the parent's
+realizations too, but never becomes a Module: it becomes an `includes` of kind `external` of the
+Module that uses it, which that Module reads and nobody describes or reviews as the project's
+code, as the Protocol treats pinned third-party material. Adding Modules is the project-level step the
 Protocol reserves for the registry and the parent's `contains`, which is why it is a host step and
 not a worker's. It never configures the proposed checks: a check is a command the host later runs,
 and a command a model chose after reading code nobody vouched for must be accepted by the developer

@@ -89,6 +89,8 @@ CHECK = obj(
     },
     required=["id", "module", "argv", "timeout_seconds", "inputs", "reason"],
 )
+# Third-party code the project vendors: material a Module reads, never a Module.
+EXTERNAL = obj({"path": S, "used_by": MODULE_ID, "reason": S})
 CHILD = obj(
     {
         "id": MODULE_ID,
@@ -107,24 +109,26 @@ SURVEY_WORKER_SCHEMA = obj(
     {
         "summary": S,
         "children": {"type": "array", "items": CHILD},
+        "externals": {"type": "array", "items": EXTERNAL},
         "checks": {"type": "array", "items": CHECK},
         "decisions": {"type": "array", "items": DECISION},
         "open_questions": {"type": "array", "items": QUESTION},
     }
 )
-# contract.adoption.decomposition, version 2
+# contract.adoption.decomposition, version 3
 DECOMPOSITION_SCHEMA = obj(
     {
         "module": MODULE_ID,
         "summary": S,
         "children": {"type": "array", "items": CHILD},
+        "externals": {"type": "array", "items": EXTERNAL},
         "remaining_entries": {"type": "array", "items": S},
         "checks": {"type": "array", "items": CHECK},
         "decisions": {"type": "array", "items": DECISION},
         "open_questions": {"type": "array", "items": QUESTION},
     }
 )
-# contract.adoption.scaffold-record, version 1
+# contract.adoption.scaffold-record, version 2
 SCAFFOLD_RECORD_SCHEMA = obj(
     {
         "parent": MODULE_ID,
@@ -140,6 +144,7 @@ SCAFFOLD_RECORD_SCHEMA = obj(
                 }
             ),
         },
+        "externals": {"type": "array", "items": EXTERNAL},
         "parent_entries_before": {"type": "array", "items": S},
         "parent_entries_after": {"type": "array", "items": S},
         "files_written": {"type": "array", "items": S},
@@ -411,6 +416,35 @@ def proposal_problems(
                     f"child {identity} uses {target}, which is neither another child nor a "
                     "registered Module"
                 )
+    child_entries = [entry for child in children for entry in child["entries"]]
+    external_paths = [item["path"] for item in proposal.get("externals") or []]
+    for item in proposal.get("externals") or []:
+        path = item["path"]
+        if item["used_by"] != module and item["used_by"] not in child_ids:
+            problems.append(
+                f"external {path} is used by {item['used_by']}, which is neither {module} nor "
+                "a proposed child"
+            )
+        if not covered_by_parent(root, parent_entries, path):
+            problems.append(
+                f"external {path} is not an existing path that {module}'s realizations bind"
+            )
+        if [
+            entry
+            for entry in child_entries
+            if covers(entry, path.rstrip("/")) or covers(path, entry.rstrip("/"))
+        ]:
+            problems.append(
+                f"external {path} overlaps a child's entries; vendored code is read, never "
+                "bound"
+            )
+        if [entry for entry in installed if covers(path, entry)]:
+            problems.append(
+                f"external {path} takes files of the Concorde installation, which stay with "
+                f"{module}"
+            )
+        if external_paths.count(path) > 1:
+            problems.append(f"external {path} is proposed more than once")
     check_ids = [check["id"] for check in proposal["checks"]]
     for check in proposal["checks"]:
         for path in check["inputs"]:
