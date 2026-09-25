@@ -24,6 +24,7 @@ const STEP_SCHEMA = {
     decision_points: { type: "integer" },
     created_modules: { type: "array", items: { type: "object" } },
     ready: { type: ["boolean", "null"] },
+    error: { type: ["object", "null"] },
   },
 }
 

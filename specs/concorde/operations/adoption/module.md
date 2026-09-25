@@ -193,8 +193,10 @@ Scaffold writes where it can decide by rules alone. A child's folder is the pare
 plus the child identity's last segment. The parent keeps every path its realizations covered that no
 child took. A directory entry of the parent that contains a child's entry is replaced by the entries
 below it that no child took: a directory stays one entry when no child took anything inside it, and
-a file is listed exactly. So no path is bound by both parent and child unless the proposal
-deliberately gives one path to several children.
+a file is listed exactly. A directory that would bind no file, such as an empty one or one holding
+only skipped files, and a symbolic link are left out, as a directory entry never bound them. So no
+path is bound by both parent and child unless the proposal deliberately gives one path to several
+children.
 
 How Adoption is built:
 

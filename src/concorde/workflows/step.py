@@ -188,6 +188,13 @@ def host_alive(primary: Path, run_id: str) -> bool:
         pid = int(state["host_pid"])
     except (OSError, ValueError, KeyError, TypeError):
         return False
+    return pid_alive(pid)
+
+
+def pid_alive(pid: int) -> bool:
+    """Whether a process lives, a zombie not counting; no process has a pid below 1."""
+    if pid < 1:
+        return False
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -203,7 +210,11 @@ def host_alive(primary: Path, run_id: str) -> bool:
 
 
 def run_state(primary: Path, run_id: str | None) -> str:
-    """``finished``, ``running`` or ``lost`` for a recorded run; ``refused`` without one."""
+    """``finished``, ``running`` or ``lost`` for a recorded run; ``refused`` without one.
+
+    The host writes ``result.json`` only after it finished the run in the task record, so a
+    result means the task record is final as well.
+    """
     if not run_id:
         return "refused"
     if load_result(primary, run_id) is not None:
@@ -212,6 +223,58 @@ def run_state(primary: Path, run_id: str | None) -> str:
         return "running"
     # The host may have written its result between the two reads.
     return "finished" if load_result(primary, run_id) is not None else "lost"
+
+
+def host_output(primary: Path, run_id: str) -> str:
+    """The end of what a detached host printed, where it reports failures outside its steps."""
+    try:
+        data = (runs_directory(primary) / run_id / "host.out").read_bytes()
+    except OSError:
+        return ""
+    return data[-4000:].decode("utf-8", "replace").strip()
+
+
+def lost_link(
+    primary: Path, workflow: str, task: str, key: str, operation: str, run_id: str
+):
+    output = host_output(primary, run_id)
+    directory = (runs_directory(primary) / run_id).as_posix()
+    return workflow_link(
+        workflow,
+        task,
+        "step_lost",
+        f"the {operation} run {run_id} of step {key} has no result and its host no longer "
+        "runs; it ended without writing its result",
+        reason="environment",
+        explanation="the workflow cannot recover a run whose host ended without a result",
+        evidence=[
+            errors.evidence("run", directory, ""),
+            errors.evidence("host-output", f"{directory}/host.out", output[-2000:]),
+        ],
+        options=[
+            f"read the host output, then run the step again with retry for {store.base_key(key)}"
+        ],
+        causes=[
+            errors.link(
+                "component",
+                f"Operation host of {run_id}",
+                "host_ended",
+                "the host ended without a result; its output ends with: "
+                + (output or "(nothing)"),
+                reason="environment",
+                explanation="a host that fails outside its provider steps writes only its "
+                "output, not a result",
+            )
+        ],
+    )
+
+
+def running_run(primary: Path, record: dict) -> str | None:
+    """A run of the task still running with a living host, if any."""
+    for run in record.get("runs") or []:
+        if run.get("status") == "running" and pid_alive(int(run.get("host_pid") or 0)):
+            return run["run_id"]
+    return None
 
 
 @contextmanager
@@ -304,13 +367,26 @@ def start_run(workflow: str, task: dict, argv: list[str]) -> dict:
 
 
 def asking_run(primary: Path, record: dict, base: str) -> str | None:
-    """The latest current ok run of a base key: the run whose questions the answers settle."""
-    for step in reversed(store.current_steps(record)):
+    """The latest ok run of a base key, superseded or not: the run whose questions the answers
+    settle. A retried or re-answered step supersedes the run that asked, yet still refers to it."""
+    steps = ((record.get("workflow") or {}).get("steps")) or []
+    for step in reversed(steps):
         if store.base_key(step["key"]) == base and step["run_id"]:
             result = load_result(primary, step["run_id"])
             if result is not None and result.get("status") == "ok":
                 return step["run_id"]
     return None
+
+
+def answered(path: str | None) -> set[str]:
+    """The identities a step's answers file answers."""
+    if not path:
+        return set()
+    try:
+        value = json.loads(Path(path).read_text(encoding="utf-8"))
+        return {item["id"] for item in value.get("answers") or []}
+    except (OSError, ValueError, AttributeError, KeyError, TypeError):
+        return set()
 
 
 def write_answers(primary: Path, task: str, key: str, answers: list[dict]) -> str:
@@ -340,15 +416,20 @@ def created_modules(primary: Path, output: dict | None) -> list[dict]:
     ]
 
 
-def decision_points(operation: str, output: dict | None) -> int:
+def decision_points(operation: str, output: dict | None, settled=frozenset()) -> int:
+    """Open questions, and for a survey decisions the worker took, that no answer settled."""
     if not output:
         return 0
-    count = len(output.get("open_questions") or [])
+    count = sum(
+        1
+        for item in output.get("open_questions") or []
+        if item.get("id") not in settled
+    )
     if operation == "survey":
         count += sum(
             1
             for item in output.get("decisions") or []
-            if item.get("decided_by") == "worker"
+            if item.get("decided_by") == "worker" and item.get("id") not in settled
         )
     return count
 
@@ -362,6 +443,7 @@ def outcome(
     run_id: str | None,
     state: str,
     error: dict | None = None,
+    settled=frozenset(),
 ) -> dict:
     result = load_result(primary, run_id) if state == "finished" else None
     output = (result or {}).get("output")
@@ -379,7 +461,7 @@ def outcome(
             if run_id
             else None
         ),
-        "decision_points": decision_points(operation, output),
+        "decision_points": decision_points(operation, output, settled),
         "created_modules": created_modules(primary, output)
         if operation == "scaffold"
         else [],
@@ -389,23 +471,48 @@ def outcome(
         "error": error,
     }
     if state == "lost" and error is None:
-        value["error"] = workflow_link(
-            workflow,
-            task,
-            "step_lost",
-            f"the {operation} run {run_id} of step {key} has no result and its host no longer "
-            "runs; it ended without writing its result",
-            reason="environment",
-            explanation="the workflow cannot recover a run whose host ended without a result",
-            evidence=[
-                errors.evidence(
-                    "run", (runs_directory(primary) / run_id).as_posix(), ""
-                )
-            ],
-            options=[f"run the step again with retry for {store.base_key(key)}"],
-        )
+        value["error"] = lost_link(primary, workflow, task, key, operation, run_id)
     validate(value, STEP_SCHEMA)
     return value
+
+
+def rejected(workflow, task_id, key, operation, refusal, *, started: str | None = None):
+    """The ``step_rejected`` outcome of a step Tasks refused, with its refusal as the cause."""
+    if started:
+        detail = (
+            f"step {key} ({operation}) started run {started}, but Tasks refused to record it: "
+            f"{refusal.code}: {refusal}; the run is live and unrecorded"
+        )
+        options = [
+            f"wait for run {started} to end, then run the step again with retry",
+        ]
+    else:
+        detail = (
+            f"Tasks refused step {key} ({operation}) of task {task_id}: {refusal.code}: "
+            f"{refusal}; nothing was started"
+        )
+        options = ["run the workflow in the task it belongs to, or open a new task"]
+    return workflow_link(
+        workflow,
+        task_id,
+        "step_unrecorded" if started else "step_rejected",
+        detail,
+        reason="environment" if started else "input",
+        explanation="the workflow cannot record a step the task does not accept",
+        evidence=[errors.evidence("run", started, "")] if started else [],
+        causes=[
+            errors.link(
+                "component",
+                "Tasks",
+                refusal.code,
+                str(refusal),
+                reason="input",
+                explanation="Tasks refuses a step whose task, workflow or key does not "
+                "admit it",
+            )
+        ],
+        options=options,
+    )
 
 
 def run_step(
@@ -417,6 +524,15 @@ def run_step(
     operation = request["argv"][0]
     answers = request["answers"]
     key = step_key(request["key"], answers)
+    settled = frozenset(item["id"] for item in answers or [])
+    deadline = None if wait is None else time.monotonic() + wait
+
+    def refused(link: dict, run_id: str | None = None) -> tuple[int, dict]:
+        return 1, outcome(
+            primary, workflow, task_id, key, operation, run_id, "refused", link, settled
+        )
+
+    started = None
     try:
         with step_lock(primary, task_id):
             record = store.load_task(primary, task_id)
@@ -434,17 +550,25 @@ def run_step(
             if not restart:
                 run_id = found["run_id"]
                 if run_id is None:
-                    return 1, outcome(
-                        primary,
-                        workflow,
-                        task_id,
-                        key,
-                        operation,
-                        None,
-                        "refused",
-                        found.get("error"),
-                    )
+                    return refused(found.get("error"))
             else:
+                # One Operation of a task at a time: wait for a run still going, such as the
+                # previous step's whose host is finishing, before starting this one.
+                while running_run(primary, record) is not None:
+                    if deadline is not None and time.monotonic() >= deadline:
+                        return 3, outcome(
+                            primary,
+                            workflow,
+                            task_id,
+                            key,
+                            operation,
+                            None,
+                            "running",
+                            None,
+                            settled,
+                        )
+                    time.sleep(POLL)
+                    record = store.load_task(primary, task_id)
                 argv = [operation, "--task", task_id, *request["argv"][1:]]
                 path = None
                 if answers:
@@ -458,6 +582,7 @@ def run_step(
                     run_id, error = announced["run_id"], None
                 except StepError as refusal:
                     run_id, error = None, refusal.link
+                started = run_id
                 store.record_workflow_step(
                     primary,
                     task_id,
@@ -470,41 +595,12 @@ def run_step(
                     error,
                 )
                 if error is not None:
-                    return 1, outcome(
-                        primary,
-                        workflow,
-                        task_id,
-                        key,
-                        operation,
-                        None,
-                        "refused",
-                        error,
-                    )
+                    return refused(error)
     except store.TaskError as refusal:
-        link = workflow_link(
-            workflow,
-            task_id,
-            "step_rejected",
-            f"Tasks refused step {key} ({operation}) of task {task_id}: {refusal.code}: "
-            f"{refusal}",
-            reason="input",
-            explanation="the workflow cannot record a step the task does not accept, so "
-            "nothing was started",
-            causes=[
-                errors.link(
-                    "component",
-                    "Tasks",
-                    refusal.code,
-                    str(refusal),
-                    reason="input",
-                    explanation="Tasks refuses a step whose task, workflow or key does not "
-                    "admit it",
-                )
-            ],
-            options=["run the workflow in the task it belongs to, or open a new task"],
+        return refused(
+            rejected(workflow, task_id, key, operation, refusal, started=started),
+            started,
         )
-        raise StepError(link) from refusal
-    deadline = None if wait is None else time.monotonic() + wait
     while True:
         state = run_state(primary, run_id)
         if state != "running" or (
@@ -512,7 +608,9 @@ def run_step(
         ):
             break
         time.sleep(POLL)
-    value = outcome(primary, workflow, task_id, key, operation, run_id, state)
+    value = outcome(
+        primary, workflow, task_id, key, operation, run_id, state, None, settled
+    )
     return {"finished": 0, "running": 3}.get(state, 1), value
 
 

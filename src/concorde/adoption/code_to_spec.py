@@ -8,6 +8,9 @@ Steps (the Code to spec Operation step table of the Adoption Module Spec):
 3. ``describe``: the standard worker sequence for task type ``code-to-spec`` (grant, settings,
    brief, launch, audit, run record) with one round and no checks.
 4. ``tidy``: remove the stubs the worker left unchanged and reconcile the registry mirror.
+
+Steps 2 to 4 run as the one host step ``describe_code``, so that ``tidy`` runs in a ``finally``
+however the worker step ends, an exception or a cancellation included.
 5. ``revalidate``: validate again and split the errors into new and pre-existing ones.
 6. ``observe``: the Spec description from the host's observations and the worker's claims, the
    answers check, and the status.
@@ -28,6 +31,7 @@ from ..operations.provider import (
     spec_cause,
     spec_finding,
 )
+from ..spec.repository_base import SpecError
 from .records import (
     DESCRIBE_WORKER_SCHEMA,
     SPEC_DESCRIPTION_SCHEMA,
@@ -143,6 +147,7 @@ def prepare(ctx: RunContext):
         item = repository.modules[module]
         folder = item.entry.rsplit("/", 1)[0]
         metadata_path = item.entry + ".json"
+        ctx.state.setdefault("metadata", {})[module] = metadata_path
         metadata = json.loads(
             (ctx.worktree / metadata_path).read_text(encoding="utf-8")
         )
@@ -279,39 +284,63 @@ def tidy(ctx: RunContext):
     by_module: dict[str, list[str]] = {}
     for module, path in unchanged:
         by_module.setdefault(module, []).append(path)
-    from ..spec.repository import SpecRepository
-
-    repository = SpecRepository(ctx.worktree) if by_module else None
+    notes = []
     for module, paths in by_module.items():
-        metadata_path = repository.modules[module].entry + ".json"
-        metadata = json.loads(
-            (ctx.worktree / metadata_path).read_text(encoding="utf-8")
-        )
-        metadata["module"]["owns"] = [
-            path for path in metadata["module"]["owns"] if path not in paths
-        ]
-        apply_files(
-            ctx.worktree,
-            [
-                file_change(
-                    ctx.worktree,
+        # The entry's metadata path was noted when the stubs were prepared: the worker may have
+        # left the Specs unloadable, and the stubs must go all the same.
+        metadata_path = ctx.state["metadata"][module]
+        try:
+            metadata = json.loads(
+                (ctx.worktree / metadata_path).read_text(encoding="utf-8")
+            )
+            metadata["module"]["owns"] = [
+                path for path in metadata["module"]["owns"] if path not in paths
+            ]
+            apply_files(
+                ctx.worktree,
+                [
+                    file_change(
+                        ctx.worktree,
+                        metadata_path,
+                        json.dumps(metadata, indent=2, ensure_ascii=False) + "\n",
+                    )
+                ],
+                {metadata_path},
+            )
+        except (OSError, ValueError, KeyError, TypeError, SpecError) as error:
+            notes.append(
+                evidence(
+                    "owns-not-updated",
                     metadata_path,
-                    json.dumps(metadata, indent=2, ensure_ascii=False) + "\n",
+                    f"the stubs were removed but {metadata_path} could not be updated: {error}",
                 )
-            ],
-            {metadata_path},
-        )
+            )
         for path in paths:
             (ctx.worktree / path).unlink(missing_ok=True)
             (ctx.worktree / (path + ".json")).unlink(missing_ok=True)
     ctx.state["removed"] = sorted(path for _, path in unchanged)
     result = registry_command(ctx.worktree, write=True)
     return Continue(
-        evidence=[
+        evidence=notes
+        + [
             evidence("stubs-removed", "", ", ".join(ctx.state["removed"]) or "none"),
             evidence("registry", result.status, ""),
         ]
     )
+
+
+def describe_code(ctx: RunContext):
+    """Steps 2 to 7 as one step: prepare the stubs, run the worker, and remove the stubs left
+    unchanged however the worker step ends, an exception or a cancellation included."""
+    prepared = prepare(ctx)
+    if isinstance(prepared, Stop):
+        return prepared
+    found = list(prepared.evidence)
+    try:
+        found += describe(ctx).evidence
+    finally:
+        found += tidy(ctx).evidence
+    return Continue(evidence=found)
 
 
 def revalidate(ctx: RunContext):
@@ -468,7 +497,7 @@ CODE_TO_SPEC = Provider(
     name="code_to_spec",
     task_type="code-to-spec",
     writes=True,
-    steps=(baseline, prepare, describe, tidy, revalidate, observe),
+    steps=(baseline, describe_code, revalidate, observe),
     output_schema=SPEC_DESCRIPTION_SCHEMA,
     add_arguments=add_arguments,
 )

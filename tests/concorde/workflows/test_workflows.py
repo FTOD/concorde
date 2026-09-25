@@ -24,7 +24,6 @@ from concorde.workflows.report import RESULT_SCHEMA, report
 from concorde.workflows.step import (
     REQUEST_SCHEMA,
     STEP_SCHEMA,
-    StepError,
     run_step,
     step_key,
 )
@@ -279,9 +278,10 @@ class StepTests(unittest.TestCase):
                 (self.request(argv=("validate",)), "step_conflict"),
             ):
                 with self.subTest(code=code):
-                    with self.assertRaises(StepError) as raised:
-                        run_step(self.primary, request)
-                    link = raised.exception.link
+                    status, value = run_step(self.primary, request)
+                    self.assertEqual((1, "refused"), (status, value["state"]))
+                    self.assertIsNone(value["run_id"])
+                    link = value["error"]
                     self.assertEqual(
                         ("workflow", "step_rejected"), (link["level"], link["code"])
                     )
@@ -379,6 +379,94 @@ class StepTests(unittest.TestCase):
                 self.primary, self.request(mode="interactive", answers=answers)
             )
         self.assertEqual(second["run_id"], again["run_id"])
+
+    @verifies("scenario.workflows.step-waits")
+    def test_a_step_waits_while_another_run_of_the_task_runs(self):
+        store.begin_run(
+            self.primary,
+            "adopt",
+            "r-other",
+            "implement",
+            ["module.shop"],
+            True,
+            os.getpid(),
+        )
+        with self.starter(output=SURVEY_OUTPUT):
+            status, value = run_step(self.primary, self.request(), wait=0.3)
+            self.assertEqual(
+                (3, "running", None), (status, value["state"], value["run_id"])
+            )
+            self.assertEqual([], self.started)
+            store.finish_run(self.primary, "adopt", "r-other", "ok")
+            status, value = run_step(self.primary, self.request())
+        self.assertEqual((0, "finished"), (status, value["state"]))
+        self.assertEqual(1, len(self.started))
+
+    def test_answered_points_are_no_longer_decision_points(self):
+        answers = [{"id": "q.retry", "question": "retries", "answer": "keep"}]
+        with self.starter(output=describe_output("module.checkout", [QUESTION])):
+            _, value = run_step(
+                self.primary,
+                self.request(
+                    "describe:module.checkout",
+                    ("code_to_spec",),
+                    mode="interactive",
+                    answers=answers,
+                ),
+            )
+        self.assertEqual(0, value["decision_points"])
+        self.assertEqual([], report(self.primary, "adopt")["pending"])
+
+    @verifies("scenario.workflows.interactive-resume")
+    def test_a_retried_answered_step_still_admits_the_asking_run(self):
+        with self.starter(output=SURVEY_OUTPUT):
+            _, first = run_step(self.primary, self.request(mode="interactive"))
+        answers = [{"id": "d.db-helper", "question": "own Module?", "answer": "yes"}]
+        with self.starter(status="failed"):
+            run_step(self.primary, self.request(mode="interactive", answers=answers))
+        with self.starter(output=SURVEY_OUTPUT):
+            run_step(
+                self.primary,
+                self.request(mode="interactive", answers=answers, retry=True),
+            )
+        argv = self.started[-1]
+        self.assertEqual(first["run_id"], argv[argv.index("--input") + 1])
+
+    @verifies("scenario.workflows.lost")
+    def test_a_lost_step_carries_its_host_output(self):
+        with self.starter(status=None, pid=DEAD_PID):
+            _, value = run_step(
+                self.primary, self.request("validate", ("validate",)), wait=0
+            )
+        (self.primary / ".concorde/runs" / value["run_id"] / "host.out").write_text(
+            "Traceback: KeyError: 'modules'\n"
+        )
+        _, value = run_step(self.primary, self.request("validate", ("validate",)))
+        self.assertEqual("lost", value["state"])
+        self.assertIn("KeyError", json.dumps(value["error"]["evidence"]))
+        self.assertEqual("host_ended", value["error"]["causes"][0]["code"])
+        self.assertIn(
+            "KeyError",
+            report(self.primary, "adopt")["problems"][0]["error"]["causes"][0][
+                "detail"
+            ],
+        )
+
+    def test_a_started_run_that_cannot_be_recorded_is_named(self):
+        with (
+            self.starter(output=SURVEY_OUTPUT),
+            patch.object(
+                store,
+                "record_workflow_step",
+                side_effect=store.TaskError("record_conflict", "busy"),
+            ),
+        ):
+            status, value = run_step(self.primary, self.request())
+        self.assertEqual((1, "refused"), (status, value["state"]))
+        self.assertEqual("step_unrecorded", value["error"]["code"])
+        self.assertIsNotNone(value["run_id"])
+        self.assertIn(value["run_id"], value["error"]["detail"])
+        self.assertEqual("record_conflict", value["error"]["causes"][0]["code"])
 
 
 class ReportTests(unittest.TestCase):
@@ -672,6 +760,34 @@ class ScriptTests(unittest.TestCase):
                     ["survey", "scaffold", "report"], [c["key"] for c in run["calls"]]
                 )
                 self.assertEqual("scaffold", run["calls"][-1]["lost"])
+
+    def test_a_rejected_step_travels_with_the_report(self):
+        outcomes = self.full()
+        rejected = self.outcome("scaffold", "scaffold")
+        rejected.update(
+            state="refused",
+            status=None,
+            run_id=None,
+            error={"code": "step_rejected", "level": "workflow"},
+        )
+        outcomes["scaffold"] = rejected
+        for client in ("claude", "pi"):
+            with self.subTest(client=client):
+                run = self.run_script(client, self.ARGS, outcomes)
+                self.assertEqual(
+                    ["survey", "scaffold", "report"], [c["key"] for c in run["calls"]]
+                )
+                self.assertEqual("scaffold", run["calls"][-1]["lost"])
+                self.assertEqual(
+                    "step_rejected", run["result"]["rejected"]["error"]["code"]
+                )
+
+    def test_a_step_still_running_ends_a_no_ask_run(self):
+        outcomes = self.full()
+        outcomes["describe:module.inventory"]["state"] = "running"
+        run = self.run_script("claude", self.ARGS, outcomes)
+        self.assertEqual("report", run["calls"][-1]["key"])
+        self.assertEqual("describe:module.inventory", run["calls"][-2]["key"])
 
     def test_an_unready_validation_ends_the_run_before_delivery(self):
         outcomes = self.full()

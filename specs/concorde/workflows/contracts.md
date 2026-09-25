@@ -275,7 +275,7 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
       }
     }
   },
-  "semantics": "The outcome of one workflow step. key is the step key, including the answers digest when answers were passed. run_id names the Operation run recorded for the key, null for a refused step, and result_path where its Operation result is or will be saved. state is running while the run has no result and its host lives, finished once it has a result, lost when it has neither a result nor a living host, and refused when the run could not start; status and summary are the result's once finished and null otherwise. decision_points counts the result's open questions, and for a survey also its decisions decided by the worker. created_modules lists the Modules a scaffold created, each with the other created Modules it uses, empty for any other Operation. ready is a validate result's readiness and null otherwise. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one workflow step. key is the step key, including the answers digest when answers were passed. run_id names the Operation run recorded for the key, null for a refused step, and result_path where its Operation result is or will be saved. state is running while the run has no result and its host lives, finished once it has a result, lost when it has neither a result nor a living host, and refused when the run could not start; status and summary are the result's once finished and null otherwise. decision_points counts the result's open questions, and for a survey also its decisions decided by the worker. created_modules lists the Modules a scaffold created, each with the other created Modules it uses, empty for any other Operation. decision_points leaves out the points the step's own answers settle. ready is a validate result's readiness and null otherwise. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "task": "adopt",
@@ -1269,8 +1269,10 @@ The step command's refusals by Tasks and by `concorde run` keep their own codes 
 | `awaiting_decision` | result | `decision` | an interactive run ended at decision points; the evidence names each pending point |
 | `step_blocked` | result | `decision` | the procedure stopped at a step that ended `blocked`, or at a validation that was not ready; the step's error is the cause |
 | `step_failed` | result | `decision` | the procedure stopped at a step that ended `failed`; the step's error is the cause |
-| `step_lost` | step outcome, result | `environment` | a step's run has no result and no living host, or the script reported the key lost with nothing recorded |
+| `step_lost` | step outcome, result | `environment` | a step's run has no result and no living host, its link carrying the end of the host's output as evidence and cause; or the script reported the key with nothing recorded |
 | `step_refused` | step outcome, result | `input` | `concorde run` rejected the step's command line (its message is the cause) or its detached host did not start (the `detach_failed` link is the cause) |
 | `step_running` | result | `exhausted` | a report was taken while a current step still runs |
-| `step_rejected` | step command | `input` | Tasks refused to record the step (`workflow_conflict`, `step_conflict`, `task_closed`, `unknown_task`), its link the cause; nothing was started or recorded |
+| `step_rejected` | step outcome | `input` | Tasks refused the step (`workflow_conflict`, `step_conflict`, `task_closed`, `unknown_task`), its link the cause; nothing was started or recorded, and the outcome has state `refused` |
+| `step_unrecorded` | step outcome | `environment` | a run started but Tasks refused to record it, its link the cause; the link names the live run |
+| `incomplete` | result | `capability` | the recorded steps end before the procedure's last step without any of the stops above, such as a script that ended early |
 | `invalid_request` | step command | `input` | the step command line or standard-input request breaks the step request contract; exit status 2 |

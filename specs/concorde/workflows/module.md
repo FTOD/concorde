@@ -92,6 +92,7 @@ A **workflow step** is one Operation run. The script asks for it by a base **ste
 
 ```text
 concorde workflow step --task <task-id> --workflow <name> --mode <interactive|no-ask> --key <base key> [--answers <file>] [--retry] [--wait <seconds>] -- <operation> [operation arguments]
+concorde workflow step --json '<step request>' [--wait <seconds>]
 concorde workflow step --stdin
 ```
 
@@ -104,22 +105,29 @@ worktree's own `concorde`, adding `--answers` with the answers written next to t
 for an answered step, `--input` naming the latest run of the same base key, whose questions the
 answers settle; then it records the key and run. It waits for the result at most `--wait` seconds
 (default 540). Asked again, it finds the recorded run and only waits for it. `--retry` starts a new
-run for a key whose recorded run did not end `ok`. `--stdin` reads the same request as JSON and
-waits until the run has finished.
+run for a key whose recorded run did not end `ok`. `--json` takes the same request as one
+[step request](contracts.md#contract.workflows.step-request), as the Claude Code step agent passes
+it, and `--stdin` reads it from standard input and waits until the run has finished.
 
 Starting a new run for a base key that already has a step, by `--retry` or with new answers,
-**supersedes** every step recorded after that earlier step: a superseded step stays in the record
-but is never found again, so the procedure runs its later steps anew on the changed worktree and
+**supersedes** that earlier step and every step recorded after it: a superseded step stays in the
+record but is never found again, so the procedure runs its later steps anew on the changed worktree and
 nothing validated or delivered before the change is taken as current.
 
 The command prints the [step outcome](contracts.md#contract.workflows.step) and exits with status 0
 once the run has finished, 3 while it is still running, so a caller that must not block longer than
-a few minutes simply asks again, and 1 when the step is lost or refused. A step is **lost** when its
+a few minutes simply asks again, and 1 when the step is lost or refused. Before it starts a run,
+the command waits, within the same bound, until no other run of the task is still running, since a
+task runs one Operation at a time. An answered step's `--input` is the latest `ok` run of its base
+key even when a rerun superseded that run, since the answers still refer to its questions. A step is **lost** when its
 recorded run has no result and no living host. A step is **refused** when `concorde run` rejected
 the command line or the detached host did not start: the step is then recorded without a run and
 with that error. A step for another workflow than the task's, a key recorded for another Operation
-or a closed task is refused by Tasks before anything is recorded or started. Every lost or refused
-outcome carries an error link.
+or a closed task is refused by Tasks before anything is recorded or started, with a `step_rejected`
+link over the Tasks refusal; if Tasks refuses to record a run already started, the link is
+`step_unrecorded` and names the run. Such a step is in no record, so the script returns its outcome
+with the report. Every lost or refused outcome carries an error link, and a lost step's link
+carries the end of its host's output.
 
 <a id="concept.workflows.step-agent"></a><a id="concept.workflows.script"></a>
 

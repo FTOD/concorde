@@ -184,7 +184,16 @@ def check(ctx: RunContext):
     problems = proposal_problems(
         repository, module, claims, configured_check_ids(ctx.worktree)
     )
-    problems += answer_problems(ctx.state.get("answers") or [], claims["decisions"])
+    answers = ctx.state.get("answers") or []
+    problems += answer_problems(
+        [item for item in answers if item["id"].startswith("d.")], claims["decisions"]
+    )
+    still_open = {item["id"] for item in claims["open_questions"]}
+    problems += [
+        f"open question {item['id']} was answered ({item['answer']!r}) but is still open"
+        for item in answers
+        if item["id"].startswith("q.") and item["id"] in still_open
+    ]
     if problems:
         ctx.output = None  # the worker's proposal stays in the result's worker field
         return ctx.fail(

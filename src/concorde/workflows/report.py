@@ -17,8 +17,10 @@ from ..spec.schema import validate
 from ..tasks import store
 from .step import (
     STEP_SCHEMA,
+    answered,
     decision_points,
     load_result,
+    lost_link,
     run_state,
     workflow_link,
 )
@@ -194,26 +196,18 @@ class Row:
         self.key = step["key"]
         self.operation = step["operation"]
         self.run_id = step["run_id"]
-        self.result = load_result(primary, self.run_id)
+        self.settled = answered(step.get("answers"))
         state = run_state(primary, self.run_id)
-        if state == "finished":
-            self.status = self.result["status"]
-        else:
-            self.status = state
+        # One read decides: a result that appears after run_state is read on the next report.
+        self.result = load_result(primary, self.run_id) if state == "finished" else None
+        if state == "finished" and self.result is None:
+            state = "running"
+        self.status = self.result["status"] if self.result is not None else state
         self.output = (self.result or {}).get("output") or {}
         self.error = (self.result or {}).get("error") or step.get("error")
         if self.status == "lost":
-            self.error = workflow_link(
-                workflow,
-                task,
-                "step_lost",
-                f"the {self.operation} run {self.run_id} of step {self.key} has no result and "
-                "its host no longer runs",
-                reason="environment",
-                explanation="the workflow cannot recover a run whose host ended without a result",
-                options=[
-                    f"run the workflow again with retry for {store.base_key(self.key)}"
-                ],
+            self.error = lost_link(
+                primary, workflow, task, self.key, self.operation, self.run_id
             )
         elif self.status == "running":
             self.error = workflow_link(
@@ -249,8 +243,9 @@ def lost_row(workflow: str, task: str, key: str) -> dict:
             workflow,
             task,
             "step_lost",
-            f"the script reported step {key} lost: its step agent returned nothing, and the "
-            "task record holds no run for it",
+            f"the script reported step {key} without a recorded run: its step agent returned "
+            "nothing, or Tasks refused to record the step, in which case the script's own "
+            "result carries that refusal",
             reason="environment",
             explanation="nothing was recorded for the step, so the workflow cannot tell what "
             "its agent did",
@@ -265,6 +260,8 @@ def lost_row(workflow: str, task: str, key: str) -> dict:
 def pending_points(workflow: str, row: Row) -> list[dict]:
     points = []
     for item in row.output.get("open_questions") or []:
+        if item["id"] in row.settled:
+            continue
         points.append(
             {
                 "step": row.key,
@@ -279,7 +276,7 @@ def pending_points(workflow: str, row: Row) -> list[dict]:
         )
     if row.operation == "survey":
         for item in row.output.get("decisions") or []:
-            if item["decided_by"] == "worker":
+            if item["decided_by"] == "worker" and item["id"] not in row.settled:
                 points.append(
                     {
                         "step": row.key,
@@ -390,7 +387,9 @@ def build(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
     elif last.status == "blocked":
         status, code, reason = "blocked", "step_blocked", "decision"
         stop = [last]
-    elif mode == "interactive" and decision_points(last.operation, last.output):
+    elif mode == "interactive" and decision_points(
+        last.operation, last.output, last.settled
+    ):
         status, code, reason = "awaiting_decision", "awaiting_decision", "decision"
         pending = pending_points(workflow, last)
     elif last.operation == LAST_STEP.get(workflow, "delivery"):

@@ -46,7 +46,7 @@ A survey or code_to_spec worker SHALL list every choice it took between options 
 
 ### req.adoption.answers-followed — Answers are followed
 
-A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a survey as a decision `decided_by` developer with the answered choice, a code_to_spec run as a promise with source `answer` or as a deviation.
+A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a decision answer as a decision `decided_by` developer with the answered choice, a question answer in a survey by no longer listing the question, and in a code_to_spec run as a promise with source `answer` or as a deviation.
 
 ### req.adoption.deviation-reported — Intent that the code misses is reported
 
@@ -56,7 +56,7 @@ A code_to_spec run SHALL report as a deviation every answer whose stated intent 
 
 ### req.adoption.proposal-checked — A proposal fits the worktree
 
-The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, an entry that the surveyed Module's realizations do not cover or that does not exist, a `uses` target that is neither another child nor a registered Module, or a check for a Module that is neither the surveyed Module nor a child.
+The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, two children whose documents would share a folder, an entry that the surveyed Module's realizations do not cover or that does not exist, a `uses` target that is neither another child nor a registered Module, or a check for a Module that is neither the surveyed Module nor a child.
 
 ### req.adoption.inventory — The survey worker gets an inventory
 

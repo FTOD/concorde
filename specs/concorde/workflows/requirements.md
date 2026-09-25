@@ -13,6 +13,10 @@ A workflow step SHALL start its Operation only through `concorde run --detach` o
 
 A workflow SHALL NOT start a step while an Operation of its task is running.
 
+`concorde workflow step` waits for a running run of the task before starting its own, and the
+host finishes a run in the task record before its result appears, so a finished step always
+leaves the task free.
+
 ### req.workflows.key-idempotent — A step key runs once
 
 `concorde workflow step` SHALL start a run only for a step key with no current step in the task, or with `--retry` for a key whose current step did not end `ok`, reporting the current step's run otherwise.
@@ -23,7 +27,7 @@ A workflow SHALL NOT start a step while an Operation of its task is running.
 
 ### req.workflows.supersede — A rerun supersedes what came after it
 
-Starting a new run for a base key that already has a current step SHALL supersede every step recorded after that step.
+Starting a new run for a base key that already has a current step SHALL supersede that step and every step recorded after it.
 
 A superseded step is never found again, so nothing validated or delivered before a retried or
 answered step is taken as current.

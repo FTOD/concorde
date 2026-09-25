@@ -248,6 +248,63 @@ class AdoptionTests(unittest.TestCase):
         self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
         self.assertIn("d.db-helper", envelope["error"]["detail"])
 
+    def test_an_answered_survey_question_must_be_settled(self):
+        self.open()
+        asking = json.loads(json.dumps(PROPOSAL))
+        asking["open_questions"] = [
+            {**RETRY_QUESTION, "id": "q.split", "module": "module.shop"}
+        ]
+        _, first = self.survey(asking)
+        answers = self.project.answers(
+            {"id": "q.split", "question": "split?", "answer": "keep them together"}
+        )
+        _, still = self.survey(asking, "--answers", answers, "--input", first["run_id"])
+        self.assertEqual("failed", still["status"])
+        self.assertIn("q.split", still["error"]["detail"])
+        status, settled = self.survey(
+            PROPOSAL, "--answers", answers, "--input", first["run_id"]
+        )
+        self.assertEqual(0, status, settled)
+
+    def test_children_whose_documents_share_a_folder_are_refused(self):
+        self.open()
+        clash = json.loads(json.dumps(PROPOSAL))
+        clash["children"][0]["id"] = "module.api.client"
+        clash["children"][0]["uses"] = []
+        clash["children"][1]["id"] = "module.db.client"
+        _, envelope = self.survey(clash)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn("client/", envelope["error"]["detail"])
+
+    def test_narrowing_binds_only_what_the_directory_bound(self):
+        from concorde.adoption.records import narrowed_entries
+
+        root = self.project.base / "tree"
+        for path in ("src/a/x.py", "src/b/y.py", "src/cache/__pycache__/z.pyc"):
+            (root / path).parent.mkdir(parents=True, exist_ok=True)
+            (root / path).write_text("x\n")
+        (root / "src/empty").mkdir()
+        (root / "src/a/link.py").symlink_to(root / "src/b/y.py")
+        self.assertEqual(
+            {"src/": ["src/b/"]},
+            narrowed_entries(root, ["src/"], ["src/a/x.py"]),
+        )
+
+    @verifies("scenario.adoption.describe-stubs-cleaned")
+    def test_stubs_are_removed_when_the_worker_step_raises(self):
+        from unittest.mock import patch
+
+        self.scaffolded()
+        with patch(
+            "concorde.adoption.code_to_spec.describe", side_effect=RuntimeError("boom")
+        ):
+            _, envelope = self.describe([{}])
+        self.assertEqual("failed", envelope["status"])
+        folder = self.worktree / "specs/project/checkout"
+        self.assertEqual(
+            ["module.md", "module.md.json"], sorted(p.name for p in folder.iterdir())
+        )
+
     @verifies("scenario.adoption.invalid-answers")
     def test_unusable_answers_stop_before_anything_runs(self):
         worktree = self.open()

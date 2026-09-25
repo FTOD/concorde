@@ -19,6 +19,7 @@ from ..spec.repository_base import (
     bound_by,
     covers,
     entry_base,
+    expand_entry,
     is_directory_entry,
     skipped_path,
 )
@@ -355,6 +356,17 @@ def proposal_problems(
         if [normalized(item["title"]) for item in children].count(title) > 1:
             problems.append(f"the title {child['title']!r} is proposed more than once")
         folder = child_folder(parent_entry, identity)
+        siblings = [
+            item["id"]
+            for item in children
+            if item["id"] != identity
+            and child_folder(parent_entry, item["id"]) == folder
+        ]
+        if siblings:
+            problems.append(
+                f"child {identity}'s folder {folder}/ is also the folder of "
+                f"{', '.join(siblings)}; the last segments of child identities must differ"
+            )
         if (root / folder).exists():
             problems.append(
                 f"child {identity}'s folder {folder}/ already exists in the worktree"
@@ -426,13 +438,20 @@ def narrowed_entries(
         for name in sorted(os.listdir(absolute)):
             path = directory + name
             relative = path[len(base) :]
-            if (absolute / name).is_dir() and not (absolute / name).is_symlink():
+            if (absolute / name).is_symlink():
+                continue  # a directory entry never binds a link, so neither does its narrowing
+            if (absolute / name).is_dir():
                 sub = path + "/"
                 if skipped_path(relative + "/x"):
                     continue
                 if taken(sub):
                     continue
-                result += expand(sub, base) if inside(sub) else [sub]
+                if inside(sub):
+                    result += expand(sub, base)
+                elif expand_entry(root, sub):
+                    result.append(
+                        sub
+                    )  # only a directory that binds files stays an entry
             elif (absolute / name).is_file() and not skipped_path(relative):
                 if not taken(path):
                     result.append(path)

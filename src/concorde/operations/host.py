@@ -7,7 +7,7 @@
 3. Begin the run in the task record (a run without a task has none).
 4. Execute the provider's steps in order.
 5. Compose and check the envelope.
-6. Write ``result.json``, finish the run in the task record, print the envelope and exit.
+6. Finish the run in the task record, write ``result.json``, print the envelope and exit.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ import signal
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .. import errors
@@ -103,11 +103,11 @@ class Cancelled(Exception):
 
 
 def now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def run_id(operation: str) -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     return f"r-{stamp}-{operation}-{secrets.token_hex(4)}"
 
 
@@ -375,6 +375,13 @@ def execute(
         for sig, handler in previous.items():
             signal.signal(sig, handler)
     envelope = _envelope(chosen, context, stop, started)
+    # The run is finished in the task record before its result exists, so whoever sees the
+    # result (a workflow step waiting for it) also sees a task free for its next run.
+    if begun:
+        try:
+            store.finish_run(primary, context.task["id"], identity, envelope["status"])
+        except store.TaskError as error:
+            envelope["host_evidence"].append(evidence("record", error.code, str(error)))
     (run_dir / "result.json").write_text(json.dumps(envelope, indent=2) + "\n")
     _progress(
         context,
@@ -383,12 +390,6 @@ def execute(
         status=envelope["status"],
         summary=envelope["summary"],
     )
-    if begun:
-        try:
-            store.finish_run(primary, context.task["id"], identity, envelope["status"])
-        except store.TaskError as error:
-            envelope["host_evidence"].append(evidence("record", error.code, str(error)))
-            (run_dir / "result.json").write_text(json.dumps(envelope, indent=2) + "\n")
     return (0 if envelope["status"] == "ok" else 1), envelope
 
 
@@ -568,6 +569,14 @@ def detach(
     if progress.exists():
         return 0, announced
     ended = process.poll()
+    if ended is None:
+        # A host that did not announce itself in time must not start the Operation later,
+        # unrecorded by whoever asked for it.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        process.wait()
     tail = output.read_bytes()[-4000:].decode("utf-8", "replace").strip()
     detail = (
         f"the detached host of {chosen.name} (process {process.pid}) "

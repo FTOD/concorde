@@ -42,7 +42,7 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 | 3 | Begin the run in the task record with the catalog entry's `writes` flag; the task worktree's Specs are loaded to check the Modules unless the provider diagnoses them itself (`validate`). A run without a task skips this step | Tasks | `task_closed` or `task_busy` (`failed`, not recorded in the task) |
 | 4 | Execute the provider's steps in order | provider, Workers, Check execution | a step stops the run with a status |
 | 5 | Compose the envelope from the step outcomes and check it against the result contract and the provider's output contract | host | the envelope or output is invalid (`failed`, `invalid-output` evidence) |
-| 6 | Write `result.json`, finish the run in the task record with the result's status, print the envelope and exit | host, Tasks | — |
+| 6 | Finish the run in the task record with the result's status, then write `result.json`, print the envelope and exit, so that a saved result always means a task free for its next run | host, Tasks | — |
 
 - Each provider step returns either "continue", with any output and evidence it produced, or
   "stop", with a status, a summary and evidence. Steps of one run share the run context: the task record, the task
@@ -57,6 +57,9 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
   through Workers and finishes with a `failed` result with `cancelled` evidence naming the signal.
 - Steps 5 and 6 run whatever happened in step 4. If step 6 cannot write the task record, the result
   is still written and printed, with `record` evidence naming the failure.
+- A detached host that has not written its progress file within the announcement wait is killed,
+  with its process group, and the command reports `detach_failed` with the end of its output, so
+  an unannounced host never starts an Operation later.
 - A refusal in steps 2 or 3 still writes and prints a result, with the refusal code as `refused`
   evidence and an error whose cause is the Tasks refusal with its message, such as the known tasks
   for an unknown one or the running Operation for a busy one.
