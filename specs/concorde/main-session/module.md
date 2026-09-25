@@ -18,7 +18,8 @@ background and shows their progress. Distribution renders and installs this Modu
 | --- | --- |
 | Main-session guidance | The instructions, installed as a project skill for Claude Code and for pi and as a `CLAUDE.md` block, that tell the main agent how to work with Concorde. |
 | Run view | The Concorde extension of a pi main session that starts Operations in the background, shows every run and its worker's progress, and wakes the main agent when a run ends. |
-| Model picker | The dialog of the pi run view in which the developer chooses, for every task type or one, the model and reasoning level of pi workers. |
+| Model picker | The dialog of the pi run view in which the developer chooses, for every worker, an Operation's workers or one worker role, the model and reasoning level of pi workers. |
+| Questions without a task | The guidance's rule that Operations which allow it run without a task for a question or review that changes nothing. |
 | Escalation policy | The rule by which the main agent decides ordinary questions itself, records and reports them, and asks the developer only for decisions with major impact. |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
@@ -123,14 +124,25 @@ top of the chain, records it in the task and prints it rendered for the develope
 worktree's [worker model
 configuration](../harness/workers/module.md#concept.workers.model-configuration). The guidance
 tells the main agent to change it only when the developer asks, and to let the developer choose
-from what `concorde workers models` lists. In pi the run view's **model picker** does it: the
-`/concorde-models` command, or the `concorde_configure_workers` tool the main agent calls on the
-developer's request, shows the default and every task type with the model and level each runs on,
-then the models pi lists, then the chosen model's levels, and applies each choice with
-`concorde workers set` or `unset`; a task identity limits it to that task's copy. In Claude Code,
+from what the [`configure_workers`](../operations/module.md#concept.operations.configure-workers)
+Operation lists. In pi the run view's **model picker** does it: the `/concorde-models` command, or
+the `concorde_configure_workers` tool the main agent calls on the developer's request, shows the
+default and every Operation's workers — one row per worker role for an Operation with several —
+with the model and level each runs on, then the models pi lists, then the chosen model's levels,
+and applies each choice with `configure_workers`, removing an entry when the developer returns it
+to the more general one; a task identity limits it to that task's copy. In Claude Code,
 which lets no extension draw a dialog, the main agent asks with its question tool — scope, model,
 level — and applies the answers itself. Without a request naming a task, only the worktree the
 command runs in changes, so in the primary worktree only tasks opened later are affected.
+
+<a id="concept.main-session.no-task-operations"></a>
+
+**Questions without a task.** The guidance tells the main agent that `understand`, `spec_review`,
+`code_review` and `configure_workers` also run [without a
+task](../operations/module.md#concept.operations.no-task), on the worktree it starts them in, and
+change no Spec or code; it uses them for a question or a review that does not justify a task, such
+as understanding a Module before a change is agreed. In pi `concorde_run` takes the task as
+optional for them.
 
 **Issues.** A problem the current task will not fix is worth an
 [Issue](../issues/module.md#concept.issues.issue) so it survives the task. Solving one is ordinary
@@ -199,15 +211,15 @@ observes. The skill is also installed for pi as `.pi/skills/concorde/SKILL.md`.
 The **pi run view** is `src/concorde/main_session/pi_extension.ts`, installed as
 `.pi/extensions/concorde/index.ts`, with the pure reading of progress files in `pi_runs.ts` beside
 it. It also sets `CONCORDE_CLIENT=pi` for every command the session starts, so the host runs pi
-workers for it.
+workers for it. The tests run `pi_runs.ts` under Node against progress files; the extension itself
+needs a pi session and is exercised in one.
 
 <a id="realization.main-session.pi-model-picker"></a>
 
-The **pi model picker**'s dialogs live in the extension; the pure part, turning a
-`concorde workers models` listing into the rows it offers and a chosen row into a
-`concorde workers` command line, is `pi_models.ts`, installed beside it. Tests run it under Node;
-the dialogs themselves were exercised by driving a pi RPC session. The tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi
-session and is exercised in one.
+The **pi model picker**'s dialogs live in the extension; the pure part, turning the output of a
+`configure_workers` run into the rows it offers and a chosen row into a `configure_workers` command
+line, is `pi_models.ts`, installed beside it. Tests run it under Node; the dialogs themselves were
+exercised by driving a pi RPC session.
 
 ## Relationships
 
@@ -243,9 +255,9 @@ without inspecting the worker, and none starts the next one: that choice is the 
 file](../harness/workers/module.md#concept.workers.progress-file). The run view relies on it
 recording the phase, round and latest tool call, and the host process that launched the worker,
 and on it being an observation only. Workers also owns the [worker model
-configuration](../harness/workers/module.md#concept.workers.model-configuration) and its
-`concorde workers` command; the model picker and the guidance rely on the command listing the
-candidates and validating every choice, so neither ever writes the file itself.
+configuration](../harness/workers/module.md#concept.workers.model-configuration); the model picker
+and the guidance change it only through the `configure_workers` Operation, which lists the
+candidates and validates every choice, so neither ever writes the file itself.
 
 <a id="uses-tasks"></a>
 

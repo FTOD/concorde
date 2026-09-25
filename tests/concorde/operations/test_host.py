@@ -57,6 +57,34 @@ RAISING = Provider("test", None, False, (raising_step,))
 ADMITTED = Provider("understand", None, False, (admitted_step,))
 
 
+def reading_step(ctx):
+    return ctx.run_worker(ctx.arguments.goal, task_type="understand", rounds=0)
+
+
+def writing_step(ctx):
+    return ctx.run_worker(ctx.arguments.goal, task_type="implement", rounds=0)
+
+
+READER = Provider(
+    "spec_review",
+    "review-spec",
+    False,
+    (reading_step,),
+    None,
+    goal_arguments,
+    task_scope="optional",
+)
+WRITER = Provider(
+    "code_review",
+    "review-code",
+    False,
+    (writing_step,),
+    None,
+    goal_arguments,
+    task_scope="optional",
+)
+
+
 class HostTests(unittest.TestCase):
     def setUp(self):
         self.project = OperationProject(self)
@@ -70,6 +98,8 @@ class HostTests(unittest.TestCase):
                 "validate": f"{__name__}:DETERMINISTIC",
                 "test": f"{__name__}:RAISING",
                 "understand": f"{__name__}:ADMITTED",
+                "spec_review": f"{__name__}:READER",
+                "code_review": f"{__name__}:WRITER",
             },
         )
         patcher.start()
@@ -102,10 +132,10 @@ class HostTests(unittest.TestCase):
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "claude": {
                         "default": {"model": "sonnet", "reasoning": "medium"},
-                        "task_types": {"implement": {"model": "opus"}},
+                        "operations": {"implement": {"model": "opus"}},
                     },
                 }
             )
@@ -126,12 +156,63 @@ class HostTests(unittest.TestCase):
         self.assertEqual("claude", shown["ref"])
         self.assertIn("model opus, reasoning medium", shown["detail"])
         (self.root / models.CONFIG).write_text(
-            json.dumps({"schema_version": 1, "claude": {"default": {"model": "haiku"}}})
+            json.dumps({"schema_version": 2, "claude": {"default": {"model": "haiku"}}})
         )
         status, envelope = self.implement([{}])
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         argv = self.launched(envelope)
         self.assertEqual("opus", argv[argv.index("--model") + 1])
+
+    @verifies("scenario.operations.no-task")
+    def test_a_run_without_a_task_works_on_its_own_worktree(self):
+        before = store.load_task(self.root, "t1")
+        status, envelope = self.project.run(
+            "spec_review",
+            "--modules",
+            "module.a",
+            "--goal",
+            OperationProject.plan([{}]),
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertIsNone(envelope["task"])
+        self.assertEqual(["module.a"], envelope["modules"])
+        record = self.worker_record(envelope)
+        self.assertEqual(str(self.root), record["worktree"])
+        self.assertEqual(before, store.load_task(self.root, "t1"))
+        self.assertTrue(
+            (
+                self.root / ".concorde/runs" / envelope["run_id"] / "result.json"
+            ).is_file()
+        )
+        validate(envelope, RESULT_SCHEMA)
+        status, envelope = self.project.run(
+            "spec_review", "--modules", "module.a", "--input", envelope["run_id"]
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        with self.assertRaises(UsageError):
+            self.project.run("implement", "--goal", "x")
+
+    @verifies("scenario.operations.no-task-read-only")
+    def test_a_run_without_a_task_launches_no_writing_worker(self):
+        status, envelope = self.project.run(
+            "code_review",
+            "--modules",
+            "module.a",
+            "--goal",
+            OperationProject.plan([{}]),
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual("project_scope_write", envelope["error"]["code"])
+        self.assertIn("no task", envelope["error"]["actor"])
+        status, task_run = self.implement([{}])
+        self.assertEqual(0, status, task_run)
+        status, envelope = self.project.run(
+            "spec_review", "--modules", "module.a", "--input", task_run["run_id"]
+        )
+        self.assertEqual(
+            (1, "input_not_admissible"), (status, envelope["host_evidence"][-1]["ref"])
+        )
 
     @verifies("scenario.operations.worker-model-unavailable")
     def test_a_run_without_a_main_session_program_fails_before_launch(self):

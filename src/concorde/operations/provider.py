@@ -53,6 +53,16 @@ class Provider:
     # False for a provider that diagnoses the task worktree's Specs itself, such as validate:
     # the host then begins the run even when those Specs cannot be loaded.
     requires_loaded_specs: bool = True
+    # "required": every run names a task. "optional": a run without --task works on the
+    # worktree it is started in (project scope) and may launch only read-only workers.
+    task_scope: str = "required"
+    # The roles of the workers the Operation launches; the first is the default role. The worker
+    # model configuration is keyed by Operation and role.
+    roles: tuple[str, ...] = ("worker",)
+
+
+# Task types whose workers may change files; a project-scope run never launches one.
+WRITING_TASK_TYPES = ("specify", "implement")
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]
@@ -213,6 +223,13 @@ class RunContext:
     state: dict = field(default_factory=dict)
     # The run record of the latest worker launch, as Workers wrote it.
     last_record: dict | None = None
+    # The worker roles the provider declares; the first is the default.
+    roles: tuple[str, ...] = ("worker",)
+
+    @property
+    def project_scope(self) -> bool:
+        """Whether the run works without a task, on the worktree it was started in."""
+        return not self.task.get("id")
 
     def workers_config(self) -> dict:
         config = json.loads((self.worktree / ".concorde/config.json").read_text())
@@ -227,6 +244,7 @@ class RunContext:
         checks: bool = False,
         rounds: int | None = None,
         modules: list[str] | None = None,
+        role: str | None = None,
     ):
         """The standard worker sequence; returns ``Continue`` or ``Stop``."""
         from ..harness.workers import WorkerRequest, run_worker
@@ -235,14 +253,28 @@ class RunContext:
         from ..spec.repository_base import SpecError
 
         bound = modules or self.modules
+        role = role or self.roles[0]
+        if self.project_scope and task_type in WRITING_TASK_TYPES:
+            return self.fail(
+                "failed",
+                "project_scope_write",
+                f"A {task_type} worker needs a task.",
+                f"{self.operation} ran without a task in {self.worktree} and asked for a "
+                f"{task_type} worker, which may change files; a run without a task launches only "
+                "read-only workers",
+                reason="scope",
+                explanation="changing Specs or code happens only inside a task's worktree, which "
+                "this run does not have",
+                options=["open a task and run the Operation with --task"],
+            )
         try:
             frozen = grant(SpecRepository(self.worktree), bound, task_type).value
         except (SpecError, OSError, ValueError) as error:
             return self.grant_failure(task_type, bound, error)
         try:
-            backend, model = self.worker_model(task_type)
+            backend, model = self.worker_model(role)
         except ModelConfigError as error:
-            return self.model_failure(task_type, error)
+            return self.model_failure(role, error)
         config = self.workers_config()
         runtime = tuple(
             Path(path) if os.path.isabs(path) else self.worktree / path
@@ -265,25 +297,27 @@ class RunContext:
                 model=model["model"],
                 backend=backend,
                 reasoning=model["reasoning"],
+                operation=self.operation,
+                role=role,
             )
         )
         return self.absorb(record)
 
-    def worker_model(self, task_type: str) -> tuple[str, dict]:
-        """The main session's backend and the task worktree's model choice for ``task_type``."""
+    def worker_model(self, role: str) -> tuple[str, dict]:
+        """The main session's backend and the worktree's model choice for this Operation's
+        worker ``role``."""
         backend, _ = detect_client()
-        return backend, selection(load(self.worktree), backend, task_type)
+        return backend, selection(load(self.worktree), backend, self.operation, role)
 
-    def model_failure(self, task_type: str, error) -> Stop:
+    def model_failure(self, role: str, error) -> Stop:
         """Stop ``failed``: the backend or the worker model configuration cannot be settled."""
         path = config_path(self.worktree).as_posix()
         return self.fail(
             "failed",
             "worker_model_unavailable",
-            f"The {task_type} worker could not be configured ({error.code}).",
-            f"the backend and model of the {task_type} worker of task "
-            f"{self.task.get('id', '?')} cannot be settled: {error.code}: {error} "
-            f"(configuration file {path})",
+            f"The {role} worker could not be configured ({error.code}).",
+            f"the backend and model of the {role} worker of {self.operation} in {self.worktree} "
+            f"cannot be settled: {error.code}: {error} (configuration file {path})",
             reason="input",
             explanation="an Operation runs workers on the main session's agent program with the "
             "task worktree's model configuration and never guesses or repairs either",
@@ -304,16 +338,19 @@ class RunContext:
                     "CONCORDE_CLIENT"
                 ),
                 (
-                    "inspect the configuration with concorde workers show --task "
-                    f"{self.task.get('id', '<task>')}, and fix it with concorde workers set "
-                    "or unset"
+                    "inspect and fix the configuration with concorde run configure_workers"
+                    + (f" --task {self.task['id']}" if not self.project_scope else "")
                 ),
             ],
         )
 
     @property
     def actor(self) -> str:
-        return f"Operation {self.operation} {self.run_id} (task {self.task.get('id', '?')})"
+        if self.project_scope:
+            return (
+                f"Operation {self.operation} {self.run_id} (no task, {self.worktree})"
+            )
+        return f"Operation {self.operation} {self.run_id} (task {self.task['id']})"
 
     def fail(
         self,
@@ -444,7 +481,8 @@ class RunContext:
             evidence(
                 "worker-model",
                 record.get("backend") or "",
-                f"model {record.get('model') or 'the backend default'}, reasoning "
+                f"{record.get('role') or 'worker'}: model "
+                f"{record.get('model') or 'the backend default'}, reasoning "
                 f"{record.get('reasoning') or 'the backend default'}",
             ),
         ]

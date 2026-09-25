@@ -1,41 +1,36 @@
-"""Worker model configuration: which model and reasoning level workers of each task type use.
+"""Worker model configuration: which model and reasoning level each worker of an Operation uses.
 
 The configuration is the file ``.concorde/worker-models.json`` of one worktree. Git ignores it: it
 names models of this machine's Claude Code or pi installation, and it belongs to the worktree, not
 to the branch. ``concorde task open`` copies the primary worktree's file into a new task worktree,
 so a task starts with the configuration of its creation and keeps its own copy; later changes in
-the primary worktree never reach an existing task, and a task's copy changes only when a command
-names it. For each backend it holds a default and optional overrides per task type; an override
-replaces only the fields it sets.
+the primary worktree never reach an existing task, and a task's copy changes only when a request
+names it. For each backend it holds a default and optional entries per Operation, each of which
+may hold entries per worker role; the most specific entry that sets a field wins, field by field.
 
 The backend is not configured: workers run on the agent program of the main session that started
 the run (``client``), Claude Code or pi. Mixing a main session of one with workers of the other is
 future work.
 
-``concorde workers models|show|set|unset`` prints one JSON value; refusals print
-``{"error": <error link>}`` and exit 1, a malformed command line exits 2.
+This module knows no Operation names; the ``configure_workers`` Operation checks them against the
+catalog and changes the file through ``set_choice`` and ``unset_choice``.
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
-from .. import errors
 from ..spec.schema import ContractError, validate
-from .settings import TOOL_SETS
 
 CONFIG = ".concorde/worker-models.json"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 CLIENTS = ("claude", "pi")
-TASK_TYPES = tuple(TOOL_SETS)
 # The command-line flag each backend takes the reasoning level with.
 REASONING_FLAG = {"claude": "--effort", "pi": "--thinking"}
 # The levels each program documents today, used when its --help cannot be read.
@@ -70,16 +65,21 @@ SELECTION_SCHEMA = {
     "properties": {"model": TEXT, "reasoning": TEXT},
     "anyOf": [{"required": ["model"]}, {"required": ["reasoning"]}],
 }
+OPERATION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "model": TEXT,
+        "reasoning": TEXT,
+        "roles": {"type": "object", "additionalProperties": SELECTION_SCHEMA},
+    },
+}
 BACKEND_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
         "default": SELECTION_SCHEMA,
-        "task_types": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {name: SELECTION_SCHEMA for name in TASK_TYPES},
-        },
+        "operations": {"type": "object", "additionalProperties": OPERATION_SCHEMA},
     },
 }
 SCHEMA = {
@@ -170,22 +170,27 @@ def save(worktree: Path, value: dict) -> Path:
     return path
 
 
-def selection(config: dict, backend: str, task_type: str) -> dict:
-    """The model and reasoning level for one task type, and where each came from."""
+def selection(config: dict, backend: str, operation: str, role: str) -> dict:
+    """The model and reasoning level of one worker role of an Operation, and where each came from."""
     section = config.get(backend) or {}
-    default = section.get("default") or {}
-    override = (section.get("task_types") or {}).get(task_type) or {}
+    entry = (section.get("operations") or {}).get(operation) or {}
+    layers = (
+        (
+            (entry.get("roles") or {}).get(role) or {},
+            f"{backend}.operations.{operation}.roles.{role}",
+        ),
+        (entry, f"{backend}.operations.{operation}"),
+        (section.get("default") or {}, f"{backend}.default"),
+    )
     chosen = {}
     for field in ("model", "reasoning"):
-        if field in override:
-            chosen[field] = override[field]
-            chosen[f"{field}_source"] = f"{backend}.task_types.{task_type}"
-        elif field in default:
-            chosen[field] = default[field]
-            chosen[f"{field}_source"] = f"{backend}.default"
-        else:
-            chosen[field] = None
-            chosen[f"{field}_source"] = "the backend's own default"
+        found = next(
+            ((layer[field], where) for layer, where in layers if field in layer), None
+        )
+        chosen[field], chosen[f"{field}_source"] = found or (
+            None,
+            "the backend's own default",
+        )
     return chosen
 
 
@@ -389,260 +394,152 @@ def candidates(backend: str, environ=None) -> dict:
     }
 
 
-# The command ------------------------------------------------------------------------------------
+# Changing the configuration -------------------------------------------------------------------
 
+# Why a caller cannot handle each error of this module itself, and what it can offer instead.
 HANDLING = {
     "client_unknown": (
         "input",
-        "Workers runs on the main session's agent program and cannot guess which one it is",
+        "workers run on the main session's agent program, and nothing names which one it is",
+        [
+            "run the Operation from the Claude Code or pi main session",
+            "set CONCORDE_CLIENT to claude or pi",
+        ],
     ),
-    "invalid_client": ("input", "only claude and pi are clients Concorde supports"),
+    "invalid_client": (
+        "input",
+        "only claude and pi are clients Concorde supports",
+        ["set CONCORDE_CLIENT to claude or pi"],
+    ),
     "backend_missing": (
         "environment",
-        "Workers does not install agent programs; the machine must provide the command",
+        "agent programs are not installed by Concorde; the machine must provide the command",
+        ["install the agent program, or set CONCORDE_CLAUDE or CONCORDE_PI"],
     ),
     "discovery_failed": (
         "environment",
-        (
-            "the agent program did not answer the listing, and Workers has no other source of "
-            "its models"
-        ),
+        "the agent program did not answer the listing, and there is no other source of its models",
+        ["run the listed command by hand to see why it fails"],
     ),
     "config_invalid": (
         "input",
-        (
-            "Workers does not repair a configuration file it cannot read; the file must be "
-            "fixed or removed"
-        ),
+        "a configuration file that cannot be read is never repaired or ignored",
+        [
+            "fix the file by hand, or delete it and configure again with configure_workers"
+        ],
     ),
-    "unknown_task": (
+    "unknown_model": (
         "input",
-        "the command names a task the primary worktree does not know",
+        "only a model the installed program lists is admitted without --allow-unlisted",
+        [
+            "choose a model from the candidates configure_workers lists",
+            "pass --allow-unlisted for a model the listing cannot show",
+        ],
     ),
-    "not_a_worktree": (
+    "unknown_level": (
         "input",
-        "a worker model configuration belongs to a worktree, and the command ran outside one",
+        "only a reasoning level the model offers is admitted",
+        ["choose a level listed for the model"],
     ),
-    "missing_worktree": (
-        "environment",
-        "the task's worktree is gone from disk, and recreating it is not Workers' decision",
-    ),
-}
-OPTIONS = {
-    "client_unknown": [
-        "run the command from the Claude Code or pi main session",
-        "set CONCORDE_CLIENT to claude or pi",
-    ],
-    "backend_missing": [
-        "install the agent program, or set CONCORDE_CLAUDE or CONCORDE_PI"
-    ],
-    "config_invalid": [
-        "fix the file by hand, or delete it and configure again with concorde workers set"
-    ],
-    "unknown_model": [
-        "choose a model from concorde workers models",
-        "pass --allow-unlisted for a model the listing cannot show",
-    ],
-    "unknown_level": ["choose a level listed for the model by concorde workers models"],
-    "unknown_task": ["run concorde task list to see the tasks"],
 }
 
 
-class _Parser(argparse.ArgumentParser):
-    def error(self, message):
-        raise ModelConfigError("invalid_command", f"{self.prog}: {message}")
-
-
-def parser() -> argparse.ArgumentParser:
-    root = _Parser(prog="concorde workers")
-    commands = root.add_subparsers(dest="command", required=True, parser_class=_Parser)
-    for name in ("models", "show", "set", "unset"):
-        command = commands.add_parser(name)
-        command.add_argument("--backend", choices=CLIENTS)
-        command.add_argument("--task")
-        if name in ("set", "unset"):
-            command.add_argument("--task-type", choices=TASK_TYPES)
-        if name == "set":
-            command.add_argument("--model")
-            command.add_argument("--reasoning")
-            command.add_argument("--allow-unlisted", action="store_true")
-    return root
-
-
-def refusal(command: str, error: ModelConfigError) -> dict:
-    reason, explanation = HANDLING.get(
-        error.code,
-        ("input", "the request names a model, level or option Workers does not admit"),
-    )
-    return errors.link(
-        "component",
-        f"Workers (concorde workers {command})",
-        error.code,
-        str(error),
-        reason=reason,
-        explanation=explanation,
-        options=OPTIONS.get(error.code, []),
-    )
-
-
-def _target(here: Path, task: str | None) -> tuple[Path, str]:
-    """The worktree the command reads or changes: the named task's, or the current one."""
-    from ..tasks import store
-
-    try:
-        if task:
-            record = store.load_task(store.primary_of(here), task)
-            worktree = Path(record["worktree"])
-            if not worktree.is_dir():
-                raise ModelConfigError(
-                    "missing_worktree",
-                    f"the worktree {worktree} of task {task} does not exist",
-                )
-            return worktree, f"task {task}"
-    except store.TaskError as error:
-        raise ModelConfigError(error.code, str(error)) from error
-    found = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        cwd=here,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if found.returncode != 0:
-        raise ModelConfigError(
-            "not_a_worktree",
-            f"{here} is not inside a Git worktree, so it has no worker model configuration: "
-            + (found.stderr.strip() or f"git exited {found.returncode}"),
-        )
-    return Path(found.stdout.strip()), "this worktree"
-
-
-def _backend(arguments, environ) -> tuple[str, str]:
-    if arguments.backend:
-        return arguments.backend, "--backend"
-    return detect_client(environ)
-
-
-def _effective(config: dict, backend: str) -> dict:
-    return {name: selection(config, backend, name) for name in TASK_TYPES}
-
-
-def _check_choice(found: dict, config: dict, arguments, backend: str) -> None:
+def check_choice(
+    found: dict,
+    config: dict,
+    backend: str,
+    operation: str | None,
+    role: str | None,
+    model: str | None,
+    reasoning: str | None,
+    allow_unlisted: bool,
+) -> None:
+    """Refuse a model the listing ``found`` does not show, or a level the model does not offer."""
     ids = [item["id"] for item in found["models"]]
-    if arguments.model and arguments.model not in ids and not arguments.allow_unlisted:
+    if model and model not in ids and not allow_unlisted:
         raise ModelConfigError(
             "unknown_model",
-            f"{arguments.model!r} is not a {backend} model this machine lists "
-            f"({', '.join(ids) or 'none'})",
+            f"{model!r} is not a {backend} model this machine lists ({', '.join(ids) or 'none'})",
         )
-    if not arguments.reasoning:
+    if not reasoning:
         return
-    model = arguments.model
     if not model:
-        current = selection(config, backend, arguments.task_type or "")
-        model = current["model"]
+        model = (
+            selection(config, backend, operation, role or "")["model"]
+            if operation
+            else (config.get(backend) or {}).get("default", {}).get("model")
+        )
     listed = next((item for item in found["models"] if item["id"] == model), None)
     levels = listed["levels"] if listed else found["reasoning_levels"]
-    if arguments.reasoning not in levels:
+    if reasoning not in levels:
         raise ModelConfigError(
             "unknown_level",
-            f"{arguments.reasoning!r} is not a reasoning level of "
+            f"{reasoning!r} is not a reasoning level of "
             f"{model or f'the {backend} default model'} (levels: {', '.join(levels)})",
         )
 
 
-def _set(config: dict, arguments, backend: str, environ) -> dict:
-    if not arguments.model and not arguments.reasoning:
-        raise ModelConfigError(
-            "invalid_command", "concorde workers set needs --model, --reasoning or both"
-        )
-    _check_choice(candidates(backend, environ), config, arguments, backend)
+def set_choice(
+    config: dict,
+    backend: str,
+    operation: str | None,
+    role: str | None,
+    model: str | None,
+    reasoning: str | None,
+) -> dict:
+    """Set the fields given on the default, an Operation's entry or one of its roles."""
     section = config.setdefault(backend, {})
-    if arguments.task_type:
-        entry = section.setdefault("task_types", {}).setdefault(arguments.task_type, {})
-    else:
+    if operation is None:
         entry = section.setdefault("default", {})
-    if arguments.model:
-        entry["model"] = arguments.model
-    if arguments.reasoning:
-        entry["reasoning"] = arguments.reasoning
+    else:
+        entry = section.setdefault("operations", {}).setdefault(operation, {})
+        if role is not None:
+            entry = entry.setdefault("roles", {}).setdefault(role, {})
+    if model:
+        entry["model"] = model
+    if reasoning:
+        entry["reasoning"] = reasoning
     return config
 
 
-def _unset(config: dict, arguments, backend: str) -> tuple[dict, bool]:
+def unset_choice(
+    config: dict, backend: str, operation: str | None, role: str | None
+) -> bool:
+    """Remove the default, an Operation's entry or one role's entry; whether one existed."""
     section = config.get(backend) or {}
-    if arguments.task_type:
-        removed = (section.get("task_types") or {}).pop(arguments.task_type, None)
-        if section.get("task_types") == {}:
-            section.pop("task_types")
-    else:
+    if operation is None:
         removed = section.pop("default", None)
+    else:
+        operations = section.get("operations") or {}
+        if role is None:
+            removed = operations.pop(operation, None)
+        else:
+            roles = (operations.get(operation) or {}).get("roles") or {}
+            removed = roles.pop(role, None)
+            if operation in operations and roles == {}:
+                operations[operation].pop("roles", None)
+            if operations.get(operation) == {}:
+                operations.pop(operation)
+        if section.get("operations") == {}:
+            section.pop("operations")
     if backend in config and not config[backend]:
         config.pop(backend)
-    return config, removed is not None
-
-
-def run(argv, cwd: Path | None = None, environ=None) -> dict:
-    environ = os.environ if environ is None else environ
-    arguments = parser().parse_args(list(argv))
-    here = Path(cwd or Path.cwd())
-    worktree, scope = _target(here, arguments.task)
-    backend, told = _backend(arguments, environ)
-    config = load(worktree)
-    value: dict = {
-        "backend": backend,
-        "backend_from": told,
-        "worktree": worktree.as_posix(),
-        "scope": scope,
-        "config": config_path(worktree).as_posix(),
-    }
-    if arguments.command == "models":
-        value.update(candidates(backend, environ))
-    elif arguments.command == "set":
-        config = _set(config, arguments, backend, environ)
-        save(worktree, config)
-    elif arguments.command == "unset":
-        config, removed = _unset(config, arguments, backend)
-        save(worktree, config)
-        value["removed"] = removed
-    value["configured"] = config.get(backend) or {}
-    value["effective"] = _effective(config, backend)
-    return value
-
-
-def main(argv, cwd: Path | None = None, environ=None) -> int:
-    words = list(argv)
-    command = words[0] if words else "?"
-    try:
-        value = run(words, cwd, environ)
-    except ModelConfigError as error:
-        sys.stdout.write(
-            json.dumps({"error": refusal(command, error)}, indent=2) + "\n"
-        )
-        return 2 if error.code == "invalid_command" else 1
-    except SystemExit as exit_:
-        return 0 if exit_.code in (0, None) else 2
-    except Exception as error:  # noqa: BLE001 -- every failure leaves a detailed error
-        link = errors.from_exception(
-            f"Workers (concorde workers {command})",
-            error,
-            explanation="Workers has no recovery for an unexpected error; nothing after it ran",
-        )
-        sys.stdout.write(json.dumps({"error": link}, indent=2) + "\n")
-        return 1
-    sys.stdout.write(json.dumps(value, indent=2) + "\n")
-    return 0
+    return removed is not None
 
 
 __all__ = [
     "CLIENTS",
     "CONFIG",
+    "HANDLING",
     "ModelConfigError",
     "candidates",
+    "check_choice",
+    "config_path",
     "detect_client",
     "inherit",
     "load",
-    "main",
     "save",
     "selection",
+    "set_choice",
+    "unset_choice",
 ]

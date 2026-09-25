@@ -7,15 +7,17 @@ status. The envelope itself is the [result contract](contracts.md#contract.opera
 ## Command line
 
 ```text
-concorde run <operation> --task <task-id> [--modules <id>[,<id>…]] [--input <run-id>]… [operation arguments]
+concorde run <operation> [--task <task-id>] [--modules <id>[,<id>…]] [--input <run-id>]… [operation arguments]
 ```
 
-- The command runs in the primary worktree. `<operation>` is a name from the catalog; `--task`
-  is required.
-- `--modules` defaults to the task record's Modules. Every named Module must be registered in the
-  task worktree.
-- Each `--input` names a run of the same task whose status was `ok`; its saved `output` is
-  admitted as task material. Any other run is refused with `input_not_admissible`.
+- `<operation>` is a name from the catalog. `--task` is required unless the catalog entry makes the
+  task optional; leaving out a required `--task` is a command-line error.
+- With a task, `--modules` defaults to the task record's Modules and every named Module must be
+  registered in the task worktree. Without a task the run works on the worktree the command runs
+  in, `--modules` defaults to none, and every named Module must be registered there.
+- Each `--input` names a run whose status was `ok` and that belongs to the same task, or, for a run
+  without a task, that had no task either; its saved `output` is admitted as task material. Any
+  other run is refused with `input_not_admissible`.
 - Operation arguments are defined by the provider and parsed by it. An unknown argument is a
   command-line error.
 - Standard output receives exactly the result envelope as one JSON value. Diagnostics go to
@@ -36,8 +38,8 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Parse the command line and look up the catalog entry; only then create the run identity and directory | host | malformed command line, unknown Operation or a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
-| 2 | Resolve the task and its worktree; check `--modules` and `--input` | host, Tasks, Spec core | unknown task or Module, missing worktree, inadmissible input (`failed`, not recorded in the task) |
-| 3 | Begin the run in the task record with the catalog entry's `writes` flag; the task worktree's Specs are loaded to check the Modules unless the provider diagnoses them itself (`validate`) | Tasks | `task_closed` or `task_busy` (`failed`, not recorded in the task) |
+| 2 | Resolve the task and its worktree, or without a task the worktree the command runs in; check `--modules` and `--input` | host, Tasks, Spec core | unknown task or Module, missing worktree, inadmissible input (`failed`, not recorded in the task) |
+| 3 | Begin the run in the task record with the catalog entry's `writes` flag; the task worktree's Specs are loaded to check the Modules unless the provider diagnoses them itself (`validate`). A run without a task skips this step | Tasks | `task_closed` or `task_busy` (`failed`, not recorded in the task) |
 | 4 | Execute the provider's steps in order | provider, Workers, Check execution | a step stops the run with a status |
 | 5 | Compose the envelope from the step outcomes and check it against the result contract and the provider's output contract | host | the envelope or output is invalid (`failed`, `invalid-output` evidence) |
 | 6 | Write `result.json`, finish the run in the task record with the result's status, print the envelope and exit | host, Tasks | — |
@@ -83,22 +85,56 @@ A failed write never changes the run.
 The optional `workers` object of `.concorde/config.json`, read from the task worktree, sets the
 limits of every worker launch: `timeout_seconds` per round (default 1800), `max_turns` (default 200), `max_budget_usd` (default none), `rounds` of resume
 (default 3) and `runtime`, the paths Bash may read besides the grant, relative to the task
-worktree or absolute (default `.venv` and `node_modules`, each only when it exists).
+worktree or absolute (default `.venv` and `node_modules`, each only when it exists). A refusal of the task before the run begins (`unknown_task`,
+`missing_worktree`, `input_not_admissible`, `task_closed`, `task_busy`, `unknown_module`) is
+reported as `refused` evidence.
 
 ## Worker backend and model
 
 No project setting chooses the agent program or the model of a worker. Before each worker launch
 the host takes the [worker backend](../harness/workers/module.md#concept.workers.backend) from its
 own environment, which the main session that started the run passed on, and the model and
-reasoning level of the worker's task type from the task worktree's [worker model
-configuration](../harness/workers/module.md#concept.workers.model-configuration). It records both
-in the run record and adds `worker-model` host evidence naming the backend, model and level the
-worker ran with. When no main session program can be found, or the configuration file cannot be
-read, the step stops `failed` with `worker_model_unavailable` before any worker starts.
+reasoning level of the Operation's worker role — the role the provider names for the launch, or
+its first role — from the run worktree's [worker model
+configuration](../harness/workers/module.md#concept.workers.model-configuration). Workers records
+the Operation, role, model and level in the run record, and the host adds `worker-model` host
+evidence naming the backend, the role, the model and the level the worker ran with. When no main
+session program can be found, or the configuration file cannot be read, the step stops `failed`
+with `worker_model_unavailable` before any worker starts.
 
-A refusal of
-the task before the run begins (`unknown_task`, `missing_worktree`, `input_not_admissible`,
-`task_closed`, `task_busy`, `unknown_module`) is reported as `refused` evidence.
+## Runs without a task
+
+A run without a task uses the same runner and envelope with `task` null, and records nothing in any
+task record: no task is begun, made busy or reopened. Its worker launches follow the standard worker
+sequence with the grant computed from the Specs of the worktree it runs in, and the host refuses a
+launch of the task type `specify` or `implement` with `project_scope_write` before computing a
+grant, whatever the provider asks, since only a task's worktree may change. Its results and run
+records live in the primary worktree's `.concorde/runs/` like every other run's.
+
+## configure_workers
+
+<a id="configure-workers"></a>
+
+`configure_workers` has one host step, `configure`, and launches no worker:
+
+```text
+concorde run configure_workers [--task <task-id>] [--backend claude|pi]
+    [--operation <op> [--role <role>]] [--model <model>] [--reasoning <level>] [--allow-unlisted] [--unset]
+```
+
+| # | Step | Stops the run when |
+| --- | --- | --- |
+| 1 | Check the request: `--role` only with `--operation`; `--operation` a catalog Operation with a task type; `--role` one of its roles; `--unset` without `--model` or `--reasoning`; `--allow-unlisted` only with `--model` | the request is impossible (`invalid_request`) |
+| 2 | Take the backend from `--backend`, or from the main session that started the run | no main session program is known (`configuration_refused`) |
+| 3 | Read the run worktree's configuration file | it cannot be read (`configuration_refused`) |
+| 4 | Unless `--unset`, list the candidates of the installed program | the program is missing or does not answer (`configuration_refused`) |
+| 5 | With `--model` or `--reasoning`, refuse a model the listing does not show (unless `--allow-unlisted`) or a level the model does not offer, then set the fields on the default, the Operation's entry or the role's entry; with `--unset`, remove that entry; write the file atomically | the value is not offered (`configuration_refused`) |
+| 6 | Output the [worker configuration](contracts.md#contract.operations.worker-configuration) | — |
+
+The worktree is the task's with `--task` and otherwise the one the command runs in. The file is
+changed only in step 5, and a refused run leaves it as it was. With a task, the run is recorded in
+the task record like any run of it but never changes the task's delivered state, since the file is
+not part of the task's change.
 
 ## Standard worker sequence
 
@@ -148,6 +184,9 @@ build it as follows.
 | --- | --- | --- | --- |
 | Refusal before the run began | `refused` | `decision` for `task_busy`, `scope` for `specs_unloadable`, `input` otherwise | the Tasks refusal |
 | Grant not computable | `grant_unavailable` | `scope` | Spec core's error |
+| A run without a task asked for a `specify` or `implement` worker | `project_scope_write` | `scope` | none |
+| `configure_workers` request impossible | `invalid_request` | `input` | none |
+| `configure_workers` refused by the model configuration | `configuration_refused` | the Workers link's reason | the `component` link of Workers' model configuration, with its code (`client_unknown`, `invalid_client`, `config_invalid`, `backend_missing`, `discovery_failed`, `unknown_model` or `unknown_level`), its detail and options |
 | Worker backend or model configuration not settled | `worker_model_unavailable` | `input` | the `component` link of Workers' model configuration, with its code (`client_unknown`, `invalid_client` or `config_invalid`) and the file |
 | Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error |
 | Worker run ended with an audit violation | `audit_violation` | `permission` | the run record's error |

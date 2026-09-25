@@ -31,13 +31,6 @@
           "concept.checks.configured-check",
           "concept.checks.check-result"
         ]
-      },
-      {
-        "target": "module.tasks",
-        "meaning": "#uses-tasks",
-        "relies_on": [
-          "concept.tasks.task"
-        ]
       }
     ],
     "includes": [

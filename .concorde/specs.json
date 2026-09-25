@@ -299,13 +299,6 @@
             "concept.checks.configured-check",
             "concept.checks.check-result"
           ]
-        },
-        {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks",
-          "relies_on": [
-            "concept.tasks.task"
-          ]
         }
       ],
       "includes": [
@@ -792,7 +785,9 @@
           "relies_on": [
             "concept.operations.operation",
             "concept.operations.result",
-            "concept.operations.progress-file"
+            "concept.operations.progress-file",
+            "concept.operations.no-task",
+            "concept.operations.configure-workers"
           ]
         },
         {

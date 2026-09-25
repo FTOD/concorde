@@ -139,7 +139,7 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("Change worker models only when the developer asks.", self.skill)
         self.assertIn("call the `concorde_configure_workers` tool", self.skill)
         self.assertIn(
-            "run `concorde workers models` and ask with the AskUserQuestion tool",
+            "run `concorde run configure_workers` and ask with the AskUserQuestion tool",
             self.skill,
         )
         self.assertIn(
@@ -147,9 +147,21 @@ class GuidanceTests(unittest.TestCase):
             "already exists",
             self.skill,
         )
+        self.assertIn("per worker role", self.skill)
         self.assertIn(
             "change the models workers use only when the developer asks", self.block
         )
+
+    @verifies("scenario.main-session.no-task-operations")
+    def test_questions_and_reviews_may_run_without_a_task(self):
+        self.assertIn("Some Operations also run without a task", self.skill)
+        self.assertIn(
+            "they change no Spec or code, since a run without a task launches only reading "
+            "workers",
+            self.skill,
+        )
+        self.assertIn("a question or a review that does not justify a task", self.skill)
+        self.assertIn("as an Operation without `--task`", self.block)
 
 
 if __name__ == "__main__":

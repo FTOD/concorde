@@ -102,7 +102,8 @@ Claude Code skill `.claude/skills/concorde/SKILL.md` and a block in `CLAUDE.md`,
 `--pi` it also places the locked pi runtime, the pi run view and the pi skill. It never writes your
 Specs. Then open Claude Code or pi in the project and talk to it: it is now the main agent.
 Workers run on the same program as the main agent; ask it to change the models they use and it lets
-you choose from what your Claude Code or pi installation offers (`concorde workers`).
+you choose, for every worker or one Operation's, from what your Claude Code or pi installation
+offers (`concorde run configure_workers`).
 
 A typical change, as the main agent runs it:
 

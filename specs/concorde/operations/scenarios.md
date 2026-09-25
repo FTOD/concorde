@@ -18,10 +18,10 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 
 ### scenario.operations.worker-model — A worker runs on the main session's program with the worktree's model
 
-- GIVEN a Claude Code main session and a task worktree whose worker model configuration sets a Claude Code default model and level and an `implement` override of the model
+- GIVEN a Claude Code main session and a task worktree whose worker model configuration sets a Claude Code default model and level and an entry for the `implement` Operation with a model only
 - WHEN the main agent runs `concorde run implement` for the task
-- THEN the host launches `claude -p` with the override's model and the default's level as `--effort`
-- AND the run record and the result's `worker-model` host evidence name the backend, the model and the level
+- THEN the host launches `claude -p` with the Operation's model and the default's level as `--effort`
+- AND the run record and the result's `worker-model` host evidence name the backend, the worker role, the model and the level
 - BUT a change made afterwards to the primary worktree's configuration does not change what the task's next worker runs on
 
 ### scenario.operations.worker-model-unavailable — A run with no known main session program fails before launch
@@ -71,6 +71,47 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - THEN the result has status `failed` with the violation as `audit` evidence
 - AND its error's top link gives `permission` as the reason and names the file
 - AND no configured check is run for that worker
+
+## Runs without a task
+
+### scenario.operations.no-task — A reading Operation runs without a task
+
+- GIVEN a primary worktree with `module.a` and an open task `t1`
+- WHEN the main agent runs `concorde run spec_review --modules module.a` without `--task`
+- THEN the host launches the reviewer on the primary worktree, with the grant computed from its Specs
+- AND the result has `task` null, is saved under the primary worktree's `.concorde/runs/`, and no task record changes
+- AND a later run without a task may admit it with `--input`
+- BUT `concorde run implement` without `--task` is a command-line error, since `implement` needs a task
+
+### scenario.operations.no-task-read-only — A run without a task never launches a writing worker
+
+- GIVEN an Operation whose catalog entry makes the task optional
+- WHEN a run of it without a task asks Workers for an `implement` or `specify` worker
+- THEN no worker starts and the result is `failed` with `project_scope_write`, its actor naming the run as having no task
+- AND an `--input` naming a run of a task is refused with `input_not_admissible`
+
+### scenario.operations.configure-list — configure_workers lists the candidates and every worker's choice
+
+- GIVEN a pi main session and a primary worktree without a worker model configuration
+- WHEN the main agent runs `concorde run configure_workers` without a task
+- THEN the result is `ok` with `task` null and no worker run
+- AND its output lists the models pi offers, and for every Operation that launches workers each worker role with its effective model and level, `spec_review` with `reviewer` and `checker`
+- AND no configuration file is written
+
+### scenario.operations.configure-change — A change reaches only the named worktree
+
+- GIVEN a primary worktree and an open task `t1` whose worktree has no worker model configuration
+- WHEN `configure_workers` sets a default model and level, then a model and level for `spec_review`'s `checker`, without a task
+- THEN the primary worktree's file holds both, the checker resolves its own entry and the reviewer the default
+- AND `t1`'s worktree has no file until `configure_workers --task t1` sets a model there, which changes only that copy
+- AND `--unset` of the checker's entry leaves only the default
+
+### scenario.operations.configure-refused — A refused change leaves the file alone
+
+- GIVEN a primary worktree
+- WHEN `configure_workers` names an Operation that launches no worker, a role the Operation does not have, a model the program does not list, or runs outside any main session
+- THEN the result is `failed` with `invalid_request` naming the admitted Operations or roles, or `configuration_refused` whose cause is Workers' `unknown_model` or `client_unknown` link
+- AND the configuration file is unchanged
 
 ## Deterministic runs and refusals
 

@@ -38,10 +38,13 @@ yet. The plan is optional and exists only inside a sufficient assessment.
 The main agent runs the Operation in a task worktree, usually before specifying or implementing:
 
 ```text
-concorde run understand --task <task-id> --modules <module-id>[,<module-id>…] --goal "<text>" [--plan] [--input <run-id>]…
+concorde run understand [--task <task-id>] --modules <module-id>[,<module-id>…] --goal "<text>" [--plan] [--input <run-id>]…
 ```
 
-`--modules` names the worker's bound Modules (default: the task's), `--goal` states what the main
+Without `--task` it runs [without a task](../module.md#concept.operations.no-task) on the worktree it
+is started in, usually the primary worktree, to answer a question before any task exists; it then
+admits only inputs of other runs without a task. `--modules` names the worker's bound Modules
+(default: the task's), `--goal` states what the main
 agent wants to know or do, `--plan` also asks for a plan, and `--input` admits an earlier `ok`
 run's output as task material. For example, `--modules module.issues --goal "let reports carry a
 severity" --plan` has the worker answer with either a plan (`specify`, `implement`, `test`,

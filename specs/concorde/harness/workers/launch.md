@@ -21,7 +21,8 @@ A run is requested with:
 | checks | The configured checks to run after each round, possibly none |
 | runtime paths | Extra absolute paths Bash may read, such as the toolchain, `.venv` or `node_modules` |
 | limits | Timeout per round, `--max-turns`, `--max-budget-usd`, and the number of resume rounds (default 3) |
-| model | Optionally the model passed with `--model`, from the task worktree's [worker model configuration](module.md#concept.workers.model-configuration) |
+| model | Optionally the model passed with `--model`, from the run worktree's [worker model configuration](module.md#concept.workers.model-configuration) for the Operation's worker role |
+| operation, role | The Operation and worker role the model was chosen for, recorded only |
 | reasoning | Optionally the reasoning level from the same configuration, passed with `--effort` on the Claude Code backend and `--thinking` on the pi backend |
 
 ## Run directory layout
@@ -232,7 +233,7 @@ its log.
 | `run_directory`, `tmp` | the run directory and the run's `TMPDIR` |
 | `context_identity`, `grant_digest` | the grant's context identity and the digest of `control/grant.json` |
 | `backend` | `claude` or `pi` |
-| `model`, `reasoning` | the model and reasoning level passed to the worker, or null when the program's own default applied |
+| `operation`, `role`, `model`, `reasoning` | the Operation and worker role the worker was launched for, and the model and reasoning level passed to it, or null when the program's own default applied |
 | `settings_digest`, `brief_digest`, `tools` | what the worker was given; `settings_digest` is the digest of `control/settings.json` on the Claude Code backend and of `control/permission.ts` on the pi backend |
 | `started_at`, `ended_at` | UTC times |
 | `rounds` | per round: session identifier, prompt kind (`initial` or `check_failures`), exit status, duration, audit verdict with violating paths, and check results with log paths |

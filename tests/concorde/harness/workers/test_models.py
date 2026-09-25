@@ -1,30 +1,25 @@
-"""The worker model configuration and ``concorde workers``, with fake ``claude`` and ``pi``."""
+"""The worker model configuration: client detection, candidates, resolution and changes."""
 
 from __future__ import annotations
 
 import json
-import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 
-from concorde.errors import ERROR_SCHEMA
 from concorde.harness import models
-from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from tests.concorde.support.agent_fakes import command, fake_agents
-from tests.concorde.support.operation_project import OperationProject
+from tests.concorde.support.agent_fakes import fake_agents
 
 
 class WorkerModelTests(unittest.TestCase):
     def setUp(self):
-        self.project = OperationProject(self)
-        self.root = self.project.root
-        self.environ = fake_agents(self.project.base / "bin", self.project.home)
-
-    def run_command(self, *argv, client="pi", **extra):
-        environ = dict(self.environ, **extra)
-        if client:
-            environ["CONCORDE_CLIENT"] = client
-        return command(argv, self.root, environ)
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.base = Path(directory.name)
+        self.home = self.base / "home"
+        (self.home / ".claude").mkdir(parents=True)
+        self.environ = fake_agents(self.base / "bin", self.home)
 
     @verifies("scenario.workers.backend-from-client")
     def test_the_backend_is_the_main_sessions_program(self):
@@ -49,15 +44,10 @@ class WorkerModelTests(unittest.TestCase):
         with self.assertRaises(models.ModelConfigError) as raised:
             models.detect_client({"CONCORDE_CLIENT": "codex"})
         self.assertEqual("invalid_client", raised.exception.code)
-        status, value = self.run_command("show", client=None)
-        self.assertEqual((1, "client_unknown"), (status, value["error"]["code"]))
-        self.assertIn("CONCORDE_CLIENT", " ".join(value["error"]["options"]))
-        validate(value["error"], ERROR_SCHEMA)
 
     @verifies("scenario.workers.models-listed")
     def test_the_installed_programs_models_are_listed(self):
-        status, pi = self.run_command("models", "--backend", "pi")
-        self.assertEqual(0, status, pi)
+        pi = models.candidates("pi", self.environ)
         self.assertTrue(pi["complete"])
         listed = {item["id"]: item for item in pi["models"]}
         self.assertEqual(
@@ -68,21 +58,12 @@ class WorkerModelTests(unittest.TestCase):
             listed["anthropic/claude-sonnet-5"]["levels"],
         )
         self.assertEqual(["off"], listed["local-openai/plain-7"]["levels"])
-        self.assertEqual(str(self.root / models.CONFIG), pi["config"])
-        self.assertEqual(sorted(models.TASK_TYPES), sorted(pi["effective"]))
-
-        (self.project.home / ".claude/settings.json").write_text(
+        (self.home / ".claude/settings.json").write_text(
             json.dumps({"model": "claude-opus-5-5"})
         )
-        status, claude = self.run_command(
-            "models",
-            client="claude",
-            ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5",
-        )
-        self.assertEqual(0, status, claude)
-        self.assertEqual(
-            ("claude", "CONCORDE_CLIENT=claude"),
-            (claude["backend"], claude["backend_from"]),
+        claude = models.candidates(
+            "claude",
+            dict(self.environ, ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5"),
         )
         self.assertFalse(claude["complete"])
         self.assertIn("no command that lists", claude["note"])
@@ -93,104 +74,93 @@ class WorkerModelTests(unittest.TestCase):
         self.assertEqual(
             ["low", "medium", "high", "xhigh", "max"], claude["reasoning_levels"]
         )
+        missing = dict(self.environ, CONCORDE_PI=str(self.base / "nowhere"))
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.candidates("pi", missing)
+        self.assertEqual("backend_missing", raised.exception.code)
 
-    @verifies("scenario.workers.models-configured")
-    def test_a_default_and_a_task_type_override(self):
-        status, value = self.run_command(
-            "set", "--model", "anthropic/claude-sonnet-5", "--reasoning", "medium"
-        )
-        self.assertEqual(0, status, value)
-        status, value = self.run_command(
-            "set",
-            "--task-type",
-            "implement",
-            "--model",
-            "local-openai/plain-7",
-            "--reasoning",
-            "off",
-        )
-        self.assertEqual(0, status, value)
-        status, value = self.run_command(
-            "set", "--task-type", "understand", "--model", "local-openai/plain-7"
-        )
-        self.assertEqual(0, status, value)
-        stored = json.loads((self.root / models.CONFIG).read_text())
-        self.assertEqual(
-            {"model": "anthropic/claude-sonnet-5", "reasoning": "medium"},
-            stored["pi"]["default"],
-        )
-        understand = value["effective"]["understand"]
+    @verifies("scenario.workers.model-resolution")
+    def test_the_most_specific_entry_wins_field_by_field(self):
+        config = {"schema_version": 2}
+        models.set_choice(config, "pi", None, None, "a/default", "medium")
+        models.set_choice(config, "pi", "spec_review", None, "a/review", None)
+        models.set_choice(config, "pi", "spec_review", "checker", None, "low")
+        checker = models.selection(config, "pi", "spec_review", "checker")
         self.assertEqual(
             (
-                "local-openai/plain-7",
-                "medium",
-                "pi.task_types.understand",
-                "pi.default",
+                "a/review",
+                "low",
+                "pi.operations.spec_review",
+                "pi.operations.spec_review.roles.checker",
             ),
             (
-                understand["model"],
-                understand["reasoning"],
-                understand["model_source"],
-                understand["reasoning_source"],
+                checker["model"],
+                checker["reasoning"],
+                checker["model_source"],
+                checker["reasoning_source"],
             ),
         )
+        reviewer = models.selection(config, "pi", "spec_review", "reviewer")
         self.assertEqual(
-            "anthropic/claude-sonnet-5", value["effective"]["test"]["model"]
+            ("a/review", "medium"), (reviewer["model"], reviewer["reasoning"])
         )
-        status_text = subprocess.run(
-            ["git", "status", "--porcelain"],
-            check=True,
-            cwd=self.root,
-            capture_output=True,
-            text=True,
-        ).stdout
-        self.assertNotIn("worker-models", status_text)
-        status, value = self.run_command("unset", "--task-type", "implement")
-        self.assertEqual((0, True), (status, value["removed"]))
+        other = models.selection(config, "pi", "implement", "worker")
         self.assertEqual(
-            ("anthropic/claude-sonnet-5", "medium"),
-            (
-                value["effective"]["implement"]["model"],
-                value["effective"]["implement"]["reasoning"],
-            ),
+            ("a/default", "pi.default"), (other["model"], other["model_source"])
         )
+        self.assertIsNone(
+            models.selection(config, "claude", "implement", "worker")["model"]
+        )
+        self.assertTrue(models.unset_choice(config, "pi", "spec_review", "checker"))
+        self.assertEqual(
+            {
+                "default": {"model": "a/default", "reasoning": "medium"},
+                "operations": {"spec_review": {"model": "a/review"}},
+            },
+            config["pi"],
+        )
+        self.assertTrue(models.unset_choice(config, "pi", "spec_review", None))
+        self.assertFalse(models.unset_choice(config, "pi", "spec_review", None))
+        self.assertNotIn("operations", config["pi"])
 
     @verifies("scenario.workers.model-refused")
     def test_a_model_or_level_the_program_does_not_offer_is_refused(self):
-        status, value = self.run_command("set", "--model", "anthropic/claude-nope")
-        self.assertEqual((1, "unknown_model"), (status, value["error"]["code"]))
-        self.assertIn("anthropic/claude-sonnet-5", value["error"]["detail"])
-        validate(value["error"], ERROR_SCHEMA)
-        status, value = self.run_command(
-            "set", "--model", "local-openai/plain-7", "--reasoning", "high"
-        )
-        self.assertEqual((1, "unknown_level"), (status, value["error"]["code"]))
-        self.assertIn("levels: off", value["error"]["detail"])
-        self.assertFalse((self.root / models.CONFIG).exists())
-        status, value = self.run_command(
-            "set", "--model", "anthropic/claude-nope", "--allow-unlisted"
-        )
-        self.assertEqual(0, status, value)
-        self.assertEqual(
-            "anthropic/claude-nope", value["configured"]["default"]["model"]
-        )
+        found = models.candidates("pi", self.environ)
+        config = {"schema_version": 2}
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.check_choice(found, config, "pi", None, None, "a/nope", None, False)
+        self.assertEqual("unknown_model", raised.exception.code)
+        self.assertIn("anthropic/claude-sonnet-5", str(raised.exception))
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.check_choice(
+                found, config, "pi", None, None, "local-openai/plain-7", "high", False
+            )
+        self.assertEqual("unknown_level", raised.exception.code)
+        self.assertIn("levels: off", str(raised.exception))
+        models.check_choice(found, config, "pi", None, None, "a/nope", None, True)
 
     @verifies("scenario.workers.model-config-invalid")
     def test_an_unreadable_configuration_is_reported(self):
-        path = self.root / models.CONFIG
-        path.parent.mkdir(parents=True, exist_ok=True)
+        worktree = self.base / "worktree"
+        path = worktree / models.CONFIG
+        path.parent.mkdir(parents=True)
         path.write_text("{not json")
-        status, value = self.run_command("show")
-        self.assertEqual((1, "config_invalid"), (status, value["error"]["code"]))
-        self.assertIn(str(path), value["error"]["detail"])
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(worktree)
+        self.assertEqual("config_invalid", raised.exception.code)
+        self.assertIn(str(path), str(raised.exception))
         path.write_text(
             json.dumps(
-                {"schema_version": 1, "pi": {"task_types": {"deploy": {"model": "x"}}}}
+                {
+                    "schema_version": 2,
+                    "pi": {"operations": {"understand": {"modle": "x"}}},
+                }
             )
         )
-        status, value = self.run_command("show")
-        self.assertEqual((1, "config_invalid"), (status, value["error"]["code"]))
-        self.assertIn("deploy", value["error"]["detail"])
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(worktree)
+        self.assertEqual("config_invalid", raised.exception.code)
+        self.assertIn("modle", str(raised.exception))
 
 
 if __name__ == "__main__":

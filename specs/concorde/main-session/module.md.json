@@ -20,7 +20,9 @@
         "relies_on": [
           "concept.operations.operation",
           "concept.operations.result",
-          "concept.operations.progress-file"
+          "concept.operations.progress-file",
+          "concept.operations.no-task",
+          "concept.operations.configure-workers"
         ]
       },
       {
@@ -96,6 +98,12 @@
       "type": "concept",
       "title": "Model picker",
       "meaning": "#concept.main-session.model-picker"
+    },
+    {
+      "id": "concept.main-session.no-task-operations",
+      "type": "concept",
+      "title": "Questions without a task",
+      "meaning": "#concept.main-session.no-task-operations"
     },
     {
       "id": "concept.main-session.escalation-policy",

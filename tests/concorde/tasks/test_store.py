@@ -16,7 +16,6 @@ from concorde.harness import models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
-from tests.concorde.support.agent_fakes import command as model_command
 from tests.concorde.support.agent_fakes import fake_agents
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -74,7 +73,7 @@ class TaskStoreTests(unittest.TestCase):
         primary_config = self.root / models.CONFIG
         primary_config.write_text(
             json.dumps(
-                {"schema_version": 1, "pi": {"default": {"model": "anthropic/a"}}}
+                {"schema_version": 2, "pi": {"default": {"model": "anthropic/a"}}}
             )
         )
         worktree = Path(self.project.open_task("t1")["worktree"])
@@ -84,20 +83,21 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("", git(worktree, "status", "--porcelain"))
         primary_config.write_text(
             json.dumps(
-                {"schema_version": 1, "pi": {"default": {"model": "anthropic/b"}}}
+                {"schema_version": 2, "pi": {"default": {"model": "anthropic/b"}}}
             )
         )
         self.assertEqual(inherited, task_config.read_text())
-        environ = dict(
-            fake_agents(self.project.base / "bin", self.project.home),
-            CONCORDE_CLIENT="pi",
+        status, value = self.project.run(
+            "configure_workers",
+            "--task",
+            "t1",
+            "--model",
+            "anthropic/c",
+            "--allow-unlisted",
+            client="pi",
+            environ=fake_agents(self.project.base / "bin", self.project.home),
         )
-        status, value = model_command(
-            ["set", "--task", "t1", "--model", "anthropic/c", "--allow-unlisted"],
-            self.root,
-            environ,
-        )
-        self.assertEqual((0, "task t1"), (status, value["scope"]), value)
+        self.assertEqual((0, "t1"), (status, value["task"]), value)
         self.assertEqual(
             "anthropic/c", json.loads(task_config.read_text())["pi"]["default"]["model"]
         )

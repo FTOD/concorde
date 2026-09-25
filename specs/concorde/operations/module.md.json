@@ -84,6 +84,24 @@
       "meaning": "#concept.operations.operation"
     },
     {
+      "id": "concept.operations.no-task",
+      "type": "concept",
+      "title": "Run without a task",
+      "meaning": "#concept.operations.no-task"
+    },
+    {
+      "id": "concept.operations.worker-role",
+      "type": "concept",
+      "title": "Worker role",
+      "meaning": "#concept.operations.worker-role"
+    },
+    {
+      "id": "concept.operations.configure-workers",
+      "type": "concept",
+      "title": "configure_workers",
+      "meaning": "#concept.operations.configure-workers"
+    },
+    {
       "id": "concept.operations.catalog",
       "type": "concept",
       "title": "Operation catalog",

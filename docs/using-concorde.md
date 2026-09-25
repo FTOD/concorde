@@ -201,44 +201,60 @@ without pi-subagents. The view only observes: the Operation keeps running if you
 
 Workers run on the program you talk to: a Claude Code main agent gets Claude Code workers, a pi
 main agent pi workers. Mixing the two is not supported yet. Which model and reasoning level they
-use is yours to choose; ask the main agent to change the worker models.
+use is yours to choose, for every worker or for one Operation's workers, such as a cheaper model
+for `implement` or a different one for `spec_review`'s checker; ask the main agent to change the
+worker models.
 
 - In pi, the main agent opens a picker (you can also type `/concorde-models`). You choose the
-  default for every task type or a task type of your choice, then a model from the ones pi lists
-  with credentials, then a reasoning level.
+  default or an Operation's worker, then a model from the ones pi lists with credentials, then a
+  reasoning level.
 - In Claude Code, the main agent lists the candidates and asks you the same three questions.
   Claude Code cannot list the models of your account, so it offers its aliases (`fable`, `opus`,
   `sonnet`, `haiku`) and the models your settings name; type a full model name such as
   `claude-opus-5-5` as a free answer if you want a specific one.
 
-The choice is stored per worktree in `.concorde/worker-models.json`, which Git ignores:
+The choice is stored per worktree in `.concorde/worker-models.json`, which Git ignores. The most
+specific entry wins, field by field:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "pi": {
     "default": { "model": "anthropic/claude-sonnet-5", "reasoning": "medium" },
-    "task_types": {
-      "implement": { "model": "local-openai/gpt-6", "reasoning": "low" }
+    "operations": {
+      "implement": { "model": "local-openai/gpt-6" },
+      "spec_review": { "roles": { "checker": { "reasoning": "low" } } }
     }
   }
 }
 ```
 
 A task copies the primary worktree's file when it is opened and keeps it: a change you make later
-applies to tasks opened after it, and changes an existing task only if you ask for that task. The
-same commands work by hand:
+applies to tasks opened after it, and changes an existing task only if you ask for that task.
+Behind both is the `configure_workers` Operation, which needs no task and works by hand too:
 
 ```bash
-concorde workers models                    # candidates and the current choice
-concorde workers set --model sonnet --reasoning medium
-concorde workers set --task-type implement --model opus
-concorde workers unset --task-type implement
-concorde workers show --task retry         # one task's own copy
+concorde run configure_workers                       # candidates and every worker's choice
+concorde run configure_workers --model sonnet --reasoning medium
+concorde run configure_workers --operation implement --model opus
+concorde run configure_workers --operation spec_review --role checker --reasoning low
+concorde run configure_workers --operation implement --unset
+concorde run configure_workers --task retry          # one task's own copy
 ```
 
 The reasoning level is passed as `--effort` to Claude Code and as `--thinking` to pi. A pi worker
 uses copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.
+
+### Operations without a task
+
+`understand`, `spec_review`, `code_review` (with `--base`) and `configure_workers` also run without
+`--task`, on the worktree you start them in. Such a run changes no Spec or code, so the main agent
+uses it to answer a question or review a Module before you agree on a change, without opening a
+task:
+
+```bash
+concorde run understand --modules module.payments --goal "how are retries limited today?"
+```
 
 ## One change from idea to merge
 

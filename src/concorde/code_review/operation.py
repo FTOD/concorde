@@ -135,13 +135,17 @@ def resolve_base(ctx: RunContext) -> str | Stop:
         return ctx.fail(
             "failed",
             "no_base",
-            "The task records no base commit and no --base was given.",
-            f"task {ctx.task.get('id')} records no base commit and --base was not given, so "
-            "there is no diff to review",
+            "No base commit is known and no --base was given.",
+            (
+                f"the run without a task in {ctx.worktree} was given no --base"
+                if ctx.project_scope
+                else f"task {ctx.task.get('id')} records no base commit and --base was not given"
+            )
+            + ", so there is no diff to review",
             reason="input",
             explanation="the diff base comes from the task record or the caller",
             evidence=[evidence("base", "", "no base")],
-            options=["pass --base with a commit of the task branch"],
+            options=["pass --base with the commit the reviewed changes start from"],
         )
     found = _git(
         ctx.worktree, "rev-parse", "--verify", f"{reference}^{{commit}}", check=False
@@ -430,6 +434,7 @@ CODE_REVIEW = Provider(
     (review_step,),
     REVIEW_SCHEMA,
     review_arguments,
+    task_scope="optional",
 )
 
 

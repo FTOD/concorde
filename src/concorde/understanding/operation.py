@@ -300,6 +300,7 @@ UNDERSTAND = Provider(
     steps=(assess, check_assessment),
     output_schema=ASSESSMENT_SCHEMA,
     add_arguments=add_arguments,
+    task_scope="optional",
 )
 
 __all__ = ["ASSESSMENT_SCHEMA", "UNDERSTAND"]

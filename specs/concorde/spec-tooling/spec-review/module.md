@@ -43,7 +43,7 @@ The main agent runs a **Spec review** when a Spec change is ready to be judged, 
 hand to workers:
 
 ```text
-concorde run spec_review --task <task-id> --modules module.checkout,module.inventory [--check-findings]
+concorde run spec_review [--task <task-id>] --modules module.checkout,module.inventory [--check-findings]
 ```
 
 It runs in the background and writes a result when it ends. Each named Module is reviewed on its

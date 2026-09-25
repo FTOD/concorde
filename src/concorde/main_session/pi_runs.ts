@@ -174,7 +174,7 @@ export function view(
   }
   return {
     id: operation.run_id,
-    label: clip(`${operation.task ?? "?"} · ${operation.operation}`),
+    label: clip(`${operation.task ?? "no task"} · ${operation.operation}`),
     state,
     finished: finished || !hostAlive,
     status,

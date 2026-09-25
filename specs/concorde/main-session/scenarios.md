@@ -66,10 +66,10 @@ check the rendered guidance against them are pending.
 
 ### scenario.main-session.pi-model-picker — pi's picker applies the developer's choice
 
-- GIVEN a pi main session whose worktree lists two pi models and configures an `implement` override
+- GIVEN a pi main session whose `configure_workers` output lists two pi models and configures an entry for `spec_review`'s checker
 - WHEN the developer opens the model picker with `/concorde-models` or the main agent calls `concorde_configure_workers`
-- THEN the picker offers the default and every task type with what it runs on now, then the listed models, then the chosen model's reasoning levels
-- AND each choice is applied with `concorde workers set --backend pi`, or `unset` when the developer returns a task type to the default, in the named task's worktree when a task is given
+- THEN the picker offers the default, each single-worker Operation and each role of `spec_review` with what it runs on now, then the listed models, then the chosen model's reasoning levels
+- AND each choice is applied with `concorde run configure_workers --backend pi` naming the Operation and role, or with `--unset` when the developer returns an entry to the more general one, with `--task` when a task is given
 - AND a refused command is shown with every link of its error chain
 
 ### scenario.main-session.choose-models — The guidance lets the developer choose worker models
@@ -77,8 +77,16 @@ check the rendered guidance against them are pending.
 - GIVEN the rendered main-session guidance
 - WHEN a developer asks the main agent to change the models workers use
 - THEN it is told that workers run on its own program and take their models from the worktree's configuration, which new tasks inherit
-- AND to let the developer choose with the picker in pi or with the question tool from `concorde workers models` in Claude Code
+- AND to let the developer choose, per Operation and worker role, with the picker in pi or with the question tool from the `configure_workers` output in Claude Code
 - BUT to change an existing task's configuration only when the developer asks for that task
+
+### scenario.main-session.no-task-operations — The guidance runs questions and reviews without a task
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent needs to understand or review a Module without changing it
+- THEN it is told that `understand`, `spec_review`, `code_review` and `configure_workers` may run without `--task` on the worktree it is in
+- AND that such a run changes no Spec or code
+- BUT every change still runs in a task
 
 ## Escalation
 

@@ -189,28 +189,28 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.models-listed — The installed program's models are the candidates
 
 - GIVEN pi listing two models with credentials, one of them without reasoning, and Claude Code whose user settings name a model and whose environment pins another
-- WHEN `concorde workers models` runs for each backend
+- WHEN Workers lists the candidates of each backend
 - THEN the pi listing names both as `provider/model`, the reasoning one with pi's thinking levels and the other with only `off`, and is marked complete
 - AND the Claude Code listing names the aliases, the settings' model and the pinned model with Claude Code's effort levels, is marked incomplete and says why
-- AND each also names the configuration file, what it configures and the effective choice of every task type
+- BUT a backend whose program is not installed is refused with `backend_missing`
 
-### scenario.workers.models-configured — A default and a task-type override
+### scenario.workers.model-resolution — The most specific entry wins, field by field
 
-- GIVEN a worktree without a worker model configuration
-- WHEN `concorde workers set` stores a default model and level and then an `implement` override of the model alone
-- THEN `.concorde/worker-models.json` holds both, and Git does not list it
-- AND an `implement` worker resolves the override's model with the default's level, every other task type the default
-- AND after `concorde workers unset --task-type implement` every task type resolves the default
+- GIVEN a configuration with a default model and level, a model for `spec_review` and a level for its `checker` role
+- WHEN the choices of `spec_review`'s checker and reviewer and of `implement`'s worker are resolved
+- THEN the checker gets the Operation's model and its own level, the reviewer the Operation's model and the default level, and `implement` the default, each naming the entry it came from
+- AND another backend's workers get the program's own default
+- AND removing the checker's entry and then the Operation's leaves only the default
 
 ### scenario.workers.model-refused — A model or level the program does not offer is refused
 
 - GIVEN pi listing its models
-- WHEN `concorde workers set` names a model it does not list, or a level the chosen model does not offer
-- THEN the command exits 1 with an error link naming the value and the models or levels that are listed, and the file is unchanged
-- BUT with `--allow-unlisted` the unlisted model is stored
+- WHEN a change names a model it does not list, or a level the chosen model does not offer
+- THEN it is refused with `unknown_model` or `unknown_level`, naming the value and the models or levels that are listed
+- BUT a caller that admits unlisted models may name one
 
 ### scenario.workers.model-config-invalid — An unreadable configuration is reported, never ignored
 
-- GIVEN a worktree whose `.concorde/worker-models.json` is not valid JSON or names an unknown task type
-- WHEN `concorde workers show` reads it
-- THEN it exits 1 with `config_invalid`, naming the file and what is wrong with it
+- GIVEN a worktree whose `.concorde/worker-models.json` is not valid JSON or has a field the schema does not know
+- WHEN Workers reads it
+- THEN it is refused with `config_invalid`, naming the file and what is wrong with it

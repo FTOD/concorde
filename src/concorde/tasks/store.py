@@ -64,6 +64,12 @@ def _git(cwd: Path, *arguments: str, check: bool = True) -> subprocess.Completed
     return result
 
 
+def worktree_of(path: Path) -> Path:
+    """The worktree ``path`` belongs to, primary or linked; ``git_failed`` outside one."""
+    top = _git(path, "rev-parse", "--show-toplevel").stdout.strip()
+    return Path(os.path.realpath(top))
+
+
 def primary_of(path: Path) -> Path:
     """The primary worktree of the repository ``path`` belongs to."""
     common = _git(
@@ -268,7 +274,7 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
     return update(primary, task_id, change)
 
 
-def _registered(root: Path, modules: list[str]) -> None:
+def registered(root: Path, modules: list[str]) -> None:
     from ..spec.repository import SpecRepository
     from ..spec.repository_base import SpecError
 
@@ -361,7 +367,7 @@ def _open_task(
             f"the worktree path {worktree} already exists; pass --path or remove it",
         )
     _ignored_inside(primary, worktree)
-    _registered(primary, modules)
+    registered(primary, modules)
     base_commit = _git(
         primary, "rev-parse", "--verify", f"{base or 'HEAD'}^{{commit}}"
     ).stdout.strip()
@@ -465,7 +471,7 @@ def begin_run(
     if record["state"] in ENDED:
         raise TaskError("task_closed", f"task {task_id} is {record['state']}")
     if check_modules:
-        _registered(Path(record["worktree"]), modules)
+        registered(Path(record["worktree"]), modules)
 
     def change(record):
         if record["state"] in ENDED:

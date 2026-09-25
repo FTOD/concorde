@@ -8,7 +8,7 @@ in [How the host runs an Operation](host.md).
 ```concorde-contract
 {
   "id": "contract.operations.result",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -33,8 +33,15 @@ in [How the host runs an Operation](host.md).
         "pattern": "^[a-z][a-z_]*$"
       },
       "task": {
-        "type": "string",
-        "minLength": 1
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "minLength": 1
+          }
+        ]
       },
       "modules": {
         "type": "array",
@@ -232,7 +239,7 @@ in [How the host runs an Operation](host.md).
       }
     }
   },
-  "semantics": "The envelope of one Operation run, printed by concorde run and saved as .concorde/runs/<run_id>/result.json in the primary worktree. operation is a catalog name; task, modules and run_id identify the run, and modules may be empty only when the run was refused before its Modules were resolved. status ok means the Operation did what it promises; blocked means it cannot continue without a decision of the main agent; failed means an error of the host, the worker, the audit or the checks, or a refusal before the run began. summary is written by the host. output is the Operation-specific value defined by the provider's output contract, or null when the run produced none. worker is the last worker result exactly as the worker returned it, or null for a run without a worker; its content is the worker's claim and never host evidence. worker_runs lists the run records written for the run's worker launches, in launch order. host_evidence holds only facts the host produced itself; kind is one of grant, context-identity, audit, check, rounds, transcript, stderr, refused, cancelled, host-error, invalid-output, record, git, readiness or commit, or a kind the provider's own Spec defines, such as structural or finding-scope, ref names the path, command or identity concerned and detail explains it. error is null exactly when status is ok; otherwise it is the Operation's own link of the error chain, a contract.concorde.error link of level operation whose causes are the errors it received, unchanged; $defs error, evidence and unhandled are that contract's definitions. Timestamps are RFC 3339 in UTC. A behaviour or field change increments the version.",
+  "semantics": "The envelope of one Operation run, printed by concorde run and saved as .concorde/runs/<run_id>/result.json in the primary worktree. operation is a catalog name; task, modules and run_id identify the run: task is null for a run without a task, which worked on the worktree it was started in, and modules may be empty when the run was refused before its Modules were resolved or when a run without a task named none. status ok means the Operation did what it promises; blocked means it cannot continue without a decision of the main agent; failed means an error of the host, the worker, the audit or the checks, or a refusal before the run began. summary is written by the host. output is the Operation-specific value defined by the provider's output contract, or null when the run produced none. worker is the last worker result exactly as the worker returned it, or null for a run without a worker; its content is the worker's claim and never host evidence. worker_runs lists the run records written for the run's worker launches, in launch order. host_evidence holds only facts the host produced itself; kind is one of grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, refused, cancelled, host-error, invalid-output, record, git, readiness or commit, or a kind the provider's own Spec defines, such as structural or finding-scope, ref names the path, command or identity concerned and detail explains it. error is null exactly when status is ok; otherwise it is the Operation's own link of the error chain, a contract.concorde.error link of level operation whose causes are the errors it received, unchanged; $defs error, evidence and unhandled are that contract's definitions. Timestamps are RFC 3339 in UTC. A behaviour or field change increments the version.",
   "example": {
     "operation": "implement",
     "task": "severity",
@@ -346,6 +353,200 @@ in [How the host runs an Operation](host.md).
     },
     "started_at": "2026-09-24T09:30:00Z",
     "finished_at": "2026-09-24T09:52:00Z"
+  }
+}
+```
+
+## Worker configuration
+
+The output of [`configure_workers`](module.md#concept.operations.configure-workers).
+
+```concorde-contract
+{
+  "id": "contract.operations.worker-configuration",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "action",
+      "backend",
+      "backend_from",
+      "worktree",
+      "config",
+      "changed",
+      "candidates",
+      "configured",
+      "effective"
+    ],
+    "properties": {
+      "action": {
+        "enum": [
+          "list",
+          "set",
+          "unset"
+        ]
+      },
+      "backend": {
+        "enum": [
+          "claude",
+          "pi"
+        ]
+      },
+      "backend_from": {
+        "type": "string",
+        "minLength": 1
+      },
+      "worktree": {
+        "type": "string",
+        "minLength": 1
+      },
+      "config": {
+        "type": "string",
+        "minLength": 1
+      },
+      "changed": {
+        "type": "boolean"
+      },
+      "candidates": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      },
+      "configured": {
+        "type": "object"
+      },
+      "effective": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "model",
+              "reasoning",
+              "model_source",
+              "reasoning_source"
+            ],
+            "properties": {
+              "model": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                ]
+              },
+              "reasoning": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                ]
+              },
+              "model_source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reasoning_source": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "semantics": "The output of configure_workers. action is list when the run changed nothing and was asked for nothing, set when it set a model or level, unset when it removed an entry. backend is the program whose entries were read or changed and backend_from how it was found (--backend or the main session's variable). worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the one the run was started in; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file's entry for the backend as written after the change. effective maps every catalog Operation that launches workers to its worker roles, each with the model and reasoning level a worker of that role would run with and the entry each came from, or null with the source \"the backend's own default\". A behaviour or field change increments the version.",
+  "example": {
+    "action": "set",
+    "backend": "pi",
+    "backend_from": "CONCORDE_CLIENT=pi",
+    "worktree": "/work/shop",
+    "config": "/work/shop/.concorde/worker-models.json",
+    "changed": true,
+    "candidates": {
+      "backend": "pi",
+      "program": "/usr/local/bin/pi",
+      "version": "0.87.1",
+      "complete": true,
+      "reasoning_flag": "--thinking",
+      "reasoning_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "models": [
+        {
+          "id": "anthropic/claude-sonnet-5",
+          "source": "pi --list-models",
+          "reasoning": true,
+          "levels": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "context": "1M",
+          "max_output": "128K",
+          "images": true,
+          "note": ""
+        }
+      ],
+      "note": "pi lists the models it has credentials for in ~/.pi/agent; workers get a copy of its auth.json and models.json."
+    },
+    "configured": {
+      "default": {
+        "model": "anthropic/claude-sonnet-5",
+        "reasoning": "medium"
+      },
+      "operations": {
+        "spec_review": {
+          "roles": {
+            "checker": {
+              "reasoning": "low"
+            }
+          }
+        }
+      }
+    },
+    "effective": {
+      "spec_review": {
+        "reviewer": {
+          "model": "anthropic/claude-sonnet-5",
+          "reasoning": "medium",
+          "model_source": "pi.default",
+          "reasoning_source": "pi.default"
+        },
+        "checker": {
+          "model": "anthropic/claude-sonnet-5",
+          "reasoning": "low",
+          "model_source": "pi.default",
+          "reasoning_source": "pi.operations.spec_review.roles.checker"
+        }
+      }
+    }
   }
 }
 ```

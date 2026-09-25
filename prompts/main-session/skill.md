@@ -64,6 +64,14 @@ Start each Operation in the background; you are woken when it ends:
 Each run prints or reports one JSON Operation result and saves it as
 `.concorde/runs/<run-id>/result.json` of the primary worktree.
 
+Some Operations also run without a task: `understand`, `spec_review`, `code_review` (with
+`--base`) and `configure_workers`. Without `--task` they work on the worktree you start them in,
+usually the primary worktree, with the Modules you name in `--modules`; their result has `task`
+null, and they change no Spec or code, since a run without a task launches only reading workers.
+Use them for a question or a review that does not justify a task, such as understanding a Module
+before you agree a change with the developer. An `--input` of such a run must be a run without a
+task too.
+
 ```bash
 concorde run understand --task <task> --goal "<question>" [--plan]
 concorde run specify    --task <task> --intent "<what the Spec should say>"
@@ -204,38 +212,43 @@ merged with the fix; `concorde issues reopen` reopens one that came back.
 
 Workers run on your own agent program: Claude Code workers when you are a Claude Code session, pi
 workers when you are a pi session. A main session of one program with workers of the other is not
-supported in this version. The model and reasoning level workers use come from the worktree's
-`.concorde/worker-models.json`: for each program a default and optional overrides per task type,
-an override replacing only the fields it sets. Git ignores the file. `concorde task open` copies
-the primary worktree's file into the new task worktree, so a task keeps the configuration it
-started with, and a later change in the primary worktree never reaches it. Without a file, workers
-use the program's own default model.
+supported in this version. The model and reasoning level each worker uses come from the worktree's
+`.concorde/worker-models.json`: for each program a default, optional entries per Operation and,
+for an Operation with several workers, per worker role (such as `spec_review`'s `reviewer` and
+`checker`); the most specific entry that sets a field wins. Git ignores the file.
+`concorde task open` copies the primary worktree's file into the new task worktree, so a task
+keeps the configuration it started with, and a later change in the primary worktree never reaches
+it. Without a file, workers use the program's own default model.
+
+The `configure_workers` Operation lists and changes it. It needs no task:
 
 ```bash
-concorde workers models [--task <task>]    # what your program offers and what is chosen now
-concorde workers show   [--task <task>]
-concorde workers set    [--task-type <type>] [--model <model>] [--reasoning <level>] [--task <task>] [--allow-unlisted]
-concorde workers unset  [--task-type <type>] [--task <task>]
+concorde run configure_workers [--task <task>]     # candidates, entries and the effective choice of every worker
+concorde run configure_workers [--task <task>] [--operation <op> [--role <role>]] \
+  [--model <model>] [--reasoning <level>] [--allow-unlisted]
+concorde run configure_workers [--task <task>] [--operation <op> [--role <role>]] --unset
 ```
 
-Change worker models only when the developer asks. Without `--task` the commands read and change
-the worktree you run them in, which in the primary worktree means the tasks you open from now on;
-pass `--task <task>` only when the developer asks to change a task that already exists, and only
-that task's copy changes. Let the developer make the choice:
+Change worker models only when the developer asks. Without `--task` it changes the worktree you run
+it in, which in the primary worktree means the tasks you open from now on; pass `--task <task>` only
+when the developer asks to change a task that already exists, and only that task's copy changes.
+Let the developer make the choice:
 
 - In pi, call the `concorde_configure_workers` tool (the developer can also type
-  `/concorde-models`). It opens a picker in which the developer chooses, for every task type or one
-  of them, a model from those pi lists and a reasoning level, and it tells you what changed.
-- In Claude Code, run `concorde workers models` and ask with the AskUserQuestion tool: first the
-  scope (every task type, or one task type), then the model, then the reasoning level from the
-  model's `levels`. Offer the listed models as options, and mention that a full model name can be
-  given as a free-text answer. Claude Code cannot list the models of its account, as the listing's
-  `note` says, so a model it did not list needs `--allow-unlisted`. Apply each answer with
-  `concorde workers set` and show the developer the resulting `effective` table.
+  `/concorde-models`). It opens a picker in which the developer chooses, for every worker or one
+  Operation's worker or role, a model from those pi lists and a reasoning level, and it tells you
+  what changed.
+- In Claude Code, run `concorde run configure_workers` and ask with the AskUserQuestion tool: first
+  the scope (every worker, or an Operation and its role from the output's `effective`), then the
+  model, then the reasoning level from the model's `levels`. Offer the listed models as options,
+  and mention that a full model name can be given as a free-text answer. Claude Code cannot list
+  the models of its account, as the candidates' `note` says, so a model it did not list needs
+  `--allow-unlisted`. Apply each answer with `configure_workers` and show the developer the
+  resulting `effective` table.
 
-A refused command prints its error link; a model or level the program does not list is refused
-with the ones it does. An Operation whose worker cannot be configured ends `failed` with
-`worker_model_unavailable`, naming the file or the missing client.
+A refused change ends `failed` with the Workers link naming the value and what is listed. An
+Operation whose worker cannot be configured ends `failed` with `worker_model_unavailable`, naming
+the file or the missing client.
 
 ## Spec queries
 

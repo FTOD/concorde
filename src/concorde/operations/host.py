@@ -1,8 +1,9 @@
 """``concorde run``: the Operation host's runner (see the Operations host Spec).
 
 1. Parse the command line and look up the catalog entry; only then create the run.
-2. Resolve the task and its worktree; check ``--modules`` and ``--input``.
-3. Begin the run in the task record.
+2. Resolve the task and its worktree, or without ``--task`` the worktree the command runs in;
+   check ``--modules`` and ``--input``.
+3. Begin the run in the task record (a run without a task has none).
 4. Execute the provider's steps in order.
 5. Compose and check the envelope.
 6. Write ``result.json``, finish the run in the task record, print the envelope and exit.
@@ -46,7 +47,7 @@ RESULT_SCHEMA: dict = {
     ],
     "properties": {
         "operation": {"type": "string", "pattern": "^[a-z][a-z_]*$"},
-        "task": {"type": "string", "minLength": 1},
+        "task": {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]},
         "modules": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "run_id": {
             "type": "string",
@@ -130,7 +131,7 @@ def parse(argv) -> tuple[argparse.Namespace, object]:
             f"the provider of {name} cannot be loaded: {errors.exception_detail(error)}"
         ) from error
     command = _Parser(prog=f"concorde run {name}")
-    command.add_argument("--task", required=True)
+    command.add_argument("--task", required=chosen.task_scope == "required")
     command.add_argument("--modules")
     command.add_argument("--input", action="append", default=[])
     if chosen.add_arguments:
@@ -169,6 +170,74 @@ def _inputs(primary: Path, task: dict, requested: list[str]) -> dict[str, dict]:
     return admitted
 
 
+def _project_inputs(primary: Path, requested: list[str]) -> dict[str, dict]:
+    """The outputs of earlier ``ok`` runs without a task, for a run without a task."""
+    admitted = {}
+    for identity in requested:
+        path = primary / ".concorde/runs" / identity / "result.json"
+        try:
+            result = json.loads(path.read_text())
+        except (OSError, ValueError) as error:
+            raise store.TaskError(
+                "input_not_admissible",
+                f"--input {identity} has no readable result at {path}: {error}",
+            ) from error
+        if result.get("task") is not None:
+            raise store.TaskError(
+                "input_not_admissible",
+                f"--input {identity} belongs to task {result['task']}; a run without a task "
+                "admits only runs without a task",
+            )
+        if result.get("status") != "ok":
+            raise store.TaskError(
+                "input_not_admissible",
+                f"--input {identity} ({result.get('operation')}) ended {result.get('status')}; "
+                "only an ok run's output is admitted",
+            )
+        admitted[identity] = {
+            "operation": result["operation"],
+            "output": result["output"],
+        }
+    return admitted
+
+
+def _named_modules(arguments) -> list[str] | None:
+    if not arguments.modules:
+        return None
+    return [item.strip() for item in arguments.modules.split(",") if item.strip()]
+
+
+def _resolve_task(chosen, context: RunContext, primary: Path, arguments) -> None:
+    """Steps 2 and 3 for a run of a task: its worktree, Modules and inputs; begin the run."""
+    task = store.load_task(primary, arguments.task)
+    context.task = task
+    context.worktree = Path(task["worktree"])
+    if not context.worktree.is_dir():
+        raise store.TaskError("missing_worktree", f"{context.worktree} does not exist")
+    context.modules = _named_modules(arguments) or list(task["modules"])
+    context.inputs = _inputs(primary, task, arguments.input)
+    store.begin_run(
+        primary,
+        task["id"],
+        context.run_id,
+        chosen.name,
+        context.modules,
+        chosen.writes,
+        os.getpid(),
+        check_modules=chosen.requires_loaded_specs,
+    )
+
+
+def _resolve_project(chosen, context: RunContext, primary: Path, here: Path, arguments):
+    """Step 2 for a run without a task: the worktree it was started in; no task record."""
+    context.task = {}
+    context.worktree = store.worktree_of(here)
+    context.modules = _named_modules(arguments) or []
+    if context.modules and chosen.requires_loaded_specs:
+        store.registered(context.worktree, context.modules)
+    context.inputs = _project_inputs(primary, arguments.input)
+
+
 def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
     """Run one Operation; return the exit status and the envelope; ``UsageError`` otherwise."""
     arguments, chosen = parse(argv)
@@ -192,6 +261,7 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
         run_id=identity,
         run_dir=run_dir,
         arguments=arguments,
+        roles=chosen.roles,
     )
     begun = False
     stop: Stop | None = None
@@ -201,31 +271,11 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
     }
     try:
         try:
-            task = store.load_task(primary, arguments.task)
-            context.task = task
-            context.worktree = Path(task["worktree"])
-            if not context.worktree.is_dir():
-                raise store.TaskError(
-                    "missing_worktree", f"{context.worktree} does not exist"
-                )
-            modules = (
-                [item.strip() for item in arguments.modules.split(",") if item.strip()]
-                if arguments.modules
-                else list(task["modules"])
-            )
-            context.modules = modules
-            context.inputs = _inputs(primary, task, arguments.input)
-            store.begin_run(
-                primary,
-                task["id"],
-                identity,
-                chosen.name,
-                modules,
-                chosen.writes,
-                os.getpid(),
-                check_modules=chosen.requires_loaded_specs,
-            )
-            begun = True
+            if arguments.task:
+                _resolve_task(chosen, context, primary, arguments)
+                begun = True
+            else:
+                _resolve_project(chosen, context, primary, here, arguments)
         except store.TaskError as refusal:
             reason, explanation, options = REFUSALS.get(refusal.code, INPUT_REFUSAL)
             stop = context.fail(
@@ -348,6 +398,8 @@ def _envelope(chosen, context: RunContext, stop: Stop | None, started: str) -> d
         stop.summary
         if stop is not None
         else f"{chosen.name} finished for {', '.join(context.modules)}."
+        if context.modules
+        else f"{chosen.name} finished."
     )
     error = None if status == "ok" else (stop.error if stop else None)
     if status != "ok" and error is None:
@@ -361,7 +413,7 @@ def _envelope(chosen, context: RunContext, stop: Stop | None, started: str) -> d
         ).error
     envelope = {
         "operation": chosen.name,
-        "task": context.task.get("id", "?"),
+        "task": context.task.get("id") or None,
         "modules": context.modules,
         "run_id": context.run_id,
         "status": status,
@@ -407,7 +459,7 @@ def main(argv) -> int:
         status, envelope = execute(argv)
     except UsageError as error:
         sys.stderr.write(
-            f"concorde run: {error}\nusage: concorde run <operation> --task <task-id> "
+            f"concorde run: {error}\nusage: concorde run <operation> [--task <task-id>] "
             f"[--modules ids] [--input run-id]... ; operations: {', '.join(CATALOG)}\n"
         )
         return 2

@@ -84,11 +84,16 @@ class OperationProject(WorkerProject):
         return Path(store.load_task(self.root, task_id)["worktree"])
 
     def run(
-        self, *argv: str, cwd: Path | None = None, client: str | None = "claude"
+        self,
+        *argv: str,
+        cwd: Path | None = None,
+        client: str | None = "claude",
+        environ: dict | None = None,
     ) -> tuple[int, dict | None]:
         """Run ``concorde run <argv>`` with the fake claude and this project's home, as if
-        started from a main session of ``client``, or from no main session when it is None."""
-        values = {"CONCORDE_CLAUDE": str(self.fake)}
+        started from a main session of ``client``, or from no main session when it is None;
+        ``environ`` adds or replaces variables."""
+        values = {"CONCORDE_CLAUDE": str(self.fake), **(environ or {})}
         if client:
             values["CONCORDE_CLIENT"] = client
         with (

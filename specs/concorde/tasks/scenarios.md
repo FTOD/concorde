@@ -20,7 +20,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN a primary worktree whose `.concorde/worker-models.json` chooses a default model
 - WHEN the main agent opens a task and then changes the primary worktree's default model
 - THEN the task worktree holds the configuration as it was when the task opened, untracked by Git
-- AND it changes only through `concorde workers set` or `unset` run in the task worktree or naming the task with `--task`
+- AND it changes only through `configure_workers` run with `--task` naming the task
 - BUT a task opened from a primary worktree without the file gets none, and its workers use the program's default
 
 ### scenario.tasks.open-taken — Refuse a taken identity

@@ -36,9 +36,9 @@ import {
   type CommandOutcome,
   commandFor,
   currentModel,
-  DONE,
   levelRows,
   type Listing,
+  listingCommand,
   modelRows,
   refusalText,
   scopeRows,
@@ -137,31 +137,29 @@ async function pickWorkerModels(
   const cwd = task
     ? (taskWorktree(primaryRoot(ctx.cwd), task) ?? ctx.cwd)
     : ctx.cwd;
-  const where = task ? ["--task", task] : [];
   const changes: string[] = [];
   for (;;) {
-    const listed = await concorde(cwd, [
-      "workers",
-      "models",
-      "--backend",
-      "pi",
-      ...where,
-    ]);
-    if (listed.code !== 0 || !listed.value)
+    const listed = await concorde(cwd, listingCommand(task));
+    const output = listed.value?.output;
+    if (listed.code !== 0 || !output)
       throw new Error(
-        `concorde workers models failed:\n${refusalText(listed)}`,
+        `concorde ${listingCommand(task).join(" ")} failed:\n${refusalText(listed)}`,
       );
-    const listing = listed.value as unknown as Listing;
+    const listing = output as unknown as Listing;
     const scopes = scopeRows(listing);
     const scopeLabel = await ctx.ui.select(
       `Worker models (${task ? `task ${task}` : "this worktree"}, ${listing.config})`,
       scopes.map((row) => row.label),
     );
     const scope = scopes.find((row) => row.label === scopeLabel)?.scope;
-    if (!scope || scope === DONE) return changes;
+    if (!scope) return changes;
     const models = modelRows(listing, scope);
     const modelLabel = await ctx.ui.select(
-      `Model for ${scope === "default" ? "every task type" : scope}`,
+      `Model for ${
+        scope.operation === null
+          ? "every worker"
+          : `${scope.operation}${scope.role ? ` ${scope.role}` : ""}`
+      }`,
       models.map((row) => row.label),
     );
     const picked = models.find((row) => row.label === modelLabel);
@@ -183,8 +181,8 @@ async function pickWorkerModels(
       throw new Error(
         `concorde ${args.join(" ")} failed:\n${refusalText(applied)}`,
       );
-    changes.push(args.slice(1).join(" "));
-    ctx.ui.notify(`Worker models: ${args.slice(1).join(" ")}`, "info");
+    changes.push(args.slice(2).join(" "));
+    ctx.ui.notify(`Worker models: ${args.slice(2).join(" ")}`, "info");
   }
 }
 
@@ -313,7 +311,9 @@ export default function (pi: ExtensionAPI) {
     name: "concorde_run",
     label: "Concorde run",
     description:
-      "Start a Concorde Operation in the background: `concorde run <operation> --task <task> [arguments]`. " +
+      "Start a Concorde Operation in the background: `concorde run <operation> [--task <task>] [arguments]`. " +
+      "Without a task, an Operation that allows it (understand, spec_review, code_review, " +
+      "configure_workers) runs on this session's worktree and changes no Spec or code. " +
       "It returns at once with the run identity; the run appears in the run view, and you are " +
       "woken with its result when it finishes. Do not poll it. To block until every running " +
       "Concorde run ends, call bg_wait without an id; bg_wait with an id sees only subagent runs.",
@@ -323,7 +323,12 @@ export default function (pi: ExtensionAPI) {
       operation: Type.String({
         description: "The Operation, such as implement or validate",
       }),
-      task: Type.String({ description: "The task identity" }),
+      task: Type.Optional(
+        Type.String({
+          description:
+            "The task identity; omit it only for an Operation that runs without a task",
+        }),
+      ),
       arguments: Type.Optional(
         Type.Array(Type.String(), {
           description: "Further arguments, such as --goal and its text",
@@ -334,7 +339,8 @@ export default function (pi: ExtensionAPI) {
       root = primaryRoot(ctx.cwd);
       // The task worktree's own copy knows the task's Specs and checks; an unknown task is
       // refused by the command of the session's own worktree.
-      const worktree = taskWorktree(root, params.task) ?? ctx.cwd;
+      const worktree =
+        (params.task ? taskWorktree(root, params.task) : null) ?? ctx.cwd;
       const [command, ...prefix] = concordeCommand(worktree);
       mkdirSync(runsDirectory(root), { recursive: true });
       const log = join(runsDirectory(root), `launch-${Date.now()}.log`);
@@ -345,8 +351,7 @@ export default function (pi: ExtensionAPI) {
           ...prefix,
           "run",
           params.operation,
-          "--task",
-          params.task,
+          ...(params.task ? ["--task", params.task] : []),
           ...(params.arguments ?? []),
         ],
         {
@@ -372,7 +377,7 @@ export default function (pi: ExtensionAPI) {
               {
                 type: "text",
                 text:
-                  `Started ${params.operation} for task ${params.task} as run ${operation.run_id} ` +
+                  `Started ${params.operation} ${params.task ? `for task ${params.task}` : "without a task"} as run ${operation.run_id} ` +
                   `(host process ${child.pid}). You will be woken with its result; its result will be ` +
                   `${join(runsDirectory(root), operation.run_id, "result.json")}.`,
               },

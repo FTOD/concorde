@@ -81,6 +81,9 @@ class WorkerRequest:
     backend: str = "claude"
     # The reasoning level: Claude Code's --effort, pi's --thinking.
     reasoning: str | None = None
+    # The Operation and worker role the model was chosen for, recorded only.
+    operation: str | None = None
+    role: str | None = None
     pi: str | None = None
     pi_config: Path | None = None
     sandbox_runtime: Path | None = None
@@ -302,6 +305,8 @@ def run_worker(request: WorkerRequest) -> dict:
         "run_id": run_id,
         "task_type": request.task_type,
         "backend": request.backend,
+        "operation": request.operation,
+        "role": request.role,
         "model": request.model,
         "reasoning": request.reasoning,
         "worktree": worktree.as_posix(),

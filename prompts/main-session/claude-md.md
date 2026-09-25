@@ -17,7 +17,8 @@ not `ok` and every decision you made alone in the task's decision log; read the 
 of a result that is not `ok`; ask the developer only about decisions with major impact, adding
 your own link to the chain with `concorde task escalate` instead of summarizing it; merge delivered
 task branches without asking, always with `concorde task merge <task>`, never `git merge`;
-change the models workers use only when the developer asks, letting them choose (`concorde
-workers`, the skill's "Worker models"). A
+change the models workers use only when the developer asks, letting them choose (the
+`configure_workers` Operation, the skill's "Worker models"); run a question or review that needs no
+task as an Operation without `--task`. A
 session started by `concorde task session` is a task session, not the main agent: its first prompt
 says how it works.

@@ -15,7 +15,7 @@ drift and mistakes, not a malicious worker.
 | Term | Definition |
 | --- | --- |
 | Worker backend | The agent program a worker runs on, Claude Code or pi: always the program of the main session that started the run; both enforce the same grant. |
-| Worker model configuration | A worktree's untracked `.concorde/worker-models.json`, which gives for each backend a default model and reasoning level and optional overrides per task type. |
+| Worker model configuration | A worktree's untracked `.concorde/worker-models.json`, which gives for each backend a default model and reasoning level and optional entries per Operation and per worker role of an Operation. |
 | Worker settings | The Claude Code settings file the host generates from a grant, carrying the Bash sandbox, the deny rules and the write hook of one worker run. |
 | Permission extension | The pi extension the host generates from a grant, which checks every file tool against it, runs every command in the sandbox and receives the worker result. |
 | Progress file | The run's `status.json`, which the host keeps current while the run goes on so the main session can show what it is doing. |
@@ -119,47 +119,44 @@ The pi command line, environment and tables are in [the pi run mechanics](pi.md)
 <a id="concept.workers.model-configuration"></a>
 
 The **worker model configuration** of a worktree is its `.concorde/worker-models.json`, ignored by
-Git because it names models of this machine's installation. For each backend it holds a `default`
-and `task_types` overrides, each with a `model` and a `reasoning` level; an override replaces only
-the fields it sets, and a missing field leaves the program's own default. The host resolves the
-worker's task type against the task worktree's file and passes the model with `--model` and the
-level with `--effort` to Claude Code or `--thinking` to pi:
+Git because it names models of this machine's installation. For each backend it holds a `default`,
+entries under `operations` for an Operation's workers, and under an Operation's `roles` entries for
+one worker role of it, each with a `model` and a `reasoning` level. For each field the most specific
+entry that sets it wins — the role's, then the Operation's, then the default — and a field no entry
+sets leaves the program's own default. The Operation host asks for the choice of one worker role of
+its Operation, in the worktree the run works on, and passes the model with `--model` and the level
+with `--effort` to Claude Code or `--thinking` to pi:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "pi": {
     "default": {"model": "anthropic/claude-sonnet-5", "reasoning": "medium"},
-    "task_types": {"implement": {"model": "local-openai/gpt-6", "reasoning": "low"}}
+    "operations": {
+      "implement": {"model": "local-openai/gpt-6"},
+      "spec_review": {"roles": {"checker": {"reasoning": "low"}}}
+    }
   }
 }
 ```
 
-Here an `implement` worker runs on `local-openai/gpt-6` at `low`, every other on
-`anthropic/claude-sonnet-5` at `medium`. [Tasks](../../tasks/module.md) copies the primary
+Here an `implement` worker runs on `local-openai/gpt-6` at `medium`, `spec_review`'s checker on
+`anthropic/claude-sonnet-5` at `low`, and every other worker on `anthropic/claude-sonnet-5` at
+`medium`. Workers knows no Operation names; the entries are whatever the
+[`configure_workers`](../../operations/module.md#concept.operations.configure-workers) Operation
+wrote after checking them against the catalog. [Tasks](../../tasks/module.md) copies the primary
 worktree's file into a task worktree when it opens the task, so a task keeps the configuration it
 started with and a later change in the primary worktree never reaches it.
 
-The `concorde workers` command reads and changes the configuration of the worktree it runs in, or
-with `--task` of that task's worktree, and prints one JSON value:
-
-```text
-concorde workers models [--backend claude|pi] [--task <task>]
-concorde workers show   [--backend claude|pi] [--task <task>]
-concorde workers set    [--backend claude|pi] [--task <task>] [--task-type <type>] [--model <model>] [--reasoning <level>] [--allow-unlisted]
-concorde workers unset  [--backend claude|pi] [--task <task>] [--task-type <type>]
-```
-
-`models` lists the **candidates** the installed program offers: for pi every model
+Workers also lists the **candidates** the installed program offers: for pi every model
 `pi --list-models` shows with credentials, as `provider/model` with the levels of `--thinking` or
 only `off` for a model without reasoning; for Claude Code, which has no command listing an
 account's models, its aliases, the models named by `model` and `availableModels` of the user's
 Claude Code settings and those pinned by `ANTHROPIC_*MODEL` variables, marked incomplete, with the
-levels of `--effort`. Every value also names the backend and how it was found, the file, what the
-file configures and the effective choice of every task type. `set` refuses a model the listing does
-not show, unless `--allow-unlisted`, and a level the model does not offer, naming the ones it
-does. The backend defaults to the calling main session's, as for a run. Refusals print
-`{"error": <link>}` and exit 1.
+levels of `--effort`. A change is refused with `unknown_model` for a model the listing does not show,
+unless the caller admits unlisted models, and with `unknown_level` for a level the model does not
+offer, each naming what is listed. A file that is not valid JSON or does not match the schema is
+refused with `config_invalid`, naming the file and the problem, and never ignored.
 
 The main session lets the developer choose: pi's run view has a picker for it and Claude Code's
 main agent asks with its question tool ([Main session](../../main-session/module.md)).
@@ -278,8 +275,8 @@ workers: Workers {
 
 - <a id="realization.workers.models"></a>The **model configuration** detects the main
   session's program, discovers the candidates by running the installed `claude` or `pi`, validates,
-  reads and writes `.concorde/worker-models.json`, resolves a task type's choice, and is the
-  `concorde workers` command. Tests fake both programs.
+  reads and writes `.concorde/worker-models.json`, and resolves the choice of an Operation's worker
+  role. Tests fake both programs.
 
 Both backends are compiled from the grant rather than one being translated into the other: Claude
 Code's permission-rule language is closed and changes between versions, and pi has no permission
@@ -325,10 +322,8 @@ lists are v1 defaults in [the run mechanics](launch.md#tool-sets) and may change
 workers: Workers
 spec: Spec core
 checks: Check execution
-tasks: Tasks
 workers -> spec
 workers -> checks
-workers -> tasks
 ```
 
 ```d2
@@ -372,12 +367,6 @@ identity](../../spec-tooling/spec/module.md#concept.spec.context-identity). Work
 grant listing every path's level (`rw`/`ro`/`names`, ungranted omitted) and the identity naming
 exactly what selected it; it never computes or widens a grant, only receives it frozen. A missing or
 unreadable grant is a host failure before launch.
-
-<a id="uses-tasks"></a>
-
-**Tasks** resolves the task a `concorde workers --task` command names to its
-[task](../../tasks/module.md#concept.tasks.task) worktree. Workers relies on the task record naming
-the worktree; it never opens, changes or closes a task.
 
 <a id="uses-checks"></a>
 

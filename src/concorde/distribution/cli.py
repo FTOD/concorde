@@ -354,10 +354,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         from ..tasks.cli import main as task_main
 
         return task_main(words[1:])
-    if words and words[0] == "workers":
-        from ..harness.models import main as workers_main
-
-        return workers_main(words[1:])
     if words and words[0] == "issues":
         import runpy
 

@@ -14,9 +14,12 @@ the main agent decides.
 
 | Term | Definition |
 | --- | --- |
-| Operation | A named job the main agent runs for one task, made of deterministic host steps and zero or more workers, that ends with exactly one Operation result. |
-| Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, whether it launches workers, whether it may change the task worktree and the contract of its output. |
-| Operation host | The deterministic process started by `concorde run` that executes one Operation's step table for one task and alone launches its workers, checks their work and writes its result. |
+| Operation | A named job the main agent runs for one task, or for no task when its catalog entry allows it, made of deterministic host steps and zero or more workers, that ends with exactly one Operation result. |
+| Run without a task | A run of an Operation whose catalog entry makes the task optional, started without `--task`: it works on the worktree it was started in, begins no task record, and changes no Spec or code. |
+| Worker role | A named worker an Operation launches, such as `spec_review`'s `reviewer` and `checker`; an Operation with a single worker has the role `worker`. |
+| configure_workers | The Operation that lists the models the main session's program offers workers and changes a worktree's worker model configuration, with or without a task. |
+| Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, its worker roles, whether it needs a task, whether it may change the task worktree and the contract of its output. |
+| Operation host | The deterministic process started by `concorde run` that executes one Operation's step table for one task, or for none, and alone launches its workers, checks their work and writes its result. |
 | Operation progress file | The run's `status.json`, which the host keeps current with the Operation, task, current step and host process, and once finished with the status and summary. |
 | Operation result | The structured envelope an Operation returns to the main agent, holding its status, identities, summary, output, the worker result kept as claims, the host's own evidence and, when it is not ok, its error chain. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
@@ -44,12 +47,11 @@ Operations.
 
 <a id="concept.operations.operation"></a>
 
-The main agent runs an **Operation** from the primary worktree, for a
-[task](../tasks/module.md#concept.tasks.task) it opened, as a background Bash command so it can
-keep working while it runs:
+The main agent runs an **Operation** for a [task](../tasks/module.md#concept.tasks.task) it
+opened, as a background Bash command so it can keep working while it runs:
 
 ```text
-concorde run <operation> --task <task-id> [--modules <id>[,<id>…]] [--input <run-id>]… [operation arguments]
+concorde run <operation> [--task <task-id>] [--modules <id>[,<id>…]] [--input <run-id>]… [operation arguments]
 ```
 
 `--modules` names the bound Modules (default: the task's) and adds any named here to the task;
@@ -58,23 +60,51 @@ arguments, such as `--goal` for `understand`. The command returns when the run e
 is woken by its exit and reads the printed Operation result, also saved under `.concorde/runs/`.
 No Operation needs the developer's consent.
 
+<a id="concept.operations.no-task"></a>
+
+An Operation whose catalog entry makes the task optional may also run **without a task**: it then
+works on the worktree the command is started in, usually the primary worktree, with the Modules
+`--modules` names, begins no task record, admits only inputs of other runs without a task, and may
+launch only reading workers, so it changes no Spec or code.
+
 <a id="concept.operations.catalog"></a>
 
 The **Operation catalog** of this version:
 
-| Operation | Provider | Task type | Worker | May write | Output |
-| --- | --- | --- | --- | --- | --- |
-| `understand` | [Understanding](understanding/module.md) | `understand` | yes | no | an assessment, with a plan when asked |
-| `specify` | [Specification](specification/module.md) | `specify` | yes | Specs of the bound Modules | a Spec change |
-| `implement` | [Implementation](implementation/module.md) | `implement` | yes | code of the bound Modules | a code change |
-| `test` | [Implementation](implementation/module.md) | `test` | yes | no | a test report |
-| `spec_review` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | yes | no | review findings and a verdict |
-| `code_review` | [Code review](code-review/module.md) | `review-code` | yes | no | review findings and a verdict |
-| `validate` | [Validation](validation/module.md) | none | no | no | [readiness](validation/module.md#concept.validation.readiness) |
-| `delivery` | [Delivery](delivery/module.md) | none | no | commits on the task branch | a [delivery commit](delivery/module.md#concept.delivery.delivery-commit) |
+| Operation | Provider | Task type | Worker roles | Task | May write | Output |
+| --- | --- | --- | --- | --- | --- | --- |
+| `understand` | [Understanding](understanding/module.md) | `understand` | `worker` | optional | no | an assessment, with a plan when asked |
+| `specify` | [Specification](specification/module.md) | `specify` | `worker` | required | Specs of the bound Modules | a Spec change |
+| `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | required | code of the bound Modules | a code change |
+| `test` | [Implementation](implementation/module.md) | `test` | `worker` | required | no | a test report |
+| `spec_review` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | optional | no | review findings and a verdict |
+| `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | optional (`--base` without one) | no | review findings and a verdict |
+| `validate` | [Validation](validation/module.md) | none | none | required | no | [readiness](validation/module.md#concept.validation.readiness) |
+| `delivery` | [Delivery](delivery/module.md) | none | none | required | commits on the task branch | a [delivery commit](delivery/module.md#concept.delivery.delivery-commit) |
+| `configure_workers` | Operations | none | none | optional | the worktree's untracked [worker model configuration](../harness/workers/module.md#concept.workers.model-configuration) | the [worker configuration](contracts.md#contract.operations.worker-configuration) |
 
 A typical task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then
-`validate` and `delivery`, repeating or skipping steps as the results tell it. A plan is one answer
+`validate` and `delivery`, repeating or skipping steps as the results tell it. Without a task the
+main agent may run `understand` or a review to answer a question before any change is agreed, and
+`configure_workers` when the developer asks to choose worker models.
+
+<a id="concept.operations.worker-role"></a>
+
+A **worker role** names one worker an Operation launches: `spec_review` has a `reviewer` and a
+`checker`, every other worker-backed Operation a single `worker`. The catalog lists the roles, and
+the worker model configuration may choose a model per Operation and per role.
+
+<a id="concept.operations.configure-workers"></a>
+
+**`configure_workers`** lists and changes the worker model configuration: without a model or
+level it outputs the candidates the main session's program offers, the file's entries and the
+effective model and level of every worker role of every Operation; `--model`, `--reasoning` or
+both set them for the default, for `--operation <op>` or for `--role <role>` of it;
+`--unset` removes that entry. Without a task it changes the worktree it runs in — in the primary
+worktree the tasks opened from then on — and with `--task` only that task's copy. It checks the
+Operation and role against the catalog and every model and level against the program's listing
+(`--allow-unlisted` admits a model the listing cannot show), and launches no worker. Its exact
+behaviour is in [the host](host.md#configure-workers). A plan is one answer
 `understand` gives, not a separate Operation; a project's first Spec, Issues and task commands are
 ordinary commands of their own Modules, not Operations.
 
@@ -178,8 +208,19 @@ rounds run out, and write the [run record](../harness/workers/module.md#concept.
 Workers performs that sequence; the host decides what its outcome means. See
 [How the host runs an Operation](host.md).
 
+<a id="design.operations.task-binding"></a>
+
+**Why most Operations need a task.** A task gives an Operation three things it cannot do without
+when it changes files: a worktree whose Specs the grant comes from, so a change is bounded by the
+Specs as the task sees them; the task record as the lock that lets one Operation at a time audit
+that worktree, since two hosts would take each other's writes for violations; and the thread that
+ties runs, their `--input`s and the delivery evidence together. An Operation that changes no Spec
+or code needs none of them: its reading workers write nothing to audit, and a Spec it reads in the
+primary worktree is the project as merged. So a catalog entry may make the task optional for such
+an Operation, and the host then refuses a writing worker in the run, whatever the provider asks.
+
 The grant always comes from the task worktree, never the primary, so a task that changes a Spec is
-bounded by the Spec as it sees it; results and run records still go to the primary's
+bounded by the Spec as it sees it (a run without a task reads the worktree it started in); results and run records still go to the primary's
 `.concorde/runs/`, so the main agent finds every run in one place and nothing the host writes for
 itself ends up in a task's diff. One task runs at most one Operation at a time — two hosts in one
 worktree would audit each other's writes as their own — so parallelism comes from running tasks

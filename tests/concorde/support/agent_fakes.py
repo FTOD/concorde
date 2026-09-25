@@ -1,18 +1,13 @@
-"""Fake ``claude`` and ``pi`` programs for the worker model configuration's command.
+"""Fake ``claude`` and ``pi`` programs for listing the models workers may use.
 
-``fake_agents`` writes both into a directory and returns an environment that makes
-``concorde workers`` use them; ``command`` runs that command in-process and parses its output.
+``fake_agents`` writes both into a directory and returns the variables that make the worker model
+configuration and ``configure_workers`` run them instead of the installed programs.
 """
 
 from __future__ import annotations
 
-import contextlib
-import io
-import json
 import os
 from pathlib import Path
-
-from concorde.harness import models
 
 FAKE_PI = """#!/usr/bin/env python3
 import sys
@@ -53,10 +48,3 @@ def fake_agents(directory: Path, home: Path) -> dict:
         "CONCORDE_PI": str(directory / "pi"),
         "CONCORDE_CLAUDE": str(directory / "claude"),
     }
-
-
-def command(argv, cwd: Path, environ: dict) -> tuple[int, dict]:
-    output = io.StringIO()
-    with contextlib.redirect_stdout(output):
-        status = models.main(list(argv), cwd=cwd, environ=environ)
-    return status, json.loads(output.getvalue())
