@@ -1,0 +1,41 @@
+{
+  "task": "init-installed-dirs",
+  "goal": "Bind the project's own files exactly in a top-level directory that also holds Concorde's installed files",
+  "modules": [
+    "module.spec"
+  ],
+  "sequence": 1,
+  "base_commit": "611089f3a7360f76c6256bfef293fcc667f0e959",
+  "parent_commit": "bb5999440b21538e017b0b78267bc03872920688",
+  "readiness": {
+    "run_id": "r-20260925T144638-delivery-972d0a54",
+    "input_digest": "sha256:a3f8120a1913b2f10f4e32f6659abfaa13dcb5733f79a7616cfc23986df0e76f",
+    "modules": [
+      "module.spec"
+    ],
+    "checks": [
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:ce172db09f7fdc10a917086fc04898168a39bca84a790e2d41baaf0ca810fd2a"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T144633-validate-a8568c5f",
+      "operation": "validate",
+      "modules": [
+        "module.spec"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:8c289608e689053377297250a58645d571576d44b2f4bdf8de94635b6e47d796"
+    }
+  ],
+  "created_at": "2026-09-25T14:46:43Z"
+}
