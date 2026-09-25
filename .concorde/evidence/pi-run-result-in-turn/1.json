@@ -1,0 +1,41 @@
+{
+  "task": "pi-run-result-in-turn",
+  "goal": "In the pi run view, never leave a finished Concorde run's result waiting for the end of the turn: return the result of a run that has already finished from concorde_run itself, and deliver a result that arrives while the main agent is still in a turn into that turn (steer) instead of as a follow-up, so bg_wait answering 'nothing to wait for' never precedes a pending result",
+  "modules": [
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "9362c705719e9be09e41b4fe85aa4092720ef672",
+  "parent_commit": "78565a6ec61820e0287a6ea03ea197630cab1462",
+  "readiness": {
+    "run_id": "r-20260925T082145-delivery-47ff26af",
+    "input_digest": "sha256:9d84775fc0bc2d12a9d616eecf7425a4333aa4bd0c9d6317ee574d01a591499e",
+    "modules": [
+      "module.main-session"
+    ],
+    "checks": [
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:18d8485078bbf27fe42deec7415ee8785e2609d4d385bf211ea58a18bc969396"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T082138-validate-4e5e6126",
+      "operation": "validate",
+      "modules": [
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:2d46c5804419d5af1fb7200f37b876a7dfe350367d3528323c93a0165de2ca83"
+    }
+  ],
+  "created_at": "2026-09-25T08:21:47Z"
+}
