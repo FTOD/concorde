@@ -96,6 +96,53 @@ class InitialModuleTests(unittest.TestCase):
                 "success", validate_repository(root, package_root=PACKAGE).status
             )
 
+    @verifies("scenario.spec.init-installation")
+    def test_concorde_installed_files_are_bound_apart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(("git", "init", "-q"), cwd=root, check=True)
+            for path, content in {
+                "app.py": "print('app')\n",
+                "CLAUDE.md": "# Rules\n",
+                ".claude/skills/concorde/SKILL.md": "---\nname: concorde\n---\n",
+            }.items():
+                (root / path).parent.mkdir(parents=True, exist_ok=True)
+                (root / path).write_text(content)
+            install_project_defaults(root, PACKAGE)
+            (root / ".concorde/install.json").write_text(
+                json.dumps(
+                    {
+                        "files": [
+                            ".claude/skills/concorde/SKILL.md",
+                            ".concorde/bin/concorde",
+                        ],
+                        "amended": [".gitignore", "CLAUDE.md"],
+                    }
+                )
+            )
+            proposal = project_proposal(root, PACKAGE, "App")
+            metadata = json.loads(
+                next(
+                    f for f in proposal["files"] if f["path"].endswith("module.md.json")
+                )["content"]
+            )
+            realizations = {r["id"]: r["entries"] for r in metadata["defines"]}
+            self.assertEqual(
+                [".claude/skills/concorde/SKILL.md"],
+                realizations["realization.project.concorde-installation"],
+            )
+            existing = realizations["realization.project.existing-files"]
+            self.assertIn("CLAUDE.md", existing)
+            self.assertNotIn(".claude/skills/concorde/SKILL.md", existing)
+            apply_project_proposal(root, PACKAGE, proposal)
+            subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+            report = validate_repository(root, package_root=PACKAGE)
+            self.assertEqual(
+                "success",
+                report.status,
+                [f.message for f in report.findings if f.severity == "error"],
+            )
+
     def test_existing_version_controlled_files_are_bound_to_the_root(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -545,6 +545,12 @@ which case its files are exact entries, as are files the exclusion rule would sk
 explains this realization and says it promises nothing about the files. A project with no files
 gets no realization.
 
+The files `.concorde/install.json` lists under `files` that lie outside `.concorde/`, exist and are
+not listed under `amended` are left out of that realization and bound instead by
+`realization.<local>.concorde-installation`, titled Concorde installation, which the entry explains
+as the agents' configuration the installer replaces on every update. Without a receipt, or without
+such files, there is no such realization.
+
 Apply accepts only the exact proposal propose returned. It refuses, writing nothing: a
 `proposal_digest` that is not the digest of the given proposal; a proposal whose envelope is not
 exactly that shape, that lacks the configuration or the registry, whose configuration names another

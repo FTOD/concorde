@@ -37,6 +37,10 @@ that reads the envelope reach the same conclusion.
 
 ## Installation
 
+### req.distribution.receipt-complete — The receipt names every owned file
+
+The installer's receipt SHALL list every file Concorde owns in the project, whether or not this install wrote it, and apart from them the project files it only amends.
+
 ### req.distribution.installer-own-permissions — The installer adds only its own permission rules
 
 The installer SHALL change the project's `.claude/settings.json` only by adding the missing permission rules its workflows need and removing the rules it recorded in its receipt and no longer ships.

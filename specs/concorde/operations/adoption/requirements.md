@@ -60,7 +60,14 @@ The survey host SHALL end the run `failed` with every inconsistency listed when 
 
 ### req.adoption.inventory — The survey worker gets an inventory
 
-The survey host SHALL give its worker, as task material, every file the surveyed Module binds with its size in lines.
+The survey host SHALL give its worker, as task material, every file the surveyed Module binds with its size in lines, apart from its Concorde installation.
+
+### req.adoption.installation-stays — Concorde's own files stay where they are
+
+The survey host SHALL end the run `failed` with `inconsistent_proposal` when a child entry covers a file of the surveyed Module's Concorde installation realization.
+
+The skill, workflows and agents Concorde installed configure the agents, not the project, and the
+installer replaces them on every update.
 
 ### req.adoption.one-module-surveyed — One Module per survey
 
@@ -113,6 +120,13 @@ The code_to_spec host SHALL create the `requirements.md`, `scenarios.md` and `co
 ### req.adoption.answers-first — Answers are checked before anything happens
 
 The survey and code_to_spec hosts SHALL end a run whose answers file is unreadable or breaks its contract `failed` with `invalid_answers` before writing a file or launching a worker.
+
+### req.adoption.own-errors-count — Errors in the described documents always count
+
+The code_to_spec host SHALL count every structural error located in a document a described Module owns as introduced by the run, whether or not the baseline had it.
+
+The worker rewrites those documents. A retry after a failed attempt would otherwise take that
+attempt's errors as the project's and let the same errors pass.
 
 ### req.adoption.no-resume-on-spec — A Spec error stops the run
 

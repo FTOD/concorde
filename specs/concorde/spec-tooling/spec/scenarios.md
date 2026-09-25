@@ -592,6 +592,14 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - AND every proposed file has a null before-digest
 - BUT no project file is written
 
+### scenario.spec.init-installation — Concorde's installed files are bound apart
+
+- GIVEN a project whose installer receipt lists `.claude/skills/concorde/SKILL.md` among its files and `CLAUDE.md` as amended
+- WHEN initialization is proposed
+- THEN the root's metadata binds the skill in the realization Concorde installation
+- AND the realization Existing project files binds `CLAUDE.md` and the project's other files but not the skill
+- AND the applied project validates
+
 ### scenario.spec.apply-initialization — Applying an accepted proposal
 
 - GIVEN a proposal returned by propose whose destinations are all still absent and whose project is unchanged

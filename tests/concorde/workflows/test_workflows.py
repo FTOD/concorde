@@ -190,6 +190,7 @@ class StepTests(unittest.TestCase):
             "argv": list(argv),
             "answers": None,
             "retry": False,
+            "restart": None,
         }
         value.update(changes)
         return value
@@ -268,6 +269,31 @@ class StepTests(unittest.TestCase):
             )
         self.assertEqual(3, len(self.started))
         self.assertNotEqual(failed["run_id"], retried["run_id"])
+
+    @verifies("scenario.workflows.restarted")
+    def test_a_restart_generation_reruns_an_ok_step_once(self):
+        with self.starter(output=SURVEY_OUTPUT):
+            run_step(self.primary, self.request())
+        with self.starter(output={"created": []}):
+            _, first = run_step(self.primary, self.request("scaffold", ("scaffold",)))
+            run_step(self.primary, self.request("validate", ("validate",)))
+            _, again = run_step(
+                self.primary, self.request("scaffold", ("scaffold",), restart="2")
+            )
+        self.assertEqual("scaffold#2", again["key"])
+        self.assertNotEqual(first["run_id"], again["run_id"])
+        record = store.load_task(self.primary, "adopt")
+        self.assertEqual(
+            ["survey", "scaffold#2"], [s["key"] for s in store.current_steps(record)]
+        )
+        started = len(self.started)
+        with self.starter(output={"created": []}):
+            _, same = run_step(
+                self.primary, self.request("scaffold", ("scaffold",), restart="2")
+            )
+        self.assertEqual(
+            (again["run_id"], started), (same["run_id"], len(self.started))
+        )
 
     @verifies("scenario.workflows.step-refused")
     def test_a_step_that_does_not_belong_is_rejected(self):
@@ -738,6 +764,16 @@ class ScriptTests(unittest.TestCase):
         self.assertIsNone(requests["scaffold"]["answers"])
         self.assertTrue(requests["validate"]["retry"])
         self.assertFalse(requests["survey"]["retry"])
+
+    def test_restart_labels_reach_their_steps(self):
+        run = self.run_script(
+            "claude", {**self.ARGS, "restart": {"scaffold": "2"}}, self.full()
+        )
+        requests = {
+            c["key"]: c["request"] for c in run["calls"] if c["key"] != "report"
+        }
+        self.assertEqual("2", requests["scaffold"]["restart"])
+        self.assertIsNone(requests["survey"]["restart"])
 
     def test_interactive_stops_at_a_failed_description_and_no_ask_goes_on(self):
         outcomes = self.full(describe_status="failed")

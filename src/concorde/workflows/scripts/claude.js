@@ -4,7 +4,7 @@
 // is what the hosts recorded: the final report is built by `concorde workflow report`.
 
 if (!args || !args.task || !args.module || !args.mode) {
-  throw new Error("concorde workflow needs args { task, module, mode } and optionally answers and retry")
+  throw new Error("concorde workflow needs args { task, module, mode } and optionally answers, retry and restart")
 }
 const CONCORDE = args.concorde || ".concorde/bin/concorde"
 
@@ -49,6 +49,7 @@ function step(key, argv) {
     argv: argv,
     answers: (args.answers && args.answers[key]) || null,
     retry: Boolean(args.retry && args.retry.indexOf(key) >= 0),
+    restart: (args.restart && args.restart[key]) || null,
   }
   // Only the request is quoted, so that the permission rule for `concorde workflow step` matches.
   const command = CONCORDE + " workflow step --json " + quote(JSON.stringify(request)) + " --wait 540"

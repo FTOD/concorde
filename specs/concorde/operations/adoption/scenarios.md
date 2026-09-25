@@ -16,6 +16,13 @@ shapes are in the [contracts](contracts.md).
 - AND the proposal's remaining entries are the root's entries without the children's paths
 - AND no file of the worktree changed
 
+### scenario.adoption.installation-stays — Concorde's installed files stay with the root
+
+- GIVEN a root Module whose Concorde installation realization binds `.claude/skills/concorde/SKILL.md`
+- WHEN a survey runs for it
+- THEN the inventory in its brief does not list the skill
+- AND a proposal giving the skill to a child fails with `inconsistent_proposal` naming the Concorde installation
+
 ### scenario.adoption.survey-no-task — A survey before any task
 
 - GIVEN an initialized project and no task
@@ -109,6 +116,12 @@ shapes are in the [contracts](contracts.md).
 - WHEN a survey or code_to_spec run is given it with `--answers`
 - THEN the result is `failed` with `invalid_answers` naming the file and what is wrong
 - AND no worker ran and no file changed
+
+### scenario.adoption.retry-counts-own-errors — A retry does not inherit a failed attempt's errors
+
+- GIVEN a code_to_spec run for `module.checkout` that ended `blocked` because its scenario lacks a `THEN` step, the edit left in the worktree
+- WHEN code_to_spec runs again for `module.checkout` and its worker leaves the scenario as it is
+- THEN the run ends `blocked` with `new_structural_errors`, although the error was there before the run
 
 ### scenario.adoption.describe-invalid — A description that breaks the Specs
 

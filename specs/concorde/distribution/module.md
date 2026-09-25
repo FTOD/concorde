@@ -89,7 +89,9 @@ later install with the same pin
 ([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
 plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/worker-models.json`,
 `.concorde/framework/`, `.concorde/tools/` and `.claude/worktrees/`, where task worktrees go, and a receipt
-`.concorde/install.json`. It also installs every rendered workflow for Claude Code as
+`.concorde/install.json`. The receipt lists under `files` every file Concorde owns in the project,
+including a default an earlier install wrote and this one found in place, and under `amended` the
+project's own files it only amends: `.gitignore`, `CLAUDE.md` and, once written, `.claude/settings.json`. It also installs every rendered workflow for Claude Code as
 `.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command `/concorde-<name>`,
 and adds to the `permissions.allow` of the project's `.claude/settings.json` the rules the workflow
 needs to run without a prompt per step: `Workflow(concorde-<name>)` for each workflow and

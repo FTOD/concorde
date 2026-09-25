@@ -337,6 +337,14 @@ def proposal_problems(
     }
     parent_entry = repository.module(module).entry
     parent_entries = sorted(repository.realization_entries(module))
+    # The files the Concorde installer placed stay with the Module that binds them: they are not
+    # the project's code, and the installer replaces them.
+    installed = [
+        entry
+        for realization in repository.realizations(module)
+        if realization.id.endswith(".concorde-installation")
+        for entry in realization.entries
+    ]
     children = proposal["children"]
     child_ids = [child["id"] for child in children]
     for child in children:
@@ -372,6 +380,12 @@ def proposal_problems(
                 f"child {identity}'s folder {folder}/ already exists in the worktree"
             )
         for entry in child["entries"]:
+            taken = [path for path in installed if covers(entry, path)]
+            if taken:
+                problems.append(
+                    f"child {identity}'s entry {entry} takes files of the Concorde "
+                    f"installation ({', '.join(taken)}), which stay with {module}"
+                )
             if not covered_by_parent(root, parent_entries, entry):
                 problems.append(
                     f"child {identity}'s entry {entry} does not exist or is not bound by "

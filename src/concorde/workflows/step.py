@@ -44,7 +44,16 @@ ANSWER = {
 REQUEST_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["task", "workflow", "mode", "key", "argv", "answers", "retry"],
+    "required": [
+        "task",
+        "workflow",
+        "mode",
+        "key",
+        "argv",
+        "answers",
+        "retry",
+        "restart",
+    ],
     "properties": {
         "task": {"type": "string", "minLength": 1},
         "workflow": {"type": "string", "minLength": 1},
@@ -62,6 +71,9 @@ REQUEST_SCHEMA: dict = {
             ]
         },
         "retry": {"type": "boolean"},
+        "restart": {
+            "anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-z0-9-]+$"}]
+        },
     },
 }
 MODULE_ID = {
@@ -90,7 +102,10 @@ STEP_SCHEMA: dict = {
     "properties": {
         "workflow": {"type": "string", "minLength": 1},
         "task": {"type": "string", "minLength": 1},
-        "key": {"type": "string", "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"},
+        "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$",
+        },
         "operation": {"type": "string", "pattern": "^[a-z][a-z_]*$"},
         "run_id": {
             "anyOf": [
@@ -161,8 +176,11 @@ def answers_digest(answers: list[dict]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:8]
 
 
-def step_key(base: str, answers: list[dict] | None) -> str:
-    return f"{base}@{answers_digest(answers)}" if answers else base
+def step_key(base: str, answers: list[dict] | None, restart: str | None = None) -> str:
+    """The key of a step: its base key, the restart generation after ``#`` and the answers
+    digest after ``@``."""
+    key = f"{base}#{restart}" if restart else base
+    return f"{key}@{answers_digest(answers)}" if answers else key
 
 
 def runs_directory(primary: Path) -> Path:
@@ -523,7 +541,7 @@ def run_step(
     workflow, task_id, mode = request["workflow"], request["task"], request["mode"]
     operation = request["argv"][0]
     answers = request["answers"]
-    key = step_key(request["key"], answers)
+    key = step_key(request["key"], answers, request["restart"])
     settled = frozenset(item["id"] for item in answers or [])
     deadline = None if wait is None else time.monotonic() + wait
 

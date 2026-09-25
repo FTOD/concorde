@@ -35,7 +35,8 @@ change together.
     code does;
   - `entries`: the paths it should bind, each an existing file or a directory ending in `/`,
     all among the paths the surveyed Module binds; give a path to two children only when both
-    truly realize it;
+    truly realize it; never take a file of the Module's Concorde installation realization (the
+    skill, workflows and agents Concorde installed), which is not the project's code;
   - `uses`: the other children, or registered Modules, whose code it calls, each with the
     `reason`.
 - `checks`: configured checks, each with an `id` `check.<module name>.<name>`, the `module` it

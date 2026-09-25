@@ -76,6 +76,21 @@ class BrownfieldProject:
             (self.root / path).parent.mkdir(parents=True, exist_ok=True)
             (self.root / path).write_text(content)
         install_project_defaults(self.root, REPOSITORY_ROOT)
+        # What the installer leaves besides the defaults: its receipt and Concorde's own skill.
+        skill = self.root / ".claude/skills/concorde/SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text("---\nname: concorde\n---\n\nConcorde main agent.\n")
+        (self.root / ".concorde/install.json").write_text(
+            json.dumps(
+                {
+                    "files": [
+                        ".claude/skills/concorde/SKILL.md",
+                        ".concorde/bin/concorde",
+                    ],
+                    "amended": [".gitignore", "CLAUDE.md"],
+                }
+            )
+        )
         proposal = project_proposal(self.root, REPOSITORY_ROOT, "Shop", "module.shop")
         apply_project_proposal(self.root, REPOSITORY_ROOT, proposal)
         commit(self.root, "adopt Concorde")

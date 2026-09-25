@@ -499,6 +499,12 @@ class InstallTests(unittest.TestCase):
         value["permissions"]["allow"].append("Workflow(concorde-retired)")
         settings.write_text(json.dumps(value))
         install(project, package, d2=False)
+        # A later install still records the defaults the first one wrote, and the files it
+        # only amends apart from the ones it owns.
+        again = json.loads((project / ".concorde/install.json").read_text())
+        self.assertIn(".concorde/issues/.gitignore", again["files"])
+        self.assertIn("CLAUDE.md", again["amended"])
+        self.assertNotIn("CLAUDE.md", again["files"])
         allow = json.loads(settings.read_text())["permissions"]["allow"]
         self.assertNotIn("Workflow(concorde-retired)", allow)
         self.assertIn("Bash(ls:*)", allow)

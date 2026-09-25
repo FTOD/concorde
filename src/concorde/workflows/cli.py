@@ -40,6 +40,7 @@ def parser() -> argparse.ArgumentParser:
     step.add_argument("--key")
     step.add_argument("--answers")
     step.add_argument("--retry", action="store_true")
+    step.add_argument("--restart")
     step.add_argument("--wait", type=float, default=WAIT)
     step.add_argument("--json", dest="request")
     step.add_argument("--stdin", action="store_true")
@@ -107,6 +108,7 @@ def step_request(arguments) -> dict:
         "argv": list(arguments.argv),
         "answers": answers,
         "retry": arguments.retry,
+        "restart": arguments.restart,
     }
 
 

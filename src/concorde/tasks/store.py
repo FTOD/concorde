@@ -590,8 +590,8 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
 
 
 def base_key(key: str) -> str:
-    """A step key without its answers digest."""
-    return key.split("@", 1)[0]
+    """A step key without its restart generation and answers digest."""
+    return key.split("@", 1)[0].split("#", 1)[0]
 
 
 def current_steps(record: dict) -> list[dict]:

@@ -78,7 +78,18 @@ def inventory(ctx: RunContext):
         )
     try:
         repository = repository_of(ctx)
-        files = repository.bound_files(ctx.modules[0])
+        installed = {
+            entry
+            for realization in repository.realizations(ctx.modules[0])
+            if realization.id.endswith(".concorde-installation")
+            for entry in realization.entries
+        }
+        # Concorde's own installed files are no code to survey.
+        files = [
+            path
+            for path in repository.bound_files(ctx.modules[0])
+            if path not in installed
+        ]
     except (SpecError, OSError, ValueError) as error:
         return ctx.fail(
             "failed",

@@ -21,6 +21,10 @@ leaves the task free.
 
 `concorde workflow step` SHALL start a run only for a step key with no current step in the task, or with `--retry` for a key whose current step did not end `ok`, reporting the current step's run otherwise.
 
+### req.workflows.restart-generation — A restart runs a step once more
+
+A step given a restart label SHALL add it to the step key after `#`, so that it starts one new run for that label and finds that run on every later call with the same label.
+
 ### req.workflows.step-lock — A step is looked up, started and recorded at once
 
 `concorde workflow step` SHALL look a key up, start its run and record it while holding the task's step lock.

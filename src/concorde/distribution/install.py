@@ -24,7 +24,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .build import BuildError, verify_fresh
-from .project_defaults import install_project_defaults
+from .project_defaults import install_project_defaults, project_default_files
 from .tools import TOOLS, ToolError, install_d2, install_pi_runtime
 
 FRAMEWORK = ".concorde/framework"
@@ -280,14 +280,29 @@ def install(
         list(previous.get("permissions") or []),
     )
     _ignore(project)
+    amended = [".gitignore", CLAUDE_MD] + (
+        [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
+    )
     receipt = {
         "version": descriptor["version"],
         "framework": FRAMEWORK,
         "command": COMMAND,
         "tools": tools,
+        # Every file Concorde owns, whether this install wrote it or found it in place: a
+        # default is written only when absent, yet stays Concorde's.
         "files": sorted(
-            {*written, COMMAND, SKILL, CLAUDE_MD, ".gitignore", *pi_files, *placed}
+            {
+                *written,
+                *project_default_files(package),
+                COMMAND,
+                SKILL,
+                *pi_files,
+                *placed,
+            }
         ),
+        # Files of the project that the installer only amends: a delimited block, ignore
+        # lines, permission rules. They stay the project's own files.
+        "amended": amended,
         "permissions": owned_rules,
     }
     (project / RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")

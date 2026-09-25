@@ -73,7 +73,11 @@ def installed_protocol_binding(root: Path) -> dict:
 
 
 def initial_module_metadata(
-    target_id: str, name: str, path: str, entries: list[str] | tuple[str, ...] = ()
+    target_id: str,
+    name: str,
+    path: str,
+    entries: list[str] | tuple[str, ...] = (),
+    installed: list[str] | tuple[str, ...] = (),
 ) -> dict:
     local = target_id.split(".")[-1]
     defines = (
@@ -87,6 +91,18 @@ def initial_module_metadata(
             }
         ]
         if entries
+        else []
+    ) + (
+        [
+            {
+                "id": f"realization.{local}.{INSTALLATION}",
+                "type": "realization",
+                "title": "Concorde installation",
+                "meaning": f"#realization.{local}.{INSTALLATION}",
+                "entries": list(installed),
+            }
+        ]
+        if installed
         else []
     )
     return {
@@ -111,12 +127,39 @@ def initial_module_metadata(
 
 def source_digest(root: Path, documents: set[str]) -> str:
     """The digest of the project state a proposal is computed from: the installed Protocol
-    binding and the existing files the root Module's realization binds."""
+    binding and the files the root Module's realizations bind."""
     return digest(
         {
             "protocol": installed_protocol_binding(root),
             "entries": existing_files(root, documents),
+            "installed": installed_files(root),
         }
+    )
+
+
+# The realization of the files the Concorde installer placed outside ``.concorde/``.
+INSTALLATION = "concorde-installation"
+
+
+def installed_files(root: Path) -> list[str]:
+    """The files the installer's receipt names that live outside ``.concorde/`` and exist:
+    Concorde's own skill, workflows and pi files, never a file of the project it only amends."""
+    from .repository_base import control_path
+
+    try:
+        receipt = json.loads(
+            (root / ".concorde/install.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return []
+    amended = set(receipt.get("amended") or [])
+    return sorted(
+        path
+        for path in receipt.get("files") or []
+        if isinstance(path, str)
+        and path not in amended
+        and not control_path(path)
+        and (root / path).is_file()
     )
 
 
@@ -136,10 +179,12 @@ def existing_files(root: Path, documents: set[str]) -> list[str]:
         return []
     files, links = tracked
     outputs = generated_outputs(root)
+    installed = set(installed_files(root))
     entries: set[str] = set()
     for path in files:
         if (
-            path in documents
+            path in installed
+            or path in documents
             or control_path(path)
             or generated(path, outputs)
             or build_path(path)
@@ -178,7 +223,9 @@ def initial_registry(target_id: str, name: str, path: str) -> dict:
     }
 
 
-def initial_module_text(target_id: str, name: str, bound: bool = False) -> str:
+def initial_module_text(
+    target_id: str, name: str, bound: bool = False, installed: bool = False
+) -> str:
     local = target_id.split(".")[-1]
     realization = (
         f'<a id="realization.{local}.existing-files"></a>\n\n'
@@ -187,6 +234,14 @@ def initial_module_text(target_id: str, name: str, bound: bool = False) -> str:
         "responsibility; binding them describes nothing about what they do.\n\n"
         if bound
         else "No realization binds implementation files yet.\n\n"
+    ) + (
+        f'<a id="realization.{local}.{INSTALLATION}"></a>\n\n'
+        "The files the Concorde installer placed outside `.concorde/`, such as the agents' skill and\n"
+        "workflows, are bound to this Module as its Concorde installation. They configure the\n"
+        "agents that work on the project and are not the project's own code; the installer\n"
+        "replaces them on every update.\n\n"
+        if installed
+        else ""
     )
     return (
         f"# {name}\n\n## Purpose\n\n"
@@ -228,6 +283,7 @@ def project_proposal(
     path = "specs/project/module.md"
     registry = initial_registry(target_id, name.strip(), path)
     entries = existing_files(root, {path, path + ".json"})
+    installed = installed_files(root)
     config = {
         "profile_version": PROFILE_VERSION,
         "registry": ".concorde/specs.json",
@@ -240,13 +296,19 @@ def project_proposal(
             root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"
         ),
         file_change(
-            root, path, initial_module_text(target_id, name.strip(), bool(entries))
+            root,
+            path,
+            initial_module_text(
+                target_id, name.strip(), bool(entries), bool(installed)
+            ),
         ),
         file_change(
             root,
             path + ".json",
             json.dumps(
-                initial_module_metadata(target_id, name.strip(), path, entries),
+                initial_module_metadata(
+                    target_id, name.strip(), path, entries, installed
+                ),
                 indent=2,
             )
             + "\n",

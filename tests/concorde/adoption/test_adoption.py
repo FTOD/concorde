@@ -186,6 +186,31 @@ class AdoptionTests(unittest.TestCase):
         )
         self.assertEqual("", git(worktree, "status", "--porcelain"))
 
+    @verifies("scenario.adoption.installation-stays")
+    def test_the_concorde_installation_stays_with_the_surveyed_module(self):
+        self.open()
+        root = json.loads((self.worktree / "specs/project/module.md.json").read_text())
+        installation = next(
+            r
+            for r in root["defines"]
+            if r["id"] == "realization.shop.concorde-installation"
+        )
+        self.assertEqual([".claude/skills/concorde/SKILL.md"], installation["entries"])
+        status, envelope = self.survey()
+        self.assertEqual(0, status, envelope)
+        inventory = (
+            self.fake_round(envelope)["prompt"]
+            .split("with their size in lines:", 1)[1]
+            .split("```\n\n", 1)[0]
+        )
+        self.assertIn("src/checkout/api.py", inventory)
+        self.assertNotIn(".claude/skills/concorde/SKILL.md", inventory)
+        grabbing = json.loads(json.dumps(PROPOSAL))
+        grabbing["children"][1]["entries"].append(".claude/skills/concorde/SKILL.md")
+        _, envelope = self.survey(grabbing)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn("Concorde installation", envelope["error"]["detail"])
+
     @verifies("scenario.adoption.survey-no-task")
     def test_a_survey_runs_without_a_task(self):
         status, envelope = self.survey(task=False)
@@ -613,6 +638,27 @@ class AdoptionTests(unittest.TestCase):
         )
         self.assertEqual("failed", envelope["status"])
         self.assertEqual("inconsistent_description", envelope["error"]["code"])
+
+    @verifies("scenario.adoption.retry-counts-own-errors")
+    def test_errors_left_in_its_own_documents_count_on_a_retry(self):
+        self.scaffolded()
+        broken = self.SCENARIOS.replace("- THEN one order is returned\n", "")
+        claims = {
+            "summary": "s",
+            "promises": [],
+            "decisions": [],
+            "open_questions": [],
+            "deviations": [],
+        }
+        scenarios = str(self.worktree / "specs/project/checkout/scenarios.md")
+        _, first = self.describe(
+            [{"writes": {scenarios: broken}, "result": {"output": claims}}]
+        )
+        self.assertEqual("blocked", first["status"])
+        # A second worker that leaves the same error is not excused by the first attempt.
+        _, second = self.describe([{"result": {"output": claims}}])
+        self.assertEqual("blocked", second["status"])
+        self.assertEqual("new_structural_errors", second["error"]["code"])
 
     @verifies("scenario.adoption.describe-invalid")
     def test_a_description_that_breaks_the_specs_is_blocked(self):

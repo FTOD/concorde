@@ -5,7 +5,7 @@
 // hosts recorded.
 
 if (!args || !args.task || !args.module || !args.mode) {
-  throw new Error("concorde workflow needs args { task, module, mode } and optionally answers and retry")
+  throw new Error("concorde workflow needs args { task, module, mode } and optionally answers, retry and restart")
 }
 
 function parsed(result) {
@@ -27,6 +27,7 @@ function step(key, argv) {
     argv: argv,
     answers: (args.answers && args.answers[key]) || null,
     retry: Boolean(args.retry && args.retry.indexOf(key) >= 0),
+    restart: (args.restart && args.restart[key]) || null,
   }
   return runs.run(key, { agent: "concorde-step", task: JSON.stringify(request) }).then(parsed)
 }

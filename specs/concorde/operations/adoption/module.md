@@ -270,7 +270,9 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 | 9 | Check the description against the answers and the bound Modules | host | an inconsistency or an answer not followed (`failed`, `inconsistent_description`) |
 | 10 | Return the Operation result | host | — |
 
-As with `specify`, a failed structural check starts no resume round: repairing a Spec needs a
+Unlike `specify`, every structural error in a described Module's own documents counts as the
+run's, even one the baseline already had: the worker rewrites those documents, and a retry must not
+inherit a failed attempt's errors as the project's. As with `specify`, a failed structural check starts no resume round: repairing a Spec needs a
 decision, not another guess, so the run stops and the main agent or the workflow goes on.
 
 <a id="realization.adoption.shared"></a>

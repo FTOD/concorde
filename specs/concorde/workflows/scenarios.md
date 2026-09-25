@@ -85,6 +85,13 @@ shapes are in the [contracts](contracts.md).
 - AND asking for `validate` again starts a new validate run instead of returning the earlier one
 - AND the workflow result lists the superseded steps apart and takes nothing else from them
 
+### scenario.workflows.restarted — An ok step is run again under a restart label
+
+- GIVEN a task whose steps `survey`, `scaffold` and `validate` are recorded and `ok`
+- WHEN the scaffold step is asked for with the restart label `2`
+- THEN a new run starts under the key `scaffold#2`, and the earlier scaffold and `validate` are superseded
+- AND asking for it again with the label `2` starts nothing and finds that run
+
 ### scenario.workflows.refused-step — A step whose run cannot start
 
 - GIVEN a task running the brownfield workflow

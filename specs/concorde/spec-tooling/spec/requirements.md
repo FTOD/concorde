@@ -287,6 +287,13 @@ new project validates without errors.
 The binding is one realization of the root Module, Existing project files. It locates files and
 promises nothing about them.
 
+### req.spec.init-installation-apart — Concorde's own files are bound apart
+
+The initial Module stub SHALL bind the files the installer's receipt names outside `.concorde/`, other than the files it lists as amended, in a realization of their own, Concorde installation, and not among the existing project files.
+
+The installer's skill, workflows and pi files configure the agents, not the project; the project's
+`.gitignore` and `CLAUDE.md`, which the installer only amends, stay the project's files.
+
 ### req.spec.init-no-installer-files — Installer outputs are not initialization outputs
 
 Initialization SHALL NOT create files that exist only because Concorde is installed, such as the

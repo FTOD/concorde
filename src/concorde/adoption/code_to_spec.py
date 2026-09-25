@@ -345,14 +345,39 @@ def describe_code(ctx: RunContext):
     return Continue(evidence=found)
 
 
+def own_documents(ctx: RunContext) -> set[str]:
+    """Both members of every document the described Modules own, read from their entries'
+    metadata; an entry that cannot be read still counts itself."""
+    found: set[str] = set()
+    for metadata_path in (ctx.state.get("metadata") or {}).values():
+        entry = metadata_path.removesuffix(".json")
+        found.update({entry, metadata_path})
+        try:
+            owned = json.loads(
+                (ctx.worktree / metadata_path).read_text(encoding="utf-8")
+            )["module"]["owns"]
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        for path in owned:
+            if isinstance(path, str):
+                found.update({path, path + ".json"})
+    return found
+
+
 def revalidate(ctx: RunContext):
     """Step 5: new and pre-existing structural errors."""
     from ..spec.validation import validate_repository
 
     result = validate_repository(ctx.worktree)
     errors = [f for f in result.findings if f.severity == "error"]
-    ctx.state["new"] = [f for f in errors if key(f) not in ctx.state["baseline"]]
-    ctx.state["old"] = [f for f in errors if key(f) in ctx.state["baseline"]]
+    # Every error in a described Module's own documents is the run's, even one that was there
+    # before: the worker rewrites those documents, and a retry after a failed attempt must not
+    # count that attempt's errors as the project's.
+    own = own_documents(ctx)
+    ctx.state["new"] = [
+        f for f in errors if key(f) not in ctx.state["baseline"] or f.source in own
+    ]
+    ctx.state["old"] = [f for f in errors if f not in ctx.state["new"]]
     return Continue(
         evidence=[
             evidence(

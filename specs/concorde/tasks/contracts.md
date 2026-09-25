@@ -8,7 +8,7 @@ in the [requirements](requirements.md).
 ```concorde-contract
 {
   "id": "contract.tasks.record",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -475,7 +475,7 @@ in the [requirements](requirements.md).
               "properties": {
                 "key": {
                   "type": "string",
-                  "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+                  "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
                 },
                 "operation": {
                   "type": "string",

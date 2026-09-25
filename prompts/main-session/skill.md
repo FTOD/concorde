@@ -101,7 +101,7 @@ installed workflow `/concorde-<name>` (the Workflow tool with that name), in pi 
 with `workflowScriptPath: ".concorde/workflows/pi/<name>.js"`. Both take `args`:
 
 ```json
-{"task": "<task>", "module": "<module>", "mode": "interactive", "answers": {}, "retry": []}
+{"task": "<task>", "module": "<module>", "mode": "interactive", "answers": {}, "retry": [], "restart": {}}
 ```
 
 Ask the developer which **mode** to use unless they already said: `interactive` when they are
@@ -117,7 +117,9 @@ workflow again with `answers` mapping each step's base key (such as `survey` or
 `describe:module.checkout`) to every answer given for it so far, each
 `{"id": "<d. or q. identity>", "question": "<its text>", "answer": "<the answer>"}`. Steps that
 finished are not run again. When a step failed, repair the cause and start it again with its base
-key in `retry`; everything after it runs again. `concorde workflow report --task <task>` rebuilds
+key in `retry`; everything after it runs again. To run a step that ended `ok` once more, for
+example after resetting the task worktree by hand, give `restart` a new label for its base key,
+such as `{"scaffold": "2"}`, and keep that label on later relaunches. `concorde workflow report --task <task>` rebuilds
 the result at any time.
 
 **Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in

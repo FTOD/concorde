@@ -58,11 +58,15 @@ and then, in Claude Code, the installed workflow `/concorde-brownfield` with the
 `{"task": "adopt", "module": "module.shop", "mode": "no-ask"}`, or in pi the installed script
 `.concorde/workflows/pi/brownfield.js` through pi-subagents with the same arguments. The main agent
 stays in the primary worktree while the workflow runs. Every workflow takes `task`, `mode`,
-`answers` and `retry`, plus its own arguments such as `module`. `answers` maps a step's base key,
+`answers`, `retry` and `restart`, plus its own arguments such as `module`. `answers` maps a step's base key,
 such as `survey` or `describe:module.checkout`, to the list of every answer the developer has given
 for that step so far, in the shape of
 [answers](../operations/adoption/module.md#concept.adoption.answers); a relaunch passes all of them
-again, not only the newest. `retry` lists the base keys to run again after a failure.
+again, not only the newest. `retry` lists the base keys to run again after a failure. `restart`
+maps a base key to a short generation label, such as `{"scaffold": "2"}`, to run that step again
+whatever its outcome, for instance after the task worktree was reset by hand: the label becomes
+part of the step key, so the step and every later step run once more, and relaunching with the
+same label finds the restarted runs instead of starting them again.
 
 <a id="concept.workflows.mode"></a><a id="concept.workflows.decision-point"></a>
 
@@ -91,14 +95,15 @@ reports it.
 A **workflow step** is one Operation run. The script asks for it by a base **step key**:
 
 ```text
-concorde workflow step --task <task-id> --workflow <name> --mode <interactive|no-ask> --key <base key> [--answers <file>] [--retry] [--wait <seconds>] -- <operation> [operation arguments]
+concorde workflow step --task <task-id> --workflow <name> --mode <interactive|no-ask> --key <base key> [--answers <file>] [--retry] [--restart <label>] [--wait <seconds>] -- <operation> [operation arguments]
 concorde workflow step --json '<step request>' [--wait <seconds>]
 concorde workflow step --stdin
 ```
 
-The step's key is the base key, or with `--answers` the base key followed by `@` and the first eight
-hexadecimal digits of the SHA-256 of the answers list in canonical JSON (keys sorted, no
-whitespace), so an answered rerun is a new step while the same answers find the same step again.
+The step's key is the base key, followed by `#` and the generation label when `--restart` names
+one, and with `--answers` by `@` and the first eight hexadecimal digits of the SHA-256 of the
+answers list in canonical JSON (keys sorted, no whitespace), so a restarted or answered rerun is a
+new step while the same label and answers find the same step again.
 Holding the task's step lock, the command looks the key up among the task's current steps. When it
 is not there, it starts `concorde run <operation> --task <task-id> --detach` with the task
 worktree's own `concorde`, adding `--answers` with the answers written next to the task record and,

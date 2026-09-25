@@ -12,7 +12,7 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
 ```concorde-contract
 {
   "id": "contract.workflows.step",
-  "version": 1,
+  "version": 2,
   "schema": {
     "$defs": {
       "error": {
@@ -164,7 +164,7 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
       },
       "key": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+        "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
       },
       "operation": {
         "type": "string",
@@ -301,7 +301,7 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
 ```concorde-contract
 {
   "id": "contract.workflows.step-request",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -312,7 +312,8 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
       "key",
       "argv",
       "answers",
-      "retry"
+      "retry",
+      "restart"
     ],
     "properties": {
       "task": {
@@ -377,10 +378,21 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
       },
       "retry": {
         "type": "boolean"
+      },
+      "restart": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          }
+        ]
       }
     }
   },
-  "semantics": "One step request, with the meaning of the command line's options: the task, workflow, mode and base step key, argv as the Operation name followed by its arguments without --task, answers as the list of every answer given for this step so far or null, and retry to start a new run for a key whose current step did not end ok. A behaviour or field change increments the version.",
+  "semantics": "One step request, with the meaning of the command line's options: the task, workflow, mode and base step key, argv as the Operation name followed by its arguments without --task, answers as the list of every answer given for this step so far or null, retry to start a new run for a key whose current step did not end ok, and restart, a short generation label or null, to start the step again whatever its outcome: the label is part of the step key, so the restarted step supersedes the earlier one and every later step once, and a relaunch with the same label finds it again. A behaviour or field change increments the version.",
   "example": {
     "task": "adopt",
     "workflow": "brownfield",
@@ -398,7 +410,8 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
         "answer": "a Module of its own"
       }
     ],
-    "retry": false
+    "retry": false,
+    "restart": null
   }
 }
 ```
@@ -410,7 +423,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
 ```concorde-contract
 {
   "id": "contract.workflows.result",
-  "version": 1,
+  "version": 2,
   "schema": {
     "$defs": {
       "error": {
@@ -598,7 +611,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "key": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "operation": {
               "type": "string",
@@ -662,7 +675,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "key": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "operation": {
               "type": "string",
@@ -729,7 +742,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "step": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "run_id": {
               "type": "string",
@@ -792,7 +805,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "step": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "run_id": {
               "type": "string",
@@ -857,7 +870,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "step": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "run_id": {
               "type": "string",
@@ -896,7 +909,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "step": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "run_id": {
               "type": "string",
@@ -936,7 +949,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "step": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "run_id": {
               "type": "string",
@@ -994,7 +1007,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "step": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "run_id": {
               "type": "string",
@@ -1046,7 +1059,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "properties": {
             "step": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_:.-]*(?:@[0-9a-f]{8})?$"
+              "pattern": "^[a-z][a-z0-9_:.-]*(?:#[a-z0-9-]+)?(?:@[0-9a-f]{8})?$"
             },
             "run_id": {
               "anyOf": [
