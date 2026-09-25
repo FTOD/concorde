@@ -2,8 +2,8 @@
   "profile_version": 17,
   "registry": ".concorde/specs.json",
   "protocol": {
-    "version": "13.0.0",
-    "digest": "sha256:3726dd12f68d149cc681477d457c071f3037c15ffd0c0572dc9ab36edc6769e6"
+    "version": "13.1.0",
+    "digest": "sha256:7d7b37da6a1f05365d3589c47963ba9ed64e48fa806ffc89f0b25bbacce26421"
   },
   "checks": [
     {

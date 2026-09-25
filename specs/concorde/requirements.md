@@ -19,6 +19,16 @@ The model and reasoning level of every worker SHALL come from the worker model c
 
 ## Boundaries
 
+### req.concorde.spec-first — Specs are derived from code only by code-to-spec
+
+Every Spec statement that an Operation writes from the contents of implementation files SHALL originate from a worker of task type `code-to-spec`.
+
+Concorde's flow is Spec first, and every other worker sees code at most by name when it writes a
+Spec. A project whose code came before its Specs is described through the
+[Adoption](operations/adoption/module.md) Operations: their `code-to-spec` workers record behaviour
+as it is and return doubtful intent as open questions instead of promises, and the one Adoption
+step without a worker, `scaffold`, writes only what such a worker proposed.
+
 ### req.concorde.grant-from-task-worktree — Grants come from the task's own Specs
 
 Every grant a worker receives SHALL be computed from the Specs in the worktree of the task it works on.

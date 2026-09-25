@@ -15,7 +15,7 @@ A run is requested with:
 | --- | --- |
 | backend | `claude` or `pi`: the program of the main session that started the run, as the host [detected](module.md#concept.workers.backend) it |
 | task worktree | Absolute path of the Git worktree the worker works in |
-| task type | One of the six Protocol task types; it selects the tool set |
+| task type | One of the seven Protocol task types; it selects the tool set |
 | grant | The frozen grant: every path with its level `rw`, `ro` or `names`, relative to the task worktree, and its context identity |
 | instructions | The Operation's task-specific part of the brief |
 | checks | The configured checks to run after each round, possibly none |
@@ -147,10 +147,11 @@ On the Claude Code backend:
 | Task type | `--tools` |
 | --- | --- |
 | `understand`, `review-spec`, `review-code`, `test` | `Read,Glob,Grep` |
-| `specify` | `Read,Glob,Grep,Edit,Write` |
+| `specify`, `code-to-spec` | `Read,Glob,Grep,Edit,Write` |
 | `implement` | `Read,Glob,Grep,Edit,Write,Bash` |
 
-WebFetch, WebSearch, the agent tool and notebook editing are never listed. A `test` worker runs no
+A grant with no writable path, such as a survey's `code-to-spec` grant with the Spec side withheld,
+gets the read-only set of the first row whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing are never listed. A `test` worker runs no
 command itself: the host runs the configured checks and gives it their results.
 
 ## Launch

@@ -121,6 +121,7 @@ access level:
 | `test` | read | names | read | none | read |
 | `review-spec` | read | names | none | none | read |
 | `review-code` | read | names | read | none | read |
+| `code-to-spec` | read | names | read | write | read |
 
 - **`understand`** learns what a Module promises and how it is realized, without reading code:
   explaining, assessing, or planning a change. Planning is one use of understanding, not a task
@@ -133,6 +134,13 @@ access level:
   produced for the task, not a wider read.
 - **`review-spec`** judges the Module's documents; **`review-code`** judges its realization against
   its Specs. A diff since a baseline is task material (rule 4).
+- **`code-to-spec`** describes an existing realization in the Module's own documents. It exists for
+  the uncommon project whose code came before its specification; a project that is specified first
+  never needs it. It is the only task type that reads code in order to write Specs, and it
+  never changes code. It records the behaviour it read as it is. Behaviour whose intent the code does
+  not settle, such as a probable defect or an unexplained special case, MUST NOT be written as a
+  promise: the documents state it as an honest unknown and the task reports it as an open question
+  for a human to decide.
 
 A `none` in the `SpecScope` column does not hide the Module's own documents: they are in
 `SpecContext`, which every type reads. Each row stays inside rules 1 to 4, and every level can be

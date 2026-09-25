@@ -154,6 +154,15 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND the cause of its error is a `component` link with the exception's type, message and output, where it was raised and the traceback's path
 - AND the run is finished as `failed` in the task record
 
+### scenario.operations.detached — A run started detached
+
+- GIVEN an active task `severity`
+- WHEN the main agent runs `concorde run implement --task severity --detach`
+- THEN the command prints the run identity and the path of its future result and exits with status 0 while the host keeps running
+- AND the run's progress file exists when the command exits
+- AND the host writes the same result, run record and task record entry as a run started without `--detach`
+- BUT a task already running an Operation still gets a `failed` result naming the refusal, written where the printed path says
+
 ### scenario.operations.cancelled — The run is cancelled
 
 - GIVEN a run whose worker is still working

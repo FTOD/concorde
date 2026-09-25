@@ -38,7 +38,11 @@ too, so a changed descriptor makes every render stale.
 <a id="concept.distribution.build"></a><a id="concept.distribution.build-manifest"></a>
 
 **Building.** `python3 scripts/concorde.py build` expands every prompt root into `generated/`
-([requirements](requirements.md#req.distribution.build-reachable)) and writes
+([requirements](requirements.md#req.distribution.build-reachable)), and wraps every
+[workflow script](../workflows/module.md#concept.workflows.script) of the workflow catalog for each
+client: `generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step
+adapter, `generated/workflows/pi/<name>.js` with the pi step adapter, and
+`generated/workflows/pi/agents/concorde-step.md`, the pi command-runner agent, and writes
 `generated/build-manifest.json` with every source's and output's digest; `build --check` only
 reports what is stale, writing nothing
 ([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
@@ -60,13 +64,14 @@ global `--project-root` and one subcommand:
 | `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first Spec | [Spec core](../spec-tooling/spec/module.md) |
 | `task open`, `list`, `show` or `close` | opens, lists, shows or closes tasks; prints the task command's own JSON | [Tasks](../tasks/module.md) |
 | `run <operation> [--task <task>]` | runs one Operation, for a task or, when the Operation allows it, for none; prints the Operation result | [Operations](../operations/module.md) |
+| `workflow step` or `report` | runs one workflow step, or reports a workflow's result; prints its own JSON | [Workflows](../workflows/module.md) |
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 
-Every command but `spec-mcp`, `task`, `run` and `issues` prints exactly one JSON envelope and exits
-with its status, even when refused
-([requirements](requirements.md#req.distribution.one-envelope)); those four route to their owners,
+Every command but `spec-mcp`, `task`, `run`, `workflow` and `issues` prints exactly one JSON
+envelope and exits with its status, even when refused
+([requirements](requirements.md#req.distribution.one-envelope)); those five route to their owners,
 which define their own JSON and exit codes.
 
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
@@ -84,7 +89,13 @@ later install with the same pin
 ([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
 plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/worker-models.json`,
 `.concorde/framework/`, `.concorde/tools/` and `.claude/worktrees/`, where task worktrees go, and a receipt
-`.concorde/install.json`. The command runs the Framework copy of the worktree it belongs to; a
+`.concorde/install.json`. It also installs every rendered workflow for Claude Code as
+`.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command `/concorde-<name>`,
+and adds to the `permissions.allow` of the project's `.claude/settings.json` the rules the workflow
+needs to run without a prompt per step: `Workflow(concorde-<name>)` for each workflow and
+`Bash(.concorde/bin/concorde workflow step:*)` and `Bash(.concorde/bin/concorde workflow report:*)`
+for its step agents. It adds only rules that are missing, records them in the receipt, removes on a
+later install the recorded rules it no longer ships, and leaves every other setting untouched. The command runs the Framework copy of the worktree it belongs to; a
 task worktree has none of its own, since Git ignores it, unless the task reinstalled Concorde
 there, so its command runs the primary worktree's copy, found through Git's common directory.
 
@@ -95,7 +106,9 @@ their commands in — under `.concorde/tools/pi-runtime/` by copying the package
 `npm ci --ignore-scripts`, which installs exactly the locked versions after checking each
 package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime));
 the [run view](../main-session/module.md#concept.main-session.run-view), with its model picker, as
-`.pi/extensions/concorde/`; and the skill a second time as `.pi/skills/concorde/SKILL.md`. A later
+`.pi/extensions/concorde/`; the skill a second time as `.pi/skills/concorde/SKILL.md`; every
+rendered pi workflow script under `.concorde/workflows/pi/`; and the command-runner agent
+`concorde-step` as `.pi/agents/concorde-step.md`, which pi-subagents finds among the project's agents. A later
 install with the same lockfile keeps the runtime it placed. Without npm it refuses before writing
 anything else. Both skills carry the same frontmatter, whose values are bare names or
 double-quoted strings, because pi parses it as strict YAML and drops a skill it cannot parse. pi
@@ -194,9 +207,11 @@ tooling: Spec tooling {
   views: Views
 }
 mainsession: Main session
+workflows: Workflows
 distribution -> tooling.spec
 distribution -> tooling.views
 distribution -> mainsession
+distribution -> workflows
 ```
 
 <a id="uses-spec"></a>
@@ -220,3 +235,11 @@ it writes are Views' responsibility, and an `--apply` without `--proposal` is re
 root and the installer places the rendered
 [main-session guidance](../main-session/module.md#concept.main-session.guidance) unchanged, and
 refuses to install it missing or stale rather than fall back to an old copy.
+
+<a id="uses-workflows"></a>
+
+**Workflows** owns each workflow's script, its catalog entry with name and description, the step
+adapters and the pi command-runner agent, and the `concorde workflow` command that `workflow` routes
+to. Distribution only wraps and places them: the build renders each script for both clients
+unchanged in its steps, and the installer places the renders and the permission rules their step
+agents need, refusing stale renders like any other build output.

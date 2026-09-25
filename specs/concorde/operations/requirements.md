@@ -60,6 +60,17 @@ The host SHALL write every result and run directory under `.concorde/runs/` of t
 
 An Operation SHALL NOT start another Operation.
 
+A [workflow](../workflows/module.md) sequences Operations from outside them, through `concorde run`;
+no provider knows it runs inside one.
+
+### req.operations.detached-same-run — A detached run is an ordinary run
+
+A run started with `--detach` SHALL check, record and report exactly as the same run started without it.
+
+### req.operations.detached-announced — A detached run is announced once it exists
+
+`concorde run --detach` SHALL print the run identity and result path only once the run's progress file exists.
+
 ### req.operations.fixed-order — Steps run in their declared order
 
 The runner SHALL execute a provider's steps in their declared order, each at most once, and stop at

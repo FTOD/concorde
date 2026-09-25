@@ -17,6 +17,17 @@ itself enforces is verified by the Harness's live worker test.
 - AND the project validates without errors
 - AND its root Module entry states that the project's purpose and behaviour are not yet specified
 
+### scenario.concorde.adopt-brownfield — Describing an existing codebase in no-ask mode
+
+- GIVEN an initialized project whose code came before its Specs, with the root Module binding every existing file
+- WHEN the main agent opens a task bound to the root Module
+- AND runs the `brownfield` workflow in it in no-ask mode
+- THEN the workflow runs `survey`, `scaffold`, one `code_to_spec` per described Module, `spec_review`, `validate` and `delivery` in that task, one Operation at a time
+- AND the delivered task branch holds child Modules whose entries describe the code they bind
+- AND no implementation file changed
+- AND the workflow result lists every decision the workflow took and every open question about intent it did not write as a promise
+- AND the main agent can merge the task branch into the primary branch
+
 ## Working on a task
 
 ### scenario.concorde.task-to-merge — A task from opening to merge

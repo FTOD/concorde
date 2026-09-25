@@ -40,6 +40,7 @@ TOOL_SETS = {
     "review-code": f"{COMMON_TOOLS},{RESULT_TOOL}",
     "test": f"{COMMON_TOOLS},{RESULT_TOOL}",
     "specify": f"{COMMON_TOOLS},edit,write,{RESULT_TOOL}",
+    "code-to-spec": f"{COMMON_TOOLS},edit,write,{RESULT_TOOL}",
     "implement": f"{COMMON_TOOLS},edit,write,bash,{RESULT_TOOL}",
 }
 

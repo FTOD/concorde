@@ -32,6 +32,7 @@ TOOL_SETS = {
     "review-code": "Read,Glob,Grep",
     "test": "Read,Glob,Grep",
     "specify": "Read,Glob,Grep,Edit,Write",
+    "code-to-spec": "Read,Glob,Grep,Edit,Write",
     "implement": "Read,Glob,Grep,Edit,Write,Bash",
 }
 RANK = {"names": 1, "ro": 2, "rw": 3}

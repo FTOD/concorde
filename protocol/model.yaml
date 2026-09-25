@@ -14,7 +14,7 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "12.0.0"
+protocol: "13.1.0"
 model_version: 1
 
 context_channels:
@@ -391,6 +391,8 @@ task_types:
     levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: none, ExternalContext: read}
   - id: review-code
     levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: none, ExternalContext: read}
+  - id: code-to-spec
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: write, ExternalContext: read}
 
 reconciliation:
   statement: >

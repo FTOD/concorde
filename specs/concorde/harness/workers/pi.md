@@ -94,8 +94,10 @@ and aborts the run.
 | Task type | `--tools` |
 | --- | --- |
 | `understand`, `review-spec`, `review-code`, `test` | `read,grep,find,ls,concorde_result` |
-| `specify` | `read,grep,find,ls,edit,write,concorde_result` |
+| `specify`, `code-to-spec` | `read,grep,find,ls,edit,write,concorde_result` |
 | `implement` | `read,grep,find,ls,edit,write,bash,concorde_result` |
+
+A grant with no writable path gets the first row's set whatever its task type, as on Claude Code.
 
 ## Launch
 

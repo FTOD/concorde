@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 12.0.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 13.1.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -187,7 +187,9 @@ substitute for one another:
 
 Passing structural checks MUST NOT be reported as either of the other two. Missing meaning is an
 attributed gap; a reader MUST NOT read outside its boundary, or infer a promise from source code, to
-repair it.
+repair it. The one sanctioned route from code to specification is a `code-to-spec` task (see
+[Boundaries](boundaries.md#task-types)), which describes an existing realization under its own rules and
+leaves every doubtful intent as a reported gap.
 
 ## What the Protocol does not define
 

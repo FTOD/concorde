@@ -24,7 +24,11 @@ Tasks SHALL NOT delete a task record or a decision log, including when the task 
 
 ### req.tasks.decision-log-untouched — The decision log belongs to the main agent
 
-Tasks SHALL NOT change a decision log after creating it except by appending a requested escalation or the entry recording how the task ended.
+Tasks SHALL NOT change a decision log after creating it except by appending a requested escalation, a workflow report or the entry recording how the task ended.
+
+### req.tasks.one-workflow — A task runs at most one workflow
+
+Tasks SHALL refuse to record a workflow step that names a workflow other than the one the task record names.
 
 ### req.tasks.registered-modules — Records name only registered Modules
 

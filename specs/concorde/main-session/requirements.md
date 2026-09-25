@@ -70,6 +70,10 @@ The guidance SHALL tell the main agent to change the models workers use only whe
 
 The guidance SHALL tell the main agent which Operations run without a task, that such a run changes no Spec or code, and that every change still runs in a task.
 
+### req.main-session.workflows — Preset tasks run their workflow
+
+The guidance SHALL tell the main agent to run a task that follows a known procedure through its workflow, choosing the mode with the developer and answering an interactive pause by asking the developer and starting the workflow again.
+
 ## Escalation
 
 ### req.main-session.escalation-policy — Only major decisions reach the developer

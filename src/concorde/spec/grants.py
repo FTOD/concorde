@@ -22,6 +22,7 @@ TASK_TYPES = (
     "test",
     "review-spec",
     "review-code",
+    "code-to-spec",
 )
 
 # The Protocol's task-type table (protocol/model.yaml ``task_types``) in grant levels: ``read``
@@ -67,6 +68,13 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "ImplementationContext": "names",
         "ImplementationScope": "ro",
         "SpecScope": None,
+        "ExternalContext": "ro",
+    },
+    "code-to-spec": {
+        "SpecContext": "ro",
+        "ImplementationContext": "names",
+        "ImplementationScope": "ro",
+        "SpecScope": "rw",
         "ExternalContext": "ro",
     },
 }

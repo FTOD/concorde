@@ -175,7 +175,7 @@ the defaults; a call site gives more specific ones when it knows more.
 | `not_installed` | initialization needs the Protocol copy that only the installer places | run the Concorde installer in this project first |
 | `already_initialized` | initialization creates the first Spec only; it never overwrites a configured project | change an initialized project's Specs through ordinary work instead |
 | `invalid_input` | the arguments of the call do not have the required form | correct the named argument and call again |
-| `invalid_task_type` | a grant exists only for the six task types the Protocol defines | use understand, specify, implement, test, review-spec or review-code |
+| `invalid_task_type` | a grant exists only for the seven task types the Protocol defines | use understand, specify, implement, test, review-spec, review-code or code-to-spec |
 | `unknown_module` | a grant, boundary or query names only Modules the registry registers | name registered Modules, or register the Module first |
 | `unknown_target` | the named Module or node is not declared in the loaded Specs | name a declared Module or node; `concorde validate` lists what exists |
 | `invalid_target` | the identity does not name a document, scenario or context of the requested kind | name an identity of the requested kind |

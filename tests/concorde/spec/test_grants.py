@@ -162,6 +162,15 @@ class GrantTests(unittest.TestCase):
                 self.assertNotIn("rw", levels.values())
                 self.assertNotIn("src/a/one.py", levels)
 
+    @verifies("scenario.spec.grant-code-to-spec")
+    def test_code_to_spec_reads_the_realization_and_writes_the_spec(self):
+        levels = self.levels(self.grant(["module.a"], "code-to-spec"))
+        self.assertEqual("ro", levels["src/a/"])
+        for path in self.own_documents("a"):
+            self.assertEqual("rw", levels[path], path)
+        writable = {path for path, level in levels.items() if level == "rw"}
+        self.assertEqual(self.own_documents("a"), writable)
+
     @verifies("scenario.spec.grant-multi-module")
     def test_several_modules_receive_the_union_at_the_highest_level(self):
         value = self.grant(["module.b", "module.a"], "specify")
@@ -210,7 +219,7 @@ class GrantTests(unittest.TestCase):
                     self.grant(modules, task_type)
                 self.assertEqual(code, raised.exception.code)
         self.assertEqual(before, sorted(str(p) for p in self.root.rglob("*")))
-        self.assertEqual(6, len(TASK_TYPES))
+        self.assertEqual(7, len(TASK_TYPES))
 
     @verifies("scenario.spec.grant-worktree")
     def test_a_grant_comes_from_the_worktree_it_names(self):
@@ -308,7 +317,7 @@ class GrantTests(unittest.TestCase):
             (error["code"], error["location"]["field"]),
         )
         self.assertIn("'plan'", error["message"])
-        self.assertIn("six task types", error["reason"])
+        self.assertIn("seven task types", error["reason"])
         self.assertIn("review-code", error["remediation"])
 
 

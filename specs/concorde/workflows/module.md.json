@@ -1,0 +1,202 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.workflows.module",
+    "owner": "module.workflows",
+    "role": "module"
+  },
+  "module": {
+    "title": "Workflows",
+    "owns": [
+      "specs/concorde/workflows/module.md",
+      "specs/concorde/workflows/requirements.md",
+      "specs/concorde/workflows/scenarios.md",
+      "specs/concorde/workflows/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks"
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.adoption",
+        "meaning": "#uses-adoption"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, whose workflow level this Module writes"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.workflows.workflow",
+      "type": "concept",
+      "title": "Workflow",
+      "meaning": "#concept.workflows.workflow"
+    },
+    {
+      "id": "concept.workflows.mode",
+      "type": "concept",
+      "title": "Workflow mode",
+      "meaning": "#concept.workflows.mode"
+    },
+    {
+      "id": "concept.workflows.decision-point",
+      "type": "concept",
+      "title": "Decision point",
+      "meaning": "#concept.workflows.decision-point"
+    },
+    {
+      "id": "concept.workflows.step",
+      "type": "concept",
+      "title": "Workflow step",
+      "meaning": "#concept.workflows.step"
+    },
+    {
+      "id": "concept.workflows.step-key",
+      "type": "concept",
+      "title": "Step key",
+      "meaning": "#concept.workflows.step-key"
+    },
+    {
+      "id": "concept.workflows.step-agent",
+      "type": "concept",
+      "title": "Step agent",
+      "meaning": "#concept.workflows.step-agent"
+    },
+    {
+      "id": "concept.workflows.script",
+      "type": "concept",
+      "title": "Workflow script",
+      "meaning": "#concept.workflows.script"
+    },
+    {
+      "id": "concept.workflows.result",
+      "type": "concept",
+      "title": "Workflow result",
+      "meaning": "#concept.workflows.result"
+    },
+    {
+      "id": "concept.workflows.brownfield",
+      "type": "concept",
+      "title": "Brownfield workflow",
+      "meaning": "#concept.workflows.brownfield"
+    },
+    {
+      "id": "realization.workflows.commands",
+      "type": "realization",
+      "title": "Workflow commands",
+      "meaning": "#realization.workflows.commands",
+      "entries": [
+        "src/concorde/workflows/__init__.py",
+        "src/concorde/workflows/catalog.py",
+        "src/concorde/workflows/cli.py",
+        "src/concorde/workflows/step.py",
+        "src/concorde/workflows/report.py"
+      ],
+      "pending": [
+        "src/concorde/workflows/__init__.py",
+        "src/concorde/workflows/catalog.py",
+        "src/concorde/workflows/cli.py",
+        "src/concorde/workflows/step.py",
+        "src/concorde/workflows/report.py"
+      ]
+    },
+    {
+      "id": "realization.workflows.scripts",
+      "type": "realization",
+      "title": "Workflow scripts",
+      "meaning": "#realization.workflows.scripts",
+      "entries": [
+        "src/concorde/workflows/scripts/"
+      ],
+      "pending": [
+        "src/concorde/workflows/scripts/"
+      ]
+    },
+    {
+      "id": "realization.workflows.tests",
+      "type": "realization",
+      "title": "Workflows tests",
+      "meaning": "#realization.workflows.tests",
+      "entries": [
+        "tests/concorde/workflows/"
+      ],
+      "pending": [
+        "tests/concorde/workflows/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "concept.workflows.workflow",
+      "verb": "runs",
+      "target": "concept.workflows.step"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workflows.workflow",
+      "verb": "runs in",
+      "target": "concept.workflows.mode"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workflows.step",
+      "verb": "is named by",
+      "target": "concept.workflows.step-key"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workflows.step-agent",
+      "verb": "runs",
+      "target": "concept.workflows.step"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workflows.script",
+      "verb": "defines",
+      "target": "concept.workflows.workflow"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workflows.workflow",
+      "verb": "ends with",
+      "target": "concept.workflows.result"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workflows.mode",
+      "verb": "decides what happens at",
+      "target": "concept.workflows.decision-point"
+    },
+    {
+      "type": "relates",
+      "source": "concept.workflows.brownfield",
+      "verb": "is a",
+      "target": "concept.workflows.workflow"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workflows.scripts",
+      "verb": "runs steps through",
+      "target": "realization.workflows.commands"
+    }
+  ],
+  "extensions": {}
+}

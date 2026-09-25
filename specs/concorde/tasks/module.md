@@ -19,7 +19,7 @@ never interprets the decision log; the main agent and its task sessions do all o
 | Term | Definition |
 | --- | --- |
 | Task | One unit of work of the main agent, made of a branch, a worktree checked out on it, a task record and a decision log. |
-| Task record | The JSON file in the primary worktree that holds a task's identity, goal, Modules, branch, worktree path, base commit, state, Operation runs, deliveries, escalated error chains and started task sessions. |
+| Task record | The JSON file in the primary worktree that holds a task's identity, goal, Modules, branch, worktree path, base commit, state, Operation runs, deliveries, escalated error chains, started task sessions and, when a workflow runs in the task, its steps and reports. |
 | Decision log | The Markdown file next to a task record in which the session working on the task writes the choices it made without the developer, and to which escalations are appended. |
 | Task state | The stage of a task's life: open, active, delivered, then closed when the task reached its goal (merged or completed) or failed when it did not. |
 | Merge lock | The lock of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task or closes one; the kernel releases it when that process ends. |
@@ -69,6 +69,12 @@ The Operation host updates the record through Tasks as a run starts, finishes, a
 commits, adding any `--modules` a run names, so it always lists every Module touched. A second run
 while one is going is refused with `task_busy`; one left `running` by a dead host process is marked
 `interrupted` at the next run.
+
+A task may also run a [workflow](../workflows/module.md), which presets the Operations it runs.
+Workflows then records in the task record the workflow's name, each step key with its run, and
+each report, and appends every report to the decision log. A task runs at most one workflow:
+a step naming another is refused with `workflow_conflict`, and a key already recorded for another
+Operation with `step_conflict`. Tasks keeps these entries but never interprets them.
 
 <a id="concept.tasks.decision-log"></a>
 

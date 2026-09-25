@@ -20,6 +20,7 @@ the main agent decides.
 | configure_workers | The Operation that lists the models the main session's program offers workers and changes a worktree's worker model configuration, with or without a task. |
 | Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, its worker roles, whether it needs a task, whether it may change the task worktree and the contract of its output. |
 | Operation host | The deterministic process started by `concorde run` that executes one Operation's step table for one task, or for none, and alone launches its workers, checks their work and writes its result. |
+| Detached run | A run whose host `concorde run --detach` starts as a process of its own, printing the run identity at once instead of waiting for the result. |
 | Operation progress file | The run's `status.json`, which the host keeps current with the Operation, task, current step and host process, and once finished with the status and summary. |
 | Operation result | The structured envelope an Operation returns to the main agent, holding its status, identities, summary, output, the worker result kept as claims, the host's own evidence and, when it is not ok, its error chain. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
@@ -51,7 +52,7 @@ The main agent runs an **Operation** for a [task](../tasks/module.md#concept.tas
 opened, as a background Bash command so it can keep working while it runs:
 
 ```text
-concorde run <operation> [--task <task-id>] [--modules <id>[,<id>…]] [--input <run-id>]… [operation arguments]
+concorde run <operation> [--task <task-id>] [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [operation arguments]
 ```
 
 `--modules` names the bound Modules (default: the task's) and adds any named here to the task;
@@ -59,6 +60,16 @@ concorde run <operation> [--task <task-id>] [--modules <id>[,<id>…]] [--input 
 arguments, such as `--goal` for `understand`. The command returns when the run ends; the main agent
 is woken by its exit and reads the printed Operation result, also saved under `.concorde/runs/`.
 No Operation needs the developer's consent.
+
+<a id="concept.operations.detached-run"></a>
+
+With `--detach` the command instead starts the host as a **detached run**, a process of its own
+that outlives the command, and prints the run identity and the path of its result once the run's
+progress file exists, then exits with status 0. Everything else about the run is the same: it
+checks and records the task, writes its progress file and its result, and a refusal still becomes
+its result. A caller that cannot wait for a long run in one command, such as a
+[workflow step](../workflows/module.md#concept.workflows.step), starts it this way and reads the
+result when it appears. A command line refused with status 2 starts nothing, detached or not.
 
 <a id="concept.operations.no-task"></a>
 
@@ -83,12 +94,17 @@ The **Operation catalog** of this version:
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | optional (`--base` without one) | no | review findings and a verdict |
 | `validate` | [Validation](validation/module.md) | none | none | required | no | [readiness](validation/module.md#concept.validation.readiness) |
 | `delivery` | [Delivery](delivery/module.md) | none | none | required | commits on the task branch | a [delivery commit](delivery/module.md#concept.delivery.delivery-commit) |
+| `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | optional | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
+| `scaffold` | [Adoption](adoption/module.md) | none | none | required | the surveyed Module's documents, the new child Modules' documents, the registry and configured checks | a [scaffold record](adoption/contracts.md#contract.adoption.scaffold-record) |
+| `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | required | Specs of the bound Modules | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
 | `configure_workers` | Operations | none | none | optional | the worktree's untracked [worker model configuration](../harness/workers/module.md#concept.workers.model-configuration) | the [worker configuration](contracts.md#contract.operations.worker-configuration) |
 
 A typical task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then
 `validate` and `delivery`, repeating or skipping steps as the results tell it. Without a task the
 main agent may run `understand` or a review to answer a question before any change is agreed, and
-`configure_workers` when the developer asks to choose worker models.
+`configure_workers` when the developer asks to choose worker models. For a project whose code came
+before its Specs, `survey`, `scaffold` and `code_to_spec` describe the code in Specs, usually run by
+the [brownfield workflow](../workflows/module.md).
 
 <a id="concept.operations.worker-role"></a>
 
@@ -192,6 +208,7 @@ operations: Operations {
   codereview: Code review
   validation: Validation
   delivery: Delivery
+  adoption: Adoption
 }
 ```
 
@@ -252,6 +269,7 @@ operations: Operations {
   codereview: Code review
   validation: Validation
   delivery: Delivery
+  adoption: Adoption
 }
 spec: Spec core
 harness: Harness {
@@ -303,6 +321,12 @@ it.
 
 **Delivery** provides `delivery`, the only Operation that runs Git commands that change the
 repository, committing the task worktree's changes once readiness is current.
+
+<a id="contains-adoption"></a>
+
+**Adoption** provides `survey`, `scaffold` and `code_to_spec`, the only Operations that describe
+existing code in Specs, for a project whose code came before them: a read-only survey proposes child
+Modules, the host scaffolds them, and `code-to-spec` workers describe each Module's code.
 
 <a id="uses-spec"></a>
 

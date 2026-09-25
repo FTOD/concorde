@@ -27,6 +27,10 @@
           "meaning": "#contains-tasks"
         },
         {
+          "target": "module.workflows",
+          "meaning": "#contains-workflows"
+        },
+        {
           "target": "module.operations",
           "meaning": "#contains-operations"
         },
@@ -440,6 +444,10 @@
         {
           "target": "module.delivery",
           "meaning": "#contains-delivery"
+        },
+        {
+          "target": "module.adoption",
+          "meaning": "#contains-adoption"
         }
       ],
       "uses": [
@@ -803,6 +811,10 @@
           ]
         },
         {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows"
+        },
+        {
           "target": "module.issues",
           "meaning": "#uses-issues",
           "relies_on": [
@@ -874,6 +886,10 @@
           "relies_on": [
             "concept.main-session.guidance"
           ]
+        },
+        {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows"
         }
       ],
       "includes": [
@@ -881,6 +897,88 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.workflows",
+      "title": "Workflows",
+      "entry": "specs/concorde/workflows/module.md",
+      "owns": [
+        "specs/concorde/workflows/module.md",
+        "specs/concorde/workflows/requirements.md",
+        "specs/concorde/workflows/scenarios.md",
+        "specs/concorde/workflows/contracts.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks"
+        },
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations"
+        },
+        {
+          "target": "module.adoption",
+          "meaning": "#uses-adoption"
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, whose workflow level this Module writes"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.adoption",
+      "title": "Adoption",
+      "entry": "specs/concorde/operations/adoption/module.md",
+      "owns": [
+        "specs/concorde/operations/adoption/module.md",
+        "specs/concorde/operations/adoption/requirements.md",
+        "specs/concorde/operations/adoption/scenarios.md",
+        "specs/concorde/operations/adoption/contracts.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations"
+        },
+        {
+          "target": "module.harness.workers",
+          "meaning": "#uses-workers"
+        },
+        {
+          "target": "module.harness.checks",
+          "meaning": "#uses-checks"
+        },
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec"
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []

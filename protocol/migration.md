@@ -96,3 +96,11 @@ To migrate, rewrite every Mermaid block. For a checked flowchart, draw each `con
 nesting, keep each `uses` edge as an unlabelled `->` between the two Modules, and keep each `relates`
 edge as `->` with its verb as label; drop styling, `accTitle` and `accDescr`. Rewrite an illustrative
 Mermaid block as `d2 illustrative`. Nothing else in a specification needs to change.
+
+## Version 13.1
+
+Version 13.1 adds a seventh task type and changes no document format. `code-to-spec` reads the bound
+Modules' code and writes their own documents, so that a project whose code came before its
+specification can describe what exists. It records behaviour as it is and reports every doubtful
+intent as an open question instead of writing it as a promise. Specifications need no change; a
+harness that does not offer the new task type loses nothing it had.

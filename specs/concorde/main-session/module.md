@@ -140,12 +140,26 @@ command runs in changes, so in the primary worktree only tasks opened later are 
 
 <a id="concept.main-session.no-task-operations"></a>
 
-**Questions without a task.** The guidance tells the main agent that `understand`, `spec_review`,
-`code_review` and `configure_workers` also run [without a
+**Questions without a task.** The guidance tells the main agent that `understand`, `survey`,
+`spec_review`, `code_review` and `configure_workers` also run [without a
 task](../operations/module.md#concept.operations.no-task), from the primary worktree only, and
 change no Spec or code, and that inside a task's worktree it always passes `--task`; it uses them for a question or a review that does not justify a task, such
 as understanding a Module before a change is agreed. In pi `concorde_run` takes the task as
 optional for them.
+
+**Workflows.** For a task that follows a known procedure the guidance tells the main agent to run
+its [workflow](../workflows/module.md#concept.workflows.workflow) instead of sequencing the
+Operations by hand: open the task, then start the workflow from the primary worktree, in Claude Code
+as the installed `/concorde-<name>` workflow and in pi through pi-subagents with the installed
+script, and stay in the primary worktree while it runs. The main agent asks the developer which
+[mode](../workflows/module.md#concept.workflows.mode) to use unless the developer already said;
+interactive suits a developer who is present, no-ask one who wants the result later. When a
+workflow ends `awaiting_decision`, the main agent puts every pending decision point to the developer
+at once, with its options and recommendation, writes the answers keyed by step key and starts the
+same workflow again. It reads the workflow result from the saved file, and treats it like an
+Operation result: it records it, reads every problem's chain, and merges a delivered task. The
+guidance names the brownfield workflow as the way to describe a project whose code came before its
+Specs, right after installation and initialization, and nowhere else.
 
 **Issues.** A problem the current task will not fix is worth an
 [Issue](../issues/module.md#concept.issues.issue) so it survives the task. Solving one is ordinary
@@ -236,14 +250,24 @@ mainsession -> workers
 tooling: Spec tooling {
   mcp: Spec MCP server
 }
+workflows: Workflows
 mainsession -> operations
 mainsession -> tasks
+mainsession -> workflows
 mainsession -> issues
 mainsession -> tooling.mcp
 ```
 
-The guidance describes how the main agent uses four providers; the installed skill and `CLAUDE.md`
+The guidance describes how the main agent uses its providers; the installed skill and `CLAUDE.md`
 block are its only way to reach a session.
+
+<a id="uses-workflows"></a>
+
+**Workflows** provides the [workflows](../workflows/module.md#concept.workflows.workflow) the main
+agent starts in a task, their modes and the [workflow
+result](../workflows/module.md#concept.workflows.result) it reads when one ends. The guidance
+relies on a workflow never opening, merging or closing a task and on its result keeping every
+Operation's chain whole, so that a workflow's end is handled like an Operation's.
 
 <a id="uses-operations"></a>
 

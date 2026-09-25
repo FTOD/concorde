@@ -29,6 +29,10 @@
         "meaning": "#contains-tasks"
       },
       {
+        "target": "module.workflows",
+        "meaning": "#contains-workflows"
+      },
+      {
         "target": "module.operations",
         "meaning": "#contains-operations"
       },

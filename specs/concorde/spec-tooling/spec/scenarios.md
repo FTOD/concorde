@@ -452,6 +452,14 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - THEN each lists `src/a/` as `ro` and A's Spec context as `ro`
 - BUT neither lists any path as `rw`
 
+### scenario.spec.grant-code-to-spec — Describing code reads it and writes the Spec
+
+- GIVEN Module A with a realization binding `src/a/`
+- WHEN a grant for task type `code-to-spec` and Module A is computed
+- THEN it lists `src/a/` as `ro` and A's own documents as `rw`
+- AND the documents A selects from other Modules as `ro`
+- BUT no implementation path as `rw`
+
 ### scenario.spec.grant-multi-module — Several Modules receive the union at the highest level
 
 - GIVEN Module A that uses Module B without `relies_on`

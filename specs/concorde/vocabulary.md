@@ -15,7 +15,7 @@ Concorde is new to you.
 | Worker | One headless Claude Code process that performs one bounded task of one task type under a frozen grant and reports only to the Operation host that launched it. |
 | Module | One cohesive responsibility of the software, with its own Spec; it need not be a package or directory. |
 | Spec | The documents in which a Module explains what it is for, how to use it, how it is designed and what it precisely promises. |
-| Task type | One of the six Protocol task types (understand, specify, implement, test, review-spec, review-code) that fixes the access level of every boundary set a task receives. |
+| Task type | One of the seven Protocol task types (understand, specify, implement, test, review-spec, review-code, code-to-spec) that fixes the access level of every boundary set a task receives. |
 | Context | Everything one worker may know: the union of its Spec context, implementation context, capability context and task context. |
 | Spec context | The read-only documents the bound Modules' declarations select: the Protocol's SpecContext of those Modules together with their ExternalContext. |
 | Implementation context | The code side of a worker's context: the names of the bound Modules' implementation files, and the contents of those files when the task type grants them. |
@@ -77,10 +77,12 @@ all.
 
 <a id="concept.concorde.task-type"></a>
 
-Every task has a **task type**. The Spec Protocol defines six of them and, for each, the access
+Every task has a **task type**. The Spec Protocol defines seven of them and, for each, the access
 level of every boundary set of the bound Modules: `understand` reads Specs and only the names of
 code files, `specify` may change the bound Modules' own documents, `implement` may change their
-code, `test` and `review-code` read their code, and `review-spec` reads their Specs.
+code, `test` and `review-code` read their code, and `review-spec` reads their Specs. The seventh,
+`code-to-spec`, reads their code and writes their own documents; it exists only for a project whose
+code came before its Specs, which Concorde otherwise never assumes.
 
 <a id="concept.concorde.context"></a>
 
@@ -99,7 +101,7 @@ read only. A provider's Specs arrive here instead of its code.
 
 The **implementation context** starts from the Protocol's ImplementationContext, the names of the
 files the bound Modules' realizations bind. Only when the task type grants it, as for
-`implement`, `test` and `review-code`, does it also carry the contents of the files in the bound
+`implement`, `test`, `review-code` and `code-to-spec`, does it also carry the contents of the files in the bound
 Modules' ImplementationScope; an `understand` worker sees only the names.
 
 <a id="concept.concorde.capability-context"></a>

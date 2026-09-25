@@ -1,0 +1,252 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.adoption.module",
+    "owner": "module.adoption",
+    "role": "module"
+  },
+  "module": {
+    "title": "Adoption",
+    "owns": [
+      "specs/concorde/operations/adoption/module.md",
+      "specs/concorde/operations/adoption/requirements.md",
+      "specs/concorde/operations/adoption/scenarios.md",
+      "specs/concorde/operations/adoption/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations"
+      },
+      {
+        "target": "module.harness.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.harness.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.adoption.survey",
+      "type": "concept",
+      "title": "Survey",
+      "meaning": "#concept.adoption.survey"
+    },
+    {
+      "id": "concept.adoption.decomposition",
+      "type": "concept",
+      "title": "Decomposition proposal",
+      "meaning": "#concept.adoption.decomposition"
+    },
+    {
+      "id": "concept.adoption.scaffold",
+      "type": "concept",
+      "title": "Scaffold",
+      "meaning": "#concept.adoption.scaffold"
+    },
+    {
+      "id": "concept.adoption.scaffold-record",
+      "type": "concept",
+      "title": "Scaffold record",
+      "meaning": "#concept.adoption.scaffold-record"
+    },
+    {
+      "id": "concept.adoption.code-to-spec",
+      "type": "concept",
+      "title": "Code to spec",
+      "meaning": "#concept.adoption.code-to-spec"
+    },
+    {
+      "id": "concept.adoption.spec-description",
+      "type": "concept",
+      "title": "Spec description",
+      "meaning": "#concept.adoption.spec-description"
+    },
+    {
+      "id": "concept.adoption.decision",
+      "type": "concept",
+      "title": "Decision",
+      "meaning": "#concept.adoption.decision"
+    },
+    {
+      "id": "concept.adoption.open-question",
+      "type": "concept",
+      "title": "Open question",
+      "meaning": "#concept.adoption.open-question"
+    },
+    {
+      "id": "concept.adoption.answers",
+      "type": "concept",
+      "title": "Answers",
+      "meaning": "#concept.adoption.answers"
+    },
+    {
+      "id": "concept.adoption.deviation",
+      "type": "concept",
+      "title": "Deviation",
+      "meaning": "#concept.adoption.deviation"
+    },
+    {
+      "id": "realization.adoption.survey",
+      "type": "realization",
+      "title": "Survey Operation",
+      "meaning": "#realization.adoption.survey",
+      "entries": [
+        "src/concorde/adoption/survey.py",
+        "prompts/workers/survey.md"
+      ],
+      "pending": [
+        "src/concorde/adoption/survey.py",
+        "prompts/workers/survey.md"
+      ]
+    },
+    {
+      "id": "realization.adoption.scaffold",
+      "type": "realization",
+      "title": "Scaffold Operation",
+      "meaning": "#realization.adoption.scaffold",
+      "entries": [
+        "src/concorde/adoption/scaffold.py"
+      ],
+      "pending": [
+        "src/concorde/adoption/scaffold.py"
+      ]
+    },
+    {
+      "id": "realization.adoption.code-to-spec",
+      "type": "realization",
+      "title": "Code to spec Operation",
+      "meaning": "#realization.adoption.code-to-spec",
+      "entries": [
+        "src/concorde/adoption/code_to_spec.py",
+        "prompts/workers/code-to-spec.md"
+      ],
+      "pending": [
+        "src/concorde/adoption/code_to_spec.py",
+        "prompts/workers/code-to-spec.md"
+      ]
+    },
+    {
+      "id": "realization.adoption.shared",
+      "type": "realization",
+      "title": "Adoption shared records",
+      "meaning": "#realization.adoption.shared",
+      "entries": [
+        "src/concorde/adoption/__init__.py",
+        "src/concorde/adoption/records.py"
+      ],
+      "pending": [
+        "src/concorde/adoption/__init__.py",
+        "src/concorde/adoption/records.py"
+      ]
+    },
+    {
+      "id": "realization.adoption.tests",
+      "type": "realization",
+      "title": "Adoption tests",
+      "meaning": "#realization.adoption.tests",
+      "entries": [
+        "tests/concorde/adoption/"
+      ],
+      "pending": [
+        "tests/concorde/adoption/"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "concept.adoption.survey",
+      "verb": "produces",
+      "target": "concept.adoption.decomposition"
+    },
+    {
+      "type": "relates",
+      "source": "concept.adoption.scaffold",
+      "verb": "applies",
+      "target": "concept.adoption.decomposition"
+    },
+    {
+      "type": "relates",
+      "source": "concept.adoption.scaffold",
+      "verb": "produces",
+      "target": "concept.adoption.scaffold-record"
+    },
+    {
+      "type": "relates",
+      "source": "concept.adoption.code-to-spec",
+      "verb": "produces",
+      "target": "concept.adoption.spec-description"
+    },
+    {
+      "type": "relates",
+      "source": "concept.adoption.decomposition",
+      "verb": "lists",
+      "target": "concept.adoption.decision"
+    },
+    {
+      "type": "relates",
+      "source": "concept.adoption.spec-description",
+      "verb": "lists",
+      "target": "concept.adoption.decision"
+    },
+    {
+      "type": "relates",
+      "source": "concept.adoption.spec-description",
+      "verb": "lists",
+      "target": "concept.adoption.open-question"
+    },
+    {
+      "type": "relates",
+      "source": "concept.adoption.answers",
+      "verb": "settle",
+      "target": "concept.adoption.open-question"
+    },
+    {
+      "type": "relates",
+      "source": "concept.adoption.answers",
+      "verb": "settle",
+      "target": "concept.adoption.decision"
+    },
+    {
+      "type": "relates",
+      "source": "realization.adoption.survey",
+      "verb": "validates proposals with",
+      "target": "realization.adoption.shared"
+    },
+    {
+      "type": "relates",
+      "source": "realization.adoption.scaffold",
+      "verb": "validates proposals with",
+      "target": "realization.adoption.shared"
+    },
+    {
+      "type": "relates",
+      "source": "realization.adoption.code-to-spec",
+      "verb": "validates answers with",
+      "target": "realization.adoption.shared"
+    }
+  ],
+  "extensions": {}
+}

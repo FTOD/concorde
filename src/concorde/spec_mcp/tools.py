@@ -40,6 +40,7 @@ TOOLS: dict[str, dict] = {
                         "test",
                         "review-spec",
                         "review-code",
+                        "code-to-spec",
                     ]
                 },
             },

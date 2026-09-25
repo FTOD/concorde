@@ -85,9 +85,18 @@ check the rendered guidance against them are pending.
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent needs to understand or review a Module without changing it
-- THEN it is told that `understand`, `spec_review`, `code_review` and `configure_workers` may run without `--task` from the primary worktree
+- THEN it is told that `understand`, `survey`, `spec_review`, `code_review` and `configure_workers` may run without `--task` from the primary worktree
 - AND that such a run changes no Spec or code
 - BUT every change still runs in a task, and inside a task's worktree it always passes `--task`
+
+### scenario.main-session.brownfield — The guidance adopts existing code through the brownfield workflow
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent has just initialized a project whose code came before its Specs
+- THEN it is told to open a task bound to the root Module and run the brownfield workflow in it from the primary worktree
+- AND to ask the developer for interactive or no-ask mode unless the developer already said
+- AND to put every pending decision point to the developer when the workflow ends `awaiting_decision`, then start the workflow again with the answers keyed by step key
+- AND to read the saved workflow result like an Operation result and merge the delivered task
 
 ## Escalation
 

@@ -13,7 +13,7 @@ Concorde fixes on top of it.
 {
   "profile_version": 17,
   "registry": ".concorde/specs.json",
-  "protocol": {"version": "13.0.0", "digest": "sha256:<64 hex digits>"},
+  "protocol": {"version": "13.1.0", "digest": "sha256:<64 hex digits>"},
   "checks": [
     {"id": "check.spec.model", "module": "module.spec",
      "argv": ["{python}", "-m", "pytest", "tests/concorde/spec"],
@@ -290,7 +290,7 @@ below; its message names the offending value, for `unknown_module` also every re
 | Code | When |
 | --- | --- |
 | `invalid_input` | the Module list is empty or repeats a Module |
-| `invalid_task_type` | the task type is none of the six |
+| `invalid_task_type` | the task type is none of the seven |
 | `unknown_module` | a Module identity is not registered |
 | `shared_file` | an `rw` entry covers a file that a Module outside `modules` also binds; the message names each such file and Module |
 
@@ -563,7 +563,7 @@ proposal fails with `stale_proposal`, and a validation error rolls every file ba
 ```json
 {
   "schema_version": 1,
-  "version": "13.0.0",
+  "version": "13.1.0",
   "source_profile": 15,
   "workspace_protocol": 16,
   "assets": [{"path": "generated/protocol/principles.md", "digest": "sha256:<64 hex digits>"}]

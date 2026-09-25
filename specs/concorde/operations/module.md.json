@@ -38,6 +38,10 @@
       {
         "target": "module.delivery",
         "meaning": "#contains-delivery"
+      },
+      {
+        "target": "module.adoption",
+        "meaning": "#contains-adoption"
       }
     ],
     "uses": [
@@ -118,6 +122,12 @@
       "type": "concept",
       "title": "Operation result",
       "meaning": "#concept.operations.result"
+    },
+    {
+      "id": "concept.operations.detached-run",
+      "type": "concept",
+      "title": "Detached run",
+      "meaning": "#concept.operations.detached-run"
     },
     {
       "id": "concept.operations.progress-file",

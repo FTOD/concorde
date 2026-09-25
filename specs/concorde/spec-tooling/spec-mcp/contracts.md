@@ -31,7 +31,7 @@ argument as `field`, the path or identity concerned), the reason, the remediatio
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
-| `boundary` | `modules`: nonempty array of Module identities; `task_type`: one of the six task types | the boundary result below |
+| `boundary` | `modules`: nonempty array of Module identities; `task_type`: one of the seven task types | the boundary result below |
 | `modules` | none | `{"modules": [{"id", "title", "entry", "parent"}]}` in registry order; `parent` is `null` for a root |
 | `module` | `id`: a Module identity | `{"id", "title", "entry", "documents", "contains", "uses", "includes", "participates", "realizations", "checks"}`, where `realizations` lists `{"id", "title", "entries", "pending"}` and `checks` the configured check identities |
 | `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources"}`, with Spec core's source records for the Module, or for the scenario's owner |

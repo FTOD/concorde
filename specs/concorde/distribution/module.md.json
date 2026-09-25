@@ -36,6 +36,10 @@
         "relies_on": [
           "concept.main-session.guidance"
         ]
+      },
+      {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows"
       }
     ],
     "includes": [

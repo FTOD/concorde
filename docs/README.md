@@ -18,8 +18,9 @@ New here? Start with **[Using Concorde](using-concorde.md)**.
 - **Read complete Module specifications.** Module documents explain purpose, terminology, use,
   design and relationships for a reader who does not know the code. Implementation documents hold
   the precise requirements, scenarios and contracts, and tests declare the scenarios they verify.
-- **Grants computed from the Specs.** The Spec Protocol defines six task types — `understand`,
-  `specify`, `implement`, `test`, `review-spec`, `review-code` — and the access level each gives
+- **Grants computed from the Specs.** The Spec Protocol defines seven task types — `understand`,
+  `specify`, `implement`, `test`, `review-spec`, `review-code`, and `code-to-spec` for describing
+  code written before its Specs — and the access level each gives
   every boundary set. A grant lists every path a task may know by name, read or write; everything
   else is denied.
 - **Workers fenced by their own settings.** Each worker is a headless `claude -p` process with

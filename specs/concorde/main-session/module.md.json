@@ -42,6 +42,10 @@
         ]
       },
       {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows"
+      },
+      {
         "target": "module.issues",
         "meaning": "#uses-issues",
         "relies_on": [

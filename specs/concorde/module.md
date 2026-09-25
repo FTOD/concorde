@@ -7,7 +7,8 @@ Specs. Spec tooling checks and publishes those Specs and computes what a task ma
 Operations carry out bounded jobs, assessing, specifying, implementing, testing, reviewing,
 validating and delivering, under Spec-derived permissions, and the main agent stays in charge: it
 splits work into tasks, carries each out inside its worktree or hands it to a task session, and
-merges what is delivered. Concorde never chooses the
+merges what is delivered. For a recurring kind of task, a workflow presets the Operations the task
+runs, such as the brownfield workflow that describes an existing codebase in Specs. Concorde never chooses the
 developer's direction or repairs a Spec on its own. The main agent and the workers run on Claude
 Code or on pi.
 
@@ -51,6 +52,17 @@ the chain, and the main agent adds its link above that when the developer must d
 | `concorde spec-mcp` | let an agent query Modules, context and grants over MCP | [Spec MCP server](spec-tooling/spec-mcp/module.md) |
 | `concorde task` | open, list and close tasks, start task sessions, escalate | [Tasks](tasks/module.md) |
 | `concorde run` | run one Operation in a task worktree | [Operations](operations/module.md) |
+| `concorde workflow` | run the steps of a workflow in a task and report its result | [Workflows](workflows/module.md) |
+
+Some tasks follow a known procedure. A [workflow](workflows/module.md) is such a preset task: the
+main agent opens a task as usual and starts a workflow in it, which runs the task's Operations in a
+fixed order, one at a time, and returns one workflow result. In **interactive** mode it ends at each
+point that needs the developer's decision, so the main agent can ask right away and start it again
+with the answers; in **no-ask** mode it decides those points itself, keeps going and reports every
+decision and problem at the end. The first workflow is `brownfield`: after installation and
+initialization of a project whose code came before any Spec, it surveys the code, scaffolds child
+Modules, describes each Module's code in its Spec with `code_to_spec`, reviews and validates the
+result and delivers it.
 
 ## Design
 
@@ -58,6 +70,14 @@ The Spec, not the code, is the shared source of truth between the developer and 
 other choice follows from making that safe: what a worker may read and write is computed from the
 Specs, a worker's answer is checked by the host rather than trusted, and a missing promise stops
 work instead of being inferred from code.
+
+Concorde's normal flow is therefore Spec first: a promise is written, then realized. Only a project
+whose code came before its Specs is described the other way round, and only through one explicit
+route, the Protocol's `code-to-spec` task type, which the
+[Adoption](operations/adoption/module.md) Operations use. It writes down the behaviour it reads as
+it is, never changes code, and turns every behaviour whose intent the code does not settle into an
+open question for the developer rather than a promise. Once a Module is described, work on it is
+Spec first again.
 
 The developer decides. The main agent has the global view and the developer's trust, so Concorde
 does not restrict it, but it changes the project only inside a task worktree. Workers are the
@@ -136,13 +156,14 @@ than carry the framework's function, so the [Relationships](#relationships) diag
 
 ## Relationships
 
-The root is the composition of seven child Modules; each one's own entry draws what it uses:
+The root is the composition of eight child Modules; each one's own entry draws what it uses:
 
 ```d2
 root: Concorde Framework {
   spectooling: Spec tooling
   harness: Harness
   tasks: Tasks
+  workflows: Workflows
   operations: Operations
   issues: Issues
   mainsession: Main session
@@ -165,6 +186,12 @@ records — so a worker's answer stays a proposal until the host has checked it.
 
 **Tasks** keeps each task's branch, worktree, record and decision log, so several can run side by
 side without their changes mixing.
+
+<a id="contains-workflows"></a>
+
+**Workflows** presets tasks that follow a known procedure: a workflow runs a fixed sequence of
+Operations in one task, in interactive or no-ask mode, and reports one result with every decision
+and problem, keeping each Operation's error chain whole.
 
 <a id="contains-operations"></a>
 
