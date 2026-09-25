@@ -1,0 +1,50 @@
+{
+  "task": "contract-schema-subset",
+  "goal": "State the JSON Schema keywords a contract may use in the Protocol and the Spec-writing worker prompt",
+  "modules": [
+    "module.spec",
+    "module.harness.workers"
+  ],
+  "sequence": 1,
+  "base_commit": "8caf17d8080864c10cdf2b6764599990d6e85731",
+  "parent_commit": "243259d230709cfb2e73f9fae114e9a4efede63d",
+  "readiness": {
+    "run_id": "r-20260925T164509-delivery-f89a9099",
+    "input_digest": "sha256:8bd0a2dce9f703d6ea9d41e949a626f01743a304fcc8e9c57f5c2b011a2be4e5",
+    "modules": [
+      "module.harness.workers",
+      "module.spec"
+    ],
+    "checks": [
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:f28b4302801ca85a35bdb0010c0f32ae308367bcf2aab7d5b13a5e40f8dadd85"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:7873dfe2053e7a80116186fd257713b8635dc2a9c742c29104ca235421a583b6"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T164459-validate-36fbf73d",
+      "operation": "validate",
+      "modules": [
+        "module.spec",
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:bd58f39c03c78c12a10a782362169ee682d9056c353001f46c22488dbb8e252c"
+    }
+  ],
+  "created_at": "2026-09-25T16:45:19Z"
+}
