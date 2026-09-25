@@ -1,0 +1,95 @@
+{
+  "task": "mixed-worker-backends",
+  "goal": "Let the worker backend (claude or pi) be configured per worktree in worker-models.json (default, per Operation, per role) independently of the main session's program, falling back to the main session's program; configured only through the config file; refused with a detailed reason when the chosen program is not installed",
+  "modules": [
+    "module.concorde",
+    "module.harness.workers",
+    "module.operations",
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "67f57f34515632add12aa1e54ca48a610f06a058",
+  "parent_commit": "a31f4949cccecb51650d4c4170f061182581dfa7",
+  "readiness": {
+    "run_id": "r-20260925T190422-delivery-28f4d35b",
+    "input_digest": "sha256:0b9986f3764859b19b04d1fa6724626bedbf1c158d39e7ec0bcd1e9ccf90df4f",
+    "modules": [
+      "module.concorde",
+      "module.harness.workers",
+      "module.main-session",
+      "module.operations"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:11b3591bf5b0368092f5037d70e75c5973f6db00345b0e5beef0dff374ab2cd8"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:2dd6974906e2547fe91bea710c87d1f974812ff7653a829aade49a76c01191c6"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:9aca87dcc038f1865e3cea79b6d36d11e8648919ccbb41f2f753e745bacf8a93"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:562594542d3207e4dd57bf28b18e08a6f808476d6c92d84e5b27588d0ff73847"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T190304-configure_workers-78dcc344",
+      "operation": "configure_workers",
+      "modules": [
+        "module.concorde",
+        "module.harness.workers",
+        "module.operations",
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "configure_workers finished for module.concorde, module.harness.workers, module.operations, module.main-session.",
+      "worker_runs": [],
+      "result_digest": "sha256:c0cdb6539be286ca9fae92f527c6e3f925091aef90e4af735e54175e3715f6ff"
+    },
+    {
+      "run_id": "r-20260925T190310-understand-32f5c2d8",
+      "operation": "understand",
+      "modules": [
+        "module.harness.workers"
+      ],
+      "status": "ok",
+      "summary": "understand finished for module.harness.workers.",
+      "worker_runs": [
+        "w-20260925T190310-fb95ac"
+      ],
+      "result_digest": "sha256:dd175acdd56374b11b608a68c04a7b58fb07efc65220616a96c18d2c7e9d0e42"
+    },
+    {
+      "run_id": "r-20260925T190354-validate-09f581c4",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness.workers",
+        "module.operations",
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:153b2a34bded163bbfed0d3d1681d6a6ccff9fb422ec5b99de197d1bd7f1e5c8"
+    }
+  ],
+  "created_at": "2026-09-25T19:04:44Z"
+}

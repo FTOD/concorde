@@ -176,6 +176,11 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn(
             "change the models workers use only when the developer asks", self.block
         )
+        self.assertIn(
+            "unless the worktree's `.concorde/worker-models.json`", self.skill
+        )
+        self.assertIn("edit the `backend` section of the file yourself", self.skill)
+        self.assertIn("Both programs must be installed", self.skill)
 
     @verifies("scenario.main-session.no-task-operations")
     def test_questions_and_reviews_may_run_without_a_task(self):

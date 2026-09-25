@@ -57,6 +57,13 @@ LISTING = {
     },
     "effective": {
         "understand": {"worker": chosen("anthropic/claude-sonnet-5", "low")},
+        "implement": {
+            "worker": dict(
+                chosen(None, None, "the backend's own default"),
+                backend="claude",
+                backend_source="backend.operations.implement.default",
+            )
+        },
         "spec_review": {
             "reviewer": chosen("anthropic/claude-sonnet-5", "low"),
             "checker": chosen(

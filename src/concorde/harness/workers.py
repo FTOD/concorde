@@ -79,6 +79,8 @@ class WorkerRequest:
     claude: str | None = None
     credentials: Path | None = None
     backend: str = "claude"
+    # What chose the backend (a configuration entry or the main session's variable), recorded only.
+    backend_source: str | None = None
     # The reasoning level: Claude Code's --effort, pi's --thinking.
     reasoning: str | None = None
     # The Operation and worker role the model was chosen for, recorded only.
@@ -318,6 +320,7 @@ def run_worker(request: WorkerRequest) -> dict:
         "run_id": run_id,
         "task_type": request.task_type,
         "backend": request.backend,
+        "backend_source": request.backend_source,
         "operation": request.operation,
         "role": request.role,
         "model": request.model,

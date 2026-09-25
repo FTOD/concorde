@@ -249,8 +249,8 @@ without pi-subagents. The view only observes: the Operation keeps running if you
 
 ### Choose the worker models
 
-Workers run on the program you talk to: a Claude Code main agent gets Claude Code workers, a pi
-main agent pi workers. Mixing the two is not supported yet. Which model and reasoning level they
+Workers run on the program you talk to unless you choose otherwise: a Claude Code main agent gets
+Claude Code workers, a pi main agent pi workers. Which model and reasoning level they
 use is yours to choose, for every worker or for one Operation's workers, such as a cheaper model
 for `implement` or a different one for `spec_review`'s checker; ask the main agent to change the
 worker models.
@@ -291,6 +291,23 @@ concorde run configure_workers --operation spec_review --role checker --reasonin
 concorde run configure_workers --operation implement --unset
 concorde run configure_workers --task retry          # one task's own copy
 ```
+
+To run some workers on the other program, such as pi workers under a Claude Code main agent, add
+a `backend` section to the same file (by hand, or ask the main agent to): a `default` for every
+worker, and per Operation a `default` and `roles`. The most specific entry wins, and a worker it
+does not cover runs on the program you talk to. Both programs must be installed; a worker whose
+program is missing fails with `backend_missing` instead of running on the other one.
+
+```json
+{
+  "schema_version": 2,
+  "backend": { "operations": { "implement": { "default": "pi" } } },
+  "pi": { "operations": { "implement": { "model": "local-openai/gpt-6" } } }
+}
+```
+
+`configure_workers --operation implement` then lists and changes the models of the program
+`implement` runs on; `--backend claude` or `--backend pi` names a program explicitly.
 
 The reasoning level is passed as `--effort` to Claude Code and as `--thinking` to pi. A pi worker
 uses copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.

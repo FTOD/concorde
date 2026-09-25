@@ -252,12 +252,13 @@ merged with the fix; `concorde issues reopen` reopens one that came back.
 
 ## Worker models
 
-Workers run on your own agent program: Claude Code workers when you are a Claude Code session, pi
-workers when you are a pi session. A main session of one program with workers of the other is not
-supported in this version. The model and reasoning level each worker uses come from the worktree's
-`.concorde/worker-models.json`: for each program a default, optional entries per Operation and,
-for an Operation with several workers, per worker role (such as `spec_review`'s `reviewer` and
-`checker`); the most specific entry that sets a field wins. Git ignores the file.
+Workers run on your own agent program unless the worktree's `.concorde/worker-models.json` chooses
+another: Claude Code workers when you are a Claude Code session, pi workers when you are a pi
+session, and the program its `backend` section names for every worker, an Operation's workers or
+one worker role otherwise. The model and reasoning level each worker uses come from the same file:
+for each program a default, optional entries per Operation and, for an Operation with several
+workers, per worker role (such as `spec_review`'s `reviewer` and `checker`); the most specific entry
+that sets a field wins, in the section of the program the worker runs on. Git ignores the file.
 `concorde task open` copies the primary worktree's file into the new task worktree, so a task
 keeps the configuration it started with, and a later change in the primary worktree never reaches
 it. Without a file, workers use the program's own default model.
@@ -288,9 +289,29 @@ Let the developer make the choice:
   `--allow-unlisted`. Apply each answer with `configure_workers` and show the developer the
   resulting `effective` table.
 
+When the developer asks to run some workers on the other program, edit the `backend` section of
+the file yourself — it is the only part you write by hand, and no command changes it — then run
+`configure_workers` to validate the file and show the developer the resulting `effective` table:
+
+```json
+{
+  "schema_version": 2,
+  "backend": {
+    "default": "pi",
+    "operations": {"spec_review": {"default": "claude", "roles": {"checker": "pi"}}}
+  }
+}
+```
+
+The most specific entry wins (the role's, the Operation's `default`, the section's `default`), and
+without one a worker runs on your program. Both programs must be installed: a worker whose chosen
+program is missing ends `failed` with `backend_missing` rather than running on the other one.
+`configure_workers --operation <op>` without `--backend` changes the models of the program that
+Operation's workers run on; the pi picker offers only workers that run on pi.
+
 A refused change ends `failed` with the Workers link naming the value and what is listed. An
 Operation whose worker cannot be configured ends `failed` with `worker_model_unavailable`, naming
-the file or the missing client.
+the file, the missing client or the missing program.
 
 ## Spec queries
 

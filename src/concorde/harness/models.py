@@ -8,9 +8,10 @@ the primary worktree never reach an existing task, and a task's copy changes onl
 names it. For each backend it holds a default and optional entries per Operation, each of which
 may hold entries per worker role; the most specific entry that sets a field wins, field by field.
 
-The backend is not configured: workers run on the agent program of the main session that started
-the run (``client``), Claude Code or pi. Mixing a main session of one with workers of the other is
-future work.
+The file's ``backend`` section may choose the agent program, Claude Code or pi, of every worker, of
+an Operation's workers or of one worker role; the most specific entry wins, and without one a
+worker runs on the program of the main session that started the run (``client``). A chosen program
+must be installed, and a worker never falls back to the other one. The section is edited by hand.
 
 This module knows no Operation names; the ``configure_workers`` Operation checks them against the
 catalog and changes the file through ``set_choice`` and ``unset_choice``.
@@ -82,12 +83,32 @@ BACKEND_SCHEMA = {
         "operations": {"type": "object", "additionalProperties": OPERATION_SCHEMA},
     },
 }
+PROGRAM = {"enum": list(CLIENTS)}
+CHOICE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "default": PROGRAM,
+        "operations": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "default": PROGRAM,
+                    "roles": {"type": "object", "additionalProperties": PROGRAM},
+                },
+            },
+        },
+    },
+}
 SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "required": ["schema_version"],
     "properties": {
         "schema_version": {"const": SCHEMA_VERSION},
+        "backend": CHOICE_SCHEMA,
         **{name: BACKEND_SCHEMA for name in CLIENTS},
     },
 }
@@ -126,8 +147,9 @@ def detect_client(environ=None) -> tuple[str, str]:
     raise ModelConfigError(
         "client_unknown",
         "the command was not started from a Claude Code or pi main session: CONCORDE_CLIENT is "
-        "unset, CLAUDECODE is not 1 and neither PI_SESSION_ID nor PI_CODING_AGENT is set. Workers "
-        "run on the main session's own agent program, so it must be known",
+        "unset, CLAUDECODE is not 1 and neither PI_SESSION_ID nor PI_CODING_AGENT is set. A worker "
+        "whose program the backend section of .concorde/worker-models.json does not choose runs on "
+        "the main session's own agent program, so it must be known",
     )
 
 
@@ -192,6 +214,52 @@ def selection(config: dict, backend: str, operation: str, role: str) -> dict:
             "the backend's own default",
         )
     return chosen
+
+
+def configured_backend(
+    config: dict, operation: str | None, role: str | None
+) -> tuple[str, str] | None:
+    """The program the file's ``backend`` section chooses for one worker role of an Operation, for
+    an Operation's workers (``role`` None) or for every worker (``operation`` None), and the entry
+    that chose it; None when no entry does."""
+    section = config.get("backend") or {}
+    layers = []
+    if operation is not None:
+        entry = (section.get("operations") or {}).get(operation) or {}
+        if role is not None:
+            layers.append(
+                (
+                    (entry.get("roles") or {}).get(role),
+                    f"backend.operations.{operation}.roles.{role}",
+                )
+            )
+        layers.append((entry.get("default"), f"backend.operations.{operation}.default"))
+    layers.append((section.get("default"), "backend.default"))
+    return next(((value, where) for value, where in layers if value), None)
+
+
+def worker_backend(
+    config: dict, operation: str, role: str, environ=None
+) -> tuple[str, str]:
+    """The program one worker role of an Operation runs on, and what chose it.
+
+    A program the file chooses must be installed; otherwise it is the main session's program.
+    """
+    environ = os.environ if environ is None else environ
+    chosen = configured_backend(config, operation, role)
+    if chosen is None:
+        return detect_client(environ)
+    backend, where = chosen
+    if _program(backend, environ) is None:
+        variable = "CONCORDE_CLAUDE" if backend == "claude" else "CONCORDE_PI"
+        raise ModelConfigError(
+            "backend_missing",
+            f"{where} chooses {backend} for the {role} worker of {operation}, but the {backend} "
+            f"command is not installed: it is not on PATH and {variable} does not name an "
+            "executable. A worker runs only on the program its configuration chooses and never "
+            "falls back to the other one",
+        )
+    return backend, where
 
 
 def inherit(primary: Path, worktree: Path) -> str | None:
@@ -400,10 +468,12 @@ def candidates(backend: str, environ=None) -> dict:
 HANDLING = {
     "client_unknown": (
         "input",
-        "workers run on the main session's agent program, and nothing names which one it is",
+        "a worker whose program the configuration does not choose runs on the main session's "
+        "agent program, and nothing names which one it is",
         [
             "run the Operation from the Claude Code or pi main session",
             "set CONCORDE_CLIENT to claude or pi",
+            "choose the program in the backend section of .concorde/worker-models.json",
         ],
     ),
     "invalid_client": (
@@ -414,7 +484,11 @@ HANDLING = {
     "backend_missing": (
         "environment",
         "agent programs are not installed by Concorde; the machine must provide the command",
-        ["install the agent program, or set CONCORDE_CLAUDE or CONCORDE_PI"],
+        [
+            "install the agent program, or set CONCORDE_CLAUDE or CONCORDE_PI",
+            "remove the entry of the backend section of .concorde/worker-models.json that "
+            "chooses it",
+        ],
     ),
     "discovery_failed": (
         "environment",
@@ -535,6 +609,7 @@ __all__ = [
     "candidates",
     "check_choice",
     "config_path",
+    "configured_backend",
     "detect_client",
     "inherit",
     "load",
@@ -542,4 +617,5 @@ __all__ = [
     "selection",
     "set_choice",
     "unset_choice",
+    "worker_backend",
 ]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import signal
+import sys
 import threading
 import time
 import unittest
@@ -12,13 +13,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
-from concorde.harness import models
+from concorde.harness import models, pi_backend
 from concorde.operations import catalog
 from concorde.operations.host import RESULT_SCHEMA, UsageError
 from concorde.operations.provider import Continue, Provider, evidence
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import store
+from tests.concorde.harness.workers.test_pi import FAKE as FAKE_PI
+from tests.concorde.harness.workers.test_pi import fake_which
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -163,6 +166,79 @@ class HostTests(unittest.TestCase):
         argv = self.launched(envelope)
         self.assertEqual("opus", argv[argv.index("--model") + 1])
 
+    def fake_pi(self) -> dict:
+        """A fake ``pi``, sandbox-runtime and pi configuration, as the variables naming them."""
+        base = self.project.base
+        pi = base / "pi"
+        pi.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FAKE_PI}" "$@"\n')
+        pi.chmod(0o755)
+        runtime = base / "sandbox-runtime"
+        (runtime / "dist").mkdir(parents=True)
+        (runtime / "dist/index.js").write_text("export {};\n")
+        agent = base / "pi-agent"
+        agent.mkdir()
+        (agent / "auth.json").write_text('{"local": {"key": "k"}}')
+        (agent / "models.json").write_text('{"providers": {}}')
+        which = patch.object(pi_backend, "which", side_effect=fake_which)
+        which.start()
+        self.addCleanup(which.stop)
+        return {
+            "CONCORDE_PI": str(pi),
+            "CONCORDE_SANDBOX_RUNTIME": str(runtime),
+            "PI_CODING_AGENT_DIR": str(agent),
+        }
+
+    @verifies("scenario.operations.worker-backend-configured")
+    def test_a_claude_code_main_session_runs_a_pi_worker(self):
+        environ = self.fake_pi()
+        (self.worktree / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "backend": {"operations": {"implement": {"default": "pi"}}},
+                    "pi": {"operations": {"implement": {"model": "local/fast"}}},
+                }
+            )
+        )
+        status, envelope = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan([{}]),
+            client="claude",
+            environ=environ,
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        record = self.worker_record(envelope)
+        self.assertEqual(
+            ("pi", "backend.operations.implement.default", "local/fast"),
+            (record["backend"], record["backend_source"], record["model"]),
+        )
+        argv = self.launched(envelope)
+        self.assertEqual("local/fast", argv[argv.index("--model") + 1])
+        self.assertIn("--no-extensions", argv)
+        [shown] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "worker-model"
+        ]
+        self.assertEqual("pi", shown["ref"])
+        self.assertIn("backend.operations.implement.default", shown["detail"])
+        status, envelope = self.project.run(
+            "spec_review",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan([{}]),
+            client="claude",
+            environ=environ,
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        record = self.worker_record(envelope)
+        self.assertEqual(
+            ("claude", "CONCORDE_CLIENT=claude"),
+            (record["backend"], record["backend_source"]),
+        )
+
     @verifies("scenario.operations.no-task")
     def test_a_run_without_a_task_works_on_its_own_worktree(self):
         before = store.load_task(self.root, "t1")
@@ -258,6 +334,31 @@ class HostTests(unittest.TestCase):
         [cause] = envelope["error"]["causes"]
         self.assertEqual("config_invalid", cause["code"])
         self.assertIn(str(self.worktree / models.CONFIG), cause["detail"])
+        (self.worktree / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "backend": {"operations": {"implement": {"default": "pi"}}},
+                }
+            )
+        )
+        status, envelope = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan([{}]),
+            environ={"CONCORDE_PI": str(self.project.base / "nowhere")},
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual("worker_model_unavailable", envelope["error"]["code"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("backend_missing", cause["code"])
+        self.assertEqual("environment", cause["unhandled"]["reason"])
+        self.assertIn("backend.operations.implement.default", cause["detail"])
+        self.assertIn("CONCORDE_PI", cause["detail"])
+        validate(envelope["error"], ERROR_SCHEMA)
 
     def saved(self, envelope):
         return json.loads(

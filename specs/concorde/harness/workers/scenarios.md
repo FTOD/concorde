@@ -178,13 +178,22 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ## Worker models
 
-### scenario.workers.backend-from-client — Workers run on the main session's program
+### scenario.workers.backend-from-client — Workers run on the main session's program unless configured
 
-- GIVEN a command started from a Claude Code session, one started from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and one started from neither
+- GIVEN a worktree whose worker model configuration has no `backend` section, and a command started from a Claude Code session, one started from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and one started from neither
 - WHEN each resolves the worker backend
 - THEN the first resolves `claude` from `CLAUDECODE=1` and the second `pi` from `CONCORDE_CLIENT`
 - AND the third is refused with `client_unknown`, naming every variable it looked at and how to set one
 - BUT a `CONCORDE_CLIENT` naming neither program is refused with `invalid_client`
+
+### scenario.workers.backend-configured — The configuration may choose another program than the main session's
+
+- GIVEN a command started from a Claude Code session, both programs installed, and a worker model configuration whose `backend` section chooses `pi` as its default and `claude` for `spec_review`'s `checker`
+- WHEN the backends of `implement`'s worker and of `spec_review`'s `reviewer` and `checker` are resolved
+- THEN `implement` and the reviewer resolve `pi` from `backend.default` and the checker `claude` from its role's entry, each naming the entry it came from
+- AND each worker's model and level are resolved in the section of its own backend
+- AND the same configuration resolved outside any main session gives the same backends, since a configured backend does not need the main session's program to be known
+- BUT when the `pi` command is not installed, a worker whose resolved backend is `pi` is refused with `backend_missing`, naming the entry that chose `pi` and the command it looked for, and never runs on Claude Code instead
 
 ### scenario.workers.models-listed — The installed program's models are the candidates
 
