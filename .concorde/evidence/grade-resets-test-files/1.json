@@ -1,0 +1,34 @@
+{
+  "task": "grade-resets-test-files",
+  "goal": "e2e grade resets the files the test patch touches to the case's base commit before applying it, as SWE-bench does",
+  "modules": [
+    "module.e2e"
+  ],
+  "sequence": 1,
+  "base_commit": "287f883da8905d719ba2d2d2c07a230a8509f1cf",
+  "parent_commit": "43f12c999f4474133190c894a7f0b04cc563df9f",
+  "readiness": {
+    "run_id": "r-20260925T171210-delivery-82fddf6d",
+    "input_digest": "sha256:628494d121307923e3af3afaccbdf0d2c9c948e1bd3a00f8fecfa3902c293a3e",
+    "modules": [
+      "module.e2e"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T171208-validate-62a8c894",
+      "operation": "validate",
+      "modules": [
+        "module.e2e"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:4d3ba8759248cef7c2b2552261f87e8548a6fc53578e6d9b01e02dc8defff1a6"
+    }
+  ],
+  "created_at": "2026-09-25T17:12:12Z"
+}
