@@ -540,8 +540,8 @@ When the project already has files, the metadata defines one realization,
 segment of the root Module's identity. Its entries cover every file that version control tracks or
 leaves untracked without ignoring, except the proposed document members, files under `.concorde/`,
 generated and build outputs, and paths inside submodules. A file directly under the project root is
-an exact entry; a top-level directory is one directory entry, unless it holds a document member, in
-which case its files are exact entries, as are files the exclusion rule would skip. The entry
+an exact entry; a top-level directory is one directory entry, unless it holds a document member or a file of
+the Concorde installation, in which case its files are exact entries, as are files the exclusion rule would skip. The entry
 explains this realization and says it promises nothing about the files. A project with no files
 gets no realization.
 

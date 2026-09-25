@@ -197,7 +197,9 @@ def existing_files(root: Path, documents: set[str]) -> list[str]:
         if (
             rest
             and bound_by(directory, path)
-            and not any(member.startswith(directory) for member in documents)
+            and not any(
+                member.startswith(directory) for member in (*documents, *installed)
+            )
         ):
             entries.add(directory)
         else:

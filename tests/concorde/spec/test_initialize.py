@@ -105,6 +105,7 @@ class InitialModuleTests(unittest.TestCase):
                 "app.py": "print('app')\n",
                 "CLAUDE.md": "# Rules\n",
                 ".claude/skills/concorde/SKILL.md": "---\nname: concorde\n---\n",
+                ".claude/settings.json": "{}\n",
             }.items():
                 (root / path).parent.mkdir(parents=True, exist_ok=True)
                 (root / path).write_text(content)
@@ -133,6 +134,9 @@ class InitialModuleTests(unittest.TestCase):
             )
             existing = realizations["realization.project.existing-files"]
             self.assertIn("CLAUDE.md", existing)
+            # The project's own file next to the installed skill is bound exactly.
+            self.assertIn(".claude/settings.json", existing)
+            self.assertNotIn(".claude/", existing)
             self.assertNotIn(".claude/skills/concorde/SKILL.md", existing)
             apply_project_proposal(root, PACKAGE, proposal)
             subprocess.run(("git", "add", "-A"), cwd=root, check=True)
