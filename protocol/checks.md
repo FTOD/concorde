@@ -24,7 +24,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.concept.retired` | `retired`, when present, has a nonempty `reason`; only a retired concept is the source of `supersedes`. | error |
 | `CHK.requirement.statement` | The first paragraph is one sentence containing `SHALL` or `SHALL NOT` exactly once; the section has no nested heading. | error |
 | `CHK.scenario.steps` | Every list item is a step; the grammar of [Format](format.md) holds. | error |
-| `CHK.contract.fence` | The fence has exactly the five fields, a positive version, nonempty semantics, an offline schema and an example that satisfies it. | error |
+| `CHK.contract.fence` | The fence has exactly the five fields, a positive version, nonempty semantics, an offline schema using only the keywords [Format](format.md#canonical-contracts) lists and an example that satisfies it. | error |
 
 ## Documents
 

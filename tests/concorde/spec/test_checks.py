@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import tempfile
 import unittest
@@ -9,7 +10,9 @@ from pathlib import Path
 
 from concorde.spec.registry import registry_command
 from concorde.spec.repository import SpecError
+from concorde.spec.schema import KEYWORDS
 from concorde.spec.verification import verifies
+from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import (
     DocumentSource,
     SpecProject,
@@ -1311,6 +1314,27 @@ class CheckTests(unittest.TestCase):
         )
         findings = self.project.findings("CONCORDE-LINK-001")
         self.assertEqual(2, len(findings), [f.message for f in findings])
+
+
+class SchemaKeywordListTests(unittest.TestCase):
+    """The keyword list written for readers is the one the contract check enforces."""
+
+    def listed(self, path: str, marker: str) -> set[str]:
+        text = " ".join((REPOSITORY_ROOT / path).read_text().split())
+        start = text.index(marker) + len(marker)
+        sentence = text[start : text.index(". ", start)]
+        return set(re.findall(r"`([^`]+)`", sentence)) - {"#/$defs/<name>"}
+
+    def test_the_protocol_and_the_worker_prompt_list_the_checked_keywords(self):
+        for path, marker in (
+            ("protocol/format.md", "uses only these JSON Schema keywords:"),
+            (
+                "prompts/workers/common/spec-format.md",
+                "schema uses only these keywords:",
+            ),
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(set(KEYWORDS), self.listed(path, marker))
 
 
 if __name__ == "__main__":

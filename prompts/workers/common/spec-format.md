@@ -23,7 +23,9 @@ structural error stops your run. The rules workers most often break:
   each start with `GIVEN`, `WHEN`, `THEN`, `AND` or `BUT` and a space. It starts with `GIVEN` or
   `WHEN`, has at least one `WHEN` and one `THEN`, and never returns to an earlier kind.
 - **A contract** is one `concorde-contract` JSON fence with exactly `id`, `version` (a positive
-  integer), `schema`, `semantics` and `example`, where the example satisfies the schema.
+  integer), `schema`, `semantics` and `example`, where the example satisfies the schema. The
+  schema uses only these keywords: `$schema`, `$id`, `$defs`, `$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and `format`. Say anything else, such as a
+  constraint on keys (`propertyNames`), in `semantics`.
 - **A concept** is defined only in a `module` document: a metadata record
   `{"id": "concept.<local>.<name>", "type": "concept", "title": "<Title>", "meaning": "#concept.<local>.<name>"}`,
   exactly one row `| <Title, exactly the record's title> | <one sentence> |` in that document's

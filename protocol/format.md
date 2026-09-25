@@ -272,6 +272,9 @@ In an `implementation` document, a `concorde-contract` JSON fence defines exactl
 the example satisfies the schema. Schema references MUST NOT load Spec documents or remote
 resources. Publishers expose the contract identity as an anchor at the fence.
 
+A schema is checked offline and uses only these JSON Schema keywords: `$schema`, `$id`, `$defs`, `$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and `format`. Any other keyword, such as `propertyNames` or `patternProperties`, is an error;
+what it would express goes into `semantics`.
+
 No role or peer appears in a definition; those belong to `participates`. A behaviour or schema
 change increments the version, and every participant is reconciled in the same change. Editorial
 changes need no version increment.
