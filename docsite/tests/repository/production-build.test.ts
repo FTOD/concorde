@@ -197,7 +197,7 @@ it("publishes the user documents as the home page and the first tab", async () =
   });
   const base = identity.baseUrl.replace(/\/$/, "");
   const home = await readFile(resolve(output, "index.html"), "utf8");
-  expect(home).toContain("Specify the architecture. Fence your agents.");
+  expect(home).toContain("Specs that harness your agents.");
   expect(home).toContain(`href="${base}/using-concorde"`);
   expect(home).toContain("theme-doc-sidebar-container");
   expect(home).not.toMatch(/http-equiv="refresh"/i);
