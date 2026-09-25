@@ -28,6 +28,7 @@ from ..operations.provider import (
     Stop,
     evidence,
     load_prompt,
+    protocol_guide,
     spec_cause,
     spec_finding,
 )
@@ -240,6 +241,7 @@ def instructions(ctx: RunContext) -> str:
             + json.dumps(ctx.inputs, indent=2, ensure_ascii=False)
             + "\n```\n"
         )
+    parts.append(protocol_guide(ctx.worktree))
     return "".join(parts)
 
 

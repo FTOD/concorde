@@ -25,7 +25,7 @@ run anything.
 
 ## How to work
 
-1. Read the Spec Protocol in `.concorde/protocol/` when it is in your boundary, the bound Modules'
+1. Read the rules for writing Spec documents at the end of this brief, the bound Modules'
    documents, and the documents they select.
 2. Read the code the bound Modules bind. In a large Module read the entry points and the public
    interface first, then what each one calls.
@@ -74,3 +74,5 @@ Return `blocked` only when you cannot describe the Modules at all, for example w
 cannot be read. Uncertainty is not a reason to block: list it as open questions and decisions.
 
 @prompts/workers/common/errors.md
+
+@prompts/workers/common/spec-format.md

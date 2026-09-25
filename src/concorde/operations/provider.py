@@ -78,6 +78,29 @@ def load_prompt(name: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+# The Protocol copy's guide to writing a Module specification, in every project Concorde is
+# installed in; Spec-writing workers receive it with their brief, since no grant shows it.
+PROTOCOL_GUIDE = ".concorde/protocol/kinds/module.md"
+
+
+def protocol_guide(worktree: Path) -> str:
+    """The project's Protocol writing guide as brief material, or a note that it is missing."""
+    path = worktree / PROTOCOL_GUIDE
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        return (
+            f"\n\n## The Protocol's writing guide\n\n(The project's copy {PROTOCOL_GUIDE} "
+            f"cannot be read: {error}; follow the rules above.)\n"
+        )
+    return (
+        f"\n\n## The Protocol's writing guide\n\nThe project's Protocol copy "
+        f"({PROTOCOL_GUIDE}), which the host validates your documents against:\n\n"
+        + text.strip()
+        + "\n"
+    )
+
+
 def component(
     actor: str, code: str, detail: str, reason: str, explanation: str, **extra
 ):

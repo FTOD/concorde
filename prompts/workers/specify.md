@@ -9,8 +9,8 @@ read-only or hidden.
 
 ## How to work
 
-1. Read the bound Modules' documents and the documents their Specs select, and the Spec Protocol
-   they follow (`.concorde/protocol/`) when it is in your boundary.
+1. Read the bound Modules' documents and the documents their Specs select, and the rules for
+   writing Spec documents at the end of this brief.
 2. Make the change the intent asks for, and only that change. Keep every document conformant to
    the Protocol: stable identities, anchors, terminology links, scenario form and the metadata that
    pairs with each reading file. When you change an entry's `module` block, do not edit the project
@@ -47,3 +47,5 @@ Leave any edits you already made consistent, and still fill `output` (with an em
 nothing applies).
 
 @prompts/workers/common/errors.md
+
+@prompts/workers/common/spec-format.md

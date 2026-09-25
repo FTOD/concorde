@@ -176,7 +176,9 @@ Module's write set.
 The `code-to-spec` task type is what makes this legal: it reads the bound Modules'
 ImplementationScope and writes their SpecScope, which no other task type combines. The survey runs
 under the same task type with the Spec side withheld, as the Protocol lets a harness give less than
-a type assigns, so it can read code and write nothing. Both workers get only Read, Glob and Grep,
+a type assigns, so it can read code and write nothing. As for `specify`, the code_to_spec brief
+states the rules for writing Spec documents and ends with the project's copy of the Protocol's
+writing guide, since no grant shows the Protocol copy. Both workers get only Read, Glob and Grep,
 and the code_to_spec worker also Edit and Write; neither gets Bash, so neither can run the code it
 describes. What the code does is taken from reading it.
 

@@ -111,7 +111,9 @@ specification: Specification {
 When the worker ends `blocked` or `failed` after editing, steps 6–8 still run so the result shows
 what was left behind, and the status stays the worker's; only an audit violation skips them.
 
-The worker has one round, no configured checks, and only Read, Glob, Grep, Edit and Write — no
+No grant shows the Protocol copy, so the brief states the rules for writing Spec documents and
+ends with the project's own copy of the Protocol's writing guide, `.concorde/protocol/kinds/module.md`,
+as task material. The worker has one round, no configured checks, and only Read, Glob, Grep, Edit and Write — no
 Bash, web tools or MCP server — and pending files are never pre-created, since the grant has no
 implementation path.
 
