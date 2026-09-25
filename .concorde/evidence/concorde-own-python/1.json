@@ -1,0 +1,48 @@
+{
+  "task": "concorde-own-python",
+  "goal": "Installed Concorde runs only in its own Python environment, isolated from the project's",
+  "modules": [
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "7cb8d0b4b657490a5f03d22b33c2a65297004700",
+  "parent_commit": "f47e381e68fc4094349202f0c61de9fc36a5f31e",
+  "readiness": {
+    "run_id": "r-20260925T183552-delivery-a9d4d740",
+    "input_digest": "sha256:07898201334ad54c032814db99406cd0de600cf5a47ff84f09866c32b5978892",
+    "modules": [
+      "module.concorde",
+      "module.distribution"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:3463922504ed9ad7b72c07f4b39e8c88bf1db122a3194becc4baf2838815f7d7"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:380534a8811a6f9bb393874f6550c7e7f756b8a35f9971a3e20fb39652c801ea"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T183537-validate-d7958def",
+      "operation": "validate",
+      "modules": [
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:4108e7a0f931bb54b9c06b26e02710cd157c7df02a0fe637579d0db4e048d446"
+    }
+  ],
+  "created_at": "2026-09-25T18:36:06Z"
+}
