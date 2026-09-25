@@ -1,0 +1,76 @@
+{
+  "task": "pi-run-result-in-turn",
+  "goal": "In the pi run view, never leave a finished Concorde run's result waiting for the end of the turn: return the result of a run that has already finished from concorde_run itself, and deliver a result that arrives while the main agent is still in a turn into that turn (steer) instead of as a follow-up, so bg_wait answering 'nothing to wait for' never precedes a pending result",
+  "modules": [
+    "module.main-session"
+  ],
+  "sequence": 2,
+  "base_commit": "9362c705719e9be09e41b4fe85aa4092720ef672",
+  "parent_commit": "ec68c3922bb08fe49f7132680bf5b2cf7fa93f8e",
+  "readiness": {
+    "run_id": "r-20260925T082300-delivery-a696a6cb",
+    "input_digest": "sha256:b07ff22f3717c61d9d1f8bc5e833f6821eb77cf5ae8db19c43f9cffeba6bda88",
+    "modules": [
+      "module.code-review",
+      "module.concorde",
+      "module.main-session",
+      "module.operations",
+      "module.spec-review",
+      "module.understanding"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:d757c2d445feeed080d99d947952b9254e2c0569659879fba7124fdcb5f15056"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:7220d716d0981e19a0e3d57fc1398525d47983984d9c9184a0d36fb355e7bbac"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:6a7bd41360c59b5f5671aba14ba7e4826bdff59beca489ddc8b3a0512c2b029a"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:c6e8b60d2f91ef5b768b5d22396dd82f32f735a5e276f0b6130d393de3425ead"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:176c5175ca39f2a317e397819c1870dcf062277fdb6ee79c984e7993a53dff1a"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:c7ab22d88a6835ba4fa24ede358b01dc992291e920db028514cf640722fe12f5"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T082244-validate-d72ae066",
+      "operation": "validate",
+      "modules": [
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:0a72e49561d0db0954934b15c807cf162dcef49addca2cd624f0fd019e432c3c"
+    }
+  ],
+  "created_at": "2026-09-25T08:23:16Z"
+}
