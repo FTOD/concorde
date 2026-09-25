@@ -19,16 +19,11 @@ function parsed(result) {
 }
 
 function step(key, argv) {
-  const request = {
-    task: args.task,
-    workflow: WORKFLOW,
-    mode: args.mode,
-    key: key,
-    argv: argv,
-    answers: (args.answers && args.answers[key]) || null,
-    retry: Boolean(args.retry && args.retry.indexOf(key) >= 0),
-    restart: (args.restart && args.restart[key]) || null,
-  }
+  // Optional fields are left out when they hold their default.
+  const request = { task: args.task, workflow: WORKFLOW, mode: args.mode, key: key, argv: argv }
+  if (args.answers && args.answers[key]) request.answers = args.answers[key]
+  if (args.retry && args.retry.indexOf(key) >= 0) request.retry = true
+  if (args.restart && args.restart[key]) request.restart = args.restart[key]
   return runs.run(key, { agent: "concorde-step", task: JSON.stringify(request) }).then(parsed)
 }
 

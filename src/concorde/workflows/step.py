@@ -40,20 +40,11 @@ ANSWER = {
         "answer": {"type": "string", "minLength": 1},
     },
 }
-# contract.workflows.step-request, version 1
+# contract.workflows.step-request, version 3
 REQUEST_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
-    "required": [
-        "task",
-        "workflow",
-        "mode",
-        "key",
-        "argv",
-        "answers",
-        "retry",
-        "restart",
-    ],
+    "required": ["task", "workflow", "mode", "key", "argv"],
     "properties": {
         "task": {"type": "string", "minLength": 1},
         "workflow": {"type": "string", "minLength": 1},
@@ -632,10 +623,15 @@ def run_step(
     return {"finished": 0, "running": 3}.get(state, 1), value
 
 
+# What an omitted optional field of a step request means. A step agent that retypes a request
+# has less to copy when the script leaves these out.
+REQUEST_DEFAULTS = {"answers": None, "retry": False, "restart": None}
+
+
 def check_request(request) -> dict:
-    """The request if it satisfies its contract; ``ContractError`` otherwise."""
+    """The request with its defaults if it satisfies its contract; ``ContractError`` otherwise."""
     validate(request, REQUEST_SCHEMA)
-    return request
+    return {**REQUEST_DEFAULTS, **request}
 
 
 __all__ = [

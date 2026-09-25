@@ -107,6 +107,10 @@ The Claude Code step function SHALL ask for a step again while its outcome says 
 
 The Claude Code step function SHALL treat a relayed outcome as no answer when it names another step or a run identity that is not a run's.
 
+### req.workflows.relay-asked-again — A relay that is no answer is asked again
+
+The Claude Code step function SHALL ask its step agent again after an outcome that is no answer, at most three times in a row, and then report the step lost with the last relayed outcome attached to its result as `relayed`.
+
 ### req.workflows.step-agent-relays — Step agents only relay
 
 A step agent SHALL run nothing but `concorde workflow step` or `concorde workflow report`, changing no file.

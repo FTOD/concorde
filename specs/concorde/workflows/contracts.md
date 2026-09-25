@@ -301,7 +301,7 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
 ```concorde-contract
 {
   "id": "contract.workflows.step-request",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -310,10 +310,7 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
       "workflow",
       "mode",
       "key",
-      "argv",
-      "answers",
-      "retry",
-      "restart"
+      "argv"
     ],
     "properties": {
       "task": {
@@ -392,7 +389,7 @@ What `concorde workflow step --stdin` reads, and what the pi step agent receives
       }
     }
   },
-  "semantics": "One step request, with the meaning of the command line's options: the task, workflow, mode and base step key, argv as the Operation name followed by its arguments without --task, answers as the list of every answer given for this step so far or null, retry to start a new run for a key whose current step did not end ok, and restart, a short generation label or null, to start the step again whatever its outcome: the label is part of the step key, so the restarted step supersedes the earlier one and every later step once, and a relaunch with the same label finds it again. A behaviour or field change increments the version.",
+  "semantics": "One step request, with the meaning of the command line's options: the task, workflow, mode and base step key, argv as the Operation name followed by its arguments without --task, answers as the list of every answer given for this step so far or null, retry to start a new run for a key whose current step did not end ok, and restart, a short generation label or null, to start the step again whatever its outcome: the label is part of the step key, so the restarted step supersedes the earlier one and every later step once, and a relaunch with the same label finds it again. answers, retry and restart are optional and mean null, false and null when left out; the workflow scripts leave them out whenever they hold that value, so that a step agent that retypes the request has less to copy. A behaviour or field change increments the version.",
   "example": {
     "task": "adopt",
     "workflow": "brownfield",

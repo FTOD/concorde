@@ -141,7 +141,13 @@ helper functions, so that the same source runs in both clients. The build wraps 
 Claude Code with a `meta` block and a step function whose **step agent** is a subagent that runs the
 step command once, waiting at most 100 seconds, and returns the JSON it printed, while the step
 function itself asks again as long as the run is still running and treats an outcome that names
-another step or no real run as no answer; for pi with a
+another step or no real run as no answer. A model retypes the command, and a live headless run
+showed one dropping a field of the request, which the step command then refused as
+`invalid_request`; so the step function asks again after an outcome that is no answer, three
+times in a row at most, since the same key never starts a run twice. A step still without an
+answer is reported lost, and the script's result carries what its agents relayed last as
+`relayed`, marked unverified, so that the step command's own refusal stays in the error chain;
+for pi with a
 step function whose step agent is the installed command-runner agent `concorde-step`, which runs
 `concorde workflow step --stdin` without a model, and a report through its twin `concorde-report`,
 which runs `concorde workflow report --stdin`. Both read the JSON object in the prompt pi-subagents

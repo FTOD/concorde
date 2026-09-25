@@ -24,6 +24,7 @@ from concorde.workflows.report import RESULT_SCHEMA, report
 from concorde.workflows.step import (
     REQUEST_SCHEMA,
     STEP_SCHEMA,
+    check_request,
     run_step,
     step_key,
 )
@@ -761,9 +762,9 @@ class ScriptTests(unittest.TestCase):
             c["key"]: c["request"] for c in run["calls"] if c["key"] != "report"
         }
         self.assertEqual(answers["survey"], requests["survey"]["answers"])
-        self.assertIsNone(requests["scaffold"]["answers"])
+        self.assertNotIn("answers", requests["scaffold"])
         self.assertTrue(requests["validate"]["retry"])
-        self.assertFalse(requests["survey"]["retry"])
+        self.assertNotIn("retry", requests["survey"])
 
     def test_restart_labels_reach_their_steps(self):
         run = self.run_script(
@@ -773,7 +774,7 @@ class ScriptTests(unittest.TestCase):
             c["key"]: c["request"] for c in run["calls"] if c["key"] != "report"
         }
         self.assertEqual("2", requests["scaffold"]["restart"])
-        self.assertIsNone(requests["survey"]["restart"])
+        self.assertNotIn("restart", requests["survey"])
 
     def test_interactive_stops_at_a_failed_description_and_no_ask_goes_on(self):
         outcomes = self.full(describe_status="failed")
@@ -789,13 +790,16 @@ class ScriptTests(unittest.TestCase):
     def test_a_step_agent_that_returned_nothing_is_reported_lost(self):
         outcomes = self.full()
         outcomes["scaffold"] = None
-        for client in ("claude", "pi"):
+        # The Claude step function asks its relay three times before it gives up.
+        for client, asked in (("claude", 3), ("pi", 1)):
             with self.subTest(client=client):
                 run = self.run_script(client, self.ARGS, outcomes)
                 self.assertEqual(
-                    ["survey", "scaffold", "report"], [c["key"] for c in run["calls"]]
+                    ["survey", *["scaffold"] * asked, "report"],
+                    [c["key"] for c in run["calls"]],
                 )
                 self.assertEqual("scaffold", run["calls"][-1]["lost"])
+                self.assertNotIn("relayed", run["result"])
 
     def test_a_rejected_step_travels_with_the_report(self):
         outcomes = self.full()
@@ -849,9 +853,53 @@ class ScriptTests(unittest.TestCase):
         outcomes["scaffold"] = dict(outcomes["scaffold"], run_id="bxy9nbcb9")
         run = self.run_script("claude", self.ARGS, outcomes)
         self.assertEqual(
-            ["survey", "scaffold", "report"], [c["key"] for c in run["calls"]]
+            ["survey", "scaffold", "scaffold", "scaffold", "report"],
+            [c["key"] for c in run["calls"]],
         )
         self.assertEqual("scaffold", run["calls"][-1]["lost"])
+        self.assertEqual("bxy9nbcb9", run["result"]["relayed"]["outcome"]["run_id"])
+
+    @verifies("scenario.workflows.relay-refused")
+    def test_a_mistyped_request_is_asked_again_and_its_refusal_kept(self):
+        refusal = {
+            "key": "workflow_step_result",
+            "state": "error",
+            "error": {"code": "invalid_request", "detail": "/answers: missing"},
+        }
+        outcomes = self.full()
+        outcomes["delivery"] = [refusal, outcomes["delivery"]]
+        run = self.run_script("claude", self.ARGS, outcomes)
+        keys = [c["key"] for c in run["calls"]]
+        self.assertEqual(2, keys.count("delivery"))
+        self.assertIsNone(run["calls"][-1]["lost"])
+        self.assertNotIn("relayed", run["result"])
+        # Requests carry no optional field that holds its default.
+        self.assertEqual(
+            {"task", "workflow", "mode", "key", "argv"},
+            set(run["calls"][-2]["request"]),
+        )
+        outcomes["delivery"] = [refusal]
+        run = self.run_script("claude", self.ARGS, outcomes)
+        self.assertEqual(3, [c["key"] for c in run["calls"]].count("delivery"))
+        self.assertEqual("delivery", run["calls"][-1]["lost"])
+        self.assertEqual(
+            {"key": "delivery", "attempts": 3, "outcome": refusal},
+            run["result"]["relayed"],
+        )
+
+    def test_a_request_without_optional_fields_gets_their_defaults(self):
+        value = check_request(
+            {
+                "task": "adopt",
+                "workflow": "brownfield",
+                "mode": "no-ask",
+                "key": "delivery",
+                "argv": ["delivery"],
+            }
+        )
+        self.assertEqual(
+            (None, False, None), (value["answers"], value["retry"], value["restart"])
+        )
 
     def test_an_unready_validation_ends_the_run_before_delivery(self):
         outcomes = self.full()

@@ -2,8 +2,11 @@
 // step` once with Bash and returning the step outcome it printed. One call waits at most
 // WAIT_SECONDS, under the Bash tool's default two-minute limit, and the script itself, not a
 // model, asks again while the run is still going: the same key only waits, it never starts the
-// run twice. An outcome that does not match the step it asked for counts as no answer. What
-// counts is what the hosts recorded: the final report is built by `concorde workflow report`.
+// run twice. An outcome that does not match the step it asked for counts as no answer, and the
+// script asks again, a few times at most: a relay that retyped the command wrongly or returned
+// nothing is not the step's result. What counts is what the hosts recorded: the final report is
+// built by `concorde workflow report`, and a step left without an answer carries what its agents
+// relayed last.
 
 if (!args || !args.task || !args.module || !args.mode) {
   throw new Error("concorde workflow needs args { task, module, mode } and optionally answers, retry and restart")
@@ -13,6 +16,10 @@ const WAIT_SECONDS = 100
 // At most this many calls for one step, about five and a half hours of waiting.
 const MAX_CALLS = 200
 const RUN_ID = /^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$/
+// At most this many relays in a row that are no answer before a step counts as lost.
+const RELAYS = 3
+// For each step left without an answer, the last thing its agents relayed.
+const relayed = {}
 
 function quote(word) {
   return "'" + String(word).replace(/'/g, "'\\''") + "'"
@@ -56,34 +63,38 @@ function checked(outcome, key) {
 }
 
 function step(key, argv) {
-  const request = {
-    task: args.task,
-    workflow: WORKFLOW,
-    mode: args.mode,
-    key: key,
-    argv: argv,
-    answers: (args.answers && args.answers[key]) || null,
-    retry: Boolean(args.retry && args.retry.indexOf(key) >= 0),
-    restart: (args.restart && args.restart[key]) || null,
-  }
+  // Optional fields are left out when they hold their default, so there is less to copy.
+  const request = { task: args.task, workflow: WORKFLOW, mode: args.mode, key: key, argv: argv }
+  if (args.answers && args.answers[key]) request.answers = args.answers[key]
+  if (args.retry && args.retry.indexOf(key) >= 0) request.retry = true
+  if (args.restart && args.restart[key]) request.restart = args.restart[key]
   // Only the request is quoted, so that the permission rule for `concorde workflow step` matches.
   const command =
     CONCORDE + " workflow step --json " + quote(JSON.stringify(request)) + " --wait " + WAIT_SECONDS
   let calls = 0
+  let misses = 0
   function once() {
     calls += 1
     return relay(
       command,
       [
-        "Run it once, in the foreground: it returns within two minutes. It prints one JSON object,",
-        "whatever its exit status. Return the fields of that object exactly as printed. Do not run",
-        "it again, run no other command and change no file.",
+        "Copy the command character for character, quotes included. Run it once, in the",
+        "foreground: it returns within two minutes. It prints one JSON object, whatever its exit",
+        "status. Return the fields of that object exactly as printed. Do not run it again, run no",
+        "other command and change no file.",
       ],
       "step " + key + (calls > 1 ? " (" + calls + ")" : ""),
       STEP_SCHEMA
     ).then(function (outcome) {
       const answer = checked(outcome, key)
-      if (answer && answer.state === "running" && calls < MAX_CALLS) return once()
+      if (!answer) {
+        misses += 1
+        relayed[key] = outcome || null
+        return misses < RELAYS && calls < MAX_CALLS ? once() : null
+      }
+      misses = 0
+      delete relayed[key]
+      if (answer.state === "running" && calls < MAX_CALLS) return once()
       return answer
     })
   }
@@ -106,12 +117,16 @@ function report(lost) {
       properties: { status: { type: "string" }, summary: { type: "string" } },
     }
   ).then(function (value) {
-    return {
+    const result = {
       workflow: WORKFLOW,
       task: args.task,
       reported: value,
       result: ".concorde/tasks/" + args.task + ".workflow.json",
     }
+    // Unverified: what a step agent said, not what a host recorded, kept so that a refusal of
+    // the step command (such as a mistyped request) is not lost from the error chain.
+    if (lost && relayed[lost]) result.relayed = { key: lost, attempts: RELAYS, outcome: relayed[lost] }
+    return result
   })
 }
 

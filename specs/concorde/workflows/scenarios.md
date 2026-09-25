@@ -77,6 +77,13 @@ shapes are in the [contracts](contracts.md).
 - AND `concorde workflow report --task adopt --lost describe:module.checkout` lists the step as a lost problem and has status `failed`
 - BUT a key named with `--lost` whose current step has a finished run keeps that run's outcome
 
+### scenario.workflows.relay-refused — A step agent mistypes the step command
+
+- GIVEN a Claude Code workflow run whose step agent for `delivery` drops a field while retyping the step command, so that the command refuses the request with `invalid_request`
+- WHEN the step function receives that refusal, which names no step
+- THEN it asks a step agent again with the same command, and goes on with the procedure once an outcome for `delivery` comes back
+- AND after three refusals in a row it reports `delivery` lost, and the script's result carries the last refusal under `relayed`, with the key and the number of attempts
+
 ### scenario.workflows.superseded — A retried step supersedes later steps
 
 - GIVEN a task whose steps `survey`, `scaffold`, `describe:module.checkout`, `validate` and `delivery` are recorded, the describe step `failed`
