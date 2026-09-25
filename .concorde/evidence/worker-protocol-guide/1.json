@@ -1,0 +1,58 @@
+{
+  "task": "worker-protocol-guide",
+  "goal": "Give Spec-writing workers (specify, code-to-spec) the Protocol's writing guide and explicit format rules; they never see .concorde/protocol/",
+  "modules": [
+    "module.adoption",
+    "module.specification"
+  ],
+  "sequence": 1,
+  "base_commit": "55c9552d74f473cf15cc632ab54237db79f7675e",
+  "parent_commit": "232226f92b1d9e80dffaad8113a47cdbff10f5ad",
+  "readiness": {
+    "run_id": "r-20260925T123654-delivery-15993dc5",
+    "input_digest": "sha256:d2ba0efe2a5923a0e0ea0d1ecf4390681018480e00ad15c03b7878ff2c2332d0",
+    "modules": [
+      "module.adoption",
+      "module.harness.workers",
+      "module.operations",
+      "module.specification"
+    ],
+    "checks": [
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:9f59e7b4626ed171c08c920e6dab601001e7e93037a42b74d6568e1e8f7c579c"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:81c81be43ebd924e2984328a727d78cc11942b2d993ea42d0308bf0a488568ad"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:4dc6f8b18f201691fb3dd4be28870a07746f06672644d02e1a4d0af481c29082"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T123642-validate-877edd3a",
+      "operation": "validate",
+      "modules": [
+        "module.adoption",
+        "module.specification"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:94020c961056a5293be0df8bb5c543dd0491feb72633241e34525d6bae7ba241"
+    }
+  ],
+  "created_at": "2026-09-25T12:37:06Z"
+}
