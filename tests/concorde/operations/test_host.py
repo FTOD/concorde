@@ -192,6 +192,31 @@ class HostTests(unittest.TestCase):
         with self.assertRaises(UsageError):
             self.project.run("implement", "--goal", "x")
 
+    @verifies("scenario.operations.no-task-primary-only")
+    def test_a_run_without_a_task_is_refused_in_a_task_worktree(self):
+        before = store.load_task(self.root, "t1")
+        status, envelope = self.project.run(
+            "spec_review",
+            "--modules",
+            "module.a",
+            "--goal",
+            OperationProject.plan([{}]),
+            cwd=self.worktree,
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        error = envelope["error"]
+        self.assertEqual("task_worktree_without_task", error["code"])
+        self.assertIn("the worktree of task t1", error["detail"])
+        self.assertEqual("run it again with --task t1", error["recommendation"])
+        self.assertTrue(
+            (
+                self.root / ".concorde/runs" / envelope["run_id"] / "result.json"
+            ).is_file()
+        )
+        self.assertEqual(before, store.load_task(self.root, "t1"))
+        validate(error, ERROR_SCHEMA)
+
     @verifies("scenario.operations.no-task-read-only")
     def test_a_run_without_a_task_launches_no_writing_worker(self):
         status, envelope = self.project.run(

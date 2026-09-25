@@ -161,6 +161,8 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("a question or a review that does not justify a task", self.skill)
+        self.assertIn("they run only from the primary worktree", self.skill)
+        self.assertIn("Inside a task's worktree, always pass `--task`", self.skill)
         self.assertIn("as an Operation without `--task`", self.block)
 
 

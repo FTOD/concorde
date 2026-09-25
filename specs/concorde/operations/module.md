@@ -15,7 +15,7 @@ the main agent decides.
 | Term | Definition |
 | --- | --- |
 | Operation | A named job the main agent runs for one task, or for no task when its catalog entry allows it, made of deterministic host steps and zero or more workers, that ends with exactly one Operation result. |
-| Run without a task | A run of an Operation whose catalog entry makes the task optional, started without `--task`: it works on the worktree it was started in, begins no task record, and changes no Spec or code. |
+| Run without a task | A run of an Operation whose catalog entry makes the task optional, started without `--task` in the primary worktree: it works on the primary worktree, begins no task record, and changes no Spec or code. |
 | Worker role | A named worker an Operation launches, such as `spec_review`'s `reviewer` and `checker`; an Operation with a single worker has the role `worker`. |
 | configure_workers | The Operation that lists the models the main session's program offers workers and changes a worktree's worker model configuration, with or without a task. |
 | Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, its worker roles, whether it needs a task, whether it may change the task worktree and the contract of its output. |
@@ -62,10 +62,12 @@ No Operation needs the developer's consent.
 
 <a id="concept.operations.no-task"></a>
 
-An Operation whose catalog entry makes the task optional may also run **without a task**: it then
-works on the worktree the command is started in, usually the primary worktree, with the Modules
-`--modules` names, begins no task record, admits only inputs of other runs without a task, and may
-launch only reading workers, so it changes no Spec or code.
+An Operation whose catalog entry makes the task optional may also run **without a task**, from the
+primary worktree only: it then works on the primary worktree, with the Modules `--modules` names,
+begins no task record, admits only inputs of other runs without a task, and may launch only reading
+workers, so it changes no Spec or code. Started without `--task` inside a task's worktree, it is
+refused with `task_worktree_without_task`, which names the task to pass with `--task`: there it
+must run as a run of that task, under the task's lock.
 
 <a id="concept.operations.catalog"></a>
 
@@ -100,8 +102,8 @@ the worker model configuration may choose a model per Operation and per role.
 level it outputs the candidates the main session's program offers, the file's entries and the
 effective model and level of every worker role of every Operation; `--model`, `--reasoning` or
 both set them for the default, for `--operation <op>` or for `--role <role>` of it;
-`--unset` removes that entry. Without a task it changes the worktree it runs in — in the primary
-worktree the tasks opened from then on — and with `--task` only that task's copy. It checks the
+`--unset` removes that entry. Without a task it changes the primary worktree's file, which the
+tasks opened from then on inherit, and with `--task` only that task's copy. It checks the
 Operation and role against the catalog and every model and level against the program's listing
 (`--allow-unlisted` admits a model the listing cannot show), and launches no worker. Its exact
 behaviour is in [the host](host.md#configure-workers). A plan is one answer
@@ -220,7 +222,7 @@ primary worktree is the project as merged. So a catalog entry may make the task 
 an Operation, and the host then refuses a writing worker in the run, whatever the provider asks.
 
 The grant always comes from the task worktree, never the primary, so a task that changes a Spec is
-bounded by the Spec as it sees it (a run without a task reads the worktree it started in); results and run records still go to the primary's
+bounded by the Spec as it sees it (a run without a task reads the primary worktree); results and run records still go to the primary's
 `.concorde/runs/`, so the main agent finds every run in one place and nothing the host writes for
 itself ends up in a task's diff. One task runs at most one Operation at a time — two hosts in one
 worktree would audit each other's writes as their own — so parallelism comes from running tasks

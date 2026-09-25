@@ -54,7 +54,7 @@ class Provider:
     # the host then begins the run even when those Specs cannot be loaded.
     requires_loaded_specs: bool = True
     # "required": every run names a task. "optional": a run without --task works on the
-    # worktree it is started in (project scope) and may launch only read-only workers.
+    # primary worktree (project scope) and may launch only read-only workers.
     task_scope: str = "required"
     # The roles of the workers the Operation launches; the first is the default role. The worker
     # model configuration is keyed by Operation and role.
@@ -228,7 +228,7 @@ class RunContext:
 
     @property
     def project_scope(self) -> bool:
-        """Whether the run works without a task, on the worktree it was started in."""
+        """Whether the run works without a task, on the primary worktree."""
         return not self.task.get("id")
 
     def workers_config(self) -> dict:

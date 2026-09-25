@@ -40,8 +40,8 @@ provider's output contract, by a `failed` result before writing it.
 ### req.operations.task-worktree-specs — Grants come from the task worktree
 
 The host SHALL compute every grant of a run of a task from the Specs of the task's worktree, never
-from the primary worktree's, and every grant of a run without a task from the Specs of the worktree
-the run was started in.
+from the primary worktree's, and every grant of a run without a task from the Specs of the primary
+worktree.
 
 ### req.operations.recorded — Runs are recorded in their task
 
@@ -50,7 +50,7 @@ provider step and as finished with the result's status before exiting.
 
 ### req.operations.no-task-read-only — A run without a task changes no Spec or code
 
-The host SHALL run an Operation without a task only when its catalog entry makes the task optional, and then refuse every `specify` or `implement` worker launch of the run before computing its grant.
+The host SHALL run an Operation without a task only when its catalog entry makes the task optional and the command runs in the primary worktree, and then refuse every `specify` or `implement` worker launch of the run before computing its grant.
 
 ### req.operations.run-records-primary — Results live in the primary worktree
 

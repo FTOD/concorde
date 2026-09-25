@@ -84,9 +84,9 @@ check the rendered guidance against them are pending.
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent needs to understand or review a Module without changing it
-- THEN it is told that `understand`, `spec_review`, `code_review` and `configure_workers` may run without `--task` on the worktree it is in
+- THEN it is told that `understand`, `spec_review`, `code_review` and `configure_workers` may run without `--task` from the primary worktree
 - AND that such a run changes no Spec or code
-- BUT every change still runs in a task
+- BUT every change still runs in a task, and inside a task's worktree it always passes `--task`
 
 ## Escalation
 

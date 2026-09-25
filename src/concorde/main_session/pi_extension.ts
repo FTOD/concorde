@@ -313,7 +313,7 @@ export default function (pi: ExtensionAPI) {
     description:
       "Start a Concorde Operation in the background: `concorde run <operation> [--task <task>] [arguments]`. " +
       "Without a task, an Operation that allows it (understand, spec_review, code_review, " +
-      "configure_workers) runs on this session's worktree and changes no Spec or code. " +
+      "configure_workers) runs on the primary worktree and changes no Spec or code. " +
       "It returns at once with the run identity; the run appears in the run view, and you are " +
       "woken with its result when it finishes. Do not poll it. To block until every running " +
       "Concorde run ends, call bg_wait without an id; bg_wait with an id sees only subagent runs.",

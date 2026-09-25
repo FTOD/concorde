@@ -8,7 +8,7 @@ in [How the host runs an Operation](host.md).
 ```concorde-contract
 {
   "id": "contract.operations.result",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -239,7 +239,7 @@ in [How the host runs an Operation](host.md).
       }
     }
   },
-  "semantics": "The envelope of one Operation run, printed by concorde run and saved as .concorde/runs/<run_id>/result.json in the primary worktree. operation is a catalog name; task, modules and run_id identify the run: task is null for a run without a task, which worked on the worktree it was started in, and modules may be empty when the run was refused before its Modules were resolved or when a run without a task named none. status ok means the Operation did what it promises; blocked means it cannot continue without a decision of the main agent; failed means an error of the host, the worker, the audit or the checks, or a refusal before the run began. summary is written by the host. output is the Operation-specific value defined by the provider's output contract, or null when the run produced none. worker is the last worker result exactly as the worker returned it, or null for a run without a worker; its content is the worker's claim and never host evidence. worker_runs lists the run records written for the run's worker launches, in launch order. host_evidence holds only facts the host produced itself; kind is one of grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, refused, cancelled, host-error, invalid-output, record, git, readiness or commit, or a kind the provider's own Spec defines, such as structural or finding-scope, ref names the path, command or identity concerned and detail explains it. error is null exactly when status is ok; otherwise it is the Operation's own link of the error chain, a contract.concorde.error link of level operation whose causes are the errors it received, unchanged; $defs error, evidence and unhandled are that contract's definitions. Timestamps are RFC 3339 in UTC. A behaviour or field change increments the version.",
+  "semantics": "The envelope of one Operation run, printed by concorde run and saved as .concorde/runs/<run_id>/result.json in the primary worktree. operation is a catalog name; task, modules and run_id identify the run: task is null for a run without a task, which worked on the primary worktree, and modules may be empty when the run was refused before its Modules were resolved or when a run without a task named none. status ok means the Operation did what it promises; blocked means it cannot continue without a decision of the main agent; failed means an error of the host, the worker, the audit or the checks, or a refusal before the run began. summary is written by the host. output is the Operation-specific value defined by the provider's output contract, or null when the run produced none. worker is the last worker result exactly as the worker returned it, or null for a run without a worker; its content is the worker's claim and never host evidence. worker_runs lists the run records written for the run's worker launches, in launch order. host_evidence holds only facts the host produced itself; kind is one of grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, refused, cancelled, host-error, invalid-output, record, git, readiness or commit, or a kind the provider's own Spec defines, such as structural or finding-scope, ref names the path, command or identity concerned and detail explains it. error is null exactly when status is ok; otherwise it is the Operation's own link of the error chain, a contract.concorde.error link of level operation whose causes are the errors it received, unchanged; $defs error, evidence and unhandled are that contract's definitions. Timestamps are RFC 3339 in UTC. A behaviour or field change increments the version.",
   "example": {
     "operation": "implement",
     "task": "severity",
@@ -364,7 +364,7 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
 ```concorde-contract
 {
   "id": "contract.operations.worker-configuration",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -471,7 +471,7 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
       }
     }
   },
-  "semantics": "The output of configure_workers. action is list when the run changed nothing and was asked for nothing, set when it set a model or level, unset when it removed an entry. backend is the program whose entries were read or changed and backend_from how it was found (--backend or the main session's variable). worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the one the run was started in; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file's entry for the backend as written after the change. effective maps every catalog Operation that launches workers to its worker roles, each with the model and reasoning level a worker of that role would run with and the entry each came from, or null with the source \"the backend's own default\". A behaviour or field change increments the version.",
+  "semantics": "The output of configure_workers. action is list when the run changed nothing and was asked for nothing, set when it set a model or level, unset when it removed an entry. backend is the program whose entries were read or changed and backend_from how it was found (--backend or the main session's variable). worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the primary worktree; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file's entry for the backend as written after the change. effective maps every catalog Operation that launches workers to its worker roles, each with the model and reasoning level a worker of that role would run with and the entry each came from, or null with the source \"the backend's own default\". A behaviour or field change increments the version.",
   "example": {
     "action": "set",
     "backend": "pi",

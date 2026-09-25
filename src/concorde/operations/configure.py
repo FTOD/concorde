@@ -1,8 +1,7 @@
 """The ``configure_workers`` Operation: list and change the worker model configuration.
 
-It runs with or without a task. Without one it works on the worktree it is started in, usually
-the primary worktree, whose configuration new tasks inherit; with ``--task`` it changes only that
-task's own copy. It launches no worker and changes no Spec or code.
+It runs with or without a task. Without one it works on the primary worktree, whose
+configuration new tasks inherit; with ``--task`` it changes only that task's own copy. It launches no worker and changes no Spec or code.
 
 One step, ``configure``:
 
