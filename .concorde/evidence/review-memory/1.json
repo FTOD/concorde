@@ -1,0 +1,48 @@
+{
+  "task": "review-memory",
+  "goal": "spec_review keeps a tracked review memory per Module: repeated reviews add or update findings, and the verdict reflects every open finding",
+  "modules": [
+    "module.spec-review"
+  ],
+  "sequence": 1,
+  "base_commit": "2d79d6a73898017ad9c7b8f7e4b21403cda65c00",
+  "parent_commit": "886f912d20a5fa7e753feb1671678645695ba6dd",
+  "readiness": {
+    "run_id": "r-20260925T193814-delivery-c02f2e7d",
+    "input_digest": "sha256:0103b3993320f6f2b04294f4bcefb079be260772fa74fb607dc7dd6648c5919c",
+    "modules": [
+      "module.concorde",
+      "module.spec-review"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:7da9c9e4c95d9fbc0644fb42f336566a9cc0c120c7710a917ea18ddf7b2d20a7"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:ee4d87e8a6b88249b39d4aadb9f500c9c04b7ae0464812c59a48ec342b799898"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T193759-validate-4fa9466d",
+      "operation": "validate",
+      "modules": [
+        "module.spec-review"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:9271d02f62011656abf2a9c4875f501c167b888686b11e9459cbf3f7b3340c5d"
+    }
+  ],
+  "created_at": "2026-09-25T19:38:29Z"
+}
