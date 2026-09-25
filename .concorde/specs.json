@@ -45,6 +45,10 @@
         {
           "target": "module.distribution",
           "meaning": "#contains-distribution"
+        },
+        {
+          "target": "module.e2e",
+          "meaning": "#contains-e2e"
         }
       ],
       "uses": [],
@@ -979,11 +983,40 @@
           "kind": "document",
           "target": "document.concorde.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.e2e",
+      "title": "End-to-end testing",
+      "entry": "specs/concorde/e2e/module.md",
+      "owns": [
+        "specs/concorde/e2e/module.md",
+        "specs/concorde/e2e/requirements.md",
+        "specs/concorde/e2e/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows"
+        },
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution"
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
         },
         {
           "kind": "external",
           "target": "references/swe-bench/",
-          "reason": "SWE-bench, whose Python projects the brownfield workflow is tried on as existing codebases"
+          "reason": "SWE-bench, whose Python repositories are the test projects"
         }
       ],
       "participates": []

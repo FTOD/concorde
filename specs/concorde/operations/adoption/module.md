@@ -283,10 +283,8 @@ apply to a proposal.
 
 <a id="realization.adoption.tests"></a>
 
-Adoption is tried on real codebases from [SWE-bench](https://github.com/SWE-bench/SWE-bench),
-vendored under `references/swe-bench/` at a fixed commit: its harness names the Python projects
-it draws from, such as `psf/requests` and `pallets/flask`, which are existing codebases of known
-size and quality to describe with the brownfield workflow.
+Adoption is tried on real codebases with real workers by
+[End-to-end testing](../../e2e/module.md), on projects from SWE-bench.
 
 The **Adoption tests**, under `tests/concorde/adoption/` with the existing-codebase fixture
 `tests/concorde/support/brownfield_project.py` they share with Workflows, run the three Operations

@@ -78,7 +78,8 @@ which define their own JSON and exit codes.
 
 **Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale
 build, then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy;
-it needs only the Python standard library), the `concorde` command as `.concorde/bin/concorde`,
+it needs only the Python standard library, and leaves out `scripts/e2e/`, which only
+[End-to-end testing](../e2e/module.md) uses), the `concorde` command as `.concorde/bin/concorde`,
 the Protocol copy under `.concorde/protocol/` and Concorde-owned defaults only where absent, the
 [main-session guidance](../main-session/module.md#concept.main-session.guidance) as the project
 skill `.claude/skills/concorde/SKILL.md` and a block between `<!-- concorde:start -->` and

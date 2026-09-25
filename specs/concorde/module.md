@@ -162,7 +162,7 @@ than carry the framework's function, so the [Relationships](#relationships) diag
 
 ## Relationships
 
-The root is the composition of eight child Modules; each one's own entry draws what it uses:
+The root is the composition of nine child Modules; each one's own entry draws what it uses:
 
 ```d2
 root: Concorde Framework {
@@ -174,6 +174,7 @@ root: Concorde Framework {
   issues: Issues
   mainsession: Main session
   distribution: Distribution
+  e2e: End-to-end testing
 }
 ```
 
@@ -213,6 +214,12 @@ that found it; solving one is ordinary work run through Operations.
 
 The **Main session** Module is the guidance the installer gives the main agent: how to split tasks,
 run Operations, read results, keep decision logs and escalate.
+
+<a id="contains-e2e"></a>
+
+**End-to-end testing** is how this project tests Concorde itself on real codebases from SWE-bench
+with real agents, headless or through a deterministic driver. It serves the developers of
+Concorde only and reaches no user's project.
 
 <a id="contains-distribution"></a>
 

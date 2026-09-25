@@ -51,6 +51,8 @@ RECEIPT = ".concorde/install.json"
 START = "<!-- concorde:start -->"
 END = "<!-- concorde:end -->"
 RUNTIME = ("src", "scripts", "prompts", "protocol", "generated")
+# Directories of ``scripts/`` that serve only the development of Concorde.
+NOT_INSTALLED = ("e2e",)
 IGNORED = (
     ".concorde/runs/",
     ".concorde/tasks/",
@@ -90,10 +92,20 @@ def _copy_runtime(package: Path, target: Path) -> None:
     ignore = shutil.ignore_patterns(
         "__pycache__", "*.pyc", "node_modules", ".pytest_cache"
     )
+
+    def runtime_ignore(directory, names):
+        # End-to-end testing is how Concorde tests itself; it never reaches a user's project.
+        skipped = set(ignore(directory, names))
+        if Path(directory) == package / "scripts":
+            skipped |= {name for name in names if name in NOT_INSTALLED}
+        return skipped
+
     for name in RUNTIME:
         source = package / name
         if source.is_dir():
-            shutil.copytree(source, target / name, ignore=ignore, symlinks=False)
+            shutil.copytree(
+                source, target / name, ignore=runtime_ignore, symlinks=False
+            )
     shutil.copy2(package / "concorde.json", target / "concorde.json")
 
 

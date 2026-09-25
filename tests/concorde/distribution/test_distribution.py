@@ -320,6 +320,8 @@ class InstallTests(unittest.TestCase):
         self.assertTrue(
             (project / ".concorde/framework/generated/main-session/skill.md").exists()
         )
+        # End-to-end testing serves Concorde's developers only.
+        self.assertFalse((project / ".concorde/framework/scripts/e2e").exists())
         skill = (project / ".claude/skills/concorde/SKILL.md").read_text()
         fields = strict_frontmatter(self, skill)
         self.assertEqual("concorde", fields["name"])

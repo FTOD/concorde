@@ -1,0 +1,86 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.e2e.module",
+    "owner": "module.e2e",
+    "role": "module"
+  },
+  "module": {
+    "title": "End-to-end testing",
+    "owns": [
+      "specs/concorde/e2e/module.md",
+      "specs/concorde/e2e/requirements.md",
+      "specs/concorde/e2e/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows"
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "references/swe-bench/",
+        "reason": "SWE-bench, whose Python repositories are the test projects"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.e2e.test-project",
+      "type": "concept",
+      "title": "Test project",
+      "meaning": "#concept.e2e.test-project"
+    },
+    {
+      "id": "concept.e2e.root",
+      "type": "concept",
+      "title": "End-to-end root",
+      "meaning": "#concept.e2e.root"
+    },
+    {
+      "id": "concept.e2e.headless-run",
+      "type": "concept",
+      "title": "Headless run",
+      "meaning": "#concept.e2e.headless-run"
+    },
+    {
+      "id": "concept.e2e.driver-run",
+      "type": "concept",
+      "title": "Driver run",
+      "meaning": "#concept.e2e.driver-run"
+    },
+    {
+      "id": "realization.e2e.tool",
+      "type": "realization",
+      "title": "End-to-end tool",
+      "meaning": "#realization.e2e.tool",
+      "entries": [
+        "scripts/e2e/e2e.py"
+      ]
+    },
+    {
+      "id": "realization.e2e.tests",
+      "type": "realization",
+      "title": "End-to-end tool tests",
+      "meaning": "#realization.e2e.tests",
+      "entries": [
+        "tests/concorde/e2e/"
+      ]
+    }
+  ],
+  "relations": [],
+  "extensions": {}
+}

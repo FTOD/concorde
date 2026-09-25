@@ -47,6 +47,10 @@
       {
         "target": "module.distribution",
         "meaning": "#contains-distribution"
+      },
+      {
+        "target": "module.e2e",
+        "meaning": "#contains-e2e"
       }
     ],
     "uses": [],
