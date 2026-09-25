@@ -77,6 +77,226 @@ class AdoptionTests(unittest.TestCase):
         self.assertIn("not specified yet", entry)
 
 
+class BrownfieldFlowTests(unittest.TestCase):
+    """The brownfield workflow end to end: installed, initialized, run by the pi script."""
+
+    @verifies("scenario.concorde.adopt-brownfield")
+    def test_describe_an_existing_codebase_in_no_ask_mode(self):
+        import shutil
+
+        from concorde.adoption.scaffold import child_reading
+        from concorde.workflows.catalog import render
+        from tests.concorde.support.brownfield_project import FILES
+
+        if shutil.which("node") is None:
+            self.skipTest("node runs the workflow script")
+        package = package_copy(self)
+        base = package.parent
+        project = base / "shop"
+        project.mkdir()
+        git(project, "init", "-q")
+        git(project, "config", "user.name", "Test")
+        git(project, "config", "user.email", "test@example.com")
+        for path, content in FILES.items():
+            (project / path).parent.mkdir(parents=True, exist_ok=True)
+            (project / path).write_text(content)
+        install(project, package, fetch=fake_d2(self, package))
+        concorde = str(project / ".concorde/bin/concorde")
+
+        def run(*argv):
+            return subprocess.run(
+                [concorde, *argv], cwd=project, capture_output=True, text=True
+            )
+
+        proposal = base / "proposal.json"
+        proposal.write_text(
+            json.dumps(
+                json.loads(run("init", "--propose", "--name", "Shop").stdout)["result"]
+            )
+        )
+        self.assertEqual(
+            0, run("init", "--apply", "--proposal", str(proposal)).returncode
+        )
+        git(project, "add", "-A")
+        git(project, "commit", "-qm", "adopt Concorde")
+        base_commit = git(project, "rev-parse", "HEAD")
+        opened = run(
+            "task",
+            "open",
+            "adopt",
+            "--goal",
+            "describe the code",
+            "--modules",
+            "module.project",
+        )
+        self.assertEqual(0, opened.returncode, opened.stdout)
+
+        children = [
+            {
+                "id": "module.checkout",
+                "title": "Checkout",
+                "purpose": "Checkout turns a basket into one order.",
+                "entries": ["src/checkout/"],
+                "uses": [
+                    {"target": "module.inventory", "reason": "submit holds stock."}
+                ],
+            },
+            {
+                "id": "module.inventory",
+                "title": "Inventory",
+                "purpose": "Inventory holds stock for baskets.",
+                "entries": ["src/inventory/"],
+                "uses": [],
+            },
+        ]
+        described = child_reading(
+            children[0], {"module.inventory": "Inventory"}
+        ).replace(
+            "How Checkout is used is not specified yet",
+            "Checkout is used through submit(basket), which holds stock and returns one order; "
+            "how it is used otherwise is not specified yet",
+        )
+        question = {
+            "id": "q.payment-retry",
+            "module": "module.checkout",
+            "subject": "retrying a declined payment",
+            "observed": "a declined payment is retried once",
+            "evidence": ["src/checkout/payment.py"],
+            "why_uncertain": "nothing says whether other failures should be retried",
+            "options": ["only declines", "every failure"],
+            "recommendation": "ask",
+        }
+
+        def claims(*questions):
+            return {
+                "summary": "Described.",
+                "promises": [],
+                "decisions": [],
+                "open_questions": list(questions),
+                "deviations": [],
+            }
+
+        routes = [
+            [
+                "Surveyed Module: module.project",
+                [
+                    {
+                        "result": {
+                            "output": {
+                                "summary": "Two parts.",
+                                "children": children,
+                                "checks": [],
+                                "decisions": [
+                                    {
+                                        "id": "d.db-helper",
+                                        "module": "module.project",
+                                        "question": "Does db.py get a Module?",
+                                        "options": ["yes", "no"],
+                                        "chosen": "no",
+                                        "reason": "two lines",
+                                        "decided_by": "worker",
+                                    }
+                                ],
+                                "open_questions": [],
+                            }
+                        }
+                    }
+                ],
+            ],
+            [
+                "Modules to describe: module.checkout",
+                [
+                    {
+                        "writes": {
+                            "@WORKTREE@/specs/project/checkout/module.md": described
+                        },
+                        "result": {"output": claims(question)},
+                    }
+                ],
+            ],
+            [
+                "Modules to describe: module.inventory",
+                [{"result": {"output": claims()}}],
+            ],
+            ["Modules to describe: module.project", [{"result": {"output": claims()}}]],
+            ["Your role: reviewer.", [{"result": {"output": {"findings": []}}}]],
+            ["Your role: checker.", [{"result": {"output": {"checks": []}}}]],
+        ]
+        (base / "routes.json").write_text(json.dumps(routes))
+        fake = base / "claude"
+        router = REPOSITORY_ROOT / "tests/concorde/acceptance/fake_router.py"
+        fake.write_text(
+            f'#!/bin/sh\nFAKE_ROUTES="{base / "routes.json"}" exec "{sys.executable}" "{router}" "$@"\n'
+        )
+        fake.chmod(0o755)
+        home = base / "home"
+        (home / ".claude").mkdir(parents=True)
+        script = base / "brownfield.js"
+        script.write_text(render("brownfield", "pi", package))
+        harness = REPOSITORY_ROOT / "tests/concorde/workflows/run_script.mjs"
+        completed = subprocess.run(
+            ["node", str(harness)],
+            input=json.dumps(
+                {
+                    "script": str(script),
+                    "client": "pi",
+                    "args": {
+                        "task": "adopt",
+                        "module": "module.project",
+                        "mode": "no-ask",
+                    },
+                    "outcomes": {},
+                    "report": None,
+                    "execute": {"command": concorde, "cwd": str(project)},
+                }
+            ),
+            capture_output=True,
+            text=True,
+            timeout=900,
+            env={
+                **os.environ,
+                "CONCORDE_CLAUDE": str(fake),
+                "CONCORDE_CLIENT": "claude",
+                "HOME": str(home),
+            },
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        run_value = json.loads(completed.stdout)
+        self.assertIsNone(run_value["error"])
+        self.assertEqual(
+            [
+                "survey",
+                "scaffold",
+                "describe:module.inventory",
+                "describe:module.checkout",
+                "describe:module.project",
+                "spec_review",
+                "validate",
+                "delivery",
+                "report",
+            ],
+            [call["key"] for call in run_value["calls"]],
+        )
+        result = json.loads(
+            (project / ".concorde/tasks/adopt.workflow.json").read_text()
+        )
+        self.assertEqual("ok", result["status"], json.dumps(result, indent=2)[:4000])
+        self.assertEqual(["d.db-helper"], [item["id"] for item in result["decisions"]])
+        self.assertEqual(
+            ["q.payment-retry"], [item["id"] for item in result["open_questions"]]
+        )
+        head = git(project, "rev-parse", "concorde/adopt")
+        changed = git(
+            project, "diff", "--name-only", f"{base_commit}..{head}"
+        ).splitlines()
+        self.assertIn("specs/project/checkout/module.md", changed)
+        self.assertFalse(any(path.startswith("src/") for path in changed), changed)
+        entry = git(project, "show", f"{head}:specs/project/checkout/module.md")
+        self.assertIn("submit(basket)", entry)
+        merged = run("task", "merge", "adopt")
+        self.assertEqual(0, merged.returncode, merged.stdout)
+
+
 class TaskFlowTests(unittest.TestCase):
     def setUp(self):
         self.project = ValidationProject(self)

@@ -2,10 +2,13 @@
 //
 // Standard input: {"script": <path>, "client": "claude" | "pi", "args": {...},
 //                  "outcomes": {<key>: <step outcome> | null}, "report": {status, summary}}
-// A step whose key has no outcome gets null (its agent "returned nothing"). Standard output:
+// A step whose key has no outcome gets null (its agent "returned nothing"). With
+// "execute": {"command": <path of concorde>, "cwd": <dir>} a pi script's agents run the real
+// commands, as its command-runner agents would: `workflow step --stdin` and `workflow report --stdin`. Standard output:
 // {"meta": <Claude meta or null>, "calls": [{"key", "request" | "lost", "agent", "options"}],
 //  "notes": [...], "result": <what the script returned>, "error": <message or null>}.
 
+import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 
 const input = JSON.parse(readFileSync(0, "utf-8"))
@@ -50,9 +53,18 @@ try {
     const run = new AsyncFunction("agent", "log", "phase", "args", body)
     result = await run(agent, (text) => notes.push(text), () => {}, input.args)
   } else {
+    const execute = input.execute
     const runs = {
       run(key, options) {
         const request = JSON.parse(options.task)
+        if (execute) {
+          const verb = options.agent === "concorde-report" ? "report" : "step"
+          calls.push({ key: verb === "report" ? "report" : request.key, request, agent: options.agent })
+          const done = spawnSync(execute.command, ["workflow", verb, "--stdin"], {
+            cwd: execute.cwd, input: options.task, encoding: "utf-8",
+          })
+          return Promise.resolve({ ok: done.status === 0, output: done.stdout, stderr: done.stderr })
+        }
         if (options.agent === "concorde-report") {
           calls.push({ key: "report", lost: request.lost[0] || null, agent: options.agent })
           return Promise.resolve({ ok: true, output: JSON.stringify(input.report) })
