@@ -1,0 +1,50 @@
+{
+  "task": "protocol-design-in-entry",
+  "goal": "Change the Spec Protocol so a Module's design always lives in its entry's Design section, removing the allowance for a separate design topic when the entry would become too long",
+  "modules": [
+    "module.spec",
+    "module.concorde"
+  ],
+  "sequence": 1,
+  "base_commit": "da3e8d7103c3447f38166f51299a6ec54e698c6e",
+  "parent_commit": "389ae5b1df7d7012347fde66d00348d027b3b8a8",
+  "readiness": {
+    "run_id": "r-20260925T090804-delivery-b02fa803",
+    "input_digest": "sha256:7b4fd5b61cafba2f3e52fe06132bc6ae97449e748103926d561b2dde1f42b759",
+    "modules": [
+      "module.concorde",
+      "module.spec"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:661fcee3ec7f2c676d3a8367b03bafd3e35d5eb57c2dcf413f022861d477f3ad"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:8490277da641209794a980d087abff3cd150fc2fb8e7dd75070be7be8d4c9bd0"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T090755-validate-61617dfb",
+      "operation": "validate",
+      "modules": [
+        "module.spec",
+        "module.concorde"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:201f1607b29e4d92600e637a61cde37136e68c161b0279019dc6b56bd1c68fa5"
+    }
+  ],
+  "created_at": "2026-09-25T09:08:12Z"
+}
