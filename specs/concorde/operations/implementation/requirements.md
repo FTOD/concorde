@@ -66,6 +66,10 @@ The test Operation SHALL leave every file of the task worktree unchanged.
 
 The test worker's tool list SHALL NOT include Bash or any other tool that runs a command.
 
+### req.implementation.test-reads-logs — The test worker reads every check log
+
+The test Operation SHALL let its worker read the log of every check the host ran for the run, whether the check passed or not.
+
 ### req.implementation.host-check-facts — Check outcomes come from the host
 
 The check outcomes in a code change or a test report SHALL be the check results the host recorded,

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import unittest
 from pathlib import Path
 
 from concorde.harness.runs import read_record
+from concorde.harness.settings import denied
 from concorde.implementation.operation import CODE_CHANGE_SCHEMA, TEST_REPORT_SCHEMA
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
@@ -308,6 +310,13 @@ class TestOperationTests(unittest.TestCase):
         self.assertIn("check.a (module.a): passed", round_one["prompt"])
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("", status_lines(self.worktree))
+        # The worker may read the log of a check that passed, to see what actually ran.
+        settings = json.loads(
+            (Path(record["run_directory"]) / "control/settings.json").read_text()
+        )
+        checks = Path(os.path.realpath(self.root / output["checks"][0]["log"])).parent
+        self.assertFalse(denied(settings["permissions"]["deny"], checks))
+        self.assertIn(checks.as_posix(), settings["sandbox"]["filesystem"]["allowRead"])
 
     @verifies("scenario.implementation.test-fail")
     def test_a_failing_check_is_interpreted(self):

@@ -395,8 +395,12 @@ def testing_step(ctx: RunContext):
         + "\n## Check results (run by the host)\n\n"
         + check_material(results)
     )
+    # The worker interprets the checks, so it reads their full logs, passed ones included.
     outcome = ctx.run_worker(
-        instructions, task_type="test", output_schema=TEST_WORKER_OUTPUT
+        instructions,
+        task_type="test",
+        output_schema=TEST_WORKER_OUTPUT,
+        readable=(ctx.run_dir / "checks",),
     )
     outcome.evidence[:0] = found
     if isinstance(outcome, Stop):

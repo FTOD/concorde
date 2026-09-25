@@ -379,6 +379,7 @@ def review_step(ctx: RunContext):
         instructions(ctx, base, reviewed, named, diff, results),
         task_type="review-code",
         output_schema=REVIEWER_OUTPUT,
+        readable=(ctx.run_dir / "checks",),
     )
     outcome.evidence[:0] = found
     if isinstance(outcome, Stop):

@@ -10,7 +10,9 @@ you have no tool that writes or runs a command, and any change to the task workt
 
 1. Read the check results at the end of this task. Each line names the check, its Module, its
    outcome and exit code and the path of its log; the last part of every log that did not pass is
-   included below the list.
+   included below the list. Every log is readable at its path, whether its check passed or not:
+   read it whenever the outcome alone does not tell you enough, for example to confirm that the
+   test of a scenario actually ran rather than being skipped.
 2. Read each bound Module's `module.md`, its requirements, scenarios and contracts, and the code
    and tests in your boundary.
 3. For every check that did not pass, find out what it exercises, which requirements or scenarios

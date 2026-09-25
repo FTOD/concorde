@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -90,6 +91,11 @@ class CodeReviewTests(unittest.TestCase):
         self.assertIn("+    return a + b", prompt)
         self.assertIn("check.a (module.a): passed", prompt)
         self.assertEqual("Read,Glob,Grep", record["tools"])
+        settings = json.loads(
+            (Path(record["run_directory"]) / "control/settings.json").read_text()
+        )
+        checks = Path(os.path.realpath(self.root / report["checks"][0]["log"])).parent
+        self.assertIn(checks.as_posix(), settings["sandbox"]["filesystem"]["allowRead"])
 
     @verifies("scenario.code-review.all-blocking")
     def test_every_blocking_finding_in_one_report(self):

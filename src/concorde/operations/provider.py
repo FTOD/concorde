@@ -280,11 +280,14 @@ class RunContext:
         modules: list[str] | None = None,
         role: str | None = None,
         read_only: bool = False,
+        readable: tuple[Path, ...] = (),
     ):
         """The standard worker sequence; returns ``Continue`` or ``Stop``.
 
         ``read_only`` withholds every writable level of the task type's grant, turning it into
-        read access, as the Protocol lets a harness give less than a type assigns.
+        read access, as the Protocol lets a harness give less than a type assigns. ``readable``
+        names host material outside the grant the worker may read as well, such as the logs of
+        the checks the host ran for this run.
         """
         from ..harness.workers import WorkerRequest, run_worker
         from ..spec.grants import grant
@@ -328,7 +331,7 @@ class RunContext:
             Path(path) if os.path.isabs(path) else self.worktree / path
             for path in config.get("runtime", [".venv", "node_modules"])
             if (Path(path) if os.path.isabs(path) else self.worktree / path).exists()
-        )
+        ) + tuple(Path(path) for path in readable if Path(path).exists())
         record = run_worker(
             WorkerRequest(
                 worktree=self.worktree,

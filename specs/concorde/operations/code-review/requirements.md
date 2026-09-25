@@ -18,6 +18,10 @@ it launches the reviewer.
 
 ## Reviewing
 
+### req.code-review.reads-check-logs — The reviewer reads the check logs
+
+The code_review Operation SHALL let its reviewer read the log of every check the host ran for the run.
+
 ### req.code-review.read-only — The reviewer cannot change or run anything
 
 The reviewer's tool list SHALL contain only tools that read files.
