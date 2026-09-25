@@ -126,6 +126,50 @@ class ConfigureWorkersTests(unittest.TestCase):
             self.stored(self.root)["pi"],
         )
 
+    @verifies("scenario.operations.configure-follows-backend")
+    def test_a_model_change_reaches_the_section_its_worker_reads(self):
+        choice = {"operations": {"implement": {"default": "pi"}}}
+        models.save(self.root, {"schema_version": 2, "backend": choice})
+        status, envelope = self.configure(
+            "--operation",
+            "implement",
+            "--model",
+            "anthropic/claude-sonnet-5",
+            client="claude",
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        output = envelope["output"]
+        self.assertEqual(
+            ("pi", "backend.operations.implement.default"),
+            (output["backend"], output["backend_from"]),
+        )
+        self.assertEqual(
+            ["anthropic/claude-sonnet-5", "local-openai/plain-7"],
+            [item["id"] for item in output["candidates"]["models"]],
+        )
+        stored = self.stored(self.root)
+        self.assertEqual(choice, stored["backend"])
+        self.assertEqual(
+            {"operations": {"implement": {"model": "anthropic/claude-sonnet-5"}}},
+            stored["pi"],
+        )
+        self.assertNotIn("claude", stored)
+        worker = output["effective"]["implement"]["worker"]
+        self.assertEqual(
+            (
+                "pi",
+                "backend.operations.implement.default",
+                "anthropic/claude-sonnet-5",
+            ),
+            (worker["backend"], worker["backend_source"], worker["model"]),
+        )
+        reviewer = output["effective"]["spec_review"]["reviewer"]
+        self.assertEqual(
+            ("claude", "CONCORDE_CLIENT=claude", None),
+            (reviewer["backend"], reviewer["backend_source"], reviewer["model"]),
+        )
+        validate(output, CONFIGURATION_SCHEMA)
+
     @verifies("scenario.operations.configure-refused")
     def test_a_refused_change_leaves_the_file_alone(self):
         status, envelope = self.configure("--operation", "validate", "--model", "x")

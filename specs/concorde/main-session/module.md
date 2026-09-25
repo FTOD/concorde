@@ -123,18 +123,20 @@ top of the chain, records it in the task and prints it rendered for the develope
 
 <a id="concept.main-session.model-picker"></a>
 
-**Worker models.** Workers run on the main agent's own program and take their model from the
-worktree's [worker model
-configuration](../harness/workers/module.md#concept.workers.model-configuration). The guidance
+**Worker models.** Workers run on the main agent's own program unless the worktree's [worker model
+configuration](../harness/workers/module.md#concept.workers.model-configuration) chooses the other
+one, and take their model from it. When the developer asks to run workers on the other program, the
+main agent edits the configuration's `backend` section by hand, since no Operation changes it, and
+shows the result with `configure_workers`. The guidance
 tells the main agent to change it only when the developer asks, and to let the developer choose
 from what the [`configure_workers`](../operations/module.md#concept.operations.configure-workers)
 Operation lists. In pi the run view's **model picker** does it: the `/concorde-models` command, or
 the `concorde_configure_workers` tool the main agent calls on the developer's request, shows the
 default and every Operation's workers — one row per worker role for an Operation with several —
-with the model and level each runs on, then the models pi lists, then the chosen model's levels,
-and applies each choice with `configure_workers`, removing an entry when the developer returns it
-to the more general one; a task identity limits it to that task's copy. In Claude Code,
-which lets no extension draw a dialog, the main agent asks with its question tool — scope, model,
+with the model and level each runs on (only the workers that run on pi), then the models pi
+lists, then the chosen model's levels, and applies each choice with `configure_workers`, removing
+an entry when the developer returns it to the more general one; a task identity limits it to that
+task's copy. In Claude Code, which lets no extension draw a dialog, the main agent asks with its question tool — scope, model,
 level — and applies the answers itself. Without a request naming a task, only the worktree the
 command runs in changes, so in the primary worktree only tasks opened later are affected.
 
@@ -283,8 +285,10 @@ file](../harness/workers/module.md#concept.workers.progress-file). The run view 
 recording the phase, round and latest tool call, and the host process that launched the worker,
 and on it being an observation only. Workers also owns the [worker model
 configuration](../harness/workers/module.md#concept.workers.model-configuration); the model picker
-and the guidance change it only through the `configure_workers` Operation, which lists the
-candidates and validates every choice, so neither ever writes the file itself.
+and the guidance change its model choices only through the `configure_workers` Operation, which
+lists the candidates and validates every choice, so neither writes them itself. Its `backend`
+section is the exception: no Operation changes it, so the main agent edits it by hand on the
+developer's request and `configure_workers` validates the result.
 
 <a id="uses-tasks"></a>
 

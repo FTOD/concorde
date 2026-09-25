@@ -20,11 +20,12 @@ from typing import Callable
 
 from ..errors import evidence, from_exception, link
 from ..harness.models import (
+    HANDLING,
     ModelConfigError,
     config_path,
-    detect_client,
     load,
     selection,
+    worker_backend,
 )
 
 
@@ -347,6 +348,7 @@ class RunContext:
                 max_budget_usd=config.get("max_budget_usd"),
                 model=model["model"],
                 backend=backend,
+                backend_source=model["backend_source"],
                 reasoning=model["reasoning"],
                 operation=self.operation,
                 role=role,
@@ -355,38 +357,48 @@ class RunContext:
         return self.absorb(record)
 
     def worker_model(self, role: str) -> tuple[str, dict]:
-        """The main session's backend and the worktree's model choice for this Operation's
-        worker ``role``."""
-        backend, _ = detect_client()
-        return backend, selection(load(self.worktree), backend, self.operation, role)
+        """The backend of this Operation's worker ``role`` — the worktree's configured one, or the
+        main session's — and the worktree's model choice for it in that backend."""
+        config = load(self.worktree)
+        backend, source = worker_backend(config, self.operation, role)
+        return backend, {
+            **selection(config, backend, self.operation, role),
+            "backend_source": source,
+        }
 
     def model_failure(self, role: str, error) -> Stop:
         """Stop ``failed``: the backend or the worker model configuration cannot be settled."""
         path = config_path(self.worktree).as_posix()
+        reason = HANDLING.get(error.code, ("input",))[0]
         return self.fail(
             "failed",
             "worker_model_unavailable",
             f"The {role} worker could not be configured ({error.code}).",
             f"the backend and model of the {role} worker of {self.operation} in {self.worktree} "
             f"cannot be settled: {error.code}: {error} (configuration file {path})",
-            reason="input",
-            explanation="an Operation runs workers on the main session's agent program with the "
-            "task worktree's model configuration and never guesses or repairs either",
+            reason=reason,
+            explanation="an Operation runs a worker on the program the worktree's configuration "
+            "chooses, otherwise on the main session's, with the worktree's model choice, and "
+            "never guesses, repairs or falls back from either",
             evidence=[evidence("worker_models", path, f"{error.code}: {error}")],
             causes=[
                 component(
                     "Workers (worker model configuration)",
                     error.code,
                     str(error),
-                    "input",
-                    "Workers reads the client from the environment and the configuration "
-                    "from the file, and changes neither",
+                    reason,
+                    "Workers reads the backend and models from the file and the client from the "
+                    "environment, and changes neither",
                 )
             ],
             options=[
                 (
                     "run the Operation from the Claude Code or pi main session, or set "
                     "CONCORDE_CLIENT"
+                ),
+                (
+                    "install the program the backend section of the configuration chooses, or "
+                    "change that entry by hand"
                 ),
                 (
                     "inspect and fix the configuration with concorde run configure_workers"
@@ -532,7 +544,8 @@ class RunContext:
             evidence(
                 "worker-model",
                 record.get("backend") or "",
-                f"{record.get('role') or 'worker'}: model "
+                f"{record.get('role') or 'worker'} (backend from "
+                f"{record.get('backend_source') or 'the request'}): model "
                 f"{record.get('model') or 'the backend default'}, reasoning "
                 f"{record.get('reasoning') or 'the backend default'}",
             ),

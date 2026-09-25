@@ -5,7 +5,8 @@
  * configures for every worker role of every Operation; these functions turn its output into the
  * choices the picker shows and a chosen row back into a `concorde run configure_workers` command
  * line. The extension owns the dialogs and runs the Operation; the Operation validates and
- * writes the configuration.
+ * writes the configuration. A worker the configuration's hand-edited `backend` section puts on
+ * another program is not the picker's to choose, so it offers only the workers that run on pi.
  */
 
 export interface ModelEntry {
@@ -17,6 +18,8 @@ export interface ModelEntry {
 }
 
 export interface Chosen {
+  backend?: string | null;
+  backend_source?: string;
   model: string | null;
   reasoning: string | null;
   model_source: string;
@@ -64,7 +67,8 @@ function ownEntry(listing: Listing, scope: Scope): Choice | undefined {
 
 /**
  * One row per scope: the default, then every Operation's workers with what they run on now. An
- * Operation with one worker role is one row; one with several has a row per role.
+ * Operation with one worker role is one row; one with several has a row per role. A worker whose
+ * effective backend is another program than the listing's has no row.
  */
 export function scopeRows(
   listing: Listing,
@@ -81,6 +85,7 @@ export function scopeRows(
     for (const role of names) {
       const scope = { operation, role: names.length > 1 ? role : null };
       const chosen = roles[role];
+      if (chosen.backend && chosen.backend !== listing.backend) continue;
       rows.push({
         label:
           `${operation}${scope.role ? ` ${role}` : ""}: ` +

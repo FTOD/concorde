@@ -7,11 +7,12 @@ contributes; a requirement here promises what the Modules achieve together.
 
 ### req.concorde.agent-runtimes — Claude Code and pi are the agent runtimes
 
-The Framework SHALL support a main agent in Claude Code or in pi and run every worker of that main agent on the same agent program, under the same grant.
+The Framework SHALL support a main agent in Claude Code or in pi and run every worker of that main agent, under the same grant, on the agent program the worktree's worker model configuration chooses for it, and on the main agent's own program when it chooses none.
 
 The Spec Protocol needs no change for this, because it defines visibility, not how an agent is
-run; each backend compiles the same grant into its own mechanism. A main agent of one program with
-workers of the other is future work.
+run; each backend compiles the same grant into its own mechanism, so a Claude Code main agent may
+run pi workers and a pi main agent Claude Code workers. A worker whose chosen program is not
+installed is refused, never moved to the other program.
 
 ### req.concorde.worker-models-per-worktree — Worker models belong to the worktree
 

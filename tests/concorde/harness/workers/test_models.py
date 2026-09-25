@@ -45,6 +45,66 @@ class WorkerModelTests(unittest.TestCase):
             models.detect_client({"CONCORDE_CLIENT": "codex"})
         self.assertEqual("invalid_client", raised.exception.code)
 
+    @verifies("scenario.workers.backend-configured")
+    def test_the_configuration_may_choose_another_program(self):
+        config = {
+            "schema_version": 2,
+            "backend": {
+                "default": "pi",
+                "operations": {"spec_review": {"roles": {"checker": "claude"}}},
+            },
+            "pi": {"default": {"model": "a/pi"}},
+            "claude": {"default": {"model": "opus"}},
+        }
+        path = models.save(self.base, config)
+        self.assertEqual(config, models.load(self.base))
+        session = dict(self.environ, CLAUDECODE="1")
+        self.assertEqual(
+            ("pi", "backend.default"),
+            models.worker_backend(config, "implement", "worker", session),
+        )
+        self.assertEqual(
+            ("pi", "backend.default"),
+            models.worker_backend(config, "spec_review", "reviewer", session),
+        )
+        self.assertEqual(
+            ("claude", "backend.operations.spec_review.roles.checker"),
+            models.worker_backend(config, "spec_review", "checker", session),
+        )
+        self.assertEqual(
+            ("a/pi", "opus"),
+            (
+                models.selection(config, "pi", "spec_review", "reviewer")["model"],
+                models.selection(config, "claude", "spec_review", "checker")["model"],
+            ),
+        )
+        self.assertEqual(
+            ("pi", "backend.default"),
+            models.worker_backend(config, "implement", "worker", self.environ),
+        )
+        self.assertEqual(
+            ("claude", "CLAUDECODE=1"),
+            models.worker_backend(
+                {"schema_version": 2}, "implement", "worker", session
+            ),
+        )
+        missing = dict(session, CONCORDE_PI=str(self.base / "nowhere"))
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.worker_backend(config, "implement", "worker", missing)
+        self.assertEqual("backend_missing", raised.exception.code)
+        for part in ("backend.default", "CONCORDE_PI", "never falls back"):
+            self.assertIn(part, str(raised.exception))
+        self.assertEqual(
+            "claude",
+            models.worker_backend(config, "spec_review", "checker", missing)[0],
+        )
+        path.write_text(
+            json.dumps({"schema_version": 2, "backend": {"default": "codex"}})
+        )
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(self.base)
+        self.assertEqual("config_invalid", raised.exception.code)
+
     @verifies("scenario.workers.models-listed")
     def test_the_installed_programs_models_are_listed(self):
         pi = models.candidates("pi", self.environ)

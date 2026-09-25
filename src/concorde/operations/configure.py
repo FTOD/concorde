@@ -5,13 +5,15 @@ configuration new tasks inherit; with ``--task`` it changes only that task's own
 
 One step, ``configure``:
 
-1. Take the backend from ``--backend`` or from the main session that started the run.
-2. Check the request: ``--operation`` names a catalog Operation that launches workers, ``--role``
+1. Check the request: ``--operation`` names a catalog Operation that launches workers, ``--role``
    one of its roles, and ``--unset`` comes without a model or level.
+2. Read ``.concorde/worker-models.json`` and take the backend from ``--backend``, otherwise from
+   the file's ``backend`` section for the named role, Operation or default, otherwise from the
+   main session that started the run. The ``backend`` section itself is edited by hand only.
 3. List the candidates the installed program offers (not for ``--unset``), refuse a model or level
    it does not offer, and apply the change to ``.concorde/worker-models.json``.
-4. Output the candidates, the file's entries for the backend and the effective model and level of
-   every worker role of every Operation.
+4. Output the candidates, the file's entries for the backend and the effective backend, model and
+   level of every worker role of every Operation.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ from ..harness.models import (
     candidates,
     check_choice,
     config_path,
+    configured_backend,
     detect_client,
     load,
     save,
@@ -40,8 +43,17 @@ OPTIONAL_TEXT = {"anyOf": [{"type": "null"}, TEXT]}
 CHOSEN_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["model", "reasoning", "model_source", "reasoning_source"],
+    "required": [
+        "backend",
+        "backend_source",
+        "model",
+        "reasoning",
+        "model_source",
+        "reasoning_source",
+    ],
     "properties": {
+        "backend": {"anyOf": [{"type": "null"}, {"enum": list(CLIENTS)}]},
+        "backend_source": TEXT,
         "model": OPTIONAL_TEXT,
         "reasoning": OPTIONAL_TEXT,
         "model_source": TEXT,
@@ -154,6 +166,21 @@ def _refuse(ctx: RunContext, error: ModelConfigError) -> object:
     )
 
 
+def _effective(config: dict, operation: str, role: str, client: tuple) -> dict:
+    """The backend one worker role runs on and its model and level in that backend's section."""
+    backend, source = configured_backend(config, operation, role) or client
+    if backend is None:
+        chosen = {
+            "model": None,
+            "reasoning": None,
+            "model_source": source,
+            "reasoning_source": source,
+        }
+    else:
+        chosen = selection(config, backend, operation, role)
+    return {"backend": backend, "backend_source": source, **chosen}
+
+
 def configure(ctx: RunContext):
     arguments = ctx.arguments
     roles = worker_roles()
@@ -171,11 +198,18 @@ def configure(ctx: RunContext):
             ],
         )
     try:
+        config = load(ctx.worktree)
+        target = configured_backend(config, arguments.operation, arguments.role)
+        try:
+            client = detect_client()
+        except ModelConfigError as error:
+            if not (arguments.backend or target):
+                raise
+            client = (None, f"no backend is known: {error}")
         if arguments.backend:
             backend, told = arguments.backend, "--backend"
         else:
-            backend, told = detect_client()
-        config = load(ctx.worktree)
+            backend, told = target or client
         found = None
         if arguments.unset:
             action = "unset"
@@ -225,7 +259,7 @@ def configure(ctx: RunContext):
             "candidates": found,
             "configured": config.get(backend) or {},
             "effective": {
-                name: {role: selection(config, backend, name, role) for role in names}
+                name: {role: _effective(config, name, role, client) for role in names}
                 for name, names in roles.items()
             },
         },

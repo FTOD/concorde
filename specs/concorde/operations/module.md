@@ -17,7 +17,7 @@ the main agent decides.
 | Operation | A named job the main agent runs for one task, or for no task when its catalog entry allows it, made of deterministic host steps and zero or more workers, that ends with exactly one Operation result. |
 | Run without a task | A run of an Operation whose catalog entry makes the task optional, started without `--task` in the primary worktree: it works on the primary worktree, begins no task record, and changes no Spec or code. |
 | Worker role | A named worker an Operation launches, such as `spec_review`'s `reviewer` and `checker`; an Operation with a single worker has the role `worker`. |
-| configure_workers | The Operation that lists the models the main session's program offers workers and changes a worktree's worker model configuration, with or without a task. |
+| configure_workers | The Operation that lists the models an installed agent program offers workers and changes the model choices of a worktree's worker model configuration, with or without a task. |
 | Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, its worker roles, whether it needs a task, whether it may change the task worktree and the contract of its output. |
 | Operation host | The deterministic process started by `concorde run` that executes one Operation's step table for one task, or for none, and alone launches its workers, checks their work and writes its result. |
 | Detached run | A run whose host `concorde run --detach` starts as a process of its own, printing the run identity at once instead of waiting for the result. |
@@ -114,11 +114,14 @@ the worker model configuration may choose a model per Operation and per role.
 
 <a id="concept.operations.configure-workers"></a>
 
-**`configure_workers`** lists and changes the worker model configuration: without a model or
-level it outputs the candidates the main session's program offers, the file's entries and the
-effective model and level of every worker role of every Operation; `--model`, `--reasoning` or
-both set them for the default, for `--operation <op>` or for `--role <role>` of it;
-`--unset` removes that entry. Without a task it changes the primary worktree's file, which the
+**`configure_workers`** lists and changes the model choices of the worker model configuration:
+without a model or level it outputs the candidates a program offers, the file's entries for that
+program and the effective backend, model and level of every worker role of every Operation;
+`--model`, `--reasoning` or both set them for the default, for `--operation <op>` or for
+`--role <role>` of it; `--unset` removes that entry. The program is `--backend`, otherwise the
+backend the named role, Operation or default resolves to, so a change reaches the section the
+worker actually reads. The file's `backend` section, which chooses a worker's program, is edited by
+hand only. Without a task it changes the primary worktree's file, which the
 tasks opened from then on inherit, and with `--task` only that task's copy. It checks the
 Operation and role against the catalog and every model and level against the program's listing
 (`--allow-unlisted` admits a model the listing cannot show), and launches no worker. Its exact

@@ -365,7 +365,7 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
 ```concorde-contract
 {
   "id": "contract.operations.worker-configuration",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -430,12 +430,31 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "backend",
+              "backend_source",
               "model",
               "reasoning",
               "model_source",
               "reasoning_source"
             ],
             "properties": {
+              "backend": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "enum": [
+                      "claude",
+                      "pi"
+                    ]
+                  }
+                ]
+              },
+              "backend_source": {
+                "type": "string",
+                "minLength": 1
+              },
               "model": {
                 "anyOf": [
                   {
@@ -472,7 +491,7 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
       }
     }
   },
-  "semantics": "The output of configure_workers. action is list when the run changed nothing and was asked for nothing, set when it set a model or level, unset when it removed an entry. backend is the program whose entries were read or changed and backend_from how it was found (--backend or the main session's variable). worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the primary worktree; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file's entry for the backend as written after the change. effective maps every catalog Operation that launches workers to its worker roles, each with the model and reasoning level a worker of that role would run with and the entry each came from, or null with the source \"the backend's own default\". A behaviour or field change increments the version.",
+  "semantics": "The output of configure_workers. action is list when the run changed nothing and was asked for nothing, set when it set a model or level, unset when it removed an entry. backend is the program whose entries were read or changed and backend_from how it was found: --backend, otherwise the entry of the file's backend section that chooses the backend of the named role, Operation or default (such as backend.operations.implement.default), otherwise the main session's variable. worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the primary worktree; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file's entry for the backend as written after the change. effective maps every catalog Operation that launches workers to its worker roles, each with the backend a worker of that role would run on and the entry or main session variable it came from (backend null when neither settles it, with the reason as its source), and the model and reasoning level it would run with in that backend's section and the entry each came from, or null with the source \"the backend's own default\". A behaviour or field change increments the version.",
   "example": {
     "action": "set",
     "backend": "pi",
@@ -535,12 +554,16 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
     "effective": {
       "spec_review": {
         "reviewer": {
+          "backend": "pi",
+          "backend_source": "CONCORDE_CLIENT=pi",
           "model": "anthropic/claude-sonnet-5",
           "reasoning": "medium",
           "model_source": "pi.default",
           "reasoning_source": "pi.default"
         },
         "checker": {
+          "backend": "pi",
+          "backend_source": "CONCORDE_CLIENT=pi",
           "model": "anthropic/claude-sonnet-5",
           "reasoning": "low",
           "model_source": "pi.default",

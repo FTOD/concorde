@@ -24,12 +24,19 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND the run record and the result's `worker-model` host evidence name the backend, the worker role, the model and the level
 - BUT a change made afterwards to the primary worktree's configuration does not change what the task's next worker runs on
 
-### scenario.operations.worker-model-unavailable — A run with no known main session program fails before launch
+### scenario.operations.worker-backend-configured — A Claude Code main session runs a pi worker
 
-- GIVEN a task, and a `concorde run implement` started outside any Claude Code or pi session with `CONCORDE_CLIENT` unset, or a task worktree whose worker model configuration is not valid JSON
+- GIVEN a Claude Code main session, pi installed, and a task worktree whose worker model configuration chooses `pi` for the `implement` Operation and a pi model for it
+- WHEN the main agent runs `concorde run implement` for the task
+- THEN the host launches `pi -p` with that model, under the same grant a Claude Code worker would get
+- AND the run record and the `worker-model` host evidence name `pi` and the entry `backend.operations.implement.default` it came from
+
+### scenario.operations.worker-model-unavailable — A run whose worker backend or model cannot be settled fails before launch
+
+- GIVEN a task, and a `concorde run implement` started outside any Claude Code or pi session with `CONCORDE_CLIENT` unset and no configured backend, a task worktree whose worker model configuration is not valid JSON, or one that chooses `pi` for `implement` on a machine without pi
 - WHEN the host reaches the worker step
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
-- AND its cause is the `component` link of Workers' model configuration with `client_unknown` or `config_invalid`, naming the variables looked at or the file
+- AND its cause is the `component` link of Workers' model configuration with `client_unknown`, `config_invalid` or `backend_missing`, naming the variables looked at, the file, or the entry that chose `pi` and the command looked for
 
 ### scenario.operations.progress-file — A run shows its progress
 
@@ -113,6 +120,14 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - THEN the primary worktree's file holds both, the checker resolves its own entry and the reviewer the default
 - AND `t1`'s worktree has no file until `configure_workers --task t1` sets a model there, which changes only that copy
 - AND `--unset` of the checker's entry leaves only the default
+
+### scenario.operations.configure-follows-backend — A model change reaches the section its worker reads
+
+- GIVEN a Claude Code main session and a primary worktree whose worker model configuration chooses `pi` for `implement` by hand
+- WHEN `configure_workers --operation implement --model <a pi model>` runs without `--backend`
+- THEN it lists pi's candidates, sets the model in the file's `pi` section and reports `backend_from` as `backend.operations.implement.default`
+- AND its `effective` output gives `implement`'s worker the backend `pi` from that entry and every other worker `claude` from the main session
+- AND the file's `backend` section is unchanged
 
 ### scenario.operations.configure-refused — A refused change leaves the file alone
 
