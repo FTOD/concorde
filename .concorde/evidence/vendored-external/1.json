@@ -1,0 +1,42 @@
+{
+  "task": "vendored-external",
+  "goal": "Adoption treats vendored third-party code as external material a Module includes, never as a Module to describe",
+  "modules": [
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "199591da9a8aa7e0ee493b402ddb14d678001b65",
+  "parent_commit": "86f9860e9655d7f74c6ce423ae8ec00fffceb01a",
+  "readiness": {
+    "run_id": "r-20260925T190006-delivery-eb7a1a6f",
+    "input_digest": "sha256:575ce438b57db854539c9c7fe032d8bc02937a3f2aab3e78092a1a82b632762e",
+    "modules": [
+      "module.adoption",
+      "module.concorde"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:271dc5e8903e40a49f23947a2c4f1754aea37411ac4591f4a1bea2e858214247"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T185953-validate-2677bb1f",
+      "operation": "validate",
+      "modules": [
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:d40de21c150fe0df2f28ea34b781c9338e8c3b7f216867b3dcc1cc0c934780c6"
+    }
+  ],
+  "created_at": "2026-09-25T19:00:18Z"
+}
