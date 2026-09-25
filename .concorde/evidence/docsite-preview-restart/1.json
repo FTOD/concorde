@@ -1,0 +1,53 @@
+{
+  "task": "docsite-preview-restart",
+  "goal": "Make npm run start restart the Docusaurus preview whenever the Specs it publishes change, since a running preview cannot pick up any Spec edit",
+  "modules": [
+    "module.views"
+  ],
+  "sequence": 1,
+  "base_commit": "180c158cd87fd52fe892e1968d4bff338167c36a",
+  "parent_commit": "ab1fe72fac539cc45311a8a267f3fd7d70a58bd2",
+  "readiness": {
+    "run_id": "r-20260925T084800-delivery-248fa1f3",
+    "input_digest": "sha256:9e3d03215eea8ff8f2f32174a0cd1a75d9c8f05ff9f0150182c2ecbb995cc386",
+    "modules": [
+      "module.views"
+    ],
+    "checks": [
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:51a1a971aa052ee52b479e7aa4072d9c1ce7990c4546e2dddfd2eb4ccea57bd6"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:51a1a971aa052ee52b479e7aa4072d9c1ce7990c4546e2dddfd2eb4ccea57bd6"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:51a1a971aa052ee52b479e7aa4072d9c1ce7990c4546e2dddfd2eb4ccea57bd6"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T084459-validate-0e45c786",
+      "operation": "validate",
+      "modules": [
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:11812b5d1043d6d4a5749a4fb4d6c3fd5760a2c8c963056e68f5a5133950b026"
+    }
+  ],
+  "created_at": "2026-09-25T08:50:55Z"
+}
