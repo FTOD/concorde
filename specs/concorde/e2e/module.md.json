@@ -63,6 +63,12 @@
       "meaning": "#concept.e2e.driver-run"
     },
     {
+      "id": "concept.e2e.case",
+      "type": "concept",
+      "title": "Case",
+      "meaning": "#concept.e2e.case"
+    },
+    {
       "id": "realization.e2e.tool",
       "type": "realization",
       "title": "End-to-end tool",

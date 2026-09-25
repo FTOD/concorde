@@ -17,6 +17,10 @@ The tool SHALL set up a test project only through this checkout's installer and 
 
 No file of this Module SHALL be installed into a project or rendered into the main-session guidance.
 
+### req.e2e.case-graded-apart — A case's tests stay outside the project
+
+The tool SHALL grade a case in a throwaway worktree of the project, applying the case's test patch only there and removing the worktree afterwards.
+
 ## Running
 
 ### req.e2e.headless-waits — A headless run lasts as long as its workflow

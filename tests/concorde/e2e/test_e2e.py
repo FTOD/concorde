@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,6 +20,16 @@ e2e = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(e2e)
 
 
+def git(cwd: Path, *arguments: str) -> str:
+    return subprocess.run(
+        ["git", "-c", "user.name=e2e", "-c", "user.email=e2e@example.com", *arguments],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+
+
 class E2ETests(unittest.TestCase):
     @verifies("scenario.e2e.repositories")
     def test_projects_come_from_swe_bench(self):
@@ -30,6 +41,69 @@ class E2ETests(unittest.TestCase):
         with self.assertRaises(e2e.E2EError) as raised:
             e2e.prepare("someone/else", "v1", Path(tempfile.mkdtemp()), "adopt")
         self.assertEqual("unknown_repository", raised.exception.code)
+
+    @verifies("scenario.e2e.case")
+    def test_a_case_is_cloned_at_its_base_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source = base / "source"
+            source.mkdir()
+            git(source, "init", "-q")
+            (source / "a.txt").write_text("base\n")
+            git(source, "add", "-A")
+            git(source, "commit", "-q", "-m", "base")
+            commit = git(source, "rev-parse", "HEAD").strip()
+            (source / "a.txt").write_text("later\n")
+            git(source, "commit", "-q", "-am", "later")
+            project = base / "psf__requests-1"
+            e2e.clone(str(source), commit, project)
+            self.assertEqual("base\n", (project / "a.txt").read_text())
+            self.assertEqual("main", git(project, "branch", "--show-current").strip())
+
+    @verifies("scenario.e2e.grade")
+    def test_grading_runs_the_case_tests_on_a_throwaway_tree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            project.mkdir()
+            git(project, "init", "-q", "-b", "main")
+            (project / "calc.py").write_text(
+                "def add(a, b):\n    return a - b\n\n\ndef sub(a, b):\n    return a - b\n"
+            )
+            git(project, "add", "-A")
+            git(project, "commit", "-q", "-m", "base")
+            test = (
+                "from calc import add, sub\n\n\ndef test_add():\n    assert add(2, 1) == 3"
+                "\n\n\ndef test_sub():\n    assert sub(2, 1) == 1\n"
+            )
+            lines = test.splitlines()
+            patch = (
+                "diff --git a/test_calc.py b/test_calc.py\nnew file mode 100644\n"
+                "--- /dev/null\n+++ b/test_calc.py\n"
+                f"@@ -0,0 +1,{len(lines)} @@\n"
+                + "".join(f"+{line}\n" for line in lines)
+            )
+            case = {
+                "instance_id": "toy__calc-1",
+                "test_patch": patch,
+                "FAIL_TO_PASS": json.dumps(["test_calc.py::test_add"]),
+                "PASS_TO_PASS": json.dumps(["test_calc.py::test_sub"]),
+            }
+            python = Path(sys.executable)
+            before = e2e.grade(project, case, python)
+            self.assertFalse(before["resolved"])
+            self.assertEqual(
+                {"test_calc.py::test_add": "FAILED"},
+                before["fail_to_pass"]["not_passed"],
+            )
+            self.assertEqual(1, before["pass_to_pass"]["passed"])
+            (project / "calc.py").write_text(
+                "def add(a, b):\n    return a + b\n\n\ndef sub(a, b):\n    return a - b\n"
+            )
+            git(project, "commit", "-q", "-am", "fix")
+            self.assertTrue(e2e.grade(project, case, python)["resolved"])
+            # The project is left as it was: no test file, no extra worktree.
+            self.assertFalse((project / "test_calc.py").exists())
+            self.assertEqual(1, git(project, "worktree", "list").count("\n"))
 
     @verifies("scenario.e2e.trust")
     def test_trust_marks_each_repository_root_and_keeps_the_rest(self):

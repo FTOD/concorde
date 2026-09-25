@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end testing of Concorde on real codebases: prepare, trust, run and watch.
+"""End-to-end testing of Concorde on real codebases: prepare, trust, run, watch and grade.
 
 This is a tool for developing Concorde, never installed into a project. It takes a project from
 the Python repositories SWE-bench draws from (``references/swe-bench/``), sets it up as a user
@@ -12,6 +12,13 @@ deterministic driver that plays the pi runtime.
     python3 scripts/e2e/e2e.py trust ~/concorde-e2e/requests
     python3 scripts/e2e/e2e.py run ~/concorde-e2e/requests --via claude
     python3 scripts/e2e/e2e.py watch ~/concorde-e2e/requests
+
+A SWE-bench case is prepared at its base commit under its own name, and a delivered change is
+graded with the case's tests, which Concorde's workers never see:
+
+    python3 scripts/e2e/e2e.py prepare psf/requests --rev <base_commit> --name psf__requests-3362
+    python3 scripts/e2e/e2e.py grade ~/concorde-e2e/psf__requests-3362 --instance case.json \
+        --python ~/concorde-e2e/psf__requests-3362/.venv/bin/python
 
 Every command prints one JSON object; a failure prints ``{"error": ...}`` with what failed, the
 command and its output, and exits 1.
@@ -26,6 +33,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 CHECKOUT = Path(__file__).resolve().parents[2]
@@ -87,38 +95,46 @@ def e2e_root() -> Path:
     return Path(os.environ.get("CONCORDE_E2E_ROOT") or DEFAULT_ROOT).expanduser()
 
 
+def repository_url(repo: str) -> str:
+    return f"https://github.com/{repo}.git"
+
+
+def clone(url: str, rev: str, project: Path) -> None:
+    """Check ``rev`` of ``url`` out as the branch ``main`` of a new repository ``project``, with
+    no history before it. ``rev`` may be a tag, a branch or a commit, as SWE-bench's base commits
+    are, which ``git clone --branch`` does not accept."""
+    project.mkdir(parents=True)
+    run(["git", "init", "-q"], cwd=project)
+    run(["git", "remote", "add", "origin", url], cwd=project)
+    run(["git", "fetch", "-q", "--depth", "1", "origin", rev], cwd=project)
+    run(["git", "checkout", "-q", "-b", "main", "FETCH_HEAD"], cwd=project)
+
+
 def prepare(
-    repo: str, rev: str, root: Path, task: str, allow_any: bool = False
+    repo: str,
+    rev: str,
+    root: Path,
+    task: str,
+    allow_any: bool = False,
+    name: str | None = None,
 ) -> dict:
-    """Clone ``repo`` at ``rev`` under ``root``, install and initialize Concorde, open ``task``."""
+    """Clone ``repo`` at ``rev`` under ``root`` as ``name`` (the repository's name by default),
+    install and initialize Concorde, open ``task``."""
     if not allow_any and repo not in repositories():
         raise E2EError(
             "unknown_repository",
             f"{repo} is not among SWE-bench's repositories; pass --any to use it anyway",
             known=", ".join(repositories()),
         )
-    project = root / repo.split("/")[-1]
+    project = root / (name or repo.split("/")[-1])
     if project.exists():
         raise E2EError(
             "project_exists",
-            f"{project} already exists; remove it or choose another CONCORDE_E2E_ROOT",
+            f"{project} already exists; remove it, choose another --name or another "
+            "CONCORDE_E2E_ROOT",
         )
     root.mkdir(parents=True, exist_ok=True)
-    run(
-        [
-            "git",
-            "clone",
-            "-q",
-            "--depth",
-            "1",
-            "--branch",
-            rev,
-            f"https://github.com/{repo}.git",
-            str(project),
-        ],
-        cwd=root,
-    )
-    run(["git", "checkout", "-q", "-b", "main"], cwd=project)
+    clone(repository_url(repo), rev, project)
     run(
         [
             sys.executable,
@@ -343,6 +359,101 @@ def watch(project: Path) -> dict:
     return {"runs": runs, "workflows": workflows}
 
 
+RESULT_LINE = re.compile(r"^(PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS) (\S+)")
+
+
+def pytest_statuses(output: str) -> dict[str, str]:
+    """Each test's status from the short summary that ``pytest -rA`` prints."""
+    statuses: dict[str, str] = {}
+    for line in output.splitlines():
+        match = RESULT_LINE.match(line)
+        if match:
+            statuses[match.group(2)] = match.group(1)
+    return statuses
+
+
+def case_tests(instance: dict, field: str) -> list[str]:
+    value = instance.get(field) or []
+    return json.loads(value) if isinstance(value, str) else list(value)
+
+
+def grade(
+    project: Path,
+    instance: dict,
+    python: Path,
+    ref: str = "main",
+    pythonpath: tuple[str, ...] = (),
+    log: Path | None = None,
+) -> dict:
+    """Grade ``ref`` of ``project`` as SWE-bench would: apply the case's test patch to a
+    throwaway worktree of ``ref``, run the test files it names, and compare with the case's
+    FAIL_TO_PASS and PASS_TO_PASS tests. The project itself is left as it was."""
+    fail_to_pass = case_tests(instance, "FAIL_TO_PASS")
+    pass_to_pass = case_tests(instance, "PASS_TO_PASS")
+    if not fail_to_pass or not instance.get("test_patch"):
+        raise E2EError(
+            "invalid_case",
+            f"case {instance.get('instance_id')} needs FAIL_TO_PASS tests and a test_patch",
+        )
+    scratch = Path(tempfile.mkdtemp(prefix="concorde-grade-"))
+    tree = scratch / "tree"
+    run(["git", "worktree", "add", "-q", "--detach", str(tree), ref], cwd=project)
+    try:
+        patch = scratch / "test.patch"
+        patch.write_text(instance["test_patch"], encoding="utf-8")
+        run(["git", "apply", str(patch)], cwd=tree)
+        files = sorted({test.split("::")[0] for test in fail_to_pass + pass_to_pass})
+        environment = {**os.environ}
+        if pythonpath:
+            environment["PYTHONPATH"] = os.pathsep.join(
+                str(tree / item) for item in pythonpath
+            )
+        command = [str(python), "-m", "pytest", "-rA", "-p", "no:cacheprovider", *files]
+        completed = subprocess.run(
+            command,
+            cwd=tree,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=1800,
+        )
+    finally:
+        subprocess.run(
+            ["git", "worktree", "remove", "--force", str(tree)],
+            cwd=project,
+            capture_output=True,
+            check=False,
+        )
+        shutil.rmtree(scratch, ignore_errors=True)
+    output = completed.stdout + "\n" + completed.stderr
+    if log is not None:
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text(output, encoding="utf-8")
+    statuses = pytest_statuses(completed.stdout)
+
+    def split(tests: list[str]) -> dict:
+        passed = [test for test in tests if statuses.get(test) == "PASSED"]
+        others = {test: statuses.get(test, "not run") for test in tests}
+        return {
+            "passed": len(passed),
+            "total": len(tests),
+            "not_passed": {k: v for k, v in others.items() if v != "PASSED"},
+        }
+
+    f2p, p2p = split(fail_to_pass), split(pass_to_pass)
+    return {
+        "instance": instance.get("instance_id"),
+        "ref": ref,
+        "resolved": f2p["passed"] == f2p["total"] and p2p["passed"] == p2p["total"],
+        "fail_to_pass": f2p,
+        "pass_to_pass": p2p,
+        "command": command,
+        "exit_code": completed.returncode,
+        "log": str(log) if log is not None else None,
+    }
+
+
 def main(argv) -> int:
     parser = argparse.ArgumentParser(prog="e2e")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -352,6 +463,7 @@ def main(argv) -> int:
     prepare_.add_argument("--rev", required=True)
     prepare_.add_argument("--task", default="adopt")
     prepare_.add_argument("--any", action="store_true")
+    prepare_.add_argument("--name")
     trust_ = sub.add_parser("trust")
     trust_.add_argument("projects", nargs="+", type=Path)
     run_ = sub.add_parser("run")
@@ -365,13 +477,24 @@ def main(argv) -> int:
     run_.add_argument("--restart", action="append", default=[], metavar="KEY=LABEL")
     watch_ = sub.add_parser("watch")
     watch_.add_argument("project", type=Path)
+    grade_ = sub.add_parser("grade")
+    grade_.add_argument("project", type=Path)
+    grade_.add_argument("--instance", type=Path, required=True)
+    grade_.add_argument("--python", type=Path, required=True)
+    grade_.add_argument("--ref", default="main")
+    grade_.add_argument("--pythonpath", action="append", default=[])
     arguments = parser.parse_args(argv)
     try:
         if arguments.command == "repos":
             value = {"repositories": repositories()}
         elif arguments.command == "prepare":
             value = prepare(
-                arguments.repo, arguments.rev, e2e_root(), arguments.task, arguments.any
+                arguments.repo,
+                arguments.rev,
+                e2e_root(),
+                arguments.task,
+                arguments.any,
+                arguments.name,
             )
         elif arguments.command == "trust":
             value = trust(arguments.projects)
@@ -391,6 +514,19 @@ def main(argv) -> int:
                 / f"{arguments.task}-{arguments.via}.jsonl"
             )
             value = run_workflow(project, arguments.via, arguments.workflow, args, log)
+        elif arguments.command == "grade":
+            project = arguments.project.resolve()
+            instance = json.loads(arguments.instance.read_text(encoding="utf-8"))
+            value = grade(
+                project,
+                instance,
+                arguments.python.expanduser().absolute(),
+                arguments.ref,
+                tuple(arguments.pythonpath),
+                project
+                / ".concorde/runs/e2e"
+                / f"grade-{instance.get('instance_id', 'case')}.log",
+            )
         else:
             value = watch(arguments.project.resolve())
     except E2EError as error:

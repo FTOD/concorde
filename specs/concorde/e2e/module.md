@@ -18,6 +18,7 @@ meet, so that the first are solved here rather than in what users get.
 | End-to-end root | The directory holding the test projects, `CONCORDE_E2E_ROOT` or `~/concorde-e2e`, outside the home directory itself. |
 | Headless run | A workflow run by a non-interactive `claude -p` main session started by the tool, waiting without limit for the workflow and granted its tools on the command line. |
 | Driver run | A workflow run by the deterministic driver, which plays the pi runtime and has the pi script's step agents execute the real `concorde workflow` commands, with real workers. |
+| Case | A SWE-bench task instance: an issue of one repository at its base commit, with a test patch and the tests that must pass once the issue is resolved. |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
 | [Workflow](../workflows/module.md#concept.workflows.workflow) | |
 | [Workflow result](../workflows/module.md#concept.workflows.result) | |
@@ -32,17 +33,19 @@ command and `{"error": …}` with the failed command and its output otherwise:
 
 ```text
 python3 scripts/e2e/e2e.py repos
-python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag> [--task <task>] [--any]
+python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--name <dir>] [--task <task>] [--any]
 python3 scripts/e2e/e2e.py trust <project>…
 python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
 python3 scripts/e2e/e2e.py watch <project>
+python3 scripts/e2e/e2e.py grade <project> --instance <case.json> --python <interpreter> [--ref main] [--pythonpath <dir>]…
 ```
 
 <a id="concept.e2e.test-project"></a><a id="concept.e2e.root"></a>
 
 **Preparing a test project.** `repos` lists the repositories SWE-bench's harness names, read from
-the vendored `references/swe-bench/`. `prepare psf/requests --rev v2.31.0` clones that revision
-into the **end-to-end root**, creates a `main` branch, installs Concorde from this checkout without
+the vendored `references/swe-bench/`. `prepare psf/requests --rev v2.31.0` fetches that revision, a tag,
+a branch or a commit, without earlier history into the **end-to-end root**, under `--name` or the
+repository's name, checks it out as a `main` branch, installs Concorde from this checkout without
 `d2`, initializes it, commits and opens a task bound to the root Module, which makes a **test
 project**. It refuses a repository SWE-bench does not name unless `--any` is given, and a project
 directory that already exists. The end-to-end root is never the home directory itself, where
@@ -76,6 +79,19 @@ run does not need it.
 **Watching.** `watch` lists every run of the project with its phase, step and outcome, and every
 task's workflow steps with their runs and whether they were superseded.
 
+<a id="concept.e2e.case"></a>
+
+**Grading a case.** A **case** tests Concorde's whole change flow on a real issue: the developer
+prepares the case's repository at its base commit under the case's name, adopts it with the
+brownfield workflow, sets the project's environment and checks up, and then works the issue
+through Concorde as a main agent would, from `understand` to the merge. `grade` then decides
+whether the merged change resolves the issue the way SWE-bench does: it applies the case's test
+patch to a throwaway worktree of `--ref`, runs the test files it names with the given interpreter
+(`--pythonpath` directories of that worktree first on `PYTHONPATH`), and reports how many of the
+FAIL_TO_PASS and PASS_TO_PASS tests passed, each one that did not, and whether the case is
+resolved. The test patch and the case's tests stay outside the project: no worker sees them, and
+the project is left as it was. The pytest output is kept under `.concorde/runs/e2e/`.
+
 ## Design
 
 End-to-end runs are not in the test suite. They clone from the network, spend real model tokens
@@ -106,12 +122,13 @@ e2e: End-to-end testing {
 <a id="realization.e2e.tool"></a>
 
 The **End-to-end tool** realization is `scripts/e2e/e2e.py`: preparing, trusting, running and
-watching test projects.
+watching test projects and grading cases.
 
 <a id="realization.e2e.tests"></a>
 
 The **End-to-end tool tests**, under `tests/concorde/e2e/`, check the tool's pure parts, the
-repository list, trust and the headless command, without cloning or running agents, verifying the
+repository list, trust, the headless command, cloning a revision and grading, on local
+repositories only, without the network or agents, verifying the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
 ## Relationships
