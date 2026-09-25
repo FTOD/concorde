@@ -1,0 +1,74 @@
+{
+  "task": "docsite-preview-restart",
+  "goal": "Make npm run start restart the Docusaurus preview whenever the Specs it publishes change, since a running preview cannot pick up any Spec edit",
+  "modules": [
+    "module.views"
+  ],
+  "sequence": 2,
+  "base_commit": "180c158cd87fd52fe892e1968d4bff338167c36a",
+  "parent_commit": "9dcf468dd644ebf5ad778d34c5a31a8040656b94",
+  "readiness": {
+    "run_id": "r-20260925T085600-delivery-925317d5",
+    "input_digest": "sha256:2aa9e6cc223ee51bf400a1678f2e949f1f0a80449c0a87b01c84b096c34165ef",
+    "modules": [
+      "module.concorde",
+      "module.harness.checks",
+      "module.spec",
+      "module.views"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:83bcbbd2fb69832bb3bbeb215ca955abe20a66dbf49a20cf8c8c199e9b0573bc"
+      },
+      {
+        "check": "check.checks.runtime",
+        "module": "module.harness.checks",
+        "status": "passed",
+        "measured_digest": "sha256:ae5a378a8f76f1f759323b85ccb6b9d7f7a672e3efc45a5f7a31b1ba30a760f8"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:d80d0a345003d06cbaaa70178727d3bdb6ed32804406acf66b2d899f173d450f"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:4c57136be4612f65b4dfbfaa0b5dea977d81d813a7703cabb90bc8824afbba93"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:4c57136be4612f65b4dfbfaa0b5dea977d81d813a7703cabb90bc8824afbba93"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:4c57136be4612f65b4dfbfaa0b5dea977d81d813a7703cabb90bc8824afbba93"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T085249-validate-1e96db4d",
+      "operation": "validate",
+      "modules": [
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:6386a7a0b61c685bdae4ce99afbde449416332d84ac977bbb3ff6d33b4442881"
+    }
+  ],
+  "created_at": "2026-09-25T08:59:09Z"
+}
