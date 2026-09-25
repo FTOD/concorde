@@ -1,7 +1,8 @@
 """``concorde run``: the Operation host's runner (see the Operations host Spec).
 
 1. Parse the command line and look up the catalog entry; only then create the run.
-2. Resolve the task and its worktree, or without ``--task`` the worktree the command runs in;
+2. Resolve the task and its worktree, or without ``--task`` the primary worktree (refused in a
+   task worktree);
    check ``--modules`` and ``--input``.
 3. Begin the run in the task record (a run without a task has none).
 4. Execute the provider's steps in order.
@@ -228,14 +229,50 @@ def _resolve_task(chosen, context: RunContext, primary: Path, arguments) -> None
     )
 
 
-def _resolve_project(chosen, context: RunContext, primary: Path, here: Path, arguments):
-    """Step 2 for a run without a task: the worktree it was started in; no task record."""
+def _resolve_project(
+    chosen, context: RunContext, primary: Path, here: Path, arguments
+) -> Stop | None:
+    """Step 2 for a run without a task: the primary worktree, and no task record.
+
+    A task worktree is refused: a run there without its task would read the task's files without
+    the task's one-run-at-a-time lock, so a concurrent writing run would break its audit.
+    """
     context.task = {}
-    context.worktree = store.worktree_of(here)
+    worktree = store.worktree_of(here)
+    context.worktree = worktree
+    if worktree != primary:
+        owner = next(
+            (
+                task["id"]
+                for task in store.list_tasks(primary)
+                if Path(task.get("worktree") or "") == worktree
+            ),
+            None,
+        )
+        hint = f"--task {owner}" if owner else "--task <the task of this worktree>"
+        return context.fail(
+            "failed",
+            "task_worktree_without_task",
+            f"{chosen.name} without a task runs only in the primary worktree; pass {hint}.",
+            f"{chosen.name} was started without --task in {worktree}, which is "
+            + (f"the worktree of task {owner}" if owner else "not the primary worktree")
+            + f", not in the primary worktree {primary}",
+            reason="input",
+            explanation="a run without a task works only on the primary worktree; in a task's "
+            "worktree it must run as a run of that task, so the task's lock keeps a "
+            "concurrent writing run from breaking its audit",
+            evidence=[evidence("refused", "task_worktree_without_task", str(worktree))],
+            options=[
+                f"run it again with {hint}",
+                f"run it from the primary worktree {primary} to work on the merged project",
+            ],
+            recommendation=f"run it again with {hint}",
+        )
     context.modules = _named_modules(arguments) or []
     if context.modules and chosen.requires_loaded_specs:
         store.registered(context.worktree, context.modules)
     context.inputs = _project_inputs(primary, arguments.input)
+    return None
 
 
 def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
@@ -275,7 +312,7 @@ def execute(argv, cwd: Path | None = None) -> tuple[int, dict]:
                 _resolve_task(chosen, context, primary, arguments)
                 begun = True
             else:
-                _resolve_project(chosen, context, primary, here, arguments)
+                stop = _resolve_project(chosen, context, primary, here, arguments)
         except store.TaskError as refusal:
             reason, explanation, options = REFUSALS.get(refusal.code, INPUT_REFUSAL)
             stop = context.fail(

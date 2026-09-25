@@ -142,8 +142,8 @@ command runs in changes, so in the primary worktree only tasks opened later are 
 
 **Questions without a task.** The guidance tells the main agent that `understand`, `spec_review`,
 `code_review` and `configure_workers` also run [without a
-task](../operations/module.md#concept.operations.no-task), on the worktree it starts them in, and
-change no Spec or code; it uses them for a question or a review that does not justify a task, such
+task](../operations/module.md#concept.operations.no-task), from the primary worktree only, and
+change no Spec or code, and that inside a task's worktree it always passes `--task`; it uses them for a question or a review that does not justify a task, such
 as understanding a Module before a change is agreed. In pi `concorde_run` takes the task as
 optional for them.
 

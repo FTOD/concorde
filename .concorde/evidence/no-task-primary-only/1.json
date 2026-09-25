@@ -1,0 +1,84 @@
+{
+  "task": "no-task-primary-only",
+  "goal": "Runs without a task only in the primary worktree; refuse them in a task worktree with a hint to pass --task",
+  "modules": [
+    "module.operations",
+    "module.main-session",
+    "module.understanding",
+    "module.spec-review",
+    "module.code-review"
+  ],
+  "sequence": 1,
+  "base_commit": "9362c705719e9be09e41b4fe85aa4092720ef672",
+  "parent_commit": "87ac026222eb27f108ebe856739efaaa3f037483",
+  "readiness": {
+    "run_id": "r-20260925T081743-delivery-946f2d4e",
+    "input_digest": "sha256:ddaa346b94b5261bb9bf9cfa07a9be5b9f60cc90ed4c4b0a5a256c06b566e105",
+    "modules": [
+      "module.code-review",
+      "module.concorde",
+      "module.main-session",
+      "module.operations",
+      "module.spec-review",
+      "module.understanding"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:d3af70bfb206bff7aa09fd7e7e7dbd9601ba13d1ddad6d800d15b3f873cc6ffe"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:b137d122bbfb71b6a86f65023eaf49b37ff7da7176332ccae1635c52ce0b3e0e"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:f25c06f907df837f62f9a733f3ca27f700ec1d3aa37b51b69f004d09c37569bb"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:367fb1fae4ae20497013b1ce27121016071260c2701a370dabf684602254ad1a"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:fe696195c082fee5efba6cee3abafd35af2af113663e4fcce28bec1453b36d97"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:32e821035d6ee3560caf3e49f0f1011286d0b1cdaf5fc91b34d313c9b57f909b"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T081722-validate-e7152c5e",
+      "operation": "validate",
+      "modules": [
+        "module.operations",
+        "module.main-session",
+        "module.understanding",
+        "module.spec-review",
+        "module.code-review"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:e96a250ec68aa9afcd7e57f5d00b4cca1dcc3c644587d285ce8a8e5a1ad1da70"
+    }
+  ],
+  "created_at": "2026-09-25T08:17:59Z"
+}

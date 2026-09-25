@@ -38,7 +38,7 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Parse the command line and look up the catalog entry; only then create the run identity and directory | host | malformed command line, unknown Operation or a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
-| 2 | Resolve the task and its worktree, or without a task the worktree the command runs in; check `--modules` and `--input` | host, Tasks, Spec core | unknown task or Module, missing worktree, inadmissible input (`failed`, not recorded in the task) |
+| 2 | Resolve the task and its worktree, or without a task the primary worktree; check `--modules` and `--input` | host, Tasks, Spec core | unknown task or Module, missing worktree, inadmissible input, a run without a task started in a task's worktree (`failed`, not recorded in the task) |
 | 3 | Begin the run in the task record with the catalog entry's `writes` flag; the task worktree's Specs are loaded to check the Modules unless the provider diagnoses them itself (`validate`). A run without a task skips this step | Tasks | `task_closed` or `task_busy` (`failed`, not recorded in the task) |
 | 4 | Execute the provider's steps in order | provider, Workers, Check execution | a step stops the run with a status |
 | 5 | Compose the envelope from the step outcomes and check it against the result contract and the provider's output contract | host | the envelope or output is invalid (`failed`, `invalid-output` evidence) |
@@ -106,10 +106,16 @@ with `worker_model_unavailable` before any worker starts.
 
 A run without a task uses the same runner and envelope with `task` null, and records nothing in any
 task record: no task is begun, made busy or reopened. Its worker launches follow the standard worker
-sequence with the grant computed from the Specs of the worktree it runs in, and the host refuses a
+sequence with the grant computed from the primary worktree's Specs, and the host refuses a
 launch of the task type `specify` or `implement` with `project_scope_write` before computing a
 grant, whatever the provider asks, since only a task's worktree may change. Its results and run
 records live in the primary worktree's `.concorde/runs/` like every other run's.
+
+A run without a task is accepted only when the command runs in the primary worktree. Started in a
+linked worktree, it is refused before the run begins with `task_worktree_without_task`: its
+detail names the worktree and, when a task record names that worktree, the task, and its
+recommendation is to run again with `--task <that task>`. In a task's worktree the run must hold
+the task's lock, or a writing run of the same task would change files under its audit.
 
 ## configure_workers
 

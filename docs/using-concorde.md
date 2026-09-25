@@ -256,7 +256,7 @@ uses copies of your pi `auth.json` and `models.json` and nothing else from your 
 ### Operations without a task
 
 `understand`, `spec_review`, `code_review` (with `--base`) and `configure_workers` also run without
-`--task`, on the worktree you start them in. Such a run changes no Spec or code, so the main agent
+`--task`, from the primary worktree only; inside a task's worktree they need `--task`. Such a run changes no Spec or code, so the main agent
 uses it to answer a question or review a Module before you agree on a change, without opening a
 task:
 

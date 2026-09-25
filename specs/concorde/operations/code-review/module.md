@@ -40,7 +40,7 @@ concorde run code_review [--task <task-id>] --modules <module-id>[,<module-id>â€
 
 `--modules` names the judged Modules (task Modules by default), `--base` the diff's start commit
 (the task branch's start by default; required [without a task](../module.md#concept.operations.no-task),
-when the review judges the worktree it is started in since that commit), and `--focus` a concern to look at first, never narrowing
+when the review judges the primary worktree since that commit), and `--focus` a concern to look at first, never narrowing
 what may be reported. For example, `code_review --modules module.issues` gives the reviewer the
 Issues Spec, code and tests, the branch diff and the Issues checks.
 

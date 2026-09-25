@@ -314,7 +314,7 @@ export default function (pi: ExtensionAPI) {
     description:
       "Start a Concorde Operation in the background: `concorde run <operation> [--task <task>] [arguments]`. " +
       "Without a task, an Operation that allows it (understand, spec_review, code_review, " +
-      "configure_workers) runs on this session's worktree and changes no Spec or code. " +
+      "configure_workers) runs on the primary worktree and changes no Spec or code. " +
       "It returns at once with the run identity, or with the result when the run has already " +
       "finished; the run appears in the run view, and you are woken with its result when it " +
       "finishes, within your current turn if you are still in one. Do not poll it. To block " +

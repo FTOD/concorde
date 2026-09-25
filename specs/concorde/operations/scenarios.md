@@ -83,6 +83,14 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND a later run without a task may admit it with `--input`
 - BUT `concorde run implement` without `--task` is a command-line error, since `implement` needs a task
 
+### scenario.operations.no-task-primary-only — A run without a task is refused in a task worktree
+
+- GIVEN an open task `t1` and its worktree
+- WHEN the main agent runs `concorde run spec_review --modules module.a` without `--task` from inside `t1`'s worktree
+- THEN no worker starts and the result is `failed` with `task_worktree_without_task`
+- AND its detail names `t1`'s worktree and its recommendation is to run again with `--task t1`
+- AND `t1`'s task record is unchanged
+
 ### scenario.operations.no-task-read-only — A run without a task never launches a writing worker
 
 - GIVEN an Operation whose catalog entry makes the task optional

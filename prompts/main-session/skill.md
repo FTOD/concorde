@@ -65,12 +65,13 @@ Each run prints or reports one JSON Operation result and saves it as
 `.concorde/runs/<run-id>/result.json` of the primary worktree.
 
 Some Operations also run without a task: `understand`, `spec_review`, `code_review` (with
-`--base`) and `configure_workers`. Without `--task` they work on the worktree you start them in,
-usually the primary worktree, with the Modules you name in `--modules`; their result has `task`
+`--base`) and `configure_workers`. Without `--task` they run only from the primary worktree and
+work on it, with the Modules you name in `--modules`; their result has `task`
 null, and they change no Spec or code, since a run without a task launches only reading workers.
 Use them for a question or a review that does not justify a task, such as understanding a Module
 before you agree a change with the developer. An `--input` of such a run must be a run without a
-task too.
+task too. Inside a task's worktree, always pass `--task`: a run without it is refused there
+(`task_worktree_without_task`), because it would bypass the task's one-run-at-a-time lock.
 
 ```bash
 concorde run understand --task <task> --goal "<question>" [--plan]
@@ -229,8 +230,8 @@ concorde run configure_workers [--task <task>] [--operation <op> [--role <role>]
 concorde run configure_workers [--task <task>] [--operation <op> [--role <role>]] --unset
 ```
 
-Change worker models only when the developer asks. Without `--task` it changes the worktree you run
-it in, which in the primary worktree means the tasks you open from now on; pass `--task <task>` only
+Change worker models only when the developer asks. Without `--task` it runs in the primary
+worktree and changes its file, which the tasks you open from now on inherit; pass `--task <task>` only
 when the developer asks to change a task that already exists, and only that task's copy changes.
 Let the developer make the choice:
 
