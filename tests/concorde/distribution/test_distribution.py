@@ -30,6 +30,25 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 COPIED = ("prompts", "protocol", "concorde.json", "src", "scripts")
 
 
+def strict_frontmatter(test, text: str) -> dict:
+    """The skill's frontmatter fields, each a bare name or a JSON string.
+
+    Both forms are valid YAML for every parser, strict ones such as pi's included; a bare value
+    holding ": " is not, and pi drops a skill whose frontmatter it cannot parse.
+    """
+    test.assertTrue(text.startswith("---\n"), text[:80])
+    header = text[4:].split("\n---\n", 1)[0]
+    fields = {}
+    for line in header.splitlines():
+        key, value = line.split(": ", 1)
+        if value.startswith('"'):
+            fields[key] = json.loads(value)
+        else:
+            test.assertRegex(value, r"^[a-z0-9-]+$", line)
+            fields[key] = value
+    return fields
+
+
 def package_copy(test) -> Path:
     """A built copy of this package in a temporary directory."""
     directory = tempfile.TemporaryDirectory()
@@ -270,7 +289,9 @@ class InstallTests(unittest.TestCase):
             (project / ".concorde/framework/generated/main-session/skill.md").exists()
         )
         skill = (project / ".claude/skills/concorde/SKILL.md").read_text()
-        self.assertTrue(skill.startswith("---\nname: concorde\n"))
+        fields = strict_frontmatter(self, skill)
+        self.assertEqual("concorde", fields["name"])
+        self.assertIn("Concorde's main agent", fields["description"])
         self.assertIn("Concorde main agent", skill)
         claude = (project / "CLAUDE.md").read_text()
         self.assertIn("Keep this.", claude)
@@ -409,7 +430,7 @@ class InstallTests(unittest.TestCase):
             "concorde_configure_workers", (extension / "index.ts").read_text()
         )
         skill = (project / ".pi/skills/concorde/SKILL.md").read_text()
-        self.assertTrue(skill.startswith("---\nname: concorde\n"))
+        self.assertEqual({"name", "description"}, set(strict_frontmatter(self, skill)))
         self.assertIn(".pi/extensions/concorde/index.ts", receipt["files"])
 
     def test_install_with_pi_without_npm_installs_nothing(self):

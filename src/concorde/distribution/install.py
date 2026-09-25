@@ -47,13 +47,15 @@ IGNORED = (
     f"{TOOLS}/",
     ".claude/worktrees/",
 )
+SKILL_DESCRIPTION = (
+    "Work as Concorde's main agent in this project: split work into tasks, carry them out inside "
+    "their worktrees or through task sessions, read results, keep decision logs and merge "
+    "delivered work."
+)
+# The description is written as a JSON string, which YAML reads as a double-quoted scalar: its
+# ": " would otherwise make the frontmatter invalid YAML, and pi drops a skill it cannot parse.
 SKILL_HEADER = (
-    "---\n"
-    "name: concorde\n"
-    "description: Work as Concorde's main agent in this project: split work into tasks, carry "
-    "them out inside their worktrees or through task sessions, read results, keep decision logs "
-    "and merge delivered work.\n"
-    "---\n\n"
+    f"---\nname: concorde\ndescription: {json.dumps(SKILL_DESCRIPTION)}\n---\n\n"
 )
 
 

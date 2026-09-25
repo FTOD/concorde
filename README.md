@@ -99,11 +99,13 @@ command, the Protocol copy under `.concorde/protocol/`, the main-session guidanc
 Claude Code skill `.claude/skills/concorde/SKILL.md` and a block in `CLAUDE.md`, and the
 [`d2`](https://github.com/d2lang/d2) program that renders your Specs' diagrams as
 `.concorde/tools/d2`, a pinned release whose checksum it verifies (`--without-d2` skips it). With
-`--pi` it also places the locked pi runtime, the pi run view and the pi skill. It never writes your
-Specs. Then open Claude Code or pi in the project and talk to it: it is now the main agent.
-Workers run on the same program as the main agent; ask it to change the models they use and it lets
-you choose, for every worker or one Operation's, from what your Claude Code or pi installation
-offers (`concorde run configure_workers`).
+`--pi` it also places the locked pi runtime, the pi run view and the pi skill, which pi loads once
+you trust the project (it asks on first start; headless runs pass `--approve`); install
+[pi-subagents](https://github.com/nicobailon/pi-subagents) with `pi install npm:pi-subagents` to
+see runs in its FleetView. It never writes your Specs. Then open Claude Code or pi in the project
+and talk to it: it is now the main agent. Workers run on the same program as the main agent; ask it
+to change the models they use and it lets you choose, for every worker or one Operation's, from
+what your Claude Code or pi installation offers (`concorde run configure_workers`).
 
 A typical change, as the main agent runs it:
 

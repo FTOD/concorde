@@ -49,7 +49,8 @@ You need:
 - [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and logged in, or
   [pi](https://github.com/earendil-works/pi) with a configured model; for pi also Node.js with npm,
   `rg` (ripgrep), `fd` and `socat`, and optionally
-  [pi-subagents](https://github.com/nicobailon/pi-subagents) for its run view;
+  [pi-subagents](https://github.com/nicobailon/pi-subagents) for its run view, installed with
+  `pi install npm:pi-subagents`;
 - Linux with a root-owned [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`), which
   backs the command sandbox of workers and runs your checks read-only; Concorde refuses a
   check it cannot sandbox rather than fall back to an unconfined process;
@@ -87,6 +88,13 @@ To use pi, add `--pi`. The installer then also places:
   Concorde ships, so you get exactly the versions it was tested with;
 - Concorde's pi extension, the **run view**, as `.pi/extensions/concorde/`;
 - the main agent's guidance a second time, as the pi skill `.pi/skills/concorde/SKILL.md`.
+
+pi loads a project's extension and skills only when you trust the project. The first time you open
+pi in it, pi asks; choose to trust it, or the run view and the guidance are skipped. A headless
+`pi -p` or RPC run cannot ask, so pass `--approve` (or trust the project once interactively, or with
+`/trust`). The run view shows its runs in FleetView and counts them for `bg_wait` only when
+pi-subagents is installed; without it, `concorde_run`, the completion wake and `/concorde` still
+work.
 
 The installer never writes your Specs, your registry or your project configuration.
 

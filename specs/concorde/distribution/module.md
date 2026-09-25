@@ -97,7 +97,10 @@ package's integrity hash ([requirements](requirements.md#req.distribution.instal
 the [run view](../main-session/module.md#concept.main-session.run-view), with its model picker, as
 `.pi/extensions/concorde/`; and the skill a second time as `.pi/skills/concorde/SKILL.md`. A later
 install with the same lockfile keeps the runtime it placed. Without npm it refuses before writing
-anything else.
+anything else. Both skills carry the same frontmatter, whose values are bare names or
+double-quoted strings, because pi parses it as strict YAML and drops a skill it cannot parse. pi
+loads the project's extension and skill only once the developer trusts the project, which its
+interactive start asks for and a headless `pi -p` or RPC run grants with `--approve`.
 
 It never writes Specs, the registry or the project configuration
 ([requirements](requirements.md#req.distribution.installer-no-specs)). Afterwards,
