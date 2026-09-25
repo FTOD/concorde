@@ -54,17 +54,67 @@ the chain, and the main agent adds its link above that when the developer must d
 
 ## Design
 
-The Spec, not the code, is the shared source of truth. Concorde has three actors, and a fourth
-when work is split: the developer decides; the main agent has the global view and changes the
-project only inside a task worktree; task sessions, when started, carry one task each under a
-boundary confining their writes to it; workers do bounded work under a Spec-computed boundary. Between the main agent and the workers, the
-Operation host computes the grant, launches and audits the worker, runs the checks and turns the
-outcome into a trustworthy result.
+The Spec, not the code, is the shared source of truth between the developer and the agents. Every
+other choice follows from making that safe: what a worker may read and write is computed from the
+Specs, a worker's answer is checked by the host rather than trusted, and a missing promise stops
+work instead of being inferred from code.
+
+The developer decides. The main agent has the global view and the developer's trust, so Concorde
+does not restrict it, but it changes the project only inside a task worktree. Workers are the
+opposite: each has one bounded task, no human to ask, and a boundary derived from the Specs.
+Keeping the two apart lets a large change be split into small, checkable steps without the
+developer supervising each one. Between them, the Operation host computes the grant, launches and
+audits the worker, runs the checks and turns the outcome into a trustworthy result.
+
+Task sessions are an optional tier for work split into several tasks. They are needed because a
+session is inside one task worktree at a time and runs that worktree's own `concorde`, so parallel
+tasks need parallel sessions. An extra level of messaging is one more place for an error to be
+lost, so the loss is prevented structurally: a task session escalates with
+`concorde task escalate --by task-session`, which records its link with the failed runs' chains
+unchanged as causes, and the main agent adds its own link on top. A task session's writes are
+confined to its task, while the main agent stays unrestricted and alone merges. Because a task's
+commands run with the branch's own copy, their success is self-validation, which is why a merge
+runs the build and `validate` once more on the primary branch.
+
+One task through the Modules; each arrow is declared by the calling Module's own `uses`:
+
+```d2 illustrative
+shape: sequence_diagram
+m: Main agent
+t: Tasks
+o: Operation host
+s: Spec core
+w: Worker
+c: Check execution
+m -> t: open a task (branch and worktree)
+m -> o: concorde run implement --task
+o -> s: grant for the task type and Modules
+o -> w: launch with settings, brief and grant
+w -> o: worker result {style.stroke-dash: 3}
+o -> o: audit writes against the grant
+o -> c: run configured checks
+o -> m: Operation result with evidence {style.stroke-dash: 3}
+m -> o: concorde run validate, then delivery
+m -> t: merge the task branch
+```
+
+Errors travel as a chain because every level handles some errors and must pass the others up:
+Workers resumes a worker for a failing check but not for a Spec gap, an Operation reruns nothing,
+and the main agent decides ordinary questions but not the project's direction. An error passed up
+as a bare code or a one-line summary loses exactly what the next level needs to decide, and an
+error each level re-describes in its own words drifts from what happened. So a level that cannot
+handle an error adds one link and keeps the rest: its detailed account, the specific reason it
+cannot handle the error, taken from a small fixed set such as a missing permission, a decision
+reserved to a higher level or used-up rounds, the options it sees, and the errors it received as
+causes, unchanged. The chain is structured data with one [contract](contracts.md#contract.concorde.error),
+checked by the host against its schema and extended by the main agent with a command rather than
+paraphrased, so the developer receives the whole path from the failing check up to the question
+they are asked.
 
 Worker permissions are compiled from the grant into the worker's own configuration — on Claude
 Code its settings with deny rules, a write hook and the Bash sandbox, on pi a permission extension
-with the same sandbox engine — which guard against scope drift and mistakes, not a malicious actor; known
-limits are in the [Harness](harness/module.md), reasons in the [design topic](design.md).
+with the same sandbox engine. They guard against scope drift and mistakes, not a malicious actor;
+the [Harness](harness/module.md) explains why these layers were chosen and what they leave out.
 
 The root also binds files that belong to no single child. They keep the repository running rather
 than carry the framework's function, so the [Relationships](#relationships) diagram leaves them out:

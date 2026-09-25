@@ -85,8 +85,7 @@ the Protocol binding, the registry `.concorde/specs.json` and the documents each
 The registry only mirrors each entry's `module` block; the entry is where relations are declared.
 Nothing unregistered is a Spec, a link never adds a document, and a loaded repository is an
 immutable snapshot. Loading refuses a binding that disagrees with the installed copy
-(`protocol_mismatch`), so new rules apply only after the developer rebinds. See
-[Loading](design.md#loading).
+(`protocol_mismatch`), so new rules apply only after the developer rebinds.
 
 <a id="concept.spec.structural-check"></a><a id="concept.spec.verification-declaration"></a>
 
@@ -103,8 +102,7 @@ never the registry, so `concorde.py registry --write` regenerates a stale mirror
 **Boundaries and impact.** For the Modules a task is bound to, Spec core returns the five boundary
 sets, selected one level deep. The impact indexes (`selected-by`, `referenced-by`,
 `implemented-by`, binding Modules, changed definitions) say whom a change concerns and never widen
-a boundary. Which Modules a task may edit or must re-review is the Operations' policy. See
-[Boundary sets and impact indexes](design.md#boundary-sets-and-impact-indexes).
+a boundary. Which Modules a task may edit or must re-review is the Operations' policy.
 
 <a id="concept.spec.grant"></a><a id="concept.spec.context-identity"></a>
 
@@ -113,8 +111,7 @@ one worktree's Specs, which paths a worker may change (`rw`), read (`ro`) or onl
 (`names`); every other path is denied. The grant carries its context identity, so a caller can tell
 later whether anything the worker could read has changed. It refuses to make writable a file that
 an unbound Module also binds. The Operation host freezes the grant into a worker at launch and the
-Spec MCP server returns the same computation; Spec core neither stores nor enforces it. See
-[Grants and context identity](design.md#grants-and-context-identity).
+Spec MCP server returns the same computation; Spec core neither stores nor enforces it.
 
 <a id="concept.spec.typed-value"></a><a id="concept.spec.file-transaction"></a><a id="concept.spec.initial-proposal"></a>
 
@@ -205,13 +202,55 @@ Python sources are under `src/concorde/spec/` and tests under `tests/concorde/sp
   from which Distribution renders the installed copy.
 - <a id="realization.spec.tests"></a>**Spec tests** exercise all of this on small fixture projects.
 
-One loader serves every query, grant and check, so they cannot disagree about who owns a document or
-what a relation selects. For consumers it refuses a project whose structure cannot support a
-trustworthy boundary; for the validator it collects the same problems as findings. Spec core uses
-nothing: other Modules' schemas arrive through registration, their file locations as arguments, and
-their concerns as their own configured checks. The grant computation sits next to the boundary sets
-so that the Operation host and the Spec MCP server give the same task the same boundary. The
-reasons are in [How Spec core works](design.md).
+**Loading.** One loader serves every query, grant and check, so they cannot disagree about who owns
+a document or what a relation selects. A link never adds a document, which is what lets every set
+be enumerated from declarations alone. Opened for consumers, the loader refuses a project whose
+structure cannot support a trustworthy boundary, because a partial model would give a worker a
+wrong boundary; opened by the validator, it collects the same problems as findings and keeps going,
+so a developer repairs a Spec in one pass. It checks the Protocol copy and nothing else about the
+installation: whether the package's built assets are fresh is Distribution's concern, so Spec core
+depends on nothing built above it.
+
+**Boundaries and grants.** Selection is one level deep and never reads an implementation file,
+so a boundary is a function of declarations. Spec core holds no policy of the Operations built on
+the impact indexes, such as which Modules a change may edit or must re-review. The grant
+computation sits next to the boundary sets so that the Operation host and the Spec MCP server give
+the same task the same boundary. A grant is computed from the Specs of the one worktree its caller
+names, which the host sets to the task worktree, so a Spec change on the task branch governs that
+task's workers and nothing else. A write to a file an unbound Module also binds is refused rather
+than silently narrowed: narrowing would leave a worker unable to write a file its own Module binds,
+with nothing to tell it why, while the refusal names the file and the Module so the caller can bind
+the task to it too or split the work. The context identity covers no implementation contents, so a
+worker's own writes never make its context stale. The grant does not yet mark which of its entries
+are pending, so the host learns which files to create by checking what exists; whether it should
+is not settled.
+
+**Validation.** The validator runs nothing: it parses verification declarations and reads
+configured checks only to confirm their inputs exist and are safe. Concerns other Modules own, such
+as Issue records or Concorde's own package, are their configured checks, run by Check execution
+outside `validate`, which keeps `validate` a pure function of the Specs and the files they bind.
+
+**Shared services.** Registration inverts a dependency that would otherwise point upward: a
+record's owner decides its schema, and Spec core stays below every owner. A reference to another
+type is resolved by name at check time, so an owner never imports the owner of a type it embeds.
+The registration table, the checker, the shared building blocks, strict JSON, the safe-path rules
+and the front-matter parser live together because they change together. Initialization, registry
+regeneration, pending-entry confirmation and other Modules' deterministic steps all write through
+file transactions, so none of them can leave half an update behind.
+
+**Initialization.** Describing a new project is separated from writing it: the proposal is the
+preview, and application accepts only that exact proposal while the project is still in the state
+it was computed from. The written result is validated inside the transaction, so a first Spec that
+does not validate is rolled back. Initialization creates only what the project owns, its
+configuration, registry and first Spec; everything that exists because Concorde is installed is
+the installer's. So that the project validates at once, the root Module binds every file the
+project already has in one realization that says only where the files are, and later Modules take
+files over from it.
+
+**Protocol text and assets.** The bundle carries only the Protocol; Concorde's conventions, such as
+verification declarations, live in the Modules that own them. Keeping the text apart from its
+distributed copy, pinned by each project's Protocol binding, lets a project keep working under the
+rules it accepted while a newer Protocol is being written.
 
 ## Relationships
 

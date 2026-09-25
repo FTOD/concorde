@@ -61,10 +61,30 @@ Record/summary: [the timing spans](timing.md).
 
 ## Design
 
-One guarantee is enforced: a run can't write outside its scratch, and no process outlives it.
-Reads, network, sockets and credentials stay deliberately unlimited, because configured checks are
-commands the project itself chose, and their evidence is only worth having if they could not change
-what they measured. Reasons and the full left-out list: [the design topic](design.md).
+Checks produce evidence that a task worktree is ready, and that evidence is only worth having if
+the check could not change what it measured. So one guarantee is enforced, and the boundary states
+plainly what it leaves out:
+
+| Concern | Enforced |
+| --- | --- |
+| Writing any host file outside the scratch, through any path name, hard link, inherited descriptor or nested namespace | Yes, by the kernel |
+| Descendant processes outliving the run | Yes: the host ends the whole process tree |
+| Reading files the developer's user can read | Not enforced |
+| Network access | Not enforced: the network namespace is shared with the host |
+| Host sockets: abstract Unix sockets and filesystem sockets such as an SSH agent or a container daemon | Not enforced: a read-only mount does not stop connecting to a socket, so a command could ask a host service to act, including changing the project |
+| Environment and credentials | Not enforced: the command receives the caller's environment, including any credentials in it |
+
+The omissions are deliberate: configured checks are commands the project itself chose, run by the
+host and never by a worker, which only receives their results. Because the boundary cannot stop a
+process outside it, or a host service a check talked to, from changing the project during the run,
+the service measures its input before and after and turns that race into `stale_evidence` rather
+than false evidence. The check result is owned here, next to the runner that produces it, so
+Workers, Validation and Delivery consume one record and never run checks another way. Logs go only
+to the directory the caller names, usually the run directory in the primary worktree; a check's
+output reaches a worker only as the bounded log tail Workers puts into a resume round, and whether
+a worker needs more than its last 20,000 bytes is undecided. The timing recorder lives here because
+check runs and sandbox setup are the slowest deterministic steps a host takes; it is passive and
+holds no content, so it can stay on in any run.
 
 ```d2
 checks: Check execution {
