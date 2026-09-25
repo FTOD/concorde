@@ -1,0 +1,68 @@
+{
+  "task": "project-python",
+  "goal": "Checks run with the project's own interpreter and environment, which init records, never with Concorde's",
+  "modules": [
+    "module.harness.checks",
+    "module.spec",
+    "module.adoption",
+    "module.e2e",
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "221bff924f9f80bfcfc675667204e08a222abc58",
+  "parent_commit": "992cc2fd333a7e7a1cd3dde17cd7890beab10d42",
+  "readiness": {
+    "run_id": "r-20260925T184714-delivery-c96490c0",
+    "input_digest": "sha256:c62c8098495d278987d6a427e6e29124375925ef8181622a99eed65548c8559f",
+    "modules": [
+      "module.adoption",
+      "module.concorde",
+      "module.distribution",
+      "module.e2e",
+      "module.harness.checks",
+      "module.spec"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:b0a4b5ea60e3c7cc71faf2d7989d9ed23b35895323938ac2ed5c85d5e3b4aa58"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:aaf3c920e0e8187e695996774f34f0e51a0e10b92ccab31fdb42266a81248b79"
+      },
+      {
+        "check": "check.checks.runtime",
+        "module": "module.harness.checks",
+        "status": "passed",
+        "measured_digest": "sha256:5c4967dc33585b34ce8051043055dbe7ec22bc6e7bbca6e2ab1e277c40fc2041"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:9a674e6f006907eaa4ff04469b114a45793ddbd182d5faff8829815f67d33ea7"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T184653-validate-5f528f31",
+      "operation": "validate",
+      "modules": [
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:49c11fad0f8a7bb58aa3ef38466cebbfd44f9d777c0de4d653855375e1e66134"
+    }
+  ],
+  "created_at": "2026-09-25T18:47:35Z"
+}
