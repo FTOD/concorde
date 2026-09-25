@@ -1,0 +1,122 @@
+{
+  "task": "brownfield-workflow",
+  "goal": "Add the code-to-spec task type, the survey/scaffold/code_to_spec Operations and a Workflows layer (preset tasks) with a brownfield workflow for adopting existing projects",
+  "modules": [
+    "module.concorde",
+    "module.spec",
+    "module.operations",
+    "module.tasks",
+    "module.main-session",
+    "module.distribution"
+  ],
+  "sequence": 2,
+  "base_commit": "58c94a9d50e573ea25668b02a7a8500a0388aa9f",
+  "parent_commit": "61bf4483329d2e81b496792e2509db03980592b1",
+  "readiness": {
+    "run_id": "r-20260925T114757-delivery-308156b8",
+    "input_digest": "sha256:cd67dc67155ea40deb07186b9f540b38611828d89f01f156b461d9bf2bbecf60",
+    "modules": [
+      "module.adoption",
+      "module.concorde",
+      "module.distribution",
+      "module.harness",
+      "module.harness.workers",
+      "module.main-session",
+      "module.operations",
+      "module.spec",
+      "module.spec-mcp",
+      "module.tasks",
+      "module.views",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:52c8589e691ad2cac0691207133565699391be2cba39ebe5058ea3bf6586c8b3"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:88e7a8a33079217cc4846db239fd527b55804bd7b428fd16f25f91ecf2c11316"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:dd6e50d96037588c6620223495b351eb898cf527c1f1af92a7d6dfcea68cbe69"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:a3d3a821f33601d7cbb1d1e19d91a55b44ff4b269b2a0b2684dc37193d7d446a"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:5f2fa4a2e4f2a7f31dc0572e34ad98b0e0428b626c50f0dae91dbd2d5fc103cc"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:2b8f246464709bf93bab502a011285e99386b3f587010bcc7a6e45420189fb0a"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:980ecce6d2e9e84408abf0d5c1324bca1eba45084094bbea116079ec1b7b5902"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:9992a36f75d5cf7cea6009e4d8ff779a830958913cc7dc81f2bfb49b2787c89f"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:7b6629e22c1f17ce3b06ade7e1df09b5469f7f67dcd4c4046d49d8821dcd4985"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:7b6629e22c1f17ce3b06ade7e1df09b5469f7f67dcd4c4046d49d8821dcd4985"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:7b6629e22c1f17ce3b06ade7e1df09b5469f7f67dcd4c4046d49d8821dcd4985"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T114423-validate-d2601814",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.spec",
+        "module.operations",
+        "module.tasks",
+        "module.main-session",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:678cd31b628efd0d8d64deb56d39fc908362a5abc69b955de31045128c2eafcd"
+    }
+  ],
+  "created_at": "2026-09-25T11:51:30Z"
+}
