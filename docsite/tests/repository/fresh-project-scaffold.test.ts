@@ -242,7 +242,7 @@ describe("a project holding only initialization outputs", () => {
     );
     expect(homepage).toContain(manifest.pages[0].route);
     expect(homepage).toMatch(/http-equiv="refresh"/i);
-    expect(homepage).not.toContain("Specify the architecture.");
+    expect(homepage).not.toContain("Specs that harness your agents.");
     expect(existsSync(resolve(root, "docsite/build/graph.html"))).toBe(false);
     expect(existsSync(resolve(root, "docsite/build/agent-graphs.html"))).toBe(
       false,

@@ -2,14 +2,18 @@
 
 ## Purpose
 
-Concorde helps a developer and a main agent change a project that describes itself in
-Specs. Spec tooling checks and publishes those Specs and computes what a task may read and write.
-Operations carry out bounded jobs, assessing, specifying, implementing, testing, reviewing,
-validating and delivering, and, for a project whose code came first, describing that code, under
-Spec-derived permissions, and the main agent stays in charge: it
-splits work into tasks, carries each out inside its worktree or hands it to a task session, and
-merges what is delivered. For a recurring kind of task, a workflow presets the Operations the task
-runs, such as the brownfield workflow that describes an existing codebase in Specs. Concorde never chooses the
+Concorde makes a project's Specs the harness of the AI agents that change it. The Specs describe
+the architecture and divide the responsibility among Modules; from that division Concorde computes,
+for each task, what a worker is given as context and what it may read and write, runs the worker
+inside that boundary and verifies its result instead of trusting it.
+
+The developer and the main agent rely on it. Spec tooling checks, serves and publishes the Specs on
+its own. Operations carry out bounded jobs, assessing, specifying, implementing, testing,
+reviewing, validating and delivering, and, for a project whose code came first, describing that
+code, each under its Spec-derived harness. The main agent stays in charge: it splits work into
+tasks, carries each out inside its worktree or hands it to a task session, and merges what is
+delivered. For a recurring kind of task, a workflow presets the Operations the task runs, such as
+the brownfield workflow that describes an existing codebase in Specs. Concorde never chooses the
 developer's direction or repairs a Spec on its own. The main agent and the workers run on Claude
 Code or on pi.
 
@@ -67,10 +71,11 @@ result and delivers it.
 
 ## Design
 
-The Spec, not the code, is the shared source of truth between the developer and the agents. Every
-other choice follows from making that safe: what a worker may read and write is computed from the
-Specs, a worker's answer is checked by the host rather than trusted, and a missing promise stops
-work instead of being inferred from code.
+The Spec, not the code, is the shared source of truth between the developer and the agents, and
+the responsibility it assigns to each Module is also the boundary of every worker bound to that
+Module. Every other choice follows from making that safe: what a worker may read and write is
+computed from the Specs, a worker's answer is checked by the host rather than trusted, and a
+missing promise stops work instead of being inferred from code.
 
 Concorde's normal flow is therefore Spec first: a promise is written, then realized. Only a project
 whose code came before its Specs is described the other way round, and only through one explicit

@@ -1,0 +1,110 @@
+{
+  "task": "positioning-harness",
+  "goal": "Reposition README and docsite home around Specs that harness your agents",
+  "modules": [
+    "module.concorde",
+    "module.views"
+  ],
+  "sequence": 1,
+  "base_commit": "58c94a9d50e573ea25668b02a7a8500a0388aa9f",
+  "parent_commit": "c2e6d1a01a6b0c6fd4c00c54a2343c397718d747",
+  "readiness": {
+    "run_id": "r-20260925T111925-delivery-32765ca4",
+    "input_digest": "sha256:fd6a7f95d9ec069f155c7390add1406bc6cb909a8d4a32c5b5b0ef4194fb975b",
+    "modules": [
+      "module.concorde",
+      "module.views"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:8f32b4ba20882bceeea7e149e39bb7733d408306f2b63d30a9584e47120c397a"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:8aea45d940f2e372b6ea0946feafbec08316d9eaf94f9791bad26cc13e9026eb"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:8aea45d940f2e372b6ea0946feafbec08316d9eaf94f9791bad26cc13e9026eb"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:8aea45d940f2e372b6ea0946feafbec08316d9eaf94f9791bad26cc13e9026eb"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T104054-validate-3630c5d7",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.views"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 1 blocking finding(s). check check.views.repository-regressions: module.views check failed (exit 1); log .concorde/runs/r-20260925T104054-validate-3630c5d7/checks/check.views.repository-regressions.log",
+      "worker_runs": [],
+      "result_digest": "sha256:97b193615547d21aa79d3d2dbc69c5687aa2219e91b9a60e3a2a4f3595fae6e4"
+    },
+    {
+      "run_id": "r-20260925T104413-validate-5449dde5",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:dcd3959e1fa1f7365e7605f4ec8097beca89e234f7d5f483ffb4731497fed46c"
+    },
+    {
+      "run_id": "r-20260925T105043-validate-d74b57f3",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:02fc82529bfe2dabc8a41b7ef82fffd8d6fc42b00ebd38115844906b5e3f27ae"
+    },
+    {
+      "run_id": "r-20260925T105440-validate-33608f6d",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:b4266b9e50baee27014ed2ec6111ed5515eebca514727643fa641b2f740f1d35"
+    },
+    {
+      "run_id": "r-20260925T110142-validate-a2d6e497",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:453e02bccf432833bfb7584e6c4d6f0a3c4ece4d5c86c83b79ee022ae7fdb7b2"
+    }
+  ],
+  "created_at": "2026-09-25T11:22:29Z"
+}
