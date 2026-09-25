@@ -133,6 +133,7 @@
       "meaning": "#realization.adoption.code-to-spec",
       "entries": [
         "src/concorde/adoption/code_to_spec.py",
+        "src/concorde/adoption/test_links.py",
         "prompts/workers/code-to-spec.md"
       ]
     },

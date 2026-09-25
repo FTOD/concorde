@@ -111,6 +111,14 @@ shapes are in the [contracts](contracts.md).
 - AND the result lists that promise with source `answer`
 - AND the result lists a deviation with the intended and the observed behaviour
 
+### scenario.adoption.tests-linked — The tests a scenario came from are marked
+
+- GIVEN a code_to_spec run for `module.checkout` whose worker writes `scenario.checkout.submit` and names `tests/test_checkout.py::test_submit`, a test that does not exist and a Spec document as its tests
+- WHEN the run ends
+- THEN `tests/test_checkout.py` has a `verifies` decorator naming `scenario.checkout.submit` above `test_submit` and a no-op `verifies` definition, and nothing else changed in it
+- AND `linked_tests` names that test, and `unlinked_tests` names the other two with their reasons
+- AND the decorated file imports nothing of Concorde, and linking the same test again adds nothing
+
 ### scenario.adoption.stub-deleted — A stub the worker deleted leaves its Module
 
 - GIVEN the scaffolded Module `module.checkout` and a code_to_spec run that prepared its `contracts.md` stub

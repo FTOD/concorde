@@ -480,7 +480,7 @@ claims, checked for consistency only.
 ```concorde-contract
 {
   "id": "contract.adoption.spec-description",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -494,6 +494,8 @@ claims, checked for consistency only.
       "decisions",
       "open_questions",
       "deviations",
+      "linked_tests",
+      "unlinked_tests",
       "validation"
     ],
     "properties": {
@@ -590,6 +592,13 @@ claims, checked for consistency only.
                   "type": "null"
                 }
               ]
+            },
+            "tests": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         }
@@ -736,6 +745,60 @@ claims, checked for consistency only.
           }
         }
       },
+      "linked_tests": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scenario",
+            "test"
+          ],
+          "properties": {
+            "scenario": {
+              "type": "string",
+              "minLength": 1
+            },
+            "test": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "unlinked_tests": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scenario",
+            "test",
+            "reason"
+          ],
+          "properties": {
+            "scenario": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "test": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
       "validation": {
         "type": "object",
         "additionalProperties": false,
@@ -785,7 +848,7 @@ claims, checked for consistency only.
       }
     }
   },
-  "semantics": "What one code_to_spec run described for modules. changed_documents are the documents whose reading or metadata changed, created_documents the prepared stubs the worker filled, removed_stubs the stubs it left unchanged and the host removed. promises are the promises the worker wrote, each with source code when it describes behaviour read in code or answer when it states intent a developer answer gave, and then question naming the answered question. decisions and open_questions have the shapes of the decomposition proposal; no open question is written as a promise. deviations list every answered question whose stated intent differs from the observed code. validation holds the structural errors this run introduced and the count of errors that existed before it. A behaviour or field change increments the version.",
+  "semantics": "What one code_to_spec run described for modules. changed_documents are the documents whose reading or metadata changed, created_documents the prepared stubs the worker filled, removed_stubs the stubs it left unchanged and the host removed. promises are the promises the worker wrote, each with source code when it describes behaviour read in code or answer when it states intent a developer answer gave, and then question naming the answered question. decisions and open_questions have the shapes of the decomposition proposal; no open question is written as a promise. deviations list every answered question whose stated intent differs from the observed code. validation holds the structural errors this run introduced and the count of errors that existed before it. A scenario promise may name, in tests, the existing tests it was taken from (path::name or path::Class::name); linked_tests are the tests the host then marked with a verifies decorator, and unlinked_tests every link it left undone with the reason. A behaviour or field change increments the version.",
   "example": {
     "modules": [
       "module.checkout"
@@ -846,6 +909,8 @@ claims, checked for consistency only.
       }
     ],
     "deviations": [],
+    "linked_tests": [],
+    "unlinked_tests": [],
     "validation": {
       "new_errors": [],
       "preexisting_errors": 0

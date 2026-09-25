@@ -48,7 +48,10 @@ run anything.
 - `promises`: one entry per promise you wrote, with its `module`, the `kind` (`requirement`,
   `scenario`, `contract`, `concept`, `realization`, `relation` or `explanation`), its stable `id`
   (or `null`), a short `description`, the `source` (`code` when you read it in the code, `answer`
-  when a developer answer stated it) and the answered `question` identity (or `null`).
+  when a developer answer stated it) and the answered `question` identity (or `null`). For a
+  scenario you took from existing tests, add `tests`: each such test as `path::name` or
+  `path::Class::name`, for example `tests/test_config.py::test_config_from_file_json`. You never
+  edit a test yourself; the host marks each named test as verifying the scenario.
 - `decisions`: every choice you took where the code left several open, each with an `id`
   `d.<name>`, the `module`, the `question`, at least two `options`, the `chosen` one, the `reason`
   and `decided_by` `worker`.

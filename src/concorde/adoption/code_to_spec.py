@@ -43,6 +43,7 @@ from .records import (
     repeated_ids,
 )
 from .survey import answers_failure
+from .test_links import link_tests
 
 STUBS = {
     "requirements.md": "requirements",
@@ -422,6 +423,8 @@ def observe(ctx: RunContext):
         "decisions": claims.get("decisions", []),
         "open_questions": claims.get("open_questions", []),
         "deviations": claims.get("deviations", []),
+        "linked_tests": [],
+        "unlinked_tests": [],
         "validation": {
             "new_errors": [finding_value(f) for f in ctx.state["new"]],
             "preexisting_errors": len(ctx.state["old"]),
@@ -521,7 +524,55 @@ def observe(ctx: RunContext):
                 "inspect the worker's claims in the result",
             ],
         )
+    found.append(link_described_tests(ctx, output))
     return Continue(output=output, evidence=found)
+
+
+def link_described_tests(ctx: RunContext, output: dict):
+    """Step 7: mark each existing test a scenario was derived from with ``verifies``.
+
+    Only the host edits the test files, and only by adding decorators and the no-op helper; a
+    link it cannot make is reported, never a reason to fail the run."""
+    from ..harness.checks import affected_modules
+    from ..spec.repository import SpecRepository
+
+    try:
+        repository = SpecRepository(ctx.worktree)
+        scenarios = {
+            scenario.id
+            for module in ctx.modules
+            for scenario in repository.scenarios(module)
+        }
+    except (SpecError, OSError) as error:
+        output["unlinked_tests"] = [
+            {
+                "scenario": promise.get("id"),
+                "test": test,
+                "reason": f"the Specs cannot be loaded: {error}",
+            }
+            for promise in output["promises"]
+            for test in promise.get("tests") or []
+        ]
+        return evidence(
+            "tests-linked", "", f"none; the Specs cannot be loaded: {error}"
+        )
+
+    def owned(path: str) -> bool:
+        # Any Module's implementation file: tests often stay with the root Module while the
+        # scenarios taken from them belong to a child.
+        return bool(affected_modules(repository, [path])) and not path.startswith(
+            ("specs/", ".concorde/")
+        )
+
+    linked, unlinked = link_tests(ctx.worktree, output["promises"], scenarios, owned)
+    output["linked_tests"] = linked
+    output["unlinked_tests"] = unlinked
+    return evidence(
+        "tests-linked",
+        "",
+        f"{len(linked)} test link(s) made, {len(unlinked)} left undone"
+        + "".join(f"; {item['test']}: {item['reason']}" for item in unlinked),
+    )
 
 
 CODE_TO_SPEC = Provider(

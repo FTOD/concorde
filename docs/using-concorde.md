@@ -161,7 +161,10 @@ run it. It opens a task bound to the root Module and runs, one after another:
    test and lint commands it found;
 2. `scaffold`: the host creates those Modules as honest stubs and moves their paths out of the
    root;
-3. `code_to_spec` for each Module: a worker reads its code and writes its Spec;
+3. `code_to_spec` for each Module: a worker reads its code and writes its Spec, and names the
+   existing tests each scenario comes from; Concorde then marks those tests with a small
+   `verifies` decorator (defined in the test file itself, so your tests never import Concorde),
+   the only change it makes outside your Specs;
 4. `spec_review`, `validate` and `delivery`.
 
 The workers describe behaviour as it is. When they cannot tell whether something is intended,

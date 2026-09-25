@@ -163,7 +163,13 @@ PROMISE = obj(
         "description": S,
         "source": {"enum": ["code", "answer"]},
         "question": {"anyOf": [QUESTION_ID, {"type": "null"}]},
-    }
+        "tests": {"type": "array", "items": S},
+    },
+    required=["module", "kind", "id", "description", "source", "question"],
+)
+TEST_LINK = obj({"scenario": S, "test": S})
+UNLINKED_TEST = obj(
+    {"scenario": {"anyOf": [S, {"type": "null"}]}, "test": S, "reason": S}
 )
 DEVIATION = obj(
     {"module": MODULE_ID, "question": QUESTION_ID, "intended": S, "observed": S}
@@ -178,7 +184,7 @@ DESCRIBE_WORKER_SCHEMA = obj(
         "deviations": {"type": "array", "items": DEVIATION},
     }
 )
-# contract.adoption.spec-description, version 1
+# contract.adoption.spec-description, version 2
 SPEC_DESCRIPTION_SCHEMA = obj(
     {
         "modules": {"type": "array", "minItems": 1, "items": MODULE_ID},
@@ -190,6 +196,8 @@ SPEC_DESCRIPTION_SCHEMA = obj(
         "decisions": {"type": "array", "items": DECISION},
         "open_questions": {"type": "array", "items": QUESTION},
         "deviations": {"type": "array", "items": DEVIATION},
+        "linked_tests": {"type": "array", "items": TEST_LINK},
+        "unlinked_tests": {"type": "array", "items": UNLINKED_TEST},
         "validation": obj(
             {
                 "new_errors": {"type": "array", "items": FINDING},

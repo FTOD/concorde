@@ -357,6 +357,76 @@ class AdoptionTests(unittest.TestCase):
             narrowed_entries(root, ["docs/.nojekyll"], ["docs/", "docs/.nojekyll"]),
         )
 
+    @verifies("scenario.adoption.tests-linked")
+    def test_the_tests_a_scenario_came_from_are_marked(self):
+        from concorde.spec.verification import scan_declarations
+
+        self.scaffolded()
+        entry = self.worktree / "specs/project/checkout/module.md"
+        promise = {
+            "module": "module.checkout",
+            "kind": "scenario",
+            "id": "scenario.checkout.submit",
+            "description": "a basket becomes one order",
+            "source": "code",
+            "question": None,
+            "tests": [
+                "tests/test_checkout.py::test_submit",
+                "tests/test_checkout.py::test_missing",
+                "specs/project/checkout/module.md::nothing",
+            ],
+        }
+        status, envelope = self.describe(
+            [
+                {
+                    "writes": {
+                        str(entry): self.described_entry(),
+                        str(
+                            self.worktree / "specs/project/checkout/scenarios.md"
+                        ): self.SCENARIOS,
+                    },
+                    "result": {
+                        "output": {
+                            "summary": "Described submit.",
+                            "promises": [promise],
+                            "decisions": [],
+                            "open_questions": [RETRY_QUESTION],
+                            "deviations": [],
+                        }
+                    },
+                }
+            ]
+        )
+        self.assertEqual(0, status, envelope)
+        output = envelope["output"]
+        self.assertEqual(
+            [
+                {
+                    "scenario": "scenario.checkout.submit",
+                    "test": "tests/test_checkout.py::test_submit",
+                }
+            ],
+            output["linked_tests"],
+        )
+        self.assertEqual(
+            [
+                "tests/test_checkout.py::test_missing",
+                "specs/project/checkout/module.md::nothing",
+            ],
+            sorted((item["test"] for item in output["unlinked_tests"]), reverse=True),
+        )
+        source = (self.worktree / "tests/test_checkout.py").read_text()
+        self.assertIn('@verifies("scenario.checkout.submit")\ndef test_submit', source)
+        self.assertIn("def verifies(*scenarios):", source)
+        [declared] = scan_declarations(self.worktree, ["tests/test_checkout.py"])
+        self.assertEqual(
+            ("scenario.checkout.submit", "test_submit"),
+            (declared.scenario_id, declared.name),
+        )
+        namespace: dict = {}
+        exec(compile(source, "test_checkout.py", "exec"), namespace)
+        self.assertIsNone(namespace["test_submit"]())
+
     @verifies("scenario.adoption.stub-deleted")
     def test_a_stub_the_worker_deleted_leaves_its_module(self):
         self.scaffolded()

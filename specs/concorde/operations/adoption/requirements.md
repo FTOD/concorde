@@ -18,7 +18,11 @@ survey may also run without a task.
 
 ### req.adoption.no-code-change — Adoption never changes code
 
-No Adoption Operation SHALL create, change or delete a file of the task worktree other than Spec documents and the project registry.
+No Adoption Operation SHALL create, change or delete a file of the task worktree other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
+
+### req.adoption.tests-linked-by-host — The host alone marks tests
+
+The code_to_spec host SHALL add a `verifies` decorator, and never any other change, to each existing Python test that a scenario promise names in its `tests`, reporting every link it cannot make.
 
 ### req.adoption.no-bash — Adoption workers cannot run code
 

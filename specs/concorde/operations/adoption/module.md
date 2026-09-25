@@ -7,9 +7,10 @@ Adoption describes a project whose code came before its Specs. It provides three
 those child Modules from an accepted proposal, and `code_to_spec` has a worker read a Module's code
 and write that Module's Spec. They are the only Operations that turn code into Specs, and they
 exist for the uncommon project adopted after its code was written; a project specified first never
-needs them. Adoption never changes code, records behaviour as it is instead of improving it, and
-never writes a behaviour whose intent the code does not settle as a promise: such behaviour becomes
-an open question for the developer.
+needs them. Adoption never changes what code does, records behaviour as it is instead of
+improving it, and never writes a behaviour whose intent the code does not settle as a promise:
+such behaviour becomes an open question for the developer. The one edit it makes outside Specs
+marks the project's existing tests with the scenarios taken from them.
 
 ## Terminology
 
@@ -268,7 +269,17 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 | 7 | Remove the stubs left unchanged or deleted through the worker's proposed deletions from their Modules' documents, whatever steps 3 to 6 found; reconcile the registry mirror | host, Spec core | — |
 | 8 | Validate again and compare with the baseline | host, Spec core | a new error (`blocked`, `new_structural_errors`) |
 | 9 | Check the description against the answers and the bound Modules | host | an inconsistency or an answer not followed (`failed`, `inconsistent_description`) |
-| 10 | Return the Operation result | host | — |
+| 10 | Link the existing tests each scenario was taken from | host | — (a link it cannot make is reported in `unlinked_tests`) |
+| 11 | Return the Operation result | host | — |
+
+A scenario the worker took from existing tests names them in its promise's `tests`, as
+`path::name` or `path::Class::name`. The worker never edits a test: step 10, the host, adds a
+`verifies` decorator above each named test that exists in a Module's implementation file, and
+once per file a two-line no-op definition of `verifies` after the file's docstring and imports,
+so that the project's tests stay free of any import of Concorde and run the same in the project's
+own environment, while the coverage check sees which test verifies which scenario. It adds
+nothing else, adds nothing twice, and leaves a file untouched when the decorated file would not
+parse. Only Python tests are linked.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
 run's, even one the baseline already had: the worker rewrites those documents, and a retry must not
