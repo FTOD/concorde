@@ -9,7 +9,6 @@
     "title": "Views",
     "owns": [
       "specs/concorde/spec-tooling/views/module.md",
-      "specs/concorde/spec-tooling/views/design.md",
       "specs/concorde/spec-tooling/views/requirements.md",
       "specs/concorde/spec-tooling/views/scenarios.md",
       "specs/concorde/spec-tooling/views/contracts.md",

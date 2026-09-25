@@ -9,7 +9,6 @@
     "title": "Spec core",
     "owns": [
       "specs/concorde/spec-tooling/spec/module.md",
-      "specs/concorde/spec-tooling/spec/design.md",
       "specs/concorde/spec-tooling/spec/validation.md",
       "specs/concorde/spec-tooling/spec/requirements.md",
       "specs/concorde/spec-tooling/spec/scenarios.md",

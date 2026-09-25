@@ -7,7 +7,6 @@
       "entry": "specs/concorde/module.md",
       "owns": [
         "specs/concorde/module.md",
-        "specs/concorde/design.md",
         "specs/concorde/vocabulary.md",
         "specs/concorde/requirements.md",
         "specs/concorde/scenarios.md",
@@ -89,7 +88,6 @@
       "entry": "specs/concorde/spec-tooling/spec/module.md",
       "owns": [
         "specs/concorde/spec-tooling/spec/module.md",
-        "specs/concorde/spec-tooling/spec/design.md",
         "specs/concorde/spec-tooling/spec/validation.md",
         "specs/concorde/spec-tooling/spec/requirements.md",
         "specs/concorde/spec-tooling/spec/scenarios.md",
@@ -209,7 +207,6 @@
       "entry": "specs/concorde/spec-tooling/views/module.md",
       "owns": [
         "specs/concorde/spec-tooling/views/module.md",
-        "specs/concorde/spec-tooling/views/design.md",
         "specs/concorde/spec-tooling/views/requirements.md",
         "specs/concorde/spec-tooling/views/scenarios.md",
         "specs/concorde/spec-tooling/views/contracts.md",
@@ -341,7 +338,6 @@
       "entry": "specs/concorde/harness/checks/module.md",
       "owns": [
         "specs/concorde/harness/checks/module.md",
-        "specs/concorde/harness/checks/design.md",
         "specs/concorde/harness/checks/boundary.md",
         "specs/concorde/harness/checks/service.md",
         "specs/concorde/harness/checks/timing.md"

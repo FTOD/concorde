@@ -69,8 +69,8 @@ the published site.
 For another project, `concorde docsite --propose` returns a **scaffold proposal** — the exact
 template files plus a new **site identity** `docsite/site.json` — and `--apply --proposal FILE`
 creates exactly those files, never replacing or deleting: `conflict` for an existing destination,
-`unchanged` if already applied, refused for bytes from another package. [Design notes](design.md)
-cover the rest.
+`unchanged` if already applied, refused for bytes from another package. The exact commands and
+fields are in the [contracts](contracts.md).
 
 ## Design
 
@@ -94,24 +94,66 @@ views: Views {
 
 <a id="realization.views.publisher"></a>
 
-**Docsite publisher** reads only the configuration, registry and documents it lists — nothing
-unowned is published. It stages a copy under `docsite/.generated/`, promotes a candidate only once
-its digest, page inventory and every internal link check out, restores the old site on failure,
-refuses any Mermaid block or checked D2 diagram that sets its own look, decides each D2 shape's
-look itself, and must recompute a document's selecting Modules to match Spec core's `selected-by`
-[impact index](../spec/module.md#concept.spec.impact-index).
+**Docsite publisher** reads the project configuration, the registry and the documents the registry
+lists, and nothing else: it never scans directories for Markdown or follows links to find
+documents, so a nearby file that looks like a Spec never becomes a page and nothing is published
+that no Module owns. The navigation follows `contains`, the Protocol's top-down reading path, and
+directory layout plays no part. Each document is published once, at a route derived from its
+source path, so its address does not depend on which Modules read it; consumers link to the owner's
+page instead of receiving a copy that could drift. There are no alias routes: moving a document
+changes its route, and the build refuses a link that still points to the old one.
+
+Every enrichment, such as hidden identities in headings, anchors, imported definitions and
+illustrative labels, is made on a staged copy under `docsite/.generated/`. The Spec files stay
+byte-for-byte unchanged, so a published enrichment can never become a second, unreviewed
+definition. A diagram's source states meaning and its look is the publisher's: a checked D2 block
+only names, nests and connects shapes, which is what Spec core checks, and the publisher gives each
+kind of shape and edge one fixed look. Every Module's pages therefore share one visual language
+that no Spec can override, which is why a Mermaid block or a checked diagram that sets its own look
+is refused.
+
+Rendering can fail halfway and sources can change while a build runs, so the publisher builds a
+candidate apart from the published site and compares one source digest, over the configuration, the
+registry and both files of every document, at staging, after the Docusaurus build and in the final
+validation, which also follows every internal link and anchor in the built HTML. Promotion renames
+whole directories with rollback:
+
+```d2 illustrative
+direction: right
+a: Registered Specs
+b: Staged pages and sidebars
+c: Docusaurus build into the candidate
+d: Digest, inventory and links current? {shape: diamond}
+e: Promote to docsite/build
+f: Delete candidate, keep published site
+a -> b -> c -> d
+d -> e: yes
+d -> f: no
+```
+
+The publisher refuses only what it cannot publish correctly (the
+[pipeline](pipeline.md#loading-and-admission) lists it); it is not the Protocol validator, and a
+site that builds proves nothing about conformance. It is TypeScript and does not call Spec tooling,
+so it recomputes each document's selecting Modules itself; that must equal Spec core's
+`selected-by` [impact index](../spec/module.md#concept.spec.impact-index), and a difference is a
+publisher defect, never a second definition of context. Preview and production keep Docusaurus's
+generated files in different directories, so a build never breaks a running preview.
 
 <a id="realization.views.scaffold"></a>
 
-**Docsite scaffold** selects the template by the same inventory rule the installer uses and applies
-a proposal through Spec core's
-[file transactions](../spec/module.md#concept.spec.file-transaction), so accepting one can never
-damage an existing site or Spec.
+**Docsite scaffold** computes the template inventory with the rule the installer uses to ship
+`docsite/`, so a project receives exactly the adapter Concorde runs itself, and the proposal binds
+that inventory by digest. Applying goes through Spec core's
+[file transactions](../spec/module.md#concept.spec.file-transaction): every destination must be
+absent before staging and again before each write, and a concurrent change rolls back what was
+written. Because the scaffold can neither replace nor delete, accepting a proposal can never damage
+an existing site or Spec; bringing a site up to a newer template is a manual, reviewed change.
 
 <a id="realization.views.concorde-site"></a>
 
-**Concorde site** is Concorde's own configuration — `site.json` with its user documents and
-Protocol collection, repository tests, Pages workflow — excluded from the template.
+**Concorde site** is Concorde's own publication configuration — `site.json` with its user documents
+and Protocol collection, the repository tests and the Pages workflow. The template excludes it, so
+a scaffolded project never receives Concorde's user documents or Protocol chapters.
 
 ## Relationships
 

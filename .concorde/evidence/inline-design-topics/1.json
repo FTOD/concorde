@@ -1,0 +1,101 @@
+{
+  "task": "inline-design-topics",
+  "goal": "Fold the remaining separate design topics (root, Spec core, Views, Check execution) into their Module entries, moving precise rules to implementation documents and usage walkthroughs out of design, per the Protocol rule that design lives in the entry's Design section",
+  "modules": [
+    "module.concorde",
+    "module.spec",
+    "module.views",
+    "module.harness.checks",
+    "module.harness",
+    "module.harness.workers",
+    "module.tasks"
+  ],
+  "sequence": 1,
+  "base_commit": "180c158cd87fd52fe892e1968d4bff338167c36a",
+  "parent_commit": "225a2ee8be29bff120a613e792658343ba909393",
+  "readiness": {
+    "run_id": "r-20260925T084304-delivery-ab389a97",
+    "input_digest": "sha256:1a4f7b1b3bf32465804dc18673cd4c66e81fc3a038873712c064436a8f151d39",
+    "modules": [
+      "module.concorde",
+      "module.harness",
+      "module.harness.checks",
+      "module.harness.workers",
+      "module.spec",
+      "module.tasks",
+      "module.views"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:61474ed67bb5fff52b37e13abcbd189191fc2266595eb5d717c6d0cdd195a7c8"
+      },
+      {
+        "check": "check.checks.runtime",
+        "module": "module.harness.checks",
+        "status": "passed",
+        "measured_digest": "sha256:ae5a378a8f76f1f759323b85ccb6b9d7f7a672e3efc45a5f7a31b1ba30a760f8"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:3e30ef84de8113dcca08482b6ae52ca5cd1b466cdee2260287a708cab5692898"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:d80d0a345003d06cbaaa70178727d3bdb6ed32804406acf66b2d899f173d450f"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:86ab862cf76caaa93ba7add5979febb7b55052b54a6779e91dca64b0765cdb76"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:90b470a4fdf83336cdfd7aadff6c06fb7e72ea26d7e4f3aebfd3aeeed19d885f"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:90b470a4fdf83336cdfd7aadff6c06fb7e72ea26d7e4f3aebfd3aeeed19d885f"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:90b470a4fdf83336cdfd7aadff6c06fb7e72ea26d7e4f3aebfd3aeeed19d885f"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T083941-validate-7f18885a",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.spec",
+        "module.views",
+        "module.harness.checks",
+        "module.harness",
+        "module.harness.workers",
+        "module.tasks"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:05af39ba06b783e5d129e589f46e577bc2e570dea266067cf4cc1eb6a98ea697"
+    }
+  ],
+  "created_at": "2026-09-25T08:46:17Z"
+}

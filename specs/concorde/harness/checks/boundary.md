@@ -80,7 +80,7 @@ the whole run.
 
 This covers alternative path names, hard links, inherited file descriptors and nested namespaces.
 It restricts file writes only; reads, the network, host sockets and the environment are not limited,
-as [the design topic](design.md#enforcement) explains.
+as [the entry's design](module.md#design) explains.
 
 ### req.checks.fail-closed — No run without the boundary
 
