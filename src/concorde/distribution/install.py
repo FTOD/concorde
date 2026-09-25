@@ -23,6 +23,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .build import BuildError, verify_fresh
@@ -59,7 +60,11 @@ END = "<!-- concorde:end -->"
 RUNTIME = ("src", "scripts", "prompts", "protocol", "generated")
 # Directories of ``scripts/`` that serve only the development of Concorde.
 NOT_INSTALLED = ("e2e",)
+# Written by `concorde update` and removed by the first validation that passes after it: the
+# project is "Concorde unvalidated" until then. It is this checkout's state, never committed.
+UPDATE_STATE = ".concorde/update.json"
 IGNORED = (
+    UPDATE_STATE,
     ".concorde/runs/",
     ".concorde/tasks/",
     ".concorde/worker-models.json",
@@ -316,6 +321,8 @@ def install(
     )
     receipt = {
         "version": descriptor["version"],
+        # The Concorde checkout installed from, which `concorde update` installs from again.
+        "source": str(package),
         "framework": FRAMEWORK,
         "command": COMMAND,
         "python": own_python,
@@ -339,6 +346,109 @@ def install(
     }
     (project / RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
     return receipt
+
+
+def open_tasks(project: Path) -> list[dict]:
+    """The tasks of ``project`` that have not ended, from their records."""
+    found = []
+    for path in sorted((project / ".concorde/tasks").glob("*.json")):
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if (
+            isinstance(record, dict)
+            and isinstance(record.get("id"), str)
+            and record.get("state") in ("open", "active", "delivered")
+        ):
+            found.append(
+                {
+                    "id": record["id"],
+                    "branch": record.get("branch"),
+                    "worktree": record.get("worktree"),
+                }
+            )
+    return found
+
+
+def update(
+    project: str | Path,
+    package: str | Path,
+    *,
+    python: str | Path | None = None,
+    fetch: Callable[[str], bytes] | None = None,
+    run: Callable | None = None,
+) -> dict:
+    """Update the Concorde installed in ``project`` from ``package``.
+
+    It installs as the first install did (keeping d2 and pi when they were installed), binds the
+    new Protocol copy in the configuration, and marks the project Concorde unvalidated until a
+    validation passes; open tasks keep the old Protocol copy until the primary branch is merged
+    into them, so they are listed.
+    """
+    from ..spec.initialize import installed_protocol_binding
+
+    project = Path(project).resolve()
+    try:
+        previous = json.loads((project / RECEIPT).read_text())
+    except (OSError, ValueError) as error:
+        raise InstallError(
+            "not_installed",
+            f"{project} has no readable {RECEIPT} ({error}); install Concorde first",
+        ) from error
+    tools = previous.get("tools") or {}
+    receipt = install(
+        project,
+        package,
+        d2="d2" in tools,
+        fetch=fetch,
+        pi="pi-runtime" in tools,
+        run=run,
+        python=python or (previous.get("python") or {}).get("base"),
+    )
+    config_path = project / ".concorde/config.json"
+    rebound = None
+    if config_path.is_file():
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        before = config.get("protocol")
+        after = installed_protocol_binding(project)
+        if before != after:
+            config["protocol"] = after
+            config_path.write_text(
+                json.dumps(config, indent=2) + "\n", encoding="utf-8"
+            )
+            rebound = {"from": before, "to": after}
+    state = {
+        "state": "unvalidated",
+        "from": previous.get("version"),
+        "to": receipt["version"],
+        "protocol": rebound,
+        "at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    (project / UPDATE_STATE).write_text(json.dumps(state, indent=2) + "\n")
+    tasks = open_tasks(project)
+    return {
+        "receipt": receipt,
+        "update": state,
+        "open_tasks": tasks,
+        "next": [
+            "commit the updated files",
+            (
+                "run `concorde validate` and repair what it reports; the first validation "
+                "that passes marks the update validated"
+            ),
+        ]
+        + (
+            [
+                (
+                    "merge the primary branch into each open task, whose worktree still "
+                    "carries the previous Protocol copy"
+                )
+            ]
+            if tasks
+            else []
+        ),
+    }
 
 
 def _own_python(project: Path, base: Path) -> dict:
@@ -403,16 +513,24 @@ def main(argv) -> int:
         "--python",
         help="the interpreter Concorde's own environment is made from (default: this one)",
     )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="update an installed Concorde, as `concorde update` does",
+    )
     arguments = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[3]
     try:
-        receipt = install(
-            arguments.project,
-            package,
-            d2=not arguments.without_d2,
-            pi=arguments.pi,
-            python=arguments.python,
-        )
+        if arguments.update:
+            receipt = update(arguments.project, package, python=arguments.python)
+        else:
+            receipt = install(
+                arguments.project,
+                package,
+                d2=not arguments.without_d2,
+                pi=arguments.pi,
+                python=arguments.python,
+            )
     except InstallError as error:
         sys.stdout.write(
             json.dumps({"error": error.code, "message": str(error)}) + "\n"
@@ -422,4 +540,4 @@ def main(argv) -> int:
     return 0
 
 
-__all__ = ["InstallError", "install", "main"]
+__all__ = ["UPDATE_STATE", "InstallError", "install", "main", "open_tasks", "update"]

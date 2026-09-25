@@ -430,6 +430,73 @@ class InstallTests(unittest.TestCase):
             install(project, package, d2=False, python=old)
         self.assertEqual("python_too_old", raised.exception.code)
 
+    @verifies("scenario.distribution.update")
+    def test_update_rebinds_the_protocol_and_waits_for_a_validation(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, d2=False)
+        concorde = str(project / ".concorde/bin/concorde")
+
+        def run(*argv):
+            return subprocess.run(
+                [concorde, *argv], cwd=project, capture_output=True, text=True
+            )
+
+        def git(*argv):
+            subprocess.run(
+                ["git", "-c", "user.name=t", "-c", "user.email=t@t", *argv],
+                cwd=project,
+                check=True,
+                capture_output=True,
+            )
+
+        proposed = json.loads(run("init", "--propose", "--name", "Demo").stdout)
+        (project.parent / "proposal.json").write_text(json.dumps(proposed["result"]))
+        applied = run("init", "--apply", "--proposal", "../proposal.json")
+        self.assertEqual(0, applied.returncode, applied.stdout)
+        git("add", "-A")
+        git("commit", "-qm", "adopt")
+        opened = run("task", "open", "t1", "--goal", "g", "--modules", "module.project")
+        self.assertEqual(0, opened.returncode, opened.stdout + opened.stderr)
+        before = json.loads((project / ".concorde/config.json").read_text())["protocol"]
+        # A newer Concorde: its Protocol changed.
+        chapter = package / "protocol/views.md"
+        chapter.write_text(chapter.read_text() + "\nAn added sentence.\n")
+        write_build(package)
+        written = command(
+            "--project-root", str(package), "protocol-manifest", "--write"
+        )
+        self.assertEqual(0, written.returncode, written.stdout)
+        updated = run("update")
+        self.assertEqual(0, updated.returncode, updated.stdout + updated.stderr)
+        report = json.loads(updated.stdout)
+        after = json.loads((project / ".concorde/config.json").read_text())["protocol"]
+        self.assertNotEqual(before, after)
+        self.assertEqual({"from": before, "to": after}, report["update"]["protocol"])
+        self.assertEqual("unvalidated", report["update"]["state"])
+        self.assertEqual(["t1"], [task["id"] for task in report["open_tasks"]])
+        self.assertTrue((project / ".concorde/update.json").is_file())
+        self.assertIn(".concorde/update.json", (project / ".gitignore").read_text())
+        # Unvalidated: an error while anything else fails, kept until a validation passes.
+        entry = project / "specs/project/module.md"
+        text = entry.read_text()
+        entry.write_text(text.replace("## Relationships", "## Drawing"))
+        failing = json.loads(run("validate").stdout)
+        self.assertEqual("invalid", failing["status"])
+        self.assertIn(
+            "CONCORDE-UPDATE-001", [f["rule_id"] for f in failing["findings"]]
+        )
+        self.assertTrue((project / ".concorde/update.json").is_file())
+        entry.write_text(text)
+        passing = json.loads(run("validate").stdout)
+        self.assertEqual("success", passing["status"], passing)
+        self.assertIn(
+            "CONCORDE-UPDATE-002", [f["rule_id"] for f in passing["findings"]]
+        )
+        self.assertFalse((project / ".concorde/update.json").exists())
+
     @verifies("scenario.distribution.task-worktree-command")
     def test_the_command_of_a_task_worktree_runs_the_primary_framework(self):
         package = package_copy(self)

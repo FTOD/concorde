@@ -1,0 +1,48 @@
+{
+  "task": "concorde-update",
+  "goal": "concorde update reinstalls Concorde from its checkout, rebinds the Protocol and keeps the project unvalidated until validate passes",
+  "modules": [
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "7049111042170fd6af81326a67ef5d6d9fb08629",
+  "parent_commit": "00cad05820310b7f1b80067d6d604c8938bf8198",
+  "readiness": {
+    "run_id": "r-20260925T190508-delivery-bc67bfa0",
+    "input_digest": "sha256:e906168cdc6c21d6d3f61974381d12813558a2f6c2b7bb2fd21576020f4dd6b7",
+    "modules": [
+      "module.concorde",
+      "module.distribution"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:3ea93636403c439e273be2bac57e514ceb651673ef498105a274c8ba6bc1c988"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:3fdfe7981bda69f38fd5428952a530d40f089ca8aad96193f8838a877c55beb0"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T190452-validate-c1b92091",
+      "operation": "validate",
+      "modules": [
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:0a75996c23ee02ad0e1ed9d280bb68d60296174cc15494a7d84faf1d751827bf"
+    }
+  ],
+  "created_at": "2026-09-25T19:05:24Z"
+}

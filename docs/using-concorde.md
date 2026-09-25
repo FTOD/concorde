@@ -100,12 +100,17 @@ pi in it, pi asks; choose to trust it, or the run view and the guidance are skip
 pi-subagents is installed; without it, `concorde_run`, the completion wake and `/concorde` still
 work.
 
-The installer never writes your Specs, your registry or your project configuration.
+The installer never writes your Specs or your registry, and writes your project configuration
+only to bind a new Protocol copy when you update.
 
-To update Concorde, pull the checkout, build again and rerun the installer. When the new version
-carries a newer Protocol, `concorde validate` refuses with `protocol_mismatch` until you accept it:
-read what changed in `.concorde/protocol/`, then update the `protocol` version and digest in
-`.concorde/config.json` to the new copy's.
+To update Concorde, pull the checkout and build it again, then run `concorde update` in your
+project (`--from <checkout>` if the checkout moved). It installs the new version the way the first
+install did, binds the new Protocol copy in `.concorde/config.json` (read what changed in
+`.concorde/protocol/`), and lists your open tasks: merge your primary branch into each, since
+their worktrees keep the previous Protocol copy. Your project is then **Concorde unvalidated**:
+`concorde validate` reports it as an error, and nothing merges, until you have repaired what the
+new version finds and a validation passes. That mark comes only from an update; your own changes
+never set it.
 
 ## Write your first Spec
 

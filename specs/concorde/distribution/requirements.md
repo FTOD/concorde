@@ -54,8 +54,12 @@ The installed `concorde` command SHALL run Concorde only with the interpreter of
 
 ### req.distribution.installer-no-specs — The installer never writes Specs
 
-The installer SHALL NOT create, modify or remove a registered Spec document, the registry or the
-project configuration's Protocol binding.
+The installer SHALL NOT create, modify or remove a registered Spec document, the registry or,
+except in update mode, the project configuration's Protocol binding.
+
+### req.distribution.update-unvalidated — An update is validated before anything merges
+
+`concorde update` SHALL leave the project Concorde unvalidated, reported as an error by every validation in the primary worktree, until a validation passes.
 
 ### req.distribution.installer-fresh-guidance — Only current guidance is installed
 

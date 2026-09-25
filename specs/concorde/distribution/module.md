@@ -107,6 +107,21 @@ later install the recorded rules it no longer ships, and leaves every other sett
 task worktree has none of its own, since Git ignores it, unless the task reinstalled Concorde
 there, so its command runs the primary worktree's copy, found through Git's common directory.
 
+<a id="concept.distribution.update"></a>
+
+**Updating an installed Concorde.** `concorde update` runs, in update mode, the installer of the
+Concorde checkout the receipt names as its `source` (or `--from <checkout>`): it installs as the
+first install did, keeping `d2` and the pi runtime when they were installed and Concorde's own
+environment's interpreter unless `--python` names another; binds the new Protocol copy in the
+configuration itself, the one write of the project configuration an installer makes; and marks
+the project **Concorde unvalidated** by writing `.concorde/update.json`, which Git ignores, with
+the versions and Protocol bindings before and after. While that state is there, `concorde
+validate` in the primary worktree reports `CONCORDE-UPDATE-001` as an error, which also stops a
+`task merge`; the first validation that passes removes it and says so (`CONCORDE-UPDATE-002`).
+Only an update sets the state, so a project that stops validating because of its own changes is
+never marked by it. The result lists the open tasks: their worktrees keep the previous Protocol
+copy until the primary branch is merged into them.
+
 With `--pi` the installer also prepares the project for a pi main session and pi workers: it
 places the pi runtime — the sandbox engine `@anthropic-ai/sandbox-runtime` that pi workers run
 their commands in — under `.concorde/tools/pi-runtime/` by copying the package's
