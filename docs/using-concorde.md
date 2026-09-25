@@ -10,10 +10,11 @@ In the commands below, `concorde` stands for your project's `.concorde/bin/conco
 
 ## What Concorde does for you
 
-Concorde keeps your project's **Specs** at the center of AI-assisted development. A Spec explains
-what each Module of your project is for, how it is designed, which precise promises it makes and
-which files realize it. From those Specs Concorde computes exactly what an AI task may read and
-write, and runs headless Claude Code or pi workers inside that boundary.
+Concorde's **Specs** harness your agents. A Spec explains what each Module of your project is
+responsible for, how it is designed, which precise promises it makes and which files realize it.
+That division of responsibility is also each agent's harness: from the Specs Concorde computes
+exactly what an AI task is given as context and may read and write, and runs headless Claude Code
+or pi workers inside that boundary.
 
 You work with three actors:
 

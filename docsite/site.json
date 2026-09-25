@@ -4,7 +4,7 @@
   "projectName": "concorde",
   "repository": "https://github.com/FTOD/concorde",
   "schema_version": 1,
-  "tagline": "Architecture-aware Specs, Spec-derived grants and fenced Claude Code workers.",
+  "tagline": "Specs that harness your agents: context and permissions derived from architecture-aware Specs.",
   "title": "Concorde Framework",
   "url": "https://ftod.github.io",
   "userDocs": {
