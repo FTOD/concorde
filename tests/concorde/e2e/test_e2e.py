@@ -71,6 +71,7 @@ class E2ETests(unittest.TestCase):
             )
             git(project, "add", "-A")
             git(project, "commit", "-q", "-m", "base")
+            base = git(project, "rev-parse", "HEAD").strip()
             test = (
                 "from calc import add, sub\n\n\ndef test_add():\n    assert add(2, 1) == 3"
                 "\n\n\ndef test_sub():\n    assert sub(2, 1) == 1\n"
@@ -84,6 +85,7 @@ class E2ETests(unittest.TestCase):
             )
             case = {
                 "instance_id": "toy__calc-1",
+                "base_commit": base,
                 "test_patch": patch,
                 "FAIL_TO_PASS": json.dumps(["test_calc.py::test_add"]),
                 "PASS_TO_PASS": json.dumps(["test_calc.py::test_sub"]),
@@ -99,10 +101,15 @@ class E2ETests(unittest.TestCase):
             (project / "calc.py").write_text(
                 "def add(a, b):\n    return a + b\n\n\ndef sub(a, b):\n    return a - b\n"
             )
-            git(project, "commit", "-q", "-am", "fix")
+            # The change brings its own test file, which the case's test patch replaces.
+            (project / "test_calc.py").write_text("def test_mine():\n    pass\n")
+            git(project, "add", "-A")
+            git(project, "commit", "-q", "-m", "fix")
             self.assertTrue(e2e.grade(project, case, python)["resolved"])
-            # The project is left as it was: no test file, no extra worktree.
-            self.assertFalse((project / "test_calc.py").exists())
+            # The project is left as it was: its own test file, no extra worktree.
+            self.assertEqual(
+                "def test_mine():\n    pass\n", (project / "test_calc.py").read_text()
+            )
             self.assertEqual(1, git(project, "worktree", "list").count("\n"))
 
     @verifies("scenario.e2e.trust")

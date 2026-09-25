@@ -360,6 +360,26 @@ def watch(project: Path) -> dict:
 
 
 RESULT_LINE = re.compile(r"^(PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS) (\S+)")
+PATCHED_FILE = re.compile(r"^diff --git a/(\S+) b/(\S+)$", re.MULTILINE)
+
+
+def reset_patched_files(tree: Path, patch: str, base: str) -> list[str]:
+    """Put every file ``patch`` touches back as it was at ``base``, removing the ones ``base``
+    lacks, as SWE-bench does before it applies a test patch: the change under test may have
+    edited the same test files, and the case's tests are graded as the case wrote them."""
+    paths = sorted({path for pair in PATCHED_FILE.findall(patch) for path in pair})
+    for path in paths:
+        present = subprocess.run(
+            ["git", "cat-file", "-e", f"{base}:{path}"],
+            cwd=tree,
+            capture_output=True,
+            check=False,
+        )
+        if present.returncode == 0:
+            run(["git", "checkout", "-q", base, "--", path], cwd=tree)
+        else:
+            (tree / path).unlink(missing_ok=True)
+    return paths
 
 
 def pytest_statuses(output: str) -> dict[str, str]:
@@ -390,10 +410,15 @@ def grade(
     FAIL_TO_PASS and PASS_TO_PASS tests. The project itself is left as it was."""
     fail_to_pass = case_tests(instance, "FAIL_TO_PASS")
     pass_to_pass = case_tests(instance, "PASS_TO_PASS")
-    if not fail_to_pass or not instance.get("test_patch"):
+    if (
+        not fail_to_pass
+        or not instance.get("test_patch")
+        or not instance.get("base_commit")
+    ):
         raise E2EError(
             "invalid_case",
-            f"case {instance.get('instance_id')} needs FAIL_TO_PASS tests and a test_patch",
+            f"case {instance.get('instance_id')} needs FAIL_TO_PASS tests, a test_patch and "
+            "a base_commit",
         )
     scratch = Path(tempfile.mkdtemp(prefix="concorde-grade-"))
     tree = scratch / "tree"
@@ -401,6 +426,7 @@ def grade(
     try:
         patch = scratch / "test.patch"
         patch.write_text(instance["test_patch"], encoding="utf-8")
+        reset_patched_files(tree, instance["test_patch"], instance["base_commit"])
         run(["git", "apply", str(patch)], cwd=tree)
         files = sorted({test.split("::")[0] for test in fail_to_pass + pass_to_pass})
         environment = {**os.environ}

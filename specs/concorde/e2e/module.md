@@ -85,8 +85,9 @@ task's workflow steps with their runs and whether they were superseded.
 prepares the case's repository at its base commit under the case's name, adopts it with the
 brownfield workflow, sets the project's environment and checks up, and then works the issue
 through Concorde as a main agent would, from `understand` to the merge. `grade` then decides
-whether the merged change resolves the issue the way SWE-bench does: it applies the case's test
-patch to a throwaway worktree of `--ref`, runs the test files it names with the given interpreter
+whether the merged change resolves the issue the way SWE-bench does: in a throwaway worktree of
+`--ref` it puts every file the case's test patch touches back as it was at the case's base commit,
+since the change may have edited the same test files, applies the test patch, runs the test files it names with the given interpreter
 (`--pythonpath` directories of that worktree first on `PYTHONPATH`), and reports how many of the
 FAIL_TO_PASS and PASS_TO_PASS tests passed, each one that did not, and whether the case is
 resolved. The test patch and the case's tests stay outside the project: no worker sees them, and

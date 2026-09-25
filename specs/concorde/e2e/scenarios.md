@@ -21,7 +21,7 @@ Concrete situations that show the [requirements](requirements.md) of
 - GIVEN a project whose `main` branch does not yet resolve a case, and the case's test patch, FAIL_TO_PASS and PASS_TO_PASS tests
 - WHEN the developer grades the project
 - THEN the result names each FAIL_TO_PASS test that did not pass and reports the case unresolved
-- AND after a change that makes every listed test pass, grading reports it resolved
+- AND after a change that makes every listed test pass and edits the same test file itself, grading reports it resolved, the test file graded as the case's test patch writes it
 - AND the project has neither the test patch's files nor an extra worktree afterwards
 
 ### scenario.e2e.trust — Trusting a test project
