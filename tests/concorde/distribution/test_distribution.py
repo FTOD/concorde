@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import shutil
 import tarfile
 import subprocess
@@ -388,6 +389,43 @@ class InstallTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual("success", json.loads(valid.stdout)["status"], valid.stdout)
+
+    @verifies("scenario.distribution.own-python")
+    def test_concorde_runs_in_its_own_python_whatever_the_caller_uses(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        receipt = install(project, package, d2=False)
+        self.assertEqual(".concorde/framework/python", receipt["python"]["environment"])
+        self.assertEqual(sys.executable, receipt["python"]["base"])
+        self.assertTrue((project / ".concorde/framework/python/bin/python").exists())
+        caller = package.parent / "caller"
+        (caller / "bin").mkdir(parents=True)
+        (caller / "bin/python3").write_text("#!/bin/sh\nexit 42\n")
+        (caller / "bin/python3").chmod(0o755)
+        (caller / "shadow/concorde").mkdir(parents=True)
+        (caller / "shadow/concorde/__init__.py").write_text("raise SystemExit(43)\n")
+        environment = {
+            **os.environ,
+            "PATH": f"{caller / 'bin'}{os.pathsep}{os.environ['PATH']}",
+            "PYTHONPATH": str(caller / "shadow"),
+        }
+        listed = subprocess.run(
+            [str(project / ".concorde/bin/concorde"), "task", "list"],
+            cwd=project,
+            env=environment,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, listed.returncode, listed.stdout + listed.stderr)
+        self.assertEqual([], json.loads(listed.stdout))
+        old = caller / "old-python"
+        old.write_text('#!/bin/sh\necho "3 9 1"\n')
+        old.chmod(0o755)
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, d2=False, python=old)
+        self.assertEqual("python_too_old", raised.exception.code)
 
     @verifies("scenario.distribution.task-worktree-command")
     def test_the_command_of_a_task_worktree_runs_the_primary_framework(self):

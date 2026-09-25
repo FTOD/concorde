@@ -87,6 +87,15 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the developer's rules and other settings are unchanged, the missing workflow rules are added and the rule no longer shipped is removed
 - BUT a `.claude/settings.json` that is not a JSON object is refused with `settings_invalid` before anything is written
 
+### scenario.distribution.own-python — Concorde ignores the caller's Python
+
+- GIVEN a project where Concorde is installed
+- AND a caller whose `python3` on `PATH` fails and whose `PYTHONPATH` names a package called `concorde` that fails on import
+- WHEN the caller runs `.concorde/bin/concorde`
+- THEN it answers as usual, run by the interpreter of `.concorde/framework/python/`
+- AND the receipt names that environment, the interpreter it was made from and its version
+- BUT an installer given an interpreter older than Python 3.11 is refused with `python_too_old`
+
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
 - GIVEN a project where Concorde is installed and committed, and a linked worktree of it, which has no Framework copy of its own

@@ -70,8 +70,11 @@ python3 scripts/install-concorde.py /absolute/path/to/project
 
 The installer places:
 
-- the Concorde runtime under `.concorde/framework/` and the `concorde` command as
-  `.concorde/bin/concorde`;
+- the Concorde runtime under `.concorde/framework/`, with its own Python environment (a venv
+  under `.concorde/framework/python/`, made from the interpreter that runs the installer or the
+  one you name with `--python`, Python 3.11 or newer), and the `concorde` command as
+  `.concorde/bin/concorde`, which always runs in that environment, never in your project's
+  Python environment, even when your project's venv is activated;
 - a copy of the Spec Protocol under `.concorde/protocol/`, so the rules your Specs follow travel
   with your project;
 - the main agent's guidance, as the Claude Code skill `.claude/skills/concorde/SKILL.md` and a short

@@ -48,6 +48,10 @@ The installer SHALL change the project's `.claude/settings.json` only by adding 
 Every other setting, including rules the developer wrote that equal one of Concorde's, stays as
 it was; a file that is not a JSON object is refused before anything is written.
 
+### req.distribution.own-python — Concorde runs in its own Python environment
+
+The installed `concorde` command SHALL run Concorde only with the interpreter of its own environment under `.concorde/framework/python/`, ignoring the caller's Python path settings and user site-packages.
+
 ### req.distribution.installer-no-specs — The installer never writes Specs
 
 The installer SHALL NOT create, modify or remove a registered Spec document, the registry or the

@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -28,6 +30,10 @@ from .project_defaults import install_project_defaults, project_default_files
 from .tools import TOOLS, ToolError, install_d2, install_pi_runtime
 
 FRAMEWORK = ".concorde/framework"
+# Concorde's own Python environment, a venv inside the framework copy: installed Concorde never
+# runs on the project's interpreter or with its packages, and the project never sees Concorde's.
+OWN_PYTHON = f"{FRAMEWORK}/python"
+MINIMUM_PYTHON = (3, 11)
 COMMAND = ".concorde/bin/concorde"
 SKILL = ".claude/skills/concorde/SKILL.md"
 PI_SKILL = ".pi/skills/concorde/SKILL.md"
@@ -206,12 +212,15 @@ def install(
     fetch: Callable[[str], bytes] | None = None,
     pi: bool = False,
     run: Callable | None = None,
+    python: str | Path | None = None,
 ) -> dict:
     """Install ``package`` into ``project``; return the receipt.
 
     With ``d2`` false the docsite's diagram program is left to the developer. ``fetch`` replaces
     the download of the pinned ``d2`` archive, for tests and offline mirrors. With ``pi`` the pi
     runtime, extension and skill are installed too; ``run`` replaces the ``npm ci`` call.
+    ``python`` is the interpreter Concorde's own environment is made from, the installer's own by
+    default.
     """
     project, package = Path(project).resolve(), Path(package).resolve()
     if not project.is_dir():
@@ -252,6 +261,7 @@ def install(
             raise InstallError(error.code, str(error)) from error
     written = install_project_defaults(project, package)
     _copy_runtime(package, project / FRAMEWORK)
+    own_python = _own_python(project, Path(python or sys.executable))
     command = project / COMMAND
     command.parent.mkdir(parents=True, exist_ok=True)
     # A task worktree has no framework copy of its own (Git ignores it) unless the task
@@ -264,7 +274,16 @@ def install(
         '  common=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir) || exit 1\n'
         f'  framework="$(dirname -- "$common")/{FRAMEWORK}"\n'
         "fi\n"
-        'exec python3 "$framework/scripts/concorde.py" "$@"\n'
+        # Nothing of the caller's Python setup reaches Concorde: an activated project venv, its
+        # PYTHONPATH or the user's site-packages would otherwise decide what Concorde imports.
+        f'python="$framework/{OWN_PYTHON[len(FRAMEWORK) + 1 :]}/bin/python"\n'
+        'if [ ! -x "$python" ]; then\n'
+        '  echo "concorde: its own Python environment $python is missing; install Concorde '
+        'again" >&2\n'
+        "  exit 1\n"
+        "fi\n"
+        "unset PYTHONPATH PYTHONHOME PYTHONSTARTUP PYTHONUSERBASE PYTHONSAFEPATH\n"
+        'exec "$python" -E -s "$framework/scripts/concorde.py" "$@"\n'
     )
     command.chmod(0o755)
     (project / SKILL).parent.mkdir(parents=True, exist_ok=True)
@@ -299,6 +318,7 @@ def install(
         "version": descriptor["version"],
         "framework": FRAMEWORK,
         "command": COMMAND,
+        "python": own_python,
         "tools": tools,
         # Every file Concorde owns, whether this install wrote it or found it in place: a
         # default is written only when absent, yet stays Concorde's.
@@ -321,9 +341,51 @@ def install(
     return receipt
 
 
+def _own_python(project: Path, base: Path) -> dict:
+    """Create Concorde's own environment from ``base``, replacing an earlier one."""
+    probe = subprocess.run(
+        [str(base), "-E", "-s", "-c", "import sys; print(*sys.version_info[:3])"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if probe.returncode != 0:
+        raise InstallError(
+            "python_unusable",
+            f"{base} cannot run ({probe.stderr.strip() or f'exit {probe.returncode}'}); "
+            "name another interpreter with --python",
+        )
+    version = tuple(int(part) for part in probe.stdout.split())
+    if version[:2] < MINIMUM_PYTHON:
+        raise InstallError(
+            "python_too_old",
+            f"{base} is Python {'.'.join(map(str, version))}, but Concorde needs "
+            f"{'.'.join(map(str, MINIMUM_PYTHON))} or newer; name another interpreter with "
+            "--python",
+        )
+    target = project / OWN_PYTHON
+    shutil.rmtree(target, ignore_errors=True)
+    made = subprocess.run(
+        [str(base), "-E", "-s", "-m", "venv", "--without-pip", str(target)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if made.returncode != 0:
+        raise InstallError(
+            "python_env_failed",
+            f"`{base} -m venv {target}` exited with {made.returncode}: "
+            f"{made.stderr.strip()[-1000:]}",
+        )
+    return {
+        "environment": OWN_PYTHON,
+        "base": str(base),
+        "version": ".".join(map(str, version)),
+    }
+
+
 def main(argv) -> int:
     import argparse
-    import sys
 
     parser = argparse.ArgumentParser(prog="install-concorde")
     parser.add_argument("project")
@@ -337,11 +399,19 @@ def main(argv) -> int:
         action="store_true",
         help="also install the pi runtime (with npm), Concorde's pi extension and the pi skill",
     )
+    parser.add_argument(
+        "--python",
+        help="the interpreter Concorde's own environment is made from (default: this one)",
+    )
     arguments = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[3]
     try:
         receipt = install(
-            arguments.project, package, d2=not arguments.without_d2, pi=arguments.pi
+            arguments.project,
+            package,
+            d2=not arguments.without_d2,
+            pi=arguments.pi,
+            python=arguments.python,
         )
     except InstallError as error:
         sys.stdout.write(
