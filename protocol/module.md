@@ -57,9 +57,10 @@ algorithms, persistence layouts, internal limits and executable topology belong 
 public entry points and any limit or hazard a consumer needs for correct use belong to `module`
 reading. A topic is an explanation, never a second owner or a nested requirements container.
 
-Write the design in the entry's Design section. A separate topic is warranted only when an
-explanation is too long for the entry to stay readable; it then extends the entry and never repeats
-it, so a reader never has to leave the entry to learn what the entry already should say.
+A Module's design is written only in its entry's Design section, never in a topic, so a reader
+never has to leave the entry to learn why the Module is built the way it is. A topic explains
+something else, such as what a result means for its reader or the words several Modules share; when
+it needs a design reason, it links to the entry's Design section.
 
 ## The entry
 
@@ -104,10 +105,11 @@ definitions rather than restating them.
 
 ### Design
 
-Explain why the decomposition, state, control and data flow, collaboration and failure containment
-fulfil the guarantees. Connect each significant choice to a problem it prevents. A list of class or
-function names in call order is not an explanation, and intended design is not evidence that code
-conforms.
+This section holds the Module's whole design, however long it grows; no part of it moves to a
+topic. Explain why the decomposition, state, control and data flow, collaboration and failure
+containment fulfil the guarantees. Connect each significant choice to a problem it prevents. A list
+of class or function names in call order is not an explanation, and intended design is not evidence
+that code conforms.
 
 Record significant choices and required internal constraints, and distinguish them from incidental
 current implementation and unresolved questions. Prefer linking to a guarantee over restating it as
