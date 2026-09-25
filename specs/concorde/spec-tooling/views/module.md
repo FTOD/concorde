@@ -56,7 +56,7 @@ registered document, or is ever agent context.
 
 | Command | Effect |
 | --- | --- |
-| `npm run start` | Previews the site. |
+| `npm run start` | Previews the site, restarting the preview whenever its Specs change. |
 | `npm run validate` | Checks without building. |
 | `npm run build` | Builds a **publication candidate**, checks it, and promotes it to the **published site** in `docsite/build/`. |
 

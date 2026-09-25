@@ -96,18 +96,6 @@ export default function scopedContent(
         siteIdentity: loadSiteIdentity(context.siteDir),
       });
     },
-    getPathsToWatch() {
-      return [
-        "docsite/site.json",
-        ".concorde/config.json",
-        ...(loaded
-          ? [
-              loaded.registryPath,
-              ...loaded.pages.flatMap((p) => [p.sourcePath, p.metadataPath]),
-            ]
-          : []),
-      ].map((p) => resolve(root, p));
-    },
     async postBuild({ outDir, routesPaths }) {
       const current = loadScopedRegistry(root);
       if (current.sourceDigest !== loaded.sourceDigest)

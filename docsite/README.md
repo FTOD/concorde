@@ -71,7 +71,7 @@ release in CI.
 | Command             | Purpose                                                                    |
 | ------------------- | -------------------------------------------------------------------------- |
 | `npm run validate`  | Load and render every page in memory; writes nothing.                      |
-| `npm run start`     | Stage the current Specs, then start the Docusaurus preview.                |
+| `npm run start`     | Stage the Specs and preview them, restarting whenever the Specs change.    |
 | `npm run build`     | Stage, build a candidate, validate it and promote it to `build/`.          |
 | `npm test`          | Run the publisher's tests.                                                 |
 | `npm run typecheck` | Type-check the TypeScript sources.                                         |

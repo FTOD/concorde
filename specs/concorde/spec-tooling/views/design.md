@@ -58,7 +58,10 @@ no Module and are never part of any agent's context.
 ## Building and previewing
 
 Run the commands from `docsite/` after installing its dependencies with `npm ci` (Node.js 20 or
-newer). `npm run start` stages the current Specs and starts a local preview. `npm run validate`
+newer). `npm run start` stages the current Specs, starts a local preview and keeps it current:
+when a registered document, its metadata, the registry, the configuration or `docsite/site.json`
+changes, it stages again and restarts the preview, so edits and new, moved or removed documents
+all appear after a short rebuild. `npm run validate`
 loads and checks the registered sources without building. `npm run build` stages the Specs, builds
 a publication candidate in `docsite/.generated/candidate`, checks it against the current sources
 and, only if every check passes, promotes it to `docsite/build/`, the published site. `npm test`

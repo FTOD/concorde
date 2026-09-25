@@ -125,6 +125,13 @@ Promotion SHALL restore the previous published site when moving the candidate in
 
 A production build SHALL NOT clear or overwrite the generated files of the development preview.
 
+### req.views.preview-follows-specs — The preview follows the Specs
+
+While `npm run start` runs, a change to the site identity, the configuration, the registry or either member of a registered document SHALL stage the Specs again and restart the preview.
+
+A staging that fails during the preview reports its error in full, and the command keeps waiting
+for the next change instead of exiting.
+
 ### req.views.hash-format — Digest format
 
 Every content or source digest that publication records SHALL be `sha256:` followed by 64 lowercase hexadecimal digits.

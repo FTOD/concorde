@@ -170,7 +170,6 @@ The content plugin:
 
 - on load, reloads the model and requires the staging identity record to have `schema_version` 2
   and the current source digest;
-- watches `docsite/site.json`, the configuration, the registry and both members of every document;
 - after the build, reloads the model and fails if the source digest changed, if the staging record
   no longer matches, or if any registered page route is missing from the rendered routes; then
   writes `build-manifest.json`.
@@ -181,6 +180,28 @@ publish under `/specs`, `/search` or a custom docs route. Custom docs admission 
 collection directory or sidebar file is missing, when a collection directory contains a registered
 document, or when `custom-docs/index.ts` does not export an object with array `plugins` and
 `navbarItems`.
+
+## Preview
+
+A running Docusaurus cannot show a changed Spec: the content plugin refuses staged pages whose
+source digest differs from the sources, and the pages, sidebars and navigation are fixed when
+staging runs. `npm run start` therefore supervises the preview instead of relying on Docusaurus's
+own watching, and the content plugin watches nothing.
+
+The supervisor stages with `preparePublication(root)` and starts `docusaurus start` with the
+command's arguments. Its inputs are `docsite/site.json`, the configuration, the registry and both
+members of every registered document. It watches their directories, not the files, so an editor
+that saves by replacing a file is still seen. Changes within 300 ms form one restart: it stops
+Docusaurus (`SIGTERM`, then `SIGKILL` after ten seconds), stages again, recomputes the inputs and
+their watched directories, and starts Docusaurus again with `--no-open` added so that no further
+browser window opens. A change that arrives during a restart causes one more restart after it.
+
+When staging fails, no preview runs. The supervisor reports the error in full, keeps its last
+watched directories, and retries on the next change to an input or to any `.md` or `.md.json` file
+in them, since the model that failed may list a document not yet written. When the first staging
+fails there is nothing to watch, and the command exits nonzero. When Docusaurus exits on its own
+the supervisor reports the status and starts it again on the next change. Interrupting the command
+stops Docusaurus and the watchers and exits.
 
 ## Validation
 

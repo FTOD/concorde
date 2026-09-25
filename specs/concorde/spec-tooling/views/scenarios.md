@@ -190,6 +190,23 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 - WHEN a new build succeeds and is promoted
 - THEN the published site contains only what the new build produced
 
+### scenario.views.preview-restart — A running preview follows the Specs
+
+- GIVEN a running `npm run start` preview
+- WHEN a registered document or its metadata, the registry, the configuration or `docsite/site.json` changes, including a change that adds, moves or removes a document
+- THEN the preview stops, the Specs are staged again, and the preview starts again from the new staging without opening another browser window
+- AND changes made together cause one restart
+
+See [req.views.preview-follows-specs](requirements.md#req.views.preview-follows-specs).
+
+### scenario.views.preview-restart-failure — A staging failure during the preview is reported and retried
+
+- GIVEN a running `npm run start` preview
+- WHEN a change leaves Specs that cannot be staged, such as metadata listing a document not yet written
+- THEN the preview stops and the error is reported in full
+- AND the next change to an input or to a Spec document beside one stages again and, when it succeeds, starts the preview
+- BUT when the first staging of the command fails, the command exits nonzero
+
 ### scenario.views.cross-module-link — Cross-Module links resolve to the owner's page
 
 - GIVEN a document of Module A that links, by relative source path and fragment, to a definition in a document owned by Module B

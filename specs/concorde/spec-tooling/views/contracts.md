@@ -226,7 +226,7 @@ Commands run from `docsite/` with the dependencies installed from `package-lock.
 | Command | Effect |
 | --- | --- |
 | `npm run validate` | Loads the project and renders every page in memory; reports the number of Modules and documents or fails. Writes nothing. |
-| `npm run start` | Stages the Specs and starts the Docusaurus preview. |
+| `npm run start` | Stages the Specs and starts the Docusaurus preview; stages and restarts it whenever a registered input changes, until interrupted. |
 | `npm run build` | Stages, builds the candidate, validates it and promotes it to `docsite/build/`. |
 | `npm test` | Runs the publisher's tests. |
 | `npm run typecheck` | Type-checks the TypeScript sources. |
