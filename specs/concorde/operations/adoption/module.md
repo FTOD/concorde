@@ -265,7 +265,7 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 | 4 | Generate settings, tools and the brief with the registered Modules, answers and inputs | Workers | — |
 | 5 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on, after step 7) |
 | 6 | Audit and write the run record | Workers | a write outside the grant (`failed`, after step 7) |
-| 7 | Remove the stubs left unchanged, whatever steps 3 to 6 found; reconcile the registry mirror | host, Spec core | — |
+| 7 | Remove the stubs left unchanged or deleted through the worker's proposed deletions from their Modules' documents, whatever steps 3 to 6 found; reconcile the registry mirror | host, Spec core | — |
 | 8 | Validate again and compare with the baseline | host, Spec core | a new error (`blocked`, `new_structural_errors`) |
 | 9 | Check the description against the answers and the bound Modules | host | an inconsistency or an answer not followed (`failed`, `inconsistent_description`) |
 | 10 | Return the Operation result | host | — |

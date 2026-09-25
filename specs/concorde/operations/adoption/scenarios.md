@@ -103,6 +103,12 @@ shapes are in the [contracts](contracts.md).
 - AND the result lists that promise with source `answer`
 - AND the result lists a deviation with the intended and the observed behaviour
 
+### scenario.adoption.stub-deleted — A stub the worker deleted leaves its Module
+
+- GIVEN the scaffolded Module `module.checkout` and a code_to_spec run that prepared its `contracts.md` stub
+- WHEN the worker describes the Module and proposes deleting `contracts.md` and its metadata instead of leaving the stub as it is
+- THEN `module.checkout` no longer owns `contracts.md`, the result lists it among the removed stubs, and the run ends `ok` without a structural error
+
 ### scenario.adoption.describe-stubs-cleaned — A run that stops early leaves no stubs
 
 - GIVEN a scaffolded Module `module.checkout` without implementation documents

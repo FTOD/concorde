@@ -338,6 +338,50 @@ class AdoptionTests(unittest.TestCase):
             narrowed_entries(root, ["docs/.nojekyll"], ["docs/", "docs/.nojekyll"]),
         )
 
+    @verifies("scenario.adoption.stub-deleted")
+    def test_a_stub_the_worker_deleted_leaves_its_module(self):
+        self.scaffolded()
+        entry = self.worktree / "specs/project/checkout/module.md"
+        contracts = "specs/project/checkout/contracts.md"
+        status, envelope = self.describe(
+            [
+                {
+                    "writes": {
+                        str(entry): self.described_entry(),
+                        str(
+                            self.worktree / "specs/project/checkout/scenarios.md"
+                        ): self.SCENARIOS,
+                    },
+                    "result": {
+                        "output": {
+                            "summary": "Described submit.",
+                            "promises": [
+                                {
+                                    "module": "module.checkout",
+                                    "kind": "scenario",
+                                    "id": "scenario.checkout.submit",
+                                    "description": "a basket becomes one order",
+                                    "source": "code",
+                                    "question": None,
+                                }
+                            ],
+                            "decisions": [],
+                            "open_questions": [RETRY_QUESTION],
+                            "deviations": [],
+                        },
+                        "proposed_deletions": [contracts, contracts + ".json"],
+                    },
+                }
+            ]
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertIn(contracts, envelope["output"]["removed_stubs"])
+        self.assertEqual([], envelope["output"]["validation"]["new_errors"])
+        owned = json.loads((entry.parent / "module.md.json").read_text())["module"][
+            "owns"
+        ]
+        self.assertNotIn(contracts, owned)
+
     @verifies("scenario.adoption.describe-stubs-cleaned")
     def test_stubs_are_removed_when_the_worker_step_raises(self):
         from unittest.mock import patch

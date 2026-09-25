@@ -7,7 +7,8 @@ Steps (the Code to spec Operation step table of the Adoption Module Spec):
    Module lacks, owned by it, and reconcile the registry mirror, before the grant is frozen.
 3. ``describe``: the standard worker sequence for task type ``code-to-spec`` (grant, settings,
    brief, launch, audit, run record) with one round and no checks.
-4. ``tidy``: remove the stubs the worker left unchanged and reconcile the registry mirror.
+4. ``tidy``: remove the stubs the worker left unchanged or had deleted, and reconcile the
+   registry mirror.
 
 Steps 2 to 4 run as the one host step ``describe_code``, so that ``tidy`` runs in a ``finally``
 however the worker step ends, an exception or a cancellation included.
@@ -273,15 +274,18 @@ def describe(ctx: RunContext):
 
 
 def tidy(ctx: RunContext):
-    """Step 4: remove the stubs left unchanged, and reconcile the registry mirror."""
+    """Step 4: remove the stubs left unchanged or deleted, and reconcile the registry mirror."""
     from ..spec.changes import apply_files, file_change
     from ..spec.registry import registry_command
 
+    # A stub the worker did not need is either left as it was or, when the worker proposed its
+    # deletion, already gone; either way it leaves its Module's documents, or the Module would
+    # own a document that does not exist and the Specs could no longer be loaded.
     unchanged = [
         (module, path)
         for path, (module, content) in (ctx.state.get("stubs") or {}).items()
-        if (ctx.worktree / path).is_file()
-        and (ctx.worktree / path).read_bytes() == content
+        if not (ctx.worktree / path).is_file()
+        or (ctx.worktree / path).read_bytes() == content
     ]
     by_module: dict[str, list[str]] = {}
     for module, path in unchanged:

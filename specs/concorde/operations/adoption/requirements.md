@@ -115,7 +115,7 @@ Every entry the scaffold creates SHALL state the survey's purpose and say in its
 
 ### req.adoption.stubs-prepared — Implementation documents are prepared and tidied
 
-The code_to_spec host SHALL create the `requirements.md`, `scenarios.md` and `contracts.md` stubs that a bound Module lacks before freezing the grant and remove every stub the worker left unchanged before the run ends, whichever step stops it.
+The code_to_spec host SHALL create the `requirements.md`, `scenarios.md` and `contracts.md` stubs that a bound Module lacks before freezing the grant and remove every stub the worker left unchanged or had deleted, with its place among the Module's documents, before the run ends, whichever step stops it.
 
 ### req.adoption.answers-first — Answers are checked before anything happens
 
