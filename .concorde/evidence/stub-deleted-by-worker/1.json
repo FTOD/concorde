@@ -1,0 +1,34 @@
+{
+  "task": "stub-deleted-by-worker",
+  "goal": "code_to_spec drops a stub the worker deleted from its Module's documents, as it does an unchanged one",
+  "modules": [
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "1a0c0899bb79bf35034c3693dffa41574aabfbe7",
+  "parent_commit": "e319767f815cd6a91dad9b409abbef0e169721e6",
+  "readiness": {
+    "run_id": "r-20260925T164202-delivery-62a4e2a3",
+    "input_digest": "sha256:0a9f661804658744437b870b79d5d33645d2237fef9fd534ee95b0c1f1d05988",
+    "modules": [
+      "module.adoption"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260925T164200-validate-260537e3",
+      "operation": "validate",
+      "modules": [
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:fe82ccbebaf864ae96b1be39cb01c5333668839504e1c312fd980efafb472194"
+    }
+  ],
+  "created_at": "2026-09-25T16:42:04Z"
+}
