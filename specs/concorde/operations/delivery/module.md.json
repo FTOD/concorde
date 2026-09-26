@@ -28,7 +28,7 @@
         "meaning": "#uses-operations"
       },
       {
-        "target": "module.harness.workers",
+        "target": "module.workers",
         "meaning": "#uses-workers"
       }
     ],

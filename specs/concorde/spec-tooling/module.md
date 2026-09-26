@@ -65,11 +65,11 @@ tooling: Spec tooling {
   review -> core
   views -> core
 }
-harness: Harness {
+agents: Agents {
   workers: Workers
 }
 operations: Operations
-tooling.review -> harness.workers
+tooling.review -> agents.workers
 tooling.review -> operations
 ```
 

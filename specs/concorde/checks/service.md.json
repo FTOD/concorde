@@ -1,8 +1,8 @@
 {
   "schema_version": 3,
   "document": {
-    "id": "document.harness-workers.launch",
-    "owner": "module.harness.workers",
+    "id": "document.checks.service",
+    "owner": "module.checks",
     "role": "implementation"
   },
   "defines": [],

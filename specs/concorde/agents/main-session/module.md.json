@@ -8,9 +8,9 @@
   "module": {
     "title": "Main session",
     "owns": [
-      "specs/concorde/main-session/module.md",
-      "specs/concorde/main-session/requirements.md",
-      "specs/concorde/main-session/scenarios.md"
+      "specs/concorde/agents/main-session/module.md",
+      "specs/concorde/agents/main-session/requirements.md",
+      "specs/concorde/agents/main-session/scenarios.md"
     ],
     "contains": [],
     "uses": [
@@ -26,7 +26,7 @@
         ]
       },
       {
-        "target": "module.harness.workers",
+        "target": "module.workers",
         "meaning": "#uses-workers",
         "relies_on": [
           "concept.workers.progress-file",
@@ -38,8 +38,14 @@
         "meaning": "#uses-tasks",
         "relies_on": [
           "concept.tasks.task",
-          "concept.tasks.decision-log",
-          "concept.tasks.session-round"
+          "concept.tasks.decision-log"
+        ]
+      },
+      {
+        "target": "module.task-session",
+        "meaning": "#uses-task-session",
+        "relies_on": [
+          "concept.task-session.round"
         ]
       },
       {

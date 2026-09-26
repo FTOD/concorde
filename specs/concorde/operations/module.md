@@ -31,12 +31,12 @@ the main agent decides.
 | [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
 | [Grant](../spec-tooling/spec/module.md#concept.spec.grant) | |
 | [Context identity](../spec-tooling/spec/module.md#concept.spec.context-identity) | |
-| [Worker result](../harness/workers/module.md#concept.workers.worker-result) | |
-| [Brief](../harness/workers/module.md#concept.workers.brief) | |
-| [Write audit](../harness/workers/module.md#concept.workers.audit) | |
-| [Resume round](../harness/workers/module.md#concept.workers.resume-round) | |
-| [Run record](../harness/workers/module.md#concept.workers.run-record) | |
-| [Configured check](../harness/checks/module.md#concept.checks.configured-check) | |
+| [Worker result](../agents/workers/module.md#concept.workers.worker-result) | |
+| [Brief](../agents/workers/module.md#concept.workers.brief) | |
+| [Write audit](../agents/workers/module.md#concept.workers.audit) | |
+| [Resume round](../agents/workers/module.md#concept.workers.resume-round) | |
+| [Run record](../agents/workers/module.md#concept.workers.run-record) | |
+| [Configured check](../checks/module.md#concept.checks.configured-check) | |
 | [Task](../tasks/module.md#concept.tasks.task) | |
 | [Task record](../tasks/module.md#concept.tasks.task-record) | |
 
@@ -97,7 +97,7 @@ The **Operation catalog** of this version:
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | optional | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
 | `scaffold` | [Adoption](adoption/module.md) | none | none | required | the surveyed Module's documents, the new child Modules' documents and the registry | a [scaffold record](adoption/contracts.md#contract.adoption.scaffold-record) |
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | required | Specs of the bound Modules and the registry mirror | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
-| `configure_workers` | Operations | none | none | optional | the worktree's untracked [worker model configuration](../harness/workers/module.md#concept.workers.model-configuration) | the [worker configuration](contracts.md#contract.operations.worker-configuration) |
+| `configure_workers` | Operations | none | none | optional | the worktree's untracked [worker model configuration](../agents/workers/module.md#concept.workers.model-configuration) | the [worker configuration](contracts.md#contract.operations.worker-configuration) |
 
 A typical task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then
 `validate` and `delivery`, repeating or skipping steps as the results tell it. Without a task the
@@ -154,7 +154,7 @@ Every run ends with one **Operation result**: the Operation, task, Modules, run 
 `blocked` when it needs a main-agent decision, such as a reported Spec gap or stale readiness, and
 `failed` when something went wrong: a launch error, a write outside the grant, checks still failing
 after the last resume round, or a host error. A worker-backed Operation also carries the worker's
-own [worker result](../harness/workers/module.md#concept.workers.worker-result) unchanged, plus the
+own [worker result](../agents/workers/module.md#concept.workers.worker-result) unchanged, plus the
 host's evidence — grant, context identity, write audit, each check's exit code and log, resume
 rounds used, transcript path, worker stderr. When `status` is not `ok`, `error` is the run's
 [error chain](../vocabulary.md#concept.concorde.error-chain): the Operation's own link, describing
@@ -178,7 +178,7 @@ mainagent -> mainagent: reads the claim as a claim, the evidence as fact; decide
 While it runs, the host keeps the run's **progress file** `.concorde/runs/<run-id>/status.json`
 current: the Operation, task and Modules, the step it is in, and, once finished, the status and
 summary, with the host's process identifier. Each worker the run launches keeps its own [progress
-file](../harness/workers/module.md#concept.workers.progress-file) with the same process identifier,
+file](../agents/workers/module.md#concept.workers.progress-file) with the same process identifier,
 so an observer such as the main session's run view can follow a run and its worker without asking
 the host. It is an observation aid; the Operation result is the run's answer.
 
@@ -221,12 +221,12 @@ sequence: compute the [grant](../spec-tooling/spec/module.md#concept.spec.grant)
 and Modules from the **task worktree's** Specs and freeze it with its
 [context identity](../spec-tooling/spec/module.md#concept.spec.context-identity), pre-create the
 pending files it makes writable, generate the worker's settings, tools and
-[brief](../harness/workers/module.md#concept.workers.brief), launch the worker, run the
-[write audit](../harness/workers/module.md#concept.workers.audit), run the bound Modules'
-[configured checks](../harness/checks/module.md#concept.checks.configured-check) outside the
+[brief](../agents/workers/module.md#concept.workers.brief), launch the worker, run the
+[write audit](../agents/workers/module.md#concept.workers.audit), run the bound Modules'
+[configured checks](../checks/module.md#concept.checks.configured-check) outside the
 worker, feed failures back as a
-[resume round](../harness/workers/module.md#concept.workers.resume-round) until they pass or the
-rounds run out, and write the [run record](../harness/workers/module.md#concept.workers.run-record).
+[resume round](../agents/workers/module.md#concept.workers.resume-round) until they pass or the
+rounds run out, and write the [run record](../agents/workers/module.md#concept.workers.run-record).
 Workers performs that sequence; the host decides what its outcome means. See
 [How the host runs an Operation](host.md).
 
@@ -275,15 +275,15 @@ operations: Operations {
   adoption: Adoption
 }
 spec: Spec core
-harness: Harness {
+agents: Agents {
   workers: Workers
-  checks: Check execution
 }
+checks: Check execution
 tasks: Tasks
 specreview: Spec review
 operations -> spec
-operations -> harness.workers
-operations -> harness.checks
+operations -> agents.workers
+operations -> checks
 operations -> tasks
 operations -> specreview
 ```
@@ -342,13 +342,13 @@ cannot be loaded is refused rather than partially read, ending the run `failed`.
 
 **Workers** performs the standard worker sequence — settings, launch, audit, resume rounds, run
 record — and returns the
-[worker result](../harness/workers/module.md#concept.workers.worker-result) with the evidence it
+[worker result](../agents/workers/module.md#concept.workers.worker-result) with the evidence it
 gathered. A launch error, a timeout or an audit violation ends the run `failed`.
 
 <a id="uses-checks"></a>
 
 **Check execution** runs
-[configured checks](../harness/checks/module.md#concept.checks.configured-check) read-only, for
+[configured checks](../checks/module.md#concept.checks.configured-check) read-only, for
 the resume rounds Workers drives and for deterministic providers such as Validation, returning each
 result's command, exit code and log as host evidence.
 

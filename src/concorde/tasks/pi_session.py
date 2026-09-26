@@ -55,7 +55,7 @@ TEXT = 160
 
 STRING = {"type": "string", "minLength": 1}
 STRINGS = {"type": "array", "items": STRING}
-# contract.tasks.session-report (specs/concorde/tasks/contracts.md)
+# contract.task-session.report (specs/concorde/agents/task-session/contracts.md)
 REPORT_SCHEMA = {
     "oneOf": [
         {

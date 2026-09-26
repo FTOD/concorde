@@ -46,7 +46,7 @@ itself enforces is verified by the Harness's live worker test.
 - WHEN the Operation runs
 - THEN the write does not stand: the worker's settings refuse it, and a write that slips through fails the host's audit
 - AND the Operation result carries an error chain whose top link, the Operation's, names the file and gives `permission` as the reason it cannot handle the error
-- AND the link below it is the Workers harness's, with the audit as evidence
+- AND the link below it is Workers', with the audit as evidence
 - BUT the Operation does not retry the worker with a wider grant
 
 ### scenario.concorde.parallel-tasks — Two tasks in parallel
@@ -65,7 +65,7 @@ itself enforces is verified by the Harness's live worker test.
 - WHEN the worker ends `blocked` with its detailed error and the reason it cannot handle it
 - AND the Operation returns its result
 - AND the main agent escalates the result to the developer with `concorde task escalate`
-- THEN the escalation is one chain: the main agent's link, then the Operation's, then the Workers harness's, then the worker's own
+- THEN the escalation is one chain: the main agent's link, then the Operation's, then Workers', then the worker's own
 - AND every link gives its level, its actor, a detailed description and the reason that level could not handle the error
 - AND the worker's description, evidence and options arrive unchanged
 - AND the chain is recorded in the task record and the decision log and printed rendered for the developer

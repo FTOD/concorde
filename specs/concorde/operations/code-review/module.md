@@ -26,11 +26,11 @@ review is evidence about the reviewed inputs only, not proof of no other defect.
 | [Operation host](../module.md#concept.operations.host) | |
 | [Operation result](../module.md#concept.operations.result) | |
 | [Grant](../../spec-tooling/spec/module.md#concept.spec.grant) | |
-| [Brief](../../harness/workers/module.md#concept.workers.brief) | |
-| [Worker result](../../harness/workers/module.md#concept.workers.worker-result) | |
-| [Write audit](../../harness/workers/module.md#concept.workers.audit) | |
-| [Configured check](../../harness/checks/module.md#concept.checks.configured-check) | |
-| [Check result](../../harness/checks/module.md#concept.checks.check-result) | |
+| [Brief](../../agents/workers/module.md#concept.workers.brief) | |
+| [Worker result](../../agents/workers/module.md#concept.workers.worker-result) | |
+| [Write audit](../../agents/workers/module.md#concept.workers.audit) | |
+| [Configured check](../../checks/module.md#concept.checks.configured-check) | |
+| [Check result](../../checks/module.md#concept.checks.check-result) | |
 
 ## Usage
 
@@ -92,10 +92,10 @@ cuts it to what the grant already makes readable.
 | --- | --- | --- | --- |
 | 1 | Freeze the bound Modules' `review-code` [grant](../../spec-tooling/spec/module.md#concept.spec.grant) | Workers, Spec core | Specs won't load / Module unknown (`failed`) |
 | 2 | Diff base→worktree, untracked included; keep readable paths' contents, list rest by name | host, Spec core | base unresolved (`failed`) |
-| 3 | Run bound Modules' [configured checks](../../harness/checks/module.md#concept.checks.configured-check) outside the worker | host, Check execution | a check won't start (`failed`) |
-| 4 | Build worker settings, tools and [brief](../../harness/workers/module.md#concept.workers.brief): focus, diff, named-only paths, [check results](../../harness/checks/module.md#concept.checks.check-result) with the last part of every log that did not pass, grant's read/names | Workers | — |
-| 5 | Launch reviewer, await its [worker result](../../harness/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error/timeout (`failed`); `blocked` passed on |
-| 6 | [Audit](../../harness/workers/module.md#concept.workers.audit) the worktree (no writable path, so any change is a violation); write run record | Workers | any change (`failed`) |
+| 3 | Run bound Modules' [configured checks](../../checks/module.md#concept.checks.configured-check) outside the worker | host, Check execution | a check won't start (`failed`) |
+| 4 | Build worker settings, tools and [brief](../../agents/workers/module.md#concept.workers.brief): focus, diff, named-only paths, [check results](../../checks/module.md#concept.checks.check-result) with the last part of every log that did not pass, grant's read/names | Workers | — |
+| 5 | Launch reviewer, await its [worker result](../../agents/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error/timeout (`failed`); `blocked` passed on |
+| 6 | [Audit](../../agents/workers/module.md#concept.workers.audit) the worktree (no writable path, so any change is a violation); write run record | Workers | any change (`failed`) |
 | 7 | Resolve every finding's basis, derive the verdict | host, Spec core | unresolved/missing basis (`failed`) |
 | 8 | Return the Operation result | host | — |
 
@@ -147,11 +147,11 @@ codereview -> spec
   envelope. Code review relies on the host to record the run and calls no other Operation.
 - <a id="uses-workers"></a>**Workers** turns the frozen grant into worker settings, launches the
   reviewer with this Module's brief, collects its
-  [worker result](../../harness/workers/module.md#concept.workers.worker-result), audits the
+  [worker result](../../agents/workers/module.md#concept.workers.worker-result), audits the
   worktree and writes the run record.
 - <a id="uses-checks"></a>**Check execution** runs the bound Modules'
-  [configured checks](../../harness/checks/module.md#concept.checks.configured-check) read-only
-  and returns a [check result](../../harness/checks/module.md#concept.checks.check-result) for
+  [configured checks](../../checks/module.md#concept.checks.configured-check) read-only
+  and returns a [check result](../../checks/module.md#concept.checks.check-result) for
   each, passed to the reviewer and included in the report unchanged.
 - <a id="uses-spec"></a>**Spec core** computes the `review-code`
   [grant](../../spec-tooling/spec/module.md#concept.spec.grant), decides which changed paths the

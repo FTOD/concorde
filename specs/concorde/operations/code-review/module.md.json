@@ -20,11 +20,11 @@
         "meaning": "#uses-operations"
       },
       {
-        "target": "module.harness.workers",
+        "target": "module.workers",
         "meaning": "#uses-workers"
       },
       {
-        "target": "module.harness.checks",
+        "target": "module.checks",
         "meaning": "#uses-checks"
       },
       {

@@ -27,9 +27,9 @@ documents; a Spec that fails validation stops the run for a decision, not anothe
 | [Structural check](../../spec-tooling/spec/module.md#concept.spec.structural-check) | |
 | [Impact index](../../spec-tooling/spec/module.md#concept.spec.impact-index) | |
 | [Project registry](../../spec-tooling/spec/module.md#concept.spec.registry) | |
-| [Brief](../../harness/workers/module.md#concept.workers.brief) | |
-| [Worker result](../../harness/workers/module.md#concept.workers.worker-result) | |
-| [Write audit](../../harness/workers/module.md#concept.workers.audit) | |
+| [Brief](../../agents/workers/module.md#concept.workers.brief) | |
+| [Worker result](../../agents/workers/module.md#concept.workers.worker-result) | |
+| [Write audit](../../agents/workers/module.md#concept.workers.audit) | |
 
 A Spec change is the observed outcome; the intent is what was asked for. The two may differ, which
 is why the result reports what changed, not the intent.
@@ -100,9 +100,9 @@ specification: Specification {
 | --- | --- | --- | --- |
 | 1 | Validate the task worktree's Specs as a baseline | host, Spec core | Specs cannot load (`failed`) |
 | 2 | Compute and freeze the `specify` [grant](../../spec-tooling/spec/module.md#concept.spec.grant) | Workers, Spec core | unknown Module (`failed`) |
-| 3 | Generate settings, tools and the [brief](../../harness/workers/module.md#concept.workers.brief) | Workers | — |
-| 4 | Launch the worker and wait for its [worker result](../../harness/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
-| 5 | [Audit](../../harness/workers/module.md#concept.workers.audit), perform proposed deletions, write the run record | Workers | a write outside the grant (`failed`) |
+| 3 | Generate settings, tools and the [brief](../../agents/workers/module.md#concept.workers.brief) | Workers | — |
+| 4 | Launch the worker and wait for its [worker result](../../agents/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
+| 5 | [Audit](../../agents/workers/module.md#concept.workers.audit), perform proposed deletions, write the run record | Workers | a write outside the grant (`failed`) |
 | 6 | Regenerate the [registry](../../spec-tooling/spec/module.md#concept.spec.registry) mirror from the changed entries | host, Spec core | — |
 | 7 | Validate again and compare with the baseline | host, Spec core | a new error (`blocked`) |
 | 8 | Compute changed documents, added entries and affected Modules via the [impact index](../../spec-tooling/spec/module.md#concept.spec.impact-index) | host, Spec core | — |
@@ -158,7 +158,7 @@ calls another Operation, not even `validate` — its own validation is a host st
 <a id="uses-workers"></a>
 
 **Workers** turns the frozen grant into settings, launches the worker with this Module's brief,
-collects its [worker result](../../harness/workers/module.md#concept.workers.worker-result), audits
+collects its [worker result](../../agents/workers/module.md#concept.workers.worker-result), audits
 the worktree and writes the run record; any change beyond the bound Modules' documents fails the
 run.
 

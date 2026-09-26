@@ -44,8 +44,12 @@ def plan(value: dict) -> str:
     return "FAKE-PLAN: " + json.dumps(value)
 
 
-def contract(heading: str) -> dict:
-    text = (REPOSITORY_ROOT / "specs/concorde/tasks/contracts.md").read_text()
+TASK_CONTRACTS = "specs/concorde/tasks/contracts.md"
+SESSION_CONTRACTS = "specs/concorde/agents/task-session/contracts.md"
+
+
+def contract(heading: str, document: str = TASK_CONTRACTS) -> dict:
+    text = (REPOSITORY_ROOT / document).read_text()
     section = text.split(heading, 1)[1] if heading else text
     return json.loads(section.split("```concorde-contract\n", 1)[1].split("```")[0])
 
@@ -149,7 +153,7 @@ class PiSessionTests(unittest.TestCase):
 
         store.update(self.root, task, change)
 
-    @verifies("scenario.tasks.pi-session-start")
+    @verifies("scenario.task-session.pi-start")
     def test_start_a_pi_task_session(self):
         worktree = self.open(
             "t1",
@@ -233,7 +237,7 @@ class PiSessionTests(unittest.TestCase):
         record = store.load_task(self.root, "t1")
         validate(record, contract("")["schema"])
 
-    @verifies("scenario.tasks.pi-session-start")
+    @verifies("scenario.task-session.pi-start")
     def test_a_machine_without_pi_starts_no_session(self):
         self.open("t1", {})
         before = store.load_task(self.root, "t1")
@@ -251,7 +255,7 @@ class PiSessionTests(unittest.TestCase):
         self.assertIn("sandbox-runtime", str(raised.exception))
         self.assertEqual(before, store.load_task(self.root, "t1"))
 
-    @verifies("scenario.tasks.pi-session-rounds")
+    @verifies("scenario.task-session.pi-rounds")
     def test_the_answer_starts_the_next_round(self):
         self.open(
             "t1",
@@ -302,7 +306,7 @@ class PiSessionTests(unittest.TestCase):
         self.assertNotIn("You work in rounds", again["prompt"])
         validate(store.load_task(self.root, "t1"), contract("")["schema"])
 
-    @verifies("scenario.tasks.pi-session-rounds")
+    @verifies("scenario.task-session.pi-rounds")
     def test_one_round_runs_at_a_time(self):
         self.open("t1", {"sleep": 30})
         self.start("t1")
@@ -317,7 +321,7 @@ class PiSessionTests(unittest.TestCase):
             pi_session.answer(self.root, "t2", "more")
         self.assertEqual("no_session", raised.exception.code)
 
-    @verifies("scenario.tasks.pi-session-stop")
+    @verifies("scenario.task-session.pi-stop")
     def test_stop_a_running_round(self):
         self.open("t1", {"actions": [["read", {"path": "README.md"}]], "sleep": 60})
         started = self.start("t1")
@@ -338,7 +342,7 @@ class PiSessionTests(unittest.TestCase):
             pi_session.stop(self.root, "t1")
         self.assertEqual("session_idle", raised.exception.code)
 
-    @verifies("scenario.tasks.pi-session-stop")
+    @verifies("scenario.task-session.pi-stop")
     def test_a_pi_that_ignores_sigterm_is_killed_after_the_grace_period(self):
         self.open("t1", {"sleep": 60, "ignore_term": True})
         self.start("t1")
@@ -353,7 +357,7 @@ class PiSessionTests(unittest.TestCase):
         self.assertIn({"signal": "SIGTERM"}, self.calls())
         self.assertFalse(pi_session._alive(call["pid"]))
 
-    @verifies("scenario.tasks.pi-session-report-verified")
+    @verifies("scenario.task-session.pi-report-verified")
     def test_a_report_the_record_contradicts_fails_the_round(self):
         self.open(
             "t1",
@@ -383,7 +387,7 @@ class PiSessionTests(unittest.TestCase):
         self.assertIn("level main-agent", mismatches[0])
         self.assertIn("escalation 3 does not exist", mismatches[1])
 
-    @verifies("scenario.tasks.pi-session-failed")
+    @verifies("scenario.task-session.pi-failed")
     def test_a_round_without_a_report_fails_with_its_evidence(self):
         self.open("t1", {"error": "model overloaded", "stderr": "boom", "exit": 1})
         self.start("t1")
@@ -410,7 +414,7 @@ class PiSessionTests(unittest.TestCase):
             ("finished", "failed"), (progress["phase"], progress["status"])
         )
 
-    @verifies("scenario.tasks.pi-session-failed")
+    @verifies("scenario.task-session.pi-failed")
     def test_a_round_whose_supervisor_vanished_is_settled_as_failed(self):
         self.open("t1", {})
         gone = subprocess.Popen([sys.executable, "-c", "pass"])
@@ -448,7 +452,7 @@ class PiSessionTests(unittest.TestCase):
             status = cli.main(list(argv), cwd=self.root)
         return status, json.loads(output.getvalue())
 
-    @verifies("scenario.tasks.session-program")
+    @verifies("scenario.task-session.program")
     def test_a_task_session_runs_on_the_main_sessions_program(self):
         self.open("t1", {})
         status, value = self.command(
@@ -467,7 +471,7 @@ class PiSessionTests(unittest.TestCase):
             self.assertIn(name, value["error"]["detail"])
         self.assertEqual([], store.load_task(self.root, "t1")["sessions"])
 
-    @verifies("scenario.tasks.session-start")
+    @verifies("scenario.task-session.start")
     def test_a_claude_code_session_takes_no_answer_or_stop(self):
         self.open("t1", {})
         for extra in (("--answer", "yes"), ("--stop",)):
@@ -478,7 +482,7 @@ class PiSessionTests(unittest.TestCase):
         status, value = self.command("session", "t1", "--dry-run", client="claude")
         self.assertEqual(("invalid_input", 1), (value["error"]["code"], status))
 
-    @verifies("scenario.tasks.pi-session-boundary")
+    @verifies("scenario.task-session.pi-boundary")
     def test_the_boundary_policy_confines_writes_to_the_task(self):
         worktree = self.open("t1", {})
         shown = self.start("t1", dry_run=True)
@@ -508,8 +512,8 @@ class PiSessionTests(unittest.TestCase):
         self.assertEqual([], store.load_task(self.root, "t1")["sessions"])
 
     def test_the_report_schema_is_the_contract(self):
-        found = contract("## Session report")
-        self.assertEqual("contract.tasks.session-report", found["id"])
+        found = contract("## Session report", SESSION_CONTRACTS)
+        self.assertEqual("contract.task-session.report", found["id"])
         self.assertEqual(pi_session.REPORT_SCHEMA, found["schema"])
         validate(found["example"], pi_session.REPORT_SCHEMA)
 
@@ -534,7 +538,7 @@ console.log(JSON.stringify({{
     shutil.which("node"), "Node is needed to run the boundary's decisions"
 )
 class BoundaryDecisionTests(unittest.TestCase):
-    @verifies("scenario.tasks.pi-session-boundary")
+    @verifies("scenario.task-session.pi-boundary")
     def test_writes_outside_the_task_are_refused(self):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)

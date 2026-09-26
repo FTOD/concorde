@@ -1,8 +1,8 @@
 {
   "schema_version": 3,
   "document": {
-    "id": "document.checks.boundary",
-    "owner": "module.harness.checks",
+    "id": "document.workers.scenarios",
+    "owner": "module.workers",
     "role": "implementation"
   },
   "defines": [],

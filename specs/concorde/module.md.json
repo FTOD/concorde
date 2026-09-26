@@ -21,8 +21,16 @@
         "meaning": "#contains-spec-tooling"
       },
       {
+        "target": "module.agents",
+        "meaning": "#contains-agents"
+      },
+      {
         "target": "module.harness",
         "meaning": "#contains-harness"
+      },
+      {
+        "target": "module.checks",
+        "meaning": "#contains-checks"
       },
       {
         "target": "module.tasks",
@@ -39,10 +47,6 @@
       {
         "target": "module.issues",
         "meaning": "#contains-issues"
-      },
-      {
-        "target": "module.main-session",
-        "meaning": "#contains-main-session"
       },
       {
         "target": "module.distribution",
@@ -118,6 +122,17 @@
       "meaning": "#realization.concorde.acceptance-tests",
       "entries": [
         "tests/concorde/acceptance/"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.concorde.error-chain",
+      "type": "realization",
+      "title": "Error chain code",
+      "meaning": "#realization.concorde.error-chain",
+      "entries": [
+        "src/concorde/errors.py",
+        "tests/concorde/test_errors.py"
       ],
       "pending": []
     }

@@ -567,7 +567,7 @@ class WorkerRunTests(unittest.TestCase):
 
     def test_the_result_schema_is_the_contract(self):
         text = (
-            REPOSITORY_ROOT / "specs/concorde/harness/workers/contracts.md"
+            REPOSITORY_ROOT / "specs/concorde/agents/workers/contracts.md"
         ).read_text()
         fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
         self.assertEqual(json.loads(fence)["schema"], WORKER_RESULT_SCHEMA)

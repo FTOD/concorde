@@ -2,13 +2,14 @@
 
 ## Purpose
 
-Main session is the guidance that makes an ordinary Claude Code or pi session in a project's
-primary worktree act as Concorde's main agent: discuss work with the developer, split it into
-tasks, carry a task out inside its worktree or hand tasks to task sessions, keep
-each task's decision log, decide ordinary questions itself while escalating only major ones, merge
-delivered tasks, and handle Issues. It also holds the guidance a task session starts with. It is
-advice to a
-model, not enforcement — Concorde places no permission limits on the main agent, and nothing here
+Main session is the project level of Concorde's agents: the guidance that makes an ordinary Claude
+Code or pi session in a project's primary worktree act as Concorde's main agent: discuss work with
+the developer, split it into tasks, carry a task out inside its worktree or hand tasks to task
+sessions, keep each task's decision log, decide ordinary questions itself while escalating only
+major ones, merge delivered tasks, and handle Issues. The method of working inside a task is part
+of this guidance, because the task level is the main agent's own work: it follows the method when
+it works a task itself, and a task session it delegates the task to starts with the same method in
+the guidance it is given. It is advice to a model, not enforcement — Concorde places no permission limits on the main agent, and nothing here
 constrains the developer. In pi it adds a run view, an extension that starts Operations in the
 background and shows their progress. Distribution renders and installs this Module's content.
 
@@ -21,17 +22,17 @@ background and shows their progress. Distribution renders and installs this Modu
 | Model picker | The dialog of the pi run view in which the developer chooses, for every worker, an Operation's workers or one worker role, the model and reasoning level of pi workers. |
 | Questions without a task | The guidance's rule that Operations which allow it run without a task for a question or review that changes nothing. |
 | Escalation policy | The rule by which the main agent decides ordinary questions itself, records and reports them, and asks the developer only for decisions with major impact. |
-| [Developer](../vocabulary.md#concept.concorde.developer) | |
-| [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
-| [Task session](../vocabulary.md#concept.concorde.task-session) | |
-| [Worker](../vocabulary.md#concept.concorde.worker) | |
-| [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
-| [Task](../tasks/module.md#concept.tasks.task) | |
-| [Decision log](../tasks/module.md#concept.tasks.decision-log) | |
-| [Operation](../operations/module.md#concept.operations.operation) | |
-| [Operation result](../operations/module.md#concept.operations.result) | |
-| [Issue](../issues/module.md#concept.issues.issue) | |
-| [Spec MCP server](../spec-tooling/spec-mcp/module.md#concept.spec-mcp.server) | |
+| [Developer](../../vocabulary.md#concept.concorde.developer) | |
+| [Main agent](../../vocabulary.md#concept.concorde.main-agent) | |
+| [Task session](../../vocabulary.md#concept.concorde.task-session) | |
+| [Worker](../../vocabulary.md#concept.concorde.worker) | |
+| [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
+| [Task](../../tasks/module.md#concept.tasks.task) | |
+| [Decision log](../../tasks/module.md#concept.tasks.decision-log) | |
+| [Operation](../../operations/module.md#concept.operations.operation) | |
+| [Operation result](../../operations/module.md#concept.operations.result) | |
+| [Issue](../../issues/module.md#concept.issues.issue) | |
+| [Spec MCP server](../../spec-tooling/spec-mcp/module.md#concept.spec-mcp.server) | |
 
 ## Usage
 
@@ -41,31 +42,31 @@ background and shows their progress. Distribution renders and installs this Modu
 Concorde project's primary worktree that it is the main agent, and gives it a working method:
 
 - **Discuss first.** Agree the direction with the developer before changing anything.
-- **Split into tasks.** Turn agreed work into [tasks](../tasks/module.md#concept.tasks.task),
+- **Split into tasks.** Turn agreed work into [tasks](../../tasks/module.md#concept.tasks.task),
   opened with `concorde task`. Run tasks in parallel only across worktrees whose Modules and shared
   files do not overlap; run the rest one after another
   ([requirements](requirements.md#req.main-session.parallel-by-worktree)).
 - **Work inside the task.** Never change Specs or code in the primary worktree. For a single
   task, enter its worktree (Claude Code's EnterWorktree), change Specs and code there directly or
-  by running [Operations](../operations/module.md#concept.operations.operation) with
+  by running [Operations](../../operations/module.md#concept.operations.operation) with
   `concorde run <operation> --task <task> …` in background Bash and reading the
-  [Operation result](../operations/module.md#concept.operations.result), and run every `concorde`
+  [Operation result](../../operations/module.md#concept.operations.result), and run every `concorde`
   command with the worktree's own copy; leave after delivery. Be inside at most one task at a time.
   The only change made in the primary worktree is trivial housekeeping, such as regenerating the
   registry mirror.
 - **Hand split work to task sessions.** For work split into several tasks, start one
-  [task session](../vocabulary.md#concept.concorde.task-session) per task with
+  [task session](../../vocabulary.md#concept.concorde.task-session) per task with
   `concorde task session <task>` and stay in the primary worktree while they run. A task session
   runs on the main agent's own program. In Claude Code the command names the main agent's session
   with `--main`, and the session reports back with SendMessage. In pi the main agent uses the
-  `concorde_task_session` tool: each [session round](../tasks/module.md#concept.tasks.session-round)
+  `concorde_task_session` tool: each [session round](../task-session/module.md#concept.task-session.round)
   ends with a report that wakes the main agent, which starts the next round with the tool's
   `answer`. Either way a task session escalates with its own link on the chain.
 - **Keep the decision log.** Record every non-`ok` result and every unsupervised choice, with its
-  reason, in the task's [decision log](../tasks/module.md#concept.tasks.decision-log).
+  reason, in the task's [decision log](../../tasks/module.md#concept.tasks.decision-log).
 - **Merge delivered work.** From the primary worktree, merge a branch `delivery` committed without
   asking authorization, with `concorde task merge`, never with `git merge`: it holds the
-  [merge lock](../tasks/module.md#concept.tasks.merge-lock) so merges of several main sessions never
+  [merge lock](../../tasks/module.md#concept.tasks.merge-lock) so merges of several main sessions never
   interleave, validates the primary branch, undoes a merge whose checks fail and closes the task.
   Retry a `merge_busy`; resolve a conflict in the task worktree by merging the primary branch into
   the task branch and delivering again; handle a failed check as new work, never by discarding
@@ -96,8 +97,8 @@ is woken when it exits. In pi the installed extension gives the same with more t
 `concorde_run` tool starts `concorde run` as a detached process and returns at once with the run
 identity. It starts the task worktree's own `concorde` in that worktree, found through the task
 record, since a pi session cannot move into the task worktree itself. The extension follows every running Operation of the project through its [progress
-file](../operations/module.md#concept.operations.progress-file) and that of the worker it launched
-([progress file](../harness/workers/module.md#concept.workers.progress-file), paired by the host's
+file](../../operations/module.md#concept.operations.progress-file) and that of the worker it launched
+([progress file](../workers/module.md#concept.workers.progress-file), paired by the host's
 process identifier), and shows each run as an external job in pi-subagents' FleetView — its task
 and Operation, its step, the worker's round and latest tool call, and on its end the result's
 status and summary. A `bg_wait` call without an id waits for the running ones (with an id it
@@ -125,7 +126,7 @@ again finds the running rounds from their progress files. In a pi task session i
 <a id="concept.main-session.escalation-policy"></a>
 
 **Escalation policy.** A result that is not `ok`, or a refused `concorde` command, carries an
-[error chain](../vocabulary.md#concept.concorde.error-chain); the guidance tells the main agent to
+[error chain](../../vocabulary.md#concept.concorde.error-chain); the guidance tells the main agent to
 read it in full, since the origin says what went wrong and each link says why that level could not
 handle it. The main agent decides ordinary design uncertainty itself — naming, internal structure,
 task order, a clarified re-run, splitting a task — and records and reports the choice. It asks the
@@ -139,12 +140,12 @@ top of the chain, records it in the task and prints it rendered for the develope
 <a id="concept.main-session.model-picker"></a>
 
 **Worker models.** Workers run on the main agent's own program unless the worktree's [worker model
-configuration](../harness/workers/module.md#concept.workers.model-configuration) chooses the other
+configuration](../workers/module.md#concept.workers.model-configuration) chooses the other
 one, and take their model from it. When the developer asks to run workers on the other program, the
 main agent edits the configuration's `backend` section by hand, since no Operation changes it, and
 shows the result with `configure_workers`. The guidance
 tells the main agent to change it only when the developer asks, and to let the developer choose
-from what the [`configure_workers`](../operations/module.md#concept.operations.configure-workers)
+from what the [`configure_workers`](../../operations/module.md#concept.operations.configure-workers)
 Operation lists. In pi the run view's **model picker** does it: the `/concorde-models` command, or
 the `concorde_configure_workers` tool the main agent calls on the developer's request, shows the
 default and every Operation's workers — one row per worker role for an Operation with several —
@@ -159,17 +160,17 @@ command runs in changes, so in the primary worktree only tasks opened later are 
 
 **Questions without a task.** The guidance tells the main agent that `understand`, `survey`,
 `spec_review`, `code_review` and `configure_workers` also run [without a
-task](../operations/module.md#concept.operations.no-task), from the primary worktree only, and
+task](../../operations/module.md#concept.operations.no-task), from the primary worktree only, and
 change no Spec or code, and that inside a task's worktree it always passes `--task`; it uses them for a question or a review that does not justify a task, such
 as understanding a Module before a change is agreed. In pi `concorde_run` takes the task as
 optional for them.
 
 **Workflows.** For a task that follows a known procedure the guidance tells the main agent to run
-its [workflow](../workflows/module.md#concept.workflows.workflow) instead of sequencing the
+its [workflow](../../workflows/module.md#concept.workflows.workflow) instead of sequencing the
 Operations by hand: open the task, then start the workflow from the primary worktree, in Claude Code
 as the installed `/concorde-<name>` workflow and in pi through pi-subagents with the installed
 script, and stay in the primary worktree while it runs. The main agent asks the developer which
-[mode](../workflows/module.md#concept.workflows.mode) to use unless the developer already said;
+[mode](../../workflows/module.md#concept.workflows.mode) to use unless the developer already said;
 interactive suits a developer who is present, no-ask one who wants the result later. When a
 workflow ends `awaiting_decision`, the main agent puts every pending decision point to the developer
 at once, with its options and recommendation, writes the answers keyed by step key and starts the
@@ -179,13 +180,13 @@ guidance names the brownfield workflow as the way to describe a project whose co
 Specs, right after installation and initialization, and nowhere else.
 
 **Issues.** A problem the current task will not fix is worth an
-[Issue](../issues/module.md#concept.issues.issue) so it survives the task. Solving one is ordinary
+[Issue](../../issues/module.md#concept.issues.issue) so it survives the task. Solving one is ordinary
 work: open a task for its Module, run the Operations that fix it, and close the Issue on that
 branch so the closure merges with the fix. `concorde issues report|list|show|close|reopen` is the
 bookkeeping command.
 
 **Spec queries.** The main agent may configure the
-[Spec MCP server](../spec-tooling/spec-mcp/module.md#concept.spec-mcp.server) for its own session,
+[Spec MCP server](../../spec-tooling/spec-mcp/module.md#concept.spec-mcp.server) for its own session,
 to ask which Modules exist, what a Module's context is, or what grant a task type gives. The server
 answers from the Specs of the worktree it is rooted in — the primary worktree for the main agent —
 and workers never receive it.
@@ -204,7 +205,8 @@ stay clean to merge. Inside a task worktree a direct change is bounded by the ta
 themselves. Every `concorde` command for a task runs with the worktree's own copy, because only the
 branch's copy knows the Specs, Protocol and checks the task changes. A session is inside one task
 at a time, which is why split work goes to task sessions; a task session's writes are confined to
-its task by the settings [Tasks](../tasks/module.md) generates, while the main agent stays
+its task by the session boundary [Task sessions](../task-session/module.md) writes from the Harness,
+while the main agent stays
 unrestricted and alone merges; merging needs no authorization because
 `delivery` only commits what `validate` found ready, and a merge is ordinary, revertible Git. The
 escalation policy balances the same way: deciding ordinary questions keeps work moving, recording
@@ -263,9 +265,11 @@ exercised by driving a pi RPC session.
 mainsession: Main session
 operations: Operations
 tasks: Tasks
+tasksession: Task sessions
 issues: Issues
 workers: Workers
 mainsession -> workers
+mainsession -> tasksession
 tooling: Spec tooling {
   mcp: Spec MCP server
 }
@@ -282,26 +286,26 @@ block are its only way to reach a session.
 
 <a id="uses-workflows"></a>
 
-**Workflows** provides the [workflows](../workflows/module.md#concept.workflows.workflow) the main
+**Workflows** provides the [workflows](../../workflows/module.md#concept.workflows.workflow) the main
 agent starts in a task, their modes and the [workflow
-result](../workflows/module.md#concept.workflows.result) it reads when one ends. The guidance
+result](../../workflows/module.md#concept.workflows.result) it reads when one ends. The guidance
 relies on a workflow never opening, merging or closing a task and on its result keeping every
 Operation's chain whole, so that a workflow's end is handled like an Operation's.
 
 <a id="uses-operations"></a>
 
-**Operations** provides the [Operation](../operations/module.md#concept.operations.operation)
+**Operations** provides the [Operation](../../operations/module.md#concept.operations.operation)
 catalog and `concorde run`. Each Operation returns an
-[Operation result](../operations/module.md#concept.operations.result) the main agent can read
+[Operation result](../../operations/module.md#concept.operations.result) the main agent can read
 without inspecting the worker, and none starts the next one: that choice is the main agent's.
 
 <a id="uses-workers"></a>
 
 **Workers** keeps each worker run's [progress
-file](../harness/workers/module.md#concept.workers.progress-file). The run view relies on it
+file](../workers/module.md#concept.workers.progress-file). The run view relies on it
 recording the phase, round and latest tool call, and the host process that launched the worker,
 and on it being an observation only. Workers also owns the [worker model
-configuration](../harness/workers/module.md#concept.workers.model-configuration); the model picker
+configuration](../workers/module.md#concept.workers.model-configuration); the model picker
 and the guidance change its model choices only through the `configure_workers` Operation, which
 lists the candidates and validates every choice, so neither writes them itself. Its `backend`
 section is the exception: no Operation changes it, so the main agent edits it by hand on the
@@ -309,16 +313,23 @@ developer's request and `configure_workers` validates the result.
 
 <a id="uses-tasks"></a>
 
-**Tasks** provides the [task](../tasks/module.md#concept.tasks.task) — its branch, worktree and
-record — and the [decision log](../tasks/module.md#concept.tasks.decision-log). Each task's own
+**Tasks** provides the [task](../../tasks/module.md#concept.tasks.task) — its branch, worktree and
+record — and the [decision log](../../tasks/module.md#concept.tasks.decision-log). Each task's own
 worktree is what keeps parallel tasks from mixing changes; opening, merging, closing tasks and
-writing the log are the main agent's responsibility. Tasks also starts task sessions and, in pi,
-runs and records their [session rounds](../tasks/module.md#concept.tasks.session-round), whose
-progress files and recorded outcomes the run view reads.
+writing the log are the main agent's responsibility, whether it works the task itself or through a
+task session.
+
+<a id="uses-task-session"></a>
+
+**Task sessions** starts the task sessions the main agent delegates tasks to and, in pi, runs and
+records their [session rounds](../task-session/module.md#concept.task-session.round), whose
+progress files and recorded outcomes the run view reads. The guidance relies on a task session
+never merging or closing its task and on every round ending with an outcome the task record
+confirms.
 
 <a id="uses-issues"></a>
 
-**Issues** provides the durable [Issue](../issues/module.md#concept.issues.issue) records and their
+**Issues** provides the durable [Issue](../../issues/module.md#concept.issues.issue) records and their
 bookkeeping command. Because Issues are branch-local, the guidance tells the main agent to close
 one on the branch that fixes it.
 

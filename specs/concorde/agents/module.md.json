@@ -1,0 +1,54 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.agents.module",
+    "owner": "module.agents",
+    "role": "module"
+  },
+  "module": {
+    "title": "Agents",
+    "owns": [
+      "specs/concorde/agents/module.md"
+    ],
+    "contains": [
+      {
+        "target": "module.main-session",
+        "meaning": "#contains-main-session"
+      },
+      {
+        "target": "module.task-session",
+        "meaning": "#contains-task-session"
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#contains-workers"
+      }
+    ],
+    "uses": [
+      {
+        "target": "module.harness",
+        "meaning": "#uses-harness",
+        "relies_on": [
+          "concept.harness.harness"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.tasks.task"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [],
+  "relations": []
+}

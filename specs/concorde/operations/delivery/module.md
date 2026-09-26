@@ -25,7 +25,7 @@ history, repairs a finding, or delivers anything it did not validate in the same
 | [Task record](../../tasks/module.md#concept.tasks.task-record) | |
 | [Task state](../../tasks/module.md#concept.tasks.task-state) | |
 | [Readiness](../validation/module.md#concept.validation.readiness) | |
-| [Run record](../../harness/workers/module.md#concept.workers.run-record) | |
+| [Run record](../../agents/workers/module.md#concept.workers.run-record) | |
 | [Operation](../module.md#concept.operations.operation) | |
 | [Operation result](../module.md#concept.operations.result) | |
 
@@ -75,7 +75,7 @@ The **evidence bundle** is committed at `.concorde/evidence/<task-id>/<n>.json` 
 deliveries from 1): the task, goal, Modules, base/parent commits, the readiness the delivery
 decided (input digest, check results), applied confirmations, and each run since the previous
 delivery (operation, status, summary, worker run identities, result digest). Full results,
-[run records](../../harness/workers/module.md#concept.workers.run-record) and worker transcripts
+[run records](../../agents/workers/module.md#concept.workers.run-record) and worker transcripts
 stay in the Git-ignored `.concorde/runs/`; the bundle carries only identities and digests
 ([exact shape](contracts.md#contract.delivery.evidence-bundle)).
 
@@ -172,6 +172,6 @@ delivery -> workers
   wraps the output in the [Operation result](../module.md#concept.operations.result) and saves each
   run's result, which Delivery reads to write the bundle's run entries.
 - <a id="uses-workers"></a>**Workers** keeps a
-  [run record](../../harness/workers/module.md#concept.workers.run-record) for every launch.
+  [run record](../../agents/workers/module.md#concept.workers.run-record) for every launch.
   Delivery lists each run's record identity in the bundle so evidence can be matched locally,
   relying on those identities being unique and stable; it never reads a transcript.

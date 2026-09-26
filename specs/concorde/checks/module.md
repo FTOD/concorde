@@ -18,9 +18,9 @@ that selects and runs a Module's checks is still to be written.
 | Read-only check boundary | The Linux sandbox in which a check runs: the whole host filesystem read-only, one fresh writable scratch directory, private process and IPC namespaces, and the host's network. |
 | Check scratch | The fresh directory outside the project that one run may write, holding its temporary files, caches and reports, removed after the run. |
 | Diagnostic span | A bounded timing record of one named unit of host work, with its trace, parent, status and duration and never its arguments, output or messages. |
-| [Module](../../vocabulary.md#concept.concorde.module) | |
-| [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
-| [Boundary set](../../spec-tooling/spec/module.md#concept.spec.boundary-set) | |
+| [Module](../vocabulary.md#concept.concorde.module) | |
+| [Evidence](../vocabulary.md#concept.concorde.evidence) | |
+| [Boundary set](../spec-tooling/spec/module.md#concept.spec.boundary-set) | |
 
 ## Usage
 
@@ -29,7 +29,7 @@ that selects and runs a Module's checks is still to be written.
 A **configured check** is declared in `.concorde/config.json` under `checks`, for example:
 
 ```json
-{"id": "check.checks.runtime", "module": "module.harness.checks",
+{"id": "check.checks.runtime", "module": "module.checks",
  "argv": ["{python}", "-m", "pytest", "-p", "no:cacheprovider", "tests/concorde/harness/checks"],
  "timeout_seconds": 300,
  "inputs": ["pyproject.toml", "conftest.py", "tests/concorde/support", "src"]}
@@ -135,8 +135,8 @@ refusing to run rather than running a check unconfined.
 <a id="uses-spec"></a>
 
 **Spec core** loads the configuration and
-[registry](../../spec-tooling/spec/module.md#concept.spec.registry), from which the check service
+[registry](../spec-tooling/spec/module.md#concept.spec.registry), from which the check service
 takes each Module's checks and resolves its `ImplementationScope` — a [boundary
-set](../../spec-tooling/spec/module.md#concept.spec.boundary-set) whose digest is part of what a
+set](../spec-tooling/spec/module.md#concept.spec.boundary-set) whose digest is part of what a
 check measures; changed paths map the same way. It also supplies safe relative-path rules for
 inputs; an invalid or unreadable path fails the run before any command starts.

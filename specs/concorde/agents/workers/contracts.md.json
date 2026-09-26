@@ -1,8 +1,8 @@
 {
   "schema_version": 3,
   "document": {
-    "id": "document.harness-workers.pi",
-    "owner": "module.harness.workers",
+    "id": "document.workers.contracts",
+    "owner": "module.workers",
     "role": "implementation"
   },
   "defines": [],

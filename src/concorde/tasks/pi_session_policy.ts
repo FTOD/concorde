@@ -3,7 +3,7 @@
  *
  * Pure functions over the session's policy: whether a `write` or `edit` may change a path, and
  * whether a `concorde_report` call is a complete session report. Tasks copies this file beside
- * `boundary.ts` and `pi_policy.ts` (the Workers' path resolution, which it imports); they import
+ * `boundary.ts` and `pi_policy.ts` (the Harness's path resolution, which it imports); they import
  * only Node's own modules, so the tests run them under Node without pi. Every function returns
  * `null` to allow, or the reason of a refusal as the session should read it.
  */

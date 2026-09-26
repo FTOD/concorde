@@ -33,7 +33,7 @@ class TaskSessionTests(unittest.TestCase):
         self.project.open_task("t1", goal="Let reports carry a severity.")
         self.worktree = self.project.worktree("t1")
 
-    @verifies("scenario.tasks.session-start")
+    @verifies("scenario.task-session.start")
     def test_start_a_task_session(self):
         claude = FakeClaude()
         started = session.start(
@@ -63,7 +63,7 @@ class TaskSessionTests(unittest.TestCase):
         )
         self.assertEqual([started], store.load_task(self.root, "t1")["sessions"])
 
-    @verifies("scenario.tasks.session-start")
+    @verifies("scenario.task-session.start")
     def test_a_session_claude_code_did_not_start_is_refused(self):
         claude = FakeClaude(
             returncode=1, stdout="Workspace not trusted. Run `claude` in ... once."
@@ -75,7 +75,7 @@ class TaskSessionTests(unittest.TestCase):
         self.assertIn("Workspace not trusted", str(raised.exception))
         self.assertEqual(before, store.load_task(self.root, "t1"))
 
-    @verifies("scenario.tasks.session-start")
+    @verifies("scenario.task-session.start")
     def test_a_closed_task_starts_no_session(self):
         store.close_task(self.root, "t1", "completed", note="tried it")
         with self.assertRaises(store.TaskError) as raised:
@@ -102,7 +102,7 @@ class TaskSessionTests(unittest.TestCase):
         )
         return json.loads(decided.stdout) if decided.stdout.strip() else None
 
-    @verifies("scenario.tasks.session-boundary")
+    @verifies("scenario.task-session.boundary")
     def test_the_boundary_confines_the_session_to_its_task(self):
         shown = session.start(
             self.root, "t1", "m", dry_run=True, home=self.project.home

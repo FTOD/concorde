@@ -140,7 +140,7 @@ session -> issues
 
 Nothing outside the store writes a record; the bookkeeping command is how the main agent adds
 reports and dispositions, usually closing an Issue on the task branch that fixed it. Main session
-declares `session -> issues` above; its [guidance](../main-session/module.md) says when to record,
+declares `session -> issues` above; its [guidance](../agents/main-session/module.md) says when to record,
 solve and close Issues. Issues relies on nobody but Spec core.
 
 <a id="uses-spec"></a>

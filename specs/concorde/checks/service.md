@@ -69,7 +69,7 @@ for the same Module and comparing it with `source_digest`.
 ### Errors
 
 Check execution raises `CheckError`, a subclass of Spec tooling's
-[error type](../../spec-tooling/spec/errors.md) that registers its own codes: `invalid_check` (a
+[error type](../spec-tooling/spec/errors.md) that registers its own codes: `invalid_check` (a
 check without a nonempty argv or a positive timeout), `check_input_missing`,
 `check_sandbox_unavailable` (the read-only boundary cannot be established), `stale_evidence` (an
 input changed while the check ran) and `unknown_module`. Each carries its message naming the check
@@ -78,7 +78,7 @@ and Module, the reason and a remediation.
 ### A check that did not pass as an error link
 
 `check_error(result)` turns a check result whose status is not `passed` into the check's link of
-the Framework's [error chain](../../contracts.md#contract.concorde.error), so every consumer reports
+the Framework's [error chain](../contracts.md#contract.concorde.error), so every consumer reports
 a failing check the same way: the level `check`, the check's identity as actor, the code
 `check_failed` or `check_timed_out`, a detail naming the Module, the exit code, the log path and the
 last 3,000 bytes of the log, the log as evidence, and the reason `capability`, because a check only

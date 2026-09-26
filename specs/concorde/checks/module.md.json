@@ -2,16 +2,16 @@
   "schema_version": 3,
   "document": {
     "id": "document.checks.module",
-    "owner": "module.harness.checks",
+    "owner": "module.checks",
     "role": "module"
   },
   "module": {
     "title": "Check execution",
     "owns": [
-      "specs/concorde/harness/checks/module.md",
-      "specs/concorde/harness/checks/boundary.md",
-      "specs/concorde/harness/checks/service.md",
-      "specs/concorde/harness/checks/timing.md"
+      "specs/concorde/checks/module.md",
+      "specs/concorde/checks/boundary.md",
+      "specs/concorde/checks/service.md",
+      "specs/concorde/checks/timing.md"
     ],
     "contains": [],
     "uses": [

@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.harness.pi",
+    "owner": "module.harness",
+    "role": "implementation"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

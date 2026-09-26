@@ -51,7 +51,7 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - GIVEN a worker that returns status `blocked` because the Spec lacks a promise
 - WHEN its Operation ends
 - THEN the result has status `blocked`
-- AND its error is a chain of the Operation's link, the Workers harness's link and the worker's own link with its detail, options and recommendation unchanged
+- AND its error is a chain of the Operation's link, Workers' link and the worker's own link with its detail, options and recommendation unchanged
 - AND the Operation's link gives `decision` as its reason and offers the worker's options
 - AND the worker's statements appear only in `worker` and in the worker's link, never in `host_evidence`
 - AND the command exits with status 1
@@ -62,7 +62,7 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - WHEN the rounds are used up
 - THEN the result has status `failed` even though the worker reported `ok`
 - AND its host evidence names the check, its exit code, its log and the rounds used
-- AND its error chain runs from the Operation's link (`decision`) through the Workers harness's link (`exhausted`) to the check's link with its exit code and the end of its log
+- AND its error chain runs from the Operation's link (`decision`) through Workers' link (`exhausted`) to the check's link with its exit code and the end of its log
 
 ### scenario.operations.spec-error — A Spec tooling error keeps its reason and causes
 

@@ -266,16 +266,16 @@ tooling: Spec tooling {
   review -> core
   views -> core
 }
-harness: Harness {
+agents: Agents {
   workers: Workers
-  checks: Check execution
 }
+checks: Check execution
 operations: Operations
 tasks: Tasks
 issues: Issues
 distribution: Distribution
-harness.workers -> tooling.core
-harness.checks -> tooling.core
+agents.workers -> tooling.core
+checks -> tooling.core
 operations -> tooling.core
 tasks -> tooling.core
 issues -> tooling.core

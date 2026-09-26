@@ -1,0 +1,111 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.task-session.module",
+    "owner": "module.task-session",
+    "role": "module"
+  },
+  "module": {
+    "title": "Task sessions",
+    "owns": [
+      "specs/concorde/agents/task-session/module.md",
+      "specs/concorde/agents/task-session/contracts.md",
+      "specs/concorde/agents/task-session/requirements.md",
+      "specs/concorde/agents/task-session/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.tasks.task",
+          "concept.tasks.task-record",
+          "concept.tasks.decision-log"
+        ]
+      },
+      {
+        "target": "module.harness",
+        "meaning": "#uses-harness",
+        "relies_on": [
+          "concept.harness.session-boundary"
+        ]
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers",
+        "relies_on": [
+          "concept.workers.backend"
+        ]
+      },
+      {
+        "target": "module.main-session",
+        "meaning": "#uses-main-session",
+        "relies_on": [
+          "concept.main-session.guidance"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi/",
+        "reason": "pi's command line, JSON event stream and extension API (tools that end a run, project trust), which the pi task session relies on"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.task-session.round",
+      "type": "concept",
+      "title": "Session round",
+      "meaning": "#concept.task-session.round"
+    },
+    {
+      "id": "concept.task-session.report",
+      "type": "concept",
+      "title": "Session report",
+      "meaning": "#concept.task-session.report"
+    },
+    {
+      "id": "realization.task-session.starter",
+      "type": "realization",
+      "title": "Session starter",
+      "meaning": "#realization.task-session.starter",
+      "entries": [
+        "src/concorde/tasks/session.py",
+        "src/concorde/tasks/pi_session.py",
+        "tests/concorde/tasks/test_session.py",
+        "tests/concorde/tasks/test_pi_session.py",
+        "tests/concorde/tasks/fake_pi_session.py"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.task-session.starter",
+      "verb": "runs and records",
+      "target": "concept.task-session.round"
+    },
+    {
+      "type": "relates",
+      "source": "concept.task-session.round",
+      "verb": "ends with",
+      "target": "concept.task-session.report"
+    }
+  ],
+  "extensions": {}
+}

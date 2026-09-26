@@ -1,18 +1,18 @@
 {
   "schema_version": 3,
   "document": {
-    "id": "document.harness-workers.module",
-    "owner": "module.harness.workers",
+    "id": "document.workers.module",
+    "owner": "module.workers",
     "role": "module"
   },
   "module": {
     "title": "Workers",
     "owns": [
-      "specs/concorde/harness/workers/module.md",
-      "specs/concorde/harness/workers/launch.md",
-      "specs/concorde/harness/workers/pi.md",
-      "specs/concorde/harness/workers/contracts.md",
-      "specs/concorde/harness/workers/scenarios.md"
+      "specs/concorde/agents/workers/module.md",
+      "specs/concorde/agents/workers/launch.md",
+      "specs/concorde/agents/workers/pi.md",
+      "specs/concorde/agents/workers/contracts.md",
+      "specs/concorde/agents/workers/scenarios.md"
     ],
     "contains": [],
     "uses": [
@@ -25,7 +25,18 @@
         ]
       },
       {
-        "target": "module.harness.checks",
+        "target": "module.harness",
+        "meaning": "#uses-harness",
+        "relies_on": [
+          "concept.harness.harness",
+          "concept.harness.worker-settings",
+          "concept.harness.deny-rules",
+          "concept.harness.write-hook",
+          "concept.harness.permission-extension"
+        ]
+      },
+      {
+        "target": "module.checks",
         "meaning": "#uses-checks",
         "relies_on": [
           "concept.checks.configured-check",
@@ -81,34 +92,10 @@
       "meaning": "#concept.workers.model-configuration"
     },
     {
-      "id": "concept.workers.worker-settings",
-      "type": "concept",
-      "title": "Worker settings",
-      "meaning": "#concept.workers.worker-settings"
-    },
-    {
-      "id": "concept.workers.permission-extension",
-      "type": "concept",
-      "title": "Permission extension",
-      "meaning": "#concept.workers.permission-extension"
-    },
-    {
       "id": "concept.workers.progress-file",
       "type": "concept",
       "title": "Progress file",
       "meaning": "#concept.workers.progress-file"
-    },
-    {
-      "id": "concept.workers.deny-rules",
-      "type": "concept",
-      "title": "Deny rules",
-      "meaning": "#concept.workers.deny-rules"
-    },
-    {
-      "id": "concept.workers.write-hook",
-      "type": "concept",
-      "title": "Write hook",
-      "meaning": "#concept.workers.write-hook"
     },
     {
       "id": "concept.workers.brief",
@@ -152,7 +139,6 @@
       "title": "Worker runtime",
       "meaning": "#realization.workers.runtime",
       "entries": [
-        "src/concorde/harness/settings.py",
         "src/concorde/harness/workers.py",
         "src/concorde/harness/progress.py",
         "src/concorde/harness/audit.py",
@@ -168,8 +154,7 @@
       "title": "Claude Code backend",
       "meaning": "#realization.workers.claude",
       "entries": [
-        "src/concorde/harness/claude_backend.py",
-        "src/concorde/harness/write_hook.py"
+        "src/concorde/harness/claude_backend.py"
       ],
       "pending": []
     },
@@ -179,9 +164,7 @@
       "title": "pi backend",
       "meaning": "#realization.workers.pi",
       "entries": [
-        "src/concorde/harness/pi_backend.py",
-        "src/concorde/harness/pi_permission.ts",
-        "src/concorde/harness/pi_policy.ts"
+        "src/concorde/harness/pi_backend.py"
       ],
       "pending": []
     },
@@ -199,21 +182,9 @@
   "relations": [
     {
       "type": "relates",
-      "source": "concept.workers.worker-settings",
-      "verb": "carries",
-      "target": "concept.workers.deny-rules"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workers.worker-settings",
-      "verb": "carries",
-      "target": "concept.workers.write-hook"
-    },
-    {
-      "type": "relates",
       "source": "concept.workers.run-directory",
       "verb": "holds",
-      "target": "concept.workers.worker-settings"
+      "target": "concept.harness.worker-settings"
     },
     {
       "type": "relates",
@@ -243,12 +214,6 @@
       "type": "relates",
       "source": "realization.workers.runtime",
       "verb": "generates",
-      "target": "concept.workers.worker-settings"
-    },
-    {
-      "type": "relates",
-      "source": "realization.workers.runtime",
-      "verb": "generates",
       "target": "concept.workers.brief"
     },
     {
@@ -272,14 +237,14 @@
     {
       "type": "relates",
       "source": "concept.workers.backend",
-      "verb": "pi generates",
-      "target": "concept.workers.permission-extension"
+      "verb": "pi applies",
+      "target": "concept.harness.permission-extension"
     },
     {
       "type": "relates",
       "source": "concept.workers.backend",
-      "verb": "Claude Code generates",
-      "target": "concept.workers.worker-settings"
+      "verb": "Claude Code applies",
+      "target": "concept.harness.worker-settings"
     },
     {
       "type": "relates",

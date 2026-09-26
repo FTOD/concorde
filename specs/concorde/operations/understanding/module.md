@@ -26,9 +26,9 @@ agent may follow, change or reject.
 | [Operation host](../module.md#concept.operations.host) | |
 | [Operation result](../module.md#concept.operations.result) | |
 | [Grant](../../spec-tooling/spec/module.md#concept.spec.grant) | |
-| [Brief](../../harness/workers/module.md#concept.workers.brief) | |
-| [Worker result](../../harness/workers/module.md#concept.workers.worker-result) | |
-| [Write audit](../../harness/workers/module.md#concept.workers.audit) | |
+| [Brief](../../agents/workers/module.md#concept.workers.brief) | |
+| [Worker result](../../agents/workers/module.md#concept.workers.worker-result) | |
+| [Write audit](../../agents/workers/module.md#concept.workers.audit) | |
 
 An assessment is the answer; Spec gaps are the part of it that says why the goal cannot proceed
 yet. The plan is optional and exists only inside a sufficient assessment.
@@ -111,9 +111,9 @@ understanding: Understanding {
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Compute and freeze the `understand` [grant](../../spec-tooling/spec/module.md#concept.spec.grant) | Workers, Spec core | Specs cannot load, or unknown Module (`failed`) |
-| 2 | Generate settings, tools and the [brief](../../harness/workers/module.md#concept.workers.brief) | Workers | — |
-| 3 | Launch the worker and wait for its [worker result](../../harness/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error or timeout (`failed`) |
-| 4 | [Audit](../../harness/workers/module.md#concept.workers.audit): read-only grant, so any change is a violation; write the run record | Workers | any change (`failed`) |
+| 2 | Generate settings, tools and the [brief](../../agents/workers/module.md#concept.workers.brief) | Workers | — |
+| 3 | Launch the worker and wait for its [worker result](../../agents/workers/module.md#concept.workers.worker-result) | Workers, worker | launch error or timeout (`failed`) |
+| 4 | [Audit](../../agents/workers/module.md#concept.workers.audit): read-only grant, so any change is a violation; write the run record | Workers | any change (`failed`) |
 | 5 | Check every named Module exists and the assessment is consistent | host | unknown Module or inconsistency (`failed`) |
 | 6 | Return the Operation result | host | — |
 
@@ -155,7 +155,7 @@ calls another Operation.
 <a id="uses-workers"></a>
 
 **Workers** turns the frozen grant into settings, launches the worker with this Module's brief,
-collects its [worker result](../../harness/workers/module.md#concept.workers.worker-result), audits
+collects its [worker result](../../agents/workers/module.md#concept.workers.worker-result), audits
 the worktree and writes the run record. Any audit violation is a failed run.
 
 <a id="uses-spec"></a>

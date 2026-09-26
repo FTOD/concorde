@@ -55,7 +55,7 @@ the review payload, including for `blocked` and `failed`, so the findings of the
 reviewed are never lost. The result's error is the Operation's `review_incomplete` link with the
 reason `decision`; its causes are the error of every incomplete Module, in the order of the
 Modules, never only the first. The error of an incomplete Module is the Operation's link for that
-Module, whose actor names the Module: for a worker run it has the Workers harness's link, and below
+Module, whose actor names the Module: for a worker run it has Workers' link, and below
 it the worker's own when the worker ended `blocked` or `failed`, as its cause; for a structural
 error it is `structural_errors` with one cause per failing rule, file and message; for an unknown
 Module it is `unknown_module`. The summary names every incomplete Module with its own summary and

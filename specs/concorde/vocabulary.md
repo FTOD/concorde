@@ -11,8 +11,8 @@ Concorde is new to you.
 | --- | --- |
 | Developer | The person who uses Concorde to specify, change and understand a project. |
 | Main agent | The developer-facing Claude Code or pi session in the primary worktree that discusses the project, splits work into tasks, carries them out or hands them to task sessions, and merges their results. |
-| Task session | A background Claude Code session the main agent starts for one task, working only inside that task's worktree until delivery and reporting to the main agent. |
-| Worker | One headless Claude Code process that performs one bounded task of one task type under a frozen grant and reports only to the Operation host that launched it. |
+| Task session | A session of the main agent's own program to which the main agent delegates the work of one task when it runs several at once, working only inside that task's worktree until delivery and reporting to the main agent. |
+| Worker | One headless Claude Code or pi process that performs one bounded task of one task type under a frozen grant and reports only to the Operation host that launched it. |
 | Module | One cohesive responsibility of the software, with its own Spec; it need not be a package or directory. |
 | Spec | The documents in which a Module explains what it is for, how to use it, how it is designed and what it precisely promises. |
 | Task type | One of the seven Protocol task types (understand, specify, implement, test, review-spec, review-code, code-to-spec) that fixes the access level of every boundary set a task receives. |
@@ -48,12 +48,11 @@ the end. It asks the developer only when a decision has a major impact.
 
 <a id="concept.concorde.task-session"></a>
 
-For work that splits into several tasks, the main agent starts a **task session** per task: a
-session of the main agent's own program whose working directory is the task worktree — a background
-Claude Code session, or in pi a sequence of headless rounds that each end with a report. It is the
-main agent's role at a smaller scale, so it keeps the main agent's program and configuration. It
-works like the
-main agent inside a task, deciding ordinary questions within the task's goal and Modules, and
+For work that splits into several tasks, the main agent delegates the task level: it starts a
+**task session** per task, a session of the main agent's own program whose working directory is the
+task worktree — a background Claude Code session, or in pi a sequence of headless rounds that each
+end with a report. It does the main agent's own task-level work at a smaller scale, so it keeps the
+main agent's program and configuration. It works like the main agent inside a task, deciding ordinary questions within the task's goal and Modules, and
 reports to the main agent when it has delivered, cannot go further, or needs a decision beyond its
 task; it never merges, closes the task or starts other sessions. Its file-writing tools and its
 shell may write only its own task, which guards against mistakes, not a malicious session. The
@@ -61,7 +60,7 @@ main agent stays in the primary worktree while task sessions run, and alone merg
 
 <a id="concept.concorde.worker"></a>
 
-A **worker** is one headless Claude Code process that an Operation host launches for one bounded
+A **worker** is one headless Claude Code or pi process that an Operation host launches for one bounded
 task, such as assessing a Module, changing its Spec or changing its code. It works under a frozen
 grant computed from the Specs of the task's worktree, needs no human input, and reports only to the
 host that launched it. It never touches Git, never runs Operations and never starts other agents.
@@ -141,8 +140,8 @@ reports it to its parent as one **link**: which actor it is, a code, a complete 
 went wrong with its evidence, what it tried, the options it sees, and why it could not handle the
 error itself, for example because the fix needs a permission it lacks or a decision reserved to a
 level above. The errors it received from below and could not handle become the causes of its link,
-unchanged; it never replaces them with its own summary. Checks, workers, the Workers harness,
-Operations, deterministic components such as Git or the Spec core, and the main agent all write
+unchanged; it never replaces them with its own summary. Checks, workers, the Workers host,
+task sessions, Operations, deterministic components such as Git or the Spec core, and the main agent all write
 links, so the last receiver, the main agent or the developer, reads the whole path from where the
 error started up to itself, with every level's reason. A worker's link is its own claim; the host's
 links state what the host observed. The main agent decides what it can, records the decision in

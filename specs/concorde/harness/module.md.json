@@ -8,29 +8,71 @@
   "module": {
     "title": "Harness",
     "owns": [
-      "specs/concorde/harness/module.md"
+      "specs/concorde/harness/module.md",
+      "specs/concorde/harness/claude-code.md",
+      "specs/concorde/harness/pi.md"
     ],
-    "contains": [
+    "contains": [],
+    "uses": [
       {
-        "target": "module.harness.workers",
-        "meaning": "#contains-harness-workers"
-      },
-      {
-        "target": "module.harness.checks",
-        "meaning": "#contains-harness-checks"
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.grant"
+        ]
       }
     ],
-    "uses": [],
     "includes": [
       {
         "kind": "document",
         "target": "document.concorde.vocabulary",
         "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi/",
+        "reason": "pi's extension API (tool registration, tool_call interception, tools that end a run) and how pi resolves tool paths, which the pi harness relies on"
       }
     ],
     "participates": []
   },
   "defines": [
+    {
+      "id": "concept.harness.harness",
+      "type": "concept",
+      "title": "Agent harness",
+      "meaning": "#concept.harness.harness"
+    },
+    {
+      "id": "concept.harness.worker-settings",
+      "type": "concept",
+      "title": "Worker settings",
+      "meaning": "#concept.harness.worker-settings"
+    },
+    {
+      "id": "concept.harness.deny-rules",
+      "type": "concept",
+      "title": "Deny rules",
+      "meaning": "#concept.harness.deny-rules"
+    },
+    {
+      "id": "concept.harness.write-hook",
+      "type": "concept",
+      "title": "Write hook",
+      "meaning": "#concept.harness.write-hook"
+    },
+    {
+      "id": "concept.harness.permission-extension",
+      "type": "concept",
+      "title": "Permission extension",
+      "meaning": "#concept.harness.permission-extension"
+    },
+    {
+      "id": "concept.harness.session-boundary",
+      "type": "concept",
+      "title": "Session boundary",
+      "meaning": "#concept.harness.session-boundary"
+    },
     {
       "id": "realization.harness.package",
       "type": "realization",
@@ -42,16 +84,68 @@
       "pending": []
     },
     {
-      "id": "realization.harness.error-chain",
+      "id": "realization.harness.claude",
       "type": "realization",
-      "title": "Error chain code",
-      "meaning": "#realization.harness.error-chain",
+      "title": "Claude Code harness",
+      "meaning": "#realization.harness.claude",
       "entries": [
-        "src/concorde/errors.py",
-        "tests/concorde/test_errors.py"
+        "src/concorde/harness/settings.py",
+        "src/concorde/harness/write_hook.py",
+        "src/concorde/tasks/session_hook.py"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.harness.pi",
+      "type": "realization",
+      "title": "pi harness",
+      "meaning": "#realization.harness.pi",
+      "entries": [
+        "src/concorde/harness/pi_permission.ts",
+        "src/concorde/harness/pi_policy.ts",
+        "src/concorde/tasks/pi_session.ts",
+        "src/concorde/tasks/pi_session_policy.ts"
       ],
       "pending": []
     }
   ],
-  "relations": []
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.harness.claude",
+      "verb": "generates",
+      "target": "concept.harness.worker-settings"
+    },
+    {
+      "type": "relates",
+      "source": "realization.harness.pi",
+      "verb": "provides",
+      "target": "concept.harness.permission-extension"
+    },
+    {
+      "type": "relates",
+      "source": "realization.harness.claude",
+      "verb": "provides the write hook of",
+      "target": "concept.harness.session-boundary"
+    },
+    {
+      "type": "relates",
+      "source": "realization.harness.pi",
+      "verb": "provides the extension of",
+      "target": "concept.harness.session-boundary"
+    },
+    {
+      "type": "relates",
+      "source": "concept.harness.worker-settings",
+      "verb": "carries",
+      "target": "concept.harness.deny-rules"
+    },
+    {
+      "type": "relates",
+      "source": "concept.harness.worker-settings",
+      "verb": "carries",
+      "target": "concept.harness.write-hook"
+    }
+  ],
+  "extensions": {}
 }

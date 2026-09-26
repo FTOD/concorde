@@ -25,7 +25,7 @@
         ]
       },
       {
-        "target": "module.harness.workers",
+        "target": "module.workers",
         "meaning": "#uses-workers",
         "relies_on": [
           "concept.workers.brief",
@@ -113,7 +113,7 @@
       "type": "relates",
       "source": "realization.spec-review.operation",
       "verb": "launches reviewers through",
-      "target": "module.harness.workers"
+      "target": "module.workers"
     },
     {
       "type": "relates",

@@ -805,116 +805,6 @@ in the [requirements](requirements.md).
 }
 ```
 
-## Session report
-
-The arguments of the `concorde_report` tool with which a pi task session ends a [session round](module.md#concept.tasks.session-round).
-
-```concorde-contract
-{
-  "id": "contract.tasks.session-report",
-  "version": 1,
-  "schema": {
-    "oneOf": [
-      {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "status",
-          "summary",
-          "commit",
-          "decisions",
-          "open"
-        ],
-        "properties": {
-          "status": {
-            "const": "delivered"
-          },
-          "summary": {
-            "type": "string",
-            "minLength": 1
-          },
-          "commit": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
-          },
-          "decisions": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "open": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        }
-      },
-      {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "status",
-          "summary",
-          "escalations",
-          "decisions",
-          "open"
-        ],
-        "properties": {
-          "status": {
-            "const": "escalated"
-          },
-          "summary": {
-            "type": "string",
-            "minLength": 1
-          },
-          "escalations": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "integer",
-              "minimum": 1
-            }
-          },
-          "decisions": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "open": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        }
-      }
-    ]
-  },
-  "semantics": "The arguments a pi task session passes to concorde_report to end a session round, which the supervisor records as the round's report. status is delivered when delivery committed the task on its branch, with commit the delivery commit, or escalated when the session cannot go further without the main agent, with escalations the numbers (from 1, in record order) of the escalations it recorded with concorde task escalate --by task-session, which carry the error chains. summary says what the round did; decisions lists each decision the session made without the main agent, with its reason; open lists what is still open. The supervisor records delivered or escalated only when the task record holds that delivery commit or those task-session escalations, and a failed round otherwise. A behaviour or field change increments the version.",
-  "example": {
-    "status": "escalated",
-    "summary": "Implemented the severity levels; the Spec does not say whether warnings block delivery.",
-    "escalations": [
-      1
-    ],
-    "decisions": [
-      "Named the enum Severity after the Spec's term, since the Module has no other enum."
-    ],
-    "open": [
-      "Whether warnings block delivery."
-    ]
-  }
-}
-```
-
 ## Commands
 
 Every command runs in the primary worktree, prints one JSON value on standard output and exits
@@ -934,9 +824,7 @@ command line prints the same shape with the code `invalid_command` and exits wit
 | `concorde task open <task-id> --goal <text> --modules <id>[,<id>…] [--base <ref>] [--path <dir>]` | Holding the merge lock, creates branch `concorde/<task-id>` at `--base` (default: the primary worktree's `HEAD`), adds a worktree for it at `--path` (default: `.claude/worktrees/<task-id>` of the primary worktree, which Git must ignore there), writes the record in state `open` with no sessions, and the decision log | The new record |
 | `concorde task list [--state <state>]` | None | An array of records, oldest first |
 | `concorde task show <task-id>` | None | `{"record": <record>, "decision_log": "<absolute path>"}` |
-| `concorde task session <task-id> [--main <session>] [--model <model>] [--dry-run]` | Starts a task session on the main session's program. For Claude Code (`--main` required): writes `.concorde/tasks/<task-id>.session/settings.json` and its write hook, starts `claude --bg --name task-<task-id> --settings <file> --permission-mode auto [--model <model>]` in the task worktree with the rendered task-session guidance and the task's identity, goal, Modules, decision log and `--main` as first prompt, and appends the started session to the record. For pi: writes `boundary.ts` and the path decisions it imports into that directory, starts the detached supervisor of round 1, which runs `pi -p --mode json --approve -e <boundary.ts> --session-dir <directory>/pi --session-id <session id> [--model <model>]` in the task worktree with the rendered pi task-session guidance and the task's identity, goal, Modules and decision log as prompt, and appends the session with round 1 `running` to the record. `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>"}` (for pi, `"boundary"` instead of `"settings"`) |
-| `concorde task session <task-id> --answer <text>` | pi only: starts the next round of the task's latest pi session on the same session file, with the answer as its prompt | The recorded session |
-| `concorde task session <task-id> --stop` | pi only: asks the running round's supervisor to stop, which sends the round's pi process group SIGTERM and SIGKILL 3 seconds later, and records the round as `stopped`; waits up to 15 seconds for that record | The recorded session |
+| `concorde task session <task-id> …` | Starts, answers or stops a task session; see [Task session](../agents/task-session/contracts.md#commands) | As stated there |
 | `concorde task merge <task-id> [--check <command>]… [--wait <seconds>]` | Holding the merge lock: checks that the task is delivered, that its latest delivery commit is the head of its branch and that its worktree is clean, and that the primary worktree is on a branch with no uncommitted or untracked path; runs `git merge --no-edit concorde/<task-id>` in the primary worktree; runs each check there, appending its output to `.concorde/tasks/<task-id>.merge.log`; then closes the task as `close --merged` does. The default check is `concorde validate` of the merged primary worktree, run by the same Python with the running package on its path; each `--check` is split into words as a shell would and run without a shell, and any `--check` replaces the default; a check still running after 1800 seconds is stopped and counts as failed. A conflict aborts the merge; a check that exits non-zero or cannot run, or checks that leave an uncommitted path, reset the primary branch to the commit the merge started from with `git reset --keep`, so a refusal again leaves the primary branch where it was. `--wait` (default 300) bounds how long to wait for the lock | `{"record": <record>, "merge": {"before": "<commit>", "after": "<commit>", "checks": [{"argv": ["<word>", …], "exit_code": 0, "seconds": <number>}], "waited_seconds": <number>, "log": "<absolute path>"}}` |
 | `concorde task close <task-id> --merged [--note <text>]` | Holding the merge lock, checks the merge, removes the worktree, sets state `closed` with outcome `merged` | The updated record |
 | `concorde task close <task-id> --completed --note <text> [--force]` | For a task that reached its goal without merging, holding the merge lock: removes the worktree, discarding uncommitted changes only with `--force`, sets state `closed` with outcome `completed` and the note | The updated record |
@@ -983,12 +871,6 @@ refusal leaves the merge and its checked commit in place, names the merge commit
 | `git_failed` | A Git command Tasks needs failed; the message names the command, its exit status and its output. |
 | `unknown_run` | `escalate` names a run that is not a run of the task, or whose result cannot be read. |
 | `unknown_escalation` | `escalate` names an escalation number the task does not have. |
-| `missing_worktree` | `session` names a task whose worktree no longer exists. |
-| `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), pi, `bwrap`, `socat` or the sandbox-runtime package is missing (each is named), the pi supervisor could not start, or the task-session guidance is missing from the package. |
-| `client_unknown` | `session` cannot read the main session's program from the environment: `CONCORDE_CLIENT` is unset, `CLAUDECODE` is not 1 and no pi session variable is set; the message names each. |
-| `session_busy` | `session` starts a pi session, or `--answer` a round, while a round of the task's pi session runs; the message names the round and its supervisor process. |
-| `no_session` | `--answer` names a task that has no pi session. |
-| `session_idle` | `--stop` names a task whose pi session has no running round. |
 | `merge_busy` | The merge lock stayed held for the whole wait; the message names the holder's command, task, process and start time. |
 | `primary_dirty` | `merge` finds an uncommitted or untracked path in the primary worktree, or its `HEAD` detached; the message names the paths or the detached commit. |
 | `merge_conflict` | `git merge` stopped with conflicts; the merge was aborted, and the message names the conflicting paths. |

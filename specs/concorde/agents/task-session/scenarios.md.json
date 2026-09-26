@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.task-session.scenarios",
+    "owner": "module.task-session",
+    "role": "implementation"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

@@ -96,9 +96,9 @@ reported as `refused` evidence.
 
 No tracked project setting chooses the agent program or the model of a worker. Before each worker
 launch the host resolves, for the Operation's worker role — the role the provider names for the
-launch, or its first role — the [worker backend](../harness/workers/module.md#concept.workers.backend)
+launch, or its first role — the [worker backend](../agents/workers/module.md#concept.workers.backend)
 and then the model and reasoning level from the run worktree's [worker model
-configuration](../harness/workers/module.md#concept.workers.model-configuration); the backend is
+configuration](../agents/workers/module.md#concept.workers.model-configuration); the backend is
 the program of the main session that started the run, which passed it on in the environment,
 unless the configuration chooses one. Workers records the Operation, role, backend and where it
 came from, model and level in the run record, and the host adds `worker-model` host evidence naming

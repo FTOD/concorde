@@ -24,7 +24,7 @@ configuration — the installer never writes Specs.
 | [Registry](../spec-tooling/spec/module.md#concept.spec.registry) | |
 | [Structural check](../spec-tooling/spec/module.md#concept.spec.structural-check) | |
 | [Scaffold proposal](../spec-tooling/views/module.md#concept.views.scaffold-proposal) | |
-| [Main-session guidance](../main-session/module.md#concept.main-session.guidance) | |
+| [Main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) | |
 
 ## Usage
 
@@ -86,7 +86,7 @@ newer, else nothing more is written), the `concorde` command as `.concorde/bin/c
 runs Concorde only in that environment, with the caller's `PYTHONPATH`, `PYTHONHOME` and user
 site-packages left out, so an activated project venv never becomes Concorde's interpreter,
 the Protocol copy under `.concorde/protocol/` and Concorde-owned defaults only where absent, the
-[main-session guidance](../main-session/module.md#concept.main-session.guidance) as the project
+[main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) as the project
 skill `.claude/skills/concorde/SKILL.md` and a block between `<!-- concorde:start -->` and
 `<!-- concorde:end -->` in the project's `CLAUDE.md` — replaced in place on a later install,
 leaving the rest of the file untouched — and the `d2` release `concorde.json` pins, placed at
@@ -128,7 +128,7 @@ their commands in — under `.concorde/tools/pi-runtime/` by copying the package
 `src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
 `npm ci --ignore-scripts`, which installs exactly the locked versions after checking each
 package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime));
-the [run view](../main-session/module.md#concept.main-session.run-view), with its model picker, as
+the [run view](../agents/main-session/module.md#concept.main-session.run-view), with its model picker, as
 `.pi/extensions/concorde/`; the skill a second time as `.pi/skills/concorde/SKILL.md`; every
 rendered pi workflow script under `.concorde/workflows/pi/`; and the command-runner agents
 `concorde-step` and `concorde-report` under `.pi/agents/`, where pi-subagents finds the project's
@@ -257,7 +257,7 @@ it writes are Views' responsibility, and an `--apply` without `--proposal` is re
 
 **Main session** owns the guidance the main agent receives. Distribution renders it as a prompt
 root and the installer places the rendered
-[main-session guidance](../main-session/module.md#concept.main-session.guidance) unchanged, and
+[main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) unchanged, and
 refuses to install it missing or stale rather than fall back to an old copy.
 
 <a id="uses-workflows"></a>

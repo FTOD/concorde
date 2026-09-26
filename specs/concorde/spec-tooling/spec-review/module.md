@@ -20,9 +20,9 @@ code (Code review).
 | [Operation](../../operations/module.md#concept.operations.operation) | |
 | [Operation host](../../operations/module.md#concept.operations.host) | |
 | [Operation result](../../operations/module.md#concept.operations.result) | |
-| [Brief](../../harness/workers/module.md#concept.workers.brief) | |
-| [Worker result](../../harness/workers/module.md#concept.workers.worker-result) | |
-| [Run record](../../harness/workers/module.md#concept.workers.run-record) | |
+| [Brief](../../agents/workers/module.md#concept.workers.brief) | |
+| [Worker result](../../agents/workers/module.md#concept.workers.worker-result) | |
+| [Run record](../../agents/workers/module.md#concept.workers.run-record) | |
 | [Grant](../spec/module.md#concept.spec.grant) | |
 | [Context identity](../spec/module.md#concept.spec.context-identity) | |
 | [Structural check](../spec/module.md#concept.spec.structural-check) | |
@@ -141,11 +141,11 @@ tooling: Spec tooling {
   core: Spec core
   review -> core
 }
-harness: Harness {
+agents: Agents {
   workers: Workers
 }
 operations: Operations
-tooling.review -> harness.workers
+tooling.review -> agents.workers
 tooling.review -> operations
 operations -> tooling.review
 ```
@@ -164,10 +164,10 @@ the Operation as host evidence; a rejected grant makes that Module's review `inc
 <a id="uses-workers"></a>
 
 **Workers**, in the Harness, turn a frozen grant into a running Claude Code worker: launch each
-reviewer with only its [brief](../../harness/workers/module.md#concept.workers.brief), return its
-[worker result](../../harness/workers/module.md#concept.workers.worker-result) extended with
+reviewer with only its [brief](../../agents/workers/module.md#concept.workers.brief), return its
+[worker result](../../agents/workers/module.md#concept.workers.worker-result) extended with
 findings, audit for changes, and keep a
-[run record](../../harness/workers/module.md#concept.workers.run-record). A `blocked`/`failed`
+[run record](../../agents/workers/module.md#concept.workers.run-record). A `blocked`/`failed`
 worker, or an audit finding a change, makes that Module's review `incomplete`, its error link
 travelling in the result's error chain unchanged.
 

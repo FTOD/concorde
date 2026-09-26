@@ -50,11 +50,11 @@
         "meaning": "#uses-spec"
       },
       {
-        "target": "module.harness.workers",
+        "target": "module.workers",
         "meaning": "#uses-workers"
       },
       {
-        "target": "module.harness.checks",
+        "target": "module.checks",
         "meaning": "#uses-checks"
       },
       {
@@ -170,7 +170,7 @@
       "type": "relates",
       "source": "concept.operations.host",
       "verb": "launches workers through",
-      "target": "module.harness.workers"
+      "target": "module.workers"
     },
     {
       "type": "relates",

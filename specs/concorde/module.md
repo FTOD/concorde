@@ -7,8 +7,11 @@ the architecture and divide the responsibility among Modules; from that division
 for each task, what a worker is given as context and what it may read and write, runs the worker
 inside that boundary and verifies its result instead of trusting it.
 
-The developer and the main agent rely on it. Spec tooling checks, serves and publishes the Specs on
-its own. Operations carry out bounded jobs, assessing, specifying, implementing, testing,
+The developer and the main agent rely on it. Its agents work at three levels: the main agent at
+the project level in the primary worktree, the task level inside one task worktree, played by the
+main agent itself or delegated to a task session, and workers, each one bounded run under a grant.
+Every level gets its harness, what it may know and touch, from one Harness, and the task level's
+workspace from Tasks. Spec tooling checks, serves and publishes the Specs on its own. Operations carry out bounded jobs, assessing, specifying, implementing, testing,
 reviewing, validating and delivering, and, for a project whose code came first, describing that
 code, each under its Spec-derived harness. The main agent stays in charge: it splits work into
 tasks, carries each out inside its worktree or hands it to a task session, and merges what is
@@ -85,22 +88,24 @@ it is, never changes code, and turns every behaviour whose intent the code does 
 open question for the developer rather than a promise. Once a Module is described, work on it is
 Spec first again.
 
-The developer decides. The main agent has the global view and the developer's trust, so Concorde
-does not restrict it, but it changes the project only inside a task worktree. Workers are the
-opposite: each has one bounded task, no human to ask, and a boundary derived from the Specs.
-Keeping the two apart lets a large change be split into small, checkable steps without the
-developer supervising each one. Between them, the Operation host computes the grant, launches and
-audits the worker, runs the checks and turns the outcome into a trustworthy result.
+The developer decides. The [Agents](agents/module.md) are organized by the level of work each
+does. The main agent has the global view and the developer's trust, so Concorde does not restrict
+it, but it changes the project only inside a task worktree. Workers are the opposite: each has one
+bounded task, no human to ask, and a boundary derived from the Specs. Keeping the two apart lets a
+large change be split into small, checkable steps without the developer supervising each one.
+Between them, the Operation host computes the grant, launches and audits the worker, runs the
+checks and turns the outcome into a trustworthy result.
 
-Task sessions are an optional tier for work split into several tasks. They are needed because a
-session is inside one task worktree at a time and runs that worktree's own `concorde`, so parallel
-tasks need parallel sessions. An extra level of messaging is one more place for an error to be
-lost, so the loss is prevented structurally: a task session escalates with
-`concorde task escalate --by task-session`, which records its link with the failed runs' chains
-unchanged as causes, and the main agent adds its own link on top. A task session's writes are
-confined to its task, while the main agent stays unrestricted and alone merges. Because a task's
-commands run with the branch's own copy, their success is self-validation, which is why a merge
-runs the build and `validate` once more on the primary branch.
+The task level between them is stable, but who plays it is not: the main agent works a task itself
+unless it wants several tasks to run at once, and then delegates each to a task session, since a
+session is inside one task worktree at a time and runs that worktree's own `concorde`. An extra
+level of messaging is one more place for an error to be lost, so the loss is prevented
+structurally: a task session escalates with `concorde task escalate --by task-session`, which
+records its link with the failed runs' chains unchanged as causes, and the main agent adds its own
+link on top. A task session's writes are confined to its task, while the main agent stays
+unrestricted and alone merges. Because a task's commands run with the branch's own copy, their
+success is self-validation, which is why a merge runs the build and `validate` once more on the
+primary branch.
 
 One task through the Modules; each arrow is declared by the calling Module's own `uses`:
 
@@ -137,10 +142,22 @@ checked by the host against its schema and extended by the main agent with a com
 paraphrased, so the developer receives the whole path from the failing check up to the question
 they are asked.
 
-Worker permissions are compiled from the grant into the worker's own configuration — on Claude
-Code its settings with deny rules, a write hook and the Bash sandbox, on pi a permission extension
-with the same sandbox engine. They guard against scope drift and mistakes, not a malicious actor;
-the [Harness](harness/module.md) explains why these layers were chosen and what they leave out.
+What an agent may know and touch is its harness, and the [Harness](harness/module.md) generates it
+for every level from the same code: a worker's from its grant — on Claude Code settings with deny
+rules, a write hook and the Bash sandbox, on pi a permission extension with the same sandbox engine
+— and a task session's from its task. It guards against scope drift and mistakes, not a malicious
+actor; the Harness explains why these layers were chosen and what they leave out.
+
+<a id="realization.concorde.error-chain"></a>
+
+**Error chain code** builds and renders the links of an
+[error chain](vocabulary.md#concept.concorde.error-chain) in the shape of the Framework's
+[error contract](contracts.md#contract.concorde.error): the schema, the reasons a level cannot
+handle an error, helpers turning an exception or finding into a link, and the human rendering.
+Workers and Check execution report their failures with it, and so do the Operation host, Tasks,
+Task sessions and the Issues command, so every level's link has the same shape whoever wrote it. The
+root binds it because the contract is the root's and every Module promises it. Spec tooling keeps
+its own error types and does not use it.
 
 The root also binds files that belong to no single child. They keep the repository running rather
 than carry the framework's function, so the [Relationships](#relationships) diagram leaves them out:
@@ -162,17 +179,18 @@ than carry the framework's function, so the [Relationships](#relationships) diag
 
 ## Relationships
 
-The root is the composition of nine child Modules; each one's own entry draws what it uses:
+The root is the composition of ten child Modules; each one's own entry draws what it uses:
 
 ```d2
 root: Concorde Framework {
   spectooling: Spec tooling
+  agents: Agents
   harness: Harness
+  checks: Check execution
   tasks: Tasks
   workflows: Workflows
   operations: Operations
   issues: Issues
-  mainsession: Main session
   distribution: Distribution
   e2e: End-to-end testing
 }
@@ -184,15 +202,28 @@ root: Concorde Framework {
 grants, answering agents over MCP, reviewing and publishing them. Every other Module relies on it
 to refuse an untrustworthy structure; its core uses no other Module.
 
+<a id="contains-agents"></a>
+
+**Agents** organizes the agents by the level of work: the Main session at the project level, the
+task level played by the main agent or delegated through Task sessions, and Workers, whose answers stay
+proposals until the host has checked them.
+
 <a id="contains-harness"></a>
 
-The **Harness** configures and runs workers — settings, launch, resume, write audit, checks and run
-records — so a worker's answer stays a proposal until the host has checked it.
+The **Harness** derives each agent's harness — what it may know, what it may touch and the
+environment it runs in — and applies it through Claude Code's or pi's own configuration, the same
+code for every level.
+
+<a id="contains-checks"></a>
+
+**Check execution** runs Modules' configured checks in a read-only boundary outside every agent,
+so a check result is never an agent's claim.
 
 <a id="contains-tasks"></a>
 
-**Tasks** keeps each task's branch, worktree, record and decision log, so several can run side by
-side without their changes mixing.
+**Tasks** manages the task level's workspace — each task's branch, worktree, record and decision
+log — the same for the main agent and a task session, so several tasks can run side by side without
+their changes mixing.
 
 <a id="contains-workflows"></a>
 
@@ -209,11 +240,6 @@ Operation providers; no provider calls the next one, the main agent chooses.
 
 **Issues** keeps durable, branch-local Issue records so a problem worth keeping survives the task
 that found it; solving one is ordinary work run through Operations.
-
-<a id="contains-main-session"></a>
-
-The **Main session** Module is the guidance the installer gives the main agent: how to split tasks,
-run Operations, read results, keep decision logs and escalate.
 
 <a id="contains-e2e"></a>
 

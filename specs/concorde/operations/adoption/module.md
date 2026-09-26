@@ -41,10 +41,10 @@ marks the project's existing tests with the scenarios taken from them.
 | [Structural check](../../spec-tooling/spec/module.md#concept.spec.structural-check) | |
 | [Project registry](../../spec-tooling/spec/module.md#concept.spec.registry) | |
 | [File transaction](../../spec-tooling/spec/module.md#concept.spec.file-transaction) | |
-| [Brief](../../harness/workers/module.md#concept.workers.brief) | |
-| [Worker result](../../harness/workers/module.md#concept.workers.worker-result) | |
-| [Write audit](../../harness/workers/module.md#concept.workers.audit) | |
-| [Configured check](../../harness/checks/module.md#concept.checks.configured-check) | |
+| [Brief](../../agents/workers/module.md#concept.workers.brief) | |
+| [Worker result](../../agents/workers/module.md#concept.workers.worker-result) | |
+| [Write audit](../../agents/workers/module.md#concept.workers.audit) | |
+| [Configured check](../../checks/module.md#concept.checks.configured-check) | |
 
 Read Survey, Scaffold and Code to spec first: they are the three steps. Decisions and open questions
 are how every step says what it could not settle alone; answers are how the developer settles them.
@@ -91,7 +91,7 @@ create, its identity, title, a one-paragraph purpose, the paths it should bind a
 uses with the reason; the third-party code the project vendors, such as a bundled copy of a
 library, each with the Module that uses it; the test and lint commands it found, proposed in the
 shape of
-[configured checks](../../harness/checks/module.md#concept.checks.configured-check) of the Modules
+[configured checks](../../checks/module.md#concept.checks.configured-check) of the Modules
 they check; the decisions it took; and its open questions. The host adds the entries that stay with
 the surveyed Module. A proposal with no children is valid: the Module is small enough to describe as
 it is. A survey writes nothing, so it may also run [without a
@@ -334,12 +334,12 @@ main agent or a workflow.
 <a id="uses-workers"></a>
 
 **Workers** turns each frozen grant into settings, launches the survey and code_to_spec workers with
-this Module's briefs, collects their [worker results](../../harness/workers/module.md#concept.workers.worker-result),
+this Module's briefs, collects their [worker results](../../agents/workers/module.md#concept.workers.worker-result),
 audits the worktree and writes the run records; any change beyond the grant fails the run.
 
 <a id="uses-checks"></a>
 
-**Check execution** defines the [configured check](../../harness/checks/module.md#concept.checks.configured-check)
+**Check execution** defines the [configured check](../../checks/module.md#concept.checks.configured-check)
 entries of the project configuration. A survey proposes checks in that shape so that the
 developer can configure the ones they accept unchanged; Adoption itself never runs or configures a
 check.

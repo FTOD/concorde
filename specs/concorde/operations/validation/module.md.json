@@ -20,7 +20,7 @@
         "meaning": "#uses-spec"
       },
       {
-        "target": "module.harness.checks",
+        "target": "module.checks",
         "meaning": "#uses-checks"
       },
       {

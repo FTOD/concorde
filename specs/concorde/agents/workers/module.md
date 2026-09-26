@@ -2,13 +2,16 @@
 
 ## Purpose
 
-Workers runs one headless worker for one task under one frozen grant, on Claude Code or on pi, and
-turns what happened into a run record the Operation host can trust. Each run is its own session,
-its own process and its own permissions, compiled from the grant for the agent program of the main
-session that started the run, on the model the task worktree's configuration chooses. It does not
-compute the grant, choose the task type or write the task-specific brief, and
-never commits or judges whether the worker's work is correct. Its boundary guards against scope
-drift and mistakes, not a malicious worker.
+Workers runs the lowest level of Concorde's agents: one headless worker for one task under one
+frozen grant, on Claude Code or on pi, turning what happened into a run record the Operation host
+can trust. Each run is its own session, its own process and its own permissions, on the model the
+task worktree's configuration chooses. Workers owns the run's lifecycle: the run directory, the
+brief, the launch and resume rounds, the write audit, the checks after each round and the record.
+The worker's permissions and environment are its [agent
+harness](../../harness/module.md#concept.harness.harness), which the Harness generates from the
+grant for the chosen program. Workers does not compute the grant, choose the task type or write
+the task-specific brief, and never commits or judges whether the worker's work is correct. Its
+boundary guards against scope drift and mistakes, not a malicious worker.
 
 ## Terminology
 
@@ -16,11 +19,7 @@ drift and mistakes, not a malicious worker.
 | --- | --- |
 | Worker backend | The agent program a worker runs on, Claude Code or pi: the one the worktree's worker model configuration chooses for the worker's Operation and role, otherwise the program of the main session that started the run; both enforce the same grant. |
 | Worker model configuration | A worktree's untracked `.concorde/worker-models.json`, which may choose the backend of every worker, of an Operation's workers or of one worker role, and gives for each backend a default model and reasoning level and optional entries per Operation and per worker role of an Operation. |
-| Worker settings | The Claude Code settings file the host generates from a grant, carrying the Bash sandbox, the deny rules and the write hook of one worker run. |
-| Permission extension | The pi extension the host generates from a grant, which checks every file tool against it, runs every command in the sandbox and receives the worker result. |
 | Progress file | The run's `status.json`, which the host keeps current while the run goes on so the main session can show what it is doing. |
-| Deny rules | The `permissions.deny` entries of the worker settings that forbid the file tools every path the grant does not make readable or writable. |
-| Write hook | A small PreToolUse hook on Edit and Write that denies every path outside the grant's `rw` list and explains the denial. |
 | Brief | The prompt a worker receives: the Operation's task instructions followed by the grant's `rw`, `ro` and `names` lists as absolute paths and the rules of its boundary. |
 | Worker result | The structured answer a worker ends with, validated against a fixed schema, reporting its status, a summary, its own error link when it could not finish, and the deletions it proposes. |
 | Write audit | The host's comparison, after each round and outside the worker, of the task worktree's changes with the grant's `rw` list. |
@@ -28,14 +27,19 @@ drift and mistakes, not a malicious worker.
 | Run record | The host's durable record of one worker run: its grant and context identity, settings, transcript path, audits, checks, rounds and result. |
 | Run directory | The directory `.concorde/runs/<run-id>/` of the primary worktree that holds one run's record, generated configuration and the worker's private state and working directory. |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
+| [Agent harness](../../harness/module.md#concept.harness.harness) | |
+| [Worker settings](../../harness/module.md#concept.harness.worker-settings) | |
+| [Permission extension](../../harness/module.md#concept.harness.permission-extension) | |
+| [Deny rules](../../harness/module.md#concept.harness.deny-rules) | |
+| [Write hook](../../harness/module.md#concept.harness.write-hook) | |
 | [Task type](../../vocabulary.md#concept.concorde.task-type) | |
 | [Boundary](../../vocabulary.md#concept.concorde.boundary) | |
 | [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
 | [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 | [Grant](../../spec-tooling/spec/module.md#concept.spec.grant) | |
 | [Context identity](../../spec-tooling/spec/module.md#concept.spec.context-identity) | |
-| [Configured check](../checks/module.md#concept.checks.configured-check) | |
-| [Check result](../checks/module.md#concept.checks.check-result) | |
+| [Configured check](../../checks/module.md#concept.checks.configured-check) | |
+| [Check result](../../checks/module.md#concept.checks.check-result) | |
 
 ## Usage
 
@@ -103,23 +107,11 @@ program. Everything but the agent process is shared: the grant, the brief, the r
 progress file, the audit, the checks, the rounds and the run record, so workers of one Operation on
 different backends exchange nothing but the structured results the host validates.
 
-<a id="concept.workers.permission-extension"></a>
-
-The pi backend replaces the worker settings with the **permission extension**, generated from the
-same grant by the same code:
-
-| Surface | Claude Code backend | pi backend |
-| --- | --- | --- |
-| Reading files | deny rules on Read, Glob and Grep | the extension checks `read` and explains each denial |
-| Writing files | deny rules plus the write hook | the extension checks `write` and `edit` with the write hook's table |
-| Searching | Grep silently omits denied files | `grep`, `find` and `ls` run inside the sandbox, so denied files do not exist for them |
-| Commands | Claude Code's Bash sandbox | `bash` through the same sandbox engine, sandbox-runtime |
-| Network | none, strict allowlist | none, strict allowlist |
-| Worker result | `--json-schema` | the `concorde_result` tool |
-| Limits | `--max-turns`, `--max-budget-usd` | counted and enforced by the extension |
-| Instructions and state | own `CLAUDE_CONFIG_DIR`, no `CLAUDE.md` | own `PI_CODING_AGENT_DIR`, no extensions, context files, skills or templates |
-
-The pi command line, environment and tables are in [the pi run mechanics](pi.md).
+On Claude Code the worker's harness is applied by its [worker
+settings](../../harness/module.md#concept.harness.worker-settings), on pi by the [permission
+extension](../../harness/module.md#concept.harness.permission-extension); the
+[Harness](../../harness/module.md#concept.harness.permission-extension) compares the two surface by
+surface. The pi command line and environment are in [the pi run mechanics](pi.md).
 
 ### Choosing worker models
 
@@ -176,22 +168,15 @@ offer, each naming what is listed. A file that is not valid JSON or does not mat
 refused with `config_invalid`, naming the file and the problem, and never ignored.
 
 The main session lets the developer choose: pi's run view has a picker for it and Claude Code's
-main agent asks with its question tool ([Main session](../../main-session/module.md)).
+main agent asks with its question tool ([Main session](../main-session/module.md)).
 
-<a id="concept.workers.worker-settings"></a><a id="concept.workers.deny-rules"></a><a id="concept.workers.write-hook"></a>
-
-The **worker settings** are the worker's only configuration (fresh `CLAUDE_CONFIG_DIR`) and hold
-three layers from the same grant. **Deny rules** cover the file tools: every grant-omitted
-task-worktree path (Read+Edit denied), every `ro`/`names` path (Edit denied, Read too for `names`),
-one rule per ungranted directory, the primary worktree outside this run, `.git`, `~/.claude`, and
-the run's `control/`/`config/`; they hold under `bypassPermissions`, make Grep silently omit denied
-files, and — since Claude Code applies `Read` denials to Bash too — never cover system or runtime
-paths Bash itself needs. The **write hook** makes `rw` the exact write allowlist, denying any other
-Edit/Write with a reason naming the path's level (e.g. an undeclared file needing `specify` first);
-it says nothing about `rw` and never governs reads. The Bash sandbox denies reading the
-worktree/`$HOME` except `ro`/`rw` files and runtime paths, allows writing only the `rw` files and
-the run's `work/`, `home/` and temporary directory, allows no network, and ignores
-unsandboxed-command requests. `names` files are readable by no tool — only named in the brief.
+Before the first round Workers asks the Harness for the worker's configuration from the frozen
+grant and the run's own paths: on Claude Code the [worker
+settings](../../harness/module.md#concept.harness.worker-settings) with their [deny
+rules](../../harness/module.md#concept.harness.deny-rules), [write
+hook](../../harness/module.md#concept.harness.write-hook) and Bash sandbox, on pi the permission
+extension, and the tool set of the task type. It places them in the run's `control/` directory and
+never changes them during the run.
 
 <a id="concept.workers.brief"></a>
 
@@ -259,7 +244,6 @@ separate from host evidence.
 ```d2
 workers: Workers {
   runtime: Worker runtime {
-    "settings.py"
     "workers.py"
     "progress.py"
     "audit.py"
@@ -268,12 +252,9 @@ workers: Workers {
   }
   claude: Claude Code backend {
     "claude_backend.py"
-    "write_hook.py"
   }
   pi: pi backend {
     "pi_backend.py"
-    "pi_permission.ts"
-    "pi_policy.ts"
   }
   models: Model configuration {
     "models.py"
@@ -283,40 +264,25 @@ workers: Workers {
 }
 ```
 
-- <a id="realization.workers.runtime"></a>The **worker runtime** computes the boundary lists from
-  the grant (deny rules, sandbox lists), decides rounds, runs the write audit, keeps the progress
-  file, manages run directories/records, and supplies the worker prompt snippets every Operation
-  includes, e.g. reporting an error.
-- <a id="realization.workers.claude"></a>The **Claude Code backend** writes the worker settings and
-  the write hook, launches and resumes `claude -p`, and reads its event stream. Tests fake `claude`
-  for host behaviour and, with `CONCORDE_LIVE_CLAUDE=1`, run a real worker for what only Claude Code
-  enforces.
+- <a id="realization.workers.runtime"></a>The **worker runtime** writes the brief, decides rounds,
+  runs the write audit, keeps the progress file, manages run directories/records, and supplies the
+  worker prompt snippets every Operation includes, e.g. reporting an error. Its tests also exercise
+  the Harness's worker settings, write hook and pi path decisions, since a worker run is where they
+  apply.
+- <a id="realization.workers.claude"></a>The **Claude Code backend** places the worker settings and
+  write hook the Harness generates, launches and resumes `claude -p`, and reads its event stream.
+  Tests fake `claude` for host behaviour and, with `CONCORDE_LIVE_CLAUDE=1`, run a real worker for
+  what only Claude Code enforces.
 - <a id="realization.workers.pi"></a>The **pi backend** checks its prerequisites, prepares the pi
-  configuration directory, generates the permission extension (`pi_permission.ts`, with the pure
-  path decisions in `pi_policy.ts`), launches and resumes `pi -p` and reads its event stream. Tests
-  fake `pi` for host behaviour, run the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`,
-  run a real pi worker.
+  configuration directory, embeds the run's policy into the Harness's permission extension,
+  launches and resumes `pi -p` and reads its event stream. Tests fake `pi` for host behaviour, run
+  the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`, run a real pi worker.
 
 - <a id="realization.workers.models"></a>The **model configuration** detects the main
   session's program, resolves a worker's backend and checks that its program is installed,
   discovers the candidates by running the installed `claude` or `pi`, validates, reads and writes
   `.concorde/worker-models.json`, and resolves the choice of an Operation's worker role. Tests fake
   both programs.
-
-Both backends are compiled from the grant rather than one being translated into the other: Claude
-Code's permission-rule language is closed and changes between versions, and pi has no permission
-system of its own, so the grant is the one source and each backend gets the mechanism that fits it.
-On pi the file tools are checked by an extension because an extension sees every tool call before
-it runs and can explain a denial; searching and commands go through the sandbox because only an
-OS boundary confines what a command or a search actually opens. Tools are replaced rather than
-merely intercepted so the check sees the final arguments, which a later `tool_call` handler could
-otherwise still change.
-
-Three layers exist on Claude Code since each alone failed in a spike against Claude Code 2.1.280: the Bash sandbox
-governs only Bash and its children — alone it let Read return ungranted files and the credential,
-and Edit change a read-only Spec; deny rules alone confine reads but can't stop a Write creating an
-undeclared file, since a deny rule always beats an allow rule, so "only these files are writable"
-cannot be expressed. The write hook closes exactly that gap, staying small.
 
 `bypassPermissions` is used since `-p` mode's `dontAsk` denies every Edit/Write outside the working
 directory even when allowed, and that directory can't be the worktree — Claude Code adds it (and
@@ -335,50 +301,42 @@ Spec gap or grant violation is a decision for the main agent or developer, not t
 
 `--safe-mode`/`--bare` are unused since they'd disable the write hook too. Credentials are a copy of
 the user's file in `config/`; an env-var token was untested, and keeping credentials from the worker
-is future work alongside the outer sandbox. Limits: the [Harness](../module.md).
+is future work alongside the outer sandbox. Limits: the [Harness](../../harness/module.md).
 
 Open questions: whether Bash needs read access to Claude Code's shell snapshots in
 `CLAUDE_CONFIG_DIR` (deciding if `config/` stays unreadable) awaits the built runtime; per-task tool
-lists are v1 defaults in [the run mechanics](launch.md#tool-sets) and may change.
+lists are v1 defaults in [the Harness](../../harness/claude-code.md#tool-sets) and may change.
 
 ## Relationships
 
 ```d2
 workers: Workers
 spec: Spec core
+harness: Harness
 checks: Check execution
 workers -> spec
+workers -> harness
 workers -> checks
 ```
 
 ```d2
 runtime: Worker runtime
-settings: Worker settings
-deny: Deny rules
-hook: Write hook
 brief: Brief
 dir: Run directory
 record: Run record
 audit: Write audit
 round: Resume round
 result: Worker result
-runtime -> settings: generates
 runtime -> brief: generates
 runtime -> record: writes
-settings -> deny: carries
-settings -> hook: carries
-dir -> settings: holds
 dir -> record: holds
 record -> audit: records
 record -> round: records
 record -> result: keeps
 runtime -> progress: keeps
 dir -> progress: holds
-backend -> ext: pi generates
-backend -> settings: Claude Code generates
 progress: Progress file
 backend: Worker backend
-ext: Permission extension
 ```
 
 The Operation providers, Spec review and Delivery use this Module; it knows none of them. They rely
@@ -393,11 +351,22 @@ grant listing every path's level (`rw`/`ro`/`names`, ungranted omitted) and the 
 exactly what selected it; it never computes or widens a grant, only receives it frozen. A missing or
 unreadable grant is a host failure before launch.
 
+<a id="uses-harness"></a>
+
+The **Harness** generates the worker's [agent harness](../../harness/module.md#concept.harness.harness)
+from the frozen grant and the run's paths: the [worker
+settings](../../harness/module.md#concept.harness.worker-settings) with their deny rules and write
+hook on Claude Code, the [permission
+extension](../../harness/module.md#concept.harness.permission-extension) on pi, and the tool set of
+the task type. Workers relies on them confining the worker's tools to the grant, keeps them
+unchanged for every round, and refuses to launch when a generated deny rule would cover the run's
+own directories. It never edits what the Harness generated.
+
 <a id="uses-checks"></a>
 
-**Check execution** runs the [configured checks](../checks/module.md#concept.checks.configured-check)
+**Check execution** runs the [configured checks](../../checks/module.md#concept.checks.configured-check)
 on the task worktree in its read-only boundary, returning a [check
-result](../checks/module.md#concept.checks.check-result) per check with its log. Workers relies on
+result](../../checks/module.md#concept.checks.check-result) per check with its log. Workers relies on
 checks never changing the worktree; it runs them only after a clean audit, feeds failures into the
 next round, and records every result. Checks that cannot run end the run `failed` with the error as
 evidence and no round.

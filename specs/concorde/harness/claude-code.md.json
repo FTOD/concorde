@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.harness.claude-code",
+    "owner": "module.harness",
+    "role": "implementation"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}
