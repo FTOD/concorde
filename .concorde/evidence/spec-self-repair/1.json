@@ -1,0 +1,62 @@
+{
+  "task": "spec-self-repair",
+  "goal": "Spec-writing workers repair the structural errors the host's validator reports after each round, within a bounded number of rounds",
+  "modules": [
+    "module.harness.workers",
+    "module.operations",
+    "module.adoption",
+    "module.specification"
+  ],
+  "sequence": 1,
+  "base_commit": "c7fec360dae56ead09f3c6212c686ca9740e5ad5",
+  "parent_commit": "0c688cb42ea7955328331d89c4e6760a1f1d74e4",
+  "readiness": {
+    "run_id": "r-20260926T051644-delivery-88479b78",
+    "input_digest": "sha256:8ed075a89f5bcff1471506e1687d244774d66814da636e78ec22ffb7a33d04bf",
+    "modules": [
+      "module.adoption",
+      "module.harness.workers",
+      "module.operations",
+      "module.specification"
+    ],
+    "checks": [
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:e8dbd5e377dd0e80e880b9447e4c3d23bedfff0bb2f5cffaf7fe42f405b11abb"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:b6bb87a1eae8f9e53175d5ad58d6b6a8e5c07ee8bbd09bf1a5f85c588f358389"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:27589a722584e12e3afffa2d79cc77625e8a2ce242fb952256e03d26d07b6c41"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T051630-validate-404b5c19",
+      "operation": "validate",
+      "modules": [
+        "module.harness.workers",
+        "module.operations",
+        "module.adoption",
+        "module.specification"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:1caa38cb11c49b542c5a779b0bd006ab5ea9aa650f130d410cb951e27109ecf7"
+    }
+  ],
+  "created_at": "2026-09-26T05:16:57Z"
+}
