@@ -1,0 +1,178 @@
+{
+  "task": "tests-by-verifies",
+  "goal": "Tests relate to scenarios many-to-many: checks run the tests verifying the changed Modules' scenarios through {tests}, full-suite checks run only for readiness, and a test file's owner no longer matters for coverage",
+  "modules": [
+    "module.spec",
+    "module.checks",
+    "module.validation",
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "e8ae7bf198e26c5f87c8a009c679c965fc95624f",
+  "parent_commit": "c5a164553fa1693c3e389f6e737e19e9e39315cd",
+  "readiness": {
+    "run_id": "r-20260926T083328-delivery-1776e8c9",
+    "input_digest": "sha256:e624b7e996642f42514846f35fa1615263bfecd56fd550906a0857367a9b374a",
+    "modules": [
+      "module.adoption",
+      "module.checks",
+      "module.concorde",
+      "module.spec",
+      "module.validation",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:f46701c3e5ccc6ed5ef7580b50a6c5c91638b065d44e3275d92828dbd42e33a5"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:b2912ee3336da2c5c0fbd384e6ba8fb89938c6a6d193dda224611765bfdc3320"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:9917ed11067af978208c0c68a7024ac3d7a1922092c0aea71c79be5830fdc15f"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:c1ac7b50795ccb0eb9943fc5c34e5f4d9241976eea9e489445c6575aa0d2b45f"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:ca16e298f814a32cc11f172f4cab4b8b830a4e90cf7e56e9b99ab30f98c43c64"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:27bdd1d95f4ae50f3326e9b1f2fd70e8f3f90e9c17d3b40b4e9b1deaba9b7b29"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:33a4ff5df07e72468793367074b00b2124b2634885840a47e4c4db343a833310"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:33a4ff5df07e72468793367074b00b2124b2634885840a47e4c4db343a833310"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:c633a4ac496c16bdcf023a5740aa9f713005f691cccf80625dac68b195cb6331"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:25fcc52092c5837624af13ef1c79d1aa1f7b7217f710a49bc73053c1d192dc15"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:2e9a79bafa7e6c22abe4bae013fe73a181417931e6a169a36b024656c67d9133"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:5fd28b478d8472f6fbec3590a241840607859b7e1d405412fcfae351d4a9ec31"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:a7545015518c10187f6694e3695b39ed9a0d429f385924d637c9fd95bc50d4ed"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:5a35cde2b9d4b67a0045be932f3cfaaf96e65f07ce7e71ad66880116583d7013"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:0489167f38593a7cbf384aa8a70e09245d94783abbc6f3b51ee7888548fb6bfa"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:f0dd5326b580116fecdfb892b80a3883361cc28096c5a34962e9399af02a68e7"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:2a3cd66a8b82c092510d37cbceb3432620a3041a47346aa3d6fdf05fcda1272e"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:f8880289f54f77514629f783da72710c811bbd9ab9d519f4316393d72d162184"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:ec0d30659077db7ba58802b1baedf159643c91eefa8f3b45b26c1538cc800d3b"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:ec0d30659077db7ba58802b1baedf159643c91eefa8f3b45b26c1538cc800d3b"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:ec0d30659077db7ba58802b1baedf159643c91eefa8f3b45b26c1538cc800d3b"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:e00588976be53fa057f4c0be1442041124cb4ec49550871642447bc9943ea9fd"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T082918-validate-f6184662",
+      "operation": "validate",
+      "modules": [
+        "module.spec",
+        "module.checks",
+        "module.validation",
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:6cd9c38e0d172c50fc5bfb5c36551944f26cc2ac60872e7403e9e69668025989"
+    }
+  ],
+  "created_at": "2026-09-26T08:37:40Z"
+}
