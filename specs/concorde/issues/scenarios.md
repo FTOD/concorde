@@ -13,6 +13,17 @@ are defined in the [Issue interface](interface.md).
 - AND its provenance names `main-agent`, `issues`, `report`, the owner as reporting Module, the registry digest, the task and the Git `HEAD` or `null` outside a Git repository
 - AND the command prints the receipt and the revision that `show` reports for the Issue
 
+This illustrates [command attribution](requirements.md#req.issues.main-agent-actor) and the
+[initial status](requirements.md#req.issues.status-derived).
+
+### scenario.issues.command-report-repeated — Repeating a creation makes another Issue
+
+- GIVEN an initialized project and a valid report file without an Issue identity or expected revision
+- WHEN the main agent runs `report --file` twice with that same file
+- THEN the commands return different Issue identities because they supply different invocation identities
+- AND both Issues are open with one report each
+- BUT matching report keys across CLI invocations do not deduplicate the records
+
 ### scenario.issues.command-report-origin — Record a report seen in another project
 
 - GIVEN an initialized project and a report file written in another project, naming that project as its `origin`, evidence paths relative to it and an error chain
@@ -42,6 +53,7 @@ are defined in the [Issue interface](interface.md).
 - GIVEN an open Issue and a report file naming it with its current revision
 - WHEN the main agent runs `report --file` with that file
 - THEN the Issue holds both reports and the command prints the new revision
+- AND its status stays open while its summary follows the latest report's title, classification and owner
 - BUT a report file naming the old revision is refused with `stale_issue`, naming the Issue and both revisions
 - AND nothing is written for it
 
@@ -52,6 +64,9 @@ are defined in the [Issue interface](interface.md).
 - THEN the Issue is closed with a disposition whose actor is `main-agent`
 - AND the command prints the Issue, its status and its new revision
 - BUT a duplicate naming a closed Issue is refused and the Issue stays open
+
+This illustrates [command attribution](requirements.md#req.issues.main-agent-actor) and
+[legal transitions](requirements.md#req.issues.legal-transitions).
 
 ### scenario.issues.command-reopen — Reopen a closed Issue
 
@@ -129,6 +144,15 @@ are defined in the [Issue interface](interface.md).
 - THEN the Issue gets the disposition and its status follows it
 - AND every report stays unchanged
 - AND a later reopening at the new revision opens it again
+
+### scenario.issues.store-status-mismatch — A status cannot contradict its history
+
+- GIVEN an Issue record whose status is `closed` but whose disposition history is empty
+- WHEN the store reads that record
+- THEN it refuses the record with `invalid_issue` because an empty history leaves the Issue open
+- BUT it does not repair the status or invent a closing disposition
+
+This illustrates [status derived from history](requirements.md#req.issues.status-derived).
 
 ### scenario.issues.store-disposition-stale — A disposition over a changed record is refused
 

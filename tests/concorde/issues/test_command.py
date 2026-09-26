@@ -120,6 +120,27 @@ class IssueCommandTests(unittest.TestCase):
         self.assertEqual(head, record["reports"][0]["source"]["head"])
         self.assertIsNone(record["reports"][0]["source"]["change_id"])
 
+    @verifies("scenario.issues.command-report-repeated")
+    def test_repeating_a_creation_is_not_an_idempotent_cli_retry(self):
+        path = self.report_file()
+        first_status, first = self.run_command("report", "--file", path)
+        second_status, second = self.run_command("report", "--file", path)
+        self.assertEqual((0, 0), (first_status, second_status))
+        self.assertNotEqual(first["receipt"]["issue_id"], second["receipt"]["issue_id"])
+        observations = []
+        for reply in (first, second):
+            record, revision = read_issue(self.root, reply["receipt"]["issue_id"])
+            self.assertEqual(reply["revision"], revision)
+            self.assertEqual("open", record["status"])
+            self.assertEqual(1, len(record["reports"]))
+            observations.append(record["reports"][0])
+        self.assertEqual(observations[0]["report"], observations[1]["report"])
+        self.assertNotEqual(
+            observations[0]["source"]["invocation_id"],
+            observations[1]["source"]["invocation_id"],
+        )
+        self.assertEqual(2, len(list_issues(self.root)))
+
     @verifies("scenario.issues.command-report-unknown-owner")
     def test_a_report_without_owner_is_filed_under_the_root_module(self):
         value = self.recorded(owner_target_id=None)

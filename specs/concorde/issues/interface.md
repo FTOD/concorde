@@ -125,6 +125,9 @@ from `invocation_id` and the report key.
 
 ## Record file
 
+The [lifecycle](module.md#lifecycle) explains the state transitions and their meaning to the main
+agent; this section fixes their representation and validity rules.
+
 A record lives at `.concorde/issues/<issue_id>.md` and is exactly: the line `# <issue_id>`, a blank
 line, a `json` fence holding the record serialized with two-space indentation, and the closing
 fence. Nothing else may appear in the file. A record is at most 16 MiB.
@@ -174,7 +177,12 @@ returning. A failed write is never reported as success. No operation deletes a r
 
 `python3 scripts/issues.py <action> ... [--root <path>]` works on the project at `--root` (default
 the current directory), which must contain `.concorde/config.json`. The command reads the registry
-that configuration names whenever an action needs the registered Modules.
+that configuration names whenever an action needs the registered Modules. The main-session
+workflow puts writes in a task worktree and passes `--task` on reports; the CLI itself does not
+require or look up that task. `--task` supplies provenance only and does not select a worktree.
+`--root`, or the current directory when omitted, selects the records that every action reads or
+writes. In the unified CLI, `python3 scripts/concorde.py issues` in a source checkout and
+`concorde issues` in an installed project route to this command.
 
 | Action | Effect and output |
 | --- | --- |
@@ -197,7 +205,9 @@ have exactly one root Module, which becomes the reporting Module. A file with `i
 `reopen` last printed for it.
 
 `close` and `reopen` read the Issue's current revision and dispose it at exactly that revision with
-actor `main-agent`. `--evidence` takes one or more items and may be repeated; the items must be
+actor `main-agent`. They take neither `--task` nor an expected-revision argument; their concurrency
+check protects the interval from their own read to publication, not the interval since the main
+agent's earlier `show`. `--evidence` takes one or more items and may be repeated; the items must be
 nonblank and distinct, and `--note` must be nonblank. `--duplicate-of` is required with
 `--reason duplicate` and refused with any other reason.
 

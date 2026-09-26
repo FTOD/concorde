@@ -804,6 +804,11 @@
           "kind": "document",
           "target": "document.concorde.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.tasks.module",
+          "reason": "branch and worktree lifetimes when explaining preservation and merging of Issue records"
         }
       ],
       "participates": []
@@ -861,7 +866,11 @@
           "target": "module.issues",
           "meaning": "#uses-issues",
           "relies_on": [
-            "concept.issues.issue"
+            "concept.issues.issue",
+            "concept.issues.status",
+            "concept.issues.revision",
+            "contract.issues.report",
+            "contract.issues.receipt"
           ]
         },
         {

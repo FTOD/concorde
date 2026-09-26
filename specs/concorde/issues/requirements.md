@@ -21,6 +21,15 @@ the report file.
 
 A report file with a provenance field is refused as malformed, because a report has no such field.
 
+### req.issues.main-agent-actor — The command attributes Issue writes to the main agent
+
+The bookkeeping command SHALL record `main-agent` as the source agent of each report and the actor
+of each disposition it writes.
+
+This is attribution by the command, not authentication or a restriction on the store's library
+callers. Workers and Operations do not record or dispose Issues automatically in this version;
+the main agent decides what to record after reading their results.
+
 ### req.issues.report-checked — A report names a registered owner and existing evidence
 
 The bookkeeping command SHALL refuse a report whose owner is not a registered Module, whose
@@ -71,6 +80,15 @@ they replace, and a mismatch fails with `stale_issue`.
 
 The Issue store SHALL perform every write into a worktree while holding that worktree's one
 exclusive Issue lock.
+
+### req.issues.status-derived — Status agrees with disposition history
+
+The Issue store SHALL accept a record only when its status is the result of applying its legal
+disposition sequence to the initial `open` state.
+
+An empty disposition history means `open`; `resolved`, `duplicate` and `not-actionable` close it,
+and `reopened` opens it again. These reasons are not additional statuses. Reports do not change
+status. See the [lifecycle](module.md#lifecycle) and [record rules](interface.md#record-file).
 
 ### req.issues.legal-transitions — Dispositions alternate
 
