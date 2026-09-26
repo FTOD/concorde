@@ -53,7 +53,10 @@ validator would refuse, and a page cannot show a provenance that disagrees with 
 Validation proves structure, review judges readability and form, and neither judges whether code
 keeps a promise.
 
-## Relationships
+### The children
+
+Spec tooling binds no files of its own; its children fulfil it. Three of them only read what Spec
+core computes:
 
 ```d2
 tooling: Spec tooling {
@@ -65,15 +68,7 @@ tooling: Spec tooling {
   review -> core
   views -> core
 }
-agents: Agents {
-  workers: Workers
-}
-operations: Operations
-tooling.review -> agents.workers
-tooling.review -> operations
 ```
-
-Spec tooling binds no files of its own; its children fulfil it.
 
 - <a id="contains-spec"></a>**Spec core** implements the Spec Protocol: loading, validation, the
   registry mirror, boundary sets, impact indexes, grants, initialization, typed values, file
@@ -88,3 +83,10 @@ Spec tooling binds no files of its own; its children fulfil it.
 - <a id="contains-views"></a>**Views** publishes the registered Specs as a Docusaurus site and
   scaffolds that site into other projects. Its pages derive from the registry only and are never
   written back into a Spec or offered to an agent as context.
+
+### Around it
+
+Spec core stays inside Spec tooling and uses no other Module, but Spec review reaches outside it,
+because judging a Spec needs a model: it is launched through Workers and returns its findings inside
+an Operation result.
+

@@ -50,14 +50,6 @@ run's output as task material. For example, `--modules module.issues --goal "let
 severity" --plan` has the worker answer with either a plan (`specify`, `implement`, `test`,
 `code_review`) or the Spec gaps that block it.
 
-```d2
-op: Understand Operation
-assessment: Assessment
-gap: Spec gap
-op -> assessment: produces
-assessment -> gap: reports
-```
-
 <a id="concept.understanding.assessment"></a>
 
 The Operation returns an [Operation result](../module.md#concept.operations.result) whose `output`
@@ -96,18 +88,6 @@ read, only the file names of their
 to write. Reading names but not contents is the point: the only promises the worker can report are
 ones the Spec states, so a thin Spec is a Spec gap, never inferred from code.
 
-How Understanding is built:
-
-```d2
-understanding: Understanding {
-  op: Understand Operation {
-    "src/concorde/understanding/"
-    "prompts/workers/understand.md"
-    "tests/concorde/understanding/"
-  }
-}
-```
-
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Compute and freeze the `understand` [grant](../../spec-tooling/spec/module.md#concept.spec.grant) | Workers, Spec core | Specs cannot load, or unknown Module (`failed`) |
@@ -134,17 +114,7 @@ The **Understand Operation** realization holds the host steps, worker instructio
 schema in `src/concorde/understanding/` (`operation.py` declares the `UNDERSTAND` provider) with
 prompt `prompts/workers/understand.md`, tested against a fake worker.
 
-## Relationships
-
-```d2
-understanding: Understanding
-operations: Operations
-workers: Workers
-spec: Spec core
-understanding -> operations
-understanding -> workers
-understanding -> spec
-```
+### Outside
 
 <a id="uses-operations"></a>
 

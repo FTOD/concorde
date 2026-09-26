@@ -125,7 +125,7 @@ child took, a directory staying one entry when no child took anything inside it.
 
 ### req.adoption.stub-honest — A scaffolded entry states what is unknown
 
-Every entry the scaffold creates SHALL state the survey's purpose and say in its Usage, Design and Relationships sections that the Module's behaviour and design are not yet specified.
+Every entry the scaffold creates SHALL state the survey's purpose and say in its Usage and Design sections that the Module's behaviour and design are not yet specified.
 
 ## Code to spec
 

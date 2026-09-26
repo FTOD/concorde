@@ -159,6 +159,36 @@
       "source": "realization.main-session.guidance",
       "verb": "authors",
       "target": "concept.main-session.guidance"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-run-view",
+      "verb": "draws the dialogs of",
+      "target": "realization.main-session.pi-model-picker"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-run-view",
+      "verb": "follows",
+      "target": "concept.task-session.round"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-run-view",
+      "verb": "reads",
+      "target": "concept.workers.progress-file"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-run-view",
+      "verb": "reads",
+      "target": "concept.operations.progress-file"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-model-picker",
+      "verb": "applies choices with",
+      "target": "concept.operations.configure-workers"
     }
   ],
   "extensions": {}

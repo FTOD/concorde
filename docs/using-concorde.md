@@ -16,20 +16,20 @@ That division of responsibility is also each agent's harness: from the Specs Con
 exactly what an AI task is given as context and may read and write, and runs headless Claude Code
 or pi workers inside that boundary.
 
-You work with three actors:
+**You, the developer**, decide the direction and answer the questions that have a major impact.
+Below you, the work passes down five levels. Agents sit at both ends, and programs run between
+them:
 
-- **You, the developer**, decide the direction and answer the questions that have a major impact.
-- **The main agent** is your own Claude Code or pi session in the project's primary checkout. It discusses
-  the project with you, splits agreed work into tasks, runs Concorde's Operations, reads their
-  results, keeps a decision log and merges what was delivered. It normally does not edit the
-  project itself.
-- **Workers** are headless `claude -p` or `pi -p` processes that one Operation starts for one bounded job,
-  such as implementing a change. Each works under a **grant** computed from the Specs: the paths it
-  may know by name, read and write. Everything else is denied.
+| Level              | Kind            | What it is                                                                                                                                                                                |
+| ------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Main session    | agent           | Your own Claude Code or pi session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                  |
+| 2. Task            | agent           | One task's branch and worktree, worked by the main agent itself or by a **task session** it starts when several tasks run at once.                                                        |
+| 3. Workflow        | program         | A procedure for tasks that follow a known path, such as `brownfield`; it orders the task's Operations and stops where you must decide.                                                    |
+| 4. Operation       | program         | One bounded job with one result. Its deterministic **Operation host** computes the grant, launches workers, runs your checks itself and writes a result you can trust.                    |
+| 5. Worker and Tool | agent / program | A **worker** is a headless `claude -p` or `pi -p` process for one bounded job, under a **grant** computed from the Specs; a **Tool** is a programmed action, such as running your checks. |
 
-Between the main agent and the workers sits the **Operation host**, the deterministic part of every
-Operation: it computes the grant, launches the worker, audits what it changed, runs your checks
-itself and writes a result you can trust.
+Calls only go down: a worker never touches Git, runs an Operation or starts an agent, and an
+Operation never starts another Operation. Results and errors come back up the same levels.
 
 ### Three kinds of documents
 

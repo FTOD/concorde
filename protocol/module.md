@@ -147,8 +147,11 @@ Each diagram answers one question and stands next to the prose that explains it.
 
 A diagram shows architecture, not an inventory. Leave realizations that only keep the repository
 running, such as project configuration, development tooling or test suites, to prose. A picture of
-boxes without edges says nothing a list does not; draw the edges that matter, or write the list. A
-Module with nothing structural to show needs no diagram, and none is drawn only to have one.
+boxes without edges says nothing a list does not; draw the edges that matter, or write the list.
+The same holds for a single realization shown with its files, which only repeats its binding, and
+for the Module with plain arrows to the few Modules it uses, which only repeats its `uses`: say
+these in prose. A Module with nothing structural to show needs no diagram, and none is drawn only to
+have one.
 
 A checked diagram may only assert declared relations: a labelled edge asserts a `relates`, so
 declare with a verb each relationship drawn that way, such as the service *saves* the record. A

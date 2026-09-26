@@ -106,7 +106,10 @@ The server is read-only by construction — no tool writes, regenerates the regi
 pending entries, or opens a network listener — and `validate` success is evidence about structure
 only.
 
-## Relationships
+### Around it
+
+The server sits inside Spec tooling, between the Main session that calls it and the Spec core it
+presents:
 
 ```d2
 tooling: Spec tooling {

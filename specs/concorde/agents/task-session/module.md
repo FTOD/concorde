@@ -121,6 +121,44 @@ Keeping its program and configuration the main agent's is what makes it the same
 configuration, such as a worker gets, would give it other tools and instructions than the main
 agent that would otherwise do the task.
 
+### Its place in the five levels
+
+A task session plays level 2 of Concorde's [five levels](../../module.md#the-five-levels), the task
+level, in place of the main agent. Only the main agent at level 1 calls this Module, with
+`concorde task session` from the primary worktree; the call arrives through Tasks, whose command
+line checks the task and the main session's program before handing it here. Task sessions then
+starts one agent session in the task worktree, and that session, not this Module, does the task's
+work: following its guidance, it changes Specs and code, starts workflows (level 3) and runs
+Operations (level 4) inside its task, and never reaches a worker except through an Operation. Its
+results go up to level 1 only, never to the developer: a Claude Code session reports to the main
+agent with SendMessage, and a pi session ends each round with a session report that this Module
+checks against the task record and records there, where the main session's run view finds it. What
+the session may not decide it escalates with `concorde task escalate --by task-session`, a link of
+level `task-session` on top of the failed runs' chains, for the main agent to decide or to pass on
+with its own link.
+
+How a pi task session travels over time, from the main agent's start to its answer:
+
+```d2 illustrative
+shape: sequence_diagram
+main: Main agent (level 1)
+tasks: Tasks
+starter: Session starter
+session: pi task session (level 2)
+main -> tasks: concorde task session <task>
+tasks -> starter: start, after Tasks' checks
+starter -> starter: write the session boundary
+starter -> session: round 1: guidance, goal, Modules, decision log
+session -> session: work the task: workflows, Operations, delivery
+session -> starter: concorde_report {style.stroke-dash: 3}
+starter -> tasks: check the report, record the outcome
+starter -> main: outcome, shown by the run view {style.stroke-dash: 3}
+main -> tasks: concorde task session <task> --answer
+tasks -> starter: next round on the same session file
+```
+
+### The session boundary
+
 The session boundary guards against mistakes, not a malicious session. In Claude Code it costs
 only generated settings (see the [Harness](../../harness/module.md#concept.harness.session-boundary)
 for what they hold). Nobody answers permission prompts in a background session, so it runs in
@@ -147,6 +185,8 @@ session starts, in Claude Code as in pi. Concorde's main-session extension, whic
 may load as a project resource, stays inactive when `CONCORDE_TASK_SESSION` is set, so a task
 session neither starts background runs nor watches the project's runs as a main session does.
 
+### Rounds instead of messages
+
 Rounds stand in for messages because pi sessions share no channel and a headless `pi -p` ends when
 its agent stops: the session reports once per round through a tool whose arguments follow a
 contract, and the main agent's answer starts the next round with `--session-id` on the same session
@@ -155,14 +195,13 @@ escalation the record does not hold makes the round `failed`. The supervisor is 
 command that started it, so closing the main session never ends a round, and a main session that
 starts again finds the running rounds from their progress files.
 
+### Inside
+
 ```d2
 tasksession: Task sessions {
   starter: Session starter {
     "session.py"
     "pi_session.py"
-    "tests/concorde/tasks/test_session.py"
-    "tests/concorde/tasks/test_pi_session.py"
-    "tests/concorde/tasks/fake_pi_session.py"
   }
   round: Session round
   report: Session report
@@ -177,22 +216,29 @@ The **session starter** holds the Claude Code start (`session.py`), which assemb
 writable paths and settings and starts `claude --bg`, and the pi task session's rounds and
 supervisor (`pi_session.py`), which assembles the pi boundary's policy, runs each round and records
 its outcome. The boundary files themselves, the task-session write hook and the pi boundary
-extension with its path decisions, are the [Harness](../../harness/module.md)'s. The tests run on
-real Git repositories with a fake `claude` and a fake `pi`; the pi path decisions also run under
-Node.
+extension with its path decisions, are the [Harness](../../harness/module.md)'s. The tests
+(`test_session.py`, `test_pi_session.py` and the fake pi session `fake_pi_session.py` under
+`tests/concorde/tasks/`) run on real Git repositories with a fake `claude` and a fake `pi`; the pi
+path decisions also run under Node.
 
-## Relationships
+### Around it
+
+A start touches one piece of each provider: the session starter reads the program the way Workers
+does, writes the Harness's boundary, prompts the session with the Main session's guidance and
+records in the Tasks record, against which each session report is checked.
 
 ```d2
-tasksession: Task sessions
-tasks: Tasks
-harness: Harness
-workers: Workers
-mainsession: Main session
-tasksession -> tasks
-tasksession -> harness
-tasksession -> workers
-tasksession -> mainsession
+starter: Session starter
+report: Session report
+guidance: Main session / Main-session guidance
+boundary: Harness / Session boundary
+backend: Workers / Worker backend
+record: Tasks / Task record
+starter -> guidance: prompts with
+starter -> boundary: writes
+starter -> backend: reads the program as
+starter -> record: records rounds in
+report -> record: is checked against
 ```
 
 <a id="uses-tasks"></a>
@@ -212,14 +258,17 @@ The **Harness** writes the [session boundary](../../harness/module.md#concept.ha
 the task-session write hook for Claude Code and the pi boundary extension with its path decisions,
 from the writable paths Task sessions assembles. Task sessions relies on it confining the session's
 file tools and shell to those paths and leaving reads and the network open; it never widens the
-paths it hands over.
+paths it hands over. The boundary is written before the session starts, and `--dry-run` writes it
+without starting anything, so no session runs without its boundary.
 
 <a id="uses-workers"></a>
 
 **Workers** tells how the main session's program is read from the environment
 ([worker backend](../workers/module.md#concept.workers.backend)) and where the sandbox-runtime
 package is installed, which a pi task session needs as a worker does. Task sessions reads the
-program the same way so that a task session and a worker started from the same main session agree.
+program the same way so that a task session and a worker started from the same main session agree;
+unlike a worker, a task session never takes a program from the worker model configuration, and a
+command from neither program is refused with `client_unknown`.
 
 <a id="uses-main-session"></a>
 
@@ -228,3 +277,7 @@ program the same way so that a task session and a worker started from the same m
 rendered task-session guidance for Claude Code or pi, which carries the same rules for working
 inside a task that the main agent follows. A missing rendered guidance refuses the start with
 `session_failed`.
+
+Two Modules call this one, both from level 1's side: the Main session's guidance and pi run view
+start, answer and follow task sessions, and Tasks dispatches `concorde task session` here after its
+own checks. Neither relies on anything but the recorded outcome of each start and round.

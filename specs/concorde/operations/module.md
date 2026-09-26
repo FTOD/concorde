@@ -2,19 +2,21 @@
 
 ## Purpose
 
-Operations is how the main agent gets bounded work done in a task. It holds the Operation
-catalog, the `concorde run` command and the Operation host, and delegates each Operation to the
-Module that provides it (see Relationships). Every Operation combines deterministic host control
-logic, Tool calls and zero or more AI workers to complete one job, and ends with one Operation
-result that keeps what the host established apart from what a worker claims. Operations never
-chooses the next Operation, runs one Operation from another, asks the developer anything or
-changes a Spec on its own initiative: the main agent or its Workflow orders the runs.
+Operations is how whoever works a task, the main agent inside it or a task session, gets bounded
+work done. It is the fourth of Concorde's five levels, a program between the sessions above it and
+the workers and Tools below it. It holds the Operation catalog, the `concorde run` command and the
+Operation host, and delegates each Operation to the Module that provides it (see
+[The providers](#the-providers)). Every Operation combines deterministic host control logic, Tool
+calls and zero or more AI workers to complete one job, and ends with one Operation result that
+keeps what the host established apart from what a worker claims. Operations never chooses the next
+Operation, runs one Operation from another, asks the developer anything or changes a Spec on its
+own initiative: the task level, directly or through a Workflow, orders the runs.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Operation | A named execution unit started by the main agent or its Workflow, in a task unless its catalog entry allows none, that combines host control logic, Tool calls and zero or more worker runs to complete one job and return exactly one Operation result. |
+| Operation | A named execution unit started from the task level, by the main agent, a task session or a Workflow, in a task unless its catalog entry allows none, that combines host control logic, Tool calls and zero or more worker runs to complete one job and return exactly one Operation result. |
 | Run without a task | A run of an Operation whose catalog entry makes the task optional, started without `--task` in the primary worktree: it works on the primary worktree, begins no task record, and changes no Spec or code. |
 | Worker role | A named worker an Operation launches, such as `spec_review`'s `reviewer` and `checker`; an Operation with a single worker has the role `worker`. |
 | configure_workers | The Operation that lists the models an installed agent program offers workers and changes the model choices of a worktree's worker model configuration, with or without a task. |
@@ -54,10 +56,11 @@ result without managing those rounds. `validate` and `delivery` use deterministi
 an AI worker; an Operation need not mix both kinds on every run.
 
 A Workflow orders these jobs, passes admitted outputs between them and handles decision points.
-It calls the same Operation interface as the main agent. Workers and Tools are peer execution
-capabilities below that interface: Workers manages AI runs; a Tool performs a specific action
-through programmed logic. A Tool call returns to the current host step and starts no new
-Operation. Workers may also call Tools within a worker run, such as Check execution after a round.
+It calls the same Operation interface as the main agent. Workers and Tools sit side by side below
+that interface, at the bottom of the [five levels](../module.md#the-five-levels): Workers manages
+AI runs; a Tool performs a specific action through programmed logic. A Tool call returns to the
+current host step and starts no new Operation. Workers may also call Tools within a worker run,
+such as Check execution after a round.
 
 <a id="concept.operations.operation"></a>
 
@@ -142,26 +145,6 @@ behaviour is in [the host](host.md#configure-workers). A plan is one answer
 `understand` gives, not a separate Operation; a project's first Spec, Issues and task commands are
 ordinary commands of their own Modules, not Operations.
 
-How the pieces fit together:
-
-```d2
-catalog: Operation catalog
-operation: Operation
-host: Operation host
-result: Operation result
-workers: Workers
-tasks: Tasks
-runner: Catalog and runner
-checks: Check execution
-catalog -> operation: lists
-host -> operation: runs
-host -> result: returns
-host -> workers: launches workers through
-host -> checks: runs checks through
-host -> tasks: records runs in
-runner -> host: implements
-```
-
 <a id="concept.operations.result"></a>
 
 Every run ends with one **Operation result**: the Operation, task, Modules, run and a summary, plus
@@ -212,7 +195,69 @@ freezes the grant, launches workers, audits what they changed, runs checks itsel
 outcome into a result whose facts it produced. A worker's answer is a proposal until the host has
 checked it, and the envelope keeps the two apart.
 
-How Operations is built:
+### Its place in the five levels
+
+Operations is level 4 of the [five levels](../module.md#the-five-levels), the lower of the two
+program levels. It is called from above only: by whoever works the task level, the main agent
+inside a task or a task session, with `concorde run`, or by a [workflow](../workflows/module.md)
+(level 3) that the task level started and that runs each of its steps as the same command. It
+calls only downward, into level 5: its host launches workers through Workers and runs checks
+through Check execution, a Tool. The Operation result goes back up to the caller, and when the run
+did not end `ok` its error chain goes with it, with the host's link on top of what level 5
+reported. Nothing below calls back up: a worker never runs an Operation, and a Tool call returns
+to the host step that made it.
+
+```d2
+main: Main session
+workflows: Workflows
+operations: Operations {
+  host: Operation host
+}
+workers: Workers
+checks: Check execution
+main -> workflows
+main -> operations
+workflows -> operations
+operations.host -> workers: launches workers through
+operations.host -> checks: runs checks through
+```
+
+The picture draws the callers whose Modules declare that they use Operations: the main session,
+which also plays the task level when it works a task itself, and Workflows. A task session works
+by the same method from inside its task. End-to-end testing's headless sessions also start
+Operations, to exercise them, but they are no level of a project's work. Level 5 is two Modules
+side by side, the agent half and the program half, and only the host reaches either: an Operation
+reaches a worker only through Workers, and Workers itself calls Check execution between a worker's
+rounds, so a failing check can drive a repair loop inside one Operation.
+
+<a id="uses-workers"></a>
+
+**Workers** is the agent half of level 5. A worker-backed Operation hands it the frozen grant,
+the brief and the worker role, and Workers performs the standard worker sequence — settings,
+launch, audit, resume rounds, run record — and returns the
+[worker result](../agents/workers/module.md#concept.workers.worker-result) with the evidence it
+gathered. The host relies on Workers launching the worker only under that grant, auditing every
+write against it and keeping the worker's claims apart from what it measured. The host keeps the
+worker result unchanged in the Operation result and decides what the outcome means for the
+Operation. A launch error, a timeout or an audit violation ends the run `failed`, with Workers'
+link as a cause of the host's own.
+
+<a id="uses-checks"></a>
+
+**Check execution** is the program half of level 5: the deterministic Tool that runs
+[configured checks](../checks/module.md#concept.checks.configured-check) read-only, for the resume
+rounds Workers drives and for deterministic providers such as Validation, returning each result's
+command, exit code and log as host evidence. The host relies on a check never changing the
+worktree it measures and on a result being refused as `stale_evidence` when its input changed
+during the run. It passes the logs' directory in the run directory, keeps each check result as the
+host's own evidence rather than a worker's claim, and ends the run `failed` when the check boundary
+cannot be established or a check still fails after the last resume round, with the check's error or
+log in the chain.
+
+### Inside
+
+The catalog lists the Operations; the host, which the Catalog and runner realization implements,
+runs one of them per process and returns its result:
 
 ```d2
 operations: Operations {
@@ -220,15 +265,20 @@ operations: Operations {
     "src/concorde/operations/"
     "tests/concorde/operations/"
   }
-  understanding: Understanding
-  specification: Specification
-  implementation: Implementation
-  codereview: Code review
-  validation: Validation
-  delivery: Delivery
-  adoption: Adoption
+  catalog: Operation catalog
+  operation: Operation
+  host: Operation host
+  result: Operation result
+  runner -> host: implements
+  catalog -> operation: lists
+  host -> operation: runs
+  host -> result: returns
 }
 ```
+
+The catalog names each Operation's provider, and the runner loads that provider's steps; a
+provider never loads the catalog. The host runs one Operation per process, launches its workers
+only through Workers, records the run through Tasks and returns exactly one Operation result.
 
 Each Operation's control flow is a step table in its provider's Spec, run as an ordered list of
 Python steps until one stops the run. A worker-backed Operation follows the standard worker
@@ -257,17 +307,17 @@ primary worktree is the project as merged. So a catalog entry may make the task 
 an Operation, and the host then refuses a writing worker in the run, whatever the provider asks.
 
 The grant always comes from the task worktree, never the primary, so a task that changes a Spec is
-bounded by the Spec as it sees it (a run without a task reads the primary worktree); results and run records still go to the primary's
-`.concorde/runs/`, so the main agent finds every run in one place and nothing the host writes for
-itself ends up in a task's diff. One task runs at most one Operation at a time — two hosts in one
-worktree would audit each other's writes as their own — so parallelism comes from running tasks
-side by side.
+bounded by the Spec as it sees it (a run without a task reads the primary worktree); results and
+run records still go to the primary's `.concorde/runs/`, so the main agent finds every run in one
+place and nothing the host writes for itself ends up in a task's diff. One task runs at most one
+Operation at a time — two hosts in one worktree would audit each other's writes as their own — so
+parallelism comes from running tasks side by side.
 
 The host writes a result in every case it can, including its own failures, and records the run in
-the [task record](../tasks/module.md#concept.tasks.task-record) at start and end, since the main
-agent is woken only by the process exit and every problem must travel up as an
+the [task record](../tasks/module.md#concept.tasks.task-record) at start and end, since the caller
+is woken only by the process exit and every problem must travel up as an
 [error chain](../vocabulary.md#concept.concorde.error-chain) with evidence. No provider calls
-another Operation: the main agent or its Workflow decides which Operation runs next. This leaves
+another Operation: the task level or its Workflow decides which Operation runs next. This leaves
 internal Tool calls and worker repair rounds within the current Operation. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
@@ -278,41 +328,24 @@ standard worker sequence (`provider.py`) and the step runner (`host.py`), tested
 providers and a fake worker. The `concorde` command itself belongs to
 [Distribution](../distribution/module.md), which hands `run` to this Module.
 
-## Relationships
+### The providers
 
-```d2
-operations: Operations {
-  understanding: Understanding
-  specification: Specification
-  implementation: Implementation
-  codereview: Code review
-  validation: Validation
-  delivery: Delivery
-  adoption: Adoption
-}
-spec: Spec core
-agents: Agents {
-  workers: Workers
-}
-checks: Check execution
-tasks: Tasks
-specreview: Spec review
-operations -> spec
-operations -> agents.workers
-operations -> checks
-operations -> tasks
-operations -> specreview
-```
-
-The catalog names each Operation's provider, and the runner loads that provider's steps; a
-provider never loads the catalog. The host runs one Operation per process, launches its workers
-only through Workers, records the run through Tasks and returns exactly one Operation result.
+Each Operation's behaviour lives with the Module that provides it: seven children of Operations and
+Spec review, which lives in Spec tooling. A provider supplies its steps, its worker roles and the
+contract of its output; the host runs those steps inside the standard sequence, checks the output
+against its contract and wraps it in the Operation result. A provider relies on the host freezing
+the grant, launching workers only through Workers and recording the run; the host relies on each
+provider's steps staying within its catalog entry. A step that raises ends the run `failed` with
+`host-error` evidence naming the exception and where it was raised, and an output its contract
+refuses ends it `failed` with `invalid-output` evidence, each with the host's link on top. Delivery
+reuses Validation's steps rather than judging readiness itself.
 
 <a id="contains-understanding"></a>
 
 **Understanding** provides `understand`: a worker reads the bound Modules' Specs and file names and
 returns an assessment, changing nothing; its output is advice to the main agent, never an
-instruction to the host.
+instruction to the host. It may run without a task, which is how the main agent answers a question
+before any change is agreed.
 
 <a id="contains-specification"></a>
 
@@ -322,19 +355,25 @@ Specs, so the main agent routes every Spec repair through it or does it itself.
 
 <a id="contains-implementation"></a>
 
-**Implementation** provides `implement` (a worker changes code, the host runs checks with resume
-rounds) and `test` (a read-only worker interprets the host's checks).
+**Implementation** provides `implement` and `test`. In `implement` a worker changes the bound
+Modules' code under a grant that makes only that code writable, and the host runs their checks with
+resume rounds until they pass or the rounds run out, so its result says whether the checks passed on
+the changed code. In `test` a read-only worker interprets the checks the host ran and returns a test
+report; the host's check results, not the worker's reading of them, are the evidence. Both need a
+task.
 
 <a id="contains-code-review"></a>
 
 **Code review** provides `code_review`: a worker judges the task's code change against the bound
-Modules' Specs and returns findings and a verdict, changing nothing.
+Modules' Specs and returns findings and a verdict, changing nothing. The host prepares the change to
+review from the task, or from `--base` when it runs without one, and keeps the verdict as the
+worker's claim; acting on a finding is the task level's decision.
 
 <a id="contains-validation"></a>
 
 **Validation** provides `validate`, the deterministic Operation that decides whether the task
-worktree is ready to deliver, binding that readiness to the inputs it examined. Delivery relies on
-it.
+worktree is ready to deliver, binding that readiness to the inputs it examined. It launches no
+worker. Delivery relies on it.
 
 <a id="contains-delivery"></a>
 
@@ -345,36 +384,34 @@ repository, committing the task worktree's changes once readiness is current.
 
 **Adoption** provides `survey`, `scaffold` and `code_to_spec`, the only Operations that describe
 existing code in Specs, for a project whose code came before them: a read-only survey proposes child
-Modules, the host scaffolds them, and `code-to-spec` workers describe each Module's code.
-
-<a id="uses-spec"></a>
-
-**Spec core** loads the task worktree's Specs, resolves the named Modules, and computes each
-worker's [grant](../spec-tooling/spec/module.md#concept.spec.grant) and
-[context identity](../spec-tooling/spec/module.md#concept.spec.context-identity). A Spec that
-cannot be loaded is refused rather than partially read, ending the run `failed`.
-
-<a id="uses-workers"></a>
-
-**Workers** performs the standard worker sequence — settings, launch, audit, resume rounds, run
-record — and returns the
-[worker result](../agents/workers/module.md#concept.workers.worker-result) with the evidence it
-gathered. A launch error, a timeout or an audit violation ends the run `failed`.
-
-<a id="uses-checks"></a>
-
-**Check execution** is the deterministic Tool that runs
-[configured checks](../checks/module.md#concept.checks.configured-check) read-only, for
-the resume rounds Workers drives and for deterministic providers such as Validation, returning each
-result's command, exit code and log as host evidence.
-
-<a id="uses-tasks"></a>
-
-**Tasks** resolves a task to its worktree and records each run, refusing an unknown, closed or busy
-task before any step; such a refusal becomes a `failed` result not recorded in the task.
+Modules, the host scaffolds them, and `code-to-spec` workers describe each Module's code. The
+[brownfield workflow](../workflows/module.md) usually runs them in that order.
 
 <a id="uses-spec-review"></a>
 
 **Spec review** provides `spec_review` from Spec tooling: reviewers read the bound Modules' Specs
 and return findings and a verdict, listed in the catalog like a contained provider but living in
-Spec tooling because it maintains Specs rather than changing a project.
+Spec tooling because it maintains Specs rather than changing a project. The host runs its
+`reviewer` and `checker` roles like any other provider's workers and relies on it changing nothing;
+its verdict stays the reviewers' claim.
+
+### What the host relies on
+
+Two Modules serve every run, whatever the provider: Spec core, which every level relies on, and
+Tasks, which keeps the task's workspace.
+
+<a id="uses-spec"></a>
+
+**Spec core** loads the task worktree's Specs, resolves the named Modules, and computes each
+worker's [grant](../spec-tooling/spec/module.md#concept.spec.grant) and
+[context identity](../spec-tooling/spec/module.md#concept.spec.context-identity). The host relies on
+it computing the same grant from the same Specs, and freezes that grant before any worker starts.
+A Spec that cannot be loaded is refused rather than partially read, ending the run `failed`.
+
+<a id="uses-tasks"></a>
+
+**Tasks** resolves a task to its worktree and records each run in the task record at start and end.
+The host relies on that record as the lock that keeps one Operation running per task, and on Tasks
+refusing an unknown, closed or busy task before any step; such a refusal becomes a `failed` result
+not recorded in the task, with the Tasks refusal as its cause. A run without a task uses none of
+this and is refused with `task_worktree_without_task` when started inside a task's worktree.

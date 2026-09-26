@@ -15,7 +15,8 @@ New here? Start with **[Using Concorde](using-concorde.md)**.
 ## From responsibility to harness
 
 1. **The Specs divide the responsibility.** Every Module states its purpose, its words, how it is
-   used, how it is designed, which Modules it relates to and which files realize it.
+   used, and how it is designed: how it is built, how it works with other Modules and which files
+   realize it.
 2. **The division derives the harness.** A task binds some Modules and has one of seven task types:
    `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`, and `code-to-spec`
    for describing code written before its Specs. From those alone
@@ -33,8 +34,8 @@ in step.
 
 ## What you get
 
-- **Architecture-aware Specs.** Module documents explain purpose, terminology, use, design and
-  relationships to a reader who does not know the code, and tests declare the scenarios they
+- **Architecture-aware Specs.** Module documents explain purpose, terminology, use and design,
+  inside a Module and between Modules, to a reader who does not know the code, and tests declare the scenarios they
   verify. You understand the project from them; an agent receives the same text as its context.
   This site is built from them.
 - **Just the context a task needs.** A worker sees what its Modules declare, one level deep, and

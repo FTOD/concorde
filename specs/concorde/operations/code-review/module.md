@@ -44,14 +44,6 @@ when the review judges the primary worktree since that commit), and `--focus` a 
 what may be reported. For example, `code_review --modules module.issues` gives the reviewer the
 Issues Spec, code and tests, the branch diff and the Issues checks.
 
-```d2
-op: Code review Operation
-review: Code review report
-finding: Code review finding
-op -> review: produces
-review -> finding: holds
-```
-
 <a id="concept.code-review.review"></a>
 
 The Operation returns an [Operation result](../module.md#concept.operations.result) whose `output`
@@ -112,35 +104,13 @@ decide — that every cited basis exists and which verdict follows — and other
 claims. See the [requirements](requirements.md) and [scenarios](scenarios.md) for the precise
 obligations.
 
-```d2
-codereview: Code review {
-  op: Code review Operation {
-    "src/concorde/code_review/"
-    "prompts/workers/review-code.md"
-    "tests/concorde/code_review/"
-  }
-}
-```
-
 <a id="realization.code-review.operation"></a>
 
 The **Code review Operation** realization holds the host steps, the `review-code` worker
 instructions, the result schema and its tests: the reviewer returns only findings and a summary;
 the host adds the base, paths, check results and verdict.
 
-## Relationships
-
-```d2
-codereview: Code review
-operations: Operations
-workers: Workers
-checks: Check execution
-spec: Spec core
-codereview -> operations
-codereview -> workers
-codereview -> checks
-codereview -> spec
-```
+### Outside
 
 - <a id="uses-operations"></a>**Operations** lists `code_review`, dispatches to this Module and
   provides the host runner and the [Operation result](../module.md#concept.operations.result)

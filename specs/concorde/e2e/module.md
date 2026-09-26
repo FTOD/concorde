@@ -104,17 +104,6 @@ The testing conditions stay here. A user's main session is interactive and its p
 so neither the wait ceiling nor the trust keying reaches the user-facing guidance; this Module
 handles both for tests, and changes nothing a user gets.
 
-How End-to-end testing is built:
-
-```d2
-e2e: End-to-end testing {
-  tool: End-to-end tool {
-    "scripts/e2e/e2e.py"
-    "scripts/e2e/common.py"
-  }
-}
-```
-
 <a id="realization.e2e.tool"></a>
 
 The **End-to-end tool** realization is `scripts/e2e/e2e.py`: preparing, trusting, running and
@@ -129,18 +118,29 @@ repository list, trust, the headless command, cloning a revision and grading, on
 repositories only, without the network or agents, verifying the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
-## Relationships
+### The children
+
+Three children carry parts of End-to-end testing. Each reaches a different part of Concorde: a
+headless session wakes on Operation runs, a case is set up through Distribution, and a dogfood
+scenario drives headless sessions against a develop install that Dogfooding describes. The parent
+itself runs the workflows a test project executes.
 
 ```d2
 e2e: End-to-end testing {
   sessions: Headless sessions
   cases: SWE-bench cases
   dogfood: Dogfood scenarios
+  dogfood -> sessions
 }
-workflows: Workflows
+operations: Operations
 distribution: Distribution
+dogfooding: Dogfooding
+workflows: Workflows
 e2e -> workflows
-e2e -> distribution
+e2e.sessions -> operations
+e2e.cases -> distribution
+e2e.dogfood -> distribution
+e2e.dogfood -> dogfooding
 ```
 
 <a id="contains-sessions"></a>
@@ -163,6 +163,10 @@ case's project is a test project prepared here at the case's base commit.
 develop install of a real project from it, runs a headless session with an ordinary request and
 evaluates whether the main agent reported the defect as Dogfooding requires without working around
 it or changing Concorde.
+
+### Around it
+
+End-to-end testing relies on two providers to set a test project up and run it.
 
 <a id="uses-workflows"></a>
 

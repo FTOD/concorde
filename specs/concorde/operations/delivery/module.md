@@ -51,14 +51,6 @@ the delivery in the [task record](../../tasks/module.md#concept.tasks.task-recor
 ([contract](contracts.md#contract.delivery.output)). The main agent then merges the branch with
 Git, unasked, and closes the task.
 
-```d2
-op: Delivery Operation
-commit: Delivery commit
-bundle: Evidence bundle
-op -> commit: creates
-commit -> bundle: carries
-```
-
 <a id="concept.delivery.delivery-commit"></a>
 
 A **delivery commit** has subject `concorde: deliver <task-id>`, the goal as body, and three
@@ -130,35 +122,12 @@ describes. Checks are not repeated after confirmations, since clearing a marker 
 and Validation revalidates the Spec structure when it applies them. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
-Delivery is built as one realization:
-
-```d2
-delivery: Delivery {
-  op: Delivery Operation {
-    "src/concorde/delivery/"
-    "tests/concorde/delivery/"
-  }
-}
-```
-
 <a id="realization.delivery.operation"></a>
 
 The **Delivery Operation** realization holds the steps and the evidence bundle writer, and their
 tests. The bundle is staged even where Git would ignore its path, so every commit carries it.
 
-## Relationships
-
-```d2
-delivery: Delivery
-tasks: Tasks
-validation: Validation
-operations: Operations
-workers: Workers
-delivery -> tasks
-delivery -> validation
-delivery -> operations
-delivery -> workers
-```
+### Outside
 
 - <a id="uses-tasks"></a>**Tasks** resolves the task to its worktree, branch and base commit, lists
   its runs and deliveries, and records the new delivery, moving the task to delivered. Delivery
