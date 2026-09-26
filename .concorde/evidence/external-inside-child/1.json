@@ -1,0 +1,34 @@
+{
+  "task": "external-inside-child",
+  "goal": "A vendored path inside a child's directory entry narrows that child's entries instead of failing the survey",
+  "modules": [
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "59175a4266689e9c112dd1635a932fd6d618bdb8",
+  "parent_commit": "d54b1416a42f05c50f0eaf60775f5c4ec153349a",
+  "readiness": {
+    "run_id": "r-20260926T052453-delivery-cbb0a098",
+    "input_digest": "sha256:a7e9d049bf93ff4daf9bfdb2dac4000eafd5aad319a2de25e8811859a6e39a30",
+    "modules": [
+      "module.adoption"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T052451-validate-4a6e36c2",
+      "operation": "validate",
+      "modules": [
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:4e9d9b318481a10b881b9d4c0bb193d126ebcd7bcdad99180ce220169459071a"
+    }
+  ],
+  "created_at": "2026-09-26T05:24:55Z"
+}
