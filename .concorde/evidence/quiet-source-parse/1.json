@@ -1,0 +1,164 @@
+{
+  "task": "quiet-source-parse",
+  "goal": "Parse project sources without printing their SyntaxWarnings",
+  "modules": [
+    "module.spec",
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "0239833a11a56cd251ddd046ff0aaab05432ea0f",
+  "parent_commit": "122cc856e612a3ed742e59a10cdc106c7d074140",
+  "readiness": {
+    "run_id": "r-20260926T091320-delivery-40d913f8",
+    "input_digest": "sha256:d1e7ad0935bfd8a0cc2607f26071c13a9c3f9382f1295356ead6ca1d98ce459b",
+    "modules": [
+      "module.adoption",
+      "module.spec"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:b1eb1dd29f406c571158342e2a5d04e82b65c7f1cd4203eca837d09ee7c1383e"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:0100d9cf1f30290706366e5c88f02dc9414925bf0a8b84d5874ba3d89f252734"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:75df9ccf209cb41540ec77256dbf84361f4988cd7197f94c8331217bb0dcb751"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:41d852819a93e5a2ea4923e9fb6cdb20bca39beeb8c2de10c335a1cec7c7096a"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:f0c1781029a3f829d765acfda33cb77eb7086188f0bd58b1f2d5b753e4c73640"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:17ae8410cbf8da3f052575b5c0b10e51c5a5cfe3ddb32a737fe8fc1199e6f57a"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:17ae8410cbf8da3f052575b5c0b10e51c5a5cfe3ddb32a737fe8fc1199e6f57a"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:c68b8a27b5a1b22fe8bdbc1a3c54daeec38df141bd26d05e4b8e6a1db5f1ca1e"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:06991298aeea674d57c49926f2b840951f53586a3d104fce44a263b79b4d6a14"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:3c2438d12e902b6b4cd01679b3227af9cecdbdc6668d68e7f49da7e22bb7c492"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:a37c9aed5943ddb28be3777daafd24bf3b59d14755c45f59a1c62c3f363bb5d3"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:5a24461df91a91fddf535662aa3b4c1eebb464aa26de61a66aed4b3e73e0a42a"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:b71fb83e2eb22b4e13d9ba8e99e00578cb9d156a4bb51dd7a88e3c33f7816827"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:ff2a3e531bed2fda1f67fae2a26c6dd87aa3bb65a1659d6f33cf20c0cf072c73"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:cb8a4e808aec8f60b382fe566d28cf01bfdcccfd96b980e68bf5462893c8abb3"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:d8a4e7e21403616f25089b5cd40b06741633bc1ed40f476abcdf0f5f405c0329"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:8a8dcc57220b94d2f5e982836a1163681eb69c818811e14ee808aaa710adc556"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:ca9c45b611698c7410cf57ee561033e0d434492fe33fac574569c1ad14132740"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:ca9c45b611698c7410cf57ee561033e0d434492fe33fac574569c1ad14132740"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:ca9c45b611698c7410cf57ee561033e0d434492fe33fac574569c1ad14132740"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:6a5f5365a3cf66a19f8d7f03a1f073187ef505e0715c21a411801797f44b9b38"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T090920-validate-07b2a3ea",
+      "operation": "validate",
+      "modules": [
+        "module.spec",
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:f68b2c4d406b373c511e581501f4df8862dd25ac999b12c95bd046abb5bc97b5"
+    }
+  ],
+  "created_at": "2026-09-26T09:17:22Z"
+}
