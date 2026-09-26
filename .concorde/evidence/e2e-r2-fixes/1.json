@@ -1,0 +1,54 @@
+{
+  "task": "e2e-r2-fixes",
+  "goal": "Fix what the Flask r2 run found: the workflow report accepts a proposed check's env and never ends in a bare traceback; Spec workers learn D2 keyword keys and step keywords; the test helper keeps PEP 8 spacing",
+  "modules": [
+    "module.workflows",
+    "module.harness.workers",
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "b19fa1083be5af0306f6406dcf39977ed0d51fe9",
+  "parent_commit": "8ad152bfd12e09cdc48a74f98a70a5cc9d10a72f",
+  "readiness": {
+    "run_id": "r-20260926T040413-delivery-04e9f368",
+    "input_digest": "sha256:d52c5e2d4e4bfc203c329c0860f335ab41768e17d797979880834b2d2bde45ac",
+    "modules": [
+      "module.adoption",
+      "module.harness.workers",
+      "module.spec",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:ec24661103eea0974c1242bd6a1d1098006a2422ca1b53dc6167ccda8627efd2"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:804288906c43ebc6b14c995d4c799685c6f54145be352ceac3e4b86c2d76dae7"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T040402-validate-906342c3",
+      "operation": "validate",
+      "modules": [
+        "module.workflows",
+        "module.harness.workers",
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:56d868ee4492554c169cf48d58e0d826b052c8a981d4cef9fb7ebe9f7043ab08"
+    }
+  ],
+  "created_at": "2026-09-26T04:04:24Z"
+}
