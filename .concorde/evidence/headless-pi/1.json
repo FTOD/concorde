@@ -1,0 +1,38 @@
+{
+  "task": "headless-pi",
+  "goal": "Headless sessions drive a pi main session too (pi -p --mode json --approve with a fixed session id, prompt on stdin, pi's headless note, woken the same way), and dogfood scenarios run with either client, their fault covering both worker backends",
+  "modules": [
+    "module.headless-sessions",
+    "module.dogfood-scenarios"
+  ],
+  "sequence": 1,
+  "base_commit": "a1b79f45b81f87674fe9cd67be57c841076cf1a3",
+  "parent_commit": "b8a785308f1e7182d180e313d18e636bea3173d7",
+  "readiness": {
+    "run_id": "r-20260926T172355-delivery-d625962c",
+    "input_digest": "sha256:ddcfc0a272df7e1439ee42aa7d398823af1e37b2284561ddf07bd2aed9014260",
+    "modules": [
+      "module.dogfood-scenarios",
+      "module.e2e",
+      "module.headless-sessions"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T172352-validate-fb7db5fb",
+      "operation": "validate",
+      "modules": [
+        "module.headless-sessions",
+        "module.dogfood-scenarios"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:f46cb9d53ce86e5e48d947a571dda55c6ada9382907030596dcbff507a56d358"
+    }
+  ],
+  "created_at": "2026-09-26T17:24:00Z"
+}
