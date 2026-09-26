@@ -259,7 +259,15 @@ def with_update_state(root: Path, result):
         state = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         state = {}
-    versions = f"from {state.get('from')} to {state.get('to')}"
+    commits = state.get("commits") or {}
+
+    def named(version, commit):
+        return f"{version} ({commit[:12]})" if commit else f"{version}"
+
+    versions = (
+        f"from {named(state.get('from'), commits.get('from'))} "
+        f"to {named(state.get('to'), commits.get('to'))}"
+    )
     if result.status == "success":
         path.unlink(missing_ok=True)
         return replace(
@@ -319,12 +327,18 @@ def update_main(words: list[str]) -> int:
             if not source
             else f"{installer} does not exist"
         )
+        from .install import refusal
+
         sys.stdout.write(
             json.dumps(
                 {
-                    "error": "update_source_missing",
-                    "message": f"{detail}; pass the checkout with --from",
-                }
+                    "error": refusal(
+                        "update_source_missing",
+                        f"{detail}; pass the checkout with --from",
+                        actor="concorde update",
+                    )
+                },
+                indent=2,
             )
             + "\n"
         )

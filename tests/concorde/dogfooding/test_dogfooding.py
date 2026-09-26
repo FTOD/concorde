@@ -127,6 +127,10 @@ class DevelopInstallTests(unittest.TestCase):
         self.assertEqual("develop", receipt["mode"])
         self.assertNotEqual(first["source_commit"], receipt["source_commit"])
         self.assertEqual(git(package, "rev-parse", "HEAD"), receipt["source_commit"])
+        self.assertEqual(
+            {"from": first["source_commit"], "to": receipt["source_commit"]},
+            report["update"]["commits"],
+        )
         self.assertIn(
             SECTION, (project / ".claude/skills/concorde/SKILL.md").read_text()
         )

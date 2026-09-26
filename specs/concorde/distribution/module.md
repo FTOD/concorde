@@ -84,7 +84,9 @@ which define their own JSON and exit codes.
 build and a project in which Concorde is still running — an Operation run whose host process
 lives, or a pi task-session round whose supervisor lives, each named in the refusal
 `concorde_busy` ([requirements](requirements.md#req.distribution.idle-install)), since replacing
-the framework copy under them would change their code halfway — then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy;
+the framework copy under them would change their code halfway; the progress file of an
+Operation's worker, which lies beside the Operation's and names the same host, is not a run of its
+own — then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy;
 it needs only the Python standard library, and leaves out `scripts/e2e/`, which only
 [End-to-end testing](../e2e/module.md) uses), Concorde's own Python environment, a venv at
 `.concorde/framework/python/` made from the installer's interpreter or `--python` (Python 3.11 or
@@ -125,7 +127,8 @@ Concorde's own environment's interpreter unless `--python` names another, and re
 install while Concorde runs in the project; binds the new Protocol copy in the
 configuration itself, the one write of the project configuration an installer makes; and marks
 the project **Concorde unvalidated** by writing `.concorde/update.json`, which Git ignores, with
-the versions and Protocol bindings before and after. While that state is there, `concorde
+the versions, installed commits and Protocol bindings before and after; the findings below name
+the commits too, since between two commits of a Concorde repository the version seldom changes. While that state is there, `concorde
 validate` in the primary worktree reports `CONCORDE-UPDATE-001` as an error, which also stops a
 `task merge`; the first validation that passes removes it and says so (`CONCORDE-UPDATE-002`).
 Only an update sets the state, so a project that stops validating because of its own changes is
@@ -148,6 +151,14 @@ anything else. Both skills carry the same frontmatter, whose values are bare nam
 double-quoted strings, because pi parses it as strict YAML and drops a skill it cannot parse. pi
 loads the project's extension and skill only once the developer trusts the project, which its
 interactive start asks for and a headless `pi -p` or RPC run grants with `--approve`.
+
+Every refusal of the installer and of `concorde update` prints `{"error": <link>}` and exits with
+status 1: one link of the Framework's [error chain](../vocabulary.md#concept.concorde.error-chain),
+whose actor is `Installer (install-concorde)` or `concorde update`, whose code is the refusal's,
+whose detail names what is wrong and where, and whose reason is `input` when only a different
+project, Concorde checkout or argument corrects it and `environment` otherwise
+([requirements](requirements.md#req.distribution.installer-error-links)). The caller can therefore
+forward it as the cause of its own link like any other refusal.
 
 It never writes Specs, the registry or the project configuration
 ([requirements](requirements.md#req.distribution.installer-no-specs)). Afterwards,

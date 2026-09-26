@@ -21,7 +21,9 @@ from concorde.distribution.build import (
     verify_fresh,
     write_build,
 )
-from concorde.distribution.install import InstallError, install, update
+from concorde.distribution.install import InstallError, install, refusal, update
+from concorde.errors import ERROR_SCHEMA
+from concorde.spec.schema import validate
 from concorde.distribution.tools import platform_key
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.spec.repository_base import SpecError
@@ -435,10 +437,15 @@ class InstallTests(unittest.TestCase):
                 }
             )
         )
-        # A finished run and a run whose host is gone do not count.
+        # A finished run, a run whose host is gone and the progress file of the running
+        # Operation's own worker do not count as runs of their own.
         for name, state in (
-            ("r-0", {"phase": "finished", "host_pid": live.pid}),
-            ("r-dead", {"phase": "running", "host_pid": 999999999}),
+            ("r-0", {"kind": "operation", "phase": "finished", "host_pid": live.pid}),
+            (
+                "r-dead",
+                {"kind": "operation", "phase": "running", "host_pid": 999999999},
+            ),
+            ("w-1", {"phase": "worker", "host_pid": live.pid, "run_id": "w-1"}),
         ):
             (project / f".concorde/runs/{name}").mkdir()
             (project / f".concorde/runs/{name}/status.json").write_text(
@@ -462,6 +469,8 @@ class InstallTests(unittest.TestCase):
                 self.assertIn(fragment, message)
             self.assertNotIn("r-0", message)
             self.assertNotIn("r-dead", message)
+            self.assertNotIn("w-1", message)
+            self.assertEqual(1, message.count("Operation run"))
             self.assertEqual(receipt, (project / ".concorde/install.json").read_bytes())
             self.assertFalse((project / ".concorde/update.json").exists())
         live.kill()
@@ -749,6 +758,47 @@ class InstallTests(unittest.TestCase):
                 install(project, package, d2=False, pi=True)
         self.assertEqual("npm_missing", raised.exception.code)
         self.assertFalse((project / ".concorde/framework").exists())
+
+    @verifies("scenario.distribution.install-refusal-link")
+    def test_installer_and_update_refuse_with_an_error_link(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        cases = (
+            (
+                [sys.executable, str(package / "scripts/install-concorde.py")]
+                + [str(package.parent / "absent")],
+                "invalid_project",
+                "input",
+                "Installer (install-concorde)",
+            ),
+            (
+                [sys.executable, str(package / "scripts/concorde.py"), "update"]
+                + ["--project-root", str(project)],
+                "update_source_missing",
+                "input",
+                "concorde update",
+            ),
+        )
+        for argv, code, reason, actor in cases:
+            with self.subTest(code=code):
+                result = subprocess.run(argv, capture_output=True, text=True)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                error = json.loads(result.stdout)["error"]
+                validate(error, ERROR_SCHEMA)
+                self.assertEqual(
+                    ("component", actor, code, reason),
+                    (
+                        error["level"],
+                        error["actor"],
+                        error["code"],
+                        error["unhandled"]["reason"],
+                    ),
+                )
+                self.assertTrue(error["detail"])
+        self.assertEqual(
+            "environment", refusal("concorde_busy", "busy")["unhandled"]["reason"]
+        )
 
     def test_install_refuses_stale_guidance(self):
         package = package_copy(self)
