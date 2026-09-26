@@ -670,6 +670,22 @@ class HostTests(unittest.TestCase):
         self.assertEqual("failed", envelope["status"])
         self.assertIn("cancelled", {item["kind"] for item in envelope["host_evidence"]})
         self.assertEqual(envelope, self.saved(envelope))
+        # The result names the worker run it started, and that run ended too.
+        [worker] = envelope["worker_runs"]
+        self.assertIn(worker, envelope["error"]["detail"])
+        [named] = [
+            item
+            for item in envelope["error"]["evidence"]
+            if item["kind"] == "worker-run"
+        ]
+        self.assertTrue(named["ref"].endswith(f"{worker}/record.json"))
+        directory = Path(named["ref"]).parent
+        progress = json.loads((directory / "status.json").read_text())
+        self.assertEqual(
+            ("finished", "failed"), (progress["phase"], progress["status"])
+        )
+        record = json.loads((directory / "record.json").read_text())
+        self.assertEqual("interrupted", record["error"]["code"])
         child = int(pid_file.read_text())
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline and Path(f"/proc/{child}").exists():

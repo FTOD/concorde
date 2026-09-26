@@ -55,6 +55,9 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
   traceback in the run directory.
 - On `SIGINT` or `SIGTERM` the host stops its running step, ends every worker process it started
   through Workers and finishes with a `failed` result with `cancelled` evidence naming the signal.
+  Its `cancelled` link names every worker run it started, with evidence of kind `worker-run`
+  pointing at each run's record and progress file, and `worker_runs` lists them: the host learns
+  each run's identity when the run starts, not when it returns.
 - Steps 5 and 6 run whatever happened in step 4. If step 6 cannot write the task record, the result
   is still written and printed, with `record` evidence naming the failure.
 - A detached host that has not written its progress file within the announcement wait is killed,

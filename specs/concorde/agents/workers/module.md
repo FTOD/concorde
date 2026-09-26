@@ -86,7 +86,11 @@ fails, up to three rounds by default, then performs proposed deletions and write
 
 Throughout, the host keeps the run's **progress file** `status.json` current: the phase, the round
 and the worker's latest tool call. The main session's run view reads it; the run record, not the
-progress file, is the run's evidence.
+progress file, is the run's evidence. Every run ends both, however it ends: a run interrupted from
+outside, such as by the cancellation of the Operation that launched it, is recorded as `failed`
+with `interrupted` and its progress file as finished before the interruption travels on, so no
+reader sees a worker that runs forever. The launching Operation learns the run's identity as soon
+as the run exists, so it can name the run even when it is interrupted before the run returns.
 
 ### Two backends from one grant
 

@@ -95,6 +95,9 @@ class WorkerRequest:
     # resume prompt naming what to repair, or None. A worker is resumed with it while rounds
     # remain; once none remain the round's result stands and the caller judges it.
     after_round: Callable[[], str | None] | None = None
+    # Told the run identity as soon as the run exists, so that a caller interrupted while the
+    # worker runs can still name it.
+    started: Callable[[str], None] | None = None
     # The project's own interpreter, which the worker finds first on its PATH.
     project_python: str | None = None
 
@@ -349,6 +352,8 @@ def run_worker(request: WorkerRequest) -> dict:
 
     worktree = Path(os.path.realpath(request.worktree))
     run_id, paths = create_run(worktree)
+    if request.started is not None:
+        request.started(run_id)
     actor = f"Workers run {run_id} ({request.task_type} worker)"
     backend = BACKENDS[request.backend]() if request.backend in BACKENDS else None
     progress = Progress(
@@ -424,306 +429,328 @@ def run_worker(request: WorkerRequest) -> dict:
             ),
         )
 
-    if backend is None:
-        return fail(
-            "unknown_backend",
-            f"the worker request names the backend {request.backend!r}; Workers knows "
-            + ", ".join(sorted(BACKENDS)),
-            "input",
-            "the backend is the main session's agent program, which the Operation host "
-            "names and Workers does not choose",
-        )
-    if (
-        request.task_type not in TOOL_SETS
-        or not isinstance(request.grant, dict)
-        or not request.grant.get("context_identity")
-        or not isinstance(request.grant.get("entries"), list)
-    ):
-        missing = [
-            name
-            for name, present in (
-                ("a known task type", request.task_type in TOOL_SETS),
-                ("a grant object", isinstance(request.grant, dict)),
-                (
-                    "a context identity",
-                    isinstance(request.grant, dict)
-                    and bool(request.grant.get("context_identity")),
-                ),
-                (
-                    "grant entries",
-                    isinstance(request.grant, dict)
-                    and isinstance(request.grant.get("entries"), list),
-                ),
-            )
-            if not present
-        ]
-        return fail(
-            "grant_unavailable",
-            f"the worker request for task type {request.task_type!r} lacks "
-            + ", ".join(missing),
-            "input",
-            "Workers launches only with a complete frozen grant, which its caller computes",
-        )
-    grant_file = paths.control / "grant.json"
-    grant_file.write_text(json.dumps(request.grant, indent=2, sort_keys=True))
-    record["grant_digest"] = _digest(grant_file)
-    rw = GrantView(request.grant["entries"]).paths("rw")
-    schema = result_schema(request.output_schema)
-    schema_text = json.dumps(schema, separators=(",", ":"))
-    (paths.control / "result.schema.json").write_text(schema_text)
-    try:
-        configuration = backend.prepare(request, worktree, paths, schema)
-    except BackendRefusal as refusal:
-        return fail(refusal.code, refusal.detail, refusal.reason, refusal.explanation)
-    brief_file = paths.control / "brief.md"
-    brief_file.write_text(brief(request, worktree))
-    record.update(
-        settings_digest=_digest(configuration), brief_digest=_digest(brief_file)
-    )
-    try:
-        record["pending_created"] = _precreate(worktree, request.grant)
-    except OSError as error:
-        return fail(
-            "pending_not_created",
-            f"a pending file of the grant could not be pre-created in {worktree}: "
-            f"{type(error).__name__}: {error}",
-            "environment",
-            "Workers cannot create files the file system refuses",
-        )
-    try:
-        before = snapshot(worktree)
-    except (OSError, subprocess.CalledProcessError) as error:
-        from ..errors import exception_detail
-
-        return fail(
-            "snapshot_failed",
-            f"the task worktree {worktree} cannot be snapshotted before the launch: "
-            + exception_detail(error),
-            "environment",
-            "the audit needs a snapshot from read-only Git, which failed",
-        )
-
-    session: str | None = None
-    attempts: list[str] = []
-    environment = backend.environment(request, paths)
-    prompt, kind = brief_file.read_text(), "initial"
-    for number in range(1, request.rounds + 2):
-        round_record: dict = {"round": number, "prompt": kind}
-        record["rounds"].append(round_record)
-        command = backend.command(request, paths, schema_text, session)
-        stream = backend.stream()
-
-        def on_line(line: str, stream=stream) -> None:
-            for tool, arguments in stream.feed(line):
-                progress.action(tool, arguments)
-
-        progress.phase("worker", round=number)
-        outcome = _launch(request, paths, command, environment, prompt, on_line)
-        record["stderr_tail"] = outcome["stderr"][-TAIL:].decode("utf-8", "replace")
-        round_record.update(exit=outcome.get("exit"), duration=outcome.get("duration"))
-        if outcome.get("error"):
+    def attempt() -> dict:
+        if backend is None:
             return fail(
-                outcome["error"],
-                f"round {number}: the command {command[0]} could not be started: "
-                f"{outcome.get('detail', '')}",
-                "environment",
-                backend.missing_command,
-                attempts=attempts,
+                "unknown_backend",
+                f"the worker request names the backend {request.backend!r}; Workers knows "
+                + ", ".join(sorted(BACKENDS)),
+                "input",
+                "the backend is the main session's agent program, which the Operation host "
+                "names and Workers does not choose",
             )
-        concluded = stream.conclude(outcome)
-        if concluded.session:
-            session = concluded.session
-        round_record["session"] = session
-        round_record.update(concluded.info)
-        record["transcript"] = backend.transcript(paths, session)
-        progress.phase("audit")
-        verdict = audit(worktree, before, rw)
-        round_record["audit"] = verdict.record()
-        # A write outside the grant is reported whatever else went wrong in the round.
-        outside = (
-            ""
-            if verdict.clean
-            else f"; the worker also changed {len(verdict.violations)} path(s) outside "
-            f"the grant's writable paths: {', '.join(verdict.violations)}"
-        )
-        if outcome["timed_out"]:
-            return fail(
-                "worker_timeout",
-                f"round {number} did not finish within {request.timeout}s; the process "
-                f"group was killed{outside}",
-                "exhausted",
-                f"Workers stops every round at the configured timeout ({request.timeout}s, "
-                "workers.timeout_seconds) and does not extend it",
-                attempts=attempts,
-            )
-        failure = concluded.failure
-        if failure is not None:
-            exhausted = concluded.exhausted
-            return fail(
-                "worker_limit_reached" if exhausted else backend.failure_code,
-                f"round {number}: the {backend.process} process ended with an error "
-                f"({failure['code']}) before a structured result{outside}",
-                "exhausted" if exhausted else "environment",
-                (
-                    f"Workers does not raise the limits it was given (max_turns "
-                    f"{request.max_turns}, max_budget_usd {request.max_budget_usd})"
-                    if exhausted
-                    else f"Workers does not retry a failed {backend.process} process"
-                ),
-                attempts=attempts,
-                causes=[failure],
-            )
-        result = concluded.result
-        invalid = None
-        try:
-            if result is None:
-                text = concluded.final_text
-                raise ContractError(
-                    "the worker ended without a structured result"
-                    + (f"; its final text: {text[-2000:]}" if text else "")
+        if (
+            request.task_type not in TOOL_SETS
+            or not isinstance(request.grant, dict)
+            or not request.grant.get("context_identity")
+            or not isinstance(request.grant.get("entries"), list)
+        ):
+            missing = [
+                name
+                for name, present in (
+                    ("a known task type", request.task_type in TOOL_SETS),
+                    ("a grant object", isinstance(request.grant, dict)),
+                    (
+                        "a context identity",
+                        isinstance(request.grant, dict)
+                        and bool(request.grant.get("context_identity")),
+                    ),
+                    (
+                        "grant entries",
+                        isinstance(request.grant, dict)
+                        and isinstance(request.grant.get("entries"), list),
+                    ),
                 )
-            validate(result, schema)
-            invalid = _consistency(result)
-        except ContractError as error:
-            invalid = str(error)
-        if invalid is None:
-            record["worker_result"] = result
-        if not verdict.clean:
+                if not present
+            ]
             return fail(
-                "audit_violation",
-                f"round {number}: the worker changed {len(verdict.violations)} path(s) "
-                f"outside the grant's writable paths: {', '.join(verdict.violations)}; "
-                + (
-                    f"its result was invalid: {invalid}"
-                    if invalid
-                    else f"the worker itself reported status {result['status']}"
-                ),
-                "permission",
-                "Workers never accepts a write outside the grant and never widens it",
-                evidence=[
-                    evidence("audit", str(number), f"violation: {path}")
-                    for path in verdict.violations
-                ],
-                attempts=attempts,
-                causes=[None if invalid else worker_link(record, result)],
+                "grant_unavailable",
+                f"the worker request for task type {request.task_type!r} lacks "
+                + ", ".join(missing),
+                "input",
+                "Workers launches only with a complete frozen grant, which its caller computes",
             )
-        if invalid:
+        grant_file = paths.control / "grant.json"
+        grant_file.write_text(json.dumps(request.grant, indent=2, sort_keys=True))
+        record["grant_digest"] = _digest(grant_file)
+        rw = GrantView(request.grant["entries"]).paths("rw")
+        schema = result_schema(request.output_schema)
+        schema_text = json.dumps(schema, separators=(",", ":"))
+        (paths.control / "result.schema.json").write_text(schema_text)
+        try:
+            configuration = backend.prepare(request, worktree, paths, schema)
+        except BackendRefusal as refusal:
             return fail(
-                "worker_result_invalid",
-                f"round {number}: the worker's result does not satisfy its result "
-                f"schema: {invalid}",
-                "capability",
-                "Workers cannot repair a worker's answer and does not relaunch a worker for "
-                "an invalid one",
-                evidence=[
-                    evidence(
-                        "result-schema",
-                        (paths.control / "result.schema.json").as_posix(),
-                        "",
-                    )
-                ],
-                attempts=attempts,
+                refusal.code, refusal.detail, refusal.reason, refusal.explanation
             )
-        if result["status"] != "ok":
-            _finalize(worktree, record, result, clean=True)
-            cause = worker_link(record, result)
-            return finish(
-                result["status"],
-                link(
-                    "workers",
-                    actor,
-                    f"worker_{result['status']}",
-                    f"the {request.task_type} worker ended {result['status']} in round "
-                    f"{number} with {cause['code']}: {cause['detail']}",
-                    reason="capability",
-                    explanation="Workers resumes a worker only to repair failing configured "
-                    "checks or what its caller's validation reports; it returns every other "
-                    "blocker unchanged",
-                    evidence=[
-                        evidence("run-record", (paths.root / "record.json").as_posix()),
-                    ]
-                    + (
-                        [evidence("transcript", record["transcript"])]
-                        if record["transcript"]
-                        else []
+        brief_file = paths.control / "brief.md"
+        brief_file.write_text(brief(request, worktree))
+        record.update(
+            settings_digest=_digest(configuration), brief_digest=_digest(brief_file)
+        )
+        try:
+            record["pending_created"] = _precreate(worktree, request.grant)
+        except OSError as error:
+            return fail(
+                "pending_not_created",
+                f"a pending file of the grant could not be pre-created in {worktree}: "
+                f"{type(error).__name__}: {error}",
+                "environment",
+                "Workers cannot create files the file system refuses",
+            )
+        try:
+            before = snapshot(worktree)
+        except (OSError, subprocess.CalledProcessError) as error:
+            from ..errors import exception_detail
+
+            return fail(
+                "snapshot_failed",
+                f"the task worktree {worktree} cannot be snapshotted before the launch: "
+                + exception_detail(error),
+                "environment",
+                "the audit needs a snapshot from read-only Git, which failed",
+            )
+
+        session: str | None = None
+        attempts: list[str] = []
+        environment = backend.environment(request, paths)
+        prompt, kind = brief_file.read_text(), "initial"
+        for number in range(1, request.rounds + 2):
+            round_record: dict = {"round": number, "prompt": kind}
+            record["rounds"].append(round_record)
+            command = backend.command(request, paths, schema_text, session)
+            stream = backend.stream()
+
+            def on_line(line: str, stream=stream) -> None:
+                for tool, arguments in stream.feed(line):
+                    progress.action(tool, arguments)
+
+            progress.phase("worker", round=number)
+            outcome = _launch(request, paths, command, environment, prompt, on_line)
+            record["stderr_tail"] = outcome["stderr"][-TAIL:].decode("utf-8", "replace")
+            round_record.update(
+                exit=outcome.get("exit"), duration=outcome.get("duration")
+            )
+            if outcome.get("error"):
+                return fail(
+                    outcome["error"],
+                    f"round {number}: the command {command[0]} could not be started: "
+                    f"{outcome.get('detail', '')}",
+                    "environment",
+                    backend.missing_command,
+                    attempts=attempts,
+                )
+            concluded = stream.conclude(outcome)
+            if concluded.session:
+                session = concluded.session
+            round_record["session"] = session
+            round_record.update(concluded.info)
+            record["transcript"] = backend.transcript(paths, session)
+            progress.phase("audit")
+            verdict = audit(worktree, before, rw)
+            round_record["audit"] = verdict.record()
+            # A write outside the grant is reported whatever else went wrong in the round.
+            outside = (
+                ""
+                if verdict.clean
+                else f"; the worker also changed {len(verdict.violations)} path(s) outside "
+                f"the grant's writable paths: {', '.join(verdict.violations)}"
+            )
+            if outcome["timed_out"]:
+                return fail(
+                    "worker_timeout",
+                    f"round {number} did not finish within {request.timeout}s; the process "
+                    f"group was killed{outside}",
+                    "exhausted",
+                    f"Workers stops every round at the configured timeout ({request.timeout}s, "
+                    "workers.timeout_seconds) and does not extend it",
+                    attempts=attempts,
+                )
+            failure = concluded.failure
+            if failure is not None:
+                exhausted = concluded.exhausted
+                return fail(
+                    "worker_limit_reached" if exhausted else backend.failure_code,
+                    f"round {number}: the {backend.process} process ended with an error "
+                    f"({failure['code']}) before a structured result{outside}",
+                    "exhausted" if exhausted else "environment",
+                    (
+                        f"Workers does not raise the limits it was given (max_turns "
+                        f"{request.max_turns}, max_budget_usd {request.max_budget_usd})"
+                        if exhausted
+                        else f"Workers does not retry a failed {backend.process} process"
                     ),
                     attempts=attempts,
-                    causes=[cause],
-                ),
-            )
-        if request.check_modules is None:
-            repair = _after_round(request, number, round_record, attempts)
-            if repair is None:
-                _finalize(worktree, record, result, clean=True)
-                return finish("ok")
-            prompt, kind = repair, "validation_failures"
-            continue
-        progress.phase("checks")
-        try:
-            from .checks import run_checks
-
-            checks = run_checks(
-                worktree,
-                modules=request.check_modules,
-                log_directory=paths.checks / str(number),
-            )
-        except (SpecError, OSError) as error:
-            code = getattr(error, "code", None) or "checks_unavailable"
-            return fail(
-                "checks_unavailable",
-                f"round {number}: the configured checks of "
-                f"{', '.join(request.check_modules)} could not run ({code}): {error}",
-                "environment",
-                "Workers runs the checks through Check execution and cannot repair its "
-                "configuration or sandbox",
-                attempts=attempts,
-                causes=[
-                    link(
-                        "component",
-                        "Check execution",
-                        code,
-                        str(error),
-                        reason="environment",
-                        explanation="the check could not be run as configured",
+                    causes=[failure],
+                )
+            result = concluded.result
+            invalid = None
+            try:
+                if result is None:
+                    text = concluded.final_text
+                    raise ContractError(
+                        "the worker ended without a structured result"
+                        + (f"; its final text: {text[-2000:]}" if text else "")
                     )
-                ],
-            )
-        round_record["checks"] = checks
-        failures = [item for item in checks if item["status"] != "passed"]
-        if not failures:
-            repair = _after_round(request, number, round_record, attempts)
-            if repair is None:
+                validate(result, schema)
+                invalid = _consistency(result)
+            except ContractError as error:
+                invalid = str(error)
+            if invalid is None:
+                record["worker_result"] = result
+            if not verdict.clean:
+                return fail(
+                    "audit_violation",
+                    f"round {number}: the worker changed {len(verdict.violations)} path(s) "
+                    f"outside the grant's writable paths: {', '.join(verdict.violations)}; "
+                    + (
+                        f"its result was invalid: {invalid}"
+                        if invalid
+                        else f"the worker itself reported status {result['status']}"
+                    ),
+                    "permission",
+                    "Workers never accepts a write outside the grant and never widens it",
+                    evidence=[
+                        evidence("audit", str(number), f"violation: {path}")
+                        for path in verdict.violations
+                    ],
+                    attempts=attempts,
+                    causes=[None if invalid else worker_link(record, result)],
+                )
+            if invalid:
+                return fail(
+                    "worker_result_invalid",
+                    f"round {number}: the worker's result does not satisfy its result "
+                    f"schema: {invalid}",
+                    "capability",
+                    "Workers cannot repair a worker's answer and does not relaunch a worker for "
+                    "an invalid one",
+                    evidence=[
+                        evidence(
+                            "result-schema",
+                            (paths.control / "result.schema.json").as_posix(),
+                            "",
+                        )
+                    ],
+                    attempts=attempts,
+                )
+            if result["status"] != "ok":
                 _finalize(worktree, record, result, clean=True)
-                return finish("ok")
-            prompt, kind = repair, "validation_failures"
-            continue
-        attempts.append(
-            f"round {number}: the worker ended ok; failing: "
-            + ", ".join(
-                f"{item['check_id']} ({item['status']}, exit {item['exit_code']})"
-                for item in failures
+                cause = worker_link(record, result)
+                return finish(
+                    result["status"],
+                    link(
+                        "workers",
+                        actor,
+                        f"worker_{result['status']}",
+                        f"the {request.task_type} worker ended {result['status']} in round "
+                        f"{number} with {cause['code']}: {cause['detail']}",
+                        reason="capability",
+                        explanation="Workers resumes a worker only to repair failing configured "
+                        "checks or what its caller's validation reports; it returns every other "
+                        "blocker unchanged",
+                        evidence=[
+                            evidence(
+                                "run-record", (paths.root / "record.json").as_posix()
+                            ),
+                        ]
+                        + (
+                            [evidence("transcript", record["transcript"])]
+                            if record["transcript"]
+                            else []
+                        ),
+                        attempts=attempts,
+                        causes=[cause],
+                    ),
+                )
+            if request.check_modules is None:
+                repair = _after_round(request, number, round_record, attempts)
+                if repair is None:
+                    _finalize(worktree, record, result, clean=True)
+                    return finish("ok")
+                prompt, kind = repair, "validation_failures"
+                continue
+            progress.phase("checks")
+            try:
+                from .checks import run_checks
+
+                checks = run_checks(
+                    worktree,
+                    modules=request.check_modules,
+                    log_directory=paths.checks / str(number),
+                )
+            except (SpecError, OSError) as error:
+                code = getattr(error, "code", None) or "checks_unavailable"
+                return fail(
+                    "checks_unavailable",
+                    f"round {number}: the configured checks of "
+                    f"{', '.join(request.check_modules)} could not run ({code}): {error}",
+                    "environment",
+                    "Workers runs the checks through Check execution and cannot repair its "
+                    "configuration or sandbox",
+                    attempts=attempts,
+                    causes=[
+                        link(
+                            "component",
+                            "Check execution",
+                            code,
+                            str(error),
+                            reason="environment",
+                            explanation="the check could not be run as configured",
+                        )
+                    ],
+                )
+            round_record["checks"] = checks
+            failures = [item for item in checks if item["status"] != "passed"]
+            if not failures:
+                repair = _after_round(request, number, round_record, attempts)
+                if repair is None:
+                    _finalize(worktree, record, result, clean=True)
+                    return finish("ok")
+                prompt, kind = repair, "validation_failures"
+                continue
+            attempts.append(
+                f"round {number}: the worker ended ok; failing: "
+                + ", ".join(
+                    f"{item['check_id']} ({item['status']}, exit {item['exit_code']})"
+                    for item in failures
+                )
             )
+            if number > request.rounds:
+                return fail(
+                    "checks_failed",
+                    f"{len(failures)} configured check(s) still fail after {number} round(s) "
+                    f"({request.rounds} resume round(s) allowed): "
+                    + ", ".join(item["check_id"] for item in failures),
+                    "exhausted",
+                    f"Workers resumes the worker at most {request.rounds} time(s) with the "
+                    "failures and does not extend that",
+                    attempts=attempts,
+                    causes=[check_error(item) for item in failures],
+                )
+            prompt, kind = _resume_prompt(failures), "check_failures"
+        return fail(
+            "checks_failed",
+            "no rounds left",
+            "exhausted",
+            "Workers does not extend the configured rounds",
+            attempts=attempts,
         )
-        if number > request.rounds:
-            return fail(
-                "checks_failed",
-                f"{len(failures)} configured check(s) still fail after {number} round(s) "
-                f"({request.rounds} resume round(s) allowed): "
-                + ", ".join(item["check_id"] for item in failures),
-                "exhausted",
-                f"Workers resumes the worker at most {request.rounds} time(s) with the "
-                "failures and does not extend that",
-                attempts=attempts,
-                causes=[check_error(item) for item in failures],
+
+    try:
+        return attempt()
+    except BaseException as error:
+        # A signal (the host's cancellation), an interrupt or an unexpected error ended the run:
+        # its record and progress file still end, so no reader sees a worker that runs forever.
+        if record["ended_at"] is None:
+            fail(
+                "interrupted",
+                f"the worker run ended before it finished: {type(error).__name__}"
+                + (f" ({error})" if str(error) else ""),
+                "environment",
+                "the run was ended from outside the worker, and Workers does not resume it",
             )
-        prompt, kind = _resume_prompt(failures), "check_failures"
-    return fail(
-        "checks_failed",
-        "no rounds left",
-        "exhausted",
-        "Workers does not extend the configured rounds",
-        attempts=attempts,
-    )
+        raise
 
 
 def _remove_unused_pending(worktree: Path, record: dict) -> None:

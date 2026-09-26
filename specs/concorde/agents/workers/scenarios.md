@@ -124,6 +124,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN the host kills the worker's whole process group
 - AND the run ends `failed` with `worker_timeout` and a run record
 
+### scenario.workers.interrupted-run — An interrupted run still ends
+
+- GIVEN a worker run whose launcher is told the run identity as soon as the run exists
+- WHEN the run is interrupted from outside before it returns, such as by a signal
+- THEN its run record ends `failed` with the error `interrupted`, of reason `environment`, naming the interruption
+- AND its progress file is `finished` with status `failed`
+- AND the interruption travels on to the launcher
+
 ### scenario.workers.invalid-result — A worker without a valid result has failed
 
 - GIVEN a worker that exits without a structured result that satisfies the worker result schema

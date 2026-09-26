@@ -512,6 +512,32 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(record["worker_result"]["error"]["detail"], cause["detail"])
 
     @verifies("scenario.workers.timeout")
+    @verifies("scenario.workers.interrupted-run")
+    def test_an_interrupted_run_still_ends_its_record_and_progress(self):
+        class Interrupt(BaseException):
+            pass
+
+        started = []
+
+        def interrupt():
+            raise Interrupt("SIGTERM")
+
+        with self.assertRaises(Interrupt):
+            self.project.run(
+                [{}], check_modules=None, after_round=interrupt, started=started.append
+            )
+        [run_id] = started
+        directory = self.root / ".concorde/runs" / run_id
+        record = json.loads((directory / "record.json").read_text())
+        self.assertEqual(
+            ("failed", "interrupted"), (record["status"], record["error"]["code"])
+        )
+        self.assertIn("Interrupt (SIGTERM)", record["error"]["detail"])
+        self.assertEqual("environment", record["error"]["unhandled"]["reason"])
+        self.assertIsNotNone(record["ended_at"])
+        status = json.loads((directory / "status.json").read_text())
+        self.assertEqual(("finished", "failed"), (status["phase"], status["status"]))
+
     def test_a_round_past_its_deadline_is_killed(self):
         pid_file = self.project.base / "child.pid"
         record = self.project.run(

@@ -398,15 +398,26 @@ def execute(
         if stop is None:
             stop = _steps(chosen, context)
     except Cancelled as cancelled:
+        # Each worker run the Operation started, with the progress file and record it ended.
+        workers = [
+            evidence(
+                "worker-run",
+                (run_dir.parent / worker / "record.json").as_posix(),
+                f"worker run {worker}, ended by the cancellation "
+                f"(progress {(run_dir.parent / worker / 'status.json').as_posix()})",
+            )
+            for worker in context.worker_runs
+        ]
         stop = context.fail(
             "failed",
             "cancelled",
             "The run was cancelled.",
             f"{chosen.name} received {cancelled} before it finished; the worker processes it "
-            "started were ended",
+            "started were ended"
+            + (f": {', '.join(context.worker_runs)}" if context.worker_runs else ""),
             reason="environment",
             explanation="a signal from outside ended the run; the host does not resume it",
-            evidence=[evidence("cancelled", "", str(cancelled))],
+            evidence=[evidence("cancelled", "", str(cancelled)), *workers],
             options=["run the Operation again"],
         )
     finally:

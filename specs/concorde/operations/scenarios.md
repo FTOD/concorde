@@ -193,6 +193,7 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - WHEN the host receives `SIGTERM`
 - THEN every worker process it started is ended
 - AND the result has status `failed` with `cancelled` evidence and is written and printed
+- AND the result's `worker_runs` and its `cancelled` link name the worker run, whose record ends `interrupted` and whose progress file is `finished`
 
 ### scenario.operations.inputs — An earlier result is admitted as task material
 

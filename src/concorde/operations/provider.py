@@ -433,9 +433,15 @@ class RunContext:
                 role=role,
                 after_round=after_round,
                 project_python=interpreter,
+                started=self.worker_started,
             )
         )
         return self.absorb(record)
+
+    def worker_started(self, run_id: str) -> None:
+        """Name a worker run as soon as it exists, so a cancelled Operation still names it."""
+        if run_id not in self.worker_runs:
+            self.worker_runs.append(run_id)
 
     def project_interpreter(self) -> str | None:
         """The project's own interpreter, as its checks run it, or None when none is configured
@@ -627,7 +633,7 @@ class RunContext:
 
     def absorb(self, record: dict):
         """Map one worker run record to a step outcome, adding host evidence."""
-        self.worker_runs.append(record["run_id"])
+        self.worker_started(record["run_id"])
         self.last_record = record
         self.worker = record.get("worker_result")
         found = [
