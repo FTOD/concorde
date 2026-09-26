@@ -183,6 +183,39 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(status_lines(self.worktree), "")
         self.assertIsNone(envelope["worker"])
 
+    @verifies("scenario.delivery.unverified-scenarios")
+    def test_a_code_change_with_an_untested_new_scenario_is_refused(self):
+        obligations = self.worktree / "specs/a/obligations.md"
+        obligations.write_text(
+            obligations.read_text()
+            + "\n### scenario.a.sum — A sums\n\n- GIVEN two numbers\n- WHEN A adds them\n"
+            "- THEN it returns their sum\n"
+        )
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        status, envelope = self.project.deliver()
+        self.assert_inert(envelope, "unverified_scenarios")
+        detail = envelope["error"]["detail"]
+        self.assertIn("scenario.a.sum (specs/a/obligations.md)", detail)
+        # A scenario the task did not touch is not its to verify.
+        self.assertNotIn("scenario.a.answer", detail)
+        (self.worktree / "src/a/test_calc.py").write_text(
+            "def verifies(*scenarios):\n    return lambda test: test\n\n\n"
+            '@verifies("scenario.a.sum")\ndef test_sum():\n    pass\n'
+        )
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+
+    @verifies("scenario.delivery.unverified-scenarios")
+    def test_a_spec_only_change_needs_no_test(self):
+        obligations = self.worktree / "specs/a/obligations.md"
+        obligations.write_text(
+            obligations.read_text()
+            + "\n### scenario.a.sum — A sums\n\n- GIVEN two numbers\n- WHEN A adds them\n"
+            "- THEN it returns their sum\n"
+        )
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+
     @verifies("scenario.delivery.confirmations")
     def test_pending_markers_are_cleared_in_the_commit(self):
         (self.worktree / "src/new.py").write_text("NEW = 1\n")

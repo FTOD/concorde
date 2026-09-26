@@ -15,6 +15,14 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - AND the task record lists the delivery and the task is delivered
 - AND the result has status `ok` with the commit as output and the worktree is clean
 
+### scenario.delivery.unverified-scenarios — An untested new scenario stops a code change
+
+- GIVEN a task that changes `src/a/calc.py` and adds `scenario.a.sum` to Module A's Specs, while the untouched `scenario.a.answer` has no test either
+- WHEN the main agent runs delivery
+- THEN delivery is `blocked` with `unverified_scenarios` naming `scenario.a.sum` and its document, and not `scenario.a.answer`
+- AND once a test in a file Module A binds declares that it verifies `scenario.a.sum`, delivery commits the task
+- BUT a task that adds the scenario without changing code is delivered without a test
+
 ### scenario.delivery.sandbox-masks — Deliver from a sandbox that masks paths
 
 - GIVEN a task worktree with an uncommitted change, seen from inside a sandbox that hides `.bashrc` behind a `/dev/null` mount

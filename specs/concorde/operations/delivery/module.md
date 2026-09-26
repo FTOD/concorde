@@ -114,6 +114,7 @@ consistent.
 | 3 | Require a commit since the previous delivery (or the base) or an uncommitted change | host, Tasks, read-only Git | neither (`blocked`, `nothing_to_deliver`) |
 | 4 | Decide the whole task's readiness with Validation's steps | Validation | measurement, checks or inputs fail (`failed`) |
 | 5 | Require the readiness ready | host | not ready (`blocked`, `not_ready`) |
+| 5b | When the task changed code, require a test verifying every scenario it added or changed since its base commit (an adoption task is exempt) | host, Spec core, read-only Git | an unverified scenario (`blocked`, `unverified_scenarios`, naming each with its document) |
 | 6 | Apply confirmations via Validation | Validation | refused (`failed`) |
 | 7 | Write the evidence bundle | host | — |
 | 8 | Stage every change and the bundle; commit | host, Git | Git refuses (`failed`; undone, index reset) |

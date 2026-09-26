@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -276,6 +277,112 @@ def decide(ctx: RunContext):
     return stop
 
 
+SCENARIO_HEADING = re.compile(r"^### (scenario\.[a-z0-9][a-z0-9.-]*)\b", re.MULTILINE)
+NEXT_HEADING = re.compile(r"^#{1,3} ", re.MULTILINE)
+
+
+def scenario_blocks(text: str) -> dict[str, str]:
+    """Each scenario of a reading document with its heading and steps, by identity."""
+    blocks = {}
+    for match in SCENARIO_HEADING.finditer(text):
+        following = NEXT_HEADING.search(text, match.end())
+        end = following.start() if following else len(text)
+        blocks[match.group(1)] = text[match.start() : end].strip()
+    return blocks
+
+
+def require_verified_scenarios(ctx: RunContext):
+    """A task that changes code delivers only when every scenario it added or changed is
+    verified by a test; an adoption task, which describes code as it is, is exempt."""
+    from ..spec.repository import SpecRepository
+    from ..spec.repository_base import bound_by
+    from ..spec.validation import validate_repository
+
+    workflow = ctx.task.get("workflow")
+    if isinstance(workflow, dict) and workflow.get("name") == "brownfield":
+        return Continue(
+            evidence=[
+                evidence(
+                    "scenario-tests",
+                    "exempt",
+                    "an adoption task describes existing code; linking its tests is best effort",
+                )
+            ]
+        )
+    base = ctx.task.get("base_commit") or ""
+    changed = sorted(
+        {
+            *_git(ctx.worktree, "diff", "--name-only", base).stdout.split(),
+            *_git(
+                ctx.worktree, "ls-files", "--others", "--exclude-standard"
+            ).stdout.split(),
+        }
+    )
+    repository = SpecRepository(ctx.worktree)
+    entries = [
+        entry
+        for module in repository.modules
+        for entry in repository.implementation_scope(module)
+    ]
+    code = [
+        path
+        for path in changed
+        if not path.startswith(("specs/", ".concorde/"))
+        and any(bound_by(entry, path) for entry in entries)
+    ]
+    if not code:
+        return Continue(
+            evidence=[evidence("scenario-tests", "no-code", "the task changed no code")]
+        )
+    touched: dict[str, str] = {}
+    for path in changed:
+        if not path.endswith(".md") or not (ctx.worktree / path).is_file():
+            continue
+        before = _git(ctx.worktree, "show", f"{base}:{path}").stdout
+        now = scenario_blocks((ctx.worktree / path).read_text(encoding="utf-8"))
+        earlier = scenario_blocks(before)
+        for identity, block in now.items():
+            if earlier.get(identity) != block:
+                touched[identity] = path
+    unverified = sorted(
+        {
+            finding.subject_id
+            for finding in validate_repository(ctx.worktree).findings
+            if finding.rule_id == "CONCORDE-COVERAGE-001"
+            and finding.subject_id in touched
+        }
+    )
+    if not unverified:
+        return Continue(
+            evidence=[
+                evidence(
+                    "scenario-tests",
+                    "verified",
+                    f"{len(touched)} added or changed scenario(s), each verified by a test",
+                )
+            ]
+        )
+    listing = "; ".join(f"{identity} ({touched[identity]})" for identity in unverified)
+    return _blocked(
+        ctx,
+        "unverified_scenarios",
+        f"{len(unverified)} scenario(s) the task added or changed have no test "
+        "(unverified_scenarios); nothing was delivered.",
+        f"task {ctx.task['id']} changes code ({', '.join(code[:5])}"
+        + (", ..." if len(code) > 5 else "")
+        + ") while no test declares that it verifies these scenarios it added or changed: "
+        + listing,
+        [
+            "run implement to add a test for each named scenario, in a file its Module binds, "
+            "declaring the scenario it verifies",
+            "if a scenario should not change, restore it with specify",
+        ],
+        explanation="delivery accepts a code change only when every promise the task added or "
+        "changed is checked by a test, so that no scenario ships unverified",
+        kind="scenario-tests",
+    )
+
+
 def apply_confirmations(ctx: RunContext):
     state = _state(ctx)
     listed = state.readiness["confirmations"]
@@ -506,6 +613,7 @@ DELIVERY = Provider(
         require_new_work,
         *READINESS_STEPS,
         decide,
+        require_verified_scenarios,
         apply_confirmations,
         write_bundle,
         commit,

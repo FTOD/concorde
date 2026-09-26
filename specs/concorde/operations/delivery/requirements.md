@@ -16,6 +16,10 @@ over every commit on the task branch since the base commit and every uncommitted
 Delivery SHALL accept a task worktree without uncommitted changes when the task branch has a
 commit since the previous delivery, or since the base commit when the task has no delivery.
 
+### req.delivery.scenarios-verified — A code change ships only with tests for its scenarios
+
+Delivery SHALL refuse a task that changed implementation files while a scenario it added or changed since its base commit has no test declaring that it verifies it, except a task of the brownfield workflow.
+
 ### req.delivery.blocked-reason — A refusal says its own reason
 
 A delivery run that ends `blocked` SHALL explain in its error link the reason of its own code: for
