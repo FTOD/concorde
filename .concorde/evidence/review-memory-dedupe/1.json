@@ -1,0 +1,41 @@
+{
+  "task": "review-memory-dedupe",
+  "goal": "spec_review reports a finding like an earlier one as its update and does not review a Module whose Specs are unchanged since its last review",
+  "modules": [
+    "module.spec-review"
+  ],
+  "sequence": 1,
+  "base_commit": "459c365394be182d5f8c7033031c986434938ff2",
+  "parent_commit": "c9d21c12a1d7fcb4d9485d5918f8dfdb55f2d45d",
+  "readiness": {
+    "run_id": "r-20260926T051918-delivery-cba9bc49",
+    "input_digest": "sha256:1404724a1ed58559426863a535128482283f811c83aa1d28dd825a72b3e6b57a",
+    "modules": [
+      "module.spec-review"
+    ],
+    "checks": [
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:e7e06f899f8ea77bdfb850352119265f99a222accb28ee5392ea350694a4e3de"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T051914-validate-e1865e14",
+      "operation": "validate",
+      "modules": [
+        "module.spec-review"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:5149fefe6584d32ffc2d20f7c2627d2113e6d9867773c573ba6152aea0959b5e"
+    }
+  ],
+  "created_at": "2026-09-26T05:19:23Z"
+}
