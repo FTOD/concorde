@@ -211,6 +211,72 @@ class GrantTests(unittest.TestCase):
         alone = self.levels(self.grant(["module.a"], "understand"))
         self.assertEqual("names", alone["src/shared.py"])
 
+    def installed_project(self, entries):
+        """Module I binding ``entries`` in a project whose installer placed a skill and a
+        workflow of its own and amended the project's settings."""
+        for path in (
+            ".claude/skills/concorde/SKILL.md",
+            ".claude/workflows/concorde-brownfield.js",
+            ".claude/settings.json",
+            ".claude/agents/mine.md",
+        ):
+            (self.root / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / path).write_text("x\n")
+        (self.root / ".concorde").mkdir(exist_ok=True)
+        (self.root / ".concorde/install.json").write_text(
+            json.dumps(
+                {
+                    "files": [
+                        ".claude/skills/concorde/SKILL.md",
+                        ".claude/workflows/concorde-brownfield.js",
+                        ".concorde/bin/concorde",
+                    ],
+                    "amended": [".claude/settings.json", "CLAUDE.md"],
+                }
+            )
+        )
+        self.project.module(
+            "module.i",
+            "specs/i/module.md",
+            document("i", "I", [realization("realization.i.files", entries)]),
+        )
+
+    @verifies("scenario.spec.grant-installed")
+    def test_an_installed_file_is_never_writable(self):
+        self.installed_project(
+            [
+                ".claude/skills/concorde/SKILL.md",
+                ".claude/workflows/concorde-brownfield.js",
+                ".claude/settings.json",
+                ".claude/agents/mine.md",
+            ]
+        )
+        self.assertEqual([], self.project.findings("CHK.binds.installed"))
+        for task_type in ("implement", "code-to-spec", "test"):
+            with self.subTest(task_type=task_type):
+                levels = self.levels(self.grant(["module.i"], task_type))
+                self.assertEqual("ro", levels[".claude/skills/concorde/SKILL.md"])
+                self.assertEqual(
+                    "ro", levels[".claude/workflows/concorde-brownfield.js"]
+                )
+        levels = self.levels(self.grant(["module.i"], "implement"))
+        # A file the installer only amends, and the Module's own files, stay writable.
+        self.assertEqual("rw", levels[".claude/settings.json"])
+        self.assertEqual("rw", levels[".claude/agents/mine.md"])
+
+    @verifies("scenario.spec.installed-exact")
+    def test_a_directory_entry_may_not_cover_an_installed_file(self):
+        self.installed_project([".claude/"])
+        [finding] = self.project.findings("CHK.binds.installed")
+        self.assertIn(
+            "realization.i.files binds the directory .claude/", finding.message
+        )
+        self.assertIn(".claude/skills/concorde/SKILL.md", finding.message)
+        self.assertIn(".claude/workflows/concorde-brownfield.js", finding.message)
+        self.assertNotIn("settings.json", finding.message)
+        self.assertIn(".concorde/install.json", finding.message)
+        self.assertTrue(finding.remediation)
+
     def with_shared_entry(self):
         value = self.project.metadata("specs/a/module.md")
         for record in value["defines"]:

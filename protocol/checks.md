@@ -69,6 +69,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.binds.exists` | Non-pending entries exist; exact entries are files and `/` entries are directories. | error |
 | `CHK.binds.disjoint` | No two realizations in one Module list the same entry. | error |
 | `CHK.binds.no-spec` | No document member, generated output or control record is bound; a bound directory contains no document member. | error |
+| `CHK.binds.installed` | No directory entry covers an installed file, which is bound only by its exact path. | error |
 | `CHK.binds.pending-subset` | `pending` is a subset of `entries`, and pending entries do not exist. | error |
 | `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, generated output, external material or a control record such as the project registry and configuration. | error |
 | `CHK.imports.foreign` | An imported concept is owned by a Module other than the importer's owner. | error |

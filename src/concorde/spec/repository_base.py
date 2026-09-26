@@ -8,6 +8,7 @@ immutable records a loaded graph is made of.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 from dataclasses import dataclass
@@ -24,7 +25,7 @@ from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode
 
 PROFILE_VERSION = 17
-PROTOCOL_VERSION = "13.2.0"
+PROTOCOL_VERSION = "13.3.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 # The installed Protocol copy the configuration binds; the installer places it there.
@@ -221,6 +222,27 @@ def is_identity(value: Any) -> bool:
 def is_directory_entry(entry: str) -> bool:
     """A realization entry with a trailing slash binds every regular file below the directory."""
     return entry.endswith("/")
+
+
+# The installer's record of what it placed; its `files` outside `.concorde/` are installed files.
+INSTALL_RECORD = ".concorde/install.json"
+
+
+def installed_files(root: Path) -> frozenset[str]:
+    """The installed files of the project at ``root``: the installation record's ``files`` outside
+    ``.concorde/``, never a project file the installer only amends. No readable record, none."""
+    try:
+        record = json.loads((root / INSTALL_RECORD).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return frozenset()
+    if not isinstance(record, dict):
+        return frozenset()
+    amended = {path for path in record.get("amended") or [] if isinstance(path, str)}
+    return frozenset(
+        path
+        for path in record.get("files") or []
+        if isinstance(path, str) and path not in amended and not control_path(path)
+    )
 
 
 def entry_base(entry: str) -> str:
