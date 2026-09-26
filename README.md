@@ -30,72 +30,75 @@ task's Modules define.
 
 ## The idea
 
+Concorde organizes the AI work on a project in three levels, and the project's Specs shape every
+one of them.
+
 ```mermaid
-flowchart LR
-  specs["Specs<br/>Modules, responsibilities,<br/>relations, files"]
-  task["Task<br/>bound Modules + task type"]
-  harness["Harness<br/>context + grant"]
-  worker["Worker<br/>Claude Code or pi"]
-  result["Result<br/>host evidence or error chain"]
-  specs --> harness
-  task --> harness
-  harness --> worker
-  worker -->|audited and checked by the host| result
+flowchart TB
+  you(["You"])
+  main["Main session<br/>your Claude Code or pi, primary checkout"]
+  subgraph parallel["Task sessions, side by side"]
+    direction LR
+    t1["Task session<br/>branch + worktree"]
+    t2["Task session<br/>branch + worktree"]
+  end
+  w1["Workers<br/>headless claude -p or pi -p"]
+  w2["Workers<br/>headless claude -p or pi -p"]
+  specs[("Specs")]
+  you <--> main
+  main -->|opens, starts, merges| t1 & t2
+  t1 -->|runs Operations| w1
+  t2 -->|runs Operations| w2
+  specs -.->|harness: context + grant| w1 & w2
+  w1 -.->|evidence or error chain| t1
+  t1 -.->|delivered or escalated| main
 ```
 
-1. **The Specs divide the responsibility.** Every Module states its purpose, its words, how it is
-   used, how it is designed, which Modules it relates to and which files realize it.
-2. **The division derives the harness.** A task binds some Modules and has one of six task types
-   (`understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`). From those alone
-   Concorde computes the worker's **context**, the Specs, implementation files and tools it needs,
-   and its **grant**, every path it may know by name, read or write. Everything else is denied.
-3. **The host enforces and verifies.** The grant is compiled into the worker's own settings. After
-   the worker stops, the host audits what it changed, runs the project's checks itself and keeps
-   what it verified apart from what the worker claims.
-4. **Failures travel up as an error chain.** A level that cannot handle an error adds a detailed
-   link saying why and keeps what it received underneath, so the main agent, and you when a
-   decision is yours, see the whole path.
+**The main session: the project.** You work with your own Claude Code or pi session in the
+project's primary checkout; Concorde's installed guidance makes it the **main agent**. It discusses
+the project with you from the Specs, which describe every Module's purpose, usage, design,
+relations and files to a human and an agent alike. It splits the agreed work into tasks, decides
+the ordinary things itself and writes them into each task's decision log, asks you only about
+decisions with a major impact, and merges what was delivered. It never edits the primary checkout's
+sources.
+
+**Task sessions: one per task, in parallel.** A task is a branch with its own worktree, record and
+decision log, and Concorde manages the worktree for you: `concorde task open` creates it for the
+task's goal and Modules, and `concorde task merge` takes a lock, merges the branch, validates the
+result, undoes the merge if validation fails, and removes the worktree. For work split into several
+tasks, the main agent starts one task session per task, on its own program and configuration, and
+tasks whose Modules and shared files do not overlap run at once. A task session may write only its
+own task: it changes Specs and code in the worktree, commits verified steps, runs `validate` and
+`delivery`, and reports back when it has delivered or needs a decision beyond its task. A single
+task the main agent can also carry out itself inside the worktree.
+
+**Workers: one bounded step, inside a harness.** For a bounded step, a task runs an Operation: the
+deterministic Operation host launches a headless `claude -p` or `pi -p` worker for one task type
+(`understand`, `specify`, `implement`, `test`, `review-spec`, `review-code` or `code-to-spec`). Its
+**harness** comes from the Specs. From the task's Modules and the task type alone, Concorde
+computes the worker's **context**, the Specs, implementation files and tools it needs, and its
+**grant**, every path it may know by name, read or write, and compiles the grant into the worker's
+own settings. Everything else is denied. A worker never touches Git, never starts other agents and
+never infers a missing promise from the code: it stops with a **Spec gap**, and the Spec is changed
+first.
+
+What travels back up is just as structured:
+
+- **Evidence, not claims.** When a worker stops, the host audits what it wrote against the grant
+  and runs the project's checks itself. The Operation's JSON result keeps this `host_evidence`
+  apart from `worker`, which is only the worker's claim. `validate` and `delivery` run no worker at
+  all, and `delivery` validates the whole task again before it may be merged.
+- **Error chains, not bare failures.** A level that cannot handle an error, whether the worker, the
+  Operation, the task session or the main agent, adds a link saying what failed, its evidence and
+  why this level cannot handle it (a missing permission, a decision that is not its own, work
+  outside its task), and keeps the error it received underneath. When a question reaches you, you
+  see the whole path from where the error started to the decision you are asked for.
 
 Change the Specs and the harness changes with them: there is no separate permission file to keep in
 step.
 
-## Why Concorde
-
-- **Architecture-aware Specs.** Module documents follow the independent
-  [Spec Protocol](protocol/README.md) and explain the architecture to a reader who does not know the
-  code. A human understands the project from them; an agent receives the same text as its context,
-  so both work from one description. The docsite publishes them.
-- **Just the context a task needs.** A worker sees what its Modules declare, one level deep, and no
-  more. It never infers a missing promise from the code: it stops with a **Spec gap**, and the Spec
-  is changed first.
-- **Verified, not trusted.** Every Operation returns one JSON result where `host_evidence` (the
-  grant, the write audit, each check with its exit code and log) is kept apart from `worker`, which
-  is only a claim.
-- **Tasks that can run side by side.** Each task is a branch with its own worktree, record and
-  decision log. Tasks whose Modules and shared files do not overlap run at once in task sessions,
-  and `concorde task merge` merges them one at a time and re-validates the result.
-- **Spec tooling that stands alone.** `concorde validate`, `concorde grant` and the local stdio MCP
-  server `concorde spec-mcp` answer from the Specs of one worktree without calling a model, so any
-  agent can ask which Modules exist, what a Module's context is and what a task may touch.
-- **Claude Code and pi.** One grant is compiled into each backend: Claude Code deny rules, a write
-  hook and its Bash sandbox, or a pi permission extension on the same sandbox engine. In pi the
-  main agent also sees every run in [pi-subagents](https://github.com/nicobailon/pi-subagents)'
-  FleetView. Worker models are yours to choose, for all workers or one Operation's.
-
-These layers guard against scope drift and mistakes, not a malicious actor; the
-[Harness](specs/concorde/harness/module.md) Spec states their limits.
-
-## How work flows
-
-- **You** decide the direction and answer the questions with a major impact.
-- **The main agent** discusses the project with you, opens a task for each agreed change, works
-  inside its worktree or starts a task session for it, reads the results, keeps the decision log
-  and merges what was delivered.
-- **Operations** carry out bounded steps. The deterministic **Operation host** computes the grant,
-  launches a headless `claude -p` or `pi -p` worker inside it, audits the worker and writes the
-  result; `validate` and `delivery` run no worker at all.
-
-A typical change, as the main agent runs it:
+A typical change: the main agent opens the task, the task's steps run in its worktree, and the main
+agent merges it.
 
 ```bash
 concorde task open retry --goal "limit payment retries" --modules module.payments
@@ -106,6 +109,25 @@ concorde run validate   --task retry
 concorde run delivery   --task retry
 concorde task merge retry
 ```
+
+## Why Concorde
+
+- **Architecture-aware Specs.** Module documents follow the independent
+  [Spec Protocol](protocol/README.md) and explain the architecture to a reader who does not know the
+  code. A human understands the project from them; an agent receives the same text as its context,
+  so both work from one description. The docsite publishes them.
+- **Just the context a task needs.** A worker sees what its Modules declare, one level deep, and no
+  more.
+- **Spec tooling that stands alone.** `concorde validate`, `concorde grant` and the local stdio MCP
+  server `concorde spec-mcp` answer from the Specs of one worktree without calling a model, so any
+  agent can ask which Modules exist, what a Module's context is and what a task may touch.
+- **Claude Code and pi.** One grant is compiled into each backend: Claude Code deny rules, a write
+  hook and its Bash sandbox, or a pi permission extension on the same sandbox engine. In pi the
+  main agent also sees every run in [pi-subagents](https://github.com/nicobailon/pi-subagents)'
+  FleetView. Worker models are yours to choose, for all workers or one Operation's.
+
+These layers guard against scope drift and mistakes, not a malicious actor; the
+[Harness](specs/concorde/harness/module.md) Spec states their limits.
 
 ## Get started
 
