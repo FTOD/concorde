@@ -514,6 +514,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - WHEN the validator reads them
 - THEN every declared scenario is covered by the declaring test, with its path, line and name
 - AND no coverage finding is reported for those scenarios
+- AND a test whose own code draws a warning from the validator's Python, such as an invalid escape sequence, is read without that warning being printed
 
 ### scenario.spec.verifies-unknown — A declaration names an unknown scenario
 

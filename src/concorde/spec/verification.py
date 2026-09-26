@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ast
 import re
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, TypeVar
@@ -199,6 +200,15 @@ def _typescript_declarations(path: str, text: str) -> list[Verification]:
     return result
 
 
+def parse_source(source: str | bytes, filename: str) -> ast.Module:
+    """Parse a project's Python source without printing the warnings its own code raises, such
+    as an invalid escape sequence that a newer Python than the project's reports."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        warnings.simplefilter("ignore", DeprecationWarning)
+        return ast.parse(source, filename=filename)
+
+
 def _file_declarations(root: Path, relative: str) -> list[Verification]:
     typescript = relative.endswith(TYPESCRIPT_SUFFIXES)
     target = checked_path(root, relative)
@@ -209,7 +219,7 @@ def _file_declarations(root: Path, relative: str) -> list[Verification]:
             relative, target.read_text(encoding="utf-8", errors="replace")
         )
     try:
-        tree = ast.parse(target.read_bytes(), filename=relative)
+        tree = parse_source(target.read_bytes(), relative)
     except (SyntaxError, ValueError) as error:
         raise DeclarationError(
             relative,

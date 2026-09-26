@@ -15,7 +15,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from ..spec.verification import DeclarationError, _declarations
+from ..spec.verification import DeclarationError, _declarations, parse_source
 
 HELPER = (
     "def verifies(*scenarios):  # Concorde: names the scenarios a test verifies\n"
@@ -81,7 +81,7 @@ def link_file(path: Path, relative: str, links: list[tuple[str, str]]):
     Returns the linked pairs and the (pair, reason) of every link left undone."""
     try:
         source = path.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=relative)
+        tree = parse_source(source, relative)
     except (OSError, UnicodeError, SyntaxError, ValueError) as error:
         return [], [
             (link, f"{relative} cannot be read as Python: {error}") for link in links
@@ -132,7 +132,7 @@ def link_file(path: Path, relative: str, links: list[tuple[str, str]]):
         )
     changed = "".join(lines)
     try:
-        ast.parse(changed, filename=relative)
+        parse_source(changed, relative)
     except SyntaxError as error:
         return [], [
             (link, f"{relative} would not parse once decorated: {error}")

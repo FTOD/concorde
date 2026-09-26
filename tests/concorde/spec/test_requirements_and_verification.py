@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import warnings
 from pathlib import Path
 
 from concorde.spec.verification import scan_declarations, verifies
@@ -348,6 +349,24 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.assertEqual(1, probe())
         with self.assertRaises(ValueError):
             verifies("req.shop.single-order")
+
+    @verifies("scenario.spec.verification-declarations")
+    def test_a_python_test_is_read_without_printing_its_own_warnings(self):
+        self.write(
+            "tests/shop/test_escape.py",
+            "def verifies(*scenarios):\n    return lambda test: test\n\n\n"
+            '@verifies("scenario.shop.submit")\n'
+            "def test_submit():\n"
+            '    """Matches \\* literally."""\n',
+        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            declarations = scan_declarations(self.root, ["tests/shop/test_escape.py"])
+        self.assertEqual(
+            [("scenario.shop.submit", "test_submit")],
+            [(d.scenario_id, d.name) for d in declarations],
+        )
+        self.assertEqual([], [str(item.message) for item in caught])
 
     @verifies("scenario.spec.verification-declarations")
     def test_typescript_tests_declare_their_scenarios_in_a_comment_above_the_test(self):
