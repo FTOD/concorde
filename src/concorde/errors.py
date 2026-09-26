@@ -24,7 +24,7 @@ LEVELS = (
     "task-session",
     "workflow",
     "operation",
-    "harness",
+    "workers",
     "worker",
     "check",
     "component",

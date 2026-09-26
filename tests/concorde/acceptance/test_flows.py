@@ -360,7 +360,7 @@ class TaskFlowTests(unittest.TestCase):
         )
         self.assertEqual("permission", error["unhandled"]["reason"])
         self.assertIn("src/bmod/secret.py", error["detail"])
-        self.assertEqual("harness", error["causes"][0]["level"])
+        self.assertEqual("workers", error["causes"][0]["level"])
         self.assertTrue(evidence_of(envelope, "audit"))
         self.assertEqual(1, len(envelope["worker_runs"]))
         self.assertIn("1 round(s)", json.dumps(envelope["host_evidence"]))
@@ -426,7 +426,7 @@ class TaskFlowTests(unittest.TestCase):
             if not link["causes"]:
                 break
             [link] = link["causes"]
-        self.assertEqual(["main-agent", "operation", "harness", "worker"], levels)
+        self.assertEqual(["main-agent", "operation", "workers", "worker"], levels)
         self.assertEqual(
             {key: link[key] for key in worker if key != "evidence"},
             {key: worker[key] for key in worker if key != "evidence"},

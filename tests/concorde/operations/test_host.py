@@ -446,7 +446,7 @@ class HostTests(unittest.TestCase):
         error = envelope["error"]
         self.assertEqual(["worker_blocked", "worker_blocked", "spec_gap"], codes(error))
         self.assertEqual(
-            ["operation", "harness", "worker"],
+            ["operation", "workers", "worker"],
             [
                 error["level"],
                 error["causes"][0]["level"],

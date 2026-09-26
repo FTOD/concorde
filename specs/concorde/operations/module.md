@@ -158,8 +158,8 @@ own [worker result](../agents/workers/module.md#concept.workers.worker-result) u
 host's evidence — grant, context identity, write audit, each check's exit code and log, resume
 rounds used, transcript path, worker stderr. When `status` is not `ok`, `error` is the run's
 [error chain](../vocabulary.md#concept.concorde.error-chain): the Operation's own link, describing
-the error and why it cannot handle it, over the unchanged errors it received — the Workers
-harness's link for a worker run, the worker's own link, a failing check, or the concerned Git,
+the error and why it cannot handle it, over the unchanged errors it received — Workers'
+link for a worker run, the worker's own link, a failing check, or the concerned Git,
 Tasks or Spec core error. See the [result contract](contracts.md#contract.operations.result).
 
 ```d2 illustrative

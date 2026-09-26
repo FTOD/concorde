@@ -4,7 +4,7 @@ These scenarios describe whole flows that cross several Modules, seen from the d
 main agent. The precise behaviour of every step belongs to the Module that performs it; a scenario
 here promises only what the Modules achieve together. They are verified by end-to-end acceptance
 tests that drive the installer and the `concorde` command with a fake worker; what Claude Code
-itself enforces is verified by the Harness's live worker test.
+itself enforces is verified by the live worker test of Workers.
 
 ## Adopting Concorde
 

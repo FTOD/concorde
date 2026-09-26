@@ -500,7 +500,7 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("clean", record["rounds"][0]["audit"]["verdict"])
         self.assertNotIn("checks", record["rounds"][0])
         error = record["error"]
-        self.assertEqual(("harness", "worker_blocked"), (error["level"], error["code"]))
+        self.assertEqual(("workers", "worker_blocked"), (error["level"], error["code"]))
         [cause] = error["causes"]
         self.assertEqual(("worker", "spec_gap"), (cause["level"], cause["code"]))
         self.assertEqual("the rounding rule is not specified", cause["detail"])

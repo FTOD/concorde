@@ -8,7 +8,7 @@ in [How the host runs an Operation](host.md).
 ```concorde-contract
 {
   "id": "contract.operations.result",
-  "version": 6,
+  "version": 7,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -140,7 +140,7 @@ in [How the host runs an Operation](host.md).
               "task-session",
               "workflow",
               "operation",
-              "harness",
+              "workers",
               "worker",
               "check",
               "component"
@@ -305,7 +305,7 @@ in [How the host runs an Operation](host.md).
       "recommendation": "run the Operation again with a narrower goal or more --rounds",
       "causes": [
         {
-          "level": "harness",
+          "level": "workers",
           "actor": "Workers run w-20260924T093001-implement-0f3b2a91 (implement worker)",
           "code": "checks_failed",
           "detail": "1 configured check(s) still fail after 4 round(s) (3 resume round(s) allowed): check.issues.tests",

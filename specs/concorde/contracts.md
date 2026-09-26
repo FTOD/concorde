@@ -16,7 +16,7 @@ started.
 ```concorde-contract
 {
   "id": "contract.concorde.error",
-  "version": 3,
+  "version": 4,
   "schema": {
     "$ref": "#/$defs/error",
     "$defs": {
@@ -42,7 +42,7 @@ started.
               "task-session",
               "workflow",
               "operation",
-              "harness",
+              "workers",
               "worker",
               "check",
               "component"
@@ -142,7 +142,7 @@ started.
       }
     }
   },
-  "semantics": "One error link and, through causes, the chain below it. level names the kind of actor that wrote the link: main-agent, task-session (a session working inside one task worktree for the main agent), workflow (a workflow run in one task, reporting the Operations it ran), operation (an Operation host and its provider steps), harness (Workers running one worker; the level keeps the name it had before the Harness became a Module of its own), worker (the worker's own report, a claim), check (one configured check) or component (a deterministic component the host called, such as Git, Tasks, Spec core or the Claude Code process). actor identifies it exactly, with the run, task, check or command concerned. code is a stable snake_case name chosen by the actor. detail describes the error completely: what failed, where, and the exact message or output; it is never only the code. evidence names the paths, commands and outputs that show it, each with a kind, a reference and a detail. attempts lists what the actor tried, in order. unhandled states why the actor could not handle the error itself; its reason is one of the reasons in the table below and explanation names the specifics. options and recommendation are what the actor offers its parent. causes are the errors the actor received from its children and could not handle, each exactly as its child wrote it; independent errors are siblings, and a link without causes is where an error started. A parent never edits or drops a cause. A behaviour or field change increments the version.",
+  "semantics": "One error link and, through causes, the chain below it. level names the kind of actor that wrote the link: main-agent, task-session (a session working inside one task worktree for the main agent), workflow (a workflow run in one task, reporting the Operations it ran), operation (an Operation host and its provider steps), workers (Workers running one worker), worker (the worker's own report, a claim), check (one configured check) or component (a deterministic component the host called, such as Git, Tasks, Spec core or the Claude Code process). actor identifies it exactly, with the run, task, check or command concerned. code is a stable snake_case name chosen by the actor. detail describes the error completely: what failed, where, and the exact message or output; it is never only the code. evidence names the paths, commands and outputs that show it, each with a kind, a reference and a detail. attempts lists what the actor tried, in order. unhandled states why the actor could not handle the error itself; its reason is one of the reasons in the table below and explanation names the specifics. options and recommendation are what the actor offers its parent. causes are the errors the actor received from its children and could not handle, each exactly as its child wrote it; independent errors are siblings, and a link without causes is where an error started. A parent never edits or drops a cause. A behaviour or field change increments the version.",
   "example": {
     "level": "operation",
     "actor": "Operation implement r-20260924T093000-implement-5c1e0a77 (task severity)",
@@ -161,7 +161,7 @@ started.
     "recommendation": "run the Operation again with a narrower goal or more --rounds",
     "causes": [
       {
-        "level": "harness",
+        "level": "workers",
         "actor": "Workers run w-20260924T093001-implement-0f3b2a91 (implement worker)",
         "code": "checks_failed",
         "detail": "1 configured check(s) still fail after 4 round(s) (3 resume round(s) allowed): check.issues.tests",
@@ -217,8 +217,8 @@ started.
 | --- | --- |
 | `error` of a workflow result | the workflow (`workflow`) |
 | `error` of an Operation result | the Operation (`operation`) |
-| `error` of a worker run record | Workers (`harness`) |
-| `error` of a worker result | the worker, without `level`, `actor` and `causes`, which the harness adds |
+| `error` of a worker run record | Workers (`workers`) |
+| `error` of a worker result | the worker, without `level`, `actor` and `causes`, which Workers adds |
 | `{"error": …}` printed by a refused `concorde task` or `concorde issues` command | the refusing component (`component`) |
 | an escalation recorded with `concorde task escalate` | the main agent (`main-agent`) |
 

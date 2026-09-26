@@ -138,7 +138,7 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertEqual("blocked", record["status"], record["error"])
         error = record["error"]
         validate(error, ERROR_SCHEMA)
-        self.assertEqual(("harness", "worker_blocked"), (error["level"], error["code"]))
+        self.assertEqual(("workers", "worker_blocked"), (error["level"], error["code"]))
         [worker] = error["causes"]
         self.assertEqual("worker", worker["level"])
         self.assertIn("secret.py", worker["detail"])

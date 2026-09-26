@@ -403,7 +403,7 @@ def run_worker(request: WorkerRequest) -> dict:
         return finish(
             "failed",
             link(
-                "harness",
+                "workers",
                 actor,
                 code,
                 detail,
@@ -620,7 +620,7 @@ def run_worker(request: WorkerRequest) -> dict:
             return finish(
                 result["status"],
                 link(
-                    "harness",
+                    "workers",
                     actor,
                     f"worker_{result['status']}",
                     f"the {request.task_type} worker ended {result['status']} in round "

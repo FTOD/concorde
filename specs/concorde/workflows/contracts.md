@@ -12,7 +12,7 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
 ```concorde-contract
 {
   "id": "contract.workflows.step",
-  "version": 2,
+  "version": 3,
   "schema": {
     "$defs": {
       "error": {
@@ -37,7 +37,7 @@ Printed by `concorde workflow step`, from the task record and the saved Operatio
               "task-session",
               "workflow",
               "operation",
-              "harness",
+              "workers",
               "worker",
               "check",
               "component"
@@ -420,7 +420,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
 ```concorde-contract
 {
   "id": "contract.workflows.result",
-  "version": 3,
+  "version": 4,
   "schema": {
     "$defs": {
       "error": {
@@ -445,7 +445,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
               "task-session",
               "workflow",
               "operation",
-              "harness",
+              "workers",
               "worker",
               "check",
               "component"
@@ -1246,7 +1246,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
           "recommendation": "raise workers.timeout_seconds",
           "causes": [
             {
-              "level": "harness",
+              "level": "workers",
               "actor": "Workers run w-20260925T104001-code-to-spec-0f3b2a91 (code-to-spec worker)",
               "code": "worker_timeout",
               "detail": "the worker process was stopped after 1800 seconds without a result",

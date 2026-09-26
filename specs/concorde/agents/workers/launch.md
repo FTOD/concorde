@@ -163,12 +163,12 @@ its log.
 | `worker_result` | the last worker result, verbatim, or null |
 | `pending_created`, `pending_removed`, `deleted`, `deletions_refused` | paths the host pre-created, removed or refused to remove |
 | `status` | the host's final status: `ok`, `blocked` or `failed` |
-| `error` | null for `ok`; otherwise the harness's link of the [error chain](../../contracts.md#contract.concorde.error) |
+| `error` | null for `ok`; otherwise Workers' link of the [error chain](../../contracts.md#contract.concorde.error) |
 | `rounds[].claude` | per round, the subtype, error flag, turn count and cost the Claude Code envelope reported |
 
 ## Errors
 
-Every run that does not end `ok` has an `error` whose top link has the level `harness`, the actor
+Every run that does not end `ok` has an `error` whose top link has the level `workers`, the actor
 `Workers run <run-id> (<task type> worker)`, one of the codes below, a detail that names the round,
 the paths, commands and messages concerned, and the reason Workers cannot handle it. Its evidence
 names the run record and, once a session exists, the transcript. A write outside `rw` is reported
@@ -250,7 +250,7 @@ The run record SHALL keep the worker result verbatim and separate from the evide
 
 ### req.workers.error-chain — A failed run explains itself
 
-Every run that does not end `ok` SHALL carry the harness's error link with the worker's own error, the Claude Code process's error or each failing check as its causes, as listed in [Errors](#errors).
+Every run that does not end `ok` SHALL carry Workers' error link with the worker's own error, the Claude Code process's error or each failing check as its causes, as listed in [Errors](#errors).
 
 ### req.workers.host-deletes — Only the host deletes
 

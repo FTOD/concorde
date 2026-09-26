@@ -8,7 +8,7 @@ in the [requirements](requirements.md).
 ```concorde-contract
 {
   "id": "contract.tasks.record",
-  "version": 7,
+  "version": 8,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -313,7 +313,7 @@ in the [requirements](requirements.md).
               "task-session",
               "workflow",
               "operation",
-              "harness",
+              "workers",
               "worker",
               "check",
               "component"

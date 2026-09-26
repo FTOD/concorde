@@ -25,7 +25,7 @@ def check_link(detail: str = "check.a failed with exit code 1") -> dict:
 class ErrorChainTests(unittest.TestCase):
     def chain(self) -> dict:
         harness = errors.link(
-            "harness",
+            "workers",
             "Workers run w-1",
             "checks_failed",
             "1 check still fails after 2 rounds",
@@ -104,7 +104,7 @@ class ErrorChainTests(unittest.TestCase):
             "**operation** Operation implement r-1: `checks_failed`",
             "Not handled here (decision): more rounds are the main agent's decision",
             "Caused by:",
-            "  - **harness** Workers run w-1",
+            "  - **workers** Workers run w-1",
             "Tried: round 1",
             "    - **check** check.a: `check_failed`",
             "Recommendation: run again",
