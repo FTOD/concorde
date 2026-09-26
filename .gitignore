@@ -43,6 +43,8 @@ Thumbs.db
 .venv
 .concorde/runs/
 .concorde/tasks/
+# pi-lens, a pi extension, writes its logs into the working directory.
+.pi-lens-probe-home/
 .concorde/worker-models.json
 .concorde/tools/
 

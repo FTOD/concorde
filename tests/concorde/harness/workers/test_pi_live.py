@@ -82,6 +82,7 @@ class LivePiWorkerTests(unittest.TestCase):
             "9. bash: curl -sS -m 5 https://example.com",
             f"10. bash: ls {run_config}",
             f"11. edit: in {root}/src/a/calc.py replace 'return a - b' with 'return a + b'",
+            '12. bash: f=$(mktemp) && echo "temp file $f" && rm "$f"',
         ]
         record = run_worker(
             self.request(
@@ -122,6 +123,7 @@ class LivePiWorkerTests(unittest.TestCase):
         self.assertIn("No such file", bash)
         self.assertIn("ead-only file system", bash)
         self.assertNotIn("Example Domain", bash)
+        self.assertIn(f"temp file {record['tmp']}/", bash)
         self.assertFalse((root / "checks/new.txt").exists())
         self.assertNotIn("changed", (root / "specs/a/module.md").read_text())
         self.assertIn("return a + b", (root / "src/a/calc.py").read_text())

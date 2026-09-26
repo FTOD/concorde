@@ -29,6 +29,7 @@ ENVIRONMENT = {
     "LANG",
     "HOME",
     "TMPDIR",
+    "CLAUDE_CODE_TMPDIR",
     "PI_CODING_AGENT_DIR",
     "PI_OFFLINE",
     "PI_SKIP_VERSION_CHECK",
@@ -123,6 +124,7 @@ class PiRunTests(unittest.TestCase):
         self.assertEqual(
             (run / "config").as_posix(), first["env"]["PI_CODING_AGENT_DIR"]
         )
+        self.assertEqual(first["env"]["TMPDIR"], first["env"]["CLAUDE_CODE_TMPDIR"])
         self.assertEqual(
             {"defaultProjectTrust": "never"},
             json.loads((run / "config/settings.json").read_text()),

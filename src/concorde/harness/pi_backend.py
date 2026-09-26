@@ -330,6 +330,8 @@ class PiBackend:
             "LANG": os.environ.get("LANG", "C.UTF-8"),
             "HOME": paths.home.as_posix(),
             "TMPDIR": paths.tmp.as_posix(),
+            # sandbox-runtime hands its commands this TMPDIR, else a /tmp/claude that may not exist.
+            "CLAUDE_CODE_TMPDIR": paths.tmp.as_posix(),
             "PI_CODING_AGENT_DIR": paths.config.as_posix(),
             "PI_OFFLINE": "1",
             "PI_SKIP_VERSION_CHECK": "1",

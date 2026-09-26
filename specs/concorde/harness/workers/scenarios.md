@@ -161,6 +161,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN it greps a directory holding ungranted files, or uses bash to read an ungranted file, to write a `ro` file or to reach the network
 - THEN grep reports matches only from readable files, the bash read finds no such file, the write fails as a read-only file system and the network request is refused
 - BUT bash can read `ro` files and write `rw` files
+- AND bash's temporary files go to the run's private `TMPDIR`, which it can write
 
 ### scenario.workers.pi-runtime-missing — A pi run without its runtime is refused
 

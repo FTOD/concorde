@@ -121,6 +121,7 @@ The environment is cleared and then set to exactly:
 | `PATH`, `LANG` | the host's values |
 | `HOME` | `<run>/home` |
 | `TMPDIR` | the run's private temporary directory |
+| `CLAUDE_CODE_TMPDIR` | the same directory, which sandbox-runtime passes to the commands it runs as their `TMPDIR`; without it they get `/tmp/claude`, which need not exist and is then not writable |
 | `PI_CODING_AGENT_DIR` | `<run>/config` |
 | `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK` | `1` |
 | `PI_TELEMETRY` | `0` |
