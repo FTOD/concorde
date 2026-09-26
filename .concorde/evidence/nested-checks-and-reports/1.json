@@ -1,0 +1,134 @@
+{
+  "task": "nested-checks-and-reports",
+  "goal": "Fix the scratch fallback regression test to use an explicit writable fallback; preserve narrowly defined proxy/certificate environment for nested configured checks while excluding runtime pollution; change task session reports to fixed required fields with nullable commit and empty/nonempty escalations, update contracts and add regression coverage; validate, deliver and merge.",
+  "modules": [
+    "module.checks",
+    "module.harness",
+    "module.task-session",
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "7f0cc54474f6f406e24e1bcc89a912fe80bc9fb1",
+  "parent_commit": "790f33d9412d1a8fee0f6498918c4a6eb56eb496",
+  "readiness": {
+    "run_id": "r-20260926T194319-delivery-05982795",
+    "input_digest": "sha256:994802eafe0f180a549f950e93ce738984249d4929bc94938300ddae9ff55a99",
+    "modules": [
+      "module.checks",
+      "module.harness",
+      "module.main-session",
+      "module.task-session"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:0c72ca0a8068fe79dad6a560e31dc6c5078d3365baa0ddcffe331461a38233e6"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:e60ca94d1387848464ebb7ea1d3c33a9339860b244fbd528e8af6b9da998ea36"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:0b0c2d7613735033f2179c77b65ac2682019d3d166c1d141c32adc607396bb7b"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:659fde5fb71d69697d0c2f1fbf63d5c4e124ecbaaa79f3207c834732e754d0f7"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:501d7eedad87c96ce9d01923e00dfec247d92b25f914758cb4ad4131e231920b"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:a486b63a1d26b0c165c57fc1b25bf1480c955a4ee3e9f7d91a2d2fad6d6e9beb"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:ce471ceb28b0b0ae9dd08461184ff7ec7954a816bd45bd190f5009340febf4e8"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:4ab3067d67910dcc4c8cf4369fdaf56cbd2b1975b51c644018c4524c6a6b8da3"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:ba5d66b17852c6f1331810124236d74eb97d62f54e0c81d16b8505ce40fe23d7"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:2c1ef827924f7720488c0a3b4c3d75f477e4a57b5afc13c42e8e270a8a3b99b6"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:f1a0110b9b41302f0e1b760a51f660c9830d5b2d9f8b53b9ffac4d34281c198a"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:12ac629a9418c82d4ae35e17ff35fd7aebf4f086642e8bfd51bbae25e85018da"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:7c3dd148101ed621c655d3efe3f4377404b675e728c3d03d0a3253d739f990fe"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:976cf20066e823d8970c18c20b04fd2a82b4cda7146b0a50f7028c3b4959f2f8"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:bb8e17a9ec98a592731443422374fbab8aa889eab3cc77bc061133e0e201e004"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T193704-validate-5909261f",
+      "operation": "validate",
+      "modules": [
+        "module.checks",
+        "module.harness",
+        "module.task-session",
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:1b4c13b1fd0728975fb5840ee48ce542ccfb97138987945a3b0fb756a74cf278"
+    }
+  ],
+  "created_at": "2026-09-26T19:44:16Z"
+}
