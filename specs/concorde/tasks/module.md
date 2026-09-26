@@ -137,7 +137,9 @@ boundary loaded with `-e`, the session file under `pi/` of that directory, and `
 given. The first round's prompt is the task-session guidance for pi followed by the task's goal,
 Modules and decision log; `--main`, when given, is only recorded. A round ends when the session
 calls `concorde_report` with its [session report](contracts.md#contract.tasks.session-report), when
-pi exits without one, or when `--stop` ends it. Meanwhile the supervisor keeps the round's
+pi exits without one, or when `--stop` ends it: the supervisor sends the round's pi process
+group SIGTERM, so pi ends its session and sandbox-runtime removes its sockets and bridge, and
+SIGKILL to what is left of the group 3 seconds later. Meanwhile the supervisor keeps the round's
 progress file `status.json` in that directory current — the round, its phase and the session's
 latest tool call — and writes pi's event stream and standard error beside it. It then records the
 round's outcome in the task record:

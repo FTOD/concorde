@@ -1,16 +1,18 @@
 """A deterministic stand-in for ``pi -p --mode json`` running one round of a pi task session.
 
 The test puts a plan in the prompt as ``FAKE-PLAN: <json>``: an object with ``actions``
-(``[tool, arguments]`` pairs reported as tool executions), ``sleep`` (seconds to wait after them),
+(``[tool, arguments]`` pairs reported as tool executions), ``sleep`` (seconds to wait after them), ``ignore_term`` (log SIGTERM but keep running),
 ``report`` (the ``concorde_report`` arguments to end with), ``error`` (end with an assistant error
 message instead), ``stderr`` (text written to standard error) and ``exit`` (the exit code). The
 fake appends its argument list, environment, working directory and prompt to the file
-``FAKE_PI_LOG`` names, one JSON line per round. It enforces nothing: the boundary is exercised live.
+``FAKE_PI_LOG`` names, one JSON line per round, and a ``{"signal": "SIGTERM"}`` line when it
+receives SIGTERM, on which it exits with status 143 unless told to ignore it. It enforces nothing: the boundary is exercised live.
 """
 
 import json
 import os
 import re
+import signal
 import sys
 import time
 
@@ -23,10 +25,19 @@ def main() -> int:
     prompt = sys.stdin.read()
     match = re.search(r"FAKE-PLAN: (.*)", prompt)
     plan = json.loads(match.group(1)) if match else {}
+
+    def terminated(_signum, _frame):
+        with open(os.environ["FAKE_PI_LOG"], "a", encoding="utf-8") as log:
+            log.write(json.dumps({"signal": "SIGTERM"}) + "\n")
+        if not plan.get("ignore_term"):
+            sys.exit(143)
+
+    signal.signal(signal.SIGTERM, terminated)
     with open(os.environ["FAKE_PI_LOG"], "a", encoding="utf-8") as log:
         log.write(
             json.dumps(
                 {
+                    "pid": os.getpid(),
                     "argv": sys.argv[1:],
                     "env": dict(os.environ),
                     "cwd": os.getcwd(),

@@ -325,8 +325,11 @@ class PiSessionTests(unittest.TestCase):
         deadline = time.monotonic() + 10
         while not self.calls() and time.monotonic() < deadline:
             time.sleep(0.1)
+        began = time.monotonic()
         stopped = pi_session.stop(self.root, "t1")
         self.assertEqual("stopped", stopped["rounds"][0]["status"])
+        self.assertLess(time.monotonic() - began, pi_session.STOP_GRACE)
+        self.assertIn({"signal": "SIGTERM"}, self.calls())
         deadline = time.monotonic() + 10
         while pi_session._alive(pid) and time.monotonic() < deadline:
             time.sleep(0.1)
@@ -334,6 +337,21 @@ class PiSessionTests(unittest.TestCase):
         with self.assertRaises(store.TaskError) as raised:
             pi_session.stop(self.root, "t1")
         self.assertEqual("session_idle", raised.exception.code)
+
+    @verifies("scenario.tasks.pi-session-stop")
+    def test_a_pi_that_ignores_sigterm_is_killed_after_the_grace_period(self):
+        self.open("t1", {"sleep": 60, "ignore_term": True})
+        self.start("t1")
+        deadline = time.monotonic() + 10
+        while not self.calls() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        [call] = self.calls()
+        began = time.monotonic()
+        stopped = pi_session.stop(self.root, "t1")
+        self.assertEqual("stopped", stopped["rounds"][0]["status"])
+        self.assertGreaterEqual(time.monotonic() - began, pi_session.STOP_GRACE - 0.5)
+        self.assertIn({"signal": "SIGTERM"}, self.calls())
+        self.assertFalse(pi_session._alive(call["pid"]))
 
     @verifies("scenario.tasks.pi-session-report-verified")
     def test_a_report_the_record_contradicts_fails_the_round(self):

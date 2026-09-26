@@ -29,6 +29,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -48,6 +49,8 @@ POLICY_MARKER = "const POLICY: SessionPolicy = {} as SessionPolicy;"
 REPORT_TOOL = "concorde_report"
 GO = b"go\n"
 STOP_WAIT = 15.0
+# How long a stopped round's pi may clean up after SIGTERM before its group is killed.
+STOP_GRACE = 3.0
 TEXT = 160
 
 STRING = {"type": "string", "minLength": 1}
@@ -601,6 +604,11 @@ def _target(arguments: dict) -> str:
     return ""
 
 
+def _signal_group(pid: int, signum: int) -> None:
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(pid, signum)
+
+
 def verify(report: dict, record: dict) -> list[str]:
     """What the task record contradicts in a session report; empty when it holds everything."""
     if report["status"] == "delivered":
@@ -729,13 +737,17 @@ def supervise(primary: Path, task_id: str, session_id: str, number: int) -> int:
     state = {"stopped": False, "child": None}
 
     def terminate(_signum, _frame):
+        # SIGTERM first, so pi ends its session and sandbox-runtime removes its sockets and
+        # bridge; the group is killed after the grace period, whatever is left of it.
         state["stopped"] = True
         child = state["child"]
         if child is not None:
-            try:
-                os.killpg(child.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+            _signal_group(child.pid, signal.SIGTERM)
+            killer = threading.Timer(
+                STOP_GRACE, _signal_group, (child.pid, signal.SIGKILL)
+            )
+            killer.daemon = True
+            killer.start()
 
     signal.signal(signal.SIGTERM, terminate)
     stream = PiStream(result_tool=REPORT_TOOL)

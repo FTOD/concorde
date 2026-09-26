@@ -289,7 +289,8 @@ records and error codes are defined in the [contracts](contracts.md).
 
 - GIVEN a pi task session with a running round
 - WHEN the main agent runs `concorde task session severity --stop`
-- THEN the round's pi process group ends and the round is recorded `stopped`
+- THEN the round's pi receives SIGTERM, so it can end its session and clean up, and the round is recorded `stopped`
+- AND a pi that ignores SIGTERM is killed with its process group 3 seconds later, and the round is recorded `stopped` as well
 - BUT `--stop` when no round runs is refused with `session_idle`
 
 ### scenario.tasks.session-boundary — The session's boundary confines its writes
