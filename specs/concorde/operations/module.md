@@ -4,17 +4,17 @@
 
 Operations is how the main agent gets bounded work done in a task. It holds the Operation
 catalog, the `concorde run` command and the Operation host, and delegates each Operation to the
-Module that provides it (see Relationships). Every Operation combines deterministic host steps
-with zero or more workers and ends with one Operation result that keeps what the host established
-apart from what a worker claims. Operations never chooses what runs next, never runs one Operation
-from another, never asks the developer anything and never changes a Spec on its own initiative:
-the main agent decides.
+Module that provides it (see Relationships). Every Operation combines deterministic host control
+logic, Tool calls and zero or more AI workers to complete one job, and ends with one Operation
+result that keeps what the host established apart from what a worker claims. Operations never
+chooses the next Operation, runs one Operation from another, asks the developer anything or
+changes a Spec on its own initiative: the main agent or its Workflow orders the runs.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Operation | A named job the main agent runs for one task, or for no task when its catalog entry allows it, made of deterministic host steps and zero or more workers, that ends with exactly one Operation result. |
+| Operation | A named execution unit started by the main agent or its Workflow, in a task unless its catalog entry allows none, that combines host control logic, Tool calls and zero or more worker runs to complete one job and return exactly one Operation result. |
 | Run without a task | A run of an Operation whose catalog entry makes the task optional, started without `--task` in the primary worktree: it works on the primary worktree, begins no task record, and changes no Spec or code. |
 | Worker role | A named worker an Operation launches, such as `spec_review`'s `reviewer` and `checker`; an Operation with a single worker has the role `worker`. |
 | configure_workers | The Operation that lists the models an installed agent program offers workers and changes the model choices of a worktree's worker model configuration, with or without a task. |
@@ -25,6 +25,7 @@ the main agent decides.
 | Operation result | The structured envelope an Operation returns to the main agent, holding its status, identities, summary, output, the worker result kept as claims, the host's own evidence and, when it is not ok, its error chain. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
+| [Tool](../vocabulary.md#concept.concorde.tool) | |
 | [Task type](../vocabulary.md#concept.concorde.task-type) | |
 | [Module](../vocabulary.md#concept.concorde.module) | |
 | [Evidence](../vocabulary.md#concept.concorde.evidence) | |
@@ -45,6 +46,18 @@ Operation and Operation result first; the imported worker terms matter only for 
 Operations.
 
 ## Usage
+
+An Operation hides the internal execution of one job from its caller. For `implement`, it
+prepares a grant and brief, delegates code changes to a worker through Workers, and uses Tool
+results to check the changes and drive bounded repair rounds. The caller receives one Operation
+result without managing those rounds. `validate` and `delivery` use deterministic steps without
+an AI worker; an Operation need not mix both kinds on every run.
+
+A Workflow orders these jobs, passes admitted outputs between them and handles decision points.
+It calls the same Operation interface as the main agent. Workers and Tools are peer execution
+capabilities below that interface: Workers manages AI runs; a Tool performs a specific action
+through programmed logic. A Tool call returns to the current host step and starts no new
+Operation. Workers may also call Tools within a worker run, such as Check execution after a round.
 
 <a id="concept.operations.operation"></a>
 
@@ -139,10 +152,12 @@ result: Operation result
 workers: Workers
 tasks: Tasks
 runner: Catalog and runner
+checks: Check execution
 catalog -> operation: lists
 host -> operation: runs
 host -> result: returns
 host -> workers: launches workers through
+host -> checks: runs checks through
 host -> tasks: records runs in
 runner -> host: implements
 ```
@@ -252,7 +267,8 @@ The host writes a result in every case it can, including its own failures, and r
 the [task record](../tasks/module.md#concept.tasks.task-record) at start and end, since the main
 agent is woken only by the process exit and every problem must travel up as an
 [error chain](../vocabulary.md#concept.concorde.error-chain) with evidence. No provider calls
-another Operation: deciding the next step needs the global view only the main agent has. See the
+another Operation: the main agent or its Workflow decides which Operation runs next. This leaves
+internal Tool calls and worker repair rounds within the current Operation. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
 <a id="realization.operations.runner"></a>
@@ -347,7 +363,7 @@ gathered. A launch error, a timeout or an audit violation ends the run `failed`.
 
 <a id="uses-checks"></a>
 
-**Check execution** runs
+**Check execution** is the deterministic Tool that runs
 [configured checks](../checks/module.md#concept.checks.configured-check) read-only, for
 the resume rounds Workers drives and for deterministic providers such as Validation, returning each
 result's command, exit code and log as host evidence.

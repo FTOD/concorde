@@ -27,8 +27,8 @@
           "meaning": "#contains-harness"
         },
         {
-          "target": "module.checks",
-          "meaning": "#contains-checks"
+          "target": "module.tools",
+          "meaning": "#contains-tools"
         },
         {
           "target": "module.tasks",
@@ -61,6 +61,29 @@
       ],
       "uses": [],
       "includes": [],
+      "participates": []
+    },
+    {
+      "id": "module.tools",
+      "title": "Tools",
+      "entry": "specs/concorde/tools/module.md",
+      "owns": [
+        "specs/concorde/tools/module.md"
+      ],
+      "contains": [
+        {
+          "target": "module.checks",
+          "meaning": "#contains-checks"
+        }
+      ],
+      "uses": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared definitions of Tool, Worker and Evidence"
+        }
+      ],
       "participates": []
     },
     {

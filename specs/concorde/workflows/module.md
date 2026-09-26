@@ -2,21 +2,21 @@
 
 ## Purpose
 
-Workflows presets tasks that follow a known procedure. A workflow is a preset task: the main agent
-opens a task as usual and starts a workflow in it, and the workflow runs that task's Operations in a
-fixed order, one at a time, then returns one workflow result with every step, every decision taken,
-every open question and every problem, each problem with its Operation's error chain unchanged. In
-interactive mode a workflow ends at the first point that needs the developer, so the main agent can
-ask right away and start it again with the answers; in no-ask mode it takes those decisions itself,
-keeps going and reports them all at the end. Workflows adds determinism to the order of work, not
-authority: it never opens, merges or closes a task, never runs two Operations at once, and every
+Workflows defines the orchestration layer above Operations. Each workflow describes a task's
+procedure once and the build renders it into a Claude Code workflow and a pi-subagents workflow.
+The main agent opens a task and starts the workflow in its client; the workflow orders that task's
+Operation runs, one at a time, and handles their results and decision points. It returns one
+workflow result with every step, decision, open question and problem, preserving each problem's
+Operation error chain. In interactive mode it stops where the developer must decide; in no-ask
+mode it follows the procedure's continuation rules and reports the decisions at the end.
+Workflows adds orchestration, not authority: it never opens, merges or closes a task, and every
 Operation it runs is an ordinary run the main agent could have started itself.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Workflow | A preset task: a named, fixed procedure of Operation runs in one task, written once as a client workflow script, that the main agent starts in a task it opened and that ends with one workflow result. |
+| Workflow | A named procedure that orders Operation runs and handles their results and decision points within one task, written once and rendered for Claude Code and pi. |
 | Workflow mode | Whether a workflow run is interactive, ending at the first decision point so the developer can decide, or no-ask, taking every decision itself and reporting it at the end. |
 | Decision point | A decision or open question in an Operation's output that the workflow treats as the developer's to settle: every open question, and every decision of a survey. |
 | Workflow step | One Operation run of a workflow, named by a step key and started and awaited through `concorde workflow step`, which returns the recorded run for a key it has seen before. |
@@ -26,6 +26,8 @@ Operation it runs is an ordinary run the main agent could have started itself.
 | Workflow result | The envelope `concorde workflow report` assembles from the task record and the saved Operation results: status, steps, decisions, open questions, deviations, pending decision points, problems and the error chain. |
 | Brownfield workflow | The workflow that describes a project whose code came before its Specs: survey, scaffold, code_to_spec per Module, spec review, validation and delivery. |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
+| [Worker](../vocabulary.md#concept.concorde.worker) | |
+| [Tool](../vocabulary.md#concept.concorde.tool) | |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
 | [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
 | [Task](../tasks/module.md#concept.tasks.task) | |
@@ -46,9 +48,10 @@ step key are how a client script runs a step safely; the workflow result is what
 <a id="concept.workflows.workflow"></a>
 
 A **workflow** is started by the main agent in a task it has opened, never by a worker or an
-Operation. Workflows lives beside Tasks rather than above Operations: a task says what work is
-isolated where, and a workflow says in which order that task's Operations run. For the brownfield
-workflow, from the primary worktree:
+Operation. It sits above Operations in the execution hierarchy: the Workflow determines which
+Operation runs next, while each Operation owns its worker jobs, Tool calls and internal repair
+rounds. Tasks has a separate role: a task says what work is isolated where, and a workflow says how
+that task's Operations proceed. For the brownfield workflow, from the primary worktree:
 
 ```text
 concorde task open adopt --goal "describe the existing code in Specs" --modules module.shop
@@ -134,6 +137,21 @@ link over the Tasks refusal; if Tasks refuses to record a run already started, t
 with the report. Every lost or refused outcome carries an error link, and a lost step's link
 carries the end of its host's output.
 
+### One procedure, two client workflows
+
+A workflow's source is a procedure that the build adapts for the client, not a prompt asking a
+model to invent the next steps. The adapters preserve Operation selection and arguments, step
+order, branches, admitted results and decision points; they adapt only how a step is invoked and
+awaited and how the final report is requested. The same procedure therefore runs as a Claude Code
+workflow or a pi-subagents workflow, both invoking Concorde's ordinary Operations.
+
+The platform's step agent is an adapter, not a Concorde worker: it relays a command and result,
+while the Operation decides whether to launch AI workers. Converting a Workflow does not expand
+Operations into platform agents or expose host Tools to those agents. The two clients use the same
+Operation interfaces, task locks and recorded results. The current mechanism renders authored
+JavaScript workflow scripts; it is not a general converter for arbitrary platform workflows or
+free-form plans.
+
 <a id="concept.workflows.step-agent"></a><a id="concept.workflows.script"></a>
 
 A **workflow script** holds a workflow's procedure once, in plain JavaScript without asynchronous
@@ -210,10 +228,12 @@ brownfield -> workflow: is a
 
 ## Design
 
-A workflow orders Operations but is not one: an Operation is one host process that never starts
-another, and the one place that sees several Operations is the main agent. A workflow is the main
-agent's own procedure, written down once, run by its client and returning to it. Each step is an
-ordinary `concorde run`, so the task's lock allows one Operation at a time and every run is recorded,
+A workflow orchestrates Operations from the main agent's client. Each Operation completes one job
+by combining workers, Tools and host logic and never starts another Operation. The Workflow sees
+only its public inputs and results; it leaves worker prompts, grants, Tool calls, audits and
+repair loops inside the Operation. A deterministic Operation remains an Operation because it owns
+a whole job and its result, even when it launches no worker. Each workflow step is an ordinary
+`concorde run`, so the task's lock allows one Operation at a time and every run is recorded,
 audited and reported exactly as if the main agent had started it.
 
 The procedure lives in the client's workflow runtime because both clients offer one and run it in

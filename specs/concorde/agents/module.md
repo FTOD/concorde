@@ -24,11 +24,18 @@ agents, and on the words of the Modules it points to.
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Task session](../vocabulary.md#concept.concorde.task-session) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
+| [Tool](../vocabulary.md#concept.concorde.tool) | |
 | [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
 | [Agent harness](../harness/module.md#concept.harness.harness) | |
 | [Task](../tasks/module.md#concept.tasks.task) | |
 
 ## Usage
+
+These agent responsibility levels are separate from the execution hierarchy. A Workflow orders
+Operations, and an Operation combines worker runs and deterministic Tool calls. Worker and Tool
+are peers as execution capabilities; a Tool is not another agent level. The Workers Module
+contains the host code that manages AI workers and can call Tools such as Check execution between
+rounds. Tools are grouped separately from Agents.
 
 The work on a Concorde project has three levels, and every agent works at exactly one of them at a
 time:

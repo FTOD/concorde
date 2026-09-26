@@ -1,0 +1,31 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.tools.module",
+    "owner": "module.tools",
+    "role": "module"
+  },
+  "module": {
+    "title": "Tools",
+    "owns": [
+      "specs/concorde/tools/module.md"
+    ],
+    "contains": [
+      {
+        "target": "module.checks",
+        "meaning": "#contains-checks"
+      }
+    ],
+    "uses": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared definitions of Tool, Worker and Evidence"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [],
+  "relations": []
+}

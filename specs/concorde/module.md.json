@@ -29,8 +29,8 @@
         "meaning": "#contains-harness"
       },
       {
-        "target": "module.checks",
-        "meaning": "#contains-checks"
+        "target": "module.tools",
+        "meaning": "#contains-tools"
       },
       {
         "target": "module.tasks",

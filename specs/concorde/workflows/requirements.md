@@ -9,6 +9,10 @@ The Module-wide obligations of [Workflows](module.md). The shapes are in the
 
 A workflow step SHALL start its Operation only through `concorde run --detach` of the task worktree's own `concorde`, for the workflow's task.
 
+The workflow leaves worker launches and domain Tool calls inside the Operation. Client step
+agents only relay the workflow commands; they do not perform the worker's job or bypass the
+Operation's grant, audit and result handling.
+
 ### req.workflows.one-at-a-time — One Operation at a time
 
 A workflow SHALL NOT start a step while an Operation of its task is running.
@@ -97,7 +101,11 @@ The record wins over the script: a key with a finished run keeps that run's outc
 
 ### req.workflows.one-source — One procedure for both clients
 
-Each workflow's procedure SHALL be written once and rendered by the build for Claude Code and for pi without change to its steps.
+Each workflow's procedure SHALL be written once and rendered by the build for Claude Code and for pi without change to its steps, Operation arguments, branches, admitted inputs or decision points.
+
+Adapters may differ in command transport and waiting: Claude Code uses a relay subagent and pi a
+command-runner agent. Both execute the same procedure against the same Operation interfaces and
+assemble the report from host records.
 
 ### req.workflows.script-repeats — The script, not a model, waits for a run
 

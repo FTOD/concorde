@@ -27,6 +27,7 @@ boundary guards against scope drift and mistakes, not a malicious worker.
 | Run record | The host's durable record of one worker run: its grant and context identity, settings, transcript path, audits, checks, rounds and result. |
 | Run directory | The directory `.concorde/runs/<run-id>/` of the primary worktree that holds one run's record, generated configuration and the worker's private state and working directory. |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
+| [Tool](../../vocabulary.md#concept.concorde.tool) | |
 | [Agent harness](../../harness/module.md#concept.harness.harness) | |
 | [Worker settings](../../harness/module.md#concept.harness.worker-settings) | |
 | [Permission extension](../../harness/module.md#concept.harness.permission-extension) | |
@@ -43,11 +44,19 @@ boundary guards against scope drift and mistakes, not a malicious worker.
 
 ## Usage
 
-The caller is an Operation host that has opened a task worktree, chosen the task type and the
-Modules, and asked the Spec core for the grant. It calls Workers with the worktree, frozen grant and
-context identity, task instructions for the brief, checks to run after the worker, and run limits —
-getting back a run record (status `ok`/`blocked`/`failed`) with the worker result kept verbatim
-beside the host's own evidence.
+The caller is an Operation host that has chosen the working tree, task type and Modules and
+asked Spec core for the grant. For work that changes files this is a task worktree; an Operation
+whose catalog entry allows no task can instead launch a reading worker over the primary worktree.
+The host calls Workers with the working tree, frozen grant and context identity, task instructions
+for the brief, checks to run after the worker, and run limits — getting back a run record
+(status `ok`/`blocked`/`failed`) with the worker result kept verbatim beside the host's own evidence.
+
+Workers is the deterministic management code; the worker it launches is the AI process. The
+Operation host calls Workers, which launches the worker and, after a clean audit, calls the
+Check execution Tool when checks were requested. A check failure can lead to another AI round
+within the same Operation. This is a host Tool call, not an AI worker calling Check execution or
+starting another Operation. A Workflow reaches workers through its Operations, never by directly
+launching a Concorde worker. Task sessions have their own task-level lifecycle outside Workers.
 
 ### A normal run
 
@@ -368,7 +377,8 @@ own directories. It never edits what the Harness generated.
 
 <a id="uses-checks"></a>
 
-**Check execution** runs the [configured checks](../../checks/module.md#concept.checks.configured-check)
+**Check execution** is a Tool called by the Workers host code. It runs the
+[configured checks](../../checks/module.md#concept.checks.configured-check)
 on the task worktree in its read-only boundary, returning a [check
 result](../../checks/module.md#concept.checks.check-result) per check with its log. Workers relies on
 checks never changing the worktree; it runs them only after a clean audit, feeds failures into the

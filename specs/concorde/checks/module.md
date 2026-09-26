@@ -2,12 +2,13 @@
 
 ## Purpose
 
-Check execution runs a project's configured checks, such as a test suite or linter, outside every
-worker: they read the task worktree but cannot change its files. Workers relies on it between
-resume rounds, and Operations such as validation, implementation and code review rely on it for
-check results as evidence. The boundary restricts writes only, not reads, network or credentials.
-It never decides whether a passing check means correct code, or which Modules changed; the service
-that selects and runs a Module's checks is still to be written.
+Check execution is a deterministic Tool: it runs a project's configured checks, such as a test
+suite or linter, and returns their status and logs without model reasoning. It belongs to Tools
+and is called by the Workers host code between rounds, or directly by Operations such as
+validation, testing and code review. Checks read the task worktree but cannot directly change its
+files; the boundary restricts filesystem writes only, not reads, network or credentials. The
+service records which inputs were checked and refuses a result if they changed during the run.
+It never decides whether a passing check means correct code or whether the task is ready to deliver.
 
 ## Terminology
 
@@ -18,11 +19,29 @@ that selects and runs a Module's checks is still to be written.
 | Read-only check boundary | The Linux sandbox in which a check runs: the whole host filesystem read-only, one fresh writable scratch directory, private process and IPC namespaces, and the host's network. |
 | Check scratch | The fresh directory outside the project that one run may write, holding its temporary files, caches and reports, removed after the run. |
 | Diagnostic span | A bounded timing record of one named unit of host work, with its trace, parent, status and duration and never its arguments, output or messages. |
+| [Tool](../vocabulary.md#concept.concorde.tool) | |
 | [Module](../vocabulary.md#concept.concorde.module) | |
 | [Evidence](../vocabulary.md#concept.concorde.evidence) | |
 | [Boundary set](../spec-tooling/spec/module.md#concept.spec.boundary-set) | |
 
 ## Usage
+
+For a project checked with `pytest tests/`, this Tool starts that command, waits for it and
+returns its exit status and captured output. Pytest performs the assertions; Check execution
+manages the command, its boundary, timeout and result. A configured command can itself depend on
+external services, so its output need not be identical on every run.
+
+The calling code, not an AI worker, decides when to run checks:
+
+| Caller | Use of the result |
+| --- | --- |
+| Workers host code | After a clean audit, record the checks and pass failures to a worker's next round when allowed |
+| `test` and `code_review` Operations | Supply recorded check results to a worker for interpretation or review |
+| `validate` and `delivery` Operations | Use the results in the readiness decision; Delivery reuses Validation's steps |
+
+These are ordinary service calls inside an Operation, not nested Operations. Check execution
+launches no Concorde worker. Users configure commands and see the results through Operations;
+there is no separate Check execution Operation to start.
 
 <a id="concept.checks.configured-check"></a><a id="concept.checks.check-result"></a>
 
@@ -35,7 +54,7 @@ A **configured check** is declared in `.concorde/config.json` under `checks`, fo
  "inputs": ["pyproject.toml", "conftest.py", "tests/concorde/support", "src"]}
 ```
 
-The check service (not yet written) is called with a worktree, the Modules to run — or changed
+The check service is called with a worktree, the Modules to run — or changed
 paths mapped to Modules via boundary sets — and a log directory: for each Module it digests the
 relevant input, runs each check in the boundary, saves logs, and returns one **check result** per
 check. A digest mismatch after the run fails with `stale_evidence`, because the result would vouch

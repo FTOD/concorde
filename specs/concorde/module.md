@@ -11,9 +11,11 @@ The developer and the main agent rely on it. Its agents work at three levels: th
 the project level in the primary worktree, the task level inside one task worktree, played by the
 main agent itself or delegated to a task session, and workers, each one bounded run under a grant.
 Every level gets its harness, what it may know and touch, from one Harness, and the task level's
-workspace from Tasks. Spec tooling checks, serves and publishes the Specs on its own. Operations carry out bounded jobs, assessing, specifying, implementing, testing,
-reviewing, validating and delivering, and, for a project whose code came first, describing that
-code, each under its Spec-derived harness. The main agent stays in charge: it splits work into
+workspace from Tasks. Spec tooling checks, serves and publishes the Specs on its own. Operations
+carry out bounded jobs by combining AI workers with deterministic Tools: assessing, specifying,
+implementing, testing, reviewing, validating and delivering, and, for a project whose code came
+first, describing that code. Workers receive a Spec-derived harness; each Tool applies its own
+execution boundary. The main agent stays in charge: it splits work into
 tasks, carries each out inside its worktree or hands it to a task session, and merges what is
 delivered. For a recurring kind of task, a workflow presets the Operations the task runs, such as
 the brownfield workflow that describes an existing codebase in Specs. Concorde never chooses the
@@ -29,6 +31,31 @@ such as a [Task](tasks/module.md), an [Operation](operations/module.md) or a
 [Grant](spec-tooling/spec/module.md).
 
 ## Usage
+
+The execution model has three layers, with two kinds of capability at the last layer:
+
+| Layer | Responsibility | Example |
+| --- | --- | --- |
+| Workflow | Orders Operation runs and handles their results and decision points, from one procedure rendered for Claude Code and pi | `brownfield` |
+| Operation | Completes one job by combining worker runs, Tool calls and host control logic, returning one result | `implement`, `validate` |
+| Worker / Tool | A worker reasons with an AI model; a Tool performs a specific action with programmed logic | an implementation worker / Check execution |
+
+```d2 illustrative
+workflow: Workflow
+operation: Operation
+worker: Worker
+tool: Tool
+workflow -> operation: orders runs
+operation -> worker: delegates through Workers
+operation -> tool: calls
+```
+
+A main agent can also call an Operation directly. Operations such as `validate` and `delivery`
+use deterministic code without a worker. The [Workers](agents/workers/module.md) management code
+can call Tools between AI rounds, so checks can drive a repair loop inside one Operation.
+This execution hierarchy is separate from the project/task/worker levels of agent responsibility
+and from the Module composition: [Agents](agents/module.md) groups agent roles, while
+[Tools](tools/module.md) groups reusable deterministic execution services.
 
 The installer places the Protocol copy under `.concorde/protocol/`, the `concorde` command and the
 main-session guidance, but never writes the Specs; initialization proposes and applies an honest
@@ -62,12 +89,14 @@ the chain, and the main agent adds its link above that when the developer must d
 | `concorde run` | run one Operation in a task worktree | [Operations](operations/module.md) |
 | `concorde workflow` | run the steps of a workflow in a task and report its result | [Workflows](workflows/module.md) |
 
-Some tasks follow a known procedure. A [workflow](workflows/module.md) is such a preset task: the
-main agent opens a task as usual and starts a workflow in it, which runs the task's Operations in a
-fixed order, one at a time, and returns one workflow result. In **interactive** mode it ends at each
-point that needs the developer's decision, so the main agent can ask right away and start it again
-with the answers; in **no-ask** mode it decides those points itself, keeps going and reports every
-decision and problem at the end. The first workflow is `brownfield`: after installation and
+Some tasks follow a known procedure. A [workflow](workflows/module.md) records that procedure:
+the main agent opens a task as usual and starts the workflow, which orders the task's Operations
+one at a time and returns one workflow result. The procedure is written once and rendered into a
+Claude Code workflow and a pi-subagents workflow; both call the same Concorde Operations. In
+**interactive** mode it ends at each point that needs the developer's decision, so the main agent
+can ask right away and start it again with the answers; in **no-ask** mode it follows its declared
+continuation rules and reports every decision and problem at the end. The first workflow is
+`brownfield`: after installation and
 initialization of a project whose code came before any Spec, it surveys the code, scaffolds child
 Modules, describes each Module's code in its Spec with `code_to_spec`, reviews and validates the
 result and delivers it.
@@ -186,7 +215,7 @@ root: Concorde Framework {
   spectooling: Spec tooling
   agents: Agents
   harness: Harness
-  checks: Check execution
+  tools: Tools
   tasks: Tasks
   workflows: Workflows
   operations: Operations
@@ -215,10 +244,11 @@ The **Harness** derives each agent's harness — what it may know, what it may t
 environment it runs in — and applies it through Claude Code's or pi's own configuration, the same
 code for every level.
 
-<a id="contains-checks"></a>
+<a id="contains-tools"></a>
 
-**Check execution** runs Modules' configured checks in a read-only boundary outside every agent,
-so a check result is never an agent's claim.
+**Tools** groups deterministic execution services that Operations and the Workers host code call.
+Its Check execution child runs configured checks and records input-bound results. Each Tool keeps
+its own interface and boundary; the group grants no combined access to its children.
 
 <a id="contains-tasks"></a>
 
@@ -228,14 +258,16 @@ their changes mixing.
 
 <a id="contains-workflows"></a>
 
-**Workflows** presets tasks that follow a known procedure: a workflow runs a fixed sequence of
-Operations in one task, in interactive or no-ask mode, and reports one result with every decision
+**Workflows** orders Operations for tasks that follow a known procedure. The same procedure is
+rendered for Claude Code and pi, preserving its steps and decision points. It runs one Operation
+at a time in one task, in interactive or no-ask mode, and reports one result with every decision
 and problem, keeping each Operation's error chain whole.
 
 <a id="contains-operations"></a>
 
 **Operations** holds the Operation catalog, the `concorde run` command, the host step runner and the
-Operation providers; no provider calls the next one, the main agent chooses.
+Operation providers. Each Operation combines Workers and Tools for one job; no provider starts
+another Operation. The main agent or its Workflow chooses the next Operation.
 
 <a id="contains-issues"></a>
 

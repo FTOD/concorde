@@ -35,6 +35,13 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 
 ## Runner
 
+A provider step can call a deterministic Tool directly or launch an AI worker through Workers.
+Both calls return to the same Operation run. Workers itself can call Tools, such as Check
+execution, between worker rounds. Those calls create no nested Operation and leave the Operation
+host responsible for interpreting results and preserving host evidence separately from worker
+claims. Workflow step agents invoke this runner through the command line; they never replace its
+worker lifecycle or Tool calls.
+
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Parse the command line and look up the catalog entry; only then create the run identity and directory | host | malformed command line, unknown Operation or a directory outside Git (exit 2, the reason on standard error, no result, no directory) |

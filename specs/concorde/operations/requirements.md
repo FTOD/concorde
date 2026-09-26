@@ -61,7 +61,8 @@ The host SHALL write every result and run directory under `.concorde/runs/` of t
 An Operation SHALL NOT start another Operation.
 
 A [workflow](../workflows/module.md) sequences Operations from outside them, through `concorde run`;
-no provider knows it runs inside one.
+no provider knows it runs inside one. This leaves worker runs and deterministic Tool calls inside
+the current Operation: calling a Tool or resuming a worker is not starting another Operation.
 
 ### req.operations.detached-same-run — A detached run is an ordinary run
 

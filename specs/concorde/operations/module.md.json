@@ -175,6 +175,12 @@
     {
       "type": "relates",
       "source": "concept.operations.host",
+      "verb": "runs checks through",
+      "target": "module.checks"
+    },
+    {
+      "type": "relates",
+      "source": "concept.operations.host",
       "verb": "records runs in",
       "target": "module.tasks"
     },
