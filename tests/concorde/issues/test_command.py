@@ -219,6 +219,48 @@ class IssueCommandTests(unittest.TestCase):
             str(broken),
         )
 
+    @verifies("scenario.issues.command-report-check")
+    def test_check_runs_the_report_checks_and_records_nothing(self):
+        status, value = self.run_command(
+            "report", "--file", self.report_file(), "--check"
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            {
+                "valid": True,
+                "file": str(self.root / "report.json"),
+                "report_key": "missing-retry",
+                "reporting_module": "module.service",
+            },
+            value,
+        )
+        self.assertEqual([], list_issues(self.root))
+        incomplete = report()
+        del incomplete["report_key"]
+        (self.root / "incomplete.json").write_text(json.dumps(incomplete))
+        self.assert_refused(
+            1,
+            "invalid_issue",
+            ["incomplete.json", "report_key", "required field is missing"],
+            "report",
+            "--file",
+            str(self.root / "incomplete.json"),
+            "--check",
+        )
+        absent = self.report_file(
+            "absent.json", evidence=[{"path": "specs/absent.md", "description": "x"}]
+        )
+        self.assert_refused(
+            1,
+            "missing_evidence",
+            ["absent.json", "specs/absent.md"],
+            "report",
+            "--file",
+            absent,
+            "--check",
+        )
+        self.assertEqual([], list_issues(self.root))
+
     @verifies("scenario.issues.command-append")
     def test_append_needs_the_current_revision_and_an_open_issue(self):
         first = self.recorded()

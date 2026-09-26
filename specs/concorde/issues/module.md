@@ -52,7 +52,9 @@ reporting Module, registry digest, task, Git `HEAD`) so a report can't claim ano
 answers with a [receipt](interface.md#contract.issues.receipt) and the new revision once the
 record is on disk; naming an open Issue and its revision appends rather than creates, and the same
 file run twice records two Issues. No Operation records Issues on its own in this version — the
-main agent decides, typically for a Spec gap or an unfixed reported failure.
+main agent decides, typically for a Spec gap or an unfixed reported failure. With `--check` the
+command runs every one of these checks and records nothing, so a report written in one project
+for another, such as a defect report, can be checked before it is handed over.
 
 <a id="concept.issues.disposition"></a>
 

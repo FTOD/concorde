@@ -59,6 +59,11 @@ def parser() -> Parser:
     report = actions.add_parser("report", parents=[common], help="record a report")
     report.add_argument("--file", required=True, help="Issue report JSON file")
     report.add_argument("--task", help="the task the report belongs to")
+    report.add_argument(
+        "--check",
+        action="store_true",
+        help="run every check of report and record nothing",
+    )
     close = actions.add_parser("close", parents=[common], help="close an open Issue")
     close.add_argument("issue_id")
     close.add_argument("--reason", required=True, choices=CLOSING_REASONS)
@@ -282,6 +287,17 @@ def report_action(root: Path, args) -> int:
                 f"exist in {where}"
                 + (" (the report's origin project)" if where != root else ""),
             )
+    if args.check:
+        # The same checks as a recording, so a report that passes here is refused later only
+        # for what differs between the two projects: the owner's registry or its evidence.
+        return emit(
+            {
+                "valid": True,
+                "file": str(path),
+                "report_key": report["report_key"],
+                "reporting_module": target,
+            }
+        )
     source = {
         "invocation_id": f"cli-{uuid.uuid4()}",
         "agent": ACTOR,

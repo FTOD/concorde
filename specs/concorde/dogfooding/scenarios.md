@@ -52,7 +52,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN it is told to observe every run closely and to treat a wrong `ok` run like a failure
 - AND never to change the Concorde repository, the framework copy or an installed file, nor to work around a Concorde defect
 - AND to place a refused read, write or tool in one of the four boundary cases, with the evidence each needs, sending only the two Concorde cases to the Concorde repository
-- AND to write a defect report under `.concorde/runs/defects/` with a `null` owner, its `origin` and the error chain with its own link on top built by `concorde task escalate`
+- AND to write a defect report under `.concorde/runs/defects/` with every required field, among them `report_key` and `subtype`, a `null` owner, its `origin` and the error chain with its own link on top built by `concorde task escalate`
+- AND to check it with `concorde issues report --check` before handing it over
 - AND to take the fix with `concorde update` while nothing runs
 
 ## Concorde repository

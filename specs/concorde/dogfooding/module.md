@@ -102,7 +102,11 @@ the project; its `origin` names the project's absolute path, the project's `HEAD
 [error chain](../vocabulary.md#concept.concorde.error-chain) with the main agent's own link on
 top, whose reason is `scope`: the fix lies in a repository it never changes. In a task,
 `concorde task escalate … --reason scope --run <run>` builds and records exactly that link. The
-main agent records the report in the task's
+guidance lists every field the Issue report contract requires, with an example, and has the main
+agent check the report with `concorde issues report --check --file <path>`, which runs the checks
+the Concorde repository will run when it records the report, so an incomplete report is repaired
+where it was written rather than refused after the hand-off. The main agent records the report in
+the task's
 [decision log](../tasks/module.md#concept.tasks.decision-log), tells the developer where it is,
 keeps the runs it names, leaves the blocked work open and turns to other work. For example:
 

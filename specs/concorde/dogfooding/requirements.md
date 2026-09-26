@@ -36,8 +36,9 @@ Concorde repository.
 
 ### req.dogfooding.defect-report — A defect report is complete
 
-The develop guidance SHALL require a defect report to be an Issue report with a `null` owner, its
-`origin` and the failure's whole error chain with the main agent's own link on top.
+The develop guidance SHALL require a defect report to be an Issue report with every field its
+contract requires, a `null` owner, its `origin` and the failure's whole error chain with the main
+agent's own link on top, checked with `concorde issues report --check` before it is handed over.
 
 ## Concorde repository
 

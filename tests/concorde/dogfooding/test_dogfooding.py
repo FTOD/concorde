@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import unittest
@@ -9,6 +10,9 @@ from pathlib import Path
 
 from concorde.distribution.install import InstallError, install, update
 from concorde.distribution.prompt_resolver import resolve_role_prompt
+from concorde.errors import link
+from concorde.issues.shapes import REPORT
+from concorde.issues.store import validate_report
 from concorde.spec.verification import verifies
 from tests.concorde.distribution.test_distribution import package_copy, write_build
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -179,9 +183,27 @@ class GuidanceTests(unittest.TestCase):
             "`origin`:",
             "`error_chain`: the whole error chain of the failure, unchanged, with your own link on top",
             "concorde task escalate <task> --code concorde_defect",
+            "`report_key`: a short kebab-case name of the defect",
+            "`subtype`: `null` for a bug or a limitation",
+            "concorde issues report --check --file <path>",
             "run `concorde update`",
         ):
             self.assertIn(words(fragment), self.skill)
+        # The example is a complete Issue report: only its shortened chain stands in.
+        body = resolve_role_prompt(REPOSITORY_ROOT, "prompts/dogfooding/skill.md").body
+        example = json.loads(body.split("```json\n", 1)[1].split("```", 1)[0])
+        self.assertEqual(
+            set(REPORT["required"]) | {"origin", "error_chain"}, set(example)
+        )
+        example["error_chain"] = link(
+            "main-agent",
+            "main agent (task add-field)",
+            "concorde_defect",
+            "the write hook refused src/app/models.py",
+            reason="scope",
+            explanation="the fix lies in the Concorde repository",
+        )
+        validate_report(example)
         # The four cases form one table with where each goes and who decides.
         rows = [line for line in self.skill.split(" | ") if "type `" in line]
         self.assertTrue(any("`bug`" in row for row in rows))

@@ -52,16 +52,21 @@ the refused action with its message. Never settle a blocked boundary by only loo
 
 ### Report a Concorde defect
 
-Write the report as JSON in the Issue report shape to `.concorde/runs/defects/<report_key>.json`,
-which Git ignores:
+Write the report as one JSON object to `.concorde/runs/defects/<report_key>.json`, which Git
+ignores. It is an Issue report, whose fields are all required unless marked optional, and nothing
+else:
 
-- `type` `bug`, `limitation` or `gap` (with its `subtype`), a `title`, a `description` of what you
-  saw, the `impact` on your work, and a `basis` saying why the defect is Concorde's and not this
-  project's (for a blocked boundary: its case and the three items above);
+- `report_key`: a short kebab-case name of the defect, the same as the file name;
+- `type`: `bug` (a failure or wrong result), `limitation` (consistent but insufficient behaviour)
+  or `gap`; `subtype`: `null` for a bug or a limitation, and for a gap one of
+  `implementation-spec-mismatch`, `spec-conflict` or `missing-contract`;
+- `title`, a `description` of what you saw, the `impact` on your work, and a `basis` saying why
+  the defect is Concorde's and not this project's (for a blocked boundary: its case and the three
+  items above), all non-empty text;
 - `owner_target_id`: `null`, since the Concorde repository decides which of its Modules is at
   fault;
-- `evidence`: paths relative to this project, such as the run directory under `.concorde/runs/`,
-  each with what it shows;
+- `evidence`: a list of `{"path": ..., "description": ...}`, each path relative to this project,
+  such as a file under a run directory in `.concorde/runs/`, with what it shows;
 - `origin`: `{"project": "<this project's absolute path>", "head": "<its HEAD commit>",
   "concorde_commit": "<the receipt's source_commit>", "task": "<task id or null>"}`;
 - `error_chain`: the whole error chain of the failure, unchanged, with your own link on top. In a
@@ -71,8 +76,34 @@ which Git ignores:
   `escalated`; use that value. Without a task, write your link in the same shape by hand, with the
   refusal's `error` as its only cause.
 
-Keep the runs the evidence names. Record the report in the task's decision log and tell the
-developer where it is: the developer takes it to a session in the Concorde repository, which
+For example, with the error chain shortened:
+
+```json
+{
+  "report_key": "write-hook-refuses-rw-directories",
+  "type": "bug",
+  "subtype": null,
+  "title": "The worker write hook refuses files under an rw directory entry",
+  "description": "The implement worker's edits of src/app/models.py were refused as undeclared.",
+  "impact": "No implement run can change a file bound through a directory entry.",
+  "basis": "Case: Concorde implements the boundary wrongly. The Spec binds src/, the grant ...",
+  "owner_target_id": null,
+  "evidence": [
+    {"path": ".concorde/runs/w-20261001T101500-1a2b3c/control/grant.json",
+     "description": "the frozen grant, src/ at rw"}
+  ],
+  "origin": {"project": "/home/dev/app", "head": "5d41402a...", "concorde_commit": "098eb928...",
+             "task": "add-field"},
+  "error_chain": {"level": "main-agent", "actor": "main agent (task add-field)", "...": "..."}
+}
+```
+
+Then check it with `concorde issues report --check --file <path>`, which runs every check the
+Concorde repository will run when it records the report and records nothing; repair the report
+until the check passes.
+
+Keep the runs the evidence names. Record the checked report in the task's decision log and
+tell the developer where it is: the developer takes it to a session in the Concorde repository, which
 records it as an Issue there and fixes it in its own task. Leave the work the defect blocks open
 and turn to other work; do not close its task as failed for Concorde's sake.
 

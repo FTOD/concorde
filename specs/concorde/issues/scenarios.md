@@ -22,6 +22,14 @@ are defined in the [Issue interface](interface.md).
 - AND a report whose error chain breaks the Framework's error contract is refused with `invalid_issue` naming the field
 - AND nothing is written for either
 
+### scenario.issues.command-report-check — Check a report without recording it
+
+- GIVEN an initialized project and a report file
+- WHEN the main agent runs `report --file` with that file and `--check`
+- THEN a report that passes every check of `report` is answered with `valid`, its report key and reporting Module
+- AND a report that fails one is refused exactly as `report` would refuse it, with the code and field
+- BUT no Issue is recorded either way
+
 ### scenario.issues.command-report-unknown-owner — A report without an owner is filed under the root Module
 
 - GIVEN a registry with one root Module and a report file whose owner is `null`
