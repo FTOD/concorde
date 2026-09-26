@@ -30,6 +30,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ..dogfooding.develop import DevelopError, develop_source, guidance
+from ..errors import link
 from ..workflows.step import pid_alive
 from .build import BuildError, verify_fresh
 from .project_defaults import install_project_defaults, project_default_files
@@ -95,6 +96,47 @@ class InstallError(RuntimeError):
         self.code = code
 
 
+# Refusals only a different request, project or source checkout can correct; every other refusal
+# comes from the environment the installer runs in.
+INPUT_CODES = frozenset(
+    {
+        "invalid_project",
+        "invalid_descriptor",
+        "stale_build",
+        "settings_invalid",
+        "not_installed",
+        "python_unusable",
+        "python_too_old",
+        "update_source_missing",
+        "develop_source_not_repository",
+        "develop_source_not_primary",
+        "develop_source_detached",
+        "develop_source_dirty",
+    }
+)
+
+
+def refusal(
+    code: str, message: str, actor: str = "Installer (install-concorde)"
+) -> dict:
+    """A refusal of the installer or of `concorde update` as its link of an error chain."""
+    if code in INPUT_CODES:
+        reason = "input"
+        explanation = (
+            "the installer cannot correct the project, the Concorde checkout or the arguments "
+            "it was given; whoever asked must change them"
+        )
+    else:
+        reason = "environment"
+        explanation = (
+            "the installer cannot change what it runs among: running Concorde processes, the "
+            "network, npm or the interpreter"
+        )
+    return link(
+        "component", actor, code, message, reason=reason, explanation=explanation
+    )
+
+
 def _guidance(package: Path, name: str) -> str:
     path = package / "generated/main-session" / f"{name}.md"
     if not path.is_file():
@@ -126,6 +168,10 @@ def active_runs(project: Path) -> list[str]:
             state = json.loads(path.read_text(encoding="utf-8"))
             pid = int(state.get("host_pid") or 0)
         except (OSError, ValueError, TypeError, AttributeError):
+            continue
+        # A worker's own progress file lies beside its Operation's and names the same host; only
+        # the Operation's is a run.
+        if state.get("kind") != "operation":
             continue
         if state.get("phase") != "finished" and pid_alive(pid):
             found.append(
@@ -499,6 +545,11 @@ def update(
         "state": "unvalidated",
         "from": previous.get("version"),
         "to": receipt["version"],
+        # The version seldom changes between commits of a Concorde repository; the commits do.
+        "commits": {
+            "from": previous.get("source_commit"),
+            "to": receipt["source_commit"],
+        },
         "protocol": rebound,
         "at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
@@ -617,7 +668,7 @@ def main(argv) -> int:
             )
     except InstallError as error:
         sys.stdout.write(
-            json.dumps({"error": error.code, "message": str(error)}) + "\n"
+            json.dumps({"error": refusal(error.code, str(error))}, indent=2) + "\n"
         )
         return 1
     sys.stdout.write(json.dumps(receipt, indent=2) + "\n")
@@ -629,6 +680,7 @@ __all__ = [
     "InstallError",
     "active_runs",
     "install",
+    "refusal",
     "main",
     "open_tasks",
     "update",

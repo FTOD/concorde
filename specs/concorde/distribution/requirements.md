@@ -59,6 +59,11 @@ Operation run's host process or a pi task-session round's supervisor is still ru
 
 The update runs the installer, so the same holds for `concorde update`.
 
+### req.distribution.installer-error-links — Installer refusals are error links
+
+Every refusal of the installer and of `concorde update` SHALL be printed as one error link of the
+Framework's error contract, naming the refusal's code and what is wrong.
+
 ### req.distribution.installer-no-specs — The installer never writes Specs
 
 The installer SHALL NOT create, modify or remove a registered Spec document, the registry or,

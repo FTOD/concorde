@@ -1,0 +1,50 @@
+{
+  "task": "develop-install-fixes",
+  "goal": "Fix three defects a real develop install reported: the busy scan counts worker progress files as runs, installer and update refusals are not error links, and the update report names no commits",
+  "modules": [
+    "module.distribution",
+    "module.dogfooding"
+  ],
+  "sequence": 1,
+  "base_commit": "dde3105219c992431bdf3ddfe6392abec3619678",
+  "parent_commit": "74b218ceeac7a2367d4d4e4743a4c94a2f51708c",
+  "readiness": {
+    "run_id": "r-20260926T161934-delivery-f2516fc7",
+    "input_digest": "sha256:4ed2782c15350fbc8df9b71f1f8f78ea60f1c31cdc2b0c4f0f925c208e7b9d90",
+    "modules": [
+      "module.distribution",
+      "module.dogfooding"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:235b7022770dfdadce5df06e6259ca41f2cbbbc78882de5aa35f11ce159be758"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:8c42ee4e04ead766b6988cb5d3ee85fb65e5fecd6005e6f935f0d3930019d1c0"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T161926-validate-22aaaf5c",
+      "operation": "validate",
+      "modules": [
+        "module.distribution",
+        "module.dogfooding"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:244fa66044d4b750a682695d04195cd71c7bec9bd0a5058eb0a22a10e7397ec6"
+    }
+  ],
+  "created_at": "2026-09-26T16:19:45Z"
+}

@@ -93,7 +93,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN an initialized project with an open task, installed from a checkout whose Protocol has since changed
 - WHEN the developer runs `concorde update`
-- THEN the configuration binds the new Protocol copy, the result names the bindings before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
+- THEN the configuration binds the new Protocol copy, the result names the bindings, versions and installed commits before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
 - AND while a Spec is broken, `concorde validate` also reports `CONCORDE-UPDATE-001` and the mark stays
 - AND the first validation that passes reports `CONCORDE-UPDATE-002` and removes the mark
 
@@ -102,8 +102,16 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN an installed project in which an Operation run's host process or a pi task-session round's supervisor is still running
 - WHEN the developer installs Concorde again or runs `concorde update`
 - THEN the install is refused with `concorde_busy`, naming each running run or round with its process and progress file
+- BUT the progress file of the running Operation's worker is not named as a run of its own
 - BUT nothing in the project changes
 - AND once the run has finished, the same install succeeds
+
+### scenario.distribution.install-refusal-link — A refused install answers with an error link
+
+- GIVEN an installer run on a directory that does not exist, or `concorde update` in a project whose receipt names no checkout
+- WHEN the command refuses
+- THEN it prints `{"error": <link>}` with a link of the Framework's error contract, whose actor is the installer or `concorde update`, whose code is `invalid_project` or `update_source_missing`, and whose reason is `input`
+- AND it exits with status 1
 
 ### scenario.distribution.own-python — Concorde ignores the caller's Python
 
