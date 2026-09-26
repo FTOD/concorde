@@ -18,6 +18,10 @@
         "meaning": "#contains-sessions"
       },
       {
+        "target": "module.swe-bench-cases",
+        "meaning": "#contains-cases"
+      },
+      {
         "target": "module.dogfood-scenarios",
         "meaning": "#contains-dogfood"
       }
@@ -70,12 +74,6 @@
       "type": "concept",
       "title": "Driver run",
       "meaning": "#concept.e2e.driver-run"
-    },
-    {
-      "id": "concept.e2e.case",
-      "type": "concept",
-      "title": "Case",
-      "meaning": "#concept.e2e.case"
     },
     {
       "id": "realization.e2e.tool",

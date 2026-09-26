@@ -1,0 +1,67 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.swe-bench-cases.module",
+    "owner": "module.swe-bench-cases",
+    "role": "module"
+  },
+  "module": {
+    "title": "SWE-bench cases",
+    "owns": [
+      "specs/concorde/e2e/cases/module.md",
+      "specs/concorde/e2e/cases/requirements.md",
+      "specs/concorde/e2e/cases/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "concept.distribution.cli"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.e2e.module",
+        "reason": "the test project a case is worked in"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.swe-bench-cases.case",
+      "type": "concept",
+      "title": "Case",
+      "meaning": "#concept.swe-bench-cases.case"
+    },
+    {
+      "id": "realization.swe-bench-cases.steps",
+      "type": "realization",
+      "title": "Case steps",
+      "meaning": "#realization.swe-bench-cases.steps",
+      "entries": [
+        "scripts/e2e/cases.py"
+      ]
+    },
+    {
+      "id": "realization.swe-bench-cases.tests",
+      "type": "realization",
+      "title": "Case step tests",
+      "meaning": "#realization.swe-bench-cases.tests",
+      "entries": [
+        "tests/concorde/e2e/test_cases.py"
+      ]
+    }
+  ],
+  "relations": [],
+  "extensions": {}
+}

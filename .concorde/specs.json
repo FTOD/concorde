@@ -1048,6 +1048,10 @@
           "meaning": "#contains-sessions"
         },
         {
+          "target": "module.swe-bench-cases",
+          "meaning": "#contains-cases"
+        },
+        {
           "target": "module.dogfood-scenarios",
           "meaning": "#contains-dogfood"
         }
@@ -1101,6 +1105,39 @@
           "kind": "document",
           "target": "document.concorde.vocabulary",
           "reason": "shared Framework vocabulary"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.swe-bench-cases",
+      "title": "SWE-bench cases",
+      "entry": "specs/concorde/e2e/cases/module.md",
+      "owns": [
+        "specs/concorde/e2e/cases/module.md",
+        "specs/concorde/e2e/cases/requirements.md",
+        "specs/concorde/e2e/cases/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "concept.distribution.cli"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.e2e.module",
+          "reason": "the test project a case is worked in"
         }
       ],
       "participates": []
