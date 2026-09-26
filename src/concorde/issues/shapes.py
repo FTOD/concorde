@@ -12,6 +12,16 @@ ISSUE_ID = {**STRING, "pattern": r"I-[0-9a-f]{32}"}
 NULLABLE_STRING = {"anyOf": [STRING, {"type": "null"}]}
 GAP_KINDS = ("implementation-spec-mismatch", "spec-conflict", "missing-contract")
 EVIDENCE = obj({"path": PATH, "description": STRING})
+# Where a report was observed when that is another project than the one recording it: evidence
+# paths are then relative to that project.
+ORIGIN = obj(
+    {
+        "project": {**STRING, "pattern": r"^/.*"},
+        "head": NULLABLE_STRING,
+        "concorde_commit": NULLABLE_STRING,
+        "task": NULLABLE_STRING,
+    }
+)
 REPORT = obj(
     {
         "report_key": STRING,
@@ -23,10 +33,13 @@ REPORT = obj(
         "basis": STRING,
         "owner_target_id": NULLABLE_STRING,
         "evidence": array(EVIDENCE),
+        "origin": ORIGIN,
+        # An error link of the Framework's error contract, checked against it by the store.
+        "error_chain": {"type": "object", "additionalProperties": {}},
         "issue_id": ISSUE_ID,
         "expected_revision": DIGEST,
     },
-    ("issue_id", "expected_revision"),
+    ("origin", "error_chain", "issue_id", "expected_revision"),
 )
 PROVENANCE = obj(
     {

@@ -25,6 +25,7 @@ configuration — the installer never writes Specs.
 | [Structural check](../spec-tooling/spec/module.md#concept.spec.structural-check) | |
 | [Scaffold proposal](../spec-tooling/views/module.md#concept.views.scaffold-proposal) | |
 | [Main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) | |
+| [Develop install](../dogfooding/module.md#concept.dogfooding.develop-install) | |
 
 ## Usage
 
@@ -44,7 +45,9 @@ text `{name}` so that a prompt can show a placeholder such as a check's `{python
 client: `generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step
 adapter, `generated/workflows/pi/<name>.js` with the pi step adapter, and the pi command-runner agents
 `generated/workflows/pi/agents/concorde-step.md` and `concorde-report.md`, and writes
-`generated/build-manifest.json` with every source's and output's digest; `build --check` only
+`generated/build-manifest.json` with every source's and output's digest. Every file directly in
+`prompts/workers/`, `prompts/main-session/` and `prompts/dogfooding/` is a prompt root of its own,
+rendered to the same path under `generated/`; `build --check` only
 reports what is stale, writing nothing
 ([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
 Git-ignored, so a checkout always rebuilds. `protocol-manifest --write --bind-project` accepts a
@@ -78,7 +81,10 @@ which define their own JSON and exit codes.
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
 
 **Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale
-build, then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy;
+build and a project in which Concorde is still running — an Operation run whose host process
+lives, or a pi task-session round whose supervisor lives, each named in the refusal
+`concorde_busy` ([requirements](requirements.md#req.distribution.idle-install)), since replacing
+the framework copy under them would change their code halfway — then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy;
 it needs only the Python standard library, and leaves out `scripts/e2e/`, which only
 [End-to-end testing](../e2e/module.md) uses), Concorde's own Python environment, a venv at
 `.concorde/framework/python/` made from the installer's interpreter or `--python` (Python 3.11 or
@@ -95,7 +101,10 @@ later install with the same pin
 ([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
 plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/worker-models.json`,
 `.concorde/framework/`, `.concorde/tools/` and `.claude/worktrees/`, where task worktrees go, and a receipt
-`.concorde/install.json`. The receipt lists under `files` every file Concorde owns in the project,
+`.concorde/install.json`. The receipt names the checkout installed from as `source`, the commit
+it was at as `source_commit` (`null` outside a Git checkout) and the `mode`, `normal` or, for a
+[develop install](../dogfooding/module.md#concept.dogfooding.develop-install) made with
+`--develop`, `develop`. It lists under `files` every file Concorde owns in the project,
 including a default an earlier install wrote and this one found in place, and under `amended` the
 project's own files it only amends: `.gitignore`, `CLAUDE.md` and, once written, `.claude/settings.json`. It also installs every rendered workflow for Claude Code as
 `.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command `/concorde-<name>`,
@@ -111,8 +120,9 @@ there, so its command runs the primary worktree's copy, found through Git's comm
 
 **Updating an installed Concorde.** `concorde update` runs, in update mode, the installer of the
 Concorde checkout the receipt names as its `source` (or `--from <checkout>`): it installs as the
-first install did, keeping `d2` and the pi runtime when they were installed and Concorde's own
-environment's interpreter unless `--python` names another; binds the new Protocol copy in the
+first install did, keeping `d2`, the pi runtime and develop mode when they were installed and
+Concorde's own environment's interpreter unless `--python` names another, and refusing like an
+install while Concorde runs in the project; binds the new Protocol copy in the
 configuration itself, the one write of the project configuration an installer makes; and marks
 the project **Concorde unvalidated** by writing `.concorde/update.json`, which Git ignores, with
 the versions and Protocol bindings before and after. While that state is there, `concorde
@@ -176,7 +186,9 @@ Protocol the manifest names.
 <a id="realization.distribution.installer"></a>
 
 The **installer program** reuses the writer and the build's freshness check, and installs the
-rendered main-session guidance.
+rendered main-session guidance. Everything that can refuse an install, the build's freshness,
+Dogfooding's develop source check, the running Concorde and the pinned downloads, is decided before
+the first write, so a refused install leaves the project as it was.
 
 How this Module is built:
 
@@ -232,10 +244,12 @@ tooling: Spec tooling {
 }
 mainsession: Main session
 workflows: Workflows
+dogfooding: Dogfooding
 distribution -> tooling.spec
 distribution -> tooling.views
 distribution -> mainsession
 distribution -> workflows
+distribution -> dogfooding
 ```
 
 <a id="uses-spec"></a>
@@ -259,6 +273,15 @@ it writes are Views' responsibility, and an `--apply` without `--proposal` is re
 root and the installer places the rendered
 [main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) unchanged, and
 refuses to install it missing or stale rather than fall back to an old copy.
+
+<a id="uses-dogfooding"></a>
+
+**Dogfooding** owns the [develop
+install](../dogfooding/module.md#concept.dogfooding.develop-install): which checkouts may be
+installed from in develop mode, and the guidance a develop install adds. With `--develop`, and on
+every update of a develop install, the installer calls its source check before writing anything
+and refuses with its code and message when the check refuses, then adds its rendered guidance to
+the skill and the `CLAUDE.md` block and records the mode and the checked commit in the receipt.
 
 <a id="uses-workflows"></a>
 

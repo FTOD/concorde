@@ -32,12 +32,17 @@ PROTOCOL_KINDS = ("module",)
 PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
 # Prompt roots rendered one to one: ``prompts/<name>.md`` becomes ``generated/<name>.md``. Every
-# file directly in ``prompts/workers/`` and ``prompts/main-session/`` is a root as well.
+# file directly in ``prompts/workers/``, ``prompts/main-session/`` and ``prompts/dogfooding/`` is a
+# root as well.
 PROMPT_ROOTS: tuple[str, ...] = (
     "prompts/protocol/principles.md",
     *(f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS),
 )
-PROMPT_ROOT_DIRECTORIES: tuple[str, ...] = ("prompts/workers", "prompts/main-session")
+PROMPT_ROOT_DIRECTORIES: tuple[str, ...] = (
+    "prompts/workers",
+    "prompts/main-session",
+    "prompts/dogfooding",
+)
 
 # The build owns exactly these locations under `generated/`; `generated/` is a shared, ignored
 # root, and check_build never judges locations it does not own.
@@ -45,6 +50,7 @@ GENERATED_OWNED_DIRS: tuple[str, ...] = (
     "generated/protocol",
     "generated/workers",
     "generated/main-session",
+    "generated/dogfooding",
     "generated/workflows",
 )
 

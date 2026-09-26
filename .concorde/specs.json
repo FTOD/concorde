@@ -53,6 +53,10 @@
         {
           "target": "module.e2e",
           "meaning": "#contains-e2e"
+        },
+        {
+          "target": "module.dogfooding",
+          "meaning": "#contains-dogfooding"
         }
       ],
       "uses": [],
@@ -927,6 +931,13 @@
           ]
         },
         {
+          "target": "module.dogfooding",
+          "meaning": "#uses-dogfooding",
+          "relies_on": [
+            "concept.dogfooding.develop-install"
+          ]
+        },
+        {
           "target": "module.workflows",
           "meaning": "#uses-workflows"
         }
@@ -1052,6 +1063,64 @@
           "kind": "external",
           "target": "references/swe-bench/",
           "reason": "SWE-bench, whose Python repositories are the test projects"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.dogfooding",
+      "title": "Dogfooding",
+      "entry": "specs/concorde/dogfooding/module.md",
+      "owns": [
+        "specs/concorde/dogfooding/module.md",
+        "specs/concorde/dogfooding/requirements.md",
+        "specs/concorde/dogfooding/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "concept.distribution.installer"
+          ]
+        },
+        {
+          "target": "module.main-session",
+          "meaning": "#uses-main-session",
+          "relies_on": [
+            "concept.main-session.guidance"
+          ]
+        },
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issues.issue",
+            "concept.issues.report"
+          ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.tasks.task",
+            "concept.tasks.decision-log"
+          ]
+        },
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.spec.grant"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
         }
       ],
       "participates": []

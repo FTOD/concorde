@@ -185,6 +185,13 @@ work: open a task for its Module, run the Operations that fix it, and close the 
 branch so the closure merges with the fix. `concorde issues report|list|show|close|reopen` is the
 bookkeeping command.
 
+**Develop installs.** In a [develop
+install](../../dogfooding/module.md#concept.dogfooding.develop-install), where the developer also
+changes the Concorde the project runs, the installed skill and `CLAUDE.md` block end with
+[Dogfooding](../../dogfooding/module.md)'s own section: watch Concorde's runs, never change Concorde
+from the project, and report Concorde defects to the Concorde repository. Everything above holds
+unchanged; a normal install carries no such section.
+
 **Spec queries.** The main agent may configure the
 [Spec MCP server](../../spec-tooling/spec-mcp/module.md#concept.spec-mcp.server) for its own session,
 to ask which Modules exist, what a Module's context is, or what grant a task type gives. The server

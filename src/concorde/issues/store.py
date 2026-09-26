@@ -16,7 +16,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
+from ..errors import ERROR_SCHEMA
 from ..spec.changes import apply_files
+from ..spec.schema import ContractError, validate
 from ..spec.typed_data import checked_path
 from .shapes import (
     ISSUE_ID,
@@ -89,6 +91,15 @@ def validate_report(report: dict) -> None:
             "field subtype: a gap report requires a gap subtype, a bug or limitation report null",
             "invalid_issue",
         )
+    if "error_chain" in report:
+        try:
+            validate(report["error_chain"], ERROR_SCHEMA)
+        except ContractError as error:
+            raise IssueError(
+                f"field error_chain: not an error link of the Framework's error contract: "
+                f"{error}",
+                "invalid_issue",
+            ) from error
     if ("issue_id" in report) != ("expected_revision" in report):
         raise IssueError(
             "fields issue_id and expected_revision: appending a report requires both, creating an Issue neither",

@@ -21,7 +21,7 @@ from concorde.distribution.build import (
     verify_fresh,
     write_build,
 )
-from concorde.distribution.install import InstallError, install
+from concorde.distribution.install import InstallError, install, update
 from concorde.distribution.tools import platform_key
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.spec.repository_base import SpecError
@@ -317,6 +317,10 @@ class InstallTests(unittest.TestCase):
         (project / "CLAUDE.md").write_text("# My project\n\nKeep this.\n")
         fetch = fake_d2(self, package)
         receipt = install(project, package, fetch=fetch)
+        self.assertEqual(str(package), receipt["source"])
+        self.assertEqual("normal", receipt["mode"])
+        # The package copy is no Git checkout, so no commit names it.
+        self.assertIsNone(receipt["source_commit"])
         self.assertTrue((project / ".concorde/protocol/manifest.json").exists())
         self.assertTrue(
             (project / ".concorde/framework/src/concorde/spec/grants.py").exists()
@@ -392,6 +396,77 @@ class InstallTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual("success", json.loads(valid.stdout)["status"], valid.stdout)
+
+    @verifies("scenario.distribution.install-busy")
+    def test_install_and_update_wait_until_concorde_is_idle(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, d2=False)
+        receipt = (project / ".concorde/install.json").read_bytes()
+        live = subprocess.Popen(["sleep", "60"])
+        self.addCleanup(live.wait)
+        self.addCleanup(live.kill)
+        run = project / ".concorde/runs/r-1/status.json"
+        run.parent.mkdir(parents=True)
+        run.write_text(
+            json.dumps(
+                {
+                    "kind": "operation",
+                    "run_id": "r-1",
+                    "operation": "implement",
+                    "task": "t1",
+                    "phase": "running",
+                    "host_pid": live.pid,
+                }
+            )
+        )
+        round_ = project / ".concorde/tasks/t2.session/status.json"
+        round_.parent.mkdir(parents=True)
+        round_.write_text(
+            json.dumps(
+                {
+                    "kind": "task-session",
+                    "task": "t2",
+                    "round": 3,
+                    "phase": "running",
+                    "supervisor_pid": live.pid,
+                }
+            )
+        )
+        # A finished run and a run whose host is gone do not count.
+        for name, state in (
+            ("r-0", {"phase": "finished", "host_pid": live.pid}),
+            ("r-dead", {"phase": "running", "host_pid": 999999999}),
+        ):
+            (project / f".concorde/runs/{name}").mkdir()
+            (project / f".concorde/runs/{name}/status.json").write_text(
+                json.dumps(state)
+            )
+        for attempt in (
+            lambda: install(project, package, d2=False),
+            lambda: update(project, package),
+        ):
+            with self.assertRaises(InstallError) as raised:
+                attempt()
+            self.assertEqual("concorde_busy", raised.exception.code)
+            message = str(raised.exception)
+            for fragment in (
+                "Operation run r-1",
+                "implement",
+                f"host process {live.pid}",
+                ".concorde/runs/r-1/status.json",
+                "round 3 of the pi task session of task t2",
+            ):
+                self.assertIn(fragment, message)
+            self.assertNotIn("r-0", message)
+            self.assertNotIn("r-dead", message)
+            self.assertEqual(receipt, (project / ".concorde/install.json").read_bytes())
+            self.assertFalse((project / ".concorde/update.json").exists())
+        live.kill()
+        live.wait()
+        install(project, package, d2=False)
 
     @verifies("scenario.distribution.own-python")
     def test_concorde_runs_in_its_own_python_whatever_the_caller_uses(self):

@@ -11,7 +11,10 @@ the locked pi runtime under ``.concorde/tools/pi-runtime/``, Concorde's pi exten
 Every rendered workflow is installed for Claude Code under ``.claude/workflows/`` with the
 permission rules its step agents need in ``.claude/settings.json``, and with ``pi`` under
 ``.concorde/workflows/pi/`` with the command-runner agents under ``.pi/agents/``.
-It refuses a package whose build is stale, fetches
+With ``develop`` it makes a develop install (see ``concorde.dogfooding.develop``): only from the
+clean primary worktree of a Concorde repository, with Dogfooding's guidance added to the skill and
+the ``CLAUDE.md`` block. It refuses a package whose build is stale and a project in which a
+Concorde run is still running, fetches
 and verifies ``d2`` before writing anything else, and never writes a Spec document, the registry or
 the project configuration.
 """
@@ -26,6 +29,8 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ..dogfooding.develop import DevelopError, develop_source, guidance
+from ..workflows.step import pid_alive
 from .build import BuildError, verify_fresh
 from .project_defaults import install_project_defaults, project_default_files
 from .tools import TOOLS, ToolError, install_d2, install_pi_runtime
@@ -95,6 +100,52 @@ def _guidance(package: Path, name: str) -> str:
     if not path.is_file():
         raise InstallError("stale_build", f"{path} is missing; run the build")
     return path.read_text(encoding="utf-8")
+
+
+def _source_commit(package: Path) -> str | None:
+    """The commit ``package`` is checked out at, or ``None`` outside a Git checkout."""
+    try:
+        found = subprocess.run(
+            ["git", "-C", str(package), "rev-parse", "--verify", "--quiet", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return (found.stdout.strip() or None) if found.returncode == 0 else None
+
+
+def active_runs(project: Path) -> list[str]:
+    """Every Concorde run in ``project`` whose process still lives, described for a refusal:
+    Operation runs from their progress files and pi task-session rounds from theirs."""
+    found = []
+    for path in sorted((project / ".concorde/runs").glob("*/status.json")):
+        try:
+            state = json.loads(path.read_text(encoding="utf-8"))
+            pid = int(state.get("host_pid") or 0)
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
+        if state.get("phase") != "finished" and pid_alive(pid):
+            found.append(
+                f"Operation run {state.get('run_id') or path.parent.name} "
+                f"({state.get('operation')}, task {state.get('task')}, host process {pid}, "
+                f"progress {path.relative_to(project).as_posix()})"
+            )
+    for path in sorted((project / ".concorde/tasks").glob("*.session/status.json")):
+        try:
+            state = json.loads(path.read_text(encoding="utf-8"))
+            pid = int(state.get("supervisor_pid") or 0)
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
+        if state.get("phase") == "running" and pid_alive(pid):
+            found.append(
+                f"round {state.get('round')} of the pi task session of task "
+                f"{state.get('task')} (supervisor process {pid}, progress "
+                f"{path.relative_to(project).as_posix()})"
+            )
+    return found
 
 
 def _copy_runtime(package: Path, target: Path) -> None:
@@ -218,6 +269,7 @@ def install(
     pi: bool = False,
     run: Callable | None = None,
     python: str | Path | None = None,
+    develop: bool = False,
 ) -> dict:
     """Install ``package`` into ``project``; return the receipt.
 
@@ -225,7 +277,7 @@ def install(
     the download of the pinned ``d2`` archive, for tests and offline mirrors. With ``pi`` the pi
     runtime, extension and skill are installed too; ``run`` replaces the ``npm ci`` call.
     ``python`` is the interpreter Concorde's own environment is made from, the installer's own by
-    default.
+    default. ``develop`` makes a develop install.
     """
     project, package = Path(project).resolve(), Path(package).resolve()
     if not project.is_dir():
@@ -236,6 +288,23 @@ def install(
         raise InstallError("stale_build", str(error)) from error
     skill = _guidance(package, "skill")
     block = _guidance(package, "claude-md")
+    try:
+        installed_from = develop_source(package) if develop else None
+        if develop:
+            section, paragraph = guidance(package)
+            skill = skill.rstrip("\n") + "\n\n" + section
+            block = block.rstrip("\n") + "\n\n" + paragraph
+    except DevelopError as error:
+        raise InstallError(error.code, str(error)) from error
+    # Replacing the Framework copy under a running Operation or task session would change the
+    # code it runs halfway through.
+    running = active_runs(project)
+    if running:
+        raise InstallError(
+            "concorde_busy",
+            f"Concorde is still running in {project}: {'; '.join(running)}. Wait until "
+            "these end, or stop them, before installing or updating Concorde",
+        )
     descriptor = json.loads((package / "concorde.json").read_text())
     settings = _read_settings(project)
     previous = {}
@@ -323,6 +392,12 @@ def install(
         "version": descriptor["version"],
         # The Concorde checkout installed from, which `concorde update` installs from again.
         "source": str(package),
+        # A develop install runs a Concorde the developer also changes; see Dogfooding.
+        "mode": "develop" if develop else "normal",
+        # The commit installed, so that a report of a defect names the Concorde it was seen on.
+        "source_commit": installed_from["commit"]
+        if installed_from
+        else _source_commit(package),
         "framework": FRAMEWORK,
         "command": COMMAND,
         "python": own_python,
@@ -381,7 +456,8 @@ def update(
 ) -> dict:
     """Update the Concorde installed in ``project`` from ``package``.
 
-    It installs as the first install did (keeping d2 and pi when they were installed), binds the
+    It installs as the first install did (keeping d2, pi and develop mode when they were
+    installed), binds the
     new Protocol copy in the configuration, and marks the project Concorde unvalidated until a
     validation passes; open tasks keep the old Protocol copy until the primary branch is merged
     into them, so they are listed.
@@ -405,6 +481,7 @@ def update(
         pi="pi-runtime" in tools,
         run=run,
         python=python or (previous.get("python") or {}).get("base"),
+        develop=previous.get("mode") == "develop",
     )
     config_path = project / ".concorde/config.json"
     rebound = None
@@ -515,6 +592,11 @@ def main(argv) -> int:
         help="the interpreter Concorde's own environment is made from (default: this one)",
     )
     parser.add_argument(
+        "--develop",
+        action="store_true",
+        help="make a develop install from this Concorde repository's clean primary worktree",
+    )
+    parser.add_argument(
         "--update",
         action="store_true",
         help="update an installed Concorde, as `concorde update` does",
@@ -531,6 +613,7 @@ def main(argv) -> int:
                 d2=not arguments.without_d2,
                 pi=arguments.pi,
                 python=arguments.python,
+                develop=arguments.develop,
             )
     except InstallError as error:
         sys.stdout.write(
@@ -541,4 +624,12 @@ def main(argv) -> int:
     return 0
 
 
-__all__ = ["UPDATE_STATE", "InstallError", "install", "main", "open_tasks", "update"]
+__all__ = [
+    "UPDATE_STATE",
+    "InstallError",
+    "active_runs",
+    "install",
+    "main",
+    "open_tasks",
+    "update",
+]

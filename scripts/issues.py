@@ -272,12 +272,15 @@ def report_action(root: Path, args) -> int:
     report = load_report(path)
     relative, data, modules = registry(root)
     target = reporting_module(path, report, relative, modules)
+    # A report observed in another project names its evidence in that project.
+    where = Path(report["origin"]["project"]) if "origin" in report else root
     for index, item in enumerate(report["evidence"]):
-        if not (root / item["path"]).exists():
+        if not (where / item["path"]).exists():
             raise Refusal(
                 "missing_evidence",
                 f"report file {path}, field evidence/{index}/path: {item['path']} does not "
-                f"exist in {root}",
+                f"exist in {where}"
+                + (" (the report's origin project)" if where != root else ""),
             )
     source = {
         "invocation_id": f"cli-{uuid.uuid4()}",

@@ -55,6 +55,10 @@
       {
         "target": "module.e2e",
         "meaning": "#contains-e2e"
+      },
+      {
+        "target": "module.dogfooding",
+        "meaning": "#contains-dogfooding"
       }
     ],
     "uses": [],

@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from concorde.errors import link
 from concorde.issues.store import list_issues, read_issue
 from concorde.spec.repository import digest
 from concorde.spec.verification import verifies
@@ -126,6 +127,97 @@ class IssueCommandTests(unittest.TestCase):
         self.assertIsNone(record["reports"][0]["report"]["owner_target_id"])
         self.assertEqual("module.app", record["reports"][0]["source"]["target_id"])
         self.assertEqual((0, {"errors": [], "notes": []}), self.run_command("check"))
+
+    @verifies("scenario.issues.command-report-origin")
+    def test_a_report_seen_in_another_project_keeps_its_origin_and_chain(self):
+        other = tempfile.TemporaryDirectory()
+        self.addCleanup(other.cleanup)
+        elsewhere = Path(other.name)
+        (elsewhere / ".concorde/runs/r-1").mkdir(parents=True)
+        origin = {
+            "project": str(elsewhere),
+            "head": "a" * 40,
+            "concorde_commit": "b" * 40,
+            "task": "retry-limit",
+        }
+        chain = link(
+            "main-agent",
+            "main agent (task retry-limit)",
+            "concorde_defect",
+            "the test grant omits a used Module's tests",
+            reason="scope",
+            explanation="the fix lies in the Concorde repository",
+            causes=[
+                link(
+                    "operation",
+                    "test",
+                    "read_refused",
+                    "tests/billing/ was refused",
+                    reason="permission",
+                    explanation="the grant does not name it",
+                )
+            ],
+        )
+        evidence = [{"path": ".concorde/runs/r-1", "description": "the refused run"}]
+        # The report is written in the other project, outside the one recording it.
+        path = elsewhere / "defect.json"
+        path.write_text(
+            json.dumps(
+                report(
+                    owner_target_id=None,
+                    type="bug",
+                    subtype=None,
+                    evidence=evidence,
+                    origin=origin,
+                    error_chain=chain,
+                )
+            )
+        )
+        status, value = self.run_command("report", "--file", str(path))
+        self.assertEqual(0, status, value)
+        record, _ = read_issue(self.root, value["receipt"]["issue_id"])
+        observation = record["reports"][0]
+        self.assertEqual(origin, observation["report"]["origin"])
+        self.assertEqual(chain, observation["report"]["error_chain"])
+        self.assertEqual("module.app", observation["source"]["target_id"])
+        # Evidence absent from the origin project is refused, naming that project.
+        absent = elsewhere / "absent.json"
+        absent.write_text(
+            json.dumps(
+                report(
+                    report_key="absent",
+                    evidence=[{"path": ".concorde/runs/r-2", "description": "x"}],
+                    origin=origin,
+                )
+            )
+        )
+        self.assert_refused(
+            1,
+            "missing_evidence",
+            [".concorde/runs/r-2", str(elsewhere), "origin project"],
+            "report",
+            "--file",
+            str(absent),
+        )
+        broken = elsewhere / "broken.json"
+        broken.write_text(
+            json.dumps(
+                report(
+                    report_key="broken",
+                    evidence=evidence,
+                    origin=origin,
+                    error_chain={"code": "x"},
+                )
+            )
+        )
+        self.assert_refused(
+            1,
+            "invalid_issue",
+            ["broken.json", "error_chain"],
+            "report",
+            "--file",
+            str(broken),
+        )
 
     @verifies("scenario.issues.command-append")
     def test_append_needs_the_current_revision_and_an_open_issue(self):

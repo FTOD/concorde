@@ -529,6 +529,33 @@
         "tests/concorde/distribution",
         "tests/concorde/support"
       ]
+    },
+    {
+      "id": "check.dogfooding.tests",
+      "module": "module.dogfooding",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/dogfooding"
+      ],
+      "timeout_seconds": 600,
+      "inputs": [
+        "AGENTS.md",
+        "conftest.py",
+        "prompts",
+        "protocol",
+        "pyproject.toml",
+        "scripts",
+        "src",
+        "tests/concorde/distribution",
+        "tests/concorde/dogfooding",
+        "tests/concorde/support"
+      ]
     }
   ]
 }

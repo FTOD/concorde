@@ -55,10 +55,33 @@ what you would change and why it is small, and wait for the approval. Without it
 
 Concorde's own Operations and worker agents may be used on this checkout, but they are still in
 early development, so using them is optional: do the work directly whenever that is more reliable.
-When you do run an Operation or a worker, observe the run closely (its result, error chain, host
-evidence, run record and the changes it made) rather than trusting its status. If the Operation,
-its host or its worker instructions show an obvious problem, fix it directly in the sources, verify
-the fix, and commit it as its own step.
+Observe every Operation, workflow and worker run closely (its result, error chain, host evidence,
+run record and the changes it made) rather than trusting its status. If the Operation, its host or
+its worker instructions show an obvious problem, fix it directly in the sources, verify the fix,
+and commit it as its own step.
+
+## Defect reports from develop installs
+
+A project installed from this checkout with `python3 scripts/install-concorde.py <project>
+--develop` runs this primary worktree's Concorde, and its main agent reports the Concorde defects
+it finds as defect reports: Issue reports written in that project, described by the Dogfooding
+Module (`specs/concorde/dogfooding/module.md`). A develop install and its updates are refused
+unless this primary worktree is clean and on its branch. When the developer hands you a report:
+
+1. Open a task for the Module you judge at fault (the report's owner is `null`) and, in its
+   worktree, record the report with `python3 scripts/issues.py report --file <report> --task
+   <task>`. Its evidence is checked in the project its `origin` names, and its `concorde_commit`
+   says which Concorde the defect was seen on: check first that it still happens at the head.
+2. Read its `error_chain` in full and check its `basis`. A blocked boundary is placed in one of
+   Dogfooding's four boundary cases. Fix a Concorde implementation bug, where the grant or harness
+   applied differs from what the Protocol derives from the Specs, directly. For a Concorde design
+   limitation, where the Specs are right and the Protocol cannot express what legitimate work
+   needs, ask the developer before changing Concorde's design or Protocol or loosening any
+   boundary. Close a report that turns out to be the project's own problem or overreaching work
+   with `--reason not-actionable` and a note the developer can pass back.
+3. Fix the defect generally, never only for the reporting project, close the Issue on the task
+   branch with `--reason resolved` and the fix as evidence, and deliver and merge the task as
+   usual. The project takes the fix with `concorde update`.
 
 ## Source and verification
 

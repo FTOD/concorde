@@ -45,11 +45,23 @@ caller passes to the store directly together with the provenance it vouches for.
           }
         }
       },
+      "origin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project", "head", "concorde_commit", "task"],
+        "properties": {
+          "project": {"type": "string", "pattern": "^/"},
+          "head": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+          "concorde_commit": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+          "task": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
+        }
+      },
+      "error_chain": {"type": "object", "additionalProperties": {}},
       "issue_id": {"type": "string", "pattern": "^I-[0-9a-f]{32}$"},
       "expected_revision": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
     }
   },
-  "semantics": "One observation of a concrete problem, registered as typed value concorde-issue-report. report_key is chosen by the reporter and stays the same across retries of the same observation. type bug is a defect or failure, gap an implementation/Spec mismatch, a conflict between Specs or a missing necessary promise, limitation behaviour that is consistent but insufficient; subtype is required for gap and null otherwise. owner_target_id names the Module that owns the broken promise, or null when unknown. evidence paths are canonical project-relative POSIX paths; the report command also requires each to exist in the project. issue_id and expected_revision are both absent to create an Issue and both present to append to that Issue at exactly that revision. Provenance is never part of a report. The report is at most 64 KiB as canonical JSON.",
+  "semantics": "One observation of a concrete problem, registered as typed value concorde-issue-report. report_key is chosen by the reporter and stays the same across retries of the same observation. type bug is a defect or failure, gap an implementation/Spec mismatch, a conflict between Specs or a missing necessary promise, limitation behaviour that is consistent but insufficient; subtype is required for gap and null otherwise. owner_target_id names the Module that owns the broken promise, or null when unknown. evidence paths are canonical project-relative POSIX paths; the report command also requires each to exist in the project, or in the origin project when origin is given. origin, optional, says the observation was made in another project than the one recording it: that project's absolute path, its Git HEAD then, the commit of the Concorde it ran, and the task, each nullable but project. error_chain, optional, is the failure's error chain as one error of the Framework's error contract, checked against it. issue_id and expected_revision are both absent to create an Issue and both present to append to that Issue at exactly that revision. Provenance is never part of a report. The report is at most 64 KiB as canonical JSON.",
   "example": {
     "report_key": "retry-count-unspecified",
     "type": "gap",
@@ -174,8 +186,11 @@ that configuration names whenever an action needs the registered Modules.
 | `reopen <id> --note <text> --evidence <item>...` | Reopens the closed Issue at its current revision and prints `{"issue_id", "status": "open", "revision"}` |
 
 `report` reads the file as UTF-8 JSON and validates it as a
-[report](#contract.issues.report). Its `owner_target_id`, when not `null`, must be a registered
-Module, and each evidence path must exist in the project. When the owner is `null` the registry must
+[report](#contract.issues.report), including a given `error_chain` against the Framework's
+[error contract](../contracts.md#contract.concorde.error). Its `owner_target_id`, when not `null`,
+must be a registered Module, and each evidence path must exist in the project or, for a report with
+an `origin`, in the origin project, whose path the refusal then names. A report file may lie
+outside the project, such as a report another project wrote. When the owner is `null` the registry must
 have exactly one root Module, which becomes the reporting Module. A file with `issue_id` and
 `expected_revision` appends to that Issue; the revision is the one `show`, `report`, `close` or
 `reopen` last printed for it.

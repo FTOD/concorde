@@ -23,8 +23,9 @@ A report file with a provenance field is refused as malformed, because a report 
 
 ### req.issues.report-checked — A report names a registered owner and existing evidence
 
-The bookkeeping command SHALL refuse a report whose owner is not a registered Module or whose
-evidence path does not exist in the project.
+The bookkeeping command SHALL refuse a report whose owner is not a registered Module, whose
+evidence path does not exist in the project or, for a report with an origin, in the origin project,
+or whose error chain is not an error of the Framework's error contract.
 
 ### req.issues.durable-receipt — A receipt means the report is on disk
 

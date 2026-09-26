@@ -38,6 +38,13 @@
         ]
       },
       {
+        "target": "module.dogfooding",
+        "meaning": "#uses-dogfooding",
+        "relies_on": [
+          "concept.dogfooding.develop-install"
+        ]
+      },
+      {
         "target": "module.workflows",
         "meaning": "#uses-workflows"
       }

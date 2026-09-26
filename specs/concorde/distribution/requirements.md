@@ -7,7 +7,7 @@ in concrete situations.
 
 ### req.distribution.build-owned-outputs — The build writes only where it owns
 
-The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/` and `generated/workflows/` and to `generated/build-manifest.json`.
+The build SHALL write only inside `generated/protocol/`, `generated/workers/`, `generated/main-session/`, `generated/dogfooding/` and `generated/workflows/` and to `generated/build-manifest.json`.
 
 Other locations under `generated/` belong to other producers, and the build never judges or removes
 them. Each new prompt root adds its own owned location in the same change.
@@ -51,6 +51,13 @@ it was; a file that is not a JSON object is refused before anything is written.
 ### req.distribution.own-python — Concorde runs in its own Python environment
 
 The installed `concorde` command SHALL run Concorde only with the interpreter of its own environment under `.concorde/framework/python/`, ignoring the caller's Python path settings and user site-packages.
+
+### req.distribution.idle-install — Concorde is never replaced while it runs
+
+The installer SHALL refuse, before writing anything, to install into a project in which an
+Operation run's host process or a pi task-session round's supervisor is still running, naming each.
+
+The update runs the installer, so the same holds for `concorde update`.
 
 ### req.distribution.installer-no-specs — The installer never writes Specs
 

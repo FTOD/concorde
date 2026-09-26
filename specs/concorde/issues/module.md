@@ -36,12 +36,18 @@ settled or needs attention again; observing is cheap, while closing requires evi
 reports, dispositions and a status of `open`/`closed`. Each report is a `bug`, a `gap` (an
 implementation/Spec mismatch, a Spec conflict or a missing promise) or a `limitation`, naming the
 owning Module or `null` if unknown — the Issue's owner is then the reporting Module, the root
-Module for a command-recorded report. Reports are only appended, never edited; since files travel
+Module for a command-recorded report. A report may also name its **origin**, when the problem was
+seen in another project than the one recording it, such as a
+[defect report](../dogfooding/module.md#concept.dogfooding.defect-report) a project using Concorde
+hands to the Concorde repository, and may carry the failure's whole
+[error chain](../vocabulary.md#concept.concorde.error-chain), so that the chain reaches whoever
+solves the Issue as structured data rather than prose. Reports are only appended, never edited; since files travel
 with Git, a task-worktree closure stays open on the primary branch until the branch merges.
 
 **Recording a report.** The main agent writes it as JSON and runs
 `python3 scripts/issues.py report --file <report.json> [--task <task-id>]`; the command refuses an
-unregistered owner or evidence absent from the project, and adds its own provenance (reporter,
+unregistered owner, evidence absent from the project (or from the origin project a report names)
+or an error chain that breaks the Framework's error contract, and adds its own provenance (reporter,
 reporting Module, registry digest, task, Git `HEAD`) so a report can't claim another origin. It
 answers with a [receipt](interface.md#contract.issues.receipt) and the new revision once the
 record is on disk; naming an open Issue and its revision appends rather than creates, and the same

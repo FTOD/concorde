@@ -1,0 +1,125 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.dogfooding.module",
+    "owner": "module.dogfooding",
+    "role": "module"
+  },
+  "module": {
+    "title": "Dogfooding",
+    "owns": [
+      "specs/concorde/dogfooding/module.md",
+      "specs/concorde/dogfooding/requirements.md",
+      "specs/concorde/dogfooding/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "concept.distribution.installer"
+        ]
+      },
+      {
+        "target": "module.main-session",
+        "meaning": "#uses-main-session",
+        "relies_on": [
+          "concept.main-session.guidance"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.issue",
+          "concept.issues.report"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.tasks.task",
+          "concept.tasks.decision-log"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec",
+        "relies_on": [
+          "concept.spec.grant"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.dogfooding.develop-install",
+      "type": "concept",
+      "title": "Develop install",
+      "meaning": "#concept.dogfooding.develop-install"
+    },
+    {
+      "id": "concept.dogfooding.concorde-repository",
+      "type": "concept",
+      "title": "Concorde repository",
+      "meaning": "#concept.dogfooding.concorde-repository"
+    },
+    {
+      "id": "concept.dogfooding.concorde-defect",
+      "type": "concept",
+      "title": "Concorde defect",
+      "meaning": "#concept.dogfooding.concorde-defect"
+    },
+    {
+      "id": "concept.dogfooding.defect-report",
+      "type": "concept",
+      "title": "Defect report",
+      "meaning": "#concept.dogfooding.defect-report"
+    },
+    {
+      "id": "concept.dogfooding.boundary-case",
+      "type": "concept",
+      "title": "Boundary case",
+      "meaning": "#concept.dogfooding.boundary-case"
+    },
+    {
+      "id": "realization.dogfooding.source-check",
+      "type": "realization",
+      "title": "Develop source check",
+      "meaning": "#realization.dogfooding.source-check",
+      "entries": [
+        "src/concorde/dogfooding/"
+      ]
+    },
+    {
+      "id": "realization.dogfooding.guidance",
+      "type": "realization",
+      "title": "Develop guidance",
+      "meaning": "#realization.dogfooding.guidance",
+      "entries": [
+        "prompts/dogfooding/"
+      ]
+    },
+    {
+      "id": "realization.dogfooding.tests",
+      "type": "realization",
+      "title": "Dogfooding tests",
+      "meaning": "#realization.dogfooding.tests",
+      "entries": [
+        "tests/concorde/dogfooding/"
+      ]
+    }
+  ],
+  "relations": [],
+  "extensions": {}
+}

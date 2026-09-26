@@ -79,6 +79,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go
 - AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
 - AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
+- AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
 - BUT no Spec document, registry or Protocol binding of the project changed
 
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
@@ -95,6 +96,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the configuration binds the new Protocol copy, the result names the bindings before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
 - AND while a Spec is broken, `concorde validate` also reports `CONCORDE-UPDATE-001` and the mark stays
 - AND the first validation that passes reports `CONCORDE-UPDATE-002` and removes the mark
+
+### scenario.distribution.install-busy — Concorde is not replaced while it runs
+
+- GIVEN an installed project in which an Operation run's host process or a pi task-session round's supervisor is still running
+- WHEN the developer installs Concorde again or runs `concorde update`
+- THEN the install is refused with `concorde_busy`, naming each running run or round with its process and progress file
+- BUT nothing in the project changes
+- AND once the run has finished, the same install succeeds
 
 ### scenario.distribution.own-python — Concorde ignores the caller's Python
 

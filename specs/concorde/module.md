@@ -179,7 +179,7 @@ than carry the framework's function, so the [Relationships](#relationships) diag
 
 ## Relationships
 
-The root is the composition of ten child Modules; each one's own entry draws what it uses:
+The root is the composition of eleven child Modules; each one's own entry draws what it uses:
 
 ```d2
 root: Concorde Framework {
@@ -193,6 +193,7 @@ root: Concorde Framework {
   issues: Issues
   distribution: Distribution
   e2e: End-to-end testing
+  dogfooding: Dogfooding
 }
 ```
 
@@ -246,6 +247,13 @@ that found it; solving one is ordinary work run through Operations.
 **End-to-end testing** is how this project tests Concorde itself on real codebases from SWE-bench
 with real agents, headless or through a deterministic driver. It serves the developers of
 Concorde only and reaches no user's project.
+
+<a id="contains-dogfooding"></a>
+
+**Dogfooding** lets the developer use Concorde on a real project while developing it: a develop
+install runs the Concorde of an independent Concorde repository, the project's main agent watches
+Concorde and reports its defects as Issue reports, and the Concorde repository fixes them under its
+own tasks, which the project then takes with an update. It never changes Concorde from the project.
 
 <a id="contains-distribution"></a>
 

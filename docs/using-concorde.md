@@ -110,7 +110,26 @@ install did, binds the new Protocol copy in `.concorde/config.json` (read what c
 their worktrees keep the previous Protocol copy. Your project is then **Concorde unvalidated**:
 `concorde validate` reports it as an error, and nothing merges, until you have repaired what the
 new version finds and a validation passes. That mark comes only from an update; your own changes
-never set it.
+never set it. An update also waits for Concorde to be idle: while an Operation or a pi task
+session is still running in your project, it refuses and names what runs.
+
+### Use Concorde while developing it
+
+If you also work on Concorde itself, install it with `--develop` from your Concorde checkout's
+primary worktree, on its branch and with everything committed:
+
+```bash
+python3 scripts/install-concorde.py /absolute/path/to/project --develop
+```
+
+Your project then runs that checkout's Concorde, and its main agent watches Concorde while it works:
+it never changes Concorde from your project, and when something goes wrong that would go wrong in
+any project, it writes a defect report under `.concorde/runs/defects/` and tells you. Take the
+report to a session in your Concorde checkout, which records it as an Issue there and fixes it in a
+task of its own; once that task is merged, run `concorde update` in your project. When a boundary
+stops work, the main agent first decides whether the work overreaches, your Specs draw the
+boundary wrongly, or Concorde implements or designs it wrongly, and only the last two become
+defect reports.
 
 ## Write your first Spec
 

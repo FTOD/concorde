@@ -13,6 +13,15 @@ are defined in the [Issue interface](interface.md).
 - AND its provenance names `main-agent`, `issues`, `report`, the owner as reporting Module, the registry digest, the task and the Git `HEAD` or `null` outside a Git repository
 - AND the command prints the receipt and the revision that `show` reports for the Issue
 
+### scenario.issues.command-report-origin — Record a report seen in another project
+
+- GIVEN an initialized project and a report file written in another project, naming that project as its `origin`, evidence paths relative to it and an error chain
+- WHEN the main agent runs `report --file` with that file
+- THEN the Issue holds the report with its origin and error chain unchanged, and its provenance is this project's
+- BUT a report whose evidence is absent from the origin project is refused with `missing_evidence` naming the origin project
+- AND a report whose error chain breaks the Framework's error contract is refused with `invalid_issue` naming the field
+- AND nothing is written for either
+
 ### scenario.issues.command-report-unknown-owner — A report without an owner is filed under the root Module
 
 - GIVEN a registry with one root Module and a report file whose owner is `null`
