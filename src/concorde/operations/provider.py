@@ -251,6 +251,51 @@ ENVIRONMENT_HANDLING = (
 )
 
 
+def interpreter_roots(interpreter: str, home: Path | None = None) -> tuple[Path, ...]:
+    """What must be readable for a worker to run ``interpreter``.
+
+    The sandbox makes a path readable at its real location, so the environment the interpreter
+    belongs to and the installation it resolves to are not enough when the way between them
+    passes through a symbolic link, such as uv's ``cpython-3.9-linux-x86_64-gnu`` pointing to
+    ``cpython-3.9.25-linux-x86_64-gnu``: the directory holding each link on the way must be
+    readable too. A directory that is the home itself or holds it is never included.
+    """
+    home = Path(os.path.realpath(home or Path.home()))
+    roots = [Path(interpreter).parent.parent]
+    pending = list(Path(interpreter).parts[1:])
+    current = Path("/")
+    hops = 0
+    while pending and hops < 40:
+        part = pending.pop(0)
+        if part in ("", "."):
+            continue
+        if part == "..":
+            current = current.parent
+            continue
+        candidate = current / part
+        if candidate.is_symlink():
+            hops += 1
+            roots.append(current)
+            target = Path(os.readlink(candidate))
+            if target.is_absolute():
+                current = Path("/")
+                pending = list(target.parts[1:]) + pending
+            else:
+                pending = list(target.parts) + pending
+        else:
+            current = candidate
+    roots.append(Path(os.path.realpath(interpreter)).parent.parent)
+    return tuple(
+        dict.fromkeys(
+            root
+            for root in roots
+            if root.exists()
+            and root != Path("/usr")
+            and not (root == home or root in home.parents)
+        )
+    )
+
+
 def withhold_writes(value: dict) -> dict:
     """A grant with every ``rw`` entry lowered to ``ro``; the entry list is otherwise unchanged."""
     return {
@@ -362,16 +407,7 @@ class RunContext:
         if interpreter is not None:
             # The environment the interpreter belongs to, and the installation it links to,
             # must be readable for the worker to run it; neither is ever writable.
-            runtime += tuple(
-                dict.fromkeys(
-                    root
-                    for root in (
-                        Path(interpreter).parent.parent,
-                        Path(os.path.realpath(interpreter)).parent.parent,
-                    )
-                    if root.exists() and root != Path("/usr") and root != Path("/")
-                )
-            )
+            runtime += interpreter_roots(interpreter)
         record = run_worker(
             WorkerRequest(
                 worktree=self.worktree,

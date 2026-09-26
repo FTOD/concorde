@@ -6,12 +6,14 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 from concorde.harness.runs import read_record
 from concorde.harness.settings import denied
 from concorde.implementation.operation import CODE_CHANGE_SCHEMA, TEST_REPORT_SCHEMA
+from concorde.operations.provider import interpreter_roots
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from tests.concorde.support.operation_project import (
@@ -68,23 +70,6 @@ class ImplementTests(unittest.TestCase):
 
     def kinds(self, envelope) -> list[str]:
         return [item["kind"] for item in envelope["host_evidence"]]
-
-    @verifies("scenario.implementation.project-python")
-    def test_the_worker_is_told_and_may_run_the_projects_interpreter(self):
-        status, envelope = self.implement([{"writes": {}}])
-        self.assertEqual(0, status, envelope)
-        record = self.record(envelope)
-        work = Path(record["run_directory"]) / "work"
-        prompt = json.loads((work / "fake-round-1.json").read_text())["prompt"]
-        self.assertIn(f"The project's own interpreter is {sys.executable}", prompt)
-        settings = json.loads(
-            (Path(record["run_directory"]) / "control/settings.json").read_text()
-        )
-        environment_root = Path(sys.executable).parent.parent.as_posix()
-        self.assertIn(
-            os.path.realpath(environment_root),
-            settings["sandbox"]["filesystem"]["allowRead"],
-        )
 
     @verifies("scenario.implementation.project-python")
     def test_the_worker_is_told_and_may_run_the_projects_interpreter(self):
@@ -306,6 +291,31 @@ class ImplementTests(unittest.TestCase):
         prompt = json.loads((work / "fake-round-1.json").read_text())["prompt"]
         self.assertIn(first["run_id"], prompt)
         self.assertIn("## Task material", prompt)
+
+
+class InterpreterRootsTests(unittest.TestCase):
+    @verifies("scenario.implementation.project-python")
+    def test_every_link_on_the_way_to_the_interpreter_is_readable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(os.path.realpath(temporary)) / "home"
+            installations = home / ".local/share/uv/python"
+            release = installations / "cpython-3.9.25"
+            (release / "bin").mkdir(parents=True)
+            (release / "bin/python3.9").write_text("")
+            (installations / "cpython-3.9").symlink_to(release)
+            environment = home / "envs/project"
+            (environment / "bin").mkdir(parents=True)
+            (environment / "bin/python").symlink_to(
+                installations / "cpython-3.9/bin/python3.9"
+            )
+            (home / "link").symlink_to(environment)
+
+            roots = interpreter_roots((home / "link/bin/python").as_posix(), home)
+
+        self.assertIn(installations, roots)
+        self.assertIn(release, roots)
+        self.assertIn(environment / "bin", roots)
+        self.assertNotIn(home, roots)
 
 
 class NoCheckTests(unittest.TestCase):
