@@ -1,0 +1,149 @@
+{
+  "task": "execution-tools-spec",
+  "goal": "Define Tool alongside Worker, group deterministic execution tools, and reconcile Workflow/Operation/Worker/Tool Specs including workflow portability",
+  "modules": [
+    "module.concorde",
+    "module.workflows",
+    "module.operations",
+    "module.agents",
+    "module.workers",
+    "module.checks",
+    "module.tools"
+  ],
+  "sequence": 1,
+  "base_commit": "93610974376cfcf0b5c5d3ecec86c64b24c940cf",
+  "parent_commit": "1ae8a46f0ea2fd045cf3c30e83d1c339ad0df6bb",
+  "readiness": {
+    "run_id": "r-20260926T180706-delivery-d2283804",
+    "input_digest": "sha256:4c51c66e676ce7d5ebfc58e1ce604a54c322c8c917e788d0f9816c29f5d5d35f",
+    "modules": [
+      "module.agents",
+      "module.checks",
+      "module.concorde",
+      "module.operations",
+      "module.tools",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:3e0820534eb194f22b5662c305142d018003ad7cfd98929526ae7ddab6a78bf6"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:d7382ee4b98e87a6af6eb73ca5e548509aa554a4860ce02e38a7f73910fb00ce"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:afd7fe8b8086b923ccfca21196a64aa7ddd8233b22e6f6cb0dee5efff1cfdf83"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:8480ffe28661058a3b2796be80ea1e9306a224fc4b6a6b8c7c23db1c0779d584"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:f518131eae9d55a990f122c5c257c9a04e73b7e088293e3428f20519ce24f4c8"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:e5a9215e0ba2322009d6c60fba87dc613370cba43ee4d1c82e772f97a0ba4e85"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:421d10018270f854819d6751f8c98b5479ac29047ad9abf7e93dd449d8afeca6"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:8859d41e726f82962b23f31f921b5d3fdda4f592250e752555e7725b41a7dced"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:974725e5a1e86eb93467aed6a8eac016b4f9e3c6c568db7ae9529a7bfb63453d"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:4af16fd3c576d5fd4c52f1eb64db5bb2b6974b13c3aefd517d3c3c40bf6e2d60"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:51feb52bc11b65cf1d922e5b027ee4c80db5c16b9e09ba469a4cc4b5e3f254b0"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:9116844e4efcf7036e8081a898538e4c566eec78a799a5db02bc50f6a9dae0af"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:5d292cdaba3cf2272683b0b3ad2db0a73b7e7c9ecf1985459f9081ae9e82eec5"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:a9f1c6be07032e60d53b42e902f491028cd358fde3fb59a28eb6ed468aaf81d0"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:52560a4df73613d57df133d56eab0456d5aeec85e8c6ca0def21388249333cdd"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:d9457d4cfcf6ee0878b60bf1440d823b89b51398a320826965d9080df286e3d4"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T180446-validate-2d9b962a",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.workflows",
+        "module.operations",
+        "module.agents",
+        "module.workers",
+        "module.checks",
+        "module.tools"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:728d4011deba95f40e7fb15585f83601322aeeace63e9fbb24e6c3a7ceba4f9a"
+    }
+  ],
+  "created_at": "2026-09-26T18:08:11Z"
+}
