@@ -358,6 +358,20 @@ class RunContext:
             for path in config.get("runtime", [".venv", "node_modules"])
             if (Path(path) if os.path.isabs(path) else self.worktree / path).exists()
         ) + tuple(Path(path) for path in readable if Path(path).exists())
+        interpreter = self.project_interpreter()
+        if interpreter is not None:
+            # The environment the interpreter belongs to, and the installation it links to,
+            # must be readable for the worker to run it; neither is ever writable.
+            runtime += tuple(
+                dict.fromkeys(
+                    root
+                    for root in (
+                        Path(interpreter).parent.parent,
+                        Path(os.path.realpath(interpreter)).parent.parent,
+                    )
+                    if root.exists() and root != Path("/usr") and root != Path("/")
+                )
+            )
         record = run_worker(
             WorkerRequest(
                 worktree=self.worktree,
@@ -382,9 +396,25 @@ class RunContext:
                 operation=self.operation,
                 role=role,
                 after_round=after_round,
+                project_python=interpreter,
             )
         )
         return self.absorb(record)
+
+    def project_interpreter(self) -> str | None:
+        """The project's own interpreter, as its checks run it, or None when none is configured
+        or it cannot be found."""
+        from ..harness.checks import CheckError, project_python
+        from ..spec.repository import SpecRepository
+        from ..spec.repository_base import SpecError
+
+        try:
+            config = SpecRepository(self.worktree).config
+            if not config.get("python"):
+                return None
+            return project_python(self.worktree, config, "worker")
+        except (CheckError, SpecError, OSError):
+            return None
 
     def worker_model(self, role: str) -> tuple[str, dict]:
         """The backend of this Operation's worker ``role`` — the worktree's configured one, or the

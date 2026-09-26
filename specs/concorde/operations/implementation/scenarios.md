@@ -5,6 +5,13 @@ change and the test report are in the [contracts](contracts.md).
 
 ## Implement
 
+### scenario.implementation.project-python — The worker runs the project's own interpreter
+
+- GIVEN a project whose configuration names its interpreter in `python`
+- WHEN an implement worker starts
+- THEN its brief names that interpreter, which is first on its PATH as `python`
+- AND its sandbox may read the interpreter's environment, so the worker can run the project's code and tests with it
+
 ### scenario.implementation.checks-of-users — A change runs the checks of the Modules that use it
 
 - GIVEN Module A, which uses Module B and has a configured check, and Module B, which has none

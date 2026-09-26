@@ -95,6 +95,8 @@ class WorkerRequest:
     # resume prompt naming what to repair, or None. A worker is resumed with it while rounds
     # remain; once none remain the round's result stands and the caller judges it.
     after_round: Callable[[], str | None] | None = None
+    # The project's own interpreter, which the worker finds first on its PATH.
+    project_python: str | None = None
 
 
 def _digest(path: Path) -> str:
@@ -152,7 +154,15 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
         "Every other path is hidden from you. A refused read or write means the path is outside "
         "your boundary: do not work around it. If you need it, stop and return `blocked`, naming "
         "the path and why you need it.\n\n"
-        "## Rules\n\n"
+        + (
+            "## Running the project's code\n\n"
+            f"The project's own interpreter is {request.project_python}, first on your PATH as "
+            "`python`. Run the project's code and tests with it, from the task worktree, never "
+            "with another Python on the machine.\n\n"
+            if request.project_python
+            else ""
+        )
+        + "## Rules\n\n"
         "- Never use Git and never try to read `.git`.\n"
         "- You cannot delete files. List files that should be deleted in `proposed_deletions`.\n"
         f"- A file you create with {shell} outside the writable paths is lost when you finish; "

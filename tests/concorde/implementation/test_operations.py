@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -67,6 +68,40 @@ class ImplementTests(unittest.TestCase):
 
     def kinds(self, envelope) -> list[str]:
         return [item["kind"] for item in envelope["host_evidence"]]
+
+    @verifies("scenario.implementation.project-python")
+    def test_the_worker_is_told_and_may_run_the_projects_interpreter(self):
+        status, envelope = self.implement([{"writes": {}}])
+        self.assertEqual(0, status, envelope)
+        record = self.record(envelope)
+        work = Path(record["run_directory"]) / "work"
+        prompt = json.loads((work / "fake-round-1.json").read_text())["prompt"]
+        self.assertIn(f"The project's own interpreter is {sys.executable}", prompt)
+        settings = json.loads(
+            (Path(record["run_directory"]) / "control/settings.json").read_text()
+        )
+        environment_root = Path(sys.executable).parent.parent.as_posix()
+        self.assertIn(
+            os.path.realpath(environment_root),
+            settings["sandbox"]["filesystem"]["allowRead"],
+        )
+
+    @verifies("scenario.implementation.project-python")
+    def test_the_worker_is_told_and_may_run_the_projects_interpreter(self):
+        status, envelope = self.implement([{"writes": {}}])
+        self.assertEqual(0, status, envelope)
+        record = self.record(envelope)
+        work = Path(record["run_directory"]) / "work"
+        prompt = json.loads((work / "fake-round-1.json").read_text())["prompt"]
+        self.assertIn(f"The project's own interpreter is {sys.executable}", prompt)
+        settings = json.loads(
+            (Path(record["run_directory"]) / "control/settings.json").read_text()
+        )
+        environment_root = Path(sys.executable).parent.parent.as_posix()
+        self.assertIn(
+            os.path.realpath(environment_root),
+            settings["sandbox"]["filesystem"]["allowRead"],
+        )
 
     @verifies("scenario.implementation.checks-of-users")
     def test_a_change_runs_the_checks_of_the_modules_that_use_it(self):

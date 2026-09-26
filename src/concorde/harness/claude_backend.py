@@ -209,7 +209,12 @@ class ClaudeBackend:
 
     def environment(self, request, paths) -> dict[str, str]:
         environment = {
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "PATH": (
+                f"{Path(request.project_python).parent}{os.pathsep}"
+                if request.project_python
+                else ""
+            )
+            + os.environ.get("PATH", "/usr/bin:/bin"),
             "LANG": os.environ.get("LANG", "C.UTF-8"),
             "HOME": paths.home.as_posix(),
             "TMPDIR": paths.tmp.as_posix(),
