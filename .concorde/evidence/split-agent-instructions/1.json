@@ -1,0 +1,114 @@
+{
+  "task": "split-agent-instructions",
+  "goal": "Split source-checkout instructions into pi AGENTS.md and Claude Code CLAUDE.md with shared DEVELOPING.md; preserve existing development rules and use host-supported task workflows; validate and deliver.",
+  "modules": [
+    "module.concorde",
+    "module.dogfooding",
+    "module.views"
+  ],
+  "sequence": 1,
+  "base_commit": "46e626a4961d119e3d87ff36ea6ba64ed270b448",
+  "parent_commit": "f02c9be0f43bf71ce7a8600b9c3cdeb463b295b4",
+  "readiness": {
+    "run_id": "r-20260926T184600-delivery-8a5ded3b",
+    "input_digest": "sha256:5517303a47da7dea3b8e2a93df9ee88254fa3e9075ddf145ac5bd10292d92e65",
+    "modules": [
+      "module.concorde",
+      "module.dogfooding",
+      "module.views"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:7b2e7eb7739256bc3f89487d425cbbd9f341c1d3306b95120dddd8322e17dc56"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:71be91aba85c4e776882abf583b3212b11fee6233b95f08d2a912b1760625c02"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:e200df2ea53372afbb49918534501c6eb81dab698ded7dbbf5061f050d44e048"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:6e12b541c9b78fc5856ff8427347430f2ada16406c3922a3b178f642387c9cad"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:6e12b541c9b78fc5856ff8427347430f2ada16406c3922a3b178f642387c9cad"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:6e12b541c9b78fc5856ff8427347430f2ada16406c3922a3b178f642387c9cad"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T182531-validate-6887fe90",
+      "operation": "validate",
+      "modules": [
+        "module.concorde"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:44aecb88c4d1057a6ecdeb1eee2f6effc1f023989afd548e64398a2e9d5187cc"
+    },
+    {
+      "run_id": "r-20260926T182949-validate-f69e13dd",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.dogfooding",
+        "module.views"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 2 blocking finding(s). check check.views.publication-types: module.views check failed (exit 1); log .concorde/runs/r-20260926T182949-validate-f69e13dd/checks/check.views.publication-types.log | check check.views.repository-regressions: module.views check failed (exit 1); log .concorde/runs/r-20260926T182949-validate-f69e13dd/checks/check.views.repository-regressions.log",
+      "worker_runs": [],
+      "result_digest": "sha256:ef482bf1a3606cff6f7bd8d183a1d4440377cabf4f90e8bb85ac8809f7f2590c"
+    },
+    {
+      "run_id": "r-20260926T183428-validate-eb1e721b",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.dogfooding",
+        "module.views"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 2 blocking finding(s). check check.views.publication-types: module.views check failed (exit 1); log .concorde/runs/r-20260926T183428-validate-eb1e721b/checks/check.views.publication-types.log | check check.views.repository-regressions: module.views check failed (exit 1); log .concorde/runs/r-20260926T183428-validate-eb1e721b/checks/check.views.repository-regressions.log",
+      "worker_runs": [],
+      "result_digest": "sha256:4b774a23544023d42e016a2d9d2d503b7d3eb7114521c2776e457d1d44068549"
+    },
+    {
+      "run_id": "r-20260926T184210-validate-8aed1fbf",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.dogfooding",
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:59b5d30dd83f07ecaf9df168d02d8ccdc25f75796eec462bdf0013a69e54854c"
+    }
+  ],
+  "created_at": "2026-09-26T18:49:31Z"
+}
