@@ -22,10 +22,10 @@ Code or on pi.
 
 ## Terminology
 
-This entry defines no terms of its own. The words every Module shares, including the four kinds of
-context and the task types, are defined in the [shared vocabulary](vocabulary.md), which this
-Module also owns; read it first. Each child Module defines the words of its own interface, such as
-a [Task](tasks/module.md), an [Operation](operations/module.md) or a
+The [shared vocabulary](vocabulary.md) defines the words used across Modules, including the four
+kinds of context and the task types, for reference as needed. This Module owns those definitions;
+this entry defines no terms of its own. Each child Module defines the words of its own interface,
+such as a [Task](tasks/module.md), an [Operation](operations/module.md) or a
 [Grant](spec-tooling/spec/module.md).
 
 ## Usage

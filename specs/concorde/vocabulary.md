@@ -1,9 +1,8 @@
 # Shared vocabulary
 
-These words are used by every part of Concorde, so they are defined once here, at the root, and
-imported by the Modules that use them. Words that belong to one Module's own interface, such as
-Operation, Task, Grant or Issue, are defined by that Module instead. Read this page first if
-Concorde is new to you.
+These shared terms are defined once by the root Module and imported by the Modules that use them.
+Use this page as a reference when a term needs clarification. Words of one Module's own interface,
+such as Operation, Task, Grant or Issue, are defined by that Module.
 
 ## Terminology
 
@@ -33,39 +32,22 @@ and how results and problems travel (evidence, error chain).
 
 <a id="concept.concorde.developer"></a><a id="concept.concorde.main-agent"></a>
 
-The **developer** works with a **main agent**: an ordinary Claude Code or pi session opened in the
-project's primary worktree. The main agent is where understanding and decisions happen. It
-discusses the state of the project with the developer, answers questions, and sets the direction
-of larger changes. It splits work into tasks, each a branch with its own worktree, and decides
-which tasks run in parallel. A single task it carries out itself: it enters the task worktree,
-changes the project there directly or through Operations, runs every Concorde command with that
-worktree's own copy, and returns to the primary worktree after delivery to merge. It is inside at
-most one task at a time. Concorde adds no permission limits to the main agent, but the main agent
-never edits the primary worktree's Specs or code.
-
-The main agent decides ordinary design uncertainties on its own, records them, and reports them at
-the end. It asks the developer only when a decision has a major impact.
+The **developer** sets the project's direction with the **main agent**, the developer-facing
+session with the project-wide view. The main agent may also carry out a task itself; the role is
+not tied to staying in the primary worktree. [Agents](agents/module.md) explains the levels of work,
+and [Main session](agents/main-session/module.md) explains the working method and decision policy.
 
 <a id="concept.concorde.task-session"></a>
 
-For work that splits into several tasks, the main agent delegates the task level: it starts a
-**task session** per task, a session of the main agent's own program whose working directory is the
-task worktree — a background Claude Code session, or in pi a sequence of headless rounds that each
-end with a report. It does the main agent's own task-level work at a smaller scale, so it keeps the
-main agent's program and configuration. It works like the main agent inside a task, deciding ordinary questions within the task's goal and Modules, and
-reports to the main agent when it has delivered, cannot go further, or needs a decision beyond its
-task; it never merges, closes the task or starts other sessions. Its file-writing tools and its
-shell may write only its own task, which guards against mistakes, not a malicious session. The
-main agent stays in the primary worktree while task sessions run, and alone merges.
+A **task session** carries one delegated task for the main agent, using the same agent program.
+It has a task-wide goal and reports to the main agent. Its lifecycle is explained by
+[Task sessions](agents/task-session/module.md).
 
 <a id="concept.concorde.worker"></a>
 
-A **worker** is one headless Claude Code or pi process that an Operation host launches for one bounded
-task, such as assessing a Module, changing its Spec or changing its code. It works under a frozen
-grant computed from the Specs of the task's worktree, needs no human input, and reports only to the
-host that launched it. It never touches Git, never runs Operations and never starts other agents.
-A worker's answer is a proposal: the host audits what it changed and runs the checks itself before
-anything counts.
+A **worker** carries one bounded job under a frozen grant and reports to its Operation host.
+Its answer is a proposal until the host verifies it. [Workers](agents/workers/module.md) explains
+how a run is launched, audited and recorded.
 
 ## Specs, context and boundaries
 
@@ -79,12 +61,9 @@ all.
 
 <a id="concept.concorde.task-type"></a>
 
-Every task has a **task type**. The Spec Protocol defines seven of them and, for each, the access
-level of every boundary set of the bound Modules: `understand` reads Specs and only the names of
-code files, `specify` may change the bound Modules' own documents, `implement` may change their
-code, `test` and `review-code` read their code, and `review-spec` reads their Specs. The seventh,
-`code-to-spec`, reads their code and writes their own documents; it exists only for a project whose
-code came before its Specs, which Concorde otherwise never assumes.
+A **task type** fixes access to the boundary sets of the bound Modules. For example, `specify`
+grants writes to their Specs and `implement` to their code; `code-to-spec` reads existing code to
+describe it in Specs when the code came first. The Protocol defines the complete access table.
 
 <a id="concept.concorde.context"></a>
 
@@ -135,15 +114,9 @@ and a Spec never stores it.
 
 <a id="concept.concorde.error-chain"></a>
 
-An **error chain** is how a problem travels up. Every actor that meets an error it cannot handle
-reports it to its parent as one **link**: which actor it is, a code, a complete description of what
-went wrong with its evidence, what it tried, the options it sees, and why it could not handle the
-error itself, for example because the fix needs a permission it lacks or a decision reserved to a
-level above. The errors it received from below and could not handle become the causes of its link,
-unchanged; it never replaces them with its own summary. Checks, workers, the Workers host,
-task sessions, Operations, deterministic components such as Git or the Spec core, and the main agent all write
-links, so the last receiver, the main agent or the developer, reads the whole path from where the
-error started up to itself, with every level's reason. A worker's link is its own claim; the host's
-links state what the host observed. The main agent decides what it can, records the decision in
-the task's decision log, and when it escalates to the developer it adds its own link on top of the
-chain. The exact shape is the [error contract](contracts.md#contract.concorde.error).
+An **error chain** preserves both the original failure and why each receiving level could not
+handle it. Each level adds its own detailed link, keeping the errors it received unchanged as
+causes. Worker links are claims; host links record observations. The
+[error contract](contracts.md#contract.concorde.error) defines the shape and contents, and
+[Main session](agents/main-session/module.md) explains how the main agent handles and escalates a
+chain.
