@@ -1,0 +1,55 @@
+{
+  "task": "project-implementation-read",
+  "goal": "Code-phase workers read and run the whole project's implementation; only their bound Modules' files are writable; a file write impacts every Module that uses its binders",
+  "modules": [
+    "module.spec"
+  ],
+  "sequence": 1,
+  "base_commit": "7a00f69757aacdba95f483e55197f9465441ec19",
+  "parent_commit": "58381fa1f05cd6891fc1cad42db27154a56f557d",
+  "readiness": {
+    "run_id": "r-20260926T073523-delivery-bd184857",
+    "input_digest": "sha256:8faeb4131a303f8a2d24c5e6aa58b6b28189505205bd05ba85dc44d86b699215",
+    "modules": [
+      "module.code-review",
+      "module.spec",
+      "module.workers"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:961dfc861b23fa55bc3cd7eecbdf002d5a5cba3e0fd9bc952c3f8419c24b0907"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:38eeda580203571bb1a3fb9e3ae44e079d7775da38bcaf28a4551eb0d19d6691"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:91747f272c75739cec9d13cbd1ee9f7f05140eb006e9c8f0af2b843b3cb19a2d"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T073510-validate-824664e3",
+      "operation": "validate",
+      "modules": [
+        "module.spec"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:75c75eaec53692d9b3f7f02103908f88dd6a1ad54a3b940608848cc7ee52cd71"
+    }
+  ],
+  "created_at": "2026-09-26T07:35:36Z"
+}
