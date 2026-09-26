@@ -1,0 +1,78 @@
+{
+  "task": "removed-modules",
+  "goal": "Rename the Workers error-chain level from harness to workers, and let a task's runs leave out Modules its branch removed or renamed instead of failing on them",
+  "modules": [
+    "module.concorde",
+    "module.workers",
+    "module.operations",
+    "module.tasks",
+    "module.validation"
+  ],
+  "sequence": 1,
+  "base_commit": "ed7d270abca85b9ca818d404bcbfd9614b7a5015",
+  "parent_commit": "c7d81986edaa85fcbad1b5ab8c9a707fff5ddea2",
+  "readiness": {
+    "run_id": "r-20260926T063744-delivery-7286c615",
+    "input_digest": "sha256:ac59e3429987b9ed3d47f1da6a002e06ae9e4184d2ee9011f09ef8ca215ac392",
+    "modules": [
+      "module.concorde",
+      "module.operations",
+      "module.tasks",
+      "module.validation",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:8347f7f7d8c53c57de2da61f41d2ac4bdec5e1e996c8ad267321825cd423489d"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:2affc89bb5a61f16315f340f94b91367ea0bdb6c9231ccca5298d6ef7e4eecf2"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:627b254fd9d307d148673f76a26b6037ea59decd1c7a8fe2ed1c2b2b60038a5c"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:ac90dee03b4f1cba56d1cdb80b7b54e47bb8fbbb8279a120dd7b5f5c1c79cea3"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:7c2390af890a2d92e08bdb7a229dd72b6d8b1d31fa464ba83d08e83dffd10ae9"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T063703-validate-ae4f2a72",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.workers",
+        "module.operations",
+        "module.tasks",
+        "module.validation"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:6d7a12daa39650801812e6c50f0a82b82b4928dae9c8c0b7ac8f600cb5d741fb"
+    }
+  ],
+  "created_at": "2026-09-26T06:38:13Z"
+}
