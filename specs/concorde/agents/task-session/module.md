@@ -137,6 +137,40 @@ the session may not decide it escalates with `concorde task escalate --by task-s
 level `task-session` on top of the failed runs' chains, for the main agent to decide or to pass on
 with its own link.
 
+```d2
+main: Main session
+tasksession: Task sessions
+workflows: Workflows
+operations: Operations
+workers: Workers
+main -> tasksession
+tasksession -> workflows
+tasksession -> operations
+workflows -> operations
+operations -> workers
+```
+
+<a id="uses-workflows"></a>
+
+**Workflows** is level 3, which a task session may start for its task when the work follows a known
+procedure. The session starts a [workflow](../../workflows/module.md#concept.workflows.workflow)
+exactly as the main agent would, for its own task only, and relies on the
+[workflow result](../../workflows/module.md#concept.workflows.result) keeping every step's error
+chain whole. A workflow that stops at a decision point is a decision for the session to take within
+its task's goal, or to escalate with its own link above the result's chain; it never merges or
+closes the task, which stays the main agent's.
+
+<a id="uses-operations"></a>
+
+**Operations** is level 4, which a task session runs directly with `concorde run --task` whenever no
+workflow fits. Each [Operation](../../operations/module.md#concept.operations.operation) run is an
+ordinary run of its task under the task's lock, and the session relies on its
+[Operation result](../../operations/module.md#concept.operations.result) separating what the host
+verified from what a worker claimed. A failed result is either repaired within the task, by a
+changed Spec or code and a new run, or escalated with the result's chain unchanged beneath the
+session's link. The session reaches a worker only through an Operation and never starts a worker
+or another agent itself.
+
 How a pi task session travels over time, from the main agent's start to its answer:
 
 ```d2 illustrative

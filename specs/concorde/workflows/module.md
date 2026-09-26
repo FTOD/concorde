@@ -240,7 +240,8 @@ audited and reported exactly as if the main agent had started it.
 
 Workflows is level 3 of the [five levels](../module.md#the-five-levels). It is called from the
 task level only: the main agent starts a workflow for a task it has opened, and may stay in the
-primary worktree while the workflow runs in its client's background. It calls only the level
+primary worktree while the workflow runs in its client's background, or a task session starts one
+inside the task delegated to it. It calls only the level
 directly below: its commands start each step as an Operation run, and it never reaches a worker or
 a Tool, which only an Operation host calls. What goes back up is one workflow result, assembled
 from what the hosts recorded, in which every Operation's error chain stays whole under the
@@ -257,15 +258,19 @@ workflows: Workflows {
 }
 operations: Operations
 workers: Workers
+tasksession: Task sessions
 main -> workflows
 main -> operations
+tasksession -> workflows
+tasksession -> operations
 workflows.commands -> operations: starts runs through
 operations -> workers
 ```
 
 The script never runs a command itself; its step agents relay each step to the Workflow commands,
-which alone start Operation runs and read their results. The main session reaches Operations both
-through a workflow and directly, and only Operations reaches Workers.
+which alone start Operation runs and read their results. Whoever plays the task level, the main
+session or a task session, reaches Operations both through a workflow and directly, and only
+Operations reaches Workers.
 
 <a id="uses-operations"></a>
 

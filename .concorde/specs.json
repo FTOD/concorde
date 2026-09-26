@@ -1370,6 +1370,22 @@
           "relies_on": [
             "concept.main-session.guidance"
           ]
+        },
+        {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows",
+          "relies_on": [
+            "concept.workflows.workflow",
+            "concept.workflows.result"
+          ]
+        },
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations",
+          "relies_on": [
+            "concept.operations.operation",
+            "concept.operations.result"
+          ]
         }
       ],
       "includes": [

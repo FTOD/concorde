@@ -209,6 +209,7 @@ to the host step that made it.
 
 ```d2
 main: Main session
+tasksession: Task sessions
 workflows: Workflows
 operations: Operations {
   host: Operation host
@@ -217,14 +218,16 @@ workers: Workers
 checks: Check execution
 main -> workflows
 main -> operations
+tasksession -> workflows
+tasksession -> operations
 workflows -> operations
 operations.host -> workers: launches workers through
 operations.host -> checks: runs checks through
 ```
 
 The picture draws the callers whose Modules declare that they use Operations: the main session,
-which also plays the task level when it works a task itself, and Workflows. A task session works
-by the same method from inside its task. End-to-end testing's headless sessions also start
+which also plays the task level when it works a task itself, a task session, which plays it when
+the main agent delegates a task, and Workflows. End-to-end testing's headless sessions also start
 Operations, to exercise them, but they are no level of a project's work. Level 5 is two Modules
 side by side, the agent half and the program half, and only the host reaches either: an Operation
 reaches a worker only through Workers, and Workers itself calls Check execution between a worker's
