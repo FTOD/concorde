@@ -3,9 +3,10 @@ exit 1, bad usage 2.
 
 A refusal prints ``{"error": <error link>}``: the Tasks component's account of what it refused,
 why it cannot handle it, and what the caller can do. ``session`` starts a task session in a task
-worktree. ``escalate`` records the escalating session's own link of an error chain (the main
-agent's, or a task session's to the main agent), with the errors of the named runs, files or
-earlier escalations as its causes.
+worktree on the main session's program, and in pi answers or stops its running round.
+``escalate`` records the escalating session's own link of an error chain (the main agent's, or a
+task session's to the main agent), with the errors of the named runs, files or earlier escalations
+as its causes.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 
 from .. import errors
 from ..spec.schema import ContractError, validate
-from . import merge, session, store
+from . import merge, pi_session, session, store
 
 # Why Tasks cannot handle each refusal itself; every other code is an input the caller corrects.
 HANDLING = {
@@ -46,7 +47,13 @@ HANDLING = {
     ),
     "session_failed": (
         "environment",
-        "Claude Code did not start the background session Tasks asked for",
+        "the agent program did not start the task session Tasks asked for, or the machine "
+        "lacks a program it needs; Tasks installs nothing",
+    ),
+    "session_busy": (
+        "decision",
+        "one round of a task session runs at a time; waiting for its report or stopping it is "
+        "the main agent's decision",
     ),
     "missing_worktree": (
         "environment",
@@ -115,8 +122,17 @@ OPTIONS = {
         "pass --path outside the primary worktree",
     ],
     "session_failed": [
-        "have the developer run claude once in the task worktree and accept the trust prompt",
+        "in Claude Code, have the developer run claude once in the task worktree and accept "
+        "the trust prompt",
+        "in pi, install what the message names",
         "work in the task yourself instead of starting a session",
+    ],
+    "client_unknown": [
+        "run the command from the Claude Code or pi main session, or set CONCORDE_CLIENT",
+    ],
+    "session_busy": [
+        "wait until the running round reports",
+        "stop it with concorde task session <task> --stop",
     ],
 }
 
@@ -160,9 +176,11 @@ def parser() -> argparse.ArgumentParser:
     showing.add_argument("task_id")
     starting = commands.add_parser("session")
     starting.add_argument("task_id")
-    starting.add_argument("--main", required=True)
+    starting.add_argument("--main")
     starting.add_argument("--model")
     starting.add_argument("--dry-run", action="store_true")
+    starting.add_argument("--answer")
+    starting.add_argument("--stop", action="store_true")
     closing = commands.add_parser("close")
     closing.add_argument("task_id")
     mode = closing.add_mutually_exclusive_group(required=True)
@@ -295,6 +313,59 @@ def close(here: Path, arguments) -> dict:
     )
 
 
+def start_session(here: Path, arguments) -> dict:
+    """Start, answer or stop a task session on the main session's own program."""
+    from ..harness.models import ModelConfigError, detect_client
+
+    try:
+        program, _ = detect_client()
+    except ModelConfigError as error:
+        raise store.TaskError(
+            "client_unknown",
+            f"a task session runs on the main session's own program, which cannot be read "
+            f"from the environment: {error}",
+        ) from error
+    follow = arguments.answer is not None or arguments.stop
+    if arguments.answer is not None and arguments.stop:
+        raise store.TaskError("invalid_input", "--answer and --stop exclude each other")
+    if follow and (arguments.model or arguments.dry_run or arguments.main):
+        raise store.TaskError(
+            "invalid_input",
+            "--answer and --stop take no --main, --model or --dry-run: they act on the "
+            "session already started",
+        )
+    if program == "claude":
+        if follow:
+            raise store.TaskError(
+                "invalid_input",
+                "--answer and --stop are for a pi task session: a Claude Code task session "
+                "receives answers through SendMessage and is stopped with claude stop",
+            )
+        if not arguments.main or not arguments.main.strip():
+            raise store.TaskError(
+                "invalid_input",
+                "--main must name the main agent's session, which the task session reports to",
+            )
+        return session.start(
+            here,
+            arguments.task_id,
+            arguments.main,
+            model=arguments.model,
+            dry_run=arguments.dry_run,
+        )
+    if arguments.stop:
+        return pi_session.stop(here, arguments.task_id)
+    if arguments.answer is not None:
+        return pi_session.answer(here, arguments.task_id, arguments.answer)
+    return pi_session.start(
+        here,
+        arguments.task_id,
+        arguments.main,
+        model=arguments.model,
+        dry_run=arguments.dry_run,
+    )
+
+
 def escalate(here: Path, arguments) -> dict:
     primary = store.primary_of(here)
     task = store.load_task(primary, arguments.task_id)
@@ -323,9 +394,10 @@ def escalate(here: Path, arguments) -> dict:
     except ValueError as error:
         raise store.TaskError("invalid_error", str(error)) from error
     _checked(link, "the escalation")
-    store.escalate(primary, task["id"], link)
+    record = store.escalate(primary, task["id"], link)
     return {
         "escalated": link,
+        "number": len(record["escalations"]),
         "decision_log": store.decision_log_path(primary, task["id"]).as_posix(),
         "rendered": errors.render(link),
     }
@@ -359,13 +431,7 @@ def main(argv, cwd: Path | None = None) -> int:
         elif arguments.command == "show":
             value = store.show_task(store.primary_of(here), arguments.task_id)
         elif arguments.command == "session":
-            value = session.start(
-                here,
-                arguments.task_id,
-                arguments.main,
-                model=arguments.model,
-                dry_run=arguments.dry_run,
-            )
+            value = start_session(here, arguments)
         elif arguments.command == "escalate":
             value = escalate(here, arguments)
         elif arguments.command == "merge":

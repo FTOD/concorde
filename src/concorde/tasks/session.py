@@ -1,4 +1,5 @@
-"""``concorde task session``: start a task session, a background Claude Code session in one task.
+"""``concorde task session`` in Claude Code: start a task session, a background Claude Code session
+in one task (``pi_session`` starts one in pi).
 
 The main agent starts one per task when it splits complex work into several tasks, and stays in
 the primary worktree itself. A task session works only inside its task worktree: it may edit
@@ -217,6 +218,7 @@ def start(
             f"background session; its output: {output[-2000:] or '(none)'}",
         )
     session = {
+        "program": "claude",
         "id": found["id"],
         "name": name,
         "main": main.strip(),

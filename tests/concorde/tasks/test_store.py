@@ -209,6 +209,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertIn("Escalated to the developer", log)
         self.assertIn("Not handled here (decision)", log)
         self.assertIn("src/bmod/secret.py", value["rendered"])
+        self.assertEqual(len(self.record()["escalations"]), value["number"])
         status, value = self.command(
             "escalate",
             "t1",

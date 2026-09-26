@@ -4,7 +4,7 @@
 
 Main session is the guidance that makes an ordinary Claude Code or pi session in a project's
 primary worktree act as Concorde's main agent: discuss work with the developer, split it into
-tasks, carry a task out inside its worktree or, in Claude Code, hand tasks to task sessions, keep
+tasks, carry a task out inside its worktree or hand tasks to task sessions, keep
 each task's decision log, decide ordinary questions itself while escalating only major ones, merge
 delivered tasks, and handle Issues. It also holds the guidance a task session starts with. It is
 advice to a
@@ -55,8 +55,12 @@ Concorde project's primary worktree that it is the main agent, and gives it a wo
   registry mirror.
 - **Hand split work to task sessions.** For work split into several tasks, start one
   [task session](../vocabulary.md#concept.concorde.task-session) per task with
-  `concorde task session <task> --main <own session name>` and stay in the primary worktree while
-  they run; they report back with SendMessage and escalate with their own link on the chain.
+  `concorde task session <task>` and stay in the primary worktree while they run. A task session
+  runs on the main agent's own program. In Claude Code the command names the main agent's session
+  with `--main`, and the session reports back with SendMessage. In pi the main agent uses the
+  `concorde_task_session` tool: each [session round](../tasks/module.md#concept.tasks.session-round)
+  ends with a report that wakes the main agent, which starts the next round with the tool's
+  `answer`. Either way a task session escalates with its own link on the chain.
 - **Keep the decision log.** Record every non-`ok` result and every unsupervised choice, with its
   reason, in the task's [decision log](../tasks/module.md#concept.tasks.decision-log).
 - **Merge delivered work.** From the primary worktree, merge a branch `delivery` committed without
@@ -106,6 +110,17 @@ such as one refused at once, is answered in the tool's own result instead, and n
 follows. `/concorde` lists the recent runs. The view only launches and observes: the Operation
 host runs and records every run, so closing pi never stops or changes one. Without pi-subagents
 the tool, the wake and `/concorde` still work.
+
+The view follows pi task sessions the same way. The `concorde_task_session` tool starts a task
+session, answers it (`answer`, which starts the next round) or stops its running round (`stop`),
+by running `concorde task session` from the primary worktree, and returns at once. The extension
+reads each round's progress file under `.concorde/tasks/<task>.session/` and shows the round as an
+external job — its task, round and the session's latest tool call — and when the round ends it
+wakes the main agent with the outcome recorded in the task record: the report's summary,
+decisions and open points, the delivery commit, the numbers of the escalations to read with
+`concorde task show`, or the failed round's error chain rendered. A main session that starts
+again finds the running rounds from their progress files. In a pi task session itself, where
+`CONCORDE_TASK_SESSION` is set, the extension stays inactive.
 
 <a id="concept.main-session.escalation-policy"></a>
 
@@ -218,7 +233,8 @@ mainsession: Main session {
 
 The **guidance sources** live under `prompts/main-session/` (`skill.md`, installed as the project
 skill `.claude/skills/concorde/SKILL.md`; `claude-md.md`, installed into the project's `CLAUDE.md`;
-`task-session.md`, the first prompt `concorde task session` gives a task session; and
+`task-session.md` and `task-session-pi.md`, the first prompts `concorde task session` gives a
+Claude Code and a pi task session, which share `common/task-session.md`; and
 `common/in-task.md`, the rules for working inside a task that the skill and the task-session
 guidance share) and are rendered by Distribution's build into `generated/main-session/`. Their tests, under
 `tests/concorde/main_session/`, check that the rendered guidance states every rule the
@@ -230,8 +246,9 @@ observes. The skill is also installed for pi as `.pi/skills/concorde/SKILL.md`.
 The **pi run view** is `src/concorde/main_session/pi_extension.ts`, installed as
 `.pi/extensions/concorde/index.ts`, with the pure reading of progress files in `pi_runs.ts` beside
 it. It also sets `CONCORDE_CLIENT=pi` for every command the session starts, so the host runs pi
-workers for it. The tests run `pi_runs.ts` under Node against progress files; the extension itself
-needs a pi session and is exercised in one.
+workers and pi task sessions for it. `pi_runs.ts` also reads the progress files of task-session
+rounds. The tests run `pi_runs.ts` under Node against progress files; the extension itself needs a
+pi session and is exercised in one.
 
 <a id="realization.main-session.pi-model-picker"></a>
 
@@ -295,7 +312,9 @@ developer's request and `configure_workers` validates the result.
 **Tasks** provides the [task](../tasks/module.md#concept.tasks.task) — its branch, worktree and
 record — and the [decision log](../tasks/module.md#concept.tasks.decision-log). Each task's own
 worktree is what keeps parallel tasks from mixing changes; opening, merging, closing tasks and
-writing the log are the main agent's responsibility.
+writing the log are the main agent's responsibility. Tasks also starts task sessions and, in pi,
+runs and records their [session rounds](../tasks/module.md#concept.tasks.session-round), whose
+progress files and recorded outcomes the run view reads.
 
 <a id="uses-issues"></a>
 

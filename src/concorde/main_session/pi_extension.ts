@@ -8,6 +8,12 @@
  * `/concorde` lists the runs. The extension only launches and observes: the Operation host, not
  * this extension, runs and records every Operation. Without pi-subagents it still launches, wakes
  * and lists; only the FleetView entries and `bg_wait` are missing.
+ *
+ * `concorde_task_session` starts, answers or stops a pi task session through `concorde task
+ * session`; each round of a task session is followed the same way, through the progress file its
+ * supervisor keeps and the outcome the task record holds, and wakes the main agent when it ends.
+ * Inside a task session itself (`CONCORDE_TASK_SESSION` set), which may load this extension as a
+ * project resource, it only marks commands as started from pi and stays otherwise inactive.
  */
 
 import { execFile, spawn } from "node:child_process";
@@ -27,8 +33,14 @@ import {
   type OperationStatus,
   primaryRoot,
   resultText,
+  roundId,
+  roundOutcome,
   runsDirectory,
   type RunView,
+  sessionRounds,
+  type SessionStatus,
+  sessionText,
+  sessionView,
   taskWorktree,
   view,
   workersOf,
@@ -94,6 +106,13 @@ async function loadSubagents(): Promise<Subagents> {
 
 interface Tracked {
   operation: OperationStatus;
+  shown: RunView | null;
+  registered: boolean;
+  reported: boolean;
+}
+
+interface TrackedRound {
+  status: SessionStatus;
   shown: RunView | null;
   registered: boolean;
   reported: boolean;
@@ -191,12 +210,92 @@ export default function (pi: ExtensionAPI) {
   // Workers run on the main session's agent program; every command this session starts, through
   // bash or a tool, tells Concorde that it is pi.
   process.env.CONCORDE_CLIENT = "pi";
+  // A task session is no main session: it neither launches background runs nor watches the
+  // project's runs and rounds.
+  if (process.env.CONCORDE_TASK_SESSION) return;
   const tracked = new Map<string, Tracked>();
+  const rounds = new Map<string, TrackedRound>();
   let root = process.cwd();
   let sessionId = "";
   let subagents: Subagents = {};
   let timer: ReturnType<typeof setInterval> | undefined;
   let disposeProvider: (() => void) | undefined;
+
+  /** Show one run or round in FleetView, registering it the first time. */
+  function publish(
+    id: string,
+    entry: { registered: boolean },
+    shown: RunView,
+  ): void {
+    const fields = {
+      label: shown.label,
+      state: shown.state,
+      updatedAt: shown.updatedAt,
+      currentAction: shown.currentAction,
+      reportPath: shown.reportPath,
+      ...(shown.preview ? { preview: shown.preview } : {}),
+      ...(shown.endedAt ? { endedAt: shown.endedAt } : {}),
+    };
+    try {
+      if (!entry.registered && subagents.registerExternalRun && sessionId) {
+        subagents.registerExternalRun({
+          id,
+          sessionId,
+          source: SOURCE,
+          startedAt: shown.startedAt,
+          ...fields,
+        });
+        entry.registered = true;
+      } else if (entry.registered && subagents.updateExternalRun) {
+        subagents.updateExternalRun(sessionId, id, fields);
+      }
+    } catch {
+      // A rejected display record never changes the run.
+    }
+  }
+
+  function refreshRounds(): void {
+    for (const status of sessionRounds(root)) {
+      const id = roundId(status);
+      const known = rounds.get(id);
+      if (known) known.status = status;
+      else if (status.phase === "running")
+        rounds.set(id, {
+          status,
+          shown: null,
+          registered: false,
+          reported: false,
+        });
+    }
+    for (const [id, entry] of rounds) {
+      if (entry.status.phase !== "finished") {
+        // The progress file holds only the current round; the record holds every outcome.
+        const ended = roundOutcome(root, entry.status);
+        if (ended)
+          entry.status = {
+            ...entry.status,
+            phase: "finished",
+            status: ended.status,
+            summary: ended.summary,
+          };
+      }
+      const shown = sessionView(
+        root,
+        entry.status,
+        entry.status.phase === "finished" || alive(entry.status.supervisor_pid),
+      );
+      publish(id, entry, shown);
+      entry.shown = shown;
+      if (shown.finished && !entry.reported) {
+        entry.reported = true;
+        wake("concorde-task-session", sessionText(root, entry.status), {
+          task: entry.status.task,
+          round: entry.status.round,
+          status: shown.status,
+        });
+      }
+    }
+  }
 
   function refresh(ctx?: ExtensionContext): void {
     const operations = new Map(
@@ -211,40 +310,21 @@ export default function (pi: ExtensionAPI) {
         workersOf(root, operation),
         operation.phase === "finished" || alive(operation.host_pid),
       );
-      const fields = {
-        label: shown.label,
-        state: shown.state,
-        updatedAt: shown.updatedAt,
-        currentAction: shown.currentAction,
-        reportPath: shown.reportPath,
-        ...(shown.preview ? { preview: shown.preview } : {}),
-        ...(shown.endedAt ? { endedAt: shown.endedAt } : {}),
-      };
-      try {
-        if (!entry.registered && subagents.registerExternalRun && sessionId) {
-          subagents.registerExternalRun({
-            id,
-            sessionId,
-            source: SOURCE,
-            startedAt: shown.startedAt,
-            ...fields,
-          });
-          entry.registered = true;
-        } else if (entry.registered && subagents.updateExternalRun) {
-          subagents.updateExternalRun(sessionId, id, fields);
-        }
-      } catch {
-        // A rejected display record never changes the run.
-      }
+      publish(id, entry, shown);
       entry.shown = shown;
       if (shown.finished && !entry.reported) {
         entry.reported = true;
         report(shown);
       }
     }
-    const running = [...tracked.values()].filter(
-      (entry) => entry.shown && !entry.shown.finished,
-    ).length;
+    refreshRounds();
+    const running =
+      [...tracked.values()].filter(
+        (entry) => entry.shown && !entry.shown.finished,
+      ).length +
+      [...rounds.values()].filter(
+        (entry) => entry.shown && !entry.shown.finished,
+      ).length;
     if (ctx?.hasUI)
       ctx.ui.setStatus(
         "concorde",
@@ -254,20 +334,23 @@ export default function (pi: ExtensionAPI) {
 
   // A result that arrives while the main agent is in a turn is steered into that turn, after its
   // current tool calls, rather than held until the turn ends; when it is idle, it starts a turn.
-  function report(shown: RunView): void {
+  function wake(
+    customType: string,
+    content: string,
+    details: Record<string, unknown>,
+  ): void {
     pi.sendMessage(
-      {
-        customType: "concorde-run",
-        content: resultText(shown),
-        display: true,
-        details: {
-          runId: shown.id,
-          status: shown.status,
-          result: shown.reportPath,
-        },
-      },
+      { customType, content, display: true, details },
       { triggerTurn: true, deliverAs: "steer" },
     );
+  }
+
+  function report(shown: RunView): void {
+    wake("concorde-run", resultText(shown), {
+      runId: shown.id,
+      status: shown.status,
+      result: shown.reportPath,
+    });
   }
 
   function track(operation: OperationStatus, reported = false): void {
@@ -294,10 +377,14 @@ export default function (pi: ExtensionAPI) {
     }
     disposeProvider = subagents.registerBackgroundWorkProvider?.({
       name: SOURCE,
-      listActiveWork: () =>
-        [...tracked.values()]
+      listActiveWork: () => [
+        ...[...tracked.values()]
           .filter((entry) => !entry.shown?.finished)
           .map((entry) => ({ id: entry.operation.run_id, sessionId })),
+        ...[...rounds.entries()]
+          .filter(([, entry]) => !entry.shown?.finished)
+          .map(([id]) => ({ id, sessionId })),
+      ],
     });
     timer = setInterval(() => refresh(ctx), POLL_MS);
     refresh(ctx);
@@ -416,6 +503,110 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerTool({
+    name: "concorde_task_session",
+    label: "Concorde task session",
+    description:
+      "Start a task session for a task, answer its last round, or stop its running round " +
+      "(`concorde task session <task> [--answer <text> | --stop] [--model <model>]`, run from " +
+      "the primary worktree). A task session is a pi session with your configuration working in " +
+      "the task worktree under Concorde's boundary; it works in rounds, each ending with a " +
+      "report: delivered with the delivery commit, or escalated with the escalations it " +
+      "recorded. The tool returns at once; you are woken with each round's outcome when it " +
+      "ends. Do not poll it. Start task sessions only for tasks that may run in parallel, and " +
+      "stay in the primary worktree while any runs.",
+    promptSnippet:
+      "Start, answer or stop a Concorde task session and be woken when its round ends",
+    parameters: Type.Object({
+      task: Type.String({ description: "The task identity" }),
+      answer: Type.Optional(
+        Type.String({
+          description:
+            "Your answer to the last round, which starts the next round with it as the prompt",
+        }),
+      ),
+      stop: Type.Optional(
+        Type.Boolean({ description: "Stop the running round" }),
+      ),
+      model: Type.Optional(
+        Type.String({
+          description: "A pi model for a new session; omit it for pi's default",
+        }),
+      ),
+    }),
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      root = primaryRoot(ctx.cwd);
+      const args = [
+        "task",
+        "session",
+        params.task,
+        ...(params.answer !== undefined ? ["--answer", params.answer] : []),
+        ...(params.stop ? ["--stop"] : []),
+        ...(params.model ? ["--model", params.model] : []),
+      ];
+      const outcome = await concorde(root, args);
+      if (outcome.code !== 0 || !outcome.value)
+        throw new Error(
+          `concorde ${args.join(" ")} failed:\n${refusalText(outcome)}`,
+        );
+      const value = outcome.value as {
+        id: string;
+        rounds: {
+          round: number;
+          status: string;
+          supervisor_pid: number;
+          started_at: string;
+        }[];
+      };
+      const last = value.rounds[value.rounds.length - 1];
+      const status: SessionStatus = {
+        kind: "task-session",
+        task: params.task,
+        session_id: value.id,
+        round: last.round,
+        phase: last.status === "running" ? "running" : "finished",
+        status:
+          last.status === "running"
+            ? null
+            : (last.status as SessionStatus["status"]),
+        summary: null,
+        supervisor_pid: last.supervisor_pid,
+        last_action: null,
+        started_at: last.started_at,
+        updated_at: last.started_at,
+      };
+      const id = roundId(status);
+      if (params.stop) {
+        const known = rounds.get(id);
+        if (known) known.reported = true;
+        return {
+          content: [{ type: "text", text: sessionText(root, status) }],
+          details: { session: value.id, round: last.round },
+        };
+      }
+      if (!rounds.has(id))
+        rounds.set(id, {
+          status,
+          shown: null,
+          registered: false,
+          reported: false,
+        });
+      refresh(ctx);
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              `Started round ${last.round} of the task session of ${params.task} (session ` +
+              `${value.id}, supervisor process ${last.supervisor_pid}). It runs in the ` +
+              "background; you will be woken with its outcome when it ends.",
+          },
+        ],
+        details: { session: value.id, round: last.round },
+      };
+    },
+  });
+
+  pi.registerTool({
     name: "concorde_configure_workers",
     label: "Configure worker models",
     description:
@@ -474,8 +665,17 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerCommand("concorde", {
-    description: "List Concorde Operation runs of this project",
+    description:
+      "List Concorde Operation runs and task-session rounds of this project",
     handler: async (_args, ctx) => {
+      const sessions = sessionRounds(root).map((status) => {
+        const shown = sessionView(
+          root,
+          status,
+          status.phase === "finished" || alive(status.supervisor_pid),
+        );
+        return `${shown.state.padEnd(9)} ${shown.label} — ${shown.finished ? (shown.preview ?? "") : shown.currentAction}`;
+      });
       const lines = operationRuns(root)
         .slice(-20)
         .map((operation) => {
@@ -487,10 +687,9 @@ export default function (pi: ExtensionAPI) {
           );
           return `${shown.state.padEnd(9)} ${shown.label} (${shown.id}) — ${shown.finished ? (shown.preview ?? "") : shown.currentAction}`;
         });
+      const all = [...lines, ...sessions];
       ctx.ui.notify(
-        lines.length
-          ? lines.join("\n")
-          : "No Concorde runs in this project yet.",
+        all.length ? all.join("\n") : "No Concorde runs in this project yet.",
         "info",
       );
     },

@@ -8,7 +8,7 @@ in the [requirements](requirements.md).
 ```concorde-contract
 {
   "id": "contract.tasks.record",
-  "version": 6,
+  "version": 7,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -274,39 +274,6 @@ in the [requirements](requirements.md).
           }
         }
       },
-      "session": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "name",
-          "main",
-          "settings",
-          "started_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "main": {
-            "type": "string",
-            "minLength": 1
-          },
-          "settings": {
-            "type": "string",
-            "pattern": "^/"
-          },
-          "started_at": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
       "escalation": {
         "type": "object",
         "additionalProperties": false,
@@ -560,10 +527,208 @@ in the [requirements](requirements.md).
             }
           }
         }
+      },
+      "claude_session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "program",
+          "id",
+          "name",
+          "main",
+          "settings",
+          "started_at"
+        ],
+        "properties": {
+          "program": {
+            "const": "claude"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "main": {
+            "type": "string",
+            "minLength": 1
+          },
+          "settings": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "started_at": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "pi_session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "program",
+          "id",
+          "name",
+          "main",
+          "directory",
+          "model",
+          "started_at",
+          "rounds"
+        ],
+        "properties": {
+          "program": {
+            "const": "pi"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "main": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          },
+          "started_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rounds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/round"
+            }
+          }
+        }
+      },
+      "round": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "round",
+          "prompt",
+          "status",
+          "supervisor_pid",
+          "started_at",
+          "ended_at",
+          "report",
+          "error",
+          "events",
+          "stderr"
+        ],
+        "properties": {
+          "round": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "prompt": {
+            "enum": [
+              "task",
+              "answer"
+            ]
+          },
+          "answer": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "delivered",
+              "escalated",
+              "failed",
+              "stopped"
+            ]
+          },
+          "supervisor_pid": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "started_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          },
+          "report": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/error"
+              }
+            ]
+          },
+          "events": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "stderr": {
+            "type": "string",
+            "pattern": "^/"
+          }
+        }
+      },
+      "session": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/claude_session"
+          },
+          {
+            "$ref": "#/$defs/pi_session"
+          }
+        ]
       }
     }
   },
-  "semantics": "The task record stored as .concorde/tasks/<id>.json in the primary worktree, written only by the Task store. id is chosen by the main agent and never reused; branch is concorde/<id>; worktree is the absolute path of the task's linked worktree; base_commit is the commit the branch was created from. modules starts with the Modules named at open and grows by every Module a run names; every entry was a registered Module when added. state follows open -> active -> delivered -> closed, where delivered returns to active when a run with writes true starts; a delivered task becomes closed when it is merged, and open, active and delivered may become closed when the task reached its goal without merging, or failed when it did not. runs lists every Operation run in start order: status running while the host works, then the Operation result status, or interrupted when the host process host_pid ended without finishing the run; writes tells whether the Operation may change the worktree. deliveries lists every delivery in order, with the delivery commit on the task branch, the project-relative path of the committed evidence bundle and the run that decided the delivered readiness, which is the delivery run itself. escalations lists, in order, every error chain escalated with concorde task escalate, each with its time and the escalating session's link, a contract.concorde.error link whose causes are the escalated errors: of level task-session when a task session escalated to the main agent, of level main-agent when the main agent escalated to the developer; sessions lists, in order, every task session started for the task with concorde task session: the background session identity Claude Code reported, its name task-<id>, the main agent's session it reports to, the absolute path of its settings file and its start time; $defs error, evidence and unhandled are that contract's definitions. closed is null until the task ends; it then records the final state (closed or failed), the outcome (merged or completed for closed, failed for failed), the note (null for merged unless given, what the task achieved for completed, why it failed for failed), the error chains that caused a failure exactly as their writers wrote them (empty when no error caused it, and for closed), the head of the primary branch at closing and whether the worktree was removed. workflow is null until the first workflow step of the task is recorded; then it names the workflow, lists each step with its key, Operation, run (null for a step whose run could not start, with its error), mode, answers file, whether a later rerun superseded it, and time, in the order recorded; a key's current step is its latest entry not superseded, and each report with its status, result path and time. Timestamps are RFC 3339 in UTC.",
+  "semantics": "The task record stored as .concorde/tasks/<id>.json in the primary worktree, written only by the Task store. id is chosen by the main agent and never reused; branch is concorde/<id>; worktree is the absolute path of the task's linked worktree; base_commit is the commit the branch was created from. modules starts with the Modules named at open and grows by every Module a run names; every entry was a registered Module when added. state follows open -> active -> delivered -> closed, where delivered returns to active when a run with writes true starts; a delivered task becomes closed when it is merged, and open, active and delivered may become closed when the task reached its goal without merging, or failed when it did not. runs lists every Operation run in start order: status running while the host works, then the Operation result status, or interrupted when the host process host_pid ended without finishing the run; writes tells whether the Operation may change the worktree. deliveries lists every delivery in order, with the delivery commit on the task branch, the project-relative path of the committed evidence bundle and the run that decided the delivered readiness, which is the delivery run itself. escalations lists, in order, every error chain escalated with concorde task escalate, each with its time and the escalating session's link, a contract.concorde.error link whose causes are the escalated errors: of level task-session when a task session escalated to the main agent, of level main-agent when the main agent escalated to the developer; sessions lists, in order, every task session started for the task with concorde task session: the background session identity Claude Code reported, its name task-<id>, the main agent's session it reports to, the absolute path of its settings file and its start time; $defs error, evidence and unhandled are that contract's definitions. closed is null until the task ends; it then records the final state (closed or failed), the outcome (merged or completed for closed, failed for failed), the note (null for merged unless given, what the task achieved for completed, why it failed for failed), the error chains that caused a failure exactly as their writers wrote them (empty when no error caused it, and for closed), the head of the primary branch at closing and whether the worktree was removed. workflow is null until the first workflow step of the task is recorded; then it names the workflow, lists each step with its key, Operation, run (null for a step whose run could not start, with its error), mode, answers file, whether a later rerun superseded it, and time, in the order recorded; a key's current step is its latest entry not superseded, and each report with its status, result path and time. Timestamps are RFC 3339 in UTC. sessions lists the task sessions started for the task: a claude session is one background Claude Code session with its identity, name, the main agent's session name and settings file; a pi session is a sequence of rounds on one pi session file under directory, with the main agent's session name when given and the model when --model named one. Each round has its number, whether its prompt was the task or the main agent's answer (with the answer), its status (running until the supervisor records delivered, escalated, failed or stopped), the supervisor's process, its start and end, the session report it received (null when none), the error link of a failed round (null otherwise) and the paths of pi's event stream and standard error.",
   "example": {
     "id": "severity",
     "goal": "let Issue reports carry a severity",
@@ -626,6 +791,7 @@ in the [requirements](requirements.md).
     "escalations": [],
     "sessions": [
       {
+        "program": "claude",
         "id": "33afbc14",
         "name": "task-severity",
         "main": "concorde-7d",
@@ -635,6 +801,116 @@ in the [requirements](requirements.md).
     ],
     "workflow": null,
     "closed": null
+  }
+}
+```
+
+## Session report
+
+The arguments of the `concorde_report` tool with which a pi task session ends a [session round](module.md#concept.tasks.session-round).
+
+```concorde-contract
+{
+  "id": "contract.tasks.session-report",
+  "version": 1,
+  "schema": {
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "summary",
+          "commit",
+          "decisions",
+          "open"
+        ],
+        "properties": {
+          "status": {
+            "const": "delivered"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "commit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "open": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "summary",
+          "escalations",
+          "decisions",
+          "open"
+        ],
+        "properties": {
+          "status": {
+            "const": "escalated"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "escalations": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "open": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    ]
+  },
+  "semantics": "The arguments a pi task session passes to concorde_report to end a session round, which the supervisor records as the round's report. status is delivered when delivery committed the task on its branch, with commit the delivery commit, or escalated when the session cannot go further without the main agent, with escalations the numbers (from 1, in record order) of the escalations it recorded with concorde task escalate --by task-session, which carry the error chains. summary says what the round did; decisions lists each decision the session made without the main agent, with its reason; open lists what is still open. The supervisor records delivered or escalated only when the task record holds that delivery commit or those task-session escalations, and a failed round otherwise. A behaviour or field change increments the version.",
+  "example": {
+    "status": "escalated",
+    "summary": "Implemented the severity levels; the Spec does not say whether warnings block delivery.",
+    "escalations": [
+      1
+    ],
+    "decisions": [
+      "Named the enum Severity after the Spec's term, since the Module has no other enum."
+    ],
+    "open": [
+      "Whether warnings block delivery."
+    ]
   }
 }
 ```
@@ -658,12 +934,14 @@ command line prints the same shape with the code `invalid_command` and exits wit
 | `concorde task open <task-id> --goal <text> --modules <id>[,<id>…] [--base <ref>] [--path <dir>]` | Holding the merge lock, creates branch `concorde/<task-id>` at `--base` (default: the primary worktree's `HEAD`), adds a worktree for it at `--path` (default: `.claude/worktrees/<task-id>` of the primary worktree, which Git must ignore there), writes the record in state `open` with no sessions, and the decision log | The new record |
 | `concorde task list [--state <state>]` | None | An array of records, oldest first |
 | `concorde task show <task-id>` | None | `{"record": <record>, "decision_log": "<absolute path>"}` |
-| `concorde task session <task-id> --main <session> [--model <model>] [--dry-run]` | Writes `.concorde/tasks/<task-id>.session/settings.json` and its write hook, starts `claude --bg --name task-<task-id> --settings <file> --permission-mode auto [--model <model>]` in the task worktree with the rendered task-session guidance and the task's identity, goal, Modules, decision log and `--main` as first prompt, and appends the started session to the record; `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>"}` |
+| `concorde task session <task-id> [--main <session>] [--model <model>] [--dry-run]` | Starts a task session on the main session's program. For Claude Code (`--main` required): writes `.concorde/tasks/<task-id>.session/settings.json` and its write hook, starts `claude --bg --name task-<task-id> --settings <file> --permission-mode auto [--model <model>]` in the task worktree with the rendered task-session guidance and the task's identity, goal, Modules, decision log and `--main` as first prompt, and appends the started session to the record. For pi: writes `boundary.ts` and the path decisions it imports into that directory, starts the detached supervisor of round 1, which runs `pi -p --mode json --approve -e <boundary.ts> --session-dir <directory>/pi --session-id <session id> [--model <model>]` in the task worktree with the rendered pi task-session guidance and the task's identity, goal, Modules and decision log as prompt, and appends the session with round 1 `running` to the record. `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>"}` (for pi, `"boundary"` instead of `"settings"`) |
+| `concorde task session <task-id> --answer <text>` | pi only: starts the next round of the task's latest pi session on the same session file, with the answer as its prompt | The recorded session |
+| `concorde task session <task-id> --stop` | pi only: ends the process group of the running round, which the supervisor records as `stopped` | The recorded session |
 | `concorde task merge <task-id> [--check <command>]… [--wait <seconds>]` | Holding the merge lock: checks that the task is delivered, that its latest delivery commit is the head of its branch and that its worktree is clean, and that the primary worktree is on a branch with no uncommitted or untracked path; runs `git merge --no-edit concorde/<task-id>` in the primary worktree; runs each check there, appending its output to `.concorde/tasks/<task-id>.merge.log`; then closes the task as `close --merged` does. The default check is `concorde validate` of the merged primary worktree, run by the same Python with the running package on its path; each `--check` is split into words as a shell would and run without a shell, and any `--check` replaces the default; a check still running after 1800 seconds is stopped and counts as failed. A conflict aborts the merge; a check that exits non-zero or cannot run, or checks that leave an uncommitted path, reset the primary branch to the commit the merge started from with `git reset --keep`, so a refusal again leaves the primary branch where it was. `--wait` (default 300) bounds how long to wait for the lock | `{"record": <record>, "merge": {"before": "<commit>", "after": "<commit>", "checks": [{"argv": ["<word>", …], "exit_code": 0, "seconds": <number>}], "waited_seconds": <number>, "log": "<absolute path>"}}` |
 | `concorde task close <task-id> --merged [--note <text>]` | Holding the merge lock, checks the merge, removes the worktree, sets state `closed` with outcome `merged` | The updated record |
 | `concorde task close <task-id> --completed --note <text> [--force]` | For a task that reached its goal without merging, holding the merge lock: removes the worktree, discarding uncommitted changes only with `--force`, sets state `closed` with outcome `completed` and the note | The updated record |
 | `concorde task close <task-id> --failed --reason <text> ((--run <run-id> \| --error-file <path>)… \| --no-error) [--force]` | For a task that did not reach its goal, holding the merge lock: removes the worktree, discarding uncommitted changes only with `--force`, sets state `failed` with the reason as note and, as errors, the `error` of each named run of the task and each error read from a file, unchanged; `--no-error` declares that no error caused the failure | The updated record |
-| `concorde task escalate <task-id> [--by main-agent\|task-session] (--run <run-id> \| --error-file <path> \| --escalation <n>)… --code <code> --detail <text> --reason <reason> --explanation <text> [--attempt <text>]… [--option <text>]… [--recommendation <text>]` | Builds the escalating session's link, of level `main-agent` (the default, actor `main agent (task <task-id>)`) or `task-session` (actor `task session (task <task-id>)`), whose causes are the `error` of each named run of the task, each error read from a file (a link, or a JSON value whose `error` is one) and the error of each named earlier escalation of the task (numbered from 1 in record order), appends it to the record's `escalations` and appends it to the decision log, rendered and as JSON, under a heading naming the receiver: the main agent for `task-session`, the developer for `main-agent` | `{"escalated": <link>, "decision_log": "<absolute path>", "rendered": "<the chain as indented text>"}` |
+| `concorde task escalate <task-id> [--by main-agent\|task-session] (--run <run-id> \| --error-file <path> \| --escalation <n>)… --code <code> --detail <text> --reason <reason> --explanation <text> [--attempt <text>]… [--option <text>]… [--recommendation <text>]` | Builds the escalating session's link, of level `main-agent` (the default, actor `main agent (task <task-id>)`) or `task-session` (actor `task session (task <task-id>)`), whose causes are the `error` of each named run of the task, each error read from a file (a link, or a JSON value whose `error` is one) and the error of each named earlier escalation of the task (numbered from 1 in record order), appends it to the record's `escalations` and appends it to the decision log, rendered and as JSON, under a heading naming the receiver: the main agent for `task-session`, the developer for `main-agent` | `{"escalated": <link>, "number": <its number in the record, from 1>, "decision_log": "<absolute path>", "rendered": "<the chain as indented text>"}` |
 
 The decision log that `open` creates contains exactly a level-1 heading `Decision log: <task-id>`
 and a paragraph `Goal: <goal>`.
@@ -686,7 +964,7 @@ refusal leaves the merge and its checked commit in place, names the merge commit
 | --- | --- |
 | `not_primary` | `open`, `close`, `merge` or `session` runs outside the primary worktree. |
 | `worktree_not_ignored` | The worktree path lies inside the primary worktree and Git does not ignore it there; the message names the path and how to ignore it. |
-| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--wait` is negative. |
+| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--wait` is negative, or `session` combines `--answer` and `--stop`, gives `--answer` or `--stop` for a Claude Code session, or starts a Claude Code session without `--main`. |
 | `worktree_failed` | Git refused to add or remove the worktree; the message carries Git's error. |
 | `invalid_task_id` | The identity does not match the record's `id` pattern. |
 | `task_exists` | A record with that identity exists, whatever its state. |
@@ -706,7 +984,11 @@ refusal leaves the merge and its checked commit in place, names the merge commit
 | `unknown_run` | `escalate` names a run that is not a run of the task, or whose result cannot be read. |
 | `unknown_escalation` | `escalate` names an escalation number the task does not have. |
 | `missing_worktree` | `session` names a task whose worktree no longer exists. |
-| `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), or the task-session guidance is missing from the package. |
+| `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), pi, `bwrap`, `socat` or the sandbox-runtime package is missing (each is named), the pi supervisor could not start, or the task-session guidance is missing from the package. |
+| `client_unknown` | `session` cannot read the main session's program from the environment: `CONCORDE_CLIENT` is unset, `CLAUDECODE` is not 1 and no pi session variable is set; the message names each. |
+| `session_busy` | `session` starts a pi session, or `--answer` a round, while a round of the task's pi session runs; the message names the round and its supervisor process. |
+| `no_session` | `--answer` names a task that has no pi session. |
+| `session_idle` | `--stop` names a task whose pi session has no running round. |
 | `merge_busy` | The merge lock stayed held for the whole wait; the message names the holder's command, task, process and start time. |
 | `primary_dirty` | `merge` finds an uncommitted or untracked path in the primary worktree, or its `HEAD` detached; the message names the paths or the detached commit. |
 | `merge_conflict` | `git merge` stopped with conflicts; the merge was aborted, and the message names the conflicting paths. |
@@ -721,7 +1003,7 @@ refusal leaves the merge and its checked commit in place, names the merge commit
 
 ## Record updates
 
-The Operation host changes records only through the first three updates, and Workflows only through the last two. Each is one read, a check of
+The Operation host changes records only through the first three updates, Workflows only through the two workflow updates, and task sessions only through the last three. Each is one read, a check of
 its preconditions and one file transaction bound to the digest of the bytes read.
 
 | Update | Preconditions | Effect |
@@ -731,3 +1013,6 @@ its preconditions and one file transaction bound to the digest of the bytes read
 | Record delivery (`task`, `run_id`, `commit`, `bundle`, `readiness_run`) | The run exists and is `running`, and the state is `active` or `delivered`. | Appends the delivery and sets the state to `delivered`. |
 | Record workflow step (`task`, `workflow`, `key`, `base_key`, `operation`, `run_id`, `mode`, `answers`, `error`) | The task exists and is not `closed` or `failed`; the record names no workflow or the same one; the key is recorded for no other Operation. Otherwise `unknown_task`, `task_closed`, `workflow_conflict` or `step_conflict`, naming the recorded workflow or Operation. | Names the workflow when none was named; when a current step has the same base key, marks it and every step recorded after it superseded; appends the step. |
 | Record workflow report (`task`, `status`, `path`, `log_text`) | The task exists and names a workflow. Otherwise `unknown_task` or `no_workflow`. | Appends the report and appends `log_text` to the decision log. |
+| Record session (`task`, `session`) | The task is `open`, `active` or `delivered`. Otherwise `unknown_task` or `task_closed`. | Appends the session. |
+| Begin round (`task`, `session_id`, `round`) | The task's session with that identity is a pi session whose rounds are all ended. Otherwise `no_session` or `session_busy`. | Appends the round as `running`. |
+| Finish round (`task`, `session_id`, `round`, `status`, `report`, `error`) | The round exists and is `running`. | Sets the round's status, `ended_at`, report and error. |

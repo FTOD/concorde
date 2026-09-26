@@ -42,7 +42,7 @@ check the rendered guidance against them are pending.
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to carry out work it split into several tasks
-- THEN it is told to start one task session per task with `concorde task session`, naming its own session
+- THEN it is told to start one task session per task on its own program: in Claude Code with `concorde task session` naming its own session, in pi with the `concorde_task_session` tool, answering a round with its `answer`
 - AND to stay in the primary worktree while they run, being inside at most one task at a time itself
 - AND to answer a task session's escalation or pass it to the developer with its own link on top
 
@@ -54,6 +54,23 @@ check the rendered guidance against them are pending.
 - AND to escalate beyond its task's goal or Modules with `concorde task escalate --by task-session` and SendMessage
 - AND to report to the main agent when the task is delivered or cannot go further
 - BUT never to merge the task branch or close the task
+
+### scenario.main-session.pi-task-session-role — The pi task-session guidance ends each round with a report
+
+- GIVEN the rendered pi task-session guidance
+- WHEN a pi task session reads how to report
+- THEN it is told to run Operations with the worktree's own `concorde` in the foreground
+- AND to end every round by calling `concorde_report`, with the delivery commit when delivered, or after `concorde task escalate --by task-session` with the escalation numbers
+- AND that the main agent's answer arrives as the prompt of the next round
+- BUT never to merge the task branch or close the task
+
+### scenario.main-session.pi-task-session-view — pi shows task-session rounds and wakes on their end
+
+- GIVEN a pi main session that started a task session with `concorde_task_session`
+- WHEN the round's progress file changes and the round ends
+- THEN the run view shows the task, the round and the session's latest tool call
+- AND the main agent is woken with the recorded outcome: the report's summary, decisions and open points with the delivery commit or the escalation numbers, or the failed round's error chain
+- AND a pi main session that starts again follows the rounds still running
 
 ### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
 

@@ -41,10 +41,9 @@ Judge the size of the work. A single task you carry out yourself, inside at most
 time. In Claude Code, enter its worktree with the EnterWorktree tool (`path` set to the task
 worktree), work there, and leave with ExitWorktree (`action: "keep"`) once it is delivered. pi
 cannot move a session into another worktree, so there you address the task worktree explicitly:
-run its commands with that worktree as the working directory and change files under its path. In
-Claude Code, work that splits into several tasks, especially tasks that can run in parallel, goes
-to task sessions (see below) while you stay in the primary worktree; in pi, which has no task
-sessions in this version, carry such tasks out one after another.
+run its commands with that worktree as the working directory and change files under its path.
+Work that splits into several tasks, especially tasks that can run in parallel, goes to task
+sessions (see below) while you stay in the primary worktree.
 
 ## Work inside the task
 
@@ -185,35 +184,50 @@ instead of a paraphrase.
 
 ## Task sessions
 
-In Claude Code, for work split into several tasks, start one task session per task from the
-primary worktree: a background Claude Code session whose working directory is the task worktree,
-which carries the task to delivery by the same method and reports to you. Task sessions need Claude
-Code; a pi main session has none in this version.
+For work split into several tasks, start one task session per task from the primary worktree: a
+session of your own program, Claude Code or pi, whose working directory is the task worktree, which
+carries the task to delivery by the same method and reports to you. It is your own role at a
+smaller scale, so it always runs on your program. Start sessions only for tasks that may run in
+parallel, and stay in the primary worktree while any runs.
+
+Before starting one, do in the task worktree the preparation that writes the repository's shared
+Git configuration, such as initializing submodules, as the project's own instructions say: the
+session's sandbox keeps `.git/config` and Git's hooks read-only, even though it may commit.
+
+**In Claude Code:**
 
 ```bash
 concorde task session <task> --main <your session name> [--model <model>]
 ```
 
-Before starting one, do in the task worktree the preparation that writes the repository's shared
-Git configuration, such as initializing submodules, as the project's own instructions say: Claude
-Code's sandbox keeps `.git/config` and Git's hooks read-only for the session, even though it may
-commit.
-
 Your session name is the one the ListAgents tool reports for this session. The command writes the
 session's boundary (its Edit and Write tools may change only the task worktree and decision log,
 and its Bash only the worktree, Git, Concorde's records and package caches; reads and the network
-stay open), starts
-`claude --bg` with the task's goal and records the session in the task. Start sessions only for
-tasks that may run in parallel, and stay in the primary worktree while any runs. `claude agents`
-lists them, `claude logs <id>` shows one's recent output and `claude stop <id>` stops one. A task
-session runs in Claude Code's `auto` permission mode, since nobody answers its prompts: a
-classifier approves or refuses each action, inside the boundary above. Pass `--model` only with a
-model that has `auto` mode; without it the session would wait for answers nobody gives.
+stay open), starts `claude --bg` with the task's goal and records the session in the task.
+`claude agents` lists them, `claude logs <id>` shows one's recent output and `claude stop <id>`
+stops one. A task session runs in Claude Code's `auto` permission mode, since nobody answers its
+prompts: a classifier approves or refuses each action, inside the boundary above. Pass `--model`
+only with a model that has `auto` mode; without it the session would wait for answers nobody
+gives.
 
-A task session decides ordinary questions within its task and messages you with SendMessage when
-it has delivered, cannot go further, or needs a decision beyond its task. It escalates with
-`concorde task escalate <task> --by task-session …`; answer what you may decide yourself, and
-pass the rest to the developer with your own link on top, naming its escalation as a cause
+A Claude Code task session messages you with SendMessage when it has delivered, cannot go
+further, or needs a decision beyond its task.
+
+**In pi**, call the `concorde_task_session` tool with the task, and with a `model` when the
+developer chose one. It runs `concorde task session <task>` from the primary worktree and returns
+at once: a pi session with your pi configuration then works in the task worktree under Concorde's
+boundary (its `write` and `edit` may change only the task worktree and its decision log, and its
+bash commands write only the worktree, Git, Concorde's records, package caches and its own
+temporary directory; reads and the network stay open). It works in rounds. Each round ends with a
+report, and you are woken with its outcome: `delivered` with the delivery commit, `escalated` with
+the numbers of the escalations it recorded, whose chains `concorde task show <task>` holds, or
+`failed` with its error chain. Answer with the tool's `answer`, which starts the next round with
+your answer as its prompt and the session's whole context; `stop` ends a running round. The run
+view shows each running round with its latest tool call; do not poll it.
+
+Either way, a task session decides ordinary questions within its task and escalates the rest with
+`concorde task escalate <task> --by task-session …`. Answer what you may decide yourself, and pass
+the rest to the developer with your own link on top, naming its escalation as a cause
 (`--escalation <n>`, numbered from 1 in the task record).
 
 ## Merge delivered work
