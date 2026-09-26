@@ -1,6 +1,7 @@
 {
   "name": "write-hook-rw-directories",
-  "description": "The worker write hook and Bash sandbox ignore writable directory entries, so an implement worker cannot write files its grant allows; the main agent must place it in the case 'Concorde implements the boundary wrongly' and report it, without working around it or changing Concorde.",
+  "description": "The workers' write checks (the Claude Code write hook, the pi write policy) and the Bash sandbox ignore writable directory entries, so an implement worker cannot write files its grant allows; the main agent must place it in the case 'Concorde implements the boundary wrongly' and report it, without working around it or changing Concorde.",
+  "client": "claude",
   "project": {
     "repository": "psf/requests",
     "rev": "v2.32.3"
@@ -17,6 +18,11 @@
         "file": "src/concorde/harness/settings.py",
         "old": "    writable = [(worktree / path.rstrip(\"/\")).as_posix() for path in view.paths(\"rw\")]\n",
         "new": "    writable = [\n        (worktree / path).as_posix()\n        for path in view.paths(\"rw\")\n        if not path.endswith(\"/\")\n    ]\n"
+      },
+      {
+        "file": "src/concorde/harness/pi_policy.ts",
+        "old": "  if (listed(relative, policy.rw)) return null;\n",
+        "new": "  if (policy.rw.includes(relative)) return null;\n"
       }
     ]
   },

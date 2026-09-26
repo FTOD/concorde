@@ -32,6 +32,7 @@ def git(cwd: Path, *arguments: str) -> str:
 
 class ScenarioTests(unittest.TestCase):
     @verifies("scenario.dogfood-scenarios.scenarios-apply")
+    @verifies("scenario.dogfood-scenarios.client")
     def test_every_scenario_is_complete_and_its_fault_applies_to_this_checkout(self):
         names = [item["name"] for item in dogfood.listing()]
         self.assertIn("write-hook-rw-directories", names)
@@ -44,6 +45,18 @@ class ScenarioTests(unittest.TestCase):
                 for edit in value["fault"]["edits"]:
                     text = (REPOSITORY_ROOT / edit["file"]).read_text()
                     self.assertEqual(1, text.count(edit["old"]), edit["file"])
+        # A scenario's fault covers both worker backends, so it runs on either client.
+        chosen = dogfood.scenario("write-hook-rw-directories")
+        self.assertEqual("claude", chosen["client"])
+        faulted = {edit["file"] for edit in chosen["fault"]["edits"]}
+        self.assertIn("src/concorde/harness/write_hook.py", faulted)
+        self.assertIn("src/concorde/harness/pi_policy.ts", faulted)
+        concorde, project = Path("/c"), Path("/p")
+        self.assertNotIn("--pi", dogfood.install_command(concorde, project, "claude"))
+        self.assertEqual(
+            ["/p", "--develop", "--without-d2", "--pi"],
+            dogfood.install_command(concorde, project, "pi")[2:],
+        )
         with self.assertRaises(e2e.E2EError) as raised:
             dogfood.scenario("no-such-scenario")
         self.assertEqual("unknown_scenario", raised.exception.code)

@@ -32,13 +32,16 @@ with an evaluation.
 <a id="concept.dogfood-scenarios.scenario"></a><a id="concept.dogfood-scenarios.fault"></a>
 
 **A scenario.** `scripts/e2e/scenarios/write-hook-rw-directories.json` is the first: its fault makes
-the worker write hook and Bash sandbox ignore writable directory entries while `concorde grant`
-still shows them writable, so an implement worker of a Module binding `src/` cannot write
+the workers' write checks, the Claude Code write hook and the pi write policy alike, and the Bash
+sandbox ignore writable directory entries while `concorde grant` still shows them writable, so an implement worker of a Module binding `src/` cannot write
 `src/requests/models.py`; its prompt asks for a small feature of `psf/requests` made through the
 implement Operation; it expects a report of type `bug` whose basis names the case "Concorde
 implements the boundary wrongly", and `src/requests/models.py` unchanged. A scenario has the fields
 `name`, `description`, `project` (`repository` and `rev`), `fault` (`summary` and `edits`, each
-`file`, `old` and `new`), `prompt` and `expect` (`types`, `basis` phrases and `unchanged` paths).
+`file`, `old` and `new`), `prompt` and `expect` (`types`, `basis` phrases and `unchanged` paths),
+and optionally `client`, `claude` or `pi`, the main session's program, `claude` when absent. A
+fault meant for both clients breaks what both worker backends share or each backend's part alike,
+since a pi main session runs pi workers.
 
 <a id="concept.dogfood-scenarios.directory"></a>
 
@@ -46,7 +49,7 @@ implements the boundary wrongly", and `src/requests/models.py` unchanged. A scen
 
 ```text
 python3 scripts/e2e/e2e.py dogfood list
-python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--name <dir>]
+python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--name <dir>] [--client claude|pi]
 python3 scripts/e2e/e2e.py dogfood run ~/concorde-e2e/write-hook-rw-directories [--rounds 4]
 python3 scripts/e2e/e2e.py dogfood evaluate ~/concorde-e2e/write-hook-rw-directories
 ```
@@ -54,13 +57,14 @@ python3 scripts/e2e/e2e.py dogfood evaluate ~/concorde-e2e/write-hook-rw-directo
 `prepare` makes the **scenario directory** under the end-to-end root: it clones this checkout's
 committed Concorde into `concorde/`, applies the fault's edits there and commits them as one commit
 of their own, builds that clone, clones the project at its revision into `project/`, makes a
-develop install there from the clone without `d2`, initializes and commits it, and records the
+develop install there from the clone without `d2`, with `--pi` for a pi scenario or `--client
+pi`, initializes and commits it, and records the
 baselines in `dogfood.json`: the fault commit, the digest of the installed framework's sources, the
 digest of every installed file outside `.concorde/` and the blob of every path that must stay
 unchanged. An edit whose old text is not found exactly once is refused with
 `fault_not_applicable`, since the Concorde source has moved on and the scenario must be updated.
-`run` runs the scenario's prompt as a headless session in the project, kept under `sessions/`, and
-then evaluates. `evaluate` can be run again at any time.
+`run` runs the scenario's prompt as a headless session of the recorded client in the project,
+kept under `sessions/`, and then evaluates. `evaluate` can be run again at any time.
 
 <a id="concept.dogfood-scenarios.evaluation"></a>
 

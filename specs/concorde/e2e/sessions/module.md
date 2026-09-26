@@ -2,21 +2,20 @@
 
 ## Purpose
 
-Headless sessions drives a real Claude Code main session in a test project without a person, so
+Headless sessions drives a real Claude Code or pi main session in a test project without a person, so
 that End-to-end testing can watch what a main agent actually does with Concorde. It starts the
 session, grants it its tools, tells it the conditions of running headless, wakes it when an
 Operation run it left behind ends, keeps every round's log and reads the logs back. It exists for
 the people developing Concorde and changes nothing a user gets: every difference between a
 headless session and an interactive one is handled here, never in the main-session guidance.
-It drives Claude Code only; a headless pi main session is not supported yet.
 
 ## Terminology
 
 | Term | Definition |
 | --- | --- |
-| Headless session | A `claude -p` main session in a test project, run by the tool in one or more rounds and kept in a session directory. |
-| Round | One `claude -p` process of a headless session, the first with the developer's prompt and each later one resuming the same session with a wake message. |
-| Headless note | The system prompt the tool appends to every round, telling the session that nobody answers, that background commands stop at the end of its turn, and that it will be woken. |
+| Headless session | A `claude -p` or `pi -p` main session in a test project, run by the tool in one or more rounds and kept in a session directory. |
+| Round | One `claude -p` or `pi -p` process of a headless session, the first with the developer's prompt and each later one continuing the same session with a wake message. |
+| Headless note | The system prompt the tool appends to every round, telling the session that nobody answers, what happens to a run left behind when its turn ends, and that it will be woken. |
 | Wake message | The message a later round resumes the session with, naming each Operation run the previous round left running or stopped, as the notification an interactive session receives. |
 | [Developer](../../vocabulary.md#concept.concorde.developer) | |
 | [Main agent](../../vocabulary.md#concept.concorde.main-agent) | |
@@ -33,13 +32,13 @@ message starts every round but the first.
 **Running a session.** The developer, or another part of End-to-end testing, runs
 
 ```text
-python3 scripts/e2e/e2e.py session start <project> --prompt "<what the developer asks>" [--rounds 4]
+python3 scripts/e2e/e2e.py session start <project> --prompt "<what the developer asks>" [--rounds 4] [--client claude|pi] [--model <pi model>]
 python3 scripts/e2e/e2e.py session show <session directory>
 ```
 
 `session start` keeps the session under `<project>/.concorde/runs/e2e/sessions/<time>/`: one
 `round-<n>.jsonl` with the round's `stream-json` output and one `round-<n>.err` per round, and
-`session.json` with the session identity, the prompt, each round's exit status, result, number of
+`session.json` with the client, the session identity, the prompt, each round's exit status, result, number of
 tool calls and the runs it woke for, how the session ended and its final answer and cost. It
 prints `session.json`. `session show` adds every round's tool calls and texts, read from the logs.
 A headless workflow run of End-to-end testing, `run --via claude`, is a headless session of one
@@ -48,14 +47,25 @@ prompt as one.
 
 <a id="concept.headless-sessions.note"></a>
 
-**What the session is told.** Every round is started with the main agent's tools granted on the
-command line (Bash, Read, Write, Edit, Glob, Grep, Skill, TodoWrite, EnterWorktree and
+**What the session is told.** A Claude Code round is started with the main agent's tools granted
+on the command line (Bash, Read, Write, Edit, Glob, Grep, Skill, TodoWrite, EnterWorktree and
 ExitWorktree, or a workflow's own list), since an untrusted project's allow rules are ignored, with
 the environment variable that keeps a background workflow alive, and with the **headless note**
 appended to its system prompt: nobody answers questions, a command left in the background is
 stopped when the turn ends and nothing wakes the session, so Concorde commands run in the
 foreground, and a run still running at the end of a round is followed by a wake-up
 ([requirements](requirements.md#req.headless-sessions.conditions-in-tool)).
+
+**A pi session.** With `--client pi` every round is `pi -p --mode json --approve`, which trusts
+the project's extension and skill for the run, with `--session-dir` under the session directory and
+a `--session-id` the tool chose before the first round, so every round continues the same session
+file; the prompt goes on standard input, and `--model` names the main session's model when given.
+pi asks for no permissions, so no tools are granted. pi's headless note differs from Claude Code's,
+because in pi the run view's `concorde_run` starts an Operation as a detached process: the process
+of the round ends with the turn but the run goes on, and the tool resumes the session with its
+result when it ends, the wake the run view would have given; so the session ends its turn where it
+would otherwise wait. The project must have been installed with `--pi`. pi reports each round's
+own cost, which the record adds up; Claude Code reports the session's total.
 
 <a id="concept.headless-sessions.wake"></a>
 
@@ -71,9 +81,12 @@ turn's end stopped it. The session ends `idle`, `exited` when a round's process 
 standard error kept), `no_session` when the first round names no session, or `rounds_exhausted`
 after the allowed rounds.
 
-**Reading the logs.** A resumed round first replays the stopped background command as a turn of
-its own with no model turn; its `result` event is not the round's answer. The round's result is
-the last `result` event with a model turn.
+**Reading the logs.** A resumed Claude Code round first replays the stopped background command as
+a turn of its own with no model turn; its `result` event is not the round's answer. The round's
+result is the last `result` event with a model turn. A pi round has no result event: its session is
+named by the `session` event, its tool calls by `tool_execution_start`, its turns by `turn_end`,
+and its answer is the text of its last assistant message, whose stop reason and the sum of whose
+costs complete the round's result.
 
 ## Design
 
@@ -136,6 +149,7 @@ driver relies on the progress file naming its Operation, task, phase, host proce
 and on the result carrying the status, summary and error code, to decide which runs are unsettled
 and to write the wake message; it never changes either.
 
-Claude Code itself is external: the driver relies on `claude -p` with `--resume`,
+Claude Code and pi are external: the driver relies on `claude -p` with `--resume`,
 `--append-system-prompt`, `--allowedTools` and `stream-json` output, whose events carry the
-session identity.
+session identity, and on `pi -p` with `--mode json`, `--approve`, `--session-dir`, `--session-id`
+and `--append-system-prompt`, reading its prompt from standard input.

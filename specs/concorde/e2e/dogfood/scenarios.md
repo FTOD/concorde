@@ -10,6 +10,13 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN each has its name, a prompt, expected types and a fault whose every old text occurs exactly once in this checkout
 - BUT an unknown scenario is refused with `unknown_scenario` naming the known ones
 
+### scenario.dogfood-scenarios.client — A scenario runs on either client
+
+- GIVEN a scenario without a `client`, whose fault changes both worker backends' write checks
+- WHEN it is read and prepared
+- THEN its client is Claude Code
+- AND preparing it for pi installs Concorde with `--pi`, and for Claude Code without
+
 ### scenario.dogfood-scenarios.fault — A fault is its own commit
 
 - GIVEN a clean clone and a fault

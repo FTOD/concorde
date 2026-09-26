@@ -5,8 +5,8 @@ them in concrete situations.
 
 ### req.headless-sessions.conditions-in-tool — Testing conditions are told by the tool
 
-Every round of a headless session SHALL be started with the headless note appended to its system
-prompt and its tools granted on the command line.
+Every round of a headless session SHALL be started with its client's headless note appended to its
+system prompt, and for Claude Code with its tools granted on the command line.
 
 The headless note is the tool's; no part of it is added to the main-session guidance, which stays
 what users get.

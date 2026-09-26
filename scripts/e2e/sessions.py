@@ -1,4 +1,4 @@
-"""Headless sessions: drive a real Claude Code main session in a project without a person.
+"""Headless sessions: drive a real Claude Code or pi main session in a project without a person.
 
 A headless ``claude -p`` differs from the interactive session a developer uses in ways that are
 testing conditions, not what users get, so they are handled here and never in the main-session
@@ -13,8 +13,12 @@ guidance:
 - resuming replays the stopped background command as an empty turn, whose result is not the
   session's answer.
 
-Each round's ``stream-json`` output is kept under the session directory, with ``session.json``
-summarizing the rounds, the wakes and the end.
+A pi session is ``pi -p --mode json --approve`` with a session identity the tool chooses, so
+every round continues the same session file; the prompt goes on standard input, and pi's own
+note says that its process ends with the turn while a run started with ``concorde_run`` goes on.
+
+Each round's output (``stream-json`` for Claude Code, pi's JSON events for pi) is kept under the
+session directory, with ``session.json`` summarizing the rounds, the wakes and the end.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ import json
 import os
 import subprocess
 import time
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -51,6 +56,14 @@ NOTE = (
     "ends while an Operation run is still running, the tool waits for it and resumes this session "
     "with the notification you would otherwise have received."
 )
+# pi has no permission prompts to answer, and a detached `concorde_run` outlives the process.
+PI_NOTE = (
+    "This session is run headless by Concorde's end-to-end tool. Nobody answers questions during "
+    "it. Your process ends when your turn ends; an Operation you started with concorde_run keeps "
+    "running, and when it ends the tool resumes this session with its result, as the run view "
+    "would have woken you. So end your turn when you would otherwise wait for a run."
+)
+CLIENTS = ("claude", "pi")
 # A cancelled run whose result was written this close to the end of a round was stopped by that
 # end, not by the session.
 TURN_END_SECONDS = 30.0
@@ -85,6 +98,31 @@ def command(
         "--verbose",
         "--allowedTools",
         *tools,
+    ]
+
+
+def pi_command(
+    session_id: str,
+    session_dir: Path,
+    *,
+    note: str | None = PI_NOTE,
+    pi: str = "pi",
+    model: str | None = None,
+) -> list[str]:
+    """The ``pi -p`` argument list of one round; the prompt goes on standard input. The same
+    identity and directory make every round continue one session file."""
+    return [
+        pi,
+        "-p",
+        "--mode",
+        "json",
+        "--approve",
+        "--session-dir",
+        str(session_dir),
+        "--session-id",
+        session_id,
+        *(["--append-system-prompt", note] if note else []),
+        *(["--model", model] if model else []),
     ]
 
 
@@ -142,6 +180,69 @@ def read_log(path: Path) -> dict:
             "turns": result.get("num_turns"),
             "cost_usd": result.get("total_cost_usd"),
             "text": result.get("result"),
+        },
+    }
+
+
+def read_pi_log(path: Path) -> dict:
+    """One pi round's JSON events: its session, every tool call and text, and the round's result,
+    its turns, its cost and its final text."""
+    session = None
+    actions: list[dict] = []
+    texts: list[str] = []
+    turns = 0
+    cost = 0.0
+    stop = None
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        lines = []
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        if kind == "session":
+            session = event.get("id") or session
+        elif kind == "tool_execution_start":
+            data = event.get("args") or {}
+            target = (
+                data.get("command") or data.get("path") or data.get("file_path") or ""
+            )
+            if not target and data:
+                target = json.dumps(data)
+            actions.append({"tool": event.get("toolName"), "target": str(target)[:500]})
+        elif kind == "turn_end":
+            turns += 1
+        elif kind == "message_end":
+            message = event.get("message") or {}
+            if message.get("role") != "assistant":
+                continue
+            stop = message.get("stopReason") or stop
+            spent = ((message.get("usage") or {}).get("cost") or {}).get("total")
+            if isinstance(spent, (int, float)):
+                cost += spent
+            text = "\n".join(
+                block.get("text", "")
+                for block in message.get("content") or []
+                if isinstance(block, dict) and block.get("type") == "text"
+            ).strip()
+            if text:
+                texts.append(text)
+    return {
+        "session_id": session,
+        "actions": actions,
+        "texts": texts,
+        "result": None
+        if not turns and not texts
+        else {
+            "subtype": stop,
+            "turns": turns,
+            "cost_usd": round(cost, 6),
+            "text": texts[-1] if texts else None,
         },
     }
 
@@ -260,15 +361,26 @@ def start(
     tools: tuple[str, ...] | list[str] = MAIN_AGENT_TOOLS,
     rounds: int = ROUNDS,
     extra_environment: dict | None = None,
-    note: str | None = NOTE,
+    note: str | None = None,
     claude: str = "claude",
     wait_limit: float = WAIT_SECONDS,
     poll: float = 2.0,
+    client: str = "claude",
+    pi: str = "pi",
+    model: str | None = None,
 ) -> dict:
     """Run a headless session in ``project`` until it ends with nothing left to wake it for."""
+    if client not in CLIENTS:
+        raise E2EError(
+            "unknown_client",
+            f"a headless session runs on {' or '.join(CLIENTS)}, not {client!r}",
+        )
     directory.mkdir(parents=True, exist_ok=True)
     began = stamp()
-    session = None
+    # A pi session is named by the tool, so its first round already continues nothing and every
+    # later one continues it; Claude Code names its session in its first round's output.
+    session = str(uuid.uuid4()) if client == "pi" else None
+    pi_sessions = directory / "pi"
     message = prompt
     known: set[str] = set()
     history = []
@@ -276,17 +388,37 @@ def start(
     for number in range(1, rounds + 1):
         log = directory / f"round-{number}.jsonl"
         errors = directory / f"round-{number}.err"
+        if client == "pi":
+            argv = pi_command(
+                session,
+                pi_sessions,
+                note=PI_NOTE if note is None else note,
+                pi=pi,
+                model=model,
+            )
+            given = message
+        else:
+            argv = command(
+                message,
+                tools,
+                resume=session,
+                note=NOTE if note is None else note,
+                claude=claude,
+            )
+            given = None
         with log.open("w") as out, errors.open("w") as err:
             completed = subprocess.run(
-                command(message, tools, resume=session, note=note, claude=claude),
+                argv,
                 cwd=project,
                 env=environment(extra_environment),
+                input=given,
                 stdout=out,
                 stderr=err,
+                text=True,
                 check=False,
             )
         round_end = time.time()
-        summary = read_log(log)
+        summary = read_pi_log(log) if client == "pi" else read_log(log)
         session = summary["session_id"] or session
         entry = {
             "round": number,
@@ -313,15 +445,22 @@ def start(
         known.update(entry["woke_for"])
         message = wake_message(project, runs)
     final = next((item["result"] for item in reversed(history) if item["result"]), None)
+    if client == "pi":
+        # pi reports each round's own spending; Claude Code's result carries the session's total.
+        spent = [(item["result"] or {}).get("cost_usd") or 0.0 for item in history]
+        cost = round(sum(spent), 6)
+    else:
+        cost = (final or {}).get("cost_usd")
     record = {
         "project": str(project),
+        "client": client,
         "session_id": session,
         "prompt": prompt,
         "started_at": began,
         "ended_at": stamp(),
         "end": end,
         "rounds": history,
-        "cost_usd": (final or {}).get("cost_usd"),
+        "cost_usd": cost,
         "final": (final or {}).get("text"),
     }
     (directory / "session.json").write_text(json.dumps(record, indent=2) + "\n")
@@ -336,9 +475,8 @@ def show(directory: Path) -> dict:
         raise E2EError(
             "no_session", f"{directory} holds no readable session.json ({error})"
         ) from error
+    reader = read_pi_log if record.get("client") == "pi" else read_log
     return {
         **record,
-        "rounds": [
-            {**item, **read_log(Path(item["log"]))} for item in record["rounds"]
-        ],
+        "rounds": [{**item, **reader(Path(item["log"]))} for item in record["rounds"]],
     }

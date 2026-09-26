@@ -47,6 +47,12 @@ def scenario(name: str) -> dict:
         raise E2EError(
             "invalid_scenario", f"{path} lacks the field(s) {', '.join(missing)}"
         )
+    if value.setdefault("client", "claude") not in sessions.CLIENTS:
+        raise E2EError(
+            "invalid_scenario",
+            f"{path} names the client {value['client']!r}; a scenario runs on "
+            f"{' or '.join(sessions.CLIENTS)}",
+        )
     return value
 
 
@@ -97,9 +103,29 @@ def installed_digests(project: Path) -> dict:
     }
 
 
-def prepare(name: str, root: Path, directory: str | None = None) -> dict:
-    """Set a scenario up under ``root``: the faulty Concorde clone and the project."""
+def install_command(concorde: Path, project: Path, client: str) -> list[str]:
+    """The develop install of the project from the faulty clone; pi needs its own runtime."""
+    return [
+        sys.executable,
+        str(concorde / "scripts/install-concorde.py"),
+        str(project),
+        "--develop",
+        "--without-d2",
+        *(["--pi"] if client == "pi" else []),
+    ]
+
+
+def prepare(
+    name: str, root: Path, directory: str | None = None, client: str | None = None
+) -> dict:
+    """Set a scenario up under ``root``: the faulty Concorde clone and the project, for the
+    scenario's client or the one given."""
     chosen = scenario(name)
+    client = client or chosen["client"]
+    if client not in sessions.CLIENTS:
+        raise E2EError(
+            "unknown_client", f"a scenario runs on claude or pi, not {client!r}"
+        )
     base = root / (directory or name)
     if base.exists():
         raise E2EError(
@@ -116,16 +142,7 @@ def prepare(name: str, root: Path, directory: str | None = None) -> dict:
         chosen["project"]["rev"],
         project,
     )
-    run(
-        [
-            sys.executable,
-            str(concorde / "scripts/install-concorde.py"),
-            str(project),
-            "--develop",
-            "--without-d2",
-        ],
-        cwd=concorde,
-    )
+    run(install_command(concorde, project, client), cwd=concorde)
     command = str(project / ".concorde/bin/concorde")
     proposed = json.loads(
         run([command, "init", "--propose", "--name", project.name], cwd=project).stdout
@@ -138,6 +155,7 @@ def prepare(name: str, root: Path, directory: str | None = None) -> dict:
     run([*GIT, "commit", "-qm", "Adopt Concorde (develop install)"], cwd=project)
     record = {
         "scenario": name,
+        "client": client,
         "concorde": str(concorde),
         "fault_commit": fault,
         "project": str(project),
@@ -169,7 +187,11 @@ def run_scenario(base: Path, rounds: int = sessions.ROUNDS) -> dict:
     chosen = scenario(record["scenario"])
     directory = base / "sessions" / sessions.stamp().replace(":", "")
     session = sessions.start(
-        Path(record["project"]), chosen["prompt"], directory, rounds=rounds
+        Path(record["project"]),
+        chosen["prompt"],
+        directory,
+        rounds=rounds,
+        client=record.get("client", "claude"),
     )
     return {"session": session, "evaluation": evaluate(base)}
 

@@ -17,6 +17,7 @@ Any headless main session, with a prompt of the developer's, and the dogfood sce
 develop install from a Concorde clone with a known fault must be reported, not worked around:
 
     python3 scripts/e2e/e2e.py session start ~/concorde-e2e/requests --prompt-file ask.md
+    python3 scripts/e2e/e2e.py session start ~/concorde-e2e/requests --client pi --prompt "..."
     python3 scripts/e2e/e2e.py session show <session directory>
     python3 scripts/e2e/e2e.py dogfood list
     python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories
@@ -352,14 +353,23 @@ def session_command(arguments) -> dict:
     directory = (
         project / ".concorde/runs/e2e/sessions" / sessions.stamp().replace(":", "")
     )
-    return sessions.start(project, prompt, directory, rounds=arguments.rounds)
+    return sessions.start(
+        project,
+        prompt,
+        directory,
+        rounds=arguments.rounds,
+        client=arguments.client,
+        model=arguments.model,
+    )
 
 
 def dogfood_command(arguments) -> dict:
     if arguments.action == "list":
         return {"scenarios": dogfood.listing()}
     if arguments.action == "prepare":
-        return dogfood.prepare(arguments.scenario, e2e_root(), arguments.name)
+        return dogfood.prepare(
+            arguments.scenario, e2e_root(), arguments.name, arguments.client
+        )
     if arguments.action == "run":
         return dogfood.run_scenario(arguments.directory.resolve(), arguments.rounds)
     return dogfood.evaluate(arguments.directory.resolve())
@@ -410,6 +420,8 @@ def main(argv) -> int:
     start_.add_argument("--prompt")
     start_.add_argument("--prompt-file", type=Path)
     start_.add_argument("--rounds", type=int, default=sessions.ROUNDS)
+    start_.add_argument("--client", choices=sessions.CLIENTS, default="claude")
+    start_.add_argument("--model", help="the pi model of the main session (pi only)")
     show_ = session_actions.add_parser("show")
     show_.add_argument("directory", type=Path)
     dogfood_ = sub.add_parser("dogfood")
@@ -418,6 +430,11 @@ def main(argv) -> int:
     dogfood_prepare = dogfood_actions.add_parser("prepare")
     dogfood_prepare.add_argument("scenario")
     dogfood_prepare.add_argument("--name")
+    dogfood_prepare.add_argument(
+        "--client",
+        choices=sessions.CLIENTS,
+        help="the scenario's own client by default",
+    )
     dogfood_run = dogfood_actions.add_parser("run")
     dogfood_run.add_argument("directory", type=Path)
     dogfood_run.add_argument("--rounds", type=int, default=sessions.ROUNDS)
