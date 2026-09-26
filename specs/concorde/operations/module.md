@@ -107,6 +107,7 @@ The **Operation catalog** of this version:
 | `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | required | code of the bound Modules | a code change |
 | `test` | [Implementation](implementation/module.md) | `test` | `worker` | required | no | a test report |
 | `spec_review` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | optional | no | review findings and a verdict |
+| `spec_debate` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `challenger` | optional | no | debated findings, decision points and a verdict (pilot) |
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | optional (`--base` without one) | no | review findings and a verdict |
 | `validate` | [Validation](validation/module.md) | none | none | required | no | [readiness](validation/module.md#concept.validation.readiness) |
 | `delivery` | [Delivery](delivery/module.md) | none | none | required | commits on the task branch | a [delivery commit](delivery/module.md#concept.delivery.delivery-commit) |
@@ -125,7 +126,8 @@ the [brownfield workflow](../workflows/module.md).
 <a id="concept.operations.worker-role"></a>
 
 A **worker role** names one worker an Operation launches: `spec_review` has a `reviewer` and a
-`checker`, every other worker-backed Operation a single `worker`. The catalog lists the roles, and
+`checker`, `spec_debate` a `reviewer` and a `challenger`, every other worker-backed Operation a
+single `worker`. The catalog lists the roles, and
 the worker model configuration may choose a model per Operation and per role.
 
 <a id="concept.operations.configure-workers"></a>
@@ -392,11 +394,13 @@ Modules, the host scaffolds them, and `code-to-spec` workers describe each Modul
 
 <a id="uses-spec-review"></a>
 
-**Spec review** provides `spec_review` from Spec tooling: reviewers read the bound Modules' Specs
+**Spec review** provides `spec_review`, and the `spec_debate` pilot, from Spec tooling: reviewers read the bound Modules' Specs
 and return findings and a verdict, listed in the catalog like a contained provider but living in
 Spec tooling because it maintains Specs rather than changing a project. The host runs its
-`reviewer` and `checker` roles like any other provider's workers and relies on it changing nothing;
-its verdict stays the reviewers' claim.
+`reviewer`, `checker` and `challenger` roles like any other provider's workers and relies on it
+changing nothing; its verdict stays the reviewers' claim. `spec_debate` is the one provider whose
+steps run a LangGraph graph inside the host, which the host neither knows nor needs: the provider
+still returns one Operation result through the ordinary steps.
 
 ### What the host relies on
 

@@ -15,8 +15,8 @@ A Spec review inside a task SHALL merge its findings into each reviewed Module's
 
 ### req.spec-review.review-spec-grant — Reviewers read under a review-spec grant
 
-Every reviewer and checker SHALL run under the `review-spec` grant of exactly one reviewed Module,
-computed from the task worktree's Specs.
+Every reviewer, checker and debater SHALL run under the `review-spec` grant of exactly one
+reviewed Module, computed from the task worktree's Specs.
 
 ### req.spec-review.own-documents — Only the Module's own documents can block
 
@@ -53,3 +53,15 @@ under.
 
 The Operation result SHALL keep reviewer findings and checker statuses apart from the evidence the
 host produced itself.
+
+## Debate
+
+### req.spec-review.debate-by-stances — The host settles a debate item only by stances
+
+In a Spec debate the host SHALL change a debate item's state only as a debater's stance on it
+determines; an item still in dispute after the last turn is contested, never settled by the host.
+
+### req.spec-review.debate-bounded — A debate is bounded
+
+A Spec debate SHALL run at most the requested number of challenge turns for each Module, and one
+reviewer turn after each of them.

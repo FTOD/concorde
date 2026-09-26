@@ -10,6 +10,7 @@
     "owns": [
       "specs/concorde/spec-tooling/spec-review/module.md",
       "specs/concorde/spec-tooling/spec-review/operation.md",
+      "specs/concorde/spec-tooling/spec-review/debate.md",
       "specs/concorde/spec-tooling/spec-review/requirements.md",
       "specs/concorde/spec-tooling/spec-review/scenarios.md"
     ],
@@ -83,6 +84,18 @@
       "meaning": "#concept.spec-review.memory"
     },
     {
+      "id": "concept.spec-review.debate",
+      "type": "concept",
+      "title": "Spec debate",
+      "meaning": "#concept.spec-review.debate"
+    },
+    {
+      "id": "concept.spec-review.debate-item",
+      "type": "concept",
+      "title": "Debate item",
+      "meaning": "#concept.spec-review.debate-item"
+    },
+    {
       "id": "realization.spec-review.operation",
       "type": "realization",
       "title": "Review host",
@@ -98,7 +111,17 @@
       "title": "Reviewer brief",
       "meaning": "#realization.spec-review.checklist",
       "entries": [
-        "prompts/workers/review-spec.md"
+        "prompts/workers/review-spec.md",
+        "prompts/workers/spec-review/"
+      ]
+    },
+    {
+      "id": "realization.spec-review.debater",
+      "type": "realization",
+      "title": "Debater brief",
+      "meaning": "#realization.spec-review.debater",
+      "entries": [
+        "prompts/workers/debate-spec.md"
       ]
     }
   ],
@@ -138,6 +161,24 @@
       "source": "concept.spec-review.verdict",
       "verb": "is derived from",
       "target": "concept.spec-review.finding"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "hands debaters",
+      "target": "realization.spec-review.debater"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.debater",
+      "verb": "shares the checklist of",
+      "target": "realization.spec-review.checklist"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "settles",
+      "target": "concept.spec-review.debate-item"
     }
   ],
   "extensions": {}
