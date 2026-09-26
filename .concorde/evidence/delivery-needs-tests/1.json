@@ -1,0 +1,41 @@
+{
+  "task": "delivery-needs-tests",
+  "goal": "delivery refuses a task that changed code while scenarios it added or changed have no test declaring that it verifies them",
+  "modules": [
+    "module.delivery"
+  ],
+  "sequence": 1,
+  "base_commit": "f1a5c2e2dd6811388fd59c7615040a4ed2e4f24a",
+  "parent_commit": "f8ceee30f493c9f0df4a7f0363e9ee9a5e542515",
+  "readiness": {
+    "run_id": "r-20260926T074522-delivery-10d2bcd4",
+    "input_digest": "sha256:9043ccc0857d478f6c4ff252812132dce1a5ef7297c5e03b1f6abeb8d36e3a10",
+    "modules": [
+      "module.delivery"
+    ],
+    "checks": [
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:3f463e96730a96b47689c8d7f7eb10a54a9326070ed33067e1b6b7294f2d5e82"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T074516-validate-d9b61747",
+      "operation": "validate",
+      "modules": [
+        "module.delivery"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:0a4712b868cf900b2aaa12867da0f5a79b4956872c438338da990fd387521c0f"
+    }
+  ],
+  "created_at": "2026-09-26T07:45:29Z"
+}
