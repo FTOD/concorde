@@ -893,11 +893,45 @@ class AdoptionTests(unittest.TestCase):
         self.assertTrue(
             all(cause["code"] == "spec_finding" for cause in error["causes"])
         )
+        # The worker was given the host's validation twice and left the error in place.
         record = read_record(self.project.root, envelope["worker_runs"][-1])
-        self.assertEqual(1, len(record["rounds"]))
+        self.assertEqual(
+            ["initial", "validation_failures", "validation_failures"],
+            [item["prompt"] for item in record["rounds"]],
+        )
+        self.assertIn("CHK.scenario", record["rounds"][0]["validation"])
         self.assertEqual(
             broken, (self.worktree / "specs/project/checkout/scenarios.md").read_text()
         )
+
+    @verifies("scenario.adoption.describe-self-repair")
+    def test_a_description_repaired_in_a_resume_round_is_ok(self):
+        self.scaffolded()
+        scenarios = self.worktree / "specs/project/checkout/scenarios.md"
+        broken = self.SCENARIOS.replace("- THEN one order is returned\n", "")
+        claims = {
+            "output": {
+                "summary": "s",
+                "promises": [],
+                "decisions": [],
+                "open_questions": [],
+                "deviations": [],
+            }
+        }
+        status, envelope = self.describe(
+            [
+                {"writes": {str(scenarios): broken}, "result": claims},
+                {"writes": {str(scenarios): self.SCENARIOS}, "result": claims},
+            ]
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertEqual([], envelope["output"]["validation"]["new_errors"])
+        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        self.assertEqual(
+            ["initial", "validation_failures"],
+            [item["prompt"] for item in record["rounds"]],
+        )
+        self.assertEqual("clean", record["rounds"][1]["validation"])
 
 
 if __name__ == "__main__":

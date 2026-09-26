@@ -32,6 +32,7 @@ from ..operations.provider import (
     protocol_guide,
     spec_cause,
     spec_finding,
+    spec_repair_prompt,
 )
 from ..spec.repository_base import SpecError
 from .records import (
@@ -263,6 +264,25 @@ def instructions(ctx: RunContext) -> str:
     return "".join(parts)
 
 
+# Resume rounds in which the worker repairs what the host's validation reports.
+REPAIR_ROUNDS = 2
+
+
+def validation_repair(ctx: RunContext) -> str | None:
+    """After a round: the errors the run would be judged by, new ones and any left in the
+    documents it describes, as a resume prompt; None when there are none."""
+    from ..spec.validation import validate_repository
+
+    own = own_documents(ctx)
+    errors = [
+        finding
+        for finding in validate_repository(ctx.worktree).findings
+        if finding.severity == "error"
+        and (key(finding) not in ctx.state["baseline"] or finding.source in own)
+    ]
+    return spec_repair_prompt(errors)
+
+
 def describe(ctx: RunContext):
     """Step 3: the worker. It never stops the run itself, so that ``tidy`` removes the stubs on
     every way out; ``observe`` returns what stopped it."""
@@ -273,7 +293,8 @@ def describe(ctx: RunContext):
         task_type="code-to-spec",
         output_schema=DESCRIBE_WORKER_SCHEMA,
         checks=False,
-        rounds=0,
+        rounds=REPAIR_ROUNDS,
+        after_round=lambda: validation_repair(ctx),
     )
     if isinstance(outcome, Stop):
         ctx.state["stop"] = outcome
@@ -468,9 +489,9 @@ def observe(ctx: RunContext):
             f"after the worker described {', '.join(ctx.modules)} the task's Specs have "
             f"{len(new)} new structural error(s): {listing}",
             reason="decision",
-            explanation="code_to_spec runs its worker once and never repairs a Spec "
-            "automatically; whether to repair, rerun or discard the edits is the main agent's "
-            "decision",
+            explanation="the worker was resumed with the host's validation as many times as "
+            "code_to_spec allows and the errors remain; whether to repair, rerun or discard the "
+            "edits is the main agent's decision",
             evidence=found,
             causes=[
                 spec_finding(

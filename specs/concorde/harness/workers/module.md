@@ -222,11 +222,15 @@ for the main agent — never reverted or committed by the host.
 
 <a id="concept.workers.resume-round"></a>
 
-A **resume round** happens only when the worker ended `ok`, the audit was clean, and a check failed:
-the host sends each failure's identity, exit code and log tail to `claude -p --resume <session>`,
-tracking the new session id returned. A `blocked`/`failed` result or an audit violation is never
-resumed — those go to the main agent; when the rounds are used up and a check still fails, the run
-ends `failed` with the last check results.
+A **resume round** happens only when the worker ended `ok`, the audit was clean, and a check failed
+or, once the checks pass, the caller's own validation after the round reported something to
+repair: the host sends each failure's identity, exit code and log tail, or the validation's text,
+to `claude -p --resume <session>`, tracking the new session id returned. A Spec-writing Operation
+uses the validation to have its worker repair the structural errors it introduced. A
+`blocked`/`failed` result or an audit violation is never resumed — those go to the main agent;
+when the rounds are used up and a check still fails, the run ends `failed` with the last check
+results, while a validation still reporting problems leaves the round's result for its caller to
+judge. Each round records its validation outcome.
 
 <a id="concept.workers.run-record"></a>
 

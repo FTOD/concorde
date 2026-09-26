@@ -119,6 +119,13 @@ shapes are in the [contracts](contracts.md).
 - AND the result lists that promise with source `answer`
 - AND the result lists a deviation with the intended and the observed behaviour
 
+### scenario.adoption.describe-self-repair — The worker repairs what validation reports
+
+- GIVEN a code_to_spec worker whose first round leaves a scenario of `module.checkout` without a THEN step
+- WHEN the host validates the Specs after that round
+- THEN it resumes the same worker with the structural error, and after a round that repairs it the run ends `ok` with no new error
+- BUT a worker that leaves the error through its two resume rounds ends the run `blocked` with `new_structural_errors`
+
 ### scenario.adoption.describe-own-errors — The worker learns the errors it must repair
 
 - GIVEN a scaffolded `module.checkout` whose entry has a structural error, left by an earlier description
@@ -163,6 +170,5 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN a code_to_spec worker whose change leaves a scenario without a `THEN` step
 - WHEN the host validates the worktree again
-- THEN the result is `blocked` with one `new_structural_errors` cause per new finding
-- AND no resume round is started
+- THEN the worker is resumed twice with the error, and when it is still there the result is `blocked` with one `new_structural_errors` cause per new finding
 - AND the change stays in the worktree for the main agent to repair or discard

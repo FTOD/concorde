@@ -214,7 +214,9 @@ class SpecifyTests(unittest.TestCase):
         self.assertEqual(broken, path.read_text())
         self.assertEqual("CHK.node.meaning", new[0]["rule_id"])
         record = read_record(self.project.root, envelope["worker_runs"][-1])
-        self.assertEqual(1, len(record["rounds"]))
+        # Two resume rounds with the host's validation, which the worker did not use.
+        self.assertEqual(3, len(record["rounds"]))
+        self.assertIn("CHK.node.meaning", record["rounds"][0]["validation"])
         self.assertEqual(1, len(envelope["worker_runs"]))
 
     @verifies("scenario.specification.foreign-document")

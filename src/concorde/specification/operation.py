@@ -26,10 +26,10 @@ from ..operations.provider import (
     Provider,
     RunContext,
     Stop,
-    spec_cause,
     evidence,
     load_prompt,
     protocol_guide,
+    spec_cause,
     spec_finding,
 )
 
@@ -283,6 +283,24 @@ def instructions(ctx: RunContext) -> str:
     return "".join(parts)
 
 
+# Resume rounds in which the worker repairs what the host's validation reports.
+REPAIR_ROUNDS = 2
+
+
+def validation_repair(ctx: RunContext) -> str | None:
+    """After a round: the errors the baseline did not have, as a resume prompt, or None."""
+    from ..operations.provider import spec_repair_prompt
+    from ..spec.validation import validate_repository
+
+    errors = [
+        finding
+        for finding in validate_repository(ctx.worktree).findings
+        if finding.severity == "error"
+        and key(finding) not in state(ctx).baseline_errors
+    ]
+    return spec_repair_prompt(errors)
+
+
 def change(ctx: RunContext):
     """Steps 2 to 5: run the specify worker once; stop only when nothing may be observed."""
     from ..harness.runs import read_record
@@ -293,7 +311,8 @@ def change(ctx: RunContext):
         task_type="specify",
         output_schema=WORKER_OUTPUT_SCHEMA,
         checks=False,
-        rounds=0,
+        rounds=REPAIR_ROUNDS,
+        after_round=lambda: validation_repair(ctx),
     )
     if not ctx.worker_runs:
         return outcome  # the grant could not be computed; no worker ran
@@ -446,8 +465,9 @@ def observe(ctx: RunContext):
             f"after the worker's change the task's Specs have {len(new)} new structural "
             f"error(s), so they do not validate until these are repaired: {listing}",
             reason="decision",
-            explanation="specify runs its worker once and never repairs a Spec automatically; "
-            "whether to repair, rerun or discard the edits is the main agent's decision",
+            explanation="the worker was resumed with the host's validation as many times as "
+            "specify allows and the errors remain; whether to repair, rerun or discard the "
+            "edits is the main agent's decision",
             evidence=found,
             causes=[
                 spec_finding(

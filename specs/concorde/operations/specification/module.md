@@ -120,8 +120,10 @@ implementation path.
 Validation is structural: the same
 [checks](../../spec-tooling/spec/module.md#concept.spec.structural-check) `concorde validate` runs.
 Comparing with the baseline lets `specify` repair an already-broken worktree — pre-existing errors
-do not stop the run, only ones the change introduced — with no resume round: repair loops exist for
-code defects, but a failed Spec needs the main agent's decision.
+do not stop the run, only ones the change introduced. After each round the host validates the same
+way and resumes the worker, at most twice, with every error its change introduced, so the worker
+repairs the Specs it broke itself; only errors left after the last round stop the run for the main
+agent's decision.
 
 The registry sits outside every Module's write set, so an edited `module` block leaves the mirror
 stale; step 6 is the reconciliation the Protocol provides, touching only existing Modules' mirrored

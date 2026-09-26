@@ -288,8 +288,10 @@ parse. Only Python tests are linked.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
 run's, even one the baseline already had: the worker rewrites those documents, and a retry must not
-inherit a failed attempt's errors as the project's. As with `specify`, a failed structural check starts no resume round: repairing a Spec needs a
-decision, not another guess, so the run stops and the main agent or the workflow goes on.
+inherit a failed attempt's errors as the project's. As with `specify`, the host validates after each
+round and resumes the worker, at most twice, with the errors the run is judged by, so the worker
+repairs what it broke itself; only errors left after the last round stop the run as `blocked`, and
+the main agent or the workflow goes on.
 
 <a id="realization.adoption.shared"></a>
 

@@ -19,6 +19,7 @@ import signal
 import subprocess
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -90,6 +91,10 @@ class WorkerRequest:
     pi_config: Path | None = None
     sandbox_runtime: Path | None = None
     extra: dict = field(default_factory=dict)
+    # The host's own validation after a round that ended ok and passed its checks: the text of a
+    # resume prompt naming what to repair, or None. A worker is resumed with it while rounds
+    # remain; once none remain the round's result stands and the caller judges it.
+    after_round: Callable[[], str | None] | None = None
 
 
 def _digest(path: Path) -> str:
@@ -251,6 +256,33 @@ def _kill_group(process) -> None:
         os.killpg(process.pid, signal.SIGKILL)
     except (ProcessLookupError, PermissionError):
         pass
+
+
+def _after_round(request, number: int, round_record: dict, attempts: list[str]):
+    """The resume prompt for the host's validation of a round, or None to finish the run."""
+    if request.after_round is None:
+        return None
+    try:
+        repair = request.after_round()
+    except Exception as error:  # noqa: BLE001 -- the caller validates again and judges
+        from ..errors import exception_detail
+
+        round_record["validation"] = f"not run: {exception_detail(error)}"
+        return None
+    if not repair:
+        round_record["validation"] = "clean"
+        return None
+    round_record["validation"] = repair
+    if number > request.rounds:
+        attempts.append(
+            f"round {number}: the host's validation still reported problems and no resume "
+            "round was left"
+        )
+        return None
+    attempts.append(
+        f"round {number}: the host's validation reported problems to repair"
+    )
+    return repair
 
 
 def _resume_prompt(failures: list[dict]) -> str:
@@ -595,7 +627,8 @@ def run_worker(request: WorkerRequest) -> dict:
                     f"{number} with {cause['code']}: {cause['detail']}",
                     reason="capability",
                     explanation="Workers resumes a worker only to repair failing configured "
-                    "checks; it returns every other blocker unchanged",
+                    "checks or what its caller's validation reports; it returns every other "
+                    "blocker unchanged",
                     evidence=[
                         evidence("run-record", (paths.root / "record.json").as_posix()),
                     ]
@@ -609,8 +642,12 @@ def run_worker(request: WorkerRequest) -> dict:
                 ),
             )
         if request.check_modules is None:
-            _finalize(worktree, record, result, clean=True)
-            return finish("ok")
+            repair = _after_round(request, number, round_record, attempts)
+            if repair is None:
+                _finalize(worktree, record, result, clean=True)
+                return finish("ok")
+            prompt, kind = repair, "validation_failures"
+            continue
         progress.phase("checks")
         try:
             from .checks import run_checks
@@ -644,8 +681,12 @@ def run_worker(request: WorkerRequest) -> dict:
         round_record["checks"] = checks
         failures = [item for item in checks if item["status"] != "passed"]
         if not failures:
-            _finalize(worktree, record, result, clean=True)
-            return finish("ok")
+            repair = _after_round(request, number, round_record, attempts)
+            if repair is None:
+                _finalize(worktree, record, result, clean=True)
+                return finish("ok")
+            prompt, kind = repair, "validation_failures"
+            continue
         attempts.append(
             f"round {number}: the worker ended ok; failing: "
             + ", ".join(

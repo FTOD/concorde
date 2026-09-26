@@ -24,6 +24,10 @@ The scaffold SHALL make every path the survey proposes as vendored third-party c
 
 No Adoption Operation SHALL create, change or delete a file of the task worktree other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
 
+### req.adoption.self-repair — The worker repairs the Specs it breaks
+
+The code_to_spec host SHALL resume its worker, at most twice, with every structural error its validation finds after a round in the documents the run describes or new since the baseline.
+
 ### req.adoption.own-errors-briefed — The worker is told the errors it must repair
 
 The code_to_spec host SHALL list, in its worker's brief, every structural error already in the documents of the Modules it describes.
