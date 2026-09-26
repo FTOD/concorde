@@ -38,7 +38,7 @@ as well, and the envelope lists their identities. `.concorde/runs/` is ignored b
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Parse the command line and look up the catalog entry; only then create the run identity and directory | host | malformed command line, unknown Operation or a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
-| 2 | Resolve the task and its worktree, or without a task the primary worktree; check `--modules` and `--input` | host, Tasks, Spec core | unknown task or Module, missing worktree, inadmissible input, a run without a task started in a task's worktree (`failed`, not recorded in the task) |
+| 2 | Resolve the task and its worktree, or without a task the primary worktree; check `--modules` and `--input`. Without `--modules` a run of a task works on the task record's Modules that the task worktree still registers, leaving out with `removed-module` evidence each one the task branch removed or renamed | host, Tasks, Spec core | unknown task or Module, missing worktree, inadmissible input, a task whose Modules were all removed or renamed (`modules_removed`), a run without a task started in a task's worktree (`failed`, not recorded in the task) |
 | 3 | Begin the run in the task record with the catalog entry's `writes` flag; the task worktree's Specs are loaded to check the Modules unless the provider diagnoses them itself (`validate`). A run without a task skips this step | Tasks | `task_closed` or `task_busy` (`failed`, not recorded in the task) |
 | 4 | Execute the provider's steps in order | provider, Workers, Check execution | a step stops the run with a status |
 | 5 | Compose the envelope from the step outcomes and check it against the result contract and the provider's output contract | host | the envelope or output is invalid (`failed`, `invalid-output` evidence) |
@@ -89,7 +89,8 @@ The optional `workers` object of `.concorde/config.json`, read from the task wor
 limits of every worker launch: `timeout_seconds` per round (default 1800), `max_turns` (default 200), `max_budget_usd` (default none), `rounds` of resume
 (default 3) and `runtime`, the paths Bash may read besides the grant, relative to the task
 worktree or absolute (default `.venv` and `node_modules`, each only when it exists). A refusal of the task before the run begins (`unknown_task`,
-`missing_worktree`, `input_not_admissible`, `task_closed`, `task_busy`, `unknown_module`) is
+`missing_worktree`, `input_not_admissible`, `task_closed`, `task_busy`, `unknown_module`,
+`modules_removed`) is
 reported as `refused` evidence.
 
 ## Worker backend and model

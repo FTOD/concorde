@@ -310,6 +310,20 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
         self.assertFalse((self.root / ".claude/worktrees/t1").exists())
 
+    @verifies("scenario.tasks.removed-module")
+    def test_removed_modules_are_told_from_current_ones(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        modules = ["module.renamed", "module.a"]
+        self.assertEqual(
+            (["module.a"], ["module.renamed"]),
+            store.current_modules(worktree, modules),
+        )
+        (worktree / ".concorde/specs.json").write_text("not json")
+        with self.assertRaises(store.TaskError) as raised:
+            store.current_modules(worktree, modules)
+        self.assertEqual("specs_unloadable", raised.exception.code)
+
     @verifies("scenario.tasks.not-primary")
     def test_linked_worktrees_cannot_open_or_close(self):
         self.project.open_task("t1")

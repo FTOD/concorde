@@ -81,6 +81,12 @@ REFUSALS = {
             "cancel it, then run this one again",
         ],
     ),
+    "modules_removed": (
+        "input",
+        "the task names only Modules its branch removed or renamed, and which of its current "
+        "Modules the run works on is for the caller to name",
+        ["run the Operation again naming the task's current Modules with --modules"],
+    ),
     "specs_unloadable": (
         "scope",
         "the Operation needs the task worktree's Specs to load and never repairs them",
@@ -219,6 +225,38 @@ def _named_modules(arguments) -> list[str] | None:
     return [item.strip() for item in arguments.modules.split(",") if item.strip()]
 
 
+def _task_modules(chosen, context: RunContext, task: dict) -> list[str]:
+    """The task record's Modules the task worktree still registers.
+
+    A Module the task branch removed or renamed stays in the record, which only grows; the run
+    leaves it out with ``removed-module`` evidence. When the worktree's Specs do not load, the
+    record's list is kept whole: the Module check of step 3, or the provider itself, reports why.
+    """
+    modules = list(task["modules"])
+    try:
+        kept, removed = store.current_modules(context.worktree, modules)
+    except store.TaskError:
+        return modules
+    if removed and not kept:
+        raise store.TaskError(
+            "modules_removed",
+            f"every Module task {task['id']} names ({', '.join(removed)}) is no longer "
+            f"registered in its worktree {context.worktree}: the task branch removed or "
+            "renamed them, so the run has no Module to work on; name the task's current "
+            "Modules with --modules",
+        )
+    for module in removed:
+        context.evidence.append(
+            evidence(
+                "removed-module",
+                module,
+                f"task {task['id']} names {module}, which its worktree no longer registers: "
+                f"the task branch removed or renamed it, so {chosen.name} leaves it out",
+            )
+        )
+    return kept
+
+
 def _resolve_task(chosen, context: RunContext, primary: Path, arguments) -> None:
     """Steps 2 and 3 for a run of a task: its worktree, Modules and inputs; begin the run."""
     task = store.load_task(primary, arguments.task)
@@ -226,7 +264,7 @@ def _resolve_task(chosen, context: RunContext, primary: Path, arguments) -> None
     context.worktree = Path(task["worktree"])
     if not context.worktree.is_dir():
         raise store.TaskError("missing_worktree", f"{context.worktree} does not exist")
-    context.modules = _named_modules(arguments) or list(task["modules"])
+    context.modules = _named_modules(arguments) or _task_modules(chosen, context, task)
     context.inputs = _inputs(primary, task, arguments.input)
     store.begin_run(
         primary,

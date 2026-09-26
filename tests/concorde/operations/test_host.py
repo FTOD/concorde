@@ -554,6 +554,42 @@ class HostTests(unittest.TestCase):
         self.assertIsNone(envelope["output"])
         self.assertEqual(before["runs"], store.load_task(self.root, "t1")["runs"])
 
+    @verifies("scenario.operations.removed-module")
+    def test_a_module_the_task_branch_removed_is_left_out(self):
+        def name(modules):
+            def change(record):
+                record["modules"] = modules
+                return record
+
+            store.update(self.root, "t1", change)
+
+        # module.gone stands for a Module the task branch removed or renamed.
+        name(["module.a", "module.gone"])
+        status, envelope = self.project.run("validate", "--task", "t1")
+        self.assertEqual((0, "ok"), (status, envelope["status"]))
+        self.assertEqual(["module.a"], envelope["modules"])
+        [removed] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "removed-module"
+        ]
+        self.assertEqual("module.gone", removed["ref"])
+        self.assertIn("removed or renamed", removed["detail"])
+        record = store.load_task(self.root, "t1")
+        self.assertEqual(["module.a", "module.gone"], record["modules"])
+        self.assertEqual(["module.a"], record["runs"][-1]["modules"])
+
+        name(["module.gone"])
+        status, envelope = self.project.run("validate", "--task", "t1")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual(["refused", "modules_removed"], codes(envelope["error"]))
+        self.assertIn("module.gone", envelope["error"]["causes"][0]["detail"])
+        self.assertIn("--modules", envelope["error"]["causes"][0]["detail"])
+        status, envelope = self.project.run(
+            "validate", "--task", "t1", "--modules", "module.a"
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]))
+
     @verifies("scenario.operations.detached")
     def test_a_detached_run_is_announced_and_finishes_on_its_own(self):
         from concorde.operations.host import detach

@@ -153,6 +153,15 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND the result has status `failed`, `refused` evidence with the reason and an error whose cause is the Tasks refusal, naming the known tasks or the running Operation
 - AND the task record gains no run
 
+### scenario.operations.removed-module — A Module the task branch removed is left out
+
+- GIVEN a task whose record names `module.a` and a Module its branch has since removed or renamed
+- WHEN the main agent runs an Operation for the task without `--modules`
+- THEN the run works on `module.a` only, and the result lists `module.a` as its Modules
+- AND the result has `removed-module` evidence naming the removed Module and saying the task branch removed or renamed it
+- AND the task record still names both Modules
+- BUT when the task record names only removed Modules, the run is refused with `modules_removed`, naming them and `--modules`, and a run naming the task's current Modules with `--modules` proceeds
+
 ### scenario.operations.bad-command — A malformed command line
 
 - GIVEN a command line with an unknown Operation name or without `--task`

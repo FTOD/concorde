@@ -73,6 +73,14 @@ records and error codes are defined in the [contracts](contracts.md).
 - WHEN the host begins a run naming `module.issues` and `module.spec`
 - THEN the record's Modules are `module.issues` and `module.spec`
 
+### scenario.tasks.removed-module — Tell removed Modules from current ones
+
+- GIVEN a task whose record names `module.a` and a Module the task branch has since renamed, so its worktree's registry no longer registers it
+- WHEN the Operation host asks Tasks which of the task's Modules are current
+- THEN `module.a` is current and the renamed one is removed, in the record's order
+- AND the record still names both
+- BUT when the task worktree's Specs cannot be loaded, Tasks refuses with `specs_unloadable` rather than guess
+
 ### scenario.tasks.busy — Refuse a second concurrent run
 
 - GIVEN a task with a running run whose host process is alive

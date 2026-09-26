@@ -322,23 +322,40 @@ def finish_round(
     return update(primary, task_id, change)
 
 
-def registered(root: Path, modules: list[str]) -> None:
+def _registry(root: Path) -> set[str]:
     from ..spec.repository import SpecRepository
     from ..spec.repository_base import SpecError
 
     try:
-        repository = SpecRepository(root)
+        return set(SpecRepository(root).modules)
     except (SpecError, OSError, ValueError) as error:
         detail = error.describe() if isinstance(error, SpecError) else str(error)
         raise TaskError(
             "specs_unloadable", f"the Specs of {root} cannot be loaded: {detail}"
         ) from error
-    unknown = sorted(item for item in modules if item not in repository.modules)
+
+
+def current_modules(root: Path, modules: list[str]) -> tuple[list[str], list[str]]:
+    """Split a task's Modules into those its worktree still registers and those it does not.
+
+    Every Module of a task record was registered when it was added, so one the task worktree no
+    longer registers was removed or renamed on the task branch.
+    """
+    known = _registry(root)
+    return (
+        [item for item in modules if item in known],
+        [item for item in modules if item not in known],
+    )
+
+
+def registered(root: Path, modules: list[str]) -> None:
+    known = _registry(root)
+    unknown = sorted(item for item in modules if item not in known)
     if unknown:
         raise TaskError(
             "unknown_module",
             f"{', '.join(unknown)} {'is' if len(unknown) == 1 else 'are'} not registered in "
-            f"{root} (registered: {', '.join(sorted(repository.modules))})",
+            f"{root} (registered: {', '.join(sorted(known))})",
         )
 
 

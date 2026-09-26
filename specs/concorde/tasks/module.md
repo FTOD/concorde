@@ -72,6 +72,12 @@ commits, adding any `--modules` a run names, so it always lists every Module tou
 while one is going is refused with `task_busy`; one left `running` by a dead host process is marked
 `interrupted` at the next run.
 
+The list of Modules only grows: a Module the task branch later removes or renames stays in it.
+Since every Module was registered when it was added, one the task worktree no longer registers is
+exactly one the branch removed or renamed, so Tasks tells the current Modules from the removed ones
+by reading the task worktree's registry, each time it is asked, and the Operation host leaves the
+removed ones out of a run that names no `--modules`.
+
 A task may also run a [workflow](../workflows/module.md), which presets the Operations it runs.
 Workflows then records in the task record the workflow's name, each step key with its run (or,
 for a step that could not start, its error) and whether a later rerun superseded it, and each
