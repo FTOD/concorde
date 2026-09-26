@@ -1,0 +1,204 @@
+{
+  "task": "agent-levels",
+  "goal": "Restructure the agent Specs around the work levels (main session, task, worker) under a new Agents Module, make Harness an agent-independent Module, and move Checks and the error-chain code out of Harness",
+  "modules": [
+    "module.concorde",
+    "module.harness",
+    "module.harness.workers",
+    "module.harness.checks",
+    "module.tasks",
+    "module.main-session",
+    "module.operations",
+    "module.spec-review",
+    "module.distribution",
+    "module.agents",
+    "module.task-session",
+    "module.workers",
+    "module.checks"
+  ],
+  "sequence": 1,
+  "base_commit": "59e5e903e8c9e307b7964d504a6344b4bacb7709",
+  "parent_commit": "a026041bf7c322bc5a5480d424ef75d8958de1ee",
+  "readiness": {
+    "run_id": "r-20260926T061529-delivery-a7730ffa",
+    "input_digest": "sha256:098e84b6bc16c1c670ecca614379e1df44d96539dfd5afc88086ba1a53dadcd1",
+    "modules": [
+      "module.adoption",
+      "module.agents",
+      "module.checks",
+      "module.code-review",
+      "module.concorde",
+      "module.delivery",
+      "module.distribution",
+      "module.harness",
+      "module.implementation",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.spec",
+      "module.spec-review",
+      "module.spec-tooling",
+      "module.specification",
+      "module.task-session",
+      "module.tasks",
+      "module.understanding",
+      "module.validation",
+      "module.workers"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:987c3e408b6e286c479a5b8316e674456787a66d6b1961ac3fab17a577113220"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:54af6875b7f9731879375c2aa2ef0ba6a0442d3835f2f282a1795809799bbdba"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:f030923c96f18631be7d56833337d30f809ee4383549f5be9ac7e221e05ac1c1"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:f725af3d5e5af1fc20c38cbf6ae51133a671558ef7d3aa4962e0756bb9524336"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:bca3a20e24a35bb64a8179603c310db02da08701c2b77122555d1ccbb374195d"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:7d83baa413f128f4de5aa3e13ce872b129c2964a4f9761ef5158b578338926e6"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:1826a95496b01fe84017913f17d682f4df7c5883aac63403109ebac2459251d4"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:1826a95496b01fe84017913f17d682f4df7c5883aac63403109ebac2459251d4"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:9c0eef5199b1ef1fa1c2951c0fc253406c5844af70258a73c3f48c6266746364"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:405c0892e9caf584a450b658da16e46d9262d169553d9cda24bf95375be6bcda"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:f2c09fa23f28b5c085105590dc49e5f3eb42a9b4ba9ce66ce9d4ff2893b66cbc"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:cdddcaf65923252e021d2579a17228203ec3e3c5c77dde0a79aaa3ef2cba64f8"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:e65fb4bce2aff8836841b845bd54f704017e1fd2d0bc605bed9ca1c4da7caa62"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:c667eff53c85c426854b53b157481817a18a1d7bf230c15fbefb02bcdda2eaaa"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:baf007ba97b1df50532c061f5d8a7e17b7d85e4342990c01be995acdeb1a52f3"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:6b3fd664b0710aa91dde82e010e9d7bc5a8cc062224864a6ad01039f18b14d8d"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:f5b6d32c8ba16962c3c908e8995de2b09d0d82a8b49b5d23b9a6e2eaf2fe8728"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:a94dba2ee4b2e5516677b8d14bbe4b15228c3748cf8b00db9748918058145e80"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T061233-validate-11e8b327",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.harness",
+        "module.harness.workers",
+        "module.harness.checks",
+        "module.tasks",
+        "module.main-session",
+        "module.operations",
+        "module.spec-review",
+        "module.distribution"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 4 blocking finding(s). structural module.harness.workers: the task names module.harness.workers, which the task worktree's registry does not register | structural module.harness.checks: the task names module.harness.checks, which the task worktree's registry does not register | check module.harness.checks: unknown_module: unregistered Module: module.harness.checks | check module.harness.workers: unknown_module: unregistered Module: module.harness.workers",
+      "worker_runs": [],
+      "result_digest": "sha256:f249bac65574da0f45f0fb03d77d4136767ceefdaaa9a831c5924ecf3049adfc"
+    },
+    {
+      "run_id": "r-20260926T061418-validate-aecd99de",
+      "operation": "validate",
+      "modules": [
+        "module.concorde",
+        "module.agents",
+        "module.main-session",
+        "module.task-session",
+        "module.workers",
+        "module.harness",
+        "module.checks",
+        "module.tasks",
+        "module.operations",
+        "module.spec-review",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:be0a66ba44653414051f649faaac52e55d5c04325bd1d0b43622b4b415aa12f2"
+    }
+  ],
+  "created_at": "2026-09-26T06:16:33Z"
+}
