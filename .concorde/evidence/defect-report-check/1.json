@@ -1,0 +1,128 @@
+{
+  "task": "defect-report-check",
+  "goal": "Defect reports are complete and checkable before hand-off: the develop guidance lists every required report field with an example, and issues report --check validates a report without recording it",
+  "modules": [
+    "module.dogfooding",
+    "module.issues"
+  ],
+  "sequence": 1,
+  "base_commit": "8e9cfb928339c9172b10c711f6f46d7c56116980",
+  "parent_commit": "85ef9243db6d65de878ae0392919cd86106f609f",
+  "readiness": {
+    "run_id": "r-20260926T164125-delivery-1d1ba5cf",
+    "input_digest": "sha256:5375c5a0b8c8bb63a7aed0422cb8a3643b70972b237149899402ca8fa8583037",
+    "modules": [
+      "module.dogfooding",
+      "module.issues"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:cfb5b9d314cb2490ab8f2b2cd468a983f1d34a6603464a452240f006b6e72c07"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:43053cc231adb9e70ec5ac1fe05627f7e1d082bca9c462fe868ab0b2429369da"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:919579166bae23d9aee2ec594e6970cce71a8c33bad4b9fe5412eb85e50af1a6"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:4200714151941161521aa2faac6e1dcb01943009073a33a5b6bddf85b0cb606f"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:a85495706509b9071f96151a974347c1b834be54e56eb5755ab1814ef12dcc16"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:d3e3cbca2783139e4afe169499a84591d21ac60241c649f418d110cb369180a0"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:d3e3cbca2783139e4afe169499a84591d21ac60241c649f418d110cb369180a0"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:9f9fa49b80ed2c5e8efa94af5ac5ff318e4b0d4c19e6054f5a16190438cff214"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:137e626962fcb0aa2d27a6819ff59e54a34120ce612ba38530f02af340b8bd93"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:b38f0bf10405a586b42bfc31901b9965078901830c65328dd9cc9f5936419bf0"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:9f48aaa472c97b33928020c632c09cac08babcda52ce071fb223afba78b3a03f"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:f9b54b8a4e457e010f1d4b9f8d8fa72cd9a4f899c543e7badebcd0f56a53bb5e"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:fd950c981822003345f02b5a4e1169fcab147a692d1769bec464f694d63aba87"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:f0f8b030e2f0511a9006f7cbcf08e4543eaa8697fb4db28d79ca9b3e96d005f9"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:65c4b281d4644c4e6b78c2555293ca1e221e49359d481c9a1f709951c890239b"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T164039-validate-d6d72641",
+      "operation": "validate",
+      "modules": [
+        "module.dogfooding",
+        "module.issues"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:72d7c248d54ddd1b0fd62d84b2ccb59afbc42412640876d7e33ec3ab771bd974"
+    }
+  ],
+  "created_at": "2026-09-26T16:42:14Z"
+}
