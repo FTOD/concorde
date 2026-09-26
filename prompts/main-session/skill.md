@@ -256,13 +256,49 @@ changes in either case.
 ## Issues
 
 A problem the current task will not fix, such as a Spec gap a worker reported about another Module,
-is worth an Issue so that it survives the task. Record it with
-`concorde issues report --file <report.json> [--task <task>]` (a bug, gap or limitation, its owner
-Module when known, the basis and evidence paths); `concorde issues list` and `show <id>` tell you
-what is open. Solve an Issue like any other work: open a task for the Issue's Module, run the
-Operations that fix it, and close the Issue on that task's branch with
-`concorde issues close <id> --reason resolved --note <text> --evidence <path>…`, so the closure is
-merged with the fix; `concorde issues reopen` reopens one that came back.
+is worth an Issue for later work. You decide what to record after reading the worker or Operation
+result; neither records Issues automatically. Inspect `concorde issues list` (open and closed
+Issues) and `show <id>` first. There is no automatic Issue notification.
+
+Run every Issue write (`report`, `close`, `reopen`) in a task worktree with its own `concorde`.
+If none exists, open a task for the owning Module, or the root Module when unknown. Read-only
+`list`, `show` and `check` may run in either worktree and describe that copy. Use the command;
+do not edit accepted reports or flip `status` by hand.
+
+Write a JSON report describing the bug, gap or limitation, its owner Module when known, basis and
+evidence paths, then run `concorde issues report --file <report.json> --task <task>` and keep its
+receipt and revision. `--task` records provenance only: it does not choose the worktree. To append
+to an open Issue, add its `issue_id` and current `expected_revision` from `show` to the new report;
+to create one, omit both. Repeating a creation command creates another Issue, even with the same
+report key. Reopen a closed match before appending a new observation.
+
+An Issue has only `open` and `closed` status. Starting, fixing or delivering a task does not change
+it. Solve an Issue like any other work: open a task for the Issue's current Module, run the
+Operations that fix it, and close the Issue on that task's branch before delivery with
+`concorde issues close <id> --reason resolved --note <text> --evidence <item>…`, so the closure is
+merged with the fix. `duplicate` (with `--duplicate-of <other-open-id>`) and `not-actionable` are
+other closing reasons, not statuses. For recurrence use
+`concorde issues reopen <id> --note <text> --evidence <item>…`; it retains all previous reports and
+dispositions. Check that the evidence supports every decision: the store checks its form, not its
+truth. `close` and `reopen` take no `--task` and read their own current revisions. On `stale_issue`,
+read the record again and reconsider before retrying.
+
+A receipt means the record is on disk in that worktree, not committed or merged. Before ending a
+task without merging, preserve every Issue worth following up: record it through the command in
+a subsequent task with references to its earlier identity and branch, or leave a handoff in the
+current task's decision log. Include the Issue identity, branch and commit when available, the
+remaining work and durable locations of the report and evidence. Preserve needed uncommitted
+material before removal. Closing retains the branch and decision log, so committed records remain
+there; forced removal can discard uncommitted material. Unmerged Issues do not appear on the
+primary branch, and a log entry alone does not publish them.
+
+Resolve Git conflicts in Issue records in the task worktree while merging the primary branch into
+it. Preserve accepted reports unchanged and document the decision about competing dispositions,
+retaining their evidence. Never concatenate incompatible closes or invent reopenings to make the
+history alternate; escalate decisions beyond the task's scope. Run `concorde issues check`
+explicitly on the resolved records before `validate` and `delivery`. Structural Spec validation
+alone does not run the store check, and a passing store check does not prove the closure is
+justified.
 
 ## Worker models
 

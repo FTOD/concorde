@@ -36,17 +36,12 @@
       {
         "target": "module.tasks",
         "meaning": "#uses-tasks",
-        "relies_on": [
-          "concept.tasks.task",
-          "concept.tasks.decision-log"
-        ]
+        "relies_on": ["concept.tasks.task", "concept.tasks.decision-log"]
       },
       {
         "target": "module.task-session",
         "meaning": "#uses-task-session",
-        "relies_on": [
-          "concept.task-session.round"
-        ]
+        "relies_on": ["concept.task-session.round"]
       },
       {
         "target": "module.workflows",
@@ -56,15 +51,17 @@
         "target": "module.issues",
         "meaning": "#uses-issues",
         "relies_on": [
-          "concept.issues.issue"
+          "concept.issues.issue",
+          "concept.issues.status",
+          "concept.issues.revision",
+          "contract.issues.report",
+          "contract.issues.receipt"
         ]
       },
       {
         "target": "module.spec-mcp",
         "meaning": "#uses-spec-mcp",
-        "relies_on": [
-          "concept.spec-mcp.server"
-        ]
+        "relies_on": ["concept.spec-mcp.server"]
       }
     ],
     "includes": [
@@ -127,10 +124,7 @@
       "type": "realization",
       "title": "Guidance sources",
       "meaning": "#realization.main-session.guidance",
-      "entries": [
-        "prompts/main-session/",
-        "tests/concorde/main_session/"
-      ],
+      "entries": ["prompts/main-session/", "tests/concorde/main_session/"],
       "pending": []
     },
     {
@@ -149,9 +143,7 @@
       "type": "realization",
       "title": "pi model picker",
       "meaning": "#realization.main-session.pi-model-picker",
-      "entries": [
-        "src/concorde/main_session/pi_models.ts"
-      ],
+      "entries": ["src/concorde/main_session/pi_models.ts"],
       "pending": []
     }
   ],

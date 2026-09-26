@@ -95,7 +95,44 @@ The guidance SHALL tell the main agent to escalate an error it cannot handle wit
 
 ## Issues
 
+### req.main-session.issues-recording — The main agent decides what to record
+
+The guidance SHALL tell the main agent to inspect existing Issues before deciding whether a
+worker finding, Operation error or its own observation calls for a new report.
+
+Workers and Operations do not create Issues automatically. Inspection includes closed Issues;
+appending to an open match or reopening a closed one preserves its identity, while repeating a
+creation command creates another Issue.
+
+### req.main-session.issues-worktree — Issue writes belong to a task
+
+The guidance SHALL tell the main agent to run every Issue writing command in a task worktree,
+passing the task identity on `report`.
+
+This applies to creation, append, closure and reopening; read-only inspection may use either
+worktree. Only `report` has a `--task` argument. It supplies provenance and does not select the
+worktree; this is a workflow obligation, not additional CLI admission logic.
+
 ### req.main-session.issues-by-operations — Issues are solved by ordinary work
 
 The guidance SHALL tell the main agent to solve an Issue by running ordinary Operations on the
 Issue's Module in a task and to close the Issue on that task's branch.
+
+### req.main-session.issues-unmerged — Unmerged observations retain a handoff
+
+The guidance SHALL tell the main agent to preserve the report, evidence locations and follow-up
+for each Issue worth keeping before ending a task without merging it, through a subsequent task
+or a handoff in the task's decision log.
+
+Tasks retains a closed task's branch and log; unmerged committed records remain there, while
+forced worktree removal can discard uncommitted material. A log handoff does not publish an Issue
+on the primary branch.
+
+### req.main-session.issues-conflicts — Issue conflicts receive explicit validation
+
+The guidance SHALL tell the main agent to reconcile conflicting Issue records in the task
+worktree, preserving accepted reports and documenting the disposition decision, and to run
+`concorde issues check` on the result before validation and delivery.
+
+The store check establishes record consistency, not the truth of a closure's evidence. Competing
+closes cannot simply be concatenated or made to alternate with fictitious reopenings.

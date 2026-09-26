@@ -179,20 +179,61 @@ Operation result: it records it, reads every problem's chain, and merges a deliv
 guidance names the brownfield workflow as the way to describe a project whose code came before its
 Specs, right after installation and initialization, and nowhere else.
 
-**Issues.** A problem the current task will not fix is worth an
-[Issue](../../issues/module.md#concept.issues.issue) so it survives the task. Solving one is ordinary
-work: open a task for its Module, run the Operations that fix it, and close the Issue on that
-branch so the closure merges with the fix. `concorde issues report|list|show|close|reopen` is the
-bookkeeping command.
+### Issues
 
-**Develop installs.** In a [develop
-install](../../dogfooding/module.md#concept.dogfooding.develop-install), where the developer also
-changes the Concorde the project runs, the installed skill and `CLAUDE.md` block end with
+The main agent decides whether a concrete problem deserves an
+[Issue](../../issues/module.md#concept.issues.issue), typically when the current task will not fix
+it. A worker finding or an Operation error is input to that decision; neither records an Issue
+automatically. The guidance tells the main agent to inspect `concorde issues list` and
+`show <id>` first, including closed matches, then create or append a report through the
+bookkeeping command. It keeps the receipt for follow-up; repeating a creation command would
+create another Issue. Inspecting Issues is explicit, with no automatic notification to sessions.
+
+Run every writing command (`report`, `close`, `reopen`) in a task worktree, and pass that task's
+identity to `report --task`. If no task exists, open one for the owning Module, or the root Module
+when the owner is unknown. `--task` supplies provenance, not routing; the working directory or
+explicit root selects the Issue files. The command still accepts reports without a task; this
+workflow is a rule of the guidance. Read-only `list`, `show` and `check` may run in either
+worktree and describe its local records. The main agent works through the store's command rather
+than editing report contents or flipping `status` in a file.
+
+An Issue stays open while a task investigates or fixes it. Solve it by ordinary Operations on its
+current owning Module, then `close --reason resolved` on that task's branch with a note and the
+fix's evidence before delivery, so the closure merges with the fix. Other closing reasons are
+`duplicate` (naming another open Issue) and `not-actionable`; recurrence uses `reopen`, preserving
+history. Each disposition needs evidence whose meaning the main agent checks itself. Appending a
+report to an open Issue uses the revision from `show`; closing and reopening read their own
+current revisions. On `stale_issue`, read the record again before deciding to retry. See the
+Issues [lifecycle](../../issues/module.md#lifecycle) for the complete state model.
+
+Before ending a task without merging it, preserve follow-up information for every Issue worth
+keeping. Either record it through the command in a subsequent task, keeping its earlier identity
+and branch as references in the report, or append a handoff to the current task's decision log:
+Issue identity, branch and commit when available, what remains to be done, and durable locations
+of the report and evidence. Preserve uncommitted material needed for the handoff before allowing
+worktree removal. Tasks keeps the branch and decision log after closing; committed Issue changes
+survive there, but the primary branch's list still shows only what has been merged. A log entry
+is a handoff, not a published Issue or an automatic transfer.
+
+If Git reports a conflict in an Issue record, resolve it in the task worktree while merging the
+primary branch into it. Preserve accepted reports unchanged and document how competing
+dispositions are reconciled, retaining their evidence. Do not concatenate incompatible closes or
+invent a reopening just to satisfy the state rules. Run `concorde issues check` explicitly on the
+resolved records before `validate` and `delivery`; structural Spec validation alone does not run
+the store check. If the meaning of a competing decision cannot be settled within the task's
+scope, escalate it under the ordinary escalation policy.
+
+### Develop installs
+
+In a [develop install](../../dogfooding/module.md#concept.dogfooding.develop-install), where the
+developer also changes the Concorde the project runs, the installed skill and `CLAUDE.md` block end with
 [Dogfooding](../../dogfooding/module.md)'s own section: watch Concorde's runs, never change Concorde
 from the project, and report Concorde defects to the Concorde repository. Everything above holds
 unchanged; a normal install carries no such section.
 
-**Spec queries.** The main agent may configure the
+### Spec queries
+
+The main agent may configure the
 [Spec MCP server](../../spec-tooling/spec-mcp/module.md#concept.spec-mcp.server) for its own session,
 to ask which Modules exist, what a Module's context is, or what grant a task type gives. The server
 answers from the Specs of the worktree it is rooted in — the primary worktree for the main agent —
@@ -336,9 +377,14 @@ confirms.
 
 <a id="uses-issues"></a>
 
-**Issues** provides the durable [Issue](../../issues/module.md#concept.issues.issue) records and their
-bookkeeping command. Because Issues are branch-local, the guidance tells the main agent to close
-one on the branch that fixes it.
+**Issues** provides durable [Issue](../../issues/module.md#concept.issues.issue) records and the
+bookkeeping command for [reports](../../issues/interface.md#contract.issues.report) and
+[receipts](../../issues/interface.md#contract.issues.receipt). The guidance relies on
+[status](../../issues/module.md#concept.issues.status) following dispositions and
+[revisions](../../issues/module.md#concept.issues.revision) detecting concurrent writes. It tells
+the main agent to inspect before recording, make every Issue write in a task, preserve unmerged
+observations for follow-up, and merge closure with the fix. The command records these decisions;
+the main agent remains responsible for their evidence and for resolving conflicting decisions.
 
 <a id="uses-spec-mcp"></a>
 

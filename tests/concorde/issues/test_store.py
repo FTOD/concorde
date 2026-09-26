@@ -270,6 +270,21 @@ class IssueStoreTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "path differs"):
             resolve_report(self.root, malformed)
 
+    @verifies("scenario.issues.store-status-mismatch")
+    def test_status_without_a_supporting_disposition_is_refused_without_repair(self):
+        receipt = report_issue(self.root, report(), source())
+        path = self.root / receipt["path"]
+        record = path.read_text()
+        self.assertIn('"status": "open"', record)
+        malformed = record.replace('"status": "open"', '"status": "closed"', 1)
+        path.write_text(malformed)
+        with self.assertRaisesRegex(
+            SpecError, "status differs from its disposition"
+        ) as raised:
+            read_issue(self.root, receipt["issue_id"])
+        self.assertEqual("invalid_issue", raised.exception.code)
+        self.assertEqual(malformed, path.read_text())
+
     @verifies("scenario.issues.branch-local")
     def test_git_style_branch_copies_have_independent_dispositions(self):
         import shutil

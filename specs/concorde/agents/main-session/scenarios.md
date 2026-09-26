@@ -141,9 +141,46 @@ check the rendered guidance against them are pending.
 
 ## Issues
 
+### scenario.main-session.record-issue — The guidance records a deferred problem deliberately
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to retain a worker finding or Operation error that the current task will not fix
+- THEN it is told to inspect `issues list` and `show` for existing open or closed matches before recording
+- AND to decide whether to create an Issue, append to an open one at its current revision, or reopen a closed one
+- AND to run the writing command in a task worktree, with `--task` on `report`, and keep the receipt
+- BUT it is told that neither the worker nor the Operation records the Issue automatically
+
+This illustrates [recording decisions](requirements.md#req.main-session.issues-recording) and
+[task-local writes](requirements.md#req.main-session.issues-worktree).
+
 ### scenario.main-session.solve-issue — The guidance solves Issues through tasks
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to solve an open Issue owned by a Module
 - THEN it is told to open a task for that Module and run the Operations that fix the problem
 - AND to close the Issue on the task branch with the evidence, so the closure is merged with the fix
+- BUT starting or delivering the task does not itself close the Issue
+
+This illustrates [ordinary repair](requirements.md#req.main-session.issues-by-operations).
+
+### scenario.main-session.unmerged-issue — The guidance preserves an unmerged observation
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to end a task without merging its Issue records
+- THEN it is told to carry worthwhile reports into a subsequent task or record a handoff in the task's decision log
+- AND to preserve the identity, branch and commit when available, remaining work, report and evidence locations before worktree removal
+- AND that committed records remain on the retained branch but are absent from the primary branch's Issue list
+- BUT it is told that forced removal can discard uncommitted material and that a log entry does not publish an Issue
+
+This illustrates [handoff before closure](requirements.md#req.main-session.issues-unmerged).
+
+### scenario.main-session.issue-conflict — The guidance reconciles competing Issue histories
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to resolve a Git conflict in an Issue record
+- THEN it is told to resolve it in the task worktree, preserving accepted reports and documenting the disposition decision with its evidence
+- AND to run `issues check` explicitly before validation and delivery
+- BUT it is told not to concatenate incompatible closes or invent reopenings to satisfy the state rules
+- AND that a passing store check does not establish that the disposition is justified
+
+This illustrates [conflict handling](requirements.md#req.main-session.issues-conflicts).

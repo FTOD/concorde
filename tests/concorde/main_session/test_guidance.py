@@ -176,6 +176,55 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("Solve an Issue like any other work", self.skill)
         self.assertIn("close the Issue on that task's branch", self.skill)
 
+    @verifies("scenario.main-session.record-issue")
+    def test_rendered_issue_workflow_distinguishes_inspection_from_writes(self):
+        issues = self.skill.split("## Issues", 1)[1].split("## Worker models", 1)[0]
+        for instruction in (
+            "neither records Issues automatically",
+            "`concorde issues list` (open and closed Issues) and `show <id>` first",
+            "Run every Issue write (`report`, `close`, `reopen`) in a task worktree",
+            "concorde issues report --file <report.json> --task <task>",
+            "keep its receipt and revision",
+            "`--task` records provenance only: it does not choose the worktree",
+            "`issue_id` and current `expected_revision` from `show`",
+            "Repeating a creation command creates another Issue",
+            "Reopen a closed match before appending",
+            "`close` and `reopen` take no `--task`",
+        ):
+            with self.subTest(instruction=instruction):
+                self.assertIn(instruction, issues)
+
+    @verifies("scenario.main-session.unmerged-issue")
+    def test_rendered_handoff_survives_task_worktree_removal(self):
+        issues = self.skill.split("## Issues", 1)[1].split("## Worker models", 1)[0]
+        for instruction in (
+            "Before ending a task without merging",
+            "record it through the command in a subsequent task",
+            "leave a handoff in the current task's decision log",
+            "Issue identity, branch and commit when available",
+            "remaining work and durable locations of the report and evidence",
+            "Preserve needed uncommitted material before removal",
+            "Closing retains the branch and decision log",
+            "forced removal can discard uncommitted material",
+            "a log entry alone does not publish them",
+        ):
+            with self.subTest(instruction=instruction):
+                self.assertIn(instruction, issues)
+
+    @verifies("scenario.main-session.issue-conflict")
+    def test_rendered_conflict_guidance_requires_both_judgment_and_store_check(self):
+        issues = self.skill.split("## Issues", 1)[1].split("## Worker models", 1)[0]
+        for instruction in (
+            "Resolve Git conflicts in Issue records in the task worktree",
+            "Preserve accepted reports unchanged",
+            "document the decision about competing dispositions, retaining their evidence",
+            "Never concatenate incompatible closes or invent reopenings",
+            "Run `concorde issues check` explicitly on the resolved records before `validate` and `delivery`",
+            "a passing store check does not prove the closure is justified",
+        ):
+            with self.subTest(instruction=instruction):
+                self.assertIn(instruction, issues)
+
     @verifies("scenario.main-session.choose-models")
     def test_the_developer_chooses_worker_models(self):
         self.assertIn("Workers run on your own agent program", self.skill)
