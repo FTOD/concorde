@@ -1,0 +1,115 @@
+{
+  "task": "task-session-uses",
+  "goal": "Declare that Task sessions use Operations and Workflows, as the task level of the five levels runs them, and draw it",
+  "modules": [
+    "module.task-session"
+  ],
+  "sequence": 1,
+  "base_commit": "653b72c478838c0af6add2968f2baa9f601086a2",
+  "parent_commit": "4ce185601bfb4c60dbb9ec4b4d93171618994be3",
+  "readiness": {
+    "run_id": "r-20260926T191529-delivery-f79c8446",
+    "input_digest": "sha256:c39b1127d22728ffdb9b6acf8f6bc6a5331e6c7964b9d8522d01f1ddcd8a441b",
+    "modules": [
+      "module.operations",
+      "module.task-session",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:7f2509cf4c6b00df3de459aa4ace0c64129d518849371c23ccdafcdf5c5c6338"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:b478959f026e07e17c7448a50cb829d4f0115056064c64c311a40b31c37f0108"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:9201f153786df05510afe836f6c3501e766319edde1f1fcf0484472570362483"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:f5b3986615943cb30fd3929d3e0a1ead6c580814e53719ab75aa3799a256d49f"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:866bf825e11ec69e3daa34d7c5eea6e928e0ab453806daaafe90836e86dba461"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:2f70725bfedb4b69887999881d9491f40a00b2e9a8a1c459f3bb29b3378a9041"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:80e58e4dc60c98f5f2fba0c3579566874fe3e16fa62e78b7f066986ca4f6e34e"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:faa8718320320c1fda2b8f6c8810187fe185238c95779049e9e3268afb94fcc4"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:c589ba6d03f3b2f1d800aafe18eeacb8ea65e7344117922b4673cecfc3228d86"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:77108111f9ff08694972f904933e60bfb67309e6bcdc3ed81a803b48312b4e08"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:58a4139bb7ef65941f2fd75f00270d7193c4df2be0912bb3a7653ba0857ba127"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:6aabca1785efe96d1039a59e53e9dd399af53b298f36ba12cf48cce462eff2fe"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:ddedaff3ce167d865adb305c89cc9d714a72f70f67aae5a831c58337a0ae8828"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T191444-validate-a4bd5e98",
+      "operation": "validate",
+      "modules": [
+        "module.task-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:59a510a4d7a3491f622638f36786f04cf7aa3f27005181c94aae03947fa4a298"
+    }
+  ],
+  "created_at": "2026-09-26T19:16:14Z"
+}
