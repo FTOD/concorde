@@ -1,0 +1,79 @@
+{
+  "task": "pi-task-sessions",
+  "goal": "Support task sessions in pi: a pi main session starts pi task sessions (same program as the main session, same pi configuration) that run in rounds of headless pi -p under Concorde's task-session boundary (write/edit confined to the task worktree and decision log, bash in sandbox-runtime), report through a structured concorde_report tool, and are resumed with the main agent's answer; a supervisor records progress and failures as error chains and the pi main extension shows and wakes on them",
+  "modules": [
+    "module.tasks",
+    "module.main-session",
+    "module.concorde"
+  ],
+  "sequence": 1,
+  "base_commit": "b19fa1083be5af0306f6406dcf39977ed0d51fe9",
+  "parent_commit": "af895405bf39c7f7ad2da305690d4fbdf0478316",
+  "readiness": {
+    "run_id": "r-20260926T041740-delivery-22972b96",
+    "input_digest": "sha256:1d3cc805e27ca8bff2cb18c459588ba716351427953ec811d249b63b7f67f608",
+    "modules": [
+      "module.concorde",
+      "module.harness.workers",
+      "module.main-session",
+      "module.tasks"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:e110583fbcca98fca3fc5ef246319fed62ca640183e70e219cc4c01a7e52e913"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.harness.workers",
+        "status": "passed",
+        "measured_digest": "sha256:92384fc9ce811487103545b32369c89807b5a7a373578dcff90ec0770fdcd6f1"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:681bb26228953e6ba754fca8f188b63939ee0514251d08910e0191babe723123"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:60f5757e4d3d56cda93a1210ea5813152955f91f958d1d9c123490776ec73c70"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T041614-validate-c84bb741",
+      "operation": "validate",
+      "modules": [
+        "module.tasks",
+        "module.main-session",
+        "module.concorde"
+      ],
+      "status": "blocked",
+      "summary": "Not deliverable: 1 blocking finding(s). check check.tasks.tests: module.tasks check failed (exit 1); log .concorde/runs/r-20260926T041614-validate-c84bb741/checks/check.tasks.tests.log",
+      "worker_runs": [],
+      "result_digest": "sha256:b42be49b36b44c2c72ef57cae96c2ea6ac5b18dad5074bc54a275ba9a139a36a"
+    },
+    {
+      "run_id": "r-20260926T041712-validate-06e72872",
+      "operation": "validate",
+      "modules": [
+        "module.tasks",
+        "module.main-session",
+        "module.concorde"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:9c7e3282f4a7219ec9f4a6f32dd6492a2e2def79bcdd69875fd11968df8c2caf"
+    }
+  ],
+  "created_at": "2026-09-26T04:18:04Z"
+}
