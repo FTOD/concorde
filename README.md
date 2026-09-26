@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-13.0.0-0F7ADA" alt="Spec Protocol 13.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-13.2.0-0F7ADA" alt="Spec Protocol 13.2.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/client-Claude_Code_%7C_pi-092857" alt="Client: Claude Code or pi" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-092857" alt="MIT license" /></a>
 </p>
@@ -171,7 +171,7 @@ For your own project, [scaffold a docsite](docsite/README.md#scaffold-a-docsite)
 
 ## The Spec Protocol in brief
 
-Concorde's independent **[Spec Protocol 13.0.0](protocol/README.md)** has two purposes: a human
+Concorde's independent **[Spec Protocol 13.2.0](protocol/README.md)** has two purposes: a human
 understands a project's backbone from its Specs without reading code, and a harness derives from
 the Specs exactly what each AI task may read and write. A Module's entry answers five questions in
 order — **Purpose**, **Terminology**, **Usage**, **Design**, **Relationships** — and every node and
