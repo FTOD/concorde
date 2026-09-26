@@ -144,23 +144,9 @@ INSTALLATION = "concorde-installation"
 def installed_files(root: Path) -> list[str]:
     """The files the installer's receipt names that live outside ``.concorde/`` and exist:
     Concorde's own skill, workflows and pi files, never a file of the project it only amends."""
-    from .repository_base import control_path
+    from .repository_base import installed_files as listed
 
-    try:
-        receipt = json.loads(
-            (root / ".concorde/install.json").read_text(encoding="utf-8")
-        )
-    except (OSError, ValueError):
-        return []
-    amended = set(receipt.get("amended") or [])
-    return sorted(
-        path
-        for path in receipt.get("files") or []
-        if isinstance(path, str)
-        and path not in amended
-        and not control_path(path)
-        and (root / path).is_file()
-    )
+    return sorted(path for path in listed(root) if (root / path).is_file())
 
 
 def existing_files(root: Path, documents: set[str]) -> list[str]:
@@ -241,7 +227,8 @@ def initial_module_text(
         "The files the Concorde installer placed outside `.concorde/`, such as the agents' skill and\n"
         "workflows, are bound to this Module as its Concorde installation. They configure the\n"
         "agents that work on the project and are not the project's own code; the installer\n"
-        "replaces them on every update.\n\n"
+        "replaces them on every update, and no task may change them: a grant gives them at\n"
+        "most read access.\n\n"
         if installed
         else ""
     )

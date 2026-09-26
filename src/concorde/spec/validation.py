@@ -21,6 +21,7 @@ from .model import Finding, ToolResult
 from .repository import SpecRepository
 from .repository_base import (
     GENERATED_PREFIXES,
+    INSTALL_RECORD,
     SpecError,
     bound_by,
     check_input_error,
@@ -30,6 +31,7 @@ from .repository_base import (
     digest,
     entry_base,
     entry_exists,
+    installed_files,
     is_directory_entry,
     overlaps,
     read_file,
@@ -52,6 +54,10 @@ from .verification import DeclarationError, scan_declarations
 REMEDIATION = {
     "CHK.registry.mirror": "Regenerate the registry's mirrored fields with `concorde.py registry --write`.",
     "CHK.binds.unbound": "Add the file to a realization's entries of the Module it realizes.",
+    "CHK.binds.installed": (
+        "Replace the directory entry by the exact paths of the Module's own files in it; an "
+        "installed file is bound only by its exact path."
+    ),
     "CHK.context.reconciled": "Select the defining document through uses, contains or an includes with a reason, or remove the relation.",
     "CHK.contrasts.required": "Declare a contrasts relation with a reason between the two nodes.",
 }
@@ -672,6 +678,7 @@ class Checks:
         repository = self.repository
         members = set(repository.source_documents)
         outputs = generated_outputs(repository.root)
+        installed = installed_files(repository.root)
         for module in repository.declarations.values():
             listed: Counter = Counter()
             for realization in repository.realizations(repository.modules[module.id]):
@@ -694,6 +701,20 @@ class Checks:
                         )
                 for entry in realization.entries:
                     base = entry_base(entry)
+                    held = sorted(
+                        path
+                        for path in installed
+                        if is_directory_entry(entry) and covers(entry, path)
+                    )
+                    if held:
+                        self.add(
+                            "CHK.binds.installed",
+                            source,
+                            f"{realization.id} binds the directory {entry}, which holds the "
+                            f"installed file(s) {', '.join(held)} that the installation record "
+                            f"{INSTALL_RECORD} lists as the installer's own",
+                            subject=realization.id,
+                        )
                     if (
                         entry in members
                         or control_path(base)

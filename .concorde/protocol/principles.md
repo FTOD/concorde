@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 13.2.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 13.3.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -944,7 +944,15 @@ The following are outside every Module's write sets:
 - external material;
 - generated outputs and project-control records, which are owned by the tools that produce them;
 - files bound by no Module;
-- the installed Protocol copy.
+- the installed Protocol copy;
+- installed files: the files an installer placed in the project and lists as its own in the
+  installation record `.concorde/install.json`, never a project file it only amends.
+
+An installed file may be bound, so that every version-controlled file has an owner, but only by its
+exact path: a directory entry covering one is refused, and a task's grant gives the file at most
+read access, however the Module binding it is granted. The installer replaces these files on every
+update and the agents working on the project are configured by them, so a Module-scoped task never
+changes them.
 
 A file bound by no Module is therefore not writable by any Module-scoped task. To change or create
 such a file, first bind it: add it to a realization as an entry, or as a `pending` entry when it
@@ -1437,6 +1445,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.binds.exists` | Non-pending entries exist; exact entries are files and `/` entries are directories. | error |
 | `CHK.binds.disjoint` | No two realizations in one Module list the same entry. | error |
 | `CHK.binds.no-spec` | No document member, generated output or control record is bound; a bound directory contains no document member. | error |
+| `CHK.binds.installed` | No directory entry covers an installed file, which is bound only by its exact path. | error |
 | `CHK.binds.pending-subset` | `pending` is a subset of `entries`, and pending entries do not exist. | error |
 | `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, generated output, external material or a control record such as the project registry and configuration. | error |
 | `CHK.imports.foreign` | An imported concept is owned by a Module other than the importer's owner. | error |

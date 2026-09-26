@@ -383,6 +383,14 @@ to it.
 - WHEN the validator runs
 - THEN it reports `CHK.binds.no-spec` for that entry
 
+### scenario.spec.installed-exact — An installed file is bound only by its exact path
+
+- GIVEN an installation record `.concorde/install.json` listing the installer's own files outside `.concorde/`, and the files it only amends
+- AND a realization entry that is a directory holding installed files
+- WHEN the validator runs
+- THEN it reports `CHK.binds.installed` for that entry, naming each installed file it holds and the installation record
+- BUT a directory holding only files the installer amends or the Module's own files is accepted
+
 ### scenario.spec.external-reference — Pinned external material
 
 - GIVEN a Module with an `includes` of kind `external` naming a directory of vendored material tracked by version control
@@ -458,6 +466,13 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - WHEN a grant is computed for A with task type `implement`, `test`, `review-code` or `code-to-spec`
 - THEN `src/bmod/b.py` is readable, as part of ProjectImplementation, and not writable
 - BUT a grant for A with `understand`, `specify` or `review-spec` gives no access to `src/bmod/b.py` and no read access to A's own code
+
+### scenario.spec.grant-installed — An installed file is never writable
+
+- GIVEN a Module binding, by their exact paths, two installed files, a file the installer only amends and a file of its own
+- WHEN a grant is computed for it with a task type that writes its implementation
+- THEN each installed file is readable and not writable
+- AND the amended file and the Module's own file are writable
 
 ### scenario.spec.grant-code-to-spec — Describing code reads it and writes the Spec
 

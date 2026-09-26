@@ -41,7 +41,15 @@ The following are outside every Module's write sets:
 - external material;
 - generated outputs and project-control records, which are owned by the tools that produce them;
 - files bound by no Module;
-- the installed Protocol copy.
+- the installed Protocol copy;
+- installed files: the files an installer placed in the project and lists as its own in the
+  installation record `.concorde/install.json`, never a project file it only amends.
+
+An installed file may be bound, so that every version-controlled file has an owner, but only by its
+exact path: a directory entry covering one is refused, and a task's grant gives the file at most
+read access, however the Module binding it is granted. The installer replaces these files on every
+update and the agents working on the project are configured by them, so a Module-scoped task never
+changes them.
 
 A file bound by no Module is therefore not writable by any Module-scoped task. To change or create
 such a file, first bind it: add it to a realization as an entry, or as a `pending` entry when it

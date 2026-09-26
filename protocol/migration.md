@@ -114,3 +114,11 @@ read and run the code it uses and the code that uses it, as running a package ne
 may change stays within its bound Modules' scopes. The impact of writing a file now also concerns
 every Module that uses the file's binders, directly or through further `uses`, since their code
 runs against it. Specifications need no change.
+
+## Version 13.3
+
+Version 13.3 adds installed files, the files an installer lists as its own in the installation
+record `.concorde/install.json`, to what no Module may write. They may still be bound, but only by
+their exact paths (`CHK.binds.installed`), and a grant gives them at most read access. A
+specification that binds a directory holding installed files, such as `.claude/` or `.pi/`, lists
+its own files there exactly instead.

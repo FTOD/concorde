@@ -110,7 +110,10 @@ a boundary. Which Modules a task may edit or must re-review is the Operations' p
 one worktree's Specs, which paths a worker may change (`rw`), read (`ro`) or only know by name
 (`names`); every other path is denied. The grant carries its context identity, so a caller can tell
 later whether anything the worker could read has changed. It refuses to make writable a file that
-an unbound Module also binds. The Operation host freezes the grant into a worker at launch and the
+an unbound Module also binds, and it never makes writable an installed file, one the installation
+record `.concorde/install.json` lists as the installer's own: such a file is bound only by its exact
+path (`CHK.binds.installed`) and granted at most `ro`, because the installer replaces it on every
+update and the agents working on the project are configured by it. The Operation host freezes the grant into a worker at launch and the
 Spec MCP server returns the same computation; Spec core neither stores nor enforces it.
 
 <a id="concept.spec.typed-value"></a><a id="concept.spec.file-transaction"></a><a id="concept.spec.initial-proposal"></a>

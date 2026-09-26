@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from .model import ToolResult
-from .repository_base import SpecError, digest, is_directory_entry
+from .repository_base import SpecError, digest, installed_files, is_directory_entry
 
 TASK_TYPES = (
     "understand",
@@ -204,6 +204,12 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
                 "shared_file",
                 "modules",
             )
+    # An installed file is the installer's: bound only by its exact path (CHK.binds.installed),
+    # it is at most readable, whatever the Module binding it is granted.
+    installed = installed_files(repository.root)
+    for path, level in list(levels.items()):
+        if level == "rw" and path in installed:
+            levels[path] = "ro"
     directories = [
         (path, level) for path, level in levels.items() if is_directory_entry(path)
     ]
