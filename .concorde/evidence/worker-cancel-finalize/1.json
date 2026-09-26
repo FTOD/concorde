@@ -1,0 +1,122 @@
+{
+  "task": "worker-cancel-finalize",
+  "goal": "A cancelled or interrupted Operation ends its worker run's record and progress file, and its result and cancellation link name the worker runs it started",
+  "modules": [
+    "module.workers",
+    "module.operations"
+  ],
+  "sequence": 1,
+  "base_commit": "083f3056fdac45a438640a49413d3408f0b02b8a",
+  "parent_commit": "0c9ae48d189098fb7aec0c90b6e85fc391f69d53",
+  "readiness": {
+    "run_id": "r-20260926T165047-delivery-338854a0",
+    "input_digest": "sha256:ebbe8f6420061b2123d86f20f152dd8635a70bb79c65c3b965c66c2fd568f2a9",
+    "modules": [
+      "module.operations",
+      "module.workers"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:ab6be3c832ef44319f6025a7a126134030e82bc1604c892c8bd23f4fab3ab024"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:c5688e1b55b4c7ed7f20edd1a093c1b5ce1e60062a423d57806c1623c1142ae6"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:0304dc028239265a674c62729d0ffe07eb7646f6ddba1bdf25786fda1c601d3c"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:5860163452061d966d1d597ecc977783584b181c81089d781dbf1b61bced9472"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:4ec4fdf328dc5d29a9ba5e73a20fa56cd3e6377ced80cc6e7b9d4f1c9b58d703"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:6dc6d20c771f44a9089810449e844381612e9e2e50729408357353f53c62118e"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:a8dc6a191cf045790b22476a48c5dc16d1035a0b9fd0f68e9d97824eeb14adfc"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:240eabcdfad5423a3e4c87c70a9c4b8e43233f5997654b2c83162cb5528de42a"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:b9f5532991d1950e15ad044df1821c7dbecab18071614bce99af38ed65424d33"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:7e1a21b88f341fbe4b9f120a053753d2771b0a17b9d6ba9dda5c725390ca756d"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d3306728f2b51c8caeba2a4f190c76498df31f4d92e7c29dace0cbec9a9e76c8"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:09d9646852679eff142c6f789f849293db339bac6f78fe372a42de4d1e9f9194"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:bc7a62239d9aa6c66be59fc544d370868b8d82de7ba3cf89edebb49310598a74"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:961bd260f8dd27afdd1ff12a039d3c2bb7c2b0321d7a966d8374f54ee644210f"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T164958-validate-0a13e0a6",
+      "operation": "validate",
+      "modules": [
+        "module.workers",
+        "module.operations"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:181f41747142ce0732b8490ea2ac6bce4ab29ad13007a4768acb976393ec0d1d"
+    }
+  ],
+  "created_at": "2026-09-26T16:51:38Z"
+}
