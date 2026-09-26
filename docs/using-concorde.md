@@ -216,6 +216,17 @@ in Concorde's. A check may set its own variables in `env`, for example
 `"env": {"PYTHONPATH": "src"}` for code under `src/`: the check then tests the code of the worktree
 it runs in, not a copy installed in your environment.
 
+Which tests run when is up to you. A check runs whenever one of its Module's files changes, and
+also when a Module it uses changes. Two forms keep that affordable:
+
+- **Selective checks.** Put `{tests}` in `argv`, for example
+  `["{python}", "-m", "pytest", "-p", "no:cacheprovider", "{tests}"]`. Concorde replaces it with
+  the tests that declare they verify a scenario of the changed Modules (with `@verifies`), wherever
+  those test files live, and skips the check when there are none. A test may verify scenarios of
+  several Modules; it runs when any of them changes.
+- **Readiness checks.** Add `"when": "readiness"` to a full suite: it runs only when `validate` and
+  `delivery` decide whether a task is ready, not in every `implement` round.
+
 `inputs` are the paths the result depends on, without a trailing `/`; if they change while the
 check runs, its result is refused as stale. Checks run in a sandbox in which the whole filesystem is read-only except a fresh
 scratch directory, named by `TMPDIR`, `XDG_CACHE_HOME`, `CONCORDE_CHECK_TMPDIR` and

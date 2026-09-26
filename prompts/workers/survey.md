@@ -55,6 +55,10 @@ change together.
   `["{{python}}", "-m", "pytest", "tests"]`, not a bare `python`, `pytest` or `py.test`. When the
   code is imported from a directory such as `src/`, add `env` `{"PYTHONPATH": "src"}`, so that the
   check tests the code of the worktree it runs in rather than an installed copy.
+  Propose tests as two checks when you can: a selective one whose `argv` holds `{{tests}}` where
+  the test identities go, such as `["{{python}}", "-m", "pytest", "-p", "no:cacheprovider",
+  "{{tests}}"]`, which runs only the tests that verify the changed Modules' scenarios, and a full
+  suite with `"when": "readiness"`, which runs only before a task is delivered.
   A check runs in a read-only sandbox where only a scratch directory is writable, named by
   `$CONCORDE_CHECK_REPORT_DIR`: a build, report or cache must go there, never into the project.
   `argv` runs without a shell, so a command that needs the variable is wrapped, for example

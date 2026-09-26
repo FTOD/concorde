@@ -12,8 +12,9 @@ The project configuration lists checks under `checks`. Each has:
 | --- | --- |
 | `id` | The check's identity, unique in the project |
 | `module` | The Module the check belongs to |
-| `argv` | The command as an argument list; an element `{python}` is replaced by the project's interpreter |
+| `argv` | The command as an argument list; an element `{python}` is replaced by the project's interpreter, and an element `{tests}` by the tests that declare they verify a scenario of the Modules being checked, which makes the check selective |
 | `env` | Optional variables of the command, names to strings, such as `{"PYTHONPATH": "src"}` |
+| `when` | Optional: `always` (the default) runs the check wherever checks run; `readiness` runs it only when readiness is decided, by `validate` and `delivery`, for a full suite too slow for every round |
 | `timeout_seconds` | A positive time limit |
 | `inputs` | Project-relative files or directories the result depends on, beyond the Module's own implementation files |
 
@@ -21,6 +22,13 @@ The Spec core validates `id`, `module` and `inputs` when it loads the configurat
 validates `argv`, `env` and `timeout_seconds` when it runs the check. An input that is missing, a
 symbolic link or not a regular file stops the run before any command and names the check, its
 Module and the path.
+
+A **selective** check, one whose `argv` holds `{tests}`, runs once whenever checks run for a set
+of Modules, with the tests whose verification declarations name a scenario of any of them, and is
+skipped when there are none. Tests and scenarios are many-to-many: the tests a Module's change runs
+are those verifying its scenarios, wherever their files are bound, so the Module that owns a test
+file only decides who may change it. A Python test is passed as `path::Class::name`, a TypeScript
+test by its file, and the log of a selective check begins with the tests it selected.
 
 The project's interpreter is the configuration's `python`: an absolute path as it is, a relative
 one in the worktree the check runs in or, when that has none, in the primary worktree, since a
@@ -129,6 +137,14 @@ start.
 - AND once `env/bin/python` exists, the check runs with it, sees `MARK` and has no `PYTHONPATH`
 - AND in a task worktree without its own `env/bin/python`, the primary worktree's is used
 - BUT an `env` whose names are not variable names is refused with `invalid_check`
+
+### scenario.checks.selective — A selective check runs the tests that verify the checked Modules
+
+- GIVEN a test in `src/a/` that declares it verifies a scenario of Module A, a check whose argv holds `{tests}`, and a check of A marked `"when": "readiness"`
+- WHEN the checks of Module B run, and no test verifies a scenario of B
+- THEN the selective check is skipped
+- AND when the checks of Module A run, the selective check runs once with `src/a/test_answer.py::test_answer` in place of `{tests}`, its log naming the selected tests
+- AND the readiness check runs only when readiness is decided
 
 ### scenario.checks.service-read-only — A check cannot change the worktree
 

@@ -46,8 +46,9 @@ their [verification declarations](module.md#concept.spec.verification-declaratio
 importing, compiling or running them. A declaration that names an unknown scenario fails
 `CHK.verifies.resolves`. Concorde warns with `CONCORDE-COVERAGE-001` when a scenario has no
 declaring test, unless its Module binds no files at all, since such a Module has no tests of its
-own. It warns with `CONCORDE-COVERAGE-002` when the declaring test is not bound by the scenario's
-owner, because the owner's code tasks would not see that test. A test file that cannot be parsed,
+own. Tests and scenarios are many-to-many: one test may verify scenarios of several Modules, and a
+declaration counts wherever its test file is bound, since the file's owner only decides who may
+change it. A test file that cannot be parsed,
 or a malformed declaration, is a `CONCORDE-COVERAGE-003` error for that file, because its coverage
 cannot be known.
 

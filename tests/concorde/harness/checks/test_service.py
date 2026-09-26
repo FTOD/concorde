@@ -149,6 +149,57 @@ class CheckServiceTests(unittest.TestCase):
         )
         self.assertEqual(["module.a"], checked_modules(self.repository(), ["module.a"]))
 
+    @verifies("scenario.checks.selective")
+    def test_a_selective_check_runs_the_tests_verifying_the_checked_modules(self):
+        (self.root / "src/a/test_answer.py").write_text(
+            "def verifies(*scenarios):\n    return lambda test: test\n\n\n"
+            '@verifies("scenario.a.answer")\ndef test_answer():\n    pass\n'
+        )
+        path = self.root / ".concorde/config.json"
+        config = json.loads(path.read_text())
+        config["checks"] = [
+            {
+                "id": "check.a.selected",
+                "module": "module.b",
+                "argv": [
+                    "{python}",
+                    "-c",
+                    "import sys; print(sys.argv[1:])",
+                    "{tests}",
+                ],
+                "timeout_seconds": 60,
+            },
+            {
+                "id": "check.a.full",
+                "module": "module.a",
+                "argv": ["{python}", "-c", "print('full suite')"],
+                "timeout_seconds": 60,
+                "when": "readiness",
+            },
+        ]
+        path.write_text(json.dumps(config))
+        # No test verifies a scenario of B: the selective check is skipped.
+        self.assertEqual(
+            [], run_checks(self.root, modules=["module.b"], log_directory=self.logs)
+        )
+        [result] = run_checks(self.root, modules=["module.a"], log_directory=self.logs)
+        self.assertEqual(
+            ("check.a.selected", "passed"), (result["check_id"], result["status"])
+        )
+        log = (self.logs / "check.a.selected.log").read_text()
+        self.assertIn("selected tests: src/a/test_answer.py::test_answer", log)
+        self.assertIn("['src/a/test_answer.py::test_answer']", log)
+        # A readiness check runs only when readiness is decided.
+        results = run_checks(
+            self.root,
+            modules=["module.a"],
+            log_directory=self.logs,
+            stage="readiness",
+        )
+        self.assertEqual(
+            ["check.a.selected", "check.a.full"], [item["check_id"] for item in results]
+        )
+
     @verifies("scenario.checks.service-read-only")
     def test_a_check_cannot_change_the_worktree(self):
         check = self.root / "checks/a_check.py"

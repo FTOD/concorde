@@ -420,7 +420,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
 ```concorde-contract
 {
   "id": "contract.workflows.result",
-  "version": 4,
+  "version": 5,
   "schema": {
     "$defs": {
       "error": {
@@ -975,6 +975,12 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
                 "minLength": 1
               }
             },
+            "when": {
+              "enum": [
+                "always",
+                "readiness"
+              ]
+            },
             "timeout_seconds": {
               "type": "integer",
               "minimum": 1
@@ -1107,7 +1113,7 @@ Printed by `concorde workflow report` and saved at `.concorde/tasks/<task-id>.wo
       }
     }
   },
-  "semantics": "The result of a workflow in one task, built from the task record and the saved Operation results. steps lists the current steps in the order recorded, each with its run and status: ok, blocked or failed from its result, running while its host lives, lost without result or host, refused without a run. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions and open_questions are every decision and open question of the finished current steps exactly as their Operations reported them, with their step and run; deviations likewise. reviews holds each spec_review step's verdict and per-Module outcomes as it reported them. proposed_checks are the checks the survey proposed, which nothing has configured. pending lists the decision points an interactive run ended at, empty otherwise. problems lists every current step that did not end ok with its Operation's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is running while a current step runs; otherwise failed when the procedure stopped at a failed, lost or refused step, blocked when it stopped at a blocked step or unready validation, awaiting_decision when an interactive run ended at decision points, and ok when its last step ended ok. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged. A proposed check keeps the env it was proposed with. A behaviour or field change increments the version.",
+  "semantics": "The result of a workflow in one task, built from the task record and the saved Operation results. steps lists the current steps in the order recorded, each with its run and status: ok, blocked or failed from its result, running while its host lives, lost without result or host, refused without a run. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions and open_questions are every decision and open question of the finished current steps exactly as their Operations reported them, with their step and run; deviations likewise. reviews holds each spec_review step's verdict and per-Module outcomes as it reported them. proposed_checks are the checks the survey proposed, which nothing has configured. pending lists the decision points an interactive run ended at, empty otherwise. problems lists every current step that did not end ok with its Operation's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is running while a current step runs; otherwise failed when the procedure stopped at a failed, lost or refused step, blocked when it stopped at a blocked step or unready validation, awaiting_decision when an interactive run ended at decision points, and ok when its last step ended ok. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged. A proposed check keeps the env it was proposed with. A proposed check keeps the when it was proposed with. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "task": "adopt",

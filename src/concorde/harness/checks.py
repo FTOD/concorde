@@ -174,8 +174,43 @@ def project_python(worktree: Path, config: dict, check_id: str) -> str:
     )
 
 
-def _argv(check: dict, python) -> list[str]:
-    """The check's command; ``python`` gives the project interpreter for ``{python}``."""
+# A check whose argv holds {tests} is selective: it runs the tests that declare they verify a
+# scenario of the Modules being checked, many-to-many, whichever Module owns their files.
+TESTS = "{tests}"
+# When a check runs: in every round that runs checks, or only when readiness is decided
+# (validate and delivery), for a full suite too slow to run every round.
+WHEN = ("always", "readiness")
+
+
+def verified_tests(repository: SpecRepository, modules) -> list[str]:
+    """The tests declaring that they verify a scenario of ``modules``: a Python test as
+    ``path::Class::name``, a TypeScript test by its file."""
+    from ..spec.verification import TYPESCRIPT_SUFFIXES, scan_declarations
+
+    listed = sorted(
+        {
+            path
+            for identity in repository.modules
+            for path in repository.bound_files(identity)
+        }
+    )
+    wanted = set(modules)
+    scenarios = repository.scenario_nodes
+    tests: dict[str, None] = {}
+    for declaration in scan_declarations(repository.root, listed, []):
+        scenario = scenarios.get(declaration.scenario_id)
+        if scenario is None or scenario.owner not in wanted:
+            continue
+        if declaration.path.endswith(TYPESCRIPT_SUFFIXES):
+            tests[declaration.path] = None
+        else:
+            tests[f"{declaration.path}::{declaration.name.replace('.', '::')}"] = None
+    return sorted(tests)
+
+
+def _argv(check: dict, python, tests=()) -> list[str]:
+    """The check's command; ``python`` gives the project interpreter for ``{python}`` and
+    ``tests`` the test identities ``{tests}`` stands for."""
     argv = check.get("argv")
     if (
         not isinstance(argv, list)
@@ -183,7 +218,15 @@ def _argv(check: dict, python) -> list[str]:
         or any(not isinstance(item, str) or not item for item in argv)
     ):
         raise CheckError(f"check {check['id']} needs a nonempty argv", "invalid_check")
-    return [python() if item == "{python}" else item for item in argv]
+    result: list[str] = []
+    for item in argv:
+        if item == "{python}":
+            result.append(python())
+        elif item == TESTS:
+            result.extend(tests)
+        else:
+            result.append(item)
+    return result
 
 
 def _timeout(check: dict) -> float:
@@ -226,8 +269,15 @@ def run_checks(
     modules=None,
     changed=None,
     log_directory: Path,
+    stage: str = "work",
+    kinds: str = "all",
 ) -> list[dict]:
-    """Run the configured checks of the selected Modules; one result per check, in order."""
+    """Run the configured checks of the selected Modules; one result per check, in order.
+
+    ``stage`` is ``readiness`` when readiness is decided, which also runs the checks marked
+    ``"when": "readiness"``. ``kinds`` narrows the run to the checks of the Modules
+    (``module``) or to the selective checks (``selective``), which run once for the whole
+    selection with the tests verifying its scenarios, and not at all when there are none."""
     worktree = Path(worktree)
     repository = SpecRepository(worktree)
     selected = (
@@ -241,14 +291,33 @@ def run_checks(
     log_directory = Path(log_directory)
     log_directory.mkdir(parents=True, exist_ok=True)
     results = []
+    tests: list[str] | None = None
     for check in repository.checks.values():
-        if check["module"] not in selected:
+        when = check.get("when", "always")
+        if when not in WHEN:
+            raise CheckError(
+                f"check {check['id']} has when {when!r}; expected one of "
+                + ", ".join(WHEN),
+                "invalid_check",
+            )
+        if when == "readiness" and stage != "readiness":
+            continue
+        selective = TESTS in (check.get("argv") or [])
+        if selective:
+            if kinds == "module":
+                continue
+            if tests is None:
+                tests = verified_tests(repository, selected)
+            if not tests:
+                continue
+        elif kinds == "selective" or check["module"] not in selected:
             continue
         argv = _argv(
             check,
             lambda check=check: project_python(
                 worktree, repository.config, check["id"]
             ),
+            tests or (),
         )
         timeout = _timeout(check)
         before = check_revision(repository, check["module"])
@@ -268,7 +337,12 @@ def run_checks(
                 f"check {check['id']} could not run in the read-only boundary: {error}",
                 "check_sandbox_unavailable",
             ) from error
-        log.write_bytes(outcome.stdout + b"\n" + outcome.stderr)
+        header = (
+            ("selected tests: " + " ".join(tests or ()) + "\n\n").encode()
+            if selective
+            else b""
+        )
+        log.write_bytes(header + outcome.stdout + b"\n" + outcome.stderr)
         if check_revision(SpecRepository(worktree), check["module"]) != before:
             raise CheckError(
                 f"the input of check {check['id']} changed while it ran",
@@ -319,4 +393,5 @@ __all__ = [
     "check_revision",
     "checked_modules",
     "run_checks",
+    "verified_tests",
 ]

@@ -408,20 +408,27 @@ def run_configured_checks(ctx: RunContext):
     )
     log_directory = ctx.run_dir / "checks"
     found = []
-    for module in selected:
+    # Each Module's own checks, then the selective checks once for the whole selection.
+    groups = [(module, [module], "module") for module in selected]
+    groups.append((", ".join(selected), selected, "selective"))
+    for label, modules, kinds in groups:
         try:
             results = run_checks(
-                ctx.worktree, modules=[module], log_directory=log_directory
+                ctx.worktree,
+                modules=modules,
+                log_directory=log_directory,
+                stage="readiness",
+                kinds=kinds,
             )
         except SpecError as error:
             if error.code == "check_sandbox_unavailable":
-                stop = ctx.checks_unavailable(error, [module])
+                stop = ctx.checks_unavailable(error, modules)
                 stop.evidence[:0] = found
                 return stop
             if error.code == "stale_evidence":
                 return inputs_changed(ctx, found, str(error))
-            block(state, "check", module, f"{error.code}: {error}")
-            found.append(evidence("check", module, f"{error.code}: {error}"))
+            block(state, "check", label, f"{error.code}: {error}")
+            found.append(evidence("check", label, f"{error.code}: {error}"))
             continue
         for result in results:
             log = Path(result["log"])

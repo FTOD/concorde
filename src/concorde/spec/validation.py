@@ -1204,20 +1204,9 @@ class Checks:
                     subject=declaration.scenario_id,
                 )
                 continue
+            # Tests and scenarios are many-to-many: a declaration counts wherever the test
+            # file is bound, since the file's owner only decides who may change it.
             covered.add(scenario.id)
-            if scenario.owner not in listed.get(declaration.path, set()):
-                self.findings.append(
-                    Finding(
-                        "CONCORDE-COVERAGE-002",
-                        "warning",
-                        declaration.path,
-                        f"test {declaration.name} verifies {scenario.id}, but {scenario.owner} "
-                        "does not bind this file",
-                        "Bind the test to a realization of the scenario's Module.",
-                        line=declaration.line,
-                        subject_id=scenario.id,
-                    )
-                )
         for scenario in sorted(scenarios.values(), key=lambda item: item.id):
             if scenario.id not in covered and scenario.owner in realized:
                 self.findings.append(

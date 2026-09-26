@@ -11,7 +11,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
 ```concorde-contract
 {
   "id": "contract.adoption.decomposition",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -161,6 +161,12 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
                 "minLength": 1
               }
             },
+            "when": {
+              "enum": [
+                "always",
+                "readiness"
+              ]
+            },
             "timeout_seconds": {
               "type": "integer",
               "minimum": 1
@@ -292,7 +298,7 @@ The `output` of a `survey`. `remaining_entries` is computed by the host, never b
       }
     }
   },
-  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries are removed, computed by the host with the scaffold's rule. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, each with decided_by worker, or developer when it follows an answer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A behaviour or field change increments the version.",
+  "semantics": "The decomposition a survey proposes for module. children are the Modules to create: a new identity, a unique title, a purpose paragraph, the entries each binds (existing paths the surveyed Module's realizations cover, a directory ending in /) and the Modules it uses with the reason. remaining_entries are the entries the surveyed Module keeps once every child's entries are removed, computed by the host with the scaffold's rule. checks are proposed checks, in the shape of configured checks, for the surveyed Module or a child, each with the reason it was found; nothing configures them but the developer. decisions are the choices the worker took where the code left several open, each with decided_by worker, or developer when it follows an answer. open_questions are behaviours whose intent the worker could not tell; the worker wrote no promise about them. A proposed check may carry an env of variable names to strings, and its argv names the project's own interpreter as {python}; its inputs are canonical project-relative paths. externals are third-party code the project vendors, each with its path among the surveyed Module's paths, the Module that uses it and the reason: the scaffold takes them out of the parent's entries and makes each an external inclusion of its user, never a Module, so nobody describes or reviews it as the project's code. A proposed check may carry when: readiness for a full suite that runs only when readiness is decided. A behaviour or field change increments the version.",
   "example": {
     "module": "module.shop",
     "summary": "The shop has a checkout service and an inventory service that share one database helper; they become two Modules and the helper stays with the root.",

@@ -83,6 +83,7 @@ CHECK = obj(
         "module": MODULE_ID,
         "argv": {"type": "array", "minItems": 1, "items": S},
         "env": {"type": "object", "additionalProperties": S},
+        "when": {"enum": ["always", "readiness"]},
         "timeout_seconds": {"type": "integer", "minimum": 1},
         "inputs": {"type": "array", "items": S},
         "reason": S,
@@ -115,7 +116,7 @@ SURVEY_WORKER_SCHEMA = obj(
         "open_questions": {"type": "array", "items": QUESTION},
     }
 )
-# contract.adoption.decomposition, version 3
+# contract.adoption.decomposition, version 4
 DECOMPOSITION_SCHEMA = obj(
     {
         "module": MODULE_ID,

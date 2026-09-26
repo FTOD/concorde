@@ -330,7 +330,6 @@ identities:
 | --- | --- | --- |
 | `CONCORDE-LINK-001` | error | a link fragment shaped like a node identity names no definition in the linked document |
 | `CONCORDE-COVERAGE-001` | warning | no test declares a scenario of a Module that binds files |
-| `CONCORDE-COVERAGE-002` | warning | a test declares a scenario whose owner does not bind the test |
 | `CONCORDE-COVERAGE-003` | error | a bound test cannot be parsed, or a declaration in it is malformed; reported per file |
 | `CONCORDE-CHECK-001` | error | a configured check's declared input is missing or unsafe |
 | `CONCORDE-SOURCE-008` | error | the configuration, registry or Protocol binding cannot be read, so nothing else was checked; the message is the load error's, the remediation carries its remediation and reason, and `result.load_error` holds its [error record](errors.md) |

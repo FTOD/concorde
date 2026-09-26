@@ -53,7 +53,7 @@ STEP_ROW = obj(
         "summary": {"anyOf": [S, {"type": "null"}]},
     }
 )
-# contract.workflows.result, version 3
+# contract.workflows.result, version 5
 RESULT_SCHEMA: dict = {
     "$defs": copy.deepcopy(errors.DEFS),
     **obj(
@@ -139,6 +139,7 @@ RESULT_SCHEMA: dict = {
                         "module": MODULE_ID,
                         "argv": {"type": "array", "minItems": 1, "items": S},
                         "env": {"type": "object", "additionalProperties": S},
+                        "when": {"enum": ["always", "readiness"]},
                         "timeout_seconds": {"type": "integer", "minimum": 1},
                         "inputs": {"type": "array", "items": S},
                         "reason": S,

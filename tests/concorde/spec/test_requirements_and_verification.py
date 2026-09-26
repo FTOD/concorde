@@ -439,13 +439,9 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             report.status,
             [f.message for f in report.findings if f.severity == "error"],
         )
-        (foreign,) = self.project.findings("CONCORDE-COVERAGE-002")
-        self.assertEqual(
-            ("warning", "tests/other/test_shop.py", "scenario.shop.submit"),
-            (foreign.severity, foreign.source, foreign.subject_id),
-        )
-        self.assertIn("test_x", foreign.message)
-        # The scenario still counts as declared.
+        # Tests and scenarios are many-to-many: a test another Module owns verifies the
+        # scenario like any other, and nothing is reported about its owner.
+        self.assertEqual([], self.project.findings("CONCORDE-COVERAGE-002"))
         self.assertNotIn("CONCORDE-COVERAGE-001", self.rules("warning"))
 
 

@@ -528,12 +528,11 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - THEN it reports a `CONCORDE-COVERAGE-001` warning for the scenario
 - BUT a scenario of a Module that binds no files is not reported
 
-### scenario.spec.coverage-foreign-test — A declaration in a test the owner does not bind
+### scenario.spec.coverage-foreign-test — A test another Module owns verifies a scenario
 
 - GIVEN a test bound only by Module A that declares a scenario of Module B
 - WHEN the validator runs
-- THEN it reports a `CONCORDE-COVERAGE-002` warning naming the test and the scenario
-- AND the scenario still counts as declared
+- THEN the scenario counts as declared, and nothing is reported about who owns the test
 
 ### scenario.spec.coverage-parse-error — An unreadable test does not stop the scan
 
