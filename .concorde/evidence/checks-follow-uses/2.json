@@ -1,0 +1,114 @@
+{
+  "task": "checks-follow-uses",
+  "goal": "The checks of every Module that uses a changed Module run too, in validate, delivery and the Operations that run checks",
+  "modules": [
+    "module.checks",
+    "module.implementation",
+    "module.code-review",
+    "module.validation"
+  ],
+  "sequence": 2,
+  "base_commit": "9ffda41b285d126c804922065d215c110df6bbc2",
+  "parent_commit": "eb80429e05ca23e582305bbf6287254892e7edce",
+  "readiness": {
+    "run_id": "r-20260926T074120-delivery-3284d2b6",
+    "input_digest": "sha256:833f8b6b7860b14b9ac3372232b86b197b6e9c8673ea6632bb8a5610578a803a",
+    "modules": [
+      "module.checks",
+      "module.code-review",
+      "module.implementation",
+      "module.operations",
+      "module.validation"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:73209634c5011b6aea309af0394a11a4bf4264c015d5c11ba59faf1ea34f0243"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:b1c26bfccfff7c0cc9c8210a2a8c6e52a8daa493435cdcf7311ccb7c678ae9f0"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:0a199d129e42937638c7d1ddc5c20ee53d23ea10639b44b9635e2c04044807f9"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:e65ef44833dc62e464ebadd55e1293b67d32c792613b13f5cc27d47adc8cd36e"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:2f89ca7294ea8f4ff96548a305a74a03388153b6357ed5e7180bf232e76d052c"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:e0f8f12d842110f078c1302e776d424e1b31ee662de06619b2060c91abf5a205"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:fc59b373561b271e7204e558a12e850235eaaab1cfbfc3af2ed3e5b6d1c0ea4d"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:7e0522f0acce55c12fedc77912d498777b80f93c2209cc1c647e8da3c57920d6"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:081d8eae6a029aed2f09cd59b78b6251a77fef81dcdcdc2f853aaadbde708a06"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:459e65f8c7988fd5a1eb0473d6b0096b8980d7e1fbad06ecf91c00ae06d06fea"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:4ed6197c1574a0fd8ccb4e9685ddadc5e3204a1d7bf3fc9c85977a2449edf921"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:73a3814f4ef2beb0184bbb7444a6b2a2f7904a242a917b41ef77f9cbaccc5260"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:379a9bda61b8608b66918a28aed01f95c3219019cd9148df867eaf69e02e2ff6"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:48a88b4b8d0f5b47061f79d37f1ad4c4dc7d6cd45edb173835a89185ed5eb24b"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [],
+  "created_at": "2026-09-26T07:42:07Z"
+}
