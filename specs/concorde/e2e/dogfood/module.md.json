@@ -1,0 +1,104 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.dogfood-scenarios.module",
+    "owner": "module.dogfood-scenarios",
+    "role": "module"
+  },
+  "module": {
+    "title": "Dogfood scenarios",
+    "owns": [
+      "specs/concorde/e2e/dogfood/module.md",
+      "specs/concorde/e2e/dogfood/requirements.md",
+      "specs/concorde/e2e/dogfood/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.headless-sessions",
+        "meaning": "#uses-sessions",
+        "relies_on": [
+          "concept.headless-sessions.session"
+        ]
+      },
+      {
+        "target": "module.dogfooding",
+        "meaning": "#uses-dogfooding",
+        "relies_on": [
+          "concept.dogfooding.develop-install",
+          "concept.dogfooding.boundary-case",
+          "concept.dogfooding.defect-report"
+        ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "concept.distribution.installer"
+        ]
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.report"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.dogfood-scenarios.scenario",
+      "type": "concept",
+      "title": "Dogfood scenario",
+      "meaning": "#concept.dogfood-scenarios.scenario"
+    },
+    {
+      "id": "concept.dogfood-scenarios.fault",
+      "type": "concept",
+      "title": "Fault",
+      "meaning": "#concept.dogfood-scenarios.fault"
+    },
+    {
+      "id": "concept.dogfood-scenarios.directory",
+      "type": "concept",
+      "title": "Scenario directory",
+      "meaning": "#concept.dogfood-scenarios.directory"
+    },
+    {
+      "id": "concept.dogfood-scenarios.evaluation",
+      "type": "concept",
+      "title": "Evaluation",
+      "meaning": "#concept.dogfood-scenarios.evaluation"
+    },
+    {
+      "id": "realization.dogfood-scenarios.runner",
+      "type": "realization",
+      "title": "Scenario runner",
+      "meaning": "#realization.dogfood-scenarios.runner",
+      "entries": [
+        "scripts/e2e/dogfood.py",
+        "scripts/e2e/scenarios/"
+      ]
+    },
+    {
+      "id": "realization.dogfood-scenarios.tests",
+      "type": "realization",
+      "title": "Scenario runner tests",
+      "meaning": "#realization.dogfood-scenarios.tests",
+      "entries": [
+        "tests/concorde/e2e/test_dogfood.py"
+      ]
+    }
+  ],
+  "relations": [],
+  "extensions": {}
+}

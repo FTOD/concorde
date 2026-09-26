@@ -209,9 +209,7 @@ class E2ETests(unittest.TestCase):
         )
         command, environment = e2e.claude_command("brownfield", args)
         self.assertEqual("0", environment["CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"])
-        tools = command[
-            command.index("--allowedTools") + 1 : command.index("--output-format")
-        ]
+        tools = command[command.index("--allowedTools") + 1 :]
         self.assertIn("Workflow(concorde-brownfield)", tools)
         self.assertIn("Bash(.concorde/bin/concorde workflow step:*)", tools)
         self.assertIn('"restart": {"scaffold": "2"}', command[2])

@@ -12,7 +12,16 @@
       "specs/concorde/e2e/requirements.md",
       "specs/concorde/e2e/scenarios.md"
     ],
-    "contains": [],
+    "contains": [
+      {
+        "target": "module.headless-sessions",
+        "meaning": "#contains-sessions"
+      },
+      {
+        "target": "module.dogfood-scenarios",
+        "meaning": "#contains-dogfood"
+      }
+    ],
     "uses": [
       {
         "target": "module.workflows",
@@ -74,7 +83,8 @@
       "title": "End-to-end tool",
       "meaning": "#realization.e2e.tool",
       "entries": [
-        "scripts/e2e/e2e.py"
+        "scripts/e2e/e2e.py",
+        "scripts/e2e/common.py"
       ]
     },
     {
@@ -83,7 +93,8 @@
       "title": "End-to-end tool tests",
       "meaning": "#realization.e2e.tests",
       "entries": [
-        "tests/concorde/e2e/"
+        "tests/concorde/e2e/__init__.py",
+        "tests/concorde/e2e/test_e2e.py"
       ]
     }
   ],

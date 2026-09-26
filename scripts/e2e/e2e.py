@@ -13,6 +13,16 @@ deterministic driver that plays the pi runtime.
     python3 scripts/e2e/e2e.py run ~/concorde-e2e/requests --via claude
     python3 scripts/e2e/e2e.py watch ~/concorde-e2e/requests
 
+Any headless main session, with a prompt of the developer's, and the dogfood scenarios, in which a
+develop install from a Concorde clone with a known fault must be reported, not worked around:
+
+    python3 scripts/e2e/e2e.py session start ~/concorde-e2e/requests --prompt-file ask.md
+    python3 scripts/e2e/e2e.py session show <session directory>
+    python3 scripts/e2e/e2e.py dogfood list
+    python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories
+    python3 scripts/e2e/e2e.py dogfood run ~/concorde-e2e/write-hook-rw-directories
+    python3 scripts/e2e/e2e.py dogfood evaluate ~/concorde-e2e/write-hook-rw-directories
+
 A SWE-bench case is prepared at its base commit under its own name, and a delivered change is
 graded with the case's tests, which Concorde's workers never see:
 
@@ -36,13 +46,22 @@ import sys
 import tempfile
 from pathlib import Path
 
-CHECKOUT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import dogfood  # noqa: E402
+import sessions  # noqa: E402
+from common import (  # noqa: E402
+    CHECKOUT,
+    E2EError,
+    clone,
+    e2e_root,
+    repository_url,
+    run,
+)
+
 SWE_BENCH = CHECKOUT / "references/swe-bench"
 REPO_LIST = SWE_BENCH / "swebench/harness/log_parsers/python.py"
 HARNESS = CHECKOUT / "tests/concorde/workflows/run_script.mjs"
-# Where prepared projects live unless CONCORDE_E2E_ROOT says otherwise. Not the home directory
-# itself: Claude Code keeps no trust for a session started there.
-DEFAULT_ROOT = Path.home() / "concorde-e2e"
 # The permissions a headless main session needs to run a workflow without the project's trust:
 # given on the command line, they apply whether or not the folder is trusted.
 WORKFLOW_TOOLS = (
@@ -51,31 +70,6 @@ WORKFLOW_TOOLS = (
     "Bash(.concorde/bin/concorde workflow report:*)",
     "Read",
 )
-# Without it `claude -p` stops a background workflow after ten idle minutes; 0 waits without end.
-WAIT_VARIABLE = "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"
-
-
-class E2EError(Exception):
-    def __init__(self, code: str, detail: str, **evidence):
-        super().__init__(detail)
-        self.code = code
-        self.detail = detail
-        self.evidence = evidence
-
-
-def run(command: list[str], cwd: Path, **options) -> subprocess.CompletedProcess:
-    """Run a command; ``E2EError`` names it, its exit status and its output when it fails."""
-    completed = subprocess.run(
-        command, cwd=cwd, capture_output=True, text=True, check=False, **options
-    )
-    if completed.returncode != 0:
-        raise E2EError(
-            "command_failed",
-            f"`{' '.join(command)}` in {cwd} exited with status {completed.returncode}",
-            stdout=completed.stdout[-3000:],
-            stderr=completed.stderr[-3000:],
-        )
-    return completed
 
 
 def repositories(listing: Path = REPO_LIST) -> list[str]:
@@ -89,25 +83,6 @@ def repositories(listing: Path = REPO_LIST) -> list[str]:
             "python3 scripts/development/init-references.py",
         ) from error
     return sorted(set(re.findall(r'"([\w.-]+/[\w.-]+)":\s*parse_log', text)))
-
-
-def e2e_root() -> Path:
-    return Path(os.environ.get("CONCORDE_E2E_ROOT") or DEFAULT_ROOT).expanduser()
-
-
-def repository_url(repo: str) -> str:
-    return f"https://github.com/{repo}.git"
-
-
-def clone(url: str, rev: str, project: Path) -> None:
-    """Check ``rev`` of ``url`` out as the branch ``main`` of a new repository ``project``, with
-    no history before it. ``rev`` may be a tag, a branch or a commit, as SWE-bench's base commits
-    are, which ``git clone --branch`` does not accept."""
-    project.mkdir(parents=True)
-    run(["git", "init", "-q"], cwd=project)
-    run(["git", "remote", "add", "origin", url], cwd=project)
-    run(["git", "fetch", "-q", "--depth", "1", "origin", rev], cwd=project)
-    run(["git", "checkout", "-q", "-b", "main", "FETCH_HEAD"], cwd=project)
 
 
 def prepare(
@@ -260,17 +235,7 @@ def claude_command(workflow: str, args: dict) -> tuple[list[str], dict]:
         "and the proposed checks. Do not merge the task."
     )
     tools = [tool.format(workflow=workflow) for tool in WORKFLOW_TOOLS]
-    command = [
-        "claude",
-        "-p",
-        prompt,
-        "--allowedTools",
-        *tools,
-        "--output-format",
-        "stream-json",
-        "--verbose",
-    ]
-    return command, {**os.environ, WAIT_VARIABLE: "0"}
+    return sessions.command(prompt, tools), sessions.environment()
 
 
 def driver_input(project: Path, workflow: str, args: dict) -> dict:
@@ -293,20 +258,24 @@ def driver_input(project: Path, workflow: str, args: dict) -> dict:
 
 
 def run_workflow(project: Path, via: str, workflow: str, args: dict, log: Path) -> dict:
-    """Run a workflow in ``project`` to its end; the saved workflow result."""
+    """Run a workflow in ``project`` to its end; the saved workflow result. A headless run's
+    session is kept in the directory ``log``, a driver run's output in the file ``log``."""
     log.parent.mkdir(parents=True, exist_ok=True)
     if via == "claude":
-        command, environment = claude_command(workflow, args)
-        with log.open("w") as stream:
-            completed = subprocess.run(
-                command,
-                cwd=project,
-                env=environment,
-                stdout=stream,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False,
+        command, _ = claude_command(workflow, args)
+        session = sessions.start(
+            project,
+            command[2],
+            log,
+            tools=command[command.index("--allowedTools") + 1 :],
+        )
+        if session["end"] not in ("idle", "rounds_exhausted"):
+            raise E2EError(
+                "run_failed",
+                f"the headless session ended {session['end']}",
+                session=str(log / "session.json"),
             )
+        completed = subprocess.CompletedProcess([], 0, "", "")
     else:
         environment = {
             **os.environ,
@@ -612,6 +581,31 @@ def grade(
     }
 
 
+def session_command(arguments) -> dict:
+    if arguments.action == "show":
+        return sessions.show(arguments.directory.resolve())
+    if bool(arguments.prompt) == bool(arguments.prompt_file):
+        raise E2EError(
+            "usage", "give the session's prompt with --prompt or --prompt-file"
+        )
+    prompt = arguments.prompt or arguments.prompt_file.read_text(encoding="utf-8")
+    project = arguments.project.resolve()
+    directory = (
+        project / ".concorde/runs/e2e/sessions" / sessions.stamp().replace(":", "")
+    )
+    return sessions.start(project, prompt, directory, rounds=arguments.rounds)
+
+
+def dogfood_command(arguments) -> dict:
+    if arguments.action == "list":
+        return {"scenarios": dogfood.listing()}
+    if arguments.action == "prepare":
+        return dogfood.prepare(arguments.scenario, e2e_root(), arguments.name)
+    if arguments.action == "run":
+        return dogfood.run_scenario(arguments.directory.resolve(), arguments.rounds)
+    return dogfood.evaluate(arguments.directory.resolve())
+
+
 def main(argv) -> int:
     parser = argparse.ArgumentParser(prog="e2e")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -650,6 +644,26 @@ def main(argv) -> int:
     grade_.add_argument("--python", type=Path, required=True)
     grade_.add_argument("--ref", default="main")
     grade_.add_argument("--pythonpath", action="append", default=[])
+    session_ = sub.add_parser("session")
+    session_actions = session_.add_subparsers(dest="action", required=True)
+    start_ = session_actions.add_parser("start")
+    start_.add_argument("project", type=Path)
+    start_.add_argument("--prompt")
+    start_.add_argument("--prompt-file", type=Path)
+    start_.add_argument("--rounds", type=int, default=sessions.ROUNDS)
+    show_ = session_actions.add_parser("show")
+    show_.add_argument("directory", type=Path)
+    dogfood_ = sub.add_parser("dogfood")
+    dogfood_actions = dogfood_.add_subparsers(dest="action", required=True)
+    dogfood_actions.add_parser("list")
+    dogfood_prepare = dogfood_actions.add_parser("prepare")
+    dogfood_prepare.add_argument("scenario")
+    dogfood_prepare.add_argument("--name")
+    dogfood_run = dogfood_actions.add_parser("run")
+    dogfood_run.add_argument("directory", type=Path)
+    dogfood_run.add_argument("--rounds", type=int, default=sessions.ROUNDS)
+    dogfood_evaluate = dogfood_actions.add_parser("evaluate")
+    dogfood_evaluate.add_argument("directory", type=Path)
     arguments = parser.parse_args(argv)
     try:
         if arguments.command == "repos":
@@ -679,7 +693,11 @@ def main(argv) -> int:
             log = (
                 project
                 / ".concorde/runs/e2e"
-                / f"{arguments.task}-{arguments.via}.jsonl"
+                / (
+                    f"{arguments.task}-claude"
+                    if arguments.via == "claude"
+                    else f"{arguments.task}-driver.jsonl"
+                )
             )
             value = run_workflow(project, arguments.via, arguments.workflow, args, log)
         elif arguments.command == "repair-specs":
@@ -701,6 +719,10 @@ def main(argv) -> int:
                 / ".concorde/runs/e2e"
                 / f"grade-{instance.get('instance_id', 'case')}.log",
             )
+        elif arguments.command == "session":
+            value = session_command(arguments)
+        elif arguments.command == "dogfood":
+            value = dogfood_command(arguments)
         else:
             value = watch(arguments.project.resolve())
     except E2EError as error:

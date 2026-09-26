@@ -1,0 +1,81 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.headless-sessions.module",
+    "owner": "module.headless-sessions",
+    "role": "module"
+  },
+  "module": {
+    "title": "Headless sessions",
+    "owns": [
+      "specs/concorde/e2e/sessions/module.md",
+      "specs/concorde/e2e/sessions/requirements.md",
+      "specs/concorde/e2e/sessions/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.progress-file",
+          "concept.operations.result"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.headless-sessions.session",
+      "type": "concept",
+      "title": "Headless session",
+      "meaning": "#concept.headless-sessions.session"
+    },
+    {
+      "id": "concept.headless-sessions.round",
+      "type": "concept",
+      "title": "Round",
+      "meaning": "#concept.headless-sessions.round"
+    },
+    {
+      "id": "concept.headless-sessions.note",
+      "type": "concept",
+      "title": "Headless note",
+      "meaning": "#concept.headless-sessions.note"
+    },
+    {
+      "id": "concept.headless-sessions.wake",
+      "type": "concept",
+      "title": "Wake message",
+      "meaning": "#concept.headless-sessions.wake"
+    },
+    {
+      "id": "realization.headless-sessions.driver",
+      "type": "realization",
+      "title": "Session driver",
+      "meaning": "#realization.headless-sessions.driver",
+      "entries": [
+        "scripts/e2e/sessions.py"
+      ]
+    },
+    {
+      "id": "realization.headless-sessions.tests",
+      "type": "realization",
+      "title": "Session driver tests",
+      "meaning": "#realization.headless-sessions.tests",
+      "entries": [
+        "tests/concorde/e2e/test_sessions.py"
+      ]
+    }
+  ],
+  "relations": [],
+  "extensions": {}
+}

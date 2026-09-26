@@ -1042,7 +1042,16 @@
         "specs/concorde/e2e/requirements.md",
         "specs/concorde/e2e/scenarios.md"
       ],
-      "contains": [],
+      "contains": [
+        {
+          "target": "module.headless-sessions",
+          "meaning": "#contains-sessions"
+        },
+        {
+          "target": "module.dogfood-scenarios",
+          "meaning": "#contains-dogfood"
+        }
+      ],
       "uses": [
         {
           "target": "module.workflows",
@@ -1063,6 +1072,86 @@
           "kind": "external",
           "target": "references/swe-bench/",
           "reason": "SWE-bench, whose Python repositories are the test projects"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.headless-sessions",
+      "title": "Headless sessions",
+      "entry": "specs/concorde/e2e/sessions/module.md",
+      "owns": [
+        "specs/concorde/e2e/sessions/module.md",
+        "specs/concorde/e2e/sessions/requirements.md",
+        "specs/concorde/e2e/sessions/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations",
+          "relies_on": [
+            "concept.operations.progress-file",
+            "concept.operations.result"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.dogfood-scenarios",
+      "title": "Dogfood scenarios",
+      "entry": "specs/concorde/e2e/dogfood/module.md",
+      "owns": [
+        "specs/concorde/e2e/dogfood/module.md",
+        "specs/concorde/e2e/dogfood/requirements.md",
+        "specs/concorde/e2e/dogfood/scenarios.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.headless-sessions",
+          "meaning": "#uses-sessions",
+          "relies_on": [
+            "concept.headless-sessions.session"
+          ]
+        },
+        {
+          "target": "module.dogfooding",
+          "meaning": "#uses-dogfooding",
+          "relies_on": [
+            "concept.dogfooding.develop-install",
+            "concept.dogfooding.boundary-case",
+            "concept.dogfooding.defect-report"
+          ]
+        },
+        {
+          "target": "module.distribution",
+          "meaning": "#uses-distribution",
+          "relies_on": [
+            "concept.distribution.installer"
+          ]
+        },
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issues.report"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
         }
       ],
       "participates": []

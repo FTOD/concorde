@@ -8,7 +8,10 @@ would, runs a workflow in it with real workers, and lets the developer watch eve
 for the people developing Concorde: nothing of it is installed into a project, and a Concorde user
 never meets it. Its second job is to keep apart the problems that only testing conditions cause,
 such as a headless main session or an untrusted scratch project, from the problems a user would
-meet, so that the first are solved here rather than in what users get.
+meet, so that the first are solved here rather than in what users get. Two children carry parts of
+it: [Headless sessions](sessions/module.md) drives any real headless main session, and
+[Dogfood scenarios](dogfood/module.md) tests a develop install's main agent against a known
+Concorde defect.
 
 ## Terminology
 
@@ -66,11 +69,13 @@ run does not need it.
 [workflow result](../workflows/module.md#concept.workflows.result), logging the session under
 `.concorde/runs/e2e/`:
 
-- A **headless run** (`--via claude`) starts `claude -p` in the project, asking it to run the
-  installed workflow and report. Two testing conditions are handled for it: `claude -p` otherwise
-  stops a background workflow after ten idle minutes, so the tool sets
-  `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`; and an untrusted project ignores its allow rules, so
-  the tool grants the workflow and its step commands with `--allowedTools`.
+- A **headless run** (`--via claude`) runs, as a [headless
+  session](sessions/module.md#concept.headless-sessions.session) kept under
+  `.concorde/runs/e2e/<task>-claude/`, a main session asked to run the installed workflow and
+  report. Two testing conditions are handled for it: `claude -p` otherwise stops a background
+  workflow after ten idle minutes, so the session keeps `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`;
+  and an untrusted project ignores its allow rules, so the workflow and its step commands are
+  granted with `--allowedTools`.
 - A **driver run** (`--via driver`) runs the project's rendered pi script under the stand-in
   runtime of the Workflows tests, whose step agents execute the real `concorde workflow step
   --stdin` and `report --stdin`. It has no model between steps, so it tests Concorde's side alone.
@@ -130,6 +135,7 @@ How End-to-end testing is built:
 e2e: End-to-end testing {
   tool: End-to-end tool {
     "scripts/e2e/e2e.py"
+    "scripts/e2e/common.py"
   }
 }
 ```
@@ -137,11 +143,13 @@ e2e: End-to-end testing {
 <a id="realization.e2e.tool"></a>
 
 The **End-to-end tool** realization is `scripts/e2e/e2e.py`: preparing, trusting, running and
-watching test projects and grading cases.
+watching test projects and grading cases, and the command line of its children's `session` and
+`dogfood` commands; `scripts/e2e/common.py` holds what the tools share, the checkout, the
+end-to-end root, the error type, running a command and cloning a revision.
 
 <a id="realization.e2e.tests"></a>
 
-The **End-to-end tool tests**, under `tests/concorde/e2e/`, check the tool's pure parts, the
+The **End-to-end tool tests**, `tests/concorde/e2e/test_e2e.py`, check the tool's pure parts, the
 repository list, trust, the headless command, cloning a revision and grading, on local
 repositories only, without the network or agents, verifying the
 [requirements](requirements.md) and [scenarios](scenarios.md).
@@ -149,12 +157,29 @@ repositories only, without the network or agents, verifying the
 ## Relationships
 
 ```d2
-e2e: End-to-end testing
+e2e: End-to-end testing {
+  sessions: Headless sessions
+  dogfood: Dogfood scenarios
+}
 workflows: Workflows
 distribution: Distribution
 e2e -> workflows
 e2e -> distribution
 ```
+
+<a id="contains-sessions"></a>
+
+**Headless sessions** drives a real headless Claude Code main session: it grants the session its
+tools, tells it the conditions of running headless, wakes it when an Operation run it left behind
+ends and keeps every round's log. The headless runs of workflows are headless sessions, and so are
+the dogfood scenarios' sessions.
+
+<a id="contains-dogfood"></a>
+
+**Dogfood scenarios** injects a known fault into a clone of this checkout's Concorde, makes a
+develop install of a real project from it, runs a headless session with an ordinary request and
+evaluates whether the main agent reported the defect as Dogfooding requires without working around
+it or changing Concorde.
 
 <a id="uses-workflows"></a>
 
