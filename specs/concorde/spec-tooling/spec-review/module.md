@@ -83,7 +83,12 @@ receives the Module's open earlier findings and returns only new findings, earli
 changed (naming their id) and earlier findings the Specs no longer have (with the reason); an
 earlier finding it leaves out still stands. The host merges that into the memory, giving each new
 finding the next id, keeps out a finding the checker disputed, and reports what was new, updated,
-resolved and carried. A review without a task reads the memory and writes nothing.
+resolved and carried. The reviewer compares every finding with the earlier ones first, since a
+model sees the same Specs a little differently each time: the same problem, however worded, is
+the earlier finding. A completed review also records the context identity of the Specs it judged;
+while a Module's context identity is still that one, a review launches no reviewer and the memory
+decides its outcome, unless `--force` asks for a new look. A review without a task reads the
+memory and writes nothing.
 
 ## Design
 

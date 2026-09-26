@@ -82,7 +82,7 @@ The Operation result carries this payload:
 ```concorde-contract
 {
   "id": "contract.spec-review.payload",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "required": [
@@ -253,9 +253,21 @@ The Operation result carries this payload:
                     "updated",
                     "resolved",
                     "carried",
-                    "ignored"
+                    "ignored",
+                    "unchanged_since"
                   ],
                   "properties": {
+                    "unchanged_since": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      ]
+                    },
                     "new": {
                       "type": "array",
                       "items": {
@@ -375,7 +387,7 @@ The Operation result carries this payload:
       }
     }
   },
-  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed, changes_required when a blocking finding about its own documents is not disputed, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings are reviewer claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each Module's outcome is the state of its review memory after this review: any open blocking finding, reported now or carried from an earlier review, requires changes. Each reported finding has the memory id it was kept under, or null when a checker disputed it; earlier names the earlier finding it updates. memory lists the ids this review added and updated, the earlier findings it resolved with their reasons, the open earlier findings it carried unchanged in full, and resolutions it ignored because they named no open finding; it is null when the Module was not reviewed. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed, changes_required when a blocking finding about its own documents is not disputed, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings are reviewer claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each Module's outcome is the state of its review memory after this review: any open blocking finding, reported now or carried from an earlier review, requires changes. Each reported finding has the memory id it was kept under, or null when a checker disputed it; earlier names the earlier finding it updates. memory lists the ids this review added and updated, the earlier findings it resolved with their reasons, the open earlier findings it carried unchanged in full, and resolutions it ignored because they named no open finding; it is null when the Module was not reviewed. unchanged_since names the review whose memory decided a Module that was not reviewed again because its Specs, by context identity, are the ones that review judged; it is null when the Module was reviewed. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -407,7 +419,8 @@ The Operation result carries this payload:
           "updated": [],
           "resolved": [],
           "carried": [],
-          "ignored": []
+          "ignored": [],
+          "unchanged_since": null
         }
       }
     ]
@@ -422,7 +435,7 @@ The Operation result carries this payload:
 ```concorde-contract
 {
   "id": "contract.spec-review.memory",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -438,6 +451,24 @@ The Operation result carries this payload:
       "module": {
         "type": "string",
         "minLength": 1
+      },
+      "reviewed": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "context_identity",
+          "run"
+        ],
+        "properties": {
+          "context_identity": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "run": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       },
       "findings": {
         "type": "array",
@@ -526,10 +557,14 @@ The Operation result carries this payload:
       }
     }
   },
-  "semantics": "The review memory of one Module, .concorde/reviews/spec/<module>.json, tracked with the project: every finding the Spec reviews of the Module kept, each with a stable id f.<n> never reused, its content as last reported, status open or resolved, the runs that first and last reported or resolved it, and the resolution reason once resolved. Only a spec_review inside a task writes it, merging its review into it; a review without a task reads it. A behaviour or field change increments the version.",
+  "semantics": "The review memory of one Module, .concorde/reviews/spec/<module>.json, tracked with the project: every finding the Spec reviews of the Module kept, each with a stable id f.<n> never reused, its content as last reported, status open or resolved, the runs that first and last reported or resolved it, and the resolution reason once resolved. Only a spec_review inside a task writes it, merging its review into it; a review without a task reads it. reviewed records the context identity of the Specs the last completed review judged and its run: while the Module's context identity is the same, a review is not run again unless forced. A behaviour or field change increments the version.",
   "example": {
     "schema_version": 1,
     "module": "module.checkout",
+    "reviewed": {
+      "context_identity": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "run": "r-20260926T113000-spec_review-4e5f6a7b"
+    },
     "findings": [
       {
         "id": "f.1",

@@ -29,6 +29,10 @@ A finding about a document the reviewed Module does not own SHALL NOT be `blocki
 The Reviewer brief SHALL instruct a reviewer to report every blocking finding it can establish in
 one run rather than stopping at the first.
 
+### req.spec-review.unchanged-not-reviewed — Unchanged Specs are not reviewed again
+
+A Spec review SHALL NOT launch a reviewer for a Module whose context identity is the one its review memory records as last reviewed, unless forced.
+
 ### req.spec-review.host-verdict — The host derives the verdict
 
 The verdict SHALL be derived by the host from the Modules' outcomes by the rule of the review

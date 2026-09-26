@@ -31,7 +31,7 @@ CONTENT = (
 )
 IDENTITY = "^f\\.[1-9][0-9]*$"
 
-# contract.spec-review.memory, version 1 (operation.md); a test keeps the two equal.
+# contract.spec-review.memory, version 2 (operation.md); a test keeps the two equal.
 MEMORY_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -39,6 +39,20 @@ MEMORY_SCHEMA: dict = {
     "properties": {
         "schema_version": {"const": 1},
         "module": {"type": "string", "minLength": 1},
+        # The Specs the last completed review judged: while the Module's context identity is
+        # still this one, a review changes nothing and is not run again.
+        "reviewed": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["context_identity", "run"],
+            "properties": {
+                "context_identity": {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                },
+                "run": {"type": "string", "minLength": 1},
+            },
+        },
         "findings": {
             "type": "array",
             "items": {
@@ -121,11 +135,14 @@ def material(memory: dict) -> str:
     ]
     return (
         "## Earlier findings\n\n"
-        "Earlier reviews left these findings open. Do not report one of them again as new. If "
-        "it still stands as written, leave it out: it stays open. If it still stands but has "
+        "Earlier reviews left these findings open. Before you report any finding as new, "
+        "compare it with each of them: a finding about the same problem, the same passage or "
+        "the same kind of defect in the same place, is that earlier finding, however you would "
+        "word it now, never a new one. If an earlier finding still stands as written, leave it "
+        "out: it stays open. If it still stands but you would state it differently or it has "
         "changed, report it with `earlier` set to its id. If the Specs no longer have the "
-        "problem, list it in `resolved` with the reason. Report every other problem as a new "
-        "finding.\n\n```json\n"
+        "problem, list it in `resolved` with the reason. Only a problem none of them covers is "
+        "a new finding.\n\n```json\n"
         + json.dumps(shown, indent=2, ensure_ascii=False)
         + "\n```\n"
     )

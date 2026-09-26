@@ -31,6 +31,7 @@ from ..operations.provider import (
     spec_cause,
     spec_finding,
 )
+from ..spec.grants import grant
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError
 from ..spec.schema import ContractError, validate
@@ -147,8 +148,18 @@ MEMORY_SUMMARY: dict = {
         {
             "type": "object",
             "additionalProperties": False,
-            "required": ["new", "updated", "resolved", "carried", "ignored"],
+            "required": [
+                "new",
+                "updated",
+                "resolved",
+                "carried",
+                "ignored",
+                "unchanged_since",
+            ],
             "properties": {
+                "unchanged_since": {
+                    "anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]
+                },
                 "new": {"type": "array", "items": {"type": "string"}},
                 "updated": {"type": "array", "items": {"type": "string"}},
                 "resolved": {"type": "array", "items": RESOLVED},
@@ -159,7 +170,7 @@ MEMORY_SUMMARY: dict = {
     ]
 }
 
-# contract.spec-review.payload, version 2 (operation.md); a test keeps the two equal.
+# contract.spec-review.payload, version 3 (operation.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "modules"],
@@ -525,6 +536,33 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
             ],
         )
         return found
+    try:
+        identity = grant(
+            SpecRepository(ctx.worktree), [review.module], TASK_TYPE
+        ).value["context_identity"]
+    except (SpecError, OSError, ValueError):
+        identity = None  # the worker sequence reports why the grant cannot be computed
+    reviewed = review.memory.get("reviewed") or {}
+    if (
+        identity is not None
+        and not ctx.arguments.force
+        and reviewed.get("context_identity") == identity
+    ):
+        # The Specs are the ones the last review judged: its memory is the answer.
+        review.context_identity = identity
+        review.merged, review.summary = review_memory.merge(
+            review.memory, ctx.run_id, [], []
+        )
+        review.summary["unchanged_since"] = reviewed["run"]
+        found.append(
+            evidence(
+                "review-skipped",
+                review.module,
+                f"the Specs are unchanged since review {reviewed['run']} "
+                f"({identity}); the review memory decides, --force reviews again",
+            )
+        )
+        return found
     launched = len(ctx.worker_runs)
     outcome = ctx.run_worker(
         prompt
@@ -572,6 +610,9 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
     review.merged, review.summary = review_memory.merge(
         review.memory, ctx.run_id, findings, resolved
     )
+    review.summary["unchanged_since"] = None
+    if identity is not None:
+        review.merged["reviewed"] = {"context_identity": identity, "run": ctx.run_id}
     if ctx.project_scope:
         found.append(
             evidence(
@@ -683,6 +724,11 @@ def derive_verdict(ctx: RunContext):
 
 
 def add_arguments(parser) -> None:
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="review a Module even when its Specs are unchanged since its last review",
+    )
     parser.add_argument(
         "--check-findings",
         action="store_true",

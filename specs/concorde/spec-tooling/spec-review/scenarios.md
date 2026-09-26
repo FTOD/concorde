@@ -63,6 +63,14 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 - AND the outcome is `changes_required`, since `f.1` still stands
 - BUT once every earlier blocking finding is resolved, the outcome is `accepted`
 
+### scenario.spec-review.unchanged — Unchanged Specs are not reviewed again
+
+- GIVEN a review memory of `module.a` recording the context identity of its current Specs as reviewed by run `r-earlier`, with the open blocking finding `f.1`
+- WHEN a Spec review of `module.a` runs
+- THEN no reviewer is launched, the outcome is `changes_required` from the memory, and the result names `r-earlier` as the review it is unchanged since
+- AND a completed review records the context identity it judged and its run in the memory
+- BUT with `--force` the reviewer runs whatever the memory records
+
 ### scenario.spec-review.audit-change — A reviewer that changed a file
 
 - GIVEN a reviewer after which the worktree has a changed file
