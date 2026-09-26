@@ -300,7 +300,14 @@ instructions than the main agent that would otherwise do the task. Its boundary 
 that configuration. The task-session extension intercepts every `write` and `edit` call and blocks
 one whose path, resolved as pi resolves it, is neither inside the task worktree nor the decision log,
 naming the task worktree; and it rewrites every `bash` command to run inside sandbox-runtime with
-the same writable paths and the same open network as the Claude Code session's sandbox. It
+the same writable paths and the same open network as the Claude Code session's sandbox, plus a
+private temporary directory under `/tmp` whose path is short enough for the sandbox's sockets and
+which the supervisor passes as `TMPDIR` and removes after each round. A sandbox makes only
+existing paths writable, so Tasks creates the writable directories that do not exist yet, such as
+a first run's `.concorde/runs/`, before a session starts, in Claude Code as in pi. While a command
+runs, sandbox-runtime shows empty read-only placeholders for the files it protects (`.bashrc`,
+`.gitconfig` and the like) in the task worktree, so the guidance tells the session to stage its
+changes by path. It
 intercepts the tools rather than replacing them, so the developer's own extensions keep theirs;
 tools other extensions add, such as MCP tools or a formatter that writes files, are outside this
 boundary, as MCP tools are outside the Claude Code session's write hook. pi has no counterpart of

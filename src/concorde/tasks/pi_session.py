@@ -18,6 +18,8 @@ it is settled as ``failed`` the next time Tasks looks at the session.
 
 from __future__ import annotations
 
+import contextlib
+import hashlib
 import json
 import os
 import platform
@@ -159,9 +161,31 @@ def _real(path: Path | str) -> str:
     return Path(os.path.realpath(path)).as_posix()
 
 
+def short_tmp(directory: Path) -> Path:
+    """The session's ``TMPDIR``: a private directory with a short path, stable for the session.
+
+    sandbox-runtime creates Unix sockets below ``TMPDIR``, whose paths must stay under the
+    kernel's 108-byte limit, which a directory under the task's session directory may exceed.
+    """
+    digest = hashlib.sha256(_real(directory).encode()).hexdigest()[:12]
+    base = Path("/tmp") if os.access("/tmp", os.W_OK) else Path(tempfile.gettempdir())
+    path = base / f"concorde-ts-{digest}"
+    path.mkdir(mode=0o700, exist_ok=True)
+    owner = path.lstat()
+    if path.is_symlink() or owner.st_uid != os.getuid():
+        raise store.TaskError(
+            "session_failed",
+            f"the session's temporary directory {path} exists but is not a directory of this "
+            "user; remove it and start the session again",
+        )
+    return path
+
+
 def policy(primary: Path, record: dict, directory: Path, home: Path | None) -> dict:
     """The boundary's policy: the task's paths, the sandbox's writable paths, the report tool."""
-    writable = set(session.writable(primary, record, home)) | {_real(directory / "tmp")}
+    writable = set(session.writable(primary, record, home)) | {
+        _real(short_tmp(directory))
+    }
     return {
         "task": record["id"],
         "worktree": _real(record["worktree"]),
@@ -463,13 +487,10 @@ def start(
         )
     programs = _programs(worktree)
     directory = session.session_directory(primary, task_id)
-    for name in ("", "pi", "tmp"):
+    for name in ("", "pi"):
         (directory / name).mkdir(parents=True, exist_ok=True)
-    boundary = write_boundary(
-        directory,
-        policy(primary, record, directory, home),
-        programs["sandbox_runtime"],
-    )
+    value = policy(primary, record, directory, home)
+    boundary = write_boundary(directory, value, programs["sandbox_runtime"])
     session_id = f"task-{task_id}-{time.strftime('%Y%m%dT%H%M%S', time.gmtime())}"
     shown = command(programs["pi"], directory, session_id, model)
     if dry_run:
@@ -478,10 +499,11 @@ def start(
             "cwd": worktree.as_posix(),
             "boundary": boundary.as_posix(),
         }
+    session.create_writable(value["sandbox"]["allowWrite"])
     prompt = brief(primary, record, main)
     process = _launch(primary, task_id, session_id, 1, directory, prompt)
     entry = _round(1, directory, process.pid, None)
-    value = {
+    recorded = {
         "program": "pi",
         "id": session_id,
         "name": session.session_name(task_id),
@@ -492,13 +514,13 @@ def start(
         "rounds": [entry],
     }
     try:
-        store.record_session(primary, task_id, value)
+        store.record_session(primary, task_id, recorded)
         _progress(directory, task_id, session_id, entry)
     except BaseException:
         process.kill()
         raise
     _go(process)
-    return value
+    return recorded
 
 
 def answer(here: Path, task_id: str, text: str, *, home: Path | None = None) -> dict:
@@ -522,11 +544,9 @@ def answer(here: Path, task_id: str, text: str, *, home: Path | None = None) -> 
         )
     programs = _programs(worktree)
     directory = Path(found["directory"])
-    write_boundary(
-        directory,
-        policy(primary, record, directory, home),
-        programs["sandbox_runtime"],
-    )
+    value = policy(primary, record, directory, home)
+    write_boundary(directory, value, programs["sandbox_runtime"])
+    session.create_writable(value["sandbox"]["allowWrite"])
     number = len(found["rounds"]) + 1
     process = _launch(
         primary, task_id, found["id"], number, directory, answer_prompt(text)
@@ -728,7 +748,9 @@ def supervise(primary: Path, task_id: str, session_id: str, number: int) -> int:
             os.environ,
             CONCORDE_CLIENT="pi",
             CONCORDE_TASK_SESSION=task_id,
-            TMPDIR=(directory / "tmp").as_posix(),
+            TMPDIR=short_tmp(directory).as_posix(),
+            # sandbox-runtime hands its commands this TMPDIR, else a /tmp/claude that may not exist.
+            CLAUDE_CODE_TMPDIR=short_tmp(directory).as_posix(),
         )
         prompt = (directory / f"round-{number}.prompt.md").read_bytes()
         with (
@@ -789,6 +811,9 @@ def supervise(primary: Path, task_id: str, session_id: str, number: int) -> int:
                 trace=directory / f"round-{number}.traceback.txt",
             ),
         }
+    # One round runs at a time and the next recreates it, so nothing outlives the round.
+    with contextlib.suppress(store.TaskError):
+        shutil.rmtree(short_tmp(directory), ignore_errors=True)
     store.finish_round(primary, task_id, session_id, number, fields)
     report = fields.get("report") or {}
     progress.update(
@@ -820,6 +845,7 @@ __all__ = [
     "policy",
     "prerequisites",
     "settle",
+    "short_tmp",
     "start",
     "stop",
     "verify",

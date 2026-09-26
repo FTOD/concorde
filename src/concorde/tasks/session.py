@@ -70,6 +70,16 @@ def writable(primary: Path, record: dict, home: Path | None = None) -> list[str]
     return sorted({Path(os.path.realpath(path)).as_posix() for path in paths})
 
 
+def create_writable(paths: list[str]) -> None:
+    """Create the writable paths that do not exist yet, such as a first run's ``.concorde/runs``.
+
+    A sandbox makes only existing paths writable, so a directory it lists but that is missing
+    would stay read-only for the whole session.
+    """
+    for path in paths:
+        Path(path).mkdir(parents=True, exist_ok=True)
+
+
 def hook_source(primary: Path, record: dict) -> str:
     """The write hook with the task's allowed paths embedded."""
     data = {
@@ -200,6 +210,7 @@ def start(
             "cwd": worktree.as_posix(),
             "settings": path.as_posix(),
         }
+    create_writable(writable(primary, record, home))
     try:
         launched = run(
             command, cwd=worktree, capture_output=True, text=True, timeout=120

@@ -30,7 +30,10 @@ Concorde's run and task records, package caches and the session's own temporary 
 refusal is a sign you left your task, not an obstacle to work around. The network is open to every
 host. The sandbox also keeps the repository's `.git/config` and hooks read-only, so you cannot
 initialize a submodule; the main agent prepares that before starting you, and when it is missing
-you escalate for it.
+you escalate for it. While a command runs, the sandbox shows empty, unreadable placeholders for
+the files it protects, such as `.bashrc`, `.gitconfig`, `.mcp.json`, `.vscode/` and `.idea/`; they
+are not yours and vanish when the command ends, but they make `git add -A` fail, so stage the
+paths you changed by name.
 
 ## Decide within the task, escalate the rest
 

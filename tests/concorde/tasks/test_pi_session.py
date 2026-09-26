@@ -76,6 +76,12 @@ class PiSessionTests(unittest.TestCase):
         which.start()
         self.addCleanup(which.stop)
         self.addCleanup(self.stop_rounds)
+        self.addCleanup(self.remove_short_tmp)
+
+    def remove_short_tmp(self):
+        directory = self.root / ".concorde/tasks"
+        for session in directory.glob("*.session"):
+            shutil.rmtree(pi_session.short_tmp(session), ignore_errors=True)
 
     def stop_rounds(self):
         """Leave no supervisor of a test behind."""
@@ -193,14 +199,19 @@ class PiSessionTests(unittest.TestCase):
         self.assertNotIn("--model", argv)
         self.assertNotIn("--no-extensions", argv)
         self.assertEqual(os.path.realpath(worktree), os.path.realpath(call["cwd"]))
+        tmp = pi_session.short_tmp(directory)
+        self.assertLess(len(str(tmp / "srt-mux-4194304-0.sock")), 108)
+        self.assertEqual(0o700, tmp.stat().st_mode & 0o777)
         self.assertEqual(
-            ("t1", "pi", str(directory / "tmp")),
+            ("t1", "pi", str(tmp)),
             (
                 call["env"]["CONCORDE_TASK_SESSION"],
                 call["env"]["CONCORDE_CLIENT"],
                 call["env"]["TMPDIR"],
             ),
         )
+        self.assertEqual(str(tmp), call["env"]["CLAUDE_CODE_TMPDIR"])
+        self.assertTrue((self.root / ".concorde/runs").is_dir())
         self.assertEqual(str(self.log), call["env"]["FAKE_PI_LOG"])
         self.assertIn("You work in rounds", call["prompt"])
         self.assertIn("Let reports carry a severity.", call["prompt"])
@@ -468,7 +479,7 @@ class PiSessionTests(unittest.TestCase):
                     self.root / ".git",
                     self.root / ".concorde/runs",
                     self.root / ".concorde/tasks",
-                    directory / "tmp",
+                    pi_session.short_tmp(directory),
                     home / ".cache",
                     home / ".npm",
                 )

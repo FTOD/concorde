@@ -89,6 +89,7 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("with `escalations` the numbers", self.pi_session)
         self.assertIn("its answer is the prompt of your next round", self.pi_session)
         self.assertNotIn("SendMessage", self.pi_session)
+        self.assertIn("stage the paths you changed by name", self.pi_session)
         self.assertIn("Do not merge the task branch, close the task", self.pi_session)
 
     @verifies("scenario.main-session.parallel-tasks")
