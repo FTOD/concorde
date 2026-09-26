@@ -38,7 +38,8 @@
         "meaning": "#uses-tasks",
         "relies_on": [
           "concept.tasks.task",
-          "concept.tasks.decision-log"
+          "concept.tasks.decision-log",
+          "concept.tasks.session-round"
         ]
       },
       {

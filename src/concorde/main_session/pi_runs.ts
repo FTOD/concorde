@@ -1,10 +1,13 @@
 /**
  * The pure part of Concorde's pi run view: read the progress files of Operation runs and their
- * workers, pair them, and describe each run for pi-subagents' FleetView.
+ * workers, pair them, and describe each run for pi-subagents' FleetView; and the same for the
+ * rounds of pi task sessions.
  *
  * An Operation run's `status.json` is written by the Operation host; each worker run it launches
  * writes its own `status.json` with the same `host_pid`, which is how a worker is found for its
- * Operation. This module imports only Node's own modules so the host's tests can run it under Node.
+ * Operation. A task session's round is described by the `status.json` its supervisor keeps under
+ * `.concorde/tasks/<task>.session/`, and its outcome by the task record. This module imports only
+ * Node's own modules so the host's tests can run it under Node.
  */
 
 import { execFileSync } from "node:child_process";
@@ -217,4 +220,175 @@ export function concordeCommand(root: string): string[] {
   const source = join(root, "scripts", "concorde.py");
   if (existsSync(source)) return ["python3", source];
   return ["concorde"];
+}
+
+/** A round of a pi task session, from the progress file its supervisor keeps. */
+export interface SessionStatus {
+  kind: "task-session";
+  task: string;
+  session_id: string;
+  round: number;
+  phase: "running" | "finished";
+  status: "delivered" | "escalated" | "failed" | "stopped" | null;
+  summary: string | null;
+  supervisor_pid: number;
+  last_action: { tool: string; target: string; at: string } | null;
+  started_at: string;
+  updated_at: string;
+}
+
+function tasksDirectory(root: string): string {
+  return join(root, ".concorde", "tasks");
+}
+
+/** The current round of every pi task session of the project, oldest first. */
+export function sessionRounds(root: string): SessionStatus[] {
+  const directory = tasksDirectory(root);
+  if (!existsSync(directory)) return [];
+  const found: SessionStatus[] = [];
+  for (const name of readdirSync(directory)) {
+    if (!name.endsWith(".session")) continue;
+    const value = readJson(join(directory, name, "status.json"));
+    if (value?.kind === "task-session")
+      found.push(value as unknown as SessionStatus);
+  }
+  return found.sort((a, b) => a.started_at.localeCompare(b.started_at));
+}
+
+/** The identity FleetView files a round under. */
+export function roundId(status: {
+  task: string;
+  session_id: string;
+  round: number;
+}): string {
+  return `${status.task}:${status.session_id}:${status.round}`;
+}
+
+/** One round as FleetView shows it. `supervisorAlive` is whether its supervisor still runs. */
+export function sessionView(
+  root: string,
+  status: SessionStatus,
+  supervisorAlive: boolean,
+): RunView {
+  const finished = status.phase === "finished";
+  let state: RunState = "running";
+  let outcome: string | null = status.status;
+  let preview: string | undefined;
+  if (finished) {
+    state =
+      outcome === "delivered"
+        ? "completed"
+        : outcome === "escalated" || outcome === "stopped"
+          ? "stopped"
+          : "failed";
+    preview = `${outcome}: ${status.summary ?? ""}`;
+  } else if (!supervisorAlive) {
+    state = "failed";
+    outcome = "failed";
+    preview = `failed: the supervisor (process ${status.supervisor_pid}) ended without recording the round`;
+  }
+  let action = finished ? "finished" : `round ${status.round}`;
+  if (!finished && status.last_action) {
+    action +=
+      ` · ${status.last_action.tool} ${status.last_action.target}`.trimEnd();
+  }
+  return {
+    id: roundId(status),
+    label: clip(`${status.task} · task session round ${status.round}`),
+    state,
+    finished: finished || !supervisorAlive,
+    status: outcome,
+    currentAction: clip(action),
+    preview: preview ? clip(preview, 4096) : undefined,
+    reportPath: join(tasksDirectory(root), `${status.task}.json`),
+    startedAt: Date.parse(status.started_at),
+    updatedAt: Date.parse(status.updated_at),
+    endedAt: finished ? Date.parse(status.updated_at) : undefined,
+  };
+}
+
+function recordedRound(
+  root: string,
+  status: { task: string; session_id: string; round: number },
+): Record<string, unknown> | null {
+  const record = readJson(join(tasksDirectory(root), `${status.task}.json`));
+  const session = (
+    (record?.sessions as Record<string, unknown>[] | undefined) ?? []
+  ).find((item) => item.id === status.session_id);
+  return (
+    ((session?.rounds as Record<string, unknown>[] | undefined) ?? []).find(
+      (item) => item.round === status.round,
+    ) ?? null
+  );
+}
+
+/** The outcome the task record holds for a round, or null while it is running or unknown. */
+export function roundOutcome(
+  root: string,
+  status: { task: string; session_id: string; round: number },
+): { status: NonNullable<SessionStatus["status"]>; summary: string } | null {
+  const round = recordedRound(root, status);
+  if (!round || round.status === "running") return null;
+  const report = round.report as Record<string, unknown> | null;
+  const error = round.error as Record<string, unknown> | null;
+  return {
+    status: round.status as NonNullable<SessionStatus["status"]>,
+    summary: String(report?.summary ?? error?.detail ?? ""),
+  };
+}
+
+/** An error link and its causes as indented text, one line per link. */
+export function chainText(link: Record<string, unknown>, depth = 0): string {
+  const unhandled = link.unhandled as Record<string, string> | undefined;
+  const lines = [
+    `${"  ".repeat(depth)}${link.actor}: ${link.code}: ${link.detail}` +
+      (unhandled ? ` (not handled: ${unhandled.explanation})` : ""),
+  ];
+  for (const option of (link.options as string[]) ?? [])
+    lines.push(`${"  ".repeat(depth + 1)}option: ${option}`);
+  for (const cause of (link.causes as Record<string, unknown>[]) ?? [])
+    lines.push(chainText(cause, depth + 1));
+  return lines.join("\n");
+}
+
+/** What the main agent is told when a round ends: the outcome the task record holds. */
+export function sessionText(root: string, status: SessionStatus): string {
+  const head = `Task session of ${status.task}, round ${status.round}`;
+  const round = recordedRound(root, status);
+  if (!round || round.status === "running")
+    return (
+      `${head} ended without recording its outcome (supervisor process ` +
+      `${status.supervisor_pid}). Run concorde task show ${status.task}; the next ` +
+      "concorde task session command records the round as failed with its logs."
+    );
+  const report = (round.report as Record<string, unknown> | null) ?? null;
+  const lines = [`${head} ended ${round.status}.`];
+  if (report?.summary) lines.push(`Summary: ${report.summary}`);
+  for (const [key, title] of [
+    ["decisions", "Decisions it made"],
+    ["open", "Still open"],
+  ] as const) {
+    const items = (report?.[key] as string[] | undefined) ?? [];
+    if (items.length)
+      lines.push(`${title}:\n${items.map((item) => `- ${item}`).join("\n")}`);
+  }
+  if (round.status === "delivered")
+    lines.push(
+      `Delivery commit: ${report?.commit}. Merge it with concorde task merge ${status.task} when the work is complete.`,
+    );
+  if (round.status === "escalated")
+    lines.push(
+      `Escalations: ${((report?.escalations as number[]) ?? []).join(", ")}; read their chains with ` +
+        `concorde task show ${status.task}. Answer with concorde_task_session (answer), or ` +
+        "escalate to the developer with your own link on top.",
+    );
+  if (round.status === "failed" && round.error)
+    lines.push(
+      `Error chain:\n${chainText(round.error as Record<string, unknown>)}`,
+    );
+  if (round.status === "stopped") lines.push("The round was stopped.");
+  lines.push(
+    `Task record: ${join(tasksDirectory(root), `${status.task}.json`)}`,
+  );
+  return lines.join("\n");
 }

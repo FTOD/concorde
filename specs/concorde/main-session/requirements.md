@@ -31,6 +31,10 @@ The guidance SHALL tell the main agent to start a task session per task, with
 `concorde task session`, for work split into several tasks, and to stay in the primary worktree
 while any runs.
 
+### req.main-session.pi-task-session-view — pi wakes the main agent on every round
+
+In pi, the run view SHALL show every running task-session round and wake the main agent with each round's recorded outcome when the round ends.
+
 ### req.main-session.task-session-guidance — A task session is told its role
 
 The task-session guidance SHALL tell a task session to work only inside its task, to decide

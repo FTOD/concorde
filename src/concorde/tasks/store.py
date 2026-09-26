@@ -274,6 +274,54 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
     return update(primary, task_id, change)
 
 
+def _pi_session(record: dict, session_id: str) -> dict:
+    for item in record.get("sessions") or []:
+        if item.get("program") == "pi" and item.get("id") == session_id:
+            return item
+    raise TaskError(
+        "no_session",
+        f"task {record['id']} has no pi task session {session_id}",
+    )
+
+
+def begin_round(primary: Path, task_id: str, session_id: str, entry: dict) -> dict:
+    """Append a running round to a pi task session whose rounds have all ended."""
+
+    def change(record):
+        found = _pi_session(record, session_id)
+        running = [item for item in found["rounds"] if item["status"] == "running"]
+        if running:
+            raise TaskError(
+                "session_busy",
+                f"round {running[-1]['round']} of the task session of {task_id} is still "
+                f"running (supervisor process {running[-1]['supervisor_pid']})",
+            )
+        found["rounds"].append(entry)
+        return record
+
+    return update(primary, task_id, change)
+
+
+def finish_round(
+    primary: Path, task_id: str, session_id: str, number: int, fields: dict
+) -> dict:
+    """Set the outcome of a running round of a pi task session."""
+
+    def change(record):
+        found = _pi_session(record, session_id)
+        for item in found["rounds"]:
+            if item["round"] == number and item["status"] == "running":
+                item.update(fields)
+                item["ended_at"] = now()
+                return record
+        raise TaskError(
+            "session_idle",
+            f"round {number} of the task session {session_id} of {task_id} is not running",
+        )
+
+    return update(primary, task_id, change)
+
+
 def registered(root: Path, modules: list[str]) -> None:
     from ..spec.repository import SpecRepository
     from ..spec.repository_base import SpecError

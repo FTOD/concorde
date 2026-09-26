@@ -395,7 +395,9 @@
           "target": "module.harness.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.workers.model-configuration"
+            "concept.workers.model-configuration",
+            "concept.workers.backend",
+            "concept.workers.permission-extension"
           ]
         }
       ],
@@ -409,6 +411,11 @@
           "kind": "document",
           "target": "document.concorde.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "external",
+          "target": "references/pi/",
+          "reason": "pi's command line, JSON event stream and extension API (tool_call interception, tools that end a run, project trust), which the pi task session relies on"
         }
       ],
       "participates": []
@@ -811,7 +818,8 @@
           "meaning": "#uses-tasks",
           "relies_on": [
             "concept.tasks.task",
-            "concept.tasks.decision-log"
+            "concept.tasks.decision-log",
+            "concept.tasks.session-round"
           ]
         },
         {

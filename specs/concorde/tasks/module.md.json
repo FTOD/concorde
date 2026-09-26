@@ -23,7 +23,9 @@
         "target": "module.harness.workers",
         "meaning": "#uses-workers",
         "relies_on": [
-          "concept.workers.model-configuration"
+          "concept.workers.model-configuration",
+          "concept.workers.backend",
+          "concept.workers.permission-extension"
         ]
       }
     ],
@@ -37,6 +39,11 @@
         "kind": "document",
         "target": "document.concorde.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi/",
+        "reason": "pi's command line, JSON event stream and extension API (tool_call interception, tools that end a run, project trust), which the pi task session relies on"
       }
     ],
     "participates": []
@@ -71,6 +78,12 @@
       "type": "concept",
       "title": "Merge lock",
       "meaning": "#concept.tasks.merge-lock"
+    },
+    {
+      "id": "concept.tasks.session-round",
+      "type": "concept",
+      "title": "Session round",
+      "meaning": "#concept.tasks.session-round"
     },
     {
       "id": "realization.tasks.store",
@@ -120,6 +133,12 @@
       "source": "concept.tasks.decision-log",
       "verb": "explains the choices of",
       "target": "concept.tasks.task"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "runs and records",
+      "target": "concept.tasks.session-round"
     }
   ],
   "extensions": {}

@@ -49,10 +49,13 @@ the end. It asks the developer only when a decision has a major impact.
 <a id="concept.concorde.task-session"></a>
 
 For work that splits into several tasks, the main agent starts a **task session** per task: a
-background Claude Code session whose working directory is the task worktree. It works like the
+session of the main agent's own program whose working directory is the task worktree — a background
+Claude Code session, or in pi a sequence of headless rounds that each end with a report. It is the
+main agent's role at a smaller scale, so it keeps the main agent's program and configuration. It
+works like the
 main agent inside a task, deciding ordinary questions within the task's goal and Modules, and
 reports to the main agent when it has delivered, cannot go further, or needs a decision beyond its
-task; it never merges, closes the task or starts other sessions. Its Edit and Write tools and its
+task; it never merges, closes the task or starts other sessions. Its file-writing tools and its
 shell may write only its own task, which guards against mistakes, not a malicious session. The
 main agent stays in the primary worktree while task sessions run, and alone merges.
 

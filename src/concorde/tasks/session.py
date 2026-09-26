@@ -1,4 +1,5 @@
-"""``concorde task session``: start a task session, a background Claude Code session in one task.
+"""``concorde task session`` in Claude Code: start a task session, a background Claude Code session
+in one task (``pi_session`` starts one in pi).
 
 The main agent starts one per task when it splits complex work into several tasks, and stays in
 the primary worktree itself. A task session works only inside its task worktree: it may edit
@@ -67,6 +68,16 @@ def writable(primary: Path, record: dict, home: Path | None = None) -> list[str]
         *(home / name for name in CACHES),
     ]
     return sorted({Path(os.path.realpath(path)).as_posix() for path in paths})
+
+
+def create_writable(paths: list[str]) -> None:
+    """Create the writable paths that do not exist yet, such as a first run's ``.concorde/runs``.
+
+    A sandbox makes only existing paths writable, so a directory it lists but that is missing
+    would stay read-only for the whole session.
+    """
+    for path in paths:
+        Path(path).mkdir(parents=True, exist_ok=True)
 
 
 def hook_source(primary: Path, record: dict) -> str:
@@ -199,6 +210,7 @@ def start(
             "cwd": worktree.as_posix(),
             "settings": path.as_posix(),
         }
+    create_writable(writable(primary, record, home))
     try:
         launched = run(
             command, cwd=worktree, capture_output=True, text=True, timeout=120
@@ -217,6 +229,7 @@ def start(
             f"background session; its output: {output[-2000:] or '(none)'}",
         )
     session = {
+        "program": "claude",
         "id": found["id"],
         "name": name,
         "main": main.strip(),

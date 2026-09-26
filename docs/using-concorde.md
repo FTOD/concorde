@@ -434,14 +434,24 @@ agent starts a **task session** per task and stays in your primary checkout:
 concorde task session retry --main <the main agent's session name>
 ```
 
-A task session is a background Claude Code session (`claude agents` lists them) working in the
-task worktree by the same method. Its file tools and shell may write only its own task, and it
-reports back to the main agent when it has delivered or needs a decision beyond its task. Only the
-main agent merges. Because nobody answers a background session's permission prompts, a task
-session runs in Claude Code's `auto` permission mode, where a classifier approves or refuses each
-action within those limits. One task runs at most one Operation at a time. A merge conflict is
-resolved in the task, and a check that fails after merging is new work, never a reason to discard
-a change.
+A task session does what the main agent would do inside the task, so it always runs on the same
+program as the main agent, with the same configuration. It works in the task worktree by the same
+method, its file tools and shell may write only its own task, and it reports back to the main agent
+when it has delivered or needs a decision beyond its task. Only the main agent merges. One task
+runs at most one Operation at a time. A merge conflict is resolved in the task, and a check that
+fails after merging is new work, never a reason to discard a change.
+
+- In Claude Code a task session is a background Claude Code session (`claude agents` lists them).
+  Because nobody answers a background session's permission prompts, it runs in Claude Code's
+  `auto` permission mode, where a classifier approves or refuses each action within those limits.
+- In pi the main agent uses its `concorde_task_session` tool. The task session is a pi session with
+  your pi configuration (your packages and extensions included) that works in rounds: each round
+  ends with a report, delivered or escalated, which wakes the main agent, and the main agent's
+  answer starts the next round with everything the session did so far. Concorde's own extension
+  confines its `write` and `edit` to the task and runs its commands in a sandbox; tools that your
+  other extensions add are not confined. The run view shows each running round, and
+  `concorde task session retry --stop` stops one. The session's commands are sandboxed with
+  sandbox-runtime, which on Linux needs `bwrap` and `socat`.
 
 ## Read results
 

@@ -165,9 +165,10 @@ def extension_source(policy_value: dict, runtime_package: Path) -> str:
 
 
 class PiStream:
-    """Reads one round's JSON event stream."""
+    """Reads one round's JSON event stream; ``result_tool`` is the tool whose details end it."""
 
-    def __init__(self):
+    def __init__(self, result_tool: str = RESULT_TOOL):
+        self.result_tool = result_tool
         self.session: str | None = None
         self.result: dict | None = None
         self.limit: dict | None = None
@@ -190,7 +191,7 @@ class PiStream:
         elif kind == "tool_execution_start":
             return [(str(record.get("toolName")), record.get("args") or {})]
         elif kind == "tool_execution_end":
-            if record.get("toolName") == RESULT_TOOL and not record.get("isError"):
+            if record.get("toolName") == self.result_tool and not record.get("isError"):
                 details = (record.get("result") or {}).get("details")
                 self.result = details if isinstance(details, dict) else None
         elif kind == "turn_end":

@@ -25,6 +25,7 @@ class GuidanceTests(unittest.TestCase):
         self.skill = rendered("skill")
         self.block = rendered("claude-md")
         self.session = rendered("task-session")
+        self.pi_session = rendered("task-session-pi")
 
     @verifies("scenario.main-session.change-through-task")
     def test_changes_run_as_tasks_inside_their_worktree(self):
@@ -57,6 +58,11 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("stay in the primary worktree while any runs", self.skill)
         self.assertIn("naming its escalation as a cause", self.skill)
         self.assertIn("concorde task session", self.block)
+        self.assertIn("call the `concorde_task_session` tool with the task", self.skill)
+        self.assertIn("Answer with the tool's `answer`", self.skill)
+        self.assertIn("so it always runs on your program", self.skill)
+        self.assertNotIn("has no task sessions", self.skill)
+        self.assertIn("the `concorde_task_session` tool in pi", self.block)
 
     @verifies("scenario.main-session.task-session-role")
     def test_a_task_session_stays_within_its_task(self):
@@ -69,6 +75,22 @@ class GuidanceTests(unittest.TestCase):
             self.session,
         )
         self.assertIn("Do not merge the task branch, close the task", self.session)
+
+    @verifies("scenario.main-session.pi-task-session-role")
+    def test_a_pi_task_session_ends_each_round_with_a_report(self):
+        self.assertIn("You are a task session", self.pi_session)
+        self.assertIn("with the worktree's own command", self.pi_session)
+        self.assertIn("in the foreground with bash", self.pi_session)
+        self.assertIn(
+            "concorde task escalate <task> --by task-session", self.pi_session
+        )
+        self.assertIn("End every round by calling `concorde_report`", self.pi_session)
+        self.assertIn("with `commit` the delivery commit", self.pi_session)
+        self.assertIn("with `escalations` the numbers", self.pi_session)
+        self.assertIn("its answer is the prompt of your next round", self.pi_session)
+        self.assertNotIn("SendMessage", self.pi_session)
+        self.assertIn("stage the paths you changed by name", self.pi_session)
+        self.assertIn("Do not merge the task branch, close the task", self.pi_session)
 
     @verifies("scenario.main-session.parallel-tasks")
     def test_parallelism_only_between_non_overlapping_worktrees(self):
