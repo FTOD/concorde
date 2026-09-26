@@ -1,0 +1,117 @@
+{
+  "task": "worker-project-python",
+  "goal": "Workers learn and can run the project's own interpreter",
+  "modules": [
+    "module.workers",
+    "module.operations"
+  ],
+  "sequence": 1,
+  "base_commit": "98ca837275c623cd490c81a23f936163c58b79ef",
+  "parent_commit": "ab4a290e473fa4990799e639215f916cfb25f17d",
+  "readiness": {
+    "run_id": "r-20260926T085704-delivery-b6694699",
+    "input_digest": "sha256:0f0f1285771bbd3a7fee7cfe337170f297421a35a973d9f15255dd05277be241",
+    "modules": [
+      "module.implementation",
+      "module.operations",
+      "module.workers"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:def558ec41dde63b05edea967cb3050bed5a37d61b521af32e178091e70c3a56"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:a9804067e83440df78b20e9e0ae39f329e4c0d13240ad0a6f1748c3ffe923dc5"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:4e6c00fec29692dbafd7eca1b29cf0f0831e7bea304c5ca1db9aeac1ce59d09f"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:8c60bc4146a974227a39176b1264c54e699c3ce5d58a5ddcee68a59ad0e0bb0c"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:a87e7cfff4c97f80966cd64e384545c942e128cecc34668c591cf1578f2bc6c9"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:39594b2ccc54a190b09d47f9cfa65c2d8953185042886a89f742ac27794644b8"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:6de5b409890a0498d84db34a939440e9a63813ee12578949fc013d495be9bcb5"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:315c831b95071ccb1408f0983dd851d90f1a90dfa2ba54c6090deb2070bdf5cd"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:0e107bbf7e4303ceadac5e4275c296918b4d1d3c2191cb512760ed9783961d01"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:b14f3d3903bb9a0d6b356c4b7a647e8841f8e292dc00e5aa55622bf4226bd6d2"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:d9c292e4fca010ef7a096b6e96aa2330f7b64004f418b68c2b4857a098858e23"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:e5aab39b6a00911d3fc9fc6341d1169bd38e978ea32b241e9ae6859a7f3f0d3b"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:3f494b1e9f1953f7c7767f0a6f502f8e4d13305f6fbe0dbffa18640db40b6eec"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T085615-validate-ff3c82ca",
+      "operation": "validate",
+      "modules": [
+        "module.workers",
+        "module.operations"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:0ee610e11fd0ec09d6f3caa32115a2182a3df2bf846f7a585dcd58ab7dc61a3e"
+    }
+  ],
+  "created_at": "2026-09-26T08:57:52Z"
+}
