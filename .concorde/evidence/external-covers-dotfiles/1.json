@@ -1,0 +1,34 @@
+{
+  "task": "external-covers-dotfiles",
+  "goal": "Narrowing around vendored code drops every entry inside it, dot files included",
+  "modules": [
+    "module.adoption"
+  ],
+  "sequence": 1,
+  "base_commit": "041c9dd6c3c12c8e46e18ef8e25016a37047dae3",
+  "parent_commit": "90decef57bb5951e42de16d2417ca3539cac601c",
+  "readiness": {
+    "run_id": "r-20260926T052921-delivery-e47662a4",
+    "input_digest": "sha256:9a3498bd42973d55b6e50c8a6b73520a4f134d2ae693e8794a261f64f2f98d91",
+    "modules": [
+      "module.adoption"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T052919-validate-84cefee0",
+      "operation": "validate",
+      "modules": [
+        "module.adoption"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:c93d3ef1bb131b72806d26a7bc03f2c1e1c9f8c01bb7433d757d8d54fbdcd0d8"
+    }
+  ],
+  "created_at": "2026-09-26T05:29:23Z"
+}

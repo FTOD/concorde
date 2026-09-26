@@ -342,6 +342,7 @@ def plan(ctx: RunContext):
                     for items in narrowed_entries(
                         ctx.worktree,
                         child["entries"],
+                        [],
                         [item["path"] for item in externals],
                     ).values()
                     for entry in items
@@ -359,8 +360,8 @@ def plan(ctx: RunContext):
     replaced = narrowed_entries(
         root,
         before_entries,
-        [entry for child in children for entry in child["entries"]]
-        + [item["path"] for item in externals],
+        [entry for child in children for entry in child["entries"]],
+        [item["path"] for item in externals],
     )
     changes, created = [], []
     for child in children:

@@ -481,7 +481,10 @@ def proposal_problems(
 
 
 def narrowed_entries(
-    root: Path, parent_entries: list[str], child_entries: list[str]
+    root: Path,
+    parent_entries: list[str],
+    child_entries: list[str],
+    absorbed: list[str] = (),
 ) -> dict[str, list[str]]:
     """Each parent entry mapped to the entries that replace it once the children's are removed.
 
@@ -489,10 +492,13 @@ def narrowed_entries(
     nothing. A directory entry containing a child entry maps to the entries below it that no
     child took: a subdirectory stays one entry when no child took anything inside it, and a
     file is listed exactly. Files the directory exclusion rule skips were never bound and are
-    not listed.
+    not listed. ``absorbed`` are paths that take everything inside them, dot files included,
+    such as vendored code that becomes external material and may overlap no entry at all.
     """
 
     def taken(path: str) -> bool:
+        if any(covers(item, path.rstrip("/")) or item == path for item in absorbed):
+            return True
         # A file is taken only when a child entry binds it: a child's directory entry does not
         # bind the files the exclusion rule skips, such as dot files, which the parent keeps.
         if is_directory_entry(path):
@@ -502,7 +508,7 @@ def narrowed_entries(
     def inside(directory: str) -> bool:
         return any(
             child != directory and child.startswith(directory)
-            for child in child_entries
+            for child in (*child_entries, *absorbed)
         )
 
     def expand(directory: str, base: str) -> list[str]:

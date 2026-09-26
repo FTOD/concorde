@@ -357,6 +357,19 @@ class AdoptionTests(unittest.TestCase):
             {"docs/.nojekyll": []},
             narrowed_entries(root, ["docs/.nojekyll"], ["docs/", "docs/.nojekyll"]),
         )
+        # Vendored code takes everything inside it, the dot files a directory entry skips too.
+        (root / "docs/_themes").mkdir(exist_ok=True)
+        (root / "docs/_themes/.gitignore").write_text("x\n")
+        (root / "docs/_themes/theme.py").write_text("x\n")
+        self.assertEqual(
+            {
+                "docs/": ["docs/index.rst"],
+                "docs/_themes/.gitignore": [],
+            },
+            narrowed_entries(
+                root, ["docs/", "docs/_themes/.gitignore"], [], ["docs/_themes/"]
+            ),
+        )
 
     @verifies("scenario.adoption.tests-linked")
     def test_the_tests_a_scenario_came_from_are_marked(self):
