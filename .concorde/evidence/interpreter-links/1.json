@@ -1,0 +1,108 @@
+{
+  "task": "interpreter-links",
+  "goal": "Make every symlink on the project interpreter's chain readable to workers",
+  "modules": [
+    "module.operations"
+  ],
+  "sequence": 1,
+  "base_commit": "2039379c7d92c36a912d548b25c6d5aa92345c29",
+  "parent_commit": "1a1a6b9299bb7da29143a1a63b97c13558a8c055",
+  "readiness": {
+    "run_id": "r-20260926T090413-delivery-2458ab69",
+    "input_digest": "sha256:1fac84b6ef8566b57c823361478008c0686a62b5814d222ae342c54666721ce0",
+    "modules": [
+      "module.implementation",
+      "module.operations"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:6fe837b50567c26ea8c7ce3fb590dda8f7cc89d2383bf05095edb4f387b6a4b5"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:ba191e3b116fe9aec124290ea61f10583b79f93724e831f1523884d7043c9bd8"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:50d190f0fc72ed2b004c1ed1b9423468fb0f6911b441422aa3b38d57d1030158"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:5df013138bdd880c0c88a40c6f52106b4fbbff168ed5a2595e84801982883635"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:ed4921565a2da4768f4e0acf2a8db25e7a93d00165eb3ed2d3dcadfa84979792"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:37e5c47410f713fba23bd6063c4e89b8f1d5eea8255b2e23fe9190247ce9f0ea"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:23cae289aaca41c84f87be00a3626eecc99e57e16cb5b4f951021de6bfdb8b33"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:815038ce21beef80ee979b6833d5a590ecffd985bc92322b3107f844d07d81e5"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:6b8908d0f4cc7b249e85f5391531d98b193488e7c01d558601b28ed2a09c66c7"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:bd10962ae6acecaed57072fa8f400ce25023dd4536f4055ef4bfb356f9ce2877"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:b79d58b5229d8bebe9233e3424a3e2ae251d29c89e49ab5dd5207d7fe19d5d62"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:9cdbec2d6144e4c17a0d52f126641ce21631c6d02463eab2966a37a78af1baa5"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T090331-validate-b4a88bf8",
+      "operation": "validate",
+      "modules": [
+        "module.operations"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:7a360bb81aa20ec5efc37054b8cb009d56a8b8e0a37302a7d7e204ff119dba50"
+    }
+  ],
+  "created_at": "2026-09-26T09:04:56Z"
+}
