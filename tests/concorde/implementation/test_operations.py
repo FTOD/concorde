@@ -68,6 +68,26 @@ class ImplementTests(unittest.TestCase):
     def kinds(self, envelope) -> list[str]:
         return [item["kind"] for item in envelope["host_evidence"]]
 
+    @verifies("scenario.implementation.checks-of-users")
+    def test_a_change_runs_the_checks_of_the_modules_that_use_it(self):
+        # Module A uses Module B, and only A has a check: changing B runs A's check.
+        self.project.open_task("t2", modules=("module.b",))
+        worktree = self.project.worktree("t2")
+        plan = [
+            {
+                "writes": {f"{worktree}/src/bmod/secret.py": "SECRET = 2\n"},
+                "result": {"summary": "changed b", "output": {"addresses": []}},
+            }
+        ]
+        status, envelope = self.project.run(
+            "implement", "--task", "t2", "--goal", OperationProject.plan(plan)
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(
+            [("check.a", "module.a")],
+            [(item["check"], item["module"]) for item in envelope["output"]["checks"]],
+        )
+
     @verifies("scenario.implementation.implement-pass")
     def test_a_change_passes_its_checks(self):
         status, envelope = self.implement(

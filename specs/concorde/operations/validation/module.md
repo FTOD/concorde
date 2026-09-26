@@ -94,9 +94,11 @@ The measurement covers everything Delivery will commit: tracked changes since th
 untracked files Git does not ignore. An untracked path Git cannot version, such as the `/dev/null`
 mounts with which Claude Code's Bash sandbox hides `.bashrc` or `.claude/settings.json` from a task
 session, is left out, so the readiness and delivery come out the same inside and outside that
-sandbox. Checks run only for the changed Modules — checking a whole
-project every run would be too slow — so a Module broken only through one it uses is caught only
-when bound or named with `--modules`. Structural validation always covers the whole worktree, since
+sandbox. Checks run for the changed Modules and for every Module that uses one of them, directly
+or through further uses, since their code runs against the change (the Protocol's impact of a
+written file); the rest of the project is not checked, which would be too slow. A full test suite
+is therefore best checked by the Module that uses everything, such as the tests' Module, so that
+it runs whichever Module changes. Structural validation always covers the whole worktree, since
 a Spec change can break a link anywhere.
 
 | # | Step | Actor | Stops when |

@@ -17,7 +17,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from ..harness.checks import run_checks
+from ..harness.checks import checked_modules, run_checks
 from ..harness.runs import read_record
 from ..operations.provider import (
     Continue,
@@ -197,7 +197,9 @@ def host_checks(ctx: RunContext) -> list[dict] | Stop:
     """Run the bound Modules' configured checks outside any worker, logs in the run directory."""
     try:
         return run_checks(
-            ctx.worktree, modules=ctx.modules, log_directory=ctx.run_dir / "checks"
+            ctx.worktree,
+            modules=checked_modules(SpecRepository(ctx.worktree), ctx.modules),
+            log_directory=ctx.run_dir / "checks",
         )
     except (SpecError, OSError) as error:
         return ctx.checks_unavailable(error)

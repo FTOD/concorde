@@ -5,6 +5,13 @@ change and the test report are in the [contracts](contracts.md).
 
 ## Implement
 
+### scenario.implementation.checks-of-users — A change runs the checks of the Modules that use it
+
+- GIVEN Module A, which uses Module B and has a configured check, and Module B, which has none
+- WHEN an implement task bound to Module B changes B's code
+- THEN the host runs A's check as well, and its result is among the run's checks
+- AND a change bound to A alone runs only A's own checks, since no Module uses A
+
 ### scenario.implementation.implement-pass — A change passes its checks
 
 - GIVEN a task worktree whose bound Module has configured checks

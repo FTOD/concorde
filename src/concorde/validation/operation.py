@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..errors import link
-from ..harness.checks import affected_modules, check_error, run_checks
+from ..harness.checks import affected_modules, check_error, checked_modules, run_checks
 from ..operations.provider import (
     Continue,
     Provider,
@@ -403,7 +403,9 @@ def run_configured_checks(ctx: RunContext):
     state = _state(ctx)
     if state.repository is None:
         return Continue()
-    selected = sorted(set(state.changed_modules) | set(ctx.modules))
+    selected = sorted(
+        checked_modules(state.repository, [*state.changed_modules, *ctx.modules])
+    )
     log_directory = ctx.run_dir / "checks"
     found = []
     for module in selected:

@@ -13,7 +13,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from ..harness.checks import run_checks
+from ..harness.checks import checked_modules, run_checks
 from ..operations.provider import (
     Continue,
     Provider,
@@ -233,7 +233,9 @@ def diff_text(worktree: Path, base: str, paths: list[str]) -> str:
 def host_checks(ctx: RunContext) -> list[dict] | Stop:
     try:
         return run_checks(
-            ctx.worktree, modules=ctx.modules, log_directory=ctx.run_dir / "checks"
+            ctx.worktree,
+            modules=checked_modules(SpecRepository(ctx.worktree), ctx.modules),
+            log_directory=ctx.run_dir / "checks",
         )
     except (SpecError, OSError) as error:
         return ctx.checks_unavailable(error)

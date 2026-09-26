@@ -37,7 +37,9 @@ copy of the project's code in its environment does not stand in for the code und
 `src/concorde/harness/checks.py`:
 
 1. selects the Modules: those named in `modules`, or else every Module whose `ImplementationScope`
-   or `SpecScope` in `worktree` contains a path in `changed`;
+   or `SpecScope` in `worktree` contains a path in `changed`. Its callers name, through
+   `checked_modules`, the Modules a change concerns together with every Module that uses one of
+   them, directly or through further uses, so a Module's checks run whenever code it uses changes;
 2. for each selected Module, computes `check_revision`: the digest of the Module's implementation
    digest, each of its checks' definitions, the digest of every file below their inputs, and
    `CHECK_POLICY`;

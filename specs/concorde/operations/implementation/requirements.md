@@ -30,6 +30,10 @@ An implement run whose write audit finds a change outside the grant's writable p
 The implement host SHALL delete a file only when the worker's result proposes it, the file lies
 inside the grant's writable paths and the audit was clean.
 
+### req.implementation.checks-follow-uses — The checks of users run too
+
+The host SHALL run the configured checks of the bound Modules and of every Module that uses one of them, directly or through further uses.
+
 ### req.implementation.checks-outside — Checks run outside the worker
 
 The implement host SHALL run the bound Modules' configured checks through Check execution after

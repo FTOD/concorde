@@ -314,6 +314,7 @@ class RunContext:
         names host material outside the grant the worker may read as well, such as the logs of
         the checks the host ran for this run.
         """
+        from ..harness.checks import checked_modules
         from ..harness.workers import WorkerRequest, run_worker
         from ..spec.grants import grant
         from ..spec.repository import SpecRepository
@@ -363,7 +364,11 @@ class RunContext:
                 task_type=task_type,
                 grant=frozen,
                 instructions=instructions,
-                check_modules=bound if checks else None,
+                check_modules=(
+                    checked_modules(SpecRepository(self.worktree), bound)
+                    if checks
+                    else None
+                ),
                 runtime=runtime,
                 output_schema=output_schema,
                 rounds=rounds if rounds is not None else int(config.get("rounds", 3)),

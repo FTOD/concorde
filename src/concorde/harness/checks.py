@@ -124,6 +124,24 @@ def affected_modules(repository: SpecRepository, changed) -> list[str]:
     return result
 
 
+def checked_modules(repository: SpecRepository, modules) -> list[str]:
+    """The Modules whose checks a change of ``modules`` runs: those Modules and every Module that
+    uses one of them, directly or through further uses, since their code runs against the change
+    (the Protocol's impact of a written file). A full test suite checked by the Module that uses
+    everything therefore runs whichever Module changes."""
+    selected = list(dict.fromkeys(modules))
+    reached = set(selected)
+    changed = True
+    while changed:
+        changed = False
+        for identity, module in repository.modules.items():
+            if identity not in reached and reached & set(module.uses):
+                reached.add(identity)
+                selected.append(identity)
+                changed = True
+    return selected
+
+
 def project_python(worktree: Path, config: dict, check_id: str) -> str:
     """The project's interpreter, ``python`` in the configuration: an absolute path as it is, a
     relative one in the worktree the check runs in or, when that has none (a task worktree
@@ -295,4 +313,10 @@ def check_error(result: dict) -> dict:
     )
 
 
-__all__ = ["affected_modules", "check_error", "check_revision", "run_checks"]
+__all__ = [
+    "affected_modules",
+    "check_error",
+    "check_revision",
+    "checked_modules",
+    "run_checks",
+]

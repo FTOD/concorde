@@ -35,7 +35,8 @@ worktree.
 ### req.validation.changed-modules — Checks cover every changed Module
 
 A `validate` run SHALL run the configured checks of every Module that binds a changed path or owns
-a changed Spec document, and of every Module the run is bound to.
+a changed Spec document, of every Module the run is bound to, and of every Module that uses one of
+those, directly or through further uses.
 
 ### req.validation.unbound-paths — Every change is accounted for
 

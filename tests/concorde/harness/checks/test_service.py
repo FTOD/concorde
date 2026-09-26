@@ -141,6 +141,15 @@ class CheckServiceTests(unittest.TestCase):
             os.path.realpath(project_python(worktree, config, "check.a")),
         )
 
+    @verifies("scenario.implementation.checks-of-users")
+    def test_the_modules_that_use_a_changed_module_are_checked_too(self):
+        from concorde.harness.checks import checked_modules
+
+        self.assertEqual(
+            ["module.b", "module.a"], checked_modules(self.repository(), ["module.b"])
+        )
+        self.assertEqual(["module.a"], checked_modules(self.repository(), ["module.a"]))
+
     @verifies("scenario.checks.service-read-only")
     def test_a_check_cannot_change_the_worktree(self):
         check = self.root / "checks/a_check.py"
