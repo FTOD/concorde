@@ -19,7 +19,7 @@ Concorde defect.
 | Term | Definition |
 | --- | --- |
 | Test project | A codebase from SWE-bench's repositories, cloned at a pinned revision into the end-to-end root, with Concorde installed, initialized and a task open. |
-| End-to-end root | The directory holding the test projects, `CONCORDE_E2E_ROOT` or `~/concorde-e2e`, outside the home directory itself. |
+| End-to-end root | The directory holding the test projects, `CONCORDE_E2E_ROOT` or `concorde-e2e` in the system's temporary directory, `/tmp/concorde-e2e` on Linux. |
 | Headless run | A workflow run by a non-interactive `claude -p` main session started by the tool, waiting without limit for the workflow and granted its tools on the command line. |
 | Driver run | A workflow run by the deterministic driver, which plays the pi runtime and has the pi script's step agents execute the real `concorde workflow` commands, with real workers. |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
@@ -53,8 +53,9 @@ a branch or a commit, without earlier history into the **end-to-end root**, unde
 repository's name, checks it out as a `main` branch, installs Concorde from this checkout without
 `d2`, initializes it, commits and opens a task bound to the root Module, which makes a **test
 project**. It refuses a repository SWE-bench does not name unless `--any` is given, and a project
-directory that already exists. The end-to-end root is never the home directory itself, where
-Claude Code keeps no trust.
+directory that already exists. The end-to-end root defaults to the system's temporary
+directory, never the developer's home: test projects are throwaway, and the home directory itself
+is also where Claude Code keeps no trust.
 
 **Trusting test projects.** Claude Code applies a project's `.claude/settings.json` allow rules,
 which the installer writes for its workflows, only once that exact repository is trusted: trust is

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -40,6 +42,12 @@ class E2ETests(unittest.TestCase):
         with self.assertRaises(e2e.E2EError) as raised:
             e2e.prepare("someone/else", "v1", Path(tempfile.mkdtemp()), "adopt")
         self.assertEqual("unknown_repository", raised.exception.code)
+        # Test projects are throwaway: they never land in the developer's home.
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CONCORDE_E2E_ROOT", None)
+            root = e2e.e2e_root()
+        self.assertEqual(Path(tempfile.gettempdir()) / "concorde-e2e", root)
+        self.assertFalse(root.is_relative_to(Path.home()))
 
     @verifies("scenario.e2e.trust")
     def test_trust_marks_each_repository_root_and_keeps_the_rest(self):

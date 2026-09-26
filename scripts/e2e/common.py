@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 CHECKOUT = Path(__file__).resolve().parents[2]
-# Where prepared projects live unless CONCORDE_E2E_ROOT says otherwise. Not the home directory
-# itself: Claude Code keeps no trust for a session started there.
-DEFAULT_ROOT = Path.home() / "concorde-e2e"
+# Where prepared projects live unless CONCORDE_E2E_ROOT says otherwise: under the system's
+# temporary directory, never in the developer's home, since test projects are throwaway.
+DEFAULT_ROOT = Path(tempfile.gettempdir()) / "concorde-e2e"
 
 
 class E2EError(Exception):

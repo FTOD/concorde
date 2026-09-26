@@ -50,8 +50,8 @@ since a pi main session runs pi workers.
 ```text
 python3 scripts/e2e/e2e.py dogfood list
 python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--name <dir>] [--client claude|pi]
-python3 scripts/e2e/e2e.py dogfood run ~/concorde-e2e/write-hook-rw-directories [--rounds 4]
-python3 scripts/e2e/e2e.py dogfood evaluate ~/concorde-e2e/write-hook-rw-directories
+python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directories [--rounds 4]
+python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
 ```
 
 `prepare` makes the **scenario directory** under the end-to-end root: it clones this checkout's

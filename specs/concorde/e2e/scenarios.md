@@ -9,6 +9,7 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the developer lists the repositories
 - THEN the list names SWE-bench's Python repositories, among them `psf/requests` and `pallets/flask`
 - BUT preparing a repository not on the list is refused with `unknown_repository` naming the known ones
+- AND without `CONCORDE_E2E_ROOT` the end-to-end root is `concorde-e2e` in the system's temporary directory, outside the developer's home
 
 ### scenario.e2e.trust — Trusting a test project
 

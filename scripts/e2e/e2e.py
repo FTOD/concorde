@@ -9,27 +9,27 @@ deterministic driver that plays the pi runtime.
 
     python3 scripts/e2e/e2e.py repos
     python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0
-    python3 scripts/e2e/e2e.py trust ~/concorde-e2e/requests
-    python3 scripts/e2e/e2e.py run ~/concorde-e2e/requests --via claude
-    python3 scripts/e2e/e2e.py watch ~/concorde-e2e/requests
+    python3 scripts/e2e/e2e.py trust /tmp/concorde-e2e/requests
+    python3 scripts/e2e/e2e.py run /tmp/concorde-e2e/requests --via claude
+    python3 scripts/e2e/e2e.py watch /tmp/concorde-e2e/requests
 
 Any headless main session, with a prompt of the developer's, and the dogfood scenarios, in which a
 develop install from a Concorde clone with a known fault must be reported, not worked around:
 
-    python3 scripts/e2e/e2e.py session start ~/concorde-e2e/requests --prompt-file ask.md
-    python3 scripts/e2e/e2e.py session start ~/concorde-e2e/requests --client pi --prompt "..."
+    python3 scripts/e2e/e2e.py session start /tmp/concorde-e2e/requests --prompt-file ask.md
+    python3 scripts/e2e/e2e.py session start /tmp/concorde-e2e/requests --client pi --prompt "..."
     python3 scripts/e2e/e2e.py session show <session directory>
     python3 scripts/e2e/e2e.py dogfood list
     python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories
-    python3 scripts/e2e/e2e.py dogfood run ~/concorde-e2e/write-hook-rw-directories
-    python3 scripts/e2e/e2e.py dogfood evaluate ~/concorde-e2e/write-hook-rw-directories
+    python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directories
+    python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
 
 A SWE-bench case is prepared at its base commit under its own name, and a delivered change is
 graded with the case's tests, which Concorde's workers never see:
 
     python3 scripts/e2e/e2e.py prepare psf/requests --rev <base_commit> --name psf__requests-3362
-    python3 scripts/e2e/e2e.py grade ~/concorde-e2e/psf__requests-3362 --instance case.json \
-        --python ~/concorde-e2e/psf__requests-3362/.venv/bin/python
+    python3 scripts/e2e/e2e.py grade /tmp/concorde-e2e/psf__requests-3362 --instance case.json \
+        --python /tmp/concorde-e2e/psf__requests-3362/.venv/bin/python
 
 Every command prints one JSON object; a failure prints ``{"error": ...}`` with what failed, the
 command and its output, and exits 1.
