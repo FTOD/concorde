@@ -215,7 +215,13 @@ class ConcordeRepositoryTests(unittest.TestCase):
     def test_the_repository_instructions_take_reports_and_share_the_observation_rule(
         self,
     ):
-        instructions = words((REPOSITORY_ROOT / "AGENTS.md").read_text())
+        for entry in ("AGENTS.md", "CLAUDE.md"):
+            with self.subTest(entry=entry):
+                self.assertIn(
+                    "Read [DEVELOPING.md](DEVELOPING.md) in full",
+                    words((REPOSITORY_ROOT / entry).read_text()),
+                )
+        instructions = words((REPOSITORY_ROOT / "DEVELOPING.md").read_text())
         for fragment in (
             "## Defect reports from develop installs",
             "python3 scripts/issues.py report --file <report> --task <task>",

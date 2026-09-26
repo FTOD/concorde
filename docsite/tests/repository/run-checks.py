@@ -32,6 +32,8 @@ DIRECTORIES = (
 )
 FILES = (
     "AGENTS.md",
+    "CLAUDE.md",
+    "DEVELOPING.md",
     "LICENSE",
     ".gitignore",
     ".gitmodules",

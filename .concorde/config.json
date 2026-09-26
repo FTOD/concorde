@@ -31,10 +31,7 @@
     {
       "id": "check.views.publication-types",
       "module": "module.views",
-      "argv": [
-        "{python}",
-        "scripts/development/check-docsite-types.py"
-      ],
+      "argv": ["{python}", "scripts/development/check-docsite-types.py"],
       "timeout_seconds": 120,
       "inputs": [
         "docsite/tsconfig.json",
@@ -48,12 +45,12 @@
     {
       "id": "check.views.repository-regressions",
       "module": "module.views",
-      "argv": [
-        ".venv/bin/python",
-        "docsite/tests/repository/run-checks.py"
-      ],
+      "argv": [".venv/bin/python", "docsite/tests/repository/run-checks.py"],
       "timeout_seconds": 600,
       "inputs": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "DEVELOPING.md",
         "prompts",
         "src",
         "protocol",
@@ -87,11 +84,7 @@
     {
       "id": "check.issues.store",
       "module": "module.issues",
-      "argv": [
-        "{python}",
-        "scripts/issues.py",
-        "check"
-      ],
+      "argv": ["{python}", "scripts/issues.py", "check"],
       "timeout_seconds": 60,
       "inputs": [
         ".concorde/issues",
@@ -546,6 +539,8 @@
       "timeout_seconds": 600,
       "inputs": [
         "AGENTS.md",
+        "CLAUDE.md",
+        "DEVELOPING.md",
         "conftest.py",
         "prompts",
         "protocol",
