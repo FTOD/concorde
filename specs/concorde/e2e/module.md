@@ -8,8 +8,9 @@ would, runs a workflow in it with real workers, and lets the developer watch eve
 for the people developing Concorde: nothing of it is installed into a project, and a Concorde user
 never meets it. Its second job is to keep apart the problems that only testing conditions cause,
 such as a headless main session or an untrusted scratch project, from the problems a user would
-meet, so that the first are solved here rather than in what users get. Two children carry parts of
-it: [Headless sessions](sessions/module.md) drives any real headless main session, and
+meet, so that the first are solved here rather than in what users get. Three children carry parts
+of it: [Headless sessions](sessions/module.md) drives any real headless main session,
+[SWE-bench cases](cases/module.md) repairs and grades cases worked on real issues, and
 [Dogfood scenarios](dogfood/module.md) tests a develop install's main agent against a known
 Concorde defect.
 
@@ -21,7 +22,6 @@ Concorde defect.
 | End-to-end root | The directory holding the test projects, `CONCORDE_E2E_ROOT` or `~/concorde-e2e`, outside the home directory itself. |
 | Headless run | A workflow run by a non-interactive `claude -p` main session started by the tool, waiting without limit for the workflow and granted its tools on the command line. |
 | Driver run | A workflow run by the deterministic driver, which plays the pi runtime and has the pi script's step agents execute the real `concorde workflow` commands, with real workers. |
-| Case | A SWE-bench task instance: an issue of one repository at its base commit, with a test patch and the tests that must pass once the issue is resolved. |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
 | [Workflow](../workflows/module.md#concept.workflows.workflow) | |
 | [Workflow result](../workflows/module.md#concept.workflows.result) | |
@@ -40,9 +40,10 @@ python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--nam
 python3 scripts/e2e/e2e.py trust <project>…
 python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
 python3 scripts/e2e/e2e.py watch <project>
-python3 scripts/e2e/e2e.py repair-specs <project> [--modules <ids>] [--task repair-specs]
-python3 scripts/e2e/e2e.py grade <project> --instance <case.json> --python <interpreter> [--ref main] [--pythonpath <dir>]…
 ```
+
+Its children add `session` ([Headless sessions](sessions/module.md)), `repair-specs` and `grade`
+([SWE-bench cases](cases/module.md)) and `dogfood` ([Dogfood scenarios](dogfood/module.md)).
 
 <a id="concept.e2e.test-project"></a><a id="concept.e2e.root"></a>
 
@@ -85,33 +86,6 @@ run does not need it.
 **Watching.** `watch` lists every run of the project with its phase, step and outcome, and every
 task's workflow steps with their runs and whether they were superseded.
 
-<a id="concept.e2e.case"></a>
-
-**Grading a case.** A **case** tests Concorde's whole change flow on a real issue: the developer
-builds the case's own Python environment outside the project (its interpreter and pinned
-dependencies, never the project installed in it), prepares the case's repository at its base
-commit under the case's name with `--python` naming that interpreter, which `concorde init`
-records as the project's for its checks' `{python}`, adopts it with the brownfield workflow,
-configures its checks, repairs the adopted Specs with `repair-specs`, and then works the issue
-through Concorde as a main agent would, from `understand` to the merge. `grade` then decides
-whether the merged change resolves the issue the way SWE-bench does: in a throwaway worktree of
-`--ref` it puts every file the case's test patch touches back as it was at the case's base commit,
-since the change may have edited the same test files, applies the test patch, runs the test files it names with the given interpreter
-(`--pythonpath` directories of that worktree first on `PYTHONPATH`), and reports how many of the
-FAIL_TO_PASS and PASS_TO_PASS tests passed, each one that did not, and whether the case is
-resolved. The test patch and the case's tests stay outside the project: no worker sees them, and
-the project is left as it was. The pytest output is kept under `.concorde/runs/e2e/`.
-
-**Repairing the adopted Specs.** In a case the Specs are the test's own addition, describing code
-the test never changes, so the review findings adoption leaves are repaired before the issue:
-`repair-specs` opens a task over the adopted Modules, reviews them, runs `specify` once with that
-review as input and an intent to change only what the Specs say, keeping every promise true to
-the code and turning a repair that needs a decision about intent into an open question, reviews
-them once more, and validates, delivers and merges the task. One round bounds it; what the
-second review still finds is reported. Repairing a review's gaps automatically is otherwise a
-decision for a person; this exception holds for end-to-end cases only, which is why it lives in
-this Module and not in the workflow users run.
-
 ## Design
 
 End-to-end runs are not in the test suite. They clone from the network, spend real model tokens
@@ -143,8 +117,8 @@ e2e: End-to-end testing {
 <a id="realization.e2e.tool"></a>
 
 The **End-to-end tool** realization is `scripts/e2e/e2e.py`: preparing, trusting, running and
-watching test projects and grading cases, and the command line of its children's `session` and
-`dogfood` commands; `scripts/e2e/common.py` holds what the tools share, the checkout, the
+watching test projects, and the command line of its children's `session`, `repair-specs`, `grade`
+and `dogfood` commands; `scripts/e2e/common.py` holds what the tools share, the checkout, the
 end-to-end root, the error type, running a command and cloning a revision.
 
 <a id="realization.e2e.tests"></a>
@@ -159,6 +133,7 @@ repositories only, without the network or agents, verifying the
 ```d2
 e2e: End-to-end testing {
   sessions: Headless sessions
+  cases: SWE-bench cases
   dogfood: Dogfood scenarios
 }
 workflows: Workflows
@@ -173,6 +148,13 @@ e2e -> distribution
 tools, tells it the conditions of running headless, wakes it when an Operation run it left behind
 ends and keeps every round's log. The headless runs of workflows are headless sessions, and so are
 the dogfood scenarios' sessions.
+
+<a id="contains-cases"></a>
+
+**SWE-bench cases** holds the steps that exist only for a case worked on a real issue: repairing
+the Specs adoption left in one bounded round that changes Specs and never code, and grading the
+merged change with the case's own tests in a throwaway worktree, the way SWE-bench grades it. A
+case's project is a test project prepared here at the case's base commit.
 
 <a id="contains-dogfood"></a>
 
