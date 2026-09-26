@@ -104,3 +104,13 @@ Modules' code and writes their own documents, so that a project whose code came 
 specification can describe what exists. It records behaviour as it is and reports every doubtful
 intent as an open question instead of writing it as a promise. Specifications need no change; a
 harness that does not offer the new task type loses nothing it had.
+
+## Version 13.2
+
+Version 13.2 adds the read set `ProjectImplementation`, every file any Module binds and all external
+material any Module includes, and assigns it at `read` to the task types that read code:
+`implement`, `test`, `review-code` and `code-to-spec`. A task that changes one Module's code can now
+read and run the code it uses and the code that uses it, as running a package needs, while what it
+may change stays within its bound Modules' scopes. The impact of writing a file now also concerns
+every Module that uses the file's binders, directly or through further `uses`, since their code
+runs against it. Specifications need no change.

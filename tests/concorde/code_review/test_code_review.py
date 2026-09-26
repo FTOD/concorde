@@ -128,22 +128,30 @@ class CodeReviewTests(unittest.TestCase):
 
     @verifies("scenario.code-review.foreign-path")
     def test_a_changed_file_outside_the_grant_is_named_only(self):
+        # Another Module's code is readable to a code review, so its change is shown in full;
+        # only a file no Module binds stays a name.
         (self.worktree / "src/bmod/secret.py").write_text("SECRET = 2\n")
         (self.worktree / "src/a/extra.py").write_text("EXTRA = 1\n")
+        (self.worktree / "tools").mkdir()
+        (self.worktree / "tools/helper.py").write_text("HELPER = 3\n")
         out = finding(
             1,
             kind="out-of-scope",
-            locations=["src/bmod/secret.py"],
+            locations=["tools/helper.py"],
             severity="advisory",
         )
         _, envelope = self.review([out])
         self.assertEqual("ok", envelope["status"], envelope)
         report = envelope["output"]
-        self.assertEqual(["src/a/calc.py", "src/a/extra.py"], report["reviewed_paths"])
-        self.assertEqual(["src/bmod/secret.py"], report["named_only_paths"])
+        self.assertEqual(
+            ["src/a/calc.py", "src/a/extra.py", "src/bmod/secret.py"],
+            report["reviewed_paths"],
+        )
+        self.assertEqual(["tools/helper.py"], report["named_only_paths"])
         _, prompt, _ = self.worker(envelope)
-        self.assertIn(f"{self.worktree}/src/bmod/secret.py", prompt)
-        self.assertNotIn("SECRET = 2", prompt)
+        self.assertIn(f"{self.worktree}/tools/helper.py", prompt)
+        self.assertNotIn("HELPER = 3", prompt)
+        self.assertIn("+SECRET = 2", prompt)
         self.assertIn("+EXTRA = 1", prompt)
 
     @verifies("scenario.code-review.failing-check")

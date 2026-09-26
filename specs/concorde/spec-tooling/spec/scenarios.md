@@ -452,6 +452,13 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - THEN each lists `src/a/` as `ro` and A's Spec context as `ro`
 - BUT neither lists any path as `rw`
 
+### scenario.spec.grant-project-implementation — Code phases read the whole project's code
+
+- GIVEN Module A that binds `src/a/` and Module B that binds `src/bmod/`
+- WHEN a grant is computed for A with task type `implement`, `test`, `review-code` or `code-to-spec`
+- THEN `src/bmod/b.py` is readable, as part of ProjectImplementation, and not writable
+- BUT a grant for A with `understand`, `specify` or `review-spec` gives no access to `src/bmod/b.py` and no read access to A's own code
+
 ### scenario.spec.grant-code-to-spec — Describing code reads it and writes the Spec
 
 - GIVEN Module A with a realization binding `src/a/`

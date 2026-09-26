@@ -35,7 +35,7 @@ class ExternalEntry:
 
 @dataclass(frozen=True)
 class BoundarySets:
-    """The five boundary sets of one Module."""
+    """The boundary sets of one Module."""
 
     module: str
     spec_context: tuple[str, ...]
@@ -43,6 +43,9 @@ class BoundarySets:
     implementation_context: tuple[str, ...]
     spec_scope: tuple[str, ...]
     implementation_scope: tuple[str, ...]
+    # The whole project's implementation, the same for every Module: every realization entry and
+    # every piece of external material, so that a code task can read and run the code it uses.
+    project_implementation: tuple[str, ...] = ()
 
     def writable(self, path: str) -> bool:
         """Whether a path lies in one of the two write sets."""

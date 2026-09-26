@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol **13.1.0** describes a project as a set of Modules, each explaining one
+Concorde Spec Protocol **13.2.0** describes a project as a set of Modules, each explaining one
 responsibility, connected by declared relations. It serves two purposes:
 
 1. **Understanding** — a human grasps the backbone of the project, its parts and main flows,

@@ -162,6 +162,19 @@ class GrantTests(unittest.TestCase):
                 self.assertNotIn("rw", levels.values())
                 self.assertNotIn("src/a/one.py", levels)
 
+    @verifies("scenario.spec.grant-project-implementation")
+    def test_code_phases_read_the_whole_project_implementation(self):
+        for task_type in ("implement", "test", "review-code", "code-to-spec"):
+            with self.subTest(task_type=task_type):
+                levels = self.levels(self.grant(["module.a"], task_type))
+                # Another Module's code is read and run, never written.
+                self.assertEqual("ro", levels["src/bmod/b.py"])
+        for task_type in ("understand", "specify", "review-spec"):
+            with self.subTest(task_type=task_type):
+                levels = self.levels(self.grant(["module.a"], task_type))
+                self.assertNotIn("src/bmod/b.py", levels)
+                self.assertNotEqual("ro", levels.get("src/a/"))
+
     @verifies("scenario.spec.grant-code-to-spec")
     def test_code_to_spec_reads_the_realization_and_writes_the_spec(self):
         levels = self.levels(self.grant(["module.a"], "code-to-spec"))

@@ -92,6 +92,7 @@ Module actually relies on; `CHK.relies-on.linked` catches every one the explanat
 ```text
 ImplementationContext(M) = ⋃ { entries of M's realizations }
 ImplementationContext(scenario S) = ImplementationContext(owner(S))
+ProjectImplementation = ⋃ { ImplementationContext(M) ∪ ExternalContext(M) : every Module M }
 ```
 
 Exact entries and files below directory prefixes resolve under an explicit deterministic exclusion

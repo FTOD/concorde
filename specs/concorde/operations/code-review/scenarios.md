@@ -27,11 +27,12 @@ in the [contracts](contracts.md).
 - WHEN the reviewer cannot judge whether the behaviour is correct
 - THEN the report holds a finding of kind Spec gap naming the Spec passage that would have to settle it
 
-### scenario.code-review.foreign-path — A changed file outside the grant is named only
+### scenario.code-review.foreign-path — A changed file no Module binds is named only
 
-- GIVEN a task diff that also changes a file no bound Module binds
+- GIVEN a task diff that also changes a file of another Module and a file no Module binds
 - WHEN the host prepares the diff for the reviewer
-- THEN the reviewer receives that file's path without its contents
+- THEN the reviewer receives the other Module's change in full, since code reviews read the whole project's implementation
+- AND it receives the file no Module binds by its path only, without its contents
 - AND the reviewer may report the change as a finding of kind out of scope
 
 ### scenario.code-review.failing-check — A failing check is reviewed, not fatal

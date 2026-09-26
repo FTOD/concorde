@@ -22,8 +22,10 @@ checkout get the same answer.
 | `ImplementationContext(M)` | the names of every file M's realizations bind | `binds` |
 | `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block | `owns` |
 | `ImplementationScope(M)` | every file covered by M's realization entries, including pending entries not yet created | `binds` |
+| `ProjectImplementation` | every file any Module's realizations bind and all external material any Module includes; the same for every Module | `binds`, `includes` of kind `external` |
 
-The first three are **read** sets, the last two are **write** sets. They are deliberately different:
+`SpecContext`, `ExternalContext`, `ImplementationContext` and `ProjectImplementation` are **read**
+sets, `SpecScope` and `ImplementationScope` are **write** sets. They are deliberately different:
 M may read a provider's documents because it `uses` the provider, but those documents stay in the
 provider's `SpecScope`, never in M's. Reading never widens what may be written.
 
@@ -71,7 +73,7 @@ them, so that a harness can widen the task's read boundary, schedule review, or 
 | a document D | every Module whose `SpecContext` contains D |
 | a requirement, scenario or concept | every Module whose `relies_on` lists it, and every document that imports, narrows or relates to it |
 | a contract | every Module that participates in it |
-| a file F | every Module whose `ImplementationScope` contains F |
+| a file F | every Module whose `ImplementationScope` contains F, and every Module that uses one of them, directly or through further `uses` |
 
 Two rules follow from the model:
 
@@ -104,8 +106,10 @@ A harness MUST keep every boundary within these limits:
    `ImplementationScope` of a Module the task is bound to.
 2. **Write implies read.** Anything writable is also readable.
 3. **Read only within read sets.** Specification contents come from the `SpecContext` of the bound
-   Modules, implementation contents only from their `ImplementationScope`, and external material
-   only from their `ExternalContext`. A provider's code is never read in place of its Specs.
+   Modules; implementation contents from their `ImplementationScope` or, for the task types that
+   assign it, from `ProjectImplementation`; external material from their `ExternalContext` or
+   `ProjectImplementation`. A provider's code may be read and run, never changed, and it never
+   replaces the provider's Specs as the statement of what the provider promises.
 4. **Task material adds no source.** A harness MAY supply material produced for the task, such as a
    plan, a brief or a diff since a baseline. It is not a Protocol source and widens no set.
 
@@ -114,15 +118,21 @@ A harness MUST keep every boundary within these limits:
 Every task has exactly one task type. The type assigns each boundary set of the bound Modules one
 access level:
 
-| Task type | `SpecContext` | `ImplementationContext` | `ImplementationScope` | `SpecScope` | `ExternalContext` |
-| --- | --- | --- | --- | --- | --- |
-| `understand` | read | names | none | none | read |
-| `specify` | read | names | none | write | read |
-| `implement` | read | names | write | none | read |
-| `test` | read | names | read | none | read |
-| `review-spec` | read | names | none | none | read |
-| `review-code` | read | names | read | none | read |
-| `code-to-spec` | read | names | read | write | read |
+| Task type | `SpecContext` | `ImplementationContext` | `ImplementationScope` | `SpecScope` | `ExternalContext` | `ProjectImplementation` |
+| --- | --- | --- | --- | --- | --- | --- |
+| `understand` | read | names | none | none | read | none |
+| `specify` | read | names | none | write | read | none |
+| `implement` | read | names | write | none | read | read |
+| `test` | read | names | read | none | read | read |
+| `review-spec` | read | names | none | none | read | none |
+| `review-code` | read | names | read | none | read | read |
+| `code-to-spec` | read | names | read | write | read | read |
+
+The task types that read code, `implement`, `test`, `review-code` and `code-to-spec`, read the
+whole `ProjectImplementation`: code is read and run together with the code it uses and the code
+that uses it, and a package can only be imported whole. What they may change stays within the
+bound Modules' scopes, so a Module's `uses` limits what a task changes, not what it reads. The task
+types that work on Specs alone never see code contents.
 
 - **`understand`** learns what a Module promises and how it is realized, without reading code:
   explaining, assessing, or planning a change. Planning is one use of understanding, not a task

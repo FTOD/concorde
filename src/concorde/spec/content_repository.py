@@ -1361,7 +1361,7 @@ class DocumentUnitRepository:
         return tuple(self._resolve(module).files)
 
     def boundary_sets(self, module: ModuleRef):
-        """The five boundary sets of one Module (see ``boundaries``)."""
+        """The boundary sets of one Module (see ``boundaries``)."""
         from .boundaries import BoundarySets
 
         target = self._resolve(module)
@@ -1372,7 +1372,19 @@ class DocumentUnitRepository:
             self.implementation_context(target),
             self.spec_scope(target),
             self.implementation_scope(target),
+            self.project_implementation(),
         )
+
+    def project_implementation(self) -> tuple[str, ...]:
+        """ProjectImplementation: every Module's realization entries and external material."""
+        paths: dict[str, None] = {}
+        for identity in sorted(self.modules):
+            target = self.modules[identity]
+            for entry in self.implementation_context(target):
+                paths[entry] = None
+            for external in self.external_context(target):
+                paths[external.path] = None
+        return tuple(paths)
 
     def missing_entries(self, module: ModuleRef) -> tuple[str, ...]:
         """Entries whose file or directory does not exist yet."""

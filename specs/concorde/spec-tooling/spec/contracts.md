@@ -13,7 +13,7 @@ Concorde fixes on top of it.
 {
   "profile_version": 17,
   "registry": ".concorde/specs.json",
-  "protocol": {"version": "13.1.0", "digest": "sha256:<64 hex digits>"},
+  "protocol": {"version": "13.2.0", "digest": "sha256:<64 hex digits>"},
   "checks": [
     {"id": "check.spec.model", "module": "module.spec",
      "argv": ["{python}", "-m", "pytest", "tests/concorde/spec"],
@@ -569,7 +569,7 @@ proposal fails with `stale_proposal`, and a validation error rolls every file ba
 ```json
 {
   "schema_version": 1,
-  "version": "13.1.0",
+  "version": "13.2.0",
   "source_profile": 15,
   "workspace_protocol": 16,
   "assets": [{"path": "generated/protocol/principles.md", "digest": "sha256:<64 hex digits>"}]

@@ -1,5 +1,9 @@
 """Task-type grants of Spec Protocol 13 (``protocol/boundaries.md``, task types).
 
+Code-phase task types read the whole project's implementation (``ProjectImplementation``): a
+worker runs the code it changes together with the code it uses, and a package is only importable
+whole. Only the bound Modules' own scopes are ever writable.
+
 A grant lists the paths a task of one task type, bound to one or more Modules, may know by name
 (``names``), read (``ro``) or change (``rw``); every other path is denied and omitted. It is
 computed from one worktree's declarations alone and carries the context identity of the bound
@@ -34,6 +38,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "ImplementationScope": None,
         "SpecScope": None,
         "ExternalContext": "ro",
+        "ProjectImplementation": None,
     },
     "specify": {
         "SpecContext": "ro",
@@ -41,6 +46,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "ImplementationScope": None,
         "SpecScope": "rw",
         "ExternalContext": "ro",
+        "ProjectImplementation": None,
     },
     "implement": {
         "SpecContext": "ro",
@@ -48,6 +54,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "ImplementationScope": "rw",
         "SpecScope": None,
         "ExternalContext": "ro",
+        "ProjectImplementation": "ro",
     },
     "test": {
         "SpecContext": "ro",
@@ -55,6 +62,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "ImplementationScope": "ro",
         "SpecScope": None,
         "ExternalContext": "ro",
+        "ProjectImplementation": "ro",
     },
     "review-spec": {
         "SpecContext": "ro",
@@ -62,6 +70,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "ImplementationScope": None,
         "SpecScope": None,
         "ExternalContext": "ro",
+        "ProjectImplementation": None,
     },
     "review-code": {
         "SpecContext": "ro",
@@ -69,6 +78,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "ImplementationScope": "ro",
         "SpecScope": None,
         "ExternalContext": "ro",
+        "ProjectImplementation": "ro",
     },
     "code-to-spec": {
         "SpecContext": "ro",
@@ -76,6 +86,7 @@ LEVELS: dict[str, dict[str, str | None]] = {
         "ImplementationScope": "ro",
         "SpecScope": "rw",
         "ExternalContext": "ro",
+        "ProjectImplementation": "ro",
     },
 }
 RANK = {"names": 1, "ro": 2, "rw": 3}
@@ -157,6 +168,7 @@ def _paths_of(repository, module: str) -> dict[str, tuple[str, ...]]:
         "ImplementationScope": sets.implementation_scope,
         "SpecScope": sets.spec_scope,
         "ExternalContext": tuple(entry.path for entry in sets.external_context),
+        "ProjectImplementation": sets.project_implementation,
     }
 
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "13.1.0",
+  "version": "13.2.0",
   "source_profile": 15,
   "workspace_protocol": 16,
   "assets": [
@@ -10,7 +10,7 @@
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:edb27830e436b21cebbeed702917c0d79952571111d37a1b7e47fe8d2f0bb8bb"
+      "digest": "sha256:947cbc202516f4896003442a1c0a5e3089e28d969220693be0fd692a1cf9c2b3"
     }
   ]
 }

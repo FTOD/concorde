@@ -14,7 +14,7 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "13.1.0"
+protocol: "13.2.0"
 model_version: 1
 
 context_channels:
@@ -364,6 +364,10 @@ boundary_sets:
     side: read
     derived_from: [binds]
     contents: names of every file the Module's realizations bind
+  - id: ProjectImplementation
+    side: read
+    derived_from: [binds, includes]
+    contents: every file any Module's realizations bind and all external material any Module includes
   - id: SpecScope
     side: write
     derived_from: [owns]
@@ -380,19 +384,19 @@ access_levels: [none, names, read, write]
 # several sets receives the highest level, in the order of access_levels.
 task_types:
   - id: understand
-    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: none, ExternalContext: read}
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: none, ExternalContext: read, ProjectImplementation: none}
   - id: specify
-    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: write, ExternalContext: read}
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: write, ExternalContext: read, ProjectImplementation: none}
   - id: implement
-    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: write, SpecScope: none, ExternalContext: read}
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: write, SpecScope: none, ExternalContext: read, ProjectImplementation: read}
   - id: test
-    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: none, ExternalContext: read}
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: none, ExternalContext: read, ProjectImplementation: read}
   - id: review-spec
-    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: none, ExternalContext: read}
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: none, SpecScope: none, ExternalContext: read, ProjectImplementation: none}
   - id: review-code
-    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: none, ExternalContext: read}
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: none, ExternalContext: read, ProjectImplementation: read}
   - id: code-to-spec
-    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: write, ExternalContext: read}
+    levels: {SpecContext: read, ImplementationContext: names, ImplementationScope: read, SpecScope: write, ExternalContext: read, ProjectImplementation: read}
 
 reconciliation:
   statement: >

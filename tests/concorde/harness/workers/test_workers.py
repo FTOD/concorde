@@ -175,7 +175,11 @@ class SettingsTests(unittest.TestCase):
     def test_withheld_and_names_files_are_denied_for_read(self):
         rules = self.rules()
         root = self.project.root.as_posix()
-        self.assertIn(f"Read(/{root}/src/bmod/**)", rules)
+        # Another Module's code is readable and runnable, never writable.
+        self.assertFalse(
+            any(rule.startswith(f"Read(/{root}/src/bmod") for rule in rules)
+        )
+        self.assertIn(f"Edit(/{root}/src/bmod/secret.py)", rules)
         self.assertIn(f"Read(/{root}/checks/**)", rules)
         self.assertIn(f"Read(/{root}/.git/**)", rules)
         self.assertNotIn(f"Read(/{root}/src/a/calc.py)", rules)
