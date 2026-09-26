@@ -20,7 +20,8 @@ structural error stops your run. The rules workers most often break:
   contains `SHALL` or `SHALL NOT` exactly once; further paragraphs may explain it. Two
   obligations are two requirements.
 - **A scenario** is a heading `### scenario.<local>.<name> — Title` followed by list items that
-  each start with `GIVEN`, `WHEN`, `THEN`, `AND` or `BUT` and a space. It starts with `GIVEN` or
+  each start with `GIVEN`, `WHEN`, `THEN`, `AND` or `BUT` and a space, never a comma (`AND, once
+  …` is not a step: write `AND once …`). It starts with `GIVEN` or
   `WHEN`, has at least one `WHEN` and one `THEN`, and never returns to an earlier kind.
 - **A contract** is one `concorde-contract` JSON fence with exactly `id`, `version` (a positive
   integer), `schema`, `semantics` and `example`, where the example satisfies the schema. The
@@ -44,5 +45,10 @@ structural error stops your run. The rules workers most often break:
   Terminology, Usage, Design and Relationships, each exactly once.
 - **Diagrams** are `d2` blocks. A plain `d2` block may only nest and connect Modules, concepts and
   realizations that are declared; when in doubt, mark it `d2 illustrative`. Mermaid is an error.
+  A plain block never uses a D2 keyword, not even as a shape key such as `link: Source link`: its
+  D2 keywords are `label`, `shape`, `style`, `class`, `classes`, `direction`, `near`, `icon`,
+  `tooltip`, `link`, `width`, `height`, `top`, `left`, `constraint`, `vars`, `layers`,
+  `scenarios`, `steps`, `grid-rows`, `grid-columns`, `grid-gap`, `vertical-gap`,
+  `horizontal-gap`, `source-arrowhead`, `target-arrowhead`, `filled`, `multiple` and `3d`.
 - **Every `uses`** in the `module` block has a `meaning` anchor in the entry resolving to prose that
   explains the collaboration.

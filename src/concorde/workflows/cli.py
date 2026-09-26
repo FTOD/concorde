@@ -138,7 +138,22 @@ def main(argv, cwd: Path | None = None) -> int:
             return usage("a report needs --task, or --stdin with a JSON request")
         try:
             result = report(primary, task, lost)
-        except store.TaskError as error:
+        except Exception as error:
+            if isinstance(error, store.TaskError):
+                raise
+            link = errors.link(
+                "component",
+                "Workflows (concorde workflow report)",
+                "report_failed",
+                f"the report of task {task} could not be built: "
+                f"{errors.exception_detail(error)}",
+                reason="capability",
+                explanation="a report that cannot be built says why instead of ending in a "
+                "traceback, so that the workflow's error chain stays complete",
+                options=["repair the cause and run the report again"],
+            )
+            sys.stdout.write(json.dumps({"error": link}, indent=2) + "\n")
+            return 1
             link = errors.link(
                 "component",
                 "Workflows (concorde workflow report)",

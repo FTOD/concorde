@@ -115,8 +115,21 @@ def link_file(path: Path, relative: str, links: list[tuple[str, str]]):
     for index in sorted(inserts, reverse=True):
         lines[index:index] = inserts[index]
     if not _defines_verifies(tree):
+        # Two blank lines around the helper and no more, as PEP 8 and the project's own
+        # formatter expect: the blank lines already there are taken, not added to.
         at = _helper_line(tree)
-        lines[at:at] = ["\n\n" if at else "", HELPER, "\n\n"]
+        head, rest = lines[:at], lines[at:]
+        while head and not head[-1].strip():
+            head.pop()
+        while rest and not rest[0].strip():
+            rest.pop(0)
+        lines = (
+            head
+            + (["\n", "\n"] if head else [])
+            + [HELPER]
+            + (["\n", "\n"] if rest else [])
+            + rest
+        )
     changed = "".join(lines)
     try:
         ast.parse(changed, filename=relative)

@@ -88,6 +88,9 @@ class LinkFileTests(unittest.TestCase):
                 for item in scan_declarations(self.root, ["tests/test_calc.py"])
             },
         )
+        self.assertNotIn("\n\n\n\n", changed)
+        self.assertIn("import pytest\n\n\ndef verifies(", changed)
+        self.assertIn("return lambda test: test\n\n\nclass TestAdd:", changed)
         # Linking again adds nothing.
         link_file(
             self.path,

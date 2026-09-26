@@ -34,11 +34,11 @@ MODULE_ID = {
 S = {"type": "string", "minLength": 1}
 
 
-def obj(properties: dict) -> dict:
+def obj(properties: dict, required=None) -> dict:
     return {
         "type": "object",
         "additionalProperties": False,
-        "required": list(properties),
+        "required": list(properties if required is None else required),
         "properties": properties,
     }
 
@@ -53,7 +53,7 @@ STEP_ROW = obj(
         "summary": {"anyOf": [S, {"type": "null"}]},
     }
 )
-# contract.workflows.result, version 1
+# contract.workflows.result, version 3
 RESULT_SCHEMA: dict = {
     "$defs": copy.deepcopy(errors.DEFS),
     **obj(
@@ -138,10 +138,21 @@ RESULT_SCHEMA: dict = {
                         },
                         "module": MODULE_ID,
                         "argv": {"type": "array", "minItems": 1, "items": S},
+                        "env": {"type": "object", "additionalProperties": S},
                         "timeout_seconds": {"type": "integer", "minimum": 1},
                         "inputs": {"type": "array", "items": S},
                         "reason": S,
-                    }
+                    },
+                    required=[
+                        "step",
+                        "run_id",
+                        "id",
+                        "module",
+                        "argv",
+                        "timeout_seconds",
+                        "inputs",
+                        "reason",
+                    ],
                 ),
             },
             "pending": {

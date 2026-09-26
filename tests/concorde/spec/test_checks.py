@@ -11,6 +11,7 @@ from pathlib import Path
 from concorde.spec.registry import registry_command
 from concorde.spec.repository import SpecError
 from concorde.spec.schema import KEYWORDS
+from concorde.spec.syntax import D2_KEYWORDS
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import (
@@ -1335,6 +1336,12 @@ class SchemaKeywordListTests(unittest.TestCase):
         ):
             with self.subTest(path=path):
                 self.assertEqual(set(KEYWORDS), self.listed(path, marker))
+
+    def test_the_worker_prompt_lists_the_d2_keywords_the_views_check_refuses(self):
+        self.assertEqual(
+            set(D2_KEYWORDS),
+            self.listed("prompts/workers/common/spec-format.md", "its D2 keywords are"),
+        )
 
 
 if __name__ == "__main__":

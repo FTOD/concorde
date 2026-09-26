@@ -627,6 +627,24 @@ class ReportTests(unittest.TestCase):
         self.assertEqual("running", result["status"])
         self.assertEqual("step_running", result["error"]["code"])
 
+    def test_a_report_that_cannot_be_built_answers_with_an_error_link(self):
+        import contextlib
+        import io
+
+        from concorde.workflows import cli as workflow_cli
+
+        output = io.StringIO()
+        with (
+            patch.object(workflow_cli, "report", side_effect=RuntimeError("boom")),
+            patch.object(workflow_cli.store, "primary_of", return_value=self.primary),
+            contextlib.redirect_stdout(output),
+        ):
+            status = workflow_cli.main(["report", "--task", "adopt"])
+        self.assertEqual(1, status)
+        link = json.loads(output.getvalue())["error"]
+        self.assertEqual("report_failed", link["code"])
+        self.assertIn("boom", link["detail"])
+
 
 class ScriptTests(unittest.TestCase):
     """The rendered scripts, run under stand-ins for Claude Code's and pi's workflow runtimes."""
