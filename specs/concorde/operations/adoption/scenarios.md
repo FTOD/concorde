@@ -36,7 +36,8 @@ shapes are in the [contracts](contracts.md).
 - WHEN the survey ends and the scaffold applies its proposal
 - THEN `src/db.py` is among no Module's entries and `module.checkout` includes it as external material with the worker's reason
 - AND the project validates without errors
-- BUT a vendored path that overlaps a child's entries fails the survey with `inconsistent_proposal`
+- AND a vendored path inside a child's directory entry, such as `src/checkout/payment.py` inside `src/checkout/`, leaves that child binding the rest of the directory, `src/checkout/api.py`
+- BUT a vendored path that a child would bind itself, or part of it, fails the survey with `inconsistent_proposal`
 
 ### scenario.adoption.survey-checks — Proposed checks take the configuration's form
 

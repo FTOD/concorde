@@ -628,11 +628,42 @@ class AdoptionTests(unittest.TestCase):
         # Vendored code is never also a child's entry.
         overlapping = json.loads(json.dumps(PROPOSAL))
         overlapping["externals"] = [
-            {"path": "src/checkout/api.py", "used_by": "module.checkout", "reason": "r"}
+            {"path": "src/checkout/", "used_by": "module.checkout", "reason": "r"}
         ]
         _, envelope = self.survey(overlapping)
         self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
         self.assertIn("overlaps a child's entries", envelope["error"]["detail"])
+
+    @verifies("scenario.adoption.vendored-external")
+    def test_vendored_code_inside_a_child_narrows_that_child(self):
+        worktree = self.open()
+        vendored = json.loads(json.dumps(PROPOSAL))
+        vendored["externals"] = [
+            {
+                "path": "src/checkout/payment.py",
+                "used_by": "module.checkout",
+                "reason": "a copied payment client",
+            }
+        ]
+        status, survey = self.survey(vendored)
+        self.assertEqual(0, status, survey)
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        checkout = json.loads(
+            (worktree / "specs/project/checkout/module.md.json").read_text()
+        )
+        (code,) = [r for r in checkout["defines"] if r["type"] == "realization"]
+        self.assertEqual(["src/checkout/api.py"], code["entries"])
+        self.assertEqual(
+            ["src/checkout/payment.py"],
+            [item["target"] for item in checkout["module"]["includes"]],
+        )
+        report = validate_repository(worktree)
+        self.assertEqual(
+            [], [f.message for f in report.findings if f.severity == "error"]
+        )
 
     @verifies("scenario.adoption.scaffold-stale")
     def test_a_stale_proposal_writes_nothing(self):

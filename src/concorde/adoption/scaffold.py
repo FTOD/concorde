@@ -331,8 +331,25 @@ def plan(ctx: RunContext):
     repository = ctx.state["repository"]
     module = proposal["module"]
     parent = repository.modules[module]
-    children = proposal["children"]
     externals = list(proposal.get("externals") or [])
+    # A child whose directory holds vendored code binds everything in it but that code.
+    children = [
+        {
+            **child,
+            "entries": sorted(
+                {
+                    entry
+                    for items in narrowed_entries(
+                        ctx.worktree,
+                        child["entries"],
+                        [item["path"] for item in externals],
+                    ).values()
+                    for entry in items
+                }
+            ),
+        }
+        for child in proposal["children"]
+    ]
     root = ctx.worktree
     titles = {identity: item.title for identity, item in repository.modules.items()}
     titles.update({child["id"]: child["title"] for child in children})

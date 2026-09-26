@@ -429,10 +429,12 @@ def proposal_problems(
             problems.append(
                 f"external {path} is not an existing path that {module}'s realizations bind"
             )
+        # Vendored code inside a child's directory narrows that child; a child that would
+        # bind the vendored code itself, or part of it, is a problem.
         if [
             entry
             for entry in child_entries
-            if covers(entry, path.rstrip("/")) or covers(path, entry.rstrip("/"))
+            if entry == path or covers(path, entry.rstrip("/"))
         ]:
             problems.append(
                 f"external {path} overlaps a child's entries; vendored code is read, never "
