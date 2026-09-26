@@ -33,13 +33,13 @@ from .records import (
     proposal_problems,
 )
 
-# The sentence initialization writes into a root stub's Relationships section, which stops being
-# true once the root contains children.
-INIT_RELATIONSHIPS = (
+# The sentence initialization writes into a root stub's Design section, which stops being true
+# once the root contains children.
+INIT_PARTS = (
     "The project's parts and their collaborations are not specified yet. This Module contains,\n"
     "uses and includes nothing, and no requirement or scenario has been written.\n"
 )
-SCAFFOLDED_RELATIONSHIPS = (
+SCAFFOLDED_PARTS = (
     "The parts below were proposed by a survey of the code; their collaborations are not\n"
     "specified yet, and no requirement or scenario has been written.\n"
 )
@@ -196,7 +196,6 @@ def child_reading(child: dict, titles: dict[str, str]) -> str:
         f'<a id="realization.{local(identity)}.code"></a>\n\n'
         f"The files a survey of the code assigned to {title} are bound to it as its code. Binding\n"
         "them describes nothing yet about what they do.\n\n"
-        "## Relationships\n\n"
         + (
             uses
             if uses
@@ -249,30 +248,21 @@ def child_metadata(child: dict, entry: str, externals: list[dict] = ()) -> dict:
 
 
 def parent_reading(text: str, children: list[dict]) -> str:
-    """The parent entry with one explaining paragraph per child at the end of Relationships."""
+    """The parent entry with one explaining paragraph per child at the end of Design."""
     paragraphs = "".join(
         f'<a id="contains-{anchor(child["id"])}"></a>\n\n'
         f"**{child['title']}**, proposed by a survey of the code: "
         f"{' '.join(child['purpose'].split())}\n\n"
         for child in children
     )
-    text = text.replace(INIT_RELATIONSHIPS, SCAFFOLDED_RELATIONSHIPS, 1)
+    text = text.replace(INIT_PARTS, SCAFFOLDED_PARTS, 1)
     lines = text.splitlines(keepends=True)
     start = next(
-        (
-            index
-            for index, line in enumerate(lines)
-            if line.strip() == "## Relationships"
-        ),
+        (index for index, line in enumerate(lines) if line.strip() == "## Design"),
         None,
     )
     if start is None:
-        return (
-            text.rstrip("\n")
-            + "\n\n## Relationships\n\n"
-            + paragraphs.rstrip("\n")
-            + "\n"
-        )
+        return text.rstrip("\n") + "\n\n## Design\n\n" + paragraphs.rstrip("\n") + "\n"
     end = next(
         (
             index

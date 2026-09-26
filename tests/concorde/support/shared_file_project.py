@@ -1,4 +1,4 @@
-"""A three-Module Protocol 13 project in which Modules A and B both bind ``source/shared.py``."""
+"""A three-Module Protocol 14 project in which Modules A and B both bind ``source/shared.py``."""
 
 from __future__ import annotations
 

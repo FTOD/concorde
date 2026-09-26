@@ -1,4 +1,4 @@
-"""Initialize a project with a Protocol 13 registry and an honest root Module stub."""
+"""Initialize a project with a Protocol 14 registry and an honest root Module stub."""
 
 from __future__ import annotations
 
@@ -243,11 +243,10 @@ def initial_module_text(
         "errors and repeat behaviour are unknown. Do not infer them from existing code.\n\n"
         "## Design\n\n"
         "The project's decomposition, state, control flow and design reasons are not specified yet.\n\n"
-        + realization
-        + "## Relationships\n\n"
         "The project's parts and their collaborations are not specified yet. This Module contains,\n"
-        "uses and includes nothing, and no requirement or scenario has been written.\n"
-    )
+        "uses and includes nothing, and no requirement or scenario has been written.\n\n"
+        + realization
+    ).rstrip("\n") + "\n"
 
 
 # Where a project's own environment usually is; the first that exists becomes `python`.
@@ -416,7 +415,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         }
     except (KeyError, TypeError) as error:
         raise SpecError(
-            f"the proposed registry is not a Protocol 13 registry: missing or malformed "
+            f"the proposed registry is not a Protocol 14 registry: missing or malformed "
             f"{error}",
             "invalid_proposal",
             "/proposal/files",

@@ -171,10 +171,11 @@ For your own project, [scaffold a docsite](docsite/README.md#scaffold-a-docsite)
 
 ## The Spec Protocol in brief
 
-Concorde's independent **[Spec Protocol 13.2.0](protocol/README.md)** has two purposes: a human
+Concorde's independent **[Spec Protocol 14.0.0](protocol/README.md)** has two purposes: a human
 understands a project's backbone from its Specs without reading code, and a harness derives from
-the Specs exactly what each AI task may read and write. A Module's entry answers five questions in
-order — **Purpose**, **Terminology**, **Usage**, **Design**, **Relationships** — and every node and
+the Specs exactly what each AI task may read and write. A Module's entry answers four questions in
+order — **Purpose**, **Terminology**, **Usage** and **Design**, where Design shows how the Module
+is built inside and how it works with the Modules around it — and every node and
 relation is declared exactly once. A Module's context is computed from its own declarations, one
 level deep, and its write sets are its own documents and the files its realizations bind. The
 Protocol also defines the six **task types** and the access level each assigns to every boundary

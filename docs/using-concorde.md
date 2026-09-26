@@ -151,13 +151,14 @@ Keep the proposal file outside the project. Applying it writes:
 - `specs/project/module.md` with its metadata `module.md.json`, the root Module `module.project`.
 
 The first Spec is deliberately honest and small. From here you describe your project as Modules.
-Every Module's entry document `module.md` answers five questions in order:
+Every Module's entry document `module.md` answers four questions in order:
 
 1. **Purpose** — what the Module is for, in plain prose.
 2. **Terminology** — the words it defines and the ones it imports.
 3. **Usage** — how it is used and how it must react.
-4. **Design** — how it is built, including the files that realize it.
-5. **Relationships** — which Modules it contains and uses, drawn as a `d2` diagram.
+4. **Design** — how it is built and why: inside, its children and the files that realize it;
+   outside, how it works with the Modules it uses and those that use it, drawn in as many `d2`
+   diagrams as help.
 
 Precise requirements, scenarios and contracts go into the Module's implementation documents. The
 [Protocol overview](https://ftod.github.io/concorde/protocol) and its

@@ -274,7 +274,7 @@ it("rejects invalid roles, a non-module entry and definitions outside implementa
 });
 
 // verifies: scenario.views.reject-reading-collection
-it("requires the five entry sections exactly once, in any order", () => {
+it("requires the four entry sections exactly once, in any order, and no Relationships section", () => {
   const path = "specs/ledger/module.md";
   const original = read(project, path);
   for (const invalid of [
@@ -283,14 +283,18 @@ it("requires the five entry sections exactly once, in any order", () => {
     original + "\n## Design\n\nAgain.\n",
   ]) {
     put(project, path, invalid);
-    expect(load).toThrow(/Purpose, Terminology, Usage, Design, Relationships/);
+    expect(load).toThrow(
+      /Purpose, Terminology, Usage, Design, each exactly once/,
+    );
   }
+  put(project, path, original + "\n## Relationships\n\nThe parts.\n");
+  expect(load).toThrow(/relationships belong in its Design/);
   put(
     project,
     path,
     original.replace(
-      /## Usage([\s\S]*)## Design([\s\S]*)## Relationships/,
-      "## Design$2## Usage$1## Relationships",
+      /## Usage([\s\S]*)## Design([\s\S]*)$/,
+      "## Design$2## Usage$1",
     ),
   );
   expect(load).not.toThrow();

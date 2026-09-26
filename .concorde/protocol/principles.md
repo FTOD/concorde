@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 13.3.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 14.0.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -1255,13 +1255,13 @@ Purpose
 Terminology
 Usage
 Design
-Relationships
 ```
 
-It MAY have further level-2 sections, for example one that shows how the Module is built. A level-1
-title and brief navigation may precede the first of them. Purpose is nonempty plain prose: no lists,
-tables, nested headings or fences. Usage, Design and Relationships contain explanatory prose, not
-only links, headings or diagrams. Honest unknowns are stated explicitly.
+It MAY have further level-2 sections, but none titled `Relationships`: how the Module relates to its
+children and to other Modules is part of Design. A level-1 title and brief navigation may precede
+the first of them. Purpose is nonempty plain prose: no lists, tables, nested headings or fences.
+Usage and Design contain explanatory prose, not only links, headings or diagrams. Honest unknowns
+are stated explicitly.
 
 A `module`-role topic begins with a short orienting introduction. When the topic defines or imports
 a concept, its first level-2 section is `## Terminology`. In the entry, Terminology may hold only
@@ -1411,9 +1411,9 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.document.role` | `role` is exactly `module` or `implementation`, explicitly declared. | error |
 | `CHK.document.schema` | Metadata is `schema_version` 3 with the required fields and no unknown keys outside `extensions`. | error |
 | `CHK.document.entry` | Each Module owns exactly one `module`-role document whose reading path ends in `module.md`; its metadata, and no other, has the `module` block, whose `owns` includes the entry. | error |
-| `CHK.document.sections` | An entry has the level-2 sections Purpose, Terminology, Usage, Design and Relationships, each exactly once, in any order. | error |
+| `CHK.document.sections` | An entry has the level-2 sections Purpose, Terminology, Usage and Design, each exactly once, in any order, and no level-2 section `Relationships`. | error |
 | `CHK.document.topic-terminology` | A `module`-role topic that defines or imports a concept has `## Terminology` as its first level-2 section. | error |
-| `CHK.document.prose` | Purpose is plain prose; Usage, Design and Relationships are not only links, headings or diagrams. | error |
+| `CHK.document.prose` | Purpose is plain prose; Usage and Design are not only links, headings or diagrams. | error |
 | `CHK.terminology.rows` | A Terminology section has at most one table, with columns `Term` and `Definition`, whose rows correspond one to one with the concepts the document defines and imports. | error |
 | `CHK.terminology.import-row` | An import row links to a concept anchor of another document by identity, and its `Definition` cell is empty. | error |
 
@@ -1581,11 +1581,15 @@ Any other nesting is an error. Containment is drawn only by nesting, never by an
 - A file shape has no edges; it asserts only its binding.
 
 A checked diagram need not show every declared relation; like a derived view, its omissions are
-scope decisions. The `Relationships` section of an entry SHOULD contain a checked diagram of the
-principal collaboration, and a Module that binds files SHOULD draw the realizations that carry its
-function with the files they bind, so a reader sees how the Module is built. Realizations that only
-keep the repository running, such as project configuration, development tooling or test suites,
-are left to prose: a diagram shows architecture, not an inventory of files.
+scope decisions. An entry's Design draws its structure in as many diagrams as it needs, each
+answering one question: typically the inside, where a Module that binds files draws the
+realizations that carry its function with the files they bind, and the outside, where the Module
+stands among the Modules it uses and those that use it. An edge may join any two shapes whose
+relation is declared, whichever Module declares it, so the outside view may draw a consumer's
+`uses` of this Module or a `relates` from one of its realizations to another Module. Realizations
+that only keep the repository running, such as project configuration, development tooling or test
+suites, are left to prose: a diagram shows architecture, not an inventory of files. See
+[Module specifications](module.md#diagrams).
 
 ````markdown
 ```d2

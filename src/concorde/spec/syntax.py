@@ -1,4 +1,4 @@
-"""Protocol 13 reading syntax: anchors, sections, Terminology tables, definitions and diagrams.
+"""Protocol 14 reading syntax: anchors, sections, Terminology tables, definitions and diagrams.
 
 Every parser here reads one reading document's text and returns what it declares together with
 the problems it found, each tagged with the identity of the check it violates. Nothing here reads
@@ -15,7 +15,9 @@ from dataclasses import dataclass, field
 from .errors import SpecError
 from .repository_base import HEADING, IDENTITY, walk_lines
 
-READING_SECTIONS = ("Purpose", "Terminology", "Usage", "Design", "Relationships")
+READING_SECTIONS = ("Purpose", "Terminology", "Usage", "Design")
+# A level-2 section an entry must not have: how a Module relates to others is part of its Design.
+FORBIDDEN_SECTIONS = ("Relationships",)
 HEADING_ANCHOR = re.compile(r"[ \t]+\{#([^{}\s]+)\}[ \t]*$")
 HTML_ANCHOR_LINE = re.compile(r'^[ \t]*(?:<a id="[^"]*"></a>[ \t]*)+$')
 HTML_ANCHOR = re.compile(r'<a id="([^"]*)"></a>')
@@ -769,15 +771,26 @@ def entry_section_problems(text: str) -> list[Problem]:
         name: sum(heading.text == name for heading in top) for name in READING_SECTIONS
     }
     wrong = [f"{name} ({count} times)" for name, count in counts.items() if count != 1]
+    forbidden = [heading for heading in top if heading.text in FORBIDDEN_SECTIONS]
     if wrong:
         problems.append(
             Problem(
                 "CHK.document.sections",
-                "an entry has the level-2 sections Purpose, Terminology, Usage, Design and "
-                "Relationships, each exactly once in any order; found "
-                + ", ".join(wrong),
+                "an entry has the level-2 sections Purpose, Terminology, Usage and Design, "
+                "each exactly once in any order; found " + ", ".join(wrong),
             )
         )
+    for heading in forbidden:
+        problems.append(
+            Problem(
+                "CHK.document.sections",
+                f"an entry has no level-2 section {heading.text!r}: how the Module relates to "
+                "its children and to other Modules belongs in Design; move this section's "
+                "prose and diagrams there and delete the heading",
+                heading.line,
+            )
+        )
+    if wrong:
         return problems
     total = lines[-1][0] if lines else 0
     heading_lines = {heading.line for heading in found}

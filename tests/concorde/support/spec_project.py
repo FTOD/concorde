@@ -1,4 +1,4 @@
-"""Protocol 13 consumer fixture shared by the test suite."""
+"""Protocol 14 consumer fixture shared by the test suite."""
 
 import json
 import sys
@@ -240,7 +240,7 @@ def module_document(
     extra_owned=(),
     contracts="",
 ):
-    """A Protocol 13 Module entry and its obligations document.
+    """A Protocol 14 Module entry and its obligations document.
 
     ``nodes`` is ``(design prose, [node, ...])``; each node has ``id``, ``type`` (``concept`` or
     ``realization``), ``title``, ``meaning`` (explanatory prose), and ``definition`` (concepts) or
@@ -304,10 +304,9 @@ def module_document(
         f"# {title}\n\n## Purpose\n\n{purpose}\n\n## Terminology\n\n{terminology}\n\n"
         "## Usage\n\n"
         "Use the declared boundary for the cases below; rejected input has no implicit retry.\n\n"
-        f"## Design\n\n{design}\n\n"
-        + "".join(item + "\n\n" for item in prose)
-        + f"## Relationships\n\n{architecture}\n\n"
+        f"## Design\n\n{design}\n\n{architecture}\n\n"
         + (f"```d2\n{diagram}\n```\n\n" if diagram else "")
+        + "".join(item + "\n\n" for item in prose)
         + "".join(item + "\n\n" for item in collaborations)
     )
     precise = DocumentSource(
@@ -560,7 +559,7 @@ WORKSPACE = module_document(
 
 
 class SpecProject:
-    """A small Protocol 13 project written from DocumentSource values, for checks tests."""
+    """A small Protocol 14 project written from DocumentSource values, for checks tests."""
 
     def __init__(self, root: Path, checks=()):
         from concorde.distribution.project_defaults import write_protocol_copy

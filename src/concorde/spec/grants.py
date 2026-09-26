@@ -1,4 +1,4 @@
-"""Task-type grants of Spec Protocol 13 (``protocol/boundaries.md``, task types).
+"""Task-type grants of Spec Protocol 14 (``protocol/boundaries.md``, task types).
 
 Code-phase task types read the whole project's implementation (``ProjectImplementation``): a
 worker runs the code it changes together with the code it uses, and a package is only importable

@@ -170,7 +170,7 @@ the defaults; a call site gives more specific ones when it knows more.
 | `invalid_owner` | every Spec document is owned by exactly one Module (CHK.owns.unique) | list the document in the owns of one Module only |
 | `unsafe_path` | Spec tooling reads only canonical project-relative paths of regular files, never through a symbolic link or outside the project | use a canonical project-relative path to a regular file and remove the symbolic link |
 | `missing_source` | a file the Specs or the configuration require does not exist or cannot be read | create the file, restore it, or remove the reference to it |
-| `unsupported_profile` | this Spec tooling reads only the project profile and registry schema of Protocol 13 (schema_version 3) | migrate the configuration and registry to the current profile explicitly |
+| `unsupported_profile` | this Spec tooling reads only the project profile and registry schema of Protocol 14 (schema_version 3) | migrate the configuration and registry to the current profile explicitly |
 | `protocol_mismatch` | the project's Protocol binding must name exactly the Protocol copy installed under .concorde/protocol/, and that copy must be unchanged | reinstall Concorde, or accept the installed Protocol by updating the binding |
 | `not_installed` | initialization needs the Protocol copy that only the installer places | run the Concorde installer in this project first |
 | `already_initialized` | initialization creates the first Spec only; it never overwrites a configured project | change an initialized project's Specs through ordinary work instead |

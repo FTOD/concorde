@@ -1,4 +1,4 @@
-# Migration to Protocol 11, 12 and 13
+# Migration to Protocol 11, 12, 13 and 14
 
 Version 11 replaces Protocol 10's prose model with a declared one. Version-10 registries, metadata
 and reading structures are invalid and MUST be migrated explicitly. No tool may silently
@@ -122,3 +122,19 @@ record `.concorde/install.json`, to what no Module may write. They may still be 
 their exact paths (`CHK.binds.installed`), and a grant gives them at most read access. A
 specification that binds a directory holding installed files, such as `.claude/` or `.pi/`, lists
 its own files there exactly instead.
+
+## Version 14
+
+Version 14 folds an entry's Relationships section into its Design. An entry has four sections,
+Purpose, Terminology, Usage and Design, and no level-2 section titled `Relationships`
+(`CHK.document.sections`). A separate Relationships section repeated the design, and its one
+required picture was often drawn for its own sake. Design now holds the whole architecture: the
+inside, how the Module is built from its children and realizations, and the outside, how it works
+with the Modules it uses and those that use it. It may draw several diagrams, each answering one
+question, and draws none when there is nothing structural to show.
+
+To migrate, move the Relationships section's prose and diagrams into Design, next to the design
+reasons they belong to, and delete the heading. The `meaning` anchors of `contains` and `uses` keep
+their identities and move with their explanations. Replace a diagram that only lists children
+without edges by one that shows the edges that matter, or by prose. Metadata, relations and checked
+diagram syntax do not change.

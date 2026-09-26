@@ -1,4 +1,4 @@
-"""Protocol 13 document metadata (schema 3): closed shapes of every declaration record.
+"""Protocol 14 document metadata (schema 3): closed shapes of every declaration record.
 
 A registered reading document and its ``.md.json`` companion are one document. This module checks
 the companion's shape and returns every problem it finds, attributed to a check identity; the
