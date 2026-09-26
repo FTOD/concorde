@@ -95,7 +95,7 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 
 - GIVEN a reviewer that reports one blocking finding for Module A and a challenger that objects to it
 - AND both keep objecting on every later turn
-- WHEN the main agent runs `spec_debate` for Module A with `--rounds 2`
+- WHEN the main agent runs `spec_debate` for Module A with `--challenges 2`
 - THEN the debate ends after two challenge turns and the reviewer's second answer
 - AND the finding is `contested`, with the reviewer's finding and the challenger's "does not hold" as the two positions and every objection in its history
 - AND A's outcome and the verdict are `undecided`

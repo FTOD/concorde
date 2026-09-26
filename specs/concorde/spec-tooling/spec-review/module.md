@@ -17,10 +17,10 @@ reaches the developer is either agreed by two workers or an explicit disagreemen
 | --- | --- |
 | Spec review | One run of the `spec_review` Operation, which judges the Specs of the named Modules of one task worktree and returns findings and a verdict. |
 | Review finding | One problem a reviewer establishes in a reviewed Module's documents, with its location, dimension, severity, evidence and a suggested repair. |
-| Review verdict | The outcome of a Spec review, derived by the host from the findings: `accepted`, `changes_required` or `incomplete`. |
+| Review verdict | The outcome of a Spec review or a Spec debate, derived by the host from the findings: `accepted`, `changes_required` or `incomplete`, and for a debate also `undecided`. |
 | Review memory | The findings the Spec reviews of one Module have kept, open or resolved, each under a stable id, tracked with the project so that a repeated review builds on them. |
 | Spec debate | One run of the `spec_debate` Operation, in which a reviewer and a challenger take turns on the Specs of each named Module and the host settles each finding by their stances. |
-| Debate item | One finding under debate, proposed by one debater, with each debater's position on it and the history of their stances; it ends agreed, withdrawn or contested. |
+| Debate item | One finding under debate, proposed by one debater, with each debater's position on it and the history of their stances; it ends agreed, withdrawn or contested, or stays open when its Module's debate stopped. |
 | [Operation](../../operations/module.md#concept.operations.operation) | |
 | [Operation host](../../operations/module.md#concept.operations.host) | |
 | [Operation result](../../operations/module.md#concept.operations.result) | |
@@ -100,7 +100,7 @@ A **Spec debate** is for a review whose findings the main agent wants tested bef
 them. It is a pilot beside `spec_review`, run the same way:
 
 ```text
-concorde run spec_debate [--task <task-id>] --modules module.checkout [--rounds 2]
+concorde run spec_debate [--task <task-id>] --modules module.checkout [--challenges 2]
 ```
 
 A reviewer reviews the Module as in a Spec review. A challenger, a second worker on the same grant,
@@ -223,13 +223,13 @@ the Operation as host evidence; a rejected grant makes that Module's review `inc
 
 <a id="uses-workers"></a>
 
-**Workers**, in the Harness, turn a frozen grant into a running Claude Code worker: launch each
-reviewer with only its [brief](../../agents/workers/module.md#concept.workers.brief), return its
-[worker result](../../agents/workers/module.md#concept.workers.worker-result) extended with
-findings, audit for changes, and keep a
+**Workers**, in the Harness, turn a frozen grant into a running worker: launch each reviewer,
+checker and debate turn with only its [brief](../../agents/workers/module.md#concept.workers.brief),
+return its [worker result](../../agents/workers/module.md#concept.workers.worker-result) extended
+with findings, checks or a debater's responses, audit for changes, and keep a
 [run record](../../agents/workers/module.md#concept.workers.run-record). A `blocked`/`failed`
-worker, or an audit finding a change, makes that Module's review `incomplete`, its error link
-travelling in the result's error chain unchanged.
+worker, or an audit finding a change, makes that Module's review or debate `incomplete`, its error
+link travelling in the result's error chain unchanged.
 
 <a id="uses-operations"></a>
 

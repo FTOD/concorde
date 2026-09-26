@@ -35,9 +35,8 @@ A Spec review SHALL NOT launch a reviewer for a Module whose context identity is
 
 ### req.spec-review.host-verdict — The host derives the verdict
 
-The verdict SHALL be derived by the host from the Modules' outcomes by the rule of the review
-payload contract, a Module's outcome from every open finding of its review memory, never taken
-from a worker's statement.
+The verdict of a Spec review or a Spec debate SHALL be derived by the host by the rule of that
+Operation's payload contract, never taken from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
 
@@ -58,10 +57,9 @@ host produced itself.
 
 ### req.spec-review.debate-by-stances — The host settles a debate item only by stances
 
-In a Spec debate the host SHALL change a debate item's state only as a debater's stance on it
-determines; an item still in dispute after the last turn is contested, never settled by the host.
+In a Spec debate the host SHALL NOT make a debate item `agreed` or `withdrawn` except by a
+debater's stance on it.
 
 ### req.spec-review.debate-bounded — A debate is bounded
 
-A Spec debate SHALL run at most the requested number of challenge turns for each Module, and one
-reviewer turn after each of them.
+A Spec debate SHALL run at most `--challenges` challenge turns for each Module.

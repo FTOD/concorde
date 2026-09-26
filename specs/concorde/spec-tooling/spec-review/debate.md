@@ -6,15 +6,15 @@ Operation of [Spec review](module.md).
 ## Invocation
 
 ```text
-concorde run spec_debate [--task <task-id>] --modules <id>[,<id>...] [--rounds <1-5>]
+concorde run spec_debate [--task <task-id>] --modules <id>[,<id>...] [--challenges <1-5>]
 ```
 
-`--modules` names one or more registered Modules of the task worktree. `--rounds` is the most
+`--modules` names one or more registered Modules of the task worktree. `--challenges` is the most
 challenge turns a Module's debate may take, 2 by default. Without `--task` the debate runs [without
 a task](../../operations/module.md#concept.operations.no-task) on the primary worktree and judges
 the Specs as merged there. The `reviewer` and the `challenger` are the Operation's two worker
-roles, so the worker model configuration may give each its own model. The Operation needs no user
-consent.
+roles, so the worker model configuration may give each its own model. The Operation takes no other
+argument and needs no user consent.
 
 The Operation runs its debate as a LangGraph graph, a library Concorde's runtime does not otherwise
 need. The host imports it only when a debate starts; a host whose Python cannot import it fails the
@@ -27,11 +27,12 @@ has no such interpreter yet.
 | # | Step | Actor | On failure |
 | --- | --- | --- | --- |
 | 1 | Load the task worktree's Specs and validate every named Module, as step 1 of [Spec review](operation.md#host-sequence) | host (Spec core) | as there: a loading error fails the run, a structural error makes the Module `incomplete` |
-| 2 | For each Module that passed, run the debate graph below; each turn launches one worker under the Module's `review-spec` grant with the debate brief, one round and no resume, and audits that nothing changed | host (Workers) | a turn that ends `blocked`, `failed`, times out, returns an invalid result or changes a file stops that Module's debate: the Module is `incomplete` |
-| 3 | Derive every Module's outcome and the verdict from the settled items | host | none |
+| 2 | For each Module that passed, run the debate graph below; each turn launches one worker under the Module's `review-spec` grant with the Debater brief, waits for its [debater result](#debater-result) without resuming it, and audits that nothing changed | host (Workers) | a turn that ends `blocked` or `failed`, times out, returns an invalid result, changes a file or names a finding path outside the task worktree stops that Module's debate: the Module is `incomplete` |
+| 3 | Derive every Module's outcome and the verdict from its items | host | none |
 
 Modules are debated one after another. A debate writes nothing: no Spec, and unlike `spec_review`
-no review memory.
+no review memory. A Module whose debate stopped keeps the items it had and its **stop**: the status,
+summary and error link of the turn or check that stopped it.
 
 ## The debate graph
 
@@ -48,21 +49,32 @@ respond -> challenge: "an item awaits the challenger\nand challenge turns remain
 respond -> settle: otherwise
 ```
 
+An item **awaits** a debater when it is open and the other debater set its current position. The
+graph has four nodes:
+
 - **propose**: the reviewer's first turn reviews the Module and returns findings; each becomes an
   item proposed by the reviewer.
 - **challenge**: the challenger answers every item awaiting it. On its first turn it also returns
   the findings the reviewer missed, which become items it proposed; a later challenge turn returns
   none.
 - **respond**: the reviewer answers every item awaiting it, including the challenger's.
-- **settle**: every item still open becomes `contested`.
+- **settle**: every item still open becomes `contested`. It is the one state change the host makes
+  without a stance, and it makes no item `agreed` or `withdrawn`.
 
-A turn that stops, as step 2 describes, ends the graph at once and leaves the items as they are.
+Control moves by these rules, checked after every node in this order:
 
-An item **awaits** a debater when it is open and the other debater set its current position. The
-graph's state is the list of items, the number of turns taken, the number of challenge turns, the
-Module's context identity, the host evidence gathered so far and the Module's stop, all plain JSON
-values. The graph runs within a step limit of twice `--rounds` plus four, which the edges above
-never reach.
+1. When the node's turn stopped the Module, the graph ends; `settle` does not run and open items
+   stay open.
+2. After `propose`, `challenge` runs, even when the reviewer found nothing, so that the challenger
+   can add what was missed.
+3. After `challenge`, `respond` runs when an item awaits the reviewer; otherwise `settle` runs.
+4. After `respond`, `challenge` runs again when an item awaits the challenger and fewer than
+   `--challenges` challenge turns have run; otherwise `settle` runs.
+
+A Module's debate therefore takes at most `1 + 2 × --challenges` worker turns. The graph's state is
+the list of items, the number of turns taken, the number of challenge turns, the Module's context
+identity, the host evidence gathered so far and the Module's stop, all plain JSON values. The graph
+runs within a step limit of `2 × --challenges + 4`, which these rules never reach.
 
 ## Stances
 
@@ -77,28 +89,45 @@ A position is a finding or "does not hold". A response names an item and takes o
 
 The host applies the stances and judges none. A response for an item that is not awaiting the
 responder, a second response for the same item and an `amend` without a finding move nothing, and
-an awaited item left unanswered stays open; each is host evidence of kind `debate-response`. Every
-finding a debater proposes, amends or adds is normalized as [Spec
+an awaited item left unanswered stays open; each is host evidence of kind `debate-response`, not an
+invalid result. Every finding a debater proposes, amends or adds is normalized as [Spec
 review](operation.md#host-sequence) normalizes findings: paths relative to the task worktree,
 `module` set to the owner of the cited document, and a blocking finding outside the debated
 Module's own documents re-filed as advisory with `finding-scope` evidence. A finding whose path is
 not in the task worktree stops the Module's debate with `unusable_finding`.
+
+## Debater result {#debater-result}
+
+Every turn ends with the ordinary worker result, whose `output` depends on the turn:
+
+| Turn | `output` |
+| --- | --- |
+| `propose` | `{"findings": [...]}` |
+| first `challenge` | `{"responses": [...], "additions": [...]}` |
+| later `challenge` | `{"responses": [...], "additions": []}`, `additions` empty |
+| `respond` | `{"responses": [...]}` |
+
+A finding has the shape of a Spec review [reviewer finding](operation.md#reviewer-result) without
+`earlier`. A response is `{item, stance, reason, finding}`: `item` is an item id `d.<n>`, `stance`
+is `agree`, `amend` or `object`, `reason` is non-empty, and `finding` is given for `amend`. A result
+that does not match its turn's shape is an **invalid result** and stops the Module; a result that
+matches but answers the wrong items is not, as the stances section says.
 
 ## Result status
 
 | Verdict | Status | Error |
 | --- | --- | --- |
 | `accepted`, `undecided` or `changes_required` | `ok` | none |
-| `incomplete`, and some incomplete Module failed | `failed` | `debate_incomplete`, one cause per incomplete Module |
-| `incomplete` otherwise | `blocked` | `debate_incomplete`, one cause per incomplete Module |
+| `incomplete`, and some incomplete Module failed: a turn that failed, a launch error, a timeout, an invalid result, an audit violation, a finding path outside the task worktree, an unknown Module or a grant that could not be computed | `failed` | `debate_incomplete`, one cause per incomplete Module |
+| `incomplete` otherwise: a structural error or a `blocked` turn | `blocked` | `debate_incomplete`, one cause per incomplete Module |
 
-A loading error in step 1 is `failed` with no output. In every other case the result's `output` is
-the debate payload, including the items of a Module whose debate stopped. The error of an
-incomplete Module is the Operation's link for it; for a stopped turn its actor names the Module and
-the turn, and below it are Workers' link and the worker's own. The summary counts the agreed
-blocking findings, the contested items and the withdrawn ones. The host evidence adds, besides the
-evidence of Spec review's steps, the debate graph as Mermaid text (kind `graph`), written once per
-run in the run directory.
+A loading error in step 1 and `langgraph_unavailable` are `failed` with no output. In every other
+case the result's `output` is the debate payload, including the items of a Module whose debate
+stopped. The error of an incomplete Module is the Operation's link for it; for a stopped turn its
+actor names the Module and the turn, and below it are Workers' link and the worker's own. The
+summary counts the agreed blocking findings, the contested items and the withdrawn ones. The host
+evidence adds, besides the evidence of Spec review's steps, the debate graph as Mermaid text (kind
+`graph`), written once per run in the run directory.
 
 ## Debate payload
 

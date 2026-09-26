@@ -7,7 +7,7 @@ item by the stance a worker takes on it; it never takes a side:
 1. ``validate_modules`` (shared with ``spec_review``): load and validate the Specs.
 2. ``debate_modules``: per remaining Module, run the debate graph, a LangGraph ``StateGraph``:
    ``propose`` → ``challenge`` → (``respond`` → ``challenge``)* → ``settle``, bounded by
-   ``--rounds`` challenge turns.
+   ``--challenges`` challenge turns.
 3. ``derive_verdict``: each Module's outcome from its settled items, the verdict and the result.
 
 An item stands only when both workers agree on a finding, is dropped only when both agree it does
@@ -39,8 +39,8 @@ ITEM_IDENTITY = r"^d\.[1-9][0-9]*$"
 STANCES = ["agree", "amend", "object"]
 # In increasing precedence: the verdict is the Modules' highest outcome.
 OUTCOMES = ["accepted", "undecided", "changes_required", "incomplete"]
-DEFAULT_ROUNDS = 2
-MAX_ROUNDS = 5
+DEFAULT_CHALLENGES = 2
+MAX_CHALLENGES = 5
 
 # A finding as a debater states it: the Spec review finding without the review memory's ``earlier``.
 FINDING: dict = copy.deepcopy(review.REVIEWER_FINDING)
@@ -381,12 +381,12 @@ class Debate:
     """The debate of one Module: the graph's nodes, bound to the run and the Module's review."""
 
     def __init__(
-        self, ctx: RunContext, subject: review.ModuleReview, prompt: str, rounds: int
+        self, ctx: RunContext, subject: review.ModuleReview, prompt: str, limit: int
     ):
         self.ctx = ctx
         self.subject = subject
         self.prompt = prompt
-        self.rounds = rounds
+        self.limit = limit
 
     # -- one worker turn -------------------------------------------------------------------
 
@@ -534,7 +534,7 @@ class Debate:
     def after_respond(self, state: DebateState) -> str:
         if state["stop"]:
             return "end"
-        if awaiting(state["items"], "challenger") and state["challenges"] < self.rounds:
+        if awaiting(state["items"], "challenger") and state["challenges"] < self.limit:
             return "challenge"
         return "settle"
 
@@ -573,9 +573,9 @@ class Debate:
             "evidence": [],
             "stop": None,
         }
-        # propose, then at most `rounds` challenge and respond turns, then settle.
-        limit = 2 * self.rounds + 4
-        return self.graph().invoke(initial, {"recursion_limit": limit})
+        # propose, then at most `limit` challenge and respond turns, then settle.
+        steps = 2 * self.limit + 4
+        return self.graph().invoke(initial, {"recursion_limit": steps})
 
 
 def _debates(ctx: RunContext) -> dict[str, DebateState]:
@@ -608,11 +608,11 @@ def debate_modules(ctx: RunContext):
         )
     prompt = load_prompt("debate-spec")
     found: list[dict] = []
-    rounds = ctx.arguments.rounds
+    limit = ctx.arguments.challenges
     for subject in review._state(ctx).reviews.values():
         if subject.stop is not None:
             continue
-        debate = Debate(ctx, subject, prompt, rounds)
+        debate = Debate(ctx, subject, prompt, limit)
         if not (ctx.run_dir / "debate-graph.mmd").exists():
             (ctx.run_dir / "debate-graph.mmd").write_text(
                 debate.graph().get_graph().draw_mermaid()
@@ -694,22 +694,22 @@ def derive_verdict(ctx: RunContext):
     )
 
 
-def _rounds(value: str) -> int:
+def _challenges(value: str) -> int:
     import argparse
 
     number = int(value)
-    if not 1 <= number <= MAX_ROUNDS:
-        raise argparse.ArgumentTypeError(f"--rounds must be 1 to {MAX_ROUNDS}")
+    if not 1 <= number <= MAX_CHALLENGES:
+        raise argparse.ArgumentTypeError(f"--challenges must be 1 to {MAX_CHALLENGES}")
     return number
 
 
 def add_arguments(parser) -> None:
     parser.add_argument(
-        "--rounds",
-        type=_rounds,
-        default=DEFAULT_ROUNDS,
-        help=f"the most challenge turns per Module (1 to {MAX_ROUNDS}, default "
-        f"{DEFAULT_ROUNDS})",
+        "--challenges",
+        type=_challenges,
+        default=DEFAULT_CHALLENGES,
+        help=f"the most challenge turns per Module (1 to {MAX_CHALLENGES}, default "
+        f"{DEFAULT_CHALLENGES})",
     )
 
 

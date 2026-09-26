@@ -253,7 +253,7 @@ class SpecDebateTests(unittest.TestCase):
                     responses=[answer("d.1", "object", "Line 4 is a note.")]
                 ),
             },
-            "--rounds",
+            "--challenges",
             "2",
         )
         self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
