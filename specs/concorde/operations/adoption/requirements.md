@@ -24,6 +24,10 @@ The scaffold SHALL make every path the survey proposes as vendored third-party c
 
 No Adoption Operation SHALL create, change or delete a file of the task worktree other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
 
+### req.adoption.own-errors-briefed — The worker is told the errors it must repair
+
+The code_to_spec host SHALL list, in its worker's brief, every structural error already in the documents of the Modules it describes.
+
 ### req.adoption.tests-linked-by-host — The host alone marks tests
 
 The code_to_spec host SHALL add a `verifies` decorator, and never any other change, to each existing Python test that a scenario promise names in its `tests`, reporting every link it cannot make.

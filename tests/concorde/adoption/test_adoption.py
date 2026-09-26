@@ -428,6 +428,21 @@ class AdoptionTests(unittest.TestCase):
         exec(compile(source, "test_checkout.py", "exec"), namespace)
         self.assertIsNone(namespace["test_submit"]())
 
+    @verifies("scenario.adoption.describe-own-errors")
+    def test_errors_already_in_the_described_documents_reach_the_worker(self):
+        self.scaffolded()
+        entry = self.worktree / "specs/project/checkout/module.md"
+        entry.write_text(entry.read_text().replace("## Relationships", "## Drawing"))
+        _, envelope = self.describe([{}])
+        prompt = self.fake_round(envelope)["prompt"]
+        self.assertIn("Structural errors already in the documents you describe", prompt)
+        self.assertIn(
+            "specs/project/checkout/module.md",
+            prompt.split("Structural errors already in the documents you describe", 1)[
+                1
+            ],
+        )
+
     @verifies("scenario.adoption.stub-deleted")
     def test_a_stub_the_worker_deleted_leaves_its_module(self):
         self.scaffolded()

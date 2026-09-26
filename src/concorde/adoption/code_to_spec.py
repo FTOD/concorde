@@ -101,6 +101,7 @@ def baseline(ctx: RunContext):
             options=["run validate for the task to see why the Specs do not load"],
         )
     ctx.state["baseline"] = {key(f) for f in result.findings if f.severity == "error"}
+    ctx.state["baseline_errors"] = [f for f in result.findings if f.severity == "error"]
     return Continue(
         evidence=[
             evidence(
@@ -229,6 +230,21 @@ def instructions(ctx: RunContext) -> str:
         parts.append(
             "Implementation document stubs prepared for you, removed again if you leave them "
             "unchanged: " + ", ".join(sorted(stubs)) + "\n"
+        )
+    # A structural error already in a document this run describes counts against the run, like
+    # a new one, so the worker is told which (an earlier run's edits stay in the worktree).
+    own = own_documents(ctx)
+    existing = [f for f in ctx.state.get("baseline_errors") or [] if f.source in own]
+    if existing:
+        parts.append(
+            "\nStructural errors already in the documents you describe, which your description "
+            "must repair, since every error left in them fails this run:\n\n"
+            + "".join(
+                f"- {f.rule_id} {f.source}"
+                + (f":{f.line}" if getattr(f, "line", None) else "")
+                + f": {f.message}\n"
+                for f in existing
+            )
         )
     answers = ctx.state.get("answers") or []
     if answers:

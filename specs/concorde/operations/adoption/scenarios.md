@@ -119,6 +119,12 @@ shapes are in the [contracts](contracts.md).
 - AND the result lists that promise with source `answer`
 - AND the result lists a deviation with the intended and the observed behaviour
 
+### scenario.adoption.describe-own-errors — The worker learns the errors it must repair
+
+- GIVEN a scaffolded `module.checkout` whose entry has a structural error, left by an earlier description
+- WHEN the main agent runs code_to_spec for it again
+- THEN the worker's brief lists that error with its rule and document, as one its description must repair
+
 ### scenario.adoption.tests-linked — The tests a scenario came from are marked
 
 - GIVEN a code_to_spec run for `module.checkout` whose worker writes `scenario.checkout.submit` and names `tests/test_checkout.py::test_submit`, a test that does not exist and a Spec document as its tests
