@@ -1,0 +1,128 @@
+{
+  "task": "issues-lifecycle-spec",
+  "goal": "Clarify main-agent Issue interactions, state transitions, and branch-local record handling in Specs and guidance",
+  "modules": [
+    "module.issues",
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "a1b79f45b81f87674fe9cd67be57c841076cf1a3",
+  "parent_commit": "9dd6c770f1700bb1c172b2d159220cec85e33f55",
+  "readiness": {
+    "run_id": "r-20260926T173421-delivery-e151ccc1",
+    "input_digest": "sha256:66822313c2ecc24cf37bc1585908bb371f939cf499a19920a190ac6443f93b47",
+    "modules": [
+      "module.issues",
+      "module.main-session"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:2f9b34a55a4dd71ab948e0c27074471fd72970f476cc79c99cf5fb3beb2944f4"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:c5688e1b55b4c7ed7f20edd1a093c1b5ce1e60062a423d57806c1623c1142ae6"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:f017ae43b89d3a66bbdaa5b0a0ecd55ac63e85030c09e5fb146cadefd9db1890"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:672e6540adbe6c9fa68adc6e9d8964aebaec1c635e272586ef8d8d83bd1bfb4c"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:2af16ed551449b70515d2be3bcd2132eaeb64522a7aa94a20a79bd7c0779354a"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:f79f3c0896ce2f77133b238ca42928c33dd2a2e2b59a3ce2b886b748c2651f1c"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:f79f3c0896ce2f77133b238ca42928c33dd2a2e2b59a3ce2b886b748c2651f1c"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:a60ebbfe14eb25b78f85c8aca9b12605c218a569ccb30dab3a0d29e1a6f50950"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:4e63b3aef7ff20e24dc8222406f1d419e345729ce68943af822862b35e875444"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:3199cc9e5bbe438490c5846d5b270a4d2ad0b743d108487520d277b853fc51dc"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:dd73deb36efe6c05b581dc607335a2a6f31520e2630209263f2acd1b46573857"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:7e1a21b88f341fbe4b9f120a053753d2771b0a17b9d6ba9dda5c725390ca756d"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d3306728f2b51c8caeba2a4f190c76498df31f4d92e7c29dace0cbec9a9e76c8"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:0df7767cee88dde2f483a0fcdb86af59cc12c9a69b20f936f7484dc4834d8e45"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:bc7a62239d9aa6c66be59fc544d370868b8d82de7ba3cf89edebb49310598a74"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T173307-validate-fb512f8c",
+      "operation": "validate",
+      "modules": [
+        "module.issues",
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:f270a4ae00a375c7a6bad141b4deb7500fb58dbb1f61cabe2774f1e4edf9b23d"
+    }
+  ],
+  "created_at": "2026-09-26T17:35:11Z"
+}
