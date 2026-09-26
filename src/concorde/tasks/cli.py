@@ -317,6 +317,7 @@ def start_session(here: Path, arguments) -> dict:
     """Start, answer or stop a task session on the main session's own program."""
     from ..harness.models import ModelConfigError, detect_client
 
+    store.require_primary(here)
     try:
         program, _ = detect_client()
     except ModelConfigError as error:
