@@ -35,16 +35,43 @@ export function sessionWriteDecision(
   );
 }
 
-const COMMIT = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
+// A strict end assertion also refuses a trailing newline, which `$` would admit.
+const COMMIT = /^[0-9a-f]{40}([0-9a-f]{24})?(?![\s\S])/;
 
 /** What makes a `concorde_report` call incomplete, or null when it is a session report. */
 export function reportProblem(report: Record<string, unknown>): string | null {
+  const fields = [
+    "status",
+    "summary",
+    "commit",
+    "escalations",
+    "decisions",
+    "open",
+  ];
+  if (
+    !report ||
+    typeof report !== "object" ||
+    Array.isArray(report) ||
+    fields.some((field) => !Object.hasOwn(report, field)) ||
+    Object.keys(report).some((field) => !fields.includes(field))
+  )
+    return "a report has exactly `status`, `summary`, `commit`, `escalations`, `decisions` and `open`";
+  if (typeof report.summary !== "string" || report.summary.length === 0)
+    return "`summary` is a nonempty string";
+  for (const field of ["decisions", "open"]) {
+    const value = report[field];
+    if (
+      !Array.isArray(value) ||
+      !value.every((item) => typeof item === "string" && item.length > 0)
+    )
+      return `\`${field}\` is an array of nonempty strings`;
+  }
   const escalations = report.escalations;
   if (report.status === "delivered") {
     if (typeof report.commit !== "string" || !COMMIT.test(report.commit))
       return "a delivered report names the delivery commit as `commit`, its full hexadecimal identity";
-    if (escalations !== undefined)
-      return "a delivered report names no `escalations`";
+    if (!Array.isArray(escalations) || escalations.length !== 0)
+      return "a delivered report has `escalations: []`";
     return null;
   }
   if (report.status === "escalated") {
@@ -58,8 +85,7 @@ export function reportProblem(report: Record<string, unknown>): string | null {
         "an escalated report names in `escalations` the numbers of the escalations you " +
         "recorded with `concorde task escalate --by task-session`, each once"
       );
-    if (report.commit !== undefined)
-      return "an escalated report names no `commit`";
+    if (report.commit !== null) return "an escalated report has `commit: null`";
     return null;
   }
   return "`status` is `delivered` or `escalated`";

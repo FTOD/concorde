@@ -47,9 +47,13 @@ an answer within the round.
 End every round by calling `concorde_report` exactly once, as your last action:
 
 - `delivered` when `concorde run delivery --task <task>` committed the task, with `commit` the
-  delivery commit in full (the head of the task branch after delivery);
-- `escalated` when you cannot go further without the main agent, with `escalations` the numbers
-  of the escalations you recorded this round, which carry the error chains.
+  delivery commit in full (the head of the task branch after delivery), and `escalations: []`;
+- `escalated` when you cannot go further without the main agent, with `commit: null` and
+  `escalations` a nonempty array of the numbers of the escalations you recorded this round,
+  each once, which carry the error chains.
+
+Always include all six fields: `status`, `summary`, `commit`, `escalations`, `decisions` and
+`open`. Do not omit the unused field or use an empty string for `commit`.
 
 Add a `summary` of what the round did, every decision you made without the main agent with its
 reason in `decisions`, and what is still open in `open`. Concorde checks the commit and the

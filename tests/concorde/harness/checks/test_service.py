@@ -8,12 +8,16 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Thread
 from unittest.mock import patch
 
+from concorde.harness.check_executor import execute_check
 from concorde.harness.checks import (
     affected_modules,
     check_revision,
+    environment,
     project_python,
     run_checks,
 )
@@ -21,7 +25,8 @@ from concorde.spec.repository import SpecRepository
 from concorde.spec.repository_base import SpecError
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject
-from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.environment import child_environment
+from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 
 class CheckServiceTests(unittest.TestCase):
@@ -106,6 +111,153 @@ class CheckServiceTests(unittest.TestCase):
         with self.assertRaises(SpecError) as raised:
             run_checks(self.root, modules=["module.a"], log_directory=self.logs)
         self.assertEqual("invalid_check", raised.exception.code)
+
+    @verifies("scenario.checks.transport-environment")
+    def test_transport_settings_are_inherited_with_explicit_overrides(self):
+        transport = {
+            "HTTP_PROXY": "http://upper.invalid:1234",
+            "HTTPS_PROXY": "http://secure.invalid:1234",
+            "ALL_PROXY": "socks5://upper.invalid:1234",
+            "NO_PROXY": "upper.invalid",
+            "http_proxy": "http://lower.invalid:1234",
+            "https_proxy": "http://secure-lower.invalid:1234",
+            "all_proxy": "socks5://lower.invalid:1234",
+            "no_proxy": "lower.invalid",
+            "SSL_CERT_FILE": "/transport/cert.pem",
+            "SSL_CERT_DIR": "/transport/certs",
+            "REQUESTS_CA_BUNDLE": "/transport/requests.pem",
+            "CURL_CA_BUNDLE": "/transport/curl.pem",
+            "NODE_EXTRA_CA_CERTS": "/transport/node.pem",
+        }
+        pollution = dict.fromkeys(
+            (
+                "PYTHONPATH",
+                "PYTHONHOME",
+                "VIRTUAL_ENV",
+                "NODE_OPTIONS",
+                "CONCORDE_RUN_ID",
+                "CONCORDE_TASK_SESSION",
+                "CLAUDE_CONFIG_DIR",
+                "PI_CODING_AGENT_DIR",
+                "UNLISTED_PROXY",
+                "HTTP_PROXY_EXTRA",
+                "TMPDIR",
+                "XDG_CACHE_HOME",
+                "npm_config_cache",
+                "CONCORDE_CHECK_TMPDIR",
+                "CONCORDE_CHECK_REPORT_DIR",
+            ),
+            "not-inherited",
+        )
+        host = {"PATH": os.environ["PATH"], "LANG": "C.UTF-8", **transport}
+        with patch.dict(os.environ, {**host, **pollution}, clear=True):
+            self.assertEqual(host, environment())
+            overrides = {
+                "http_proxy": "",
+                "SSL_CERT_FILE": "/project/ca.pem",
+                "PYTHONPATH": "src",
+            }
+            self.assertEqual(
+                {**host, **overrides},
+                environment({"id": "check.a", "env": overrides}),
+            )
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(
+                {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"}, environment()
+            )
+
+    @verifies(
+        "scenario.checks.transport-environment", "scenario.checks.service-read-only"
+    )
+    def test_nested_configured_check_uses_local_proxy_and_remains_read_only(self):
+        requests = []
+
+        class Proxy(BaseHTTPRequestHandler):
+            def do_GET(self):
+                requests.append(self.path)
+                body = b"local proxy reached"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, format, *args):
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Proxy)
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(thread.join)
+        self.addCleanup(server.shutdown)
+        proxy = f"http://127.0.0.1:{server.server_port}"
+        probe = """
+import errno, os, tempfile, urllib.request
+from pathlib import Path
+assert 'PYTHONPATH' not in os.environ
+assert 'CONCORDE_RUN_ID' not in os.environ
+assert 'NODE_OPTIONS' not in os.environ
+with urllib.request.urlopen('http://concorde-proxy.invalid/probe', timeout=5) as response:
+    assert response.read() == b'local proxy reached'
+try:
+    Path('src/a/calc.py').write_text('changed')
+except OSError as error:
+    assert error.errno in (errno.EROFS, errno.EACCES, errno.EPERM)
+else:
+    raise AssertionError('nested check changed its project')
+scratch = Path(os.environ['CONCORDE_CHECK_TMPDIR'])
+for key in ('TMPDIR', 'XDG_CACHE_HOME', 'npm_config_cache', 'CONCORDE_CHECK_REPORT_DIR'):
+    path = Path(os.environ[key])
+    assert path.is_relative_to(scratch), (key, path)
+    path.mkdir(parents=True, exist_ok=True)
+    (path/'probe').write_text('scratch only')
+print('proxy reached; project read-only; scratch writable')
+"""
+        self.change_check(
+            argv=["{python}", "-c", probe],
+            env=dict.fromkeys(
+                (
+                    "TMPDIR",
+                    "XDG_CACHE_HOME",
+                    "npm_config_cache",
+                    "CONCORDE_CHECK_REPORT_DIR",
+                ),
+                "/unusable",
+            ),
+        )
+        outer = """
+import os
+from pathlib import Path
+from concorde.harness.checks import run_checks
+os.environ['CONCORDE_RUN_ID'] = 'runtime-pollution'
+os.environ['NODE_OPTIONS'] = '--runtime-pollution'
+[result] = run_checks(Path.cwd(), modules=['module.a'],
+                      log_directory=Path(os.environ['CONCORDE_CHECK_TMPDIR'])/'nested-logs')
+print(Path(result['log']).read_text())
+assert result['status'] == 'passed', result
+"""
+        result = execute_check(
+            self.root,
+            [sys.executable, "-c", outer],
+            timeout=20,
+            environment=child_environment(
+                PYTHONPATH=str(RUNTIME_ROOT),
+                HTTP_PROXY=proxy,
+                http_proxy=proxy,
+                HTTPS_PROXY=proxy,
+                https_proxy=proxy,
+                ALL_PROXY=proxy,
+                all_proxy=proxy,
+                NO_PROXY="",
+                no_proxy="",
+            ),
+        )
+        self.assertEqual(0, result.returncode, result)
+        self.assertEqual(["http://concorde-proxy.invalid/probe"], requests)
+        self.assertIn(
+            b"proxy reached; project read-only; scratch writable", result.stdout
+        )
+        self.assertIn("def add", (self.root / "src/a/calc.py").read_text())
 
     @verifies("scenario.checks.project-python")
     def test_a_task_worktree_uses_the_primary_interpreter(self):

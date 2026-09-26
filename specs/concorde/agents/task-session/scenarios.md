@@ -52,6 +52,14 @@ Commands, the session report and error codes are defined in the [contracts](cont
 - WHEN the supervisor records the round
 - THEN the round is `failed` with a `session_report_unverified` link naming each mismatch, and the report is kept beside it
 
+### scenario.task-session.pi-report-shape — New reports use one fixed field set
+
+- GIVEN a new pi task-session report with the six fields `status`, `summary`, `commit`, `escalations`, `decisions` and `open`
+- WHEN the boundary and supervisor validate the report
+- THEN delivered is accepted only with a full delivery commit and an empty escalation array, and escalated only with a null commit and a nonempty unique array of positive escalation numbers
+- BUT an omitted field, empty commit, mixed status fields or malformed value is refused
+- AND persisted version 1 reports remain unchanged when a task record is read or settled
+
 ### scenario.task-session.pi-failed — A round without a report fails with its evidence
 
 - GIVEN a pi session round whose pi exits with status 1 without calling `concorde_report`

@@ -60,7 +60,7 @@ check the rendered guidance against them are pending.
 - GIVEN the rendered pi task-session guidance
 - WHEN a pi task session reads how to report
 - THEN it is told to run Operations with the worktree's own `concorde` in the foreground
-- AND to end every round by calling `concorde_report`, with the delivery commit when delivered, or after `concorde task escalate --by task-session` with the escalation numbers
+- AND to end every round by calling `concorde_report`, always supplying `status`, `summary`, `commit`, `escalations`, `decisions` and `open`, with the delivery commit and an empty escalation array when delivered, or after `concorde task escalate --by task-session` with a null commit and the unique escalation numbers
 - AND that the main agent's answer arrives as the prompt of the next round
 - BUT never to merge the task branch or close the task
 

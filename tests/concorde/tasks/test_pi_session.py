@@ -20,7 +20,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.harness import pi_backend
-from concorde.spec.schema import validate
+from concorde.spec.schema import ContractError, validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, pi_session, store
 from tests.concorde.support.operation_project import OperationProject
@@ -54,6 +54,64 @@ def contract(heading: str, document: str = TASK_CONTRACTS) -> dict:
     return json.loads(section.split("```concorde-contract\n", 1)[1].split("```")[0])
 
 
+def report_cases():
+    delivered = {
+        "status": "delivered",
+        "summary": "Delivered.",
+        "commit": COMMIT,
+        "escalations": [],
+        "decisions": [],
+        "open": [],
+    }
+    escalated = dict(delivered, status="escalated", commit=None, escalations=[1])
+    cases = [
+        ("delivered", delivered, True),
+        ("escalated", escalated, True),
+        ("sha256", dict(delivered, commit="b" * 64), True),
+    ]
+    for name, report in (("delivered", delivered), ("escalated", escalated)):
+        for field in report:
+            cases.append(
+                (
+                    f"{name} missing {field}",
+                    {k: v for k, v in report.items() if k != field},
+                    False,
+                )
+            )
+        for changes in (
+            {"summary": ""},
+            {"summary": None},
+            {"decisions": [""]},
+            {"open": [1]},
+            {"open": None},
+            {"extra": True},
+            {"status": "done"},
+            {"commit": ""},
+        ):
+            cases.append((f"{name} {changes}", {**report, **changes}, False))
+    for changes in (
+        {"commit": None},
+        {"commit": "a" * 39},
+        {"commit": "g" * 40},
+        {"commit": COMMIT + "\n"},
+        {"escalations": [1]},
+        {"escalations": None},
+    ):
+        cases.append((f"delivered {changes}", {**delivered, **changes}, False))
+    for changes in (
+        {"commit": COMMIT},
+        {"escalations": []},
+        {"escalations": [1, 1]},
+        {"escalations": [0]},
+        {"escalations": [-1]},
+        {"escalations": [1.5]},
+        {"escalations": [True]},
+        {"escalations": ["1"]},
+    ):
+        cases.append((f"escalated {changes}", {**escalated, **changes}, False))
+    return cases
+
+
 class PiSessionTests(unittest.TestCase):
     def setUp(self):
         self.project = OperationProject(self)
@@ -79,8 +137,8 @@ class PiSessionTests(unittest.TestCase):
         which = patch.object(pi_backend, "which", side_effect=fake_which)
         which.start()
         self.addCleanup(which.stop)
-        self.addCleanup(self.stop_rounds)
         self.addCleanup(self.remove_short_tmp)
+        self.addCleanup(self.stop_rounds)
 
     def remove_short_tmp(self):
         directory = self.root / ".concorde/tasks"
@@ -93,8 +151,14 @@ class PiSessionTests(unittest.TestCase):
             found = pi_session.latest(task)
             busy = pi_session.running(found)
             if busy:
-                with contextlib.suppress(ProcessLookupError):
-                    os.kill(busy["supervisor_pid"], 15)
+                pi_session.stop(self.root, task["id"])
+                deadline = time.monotonic() + 5
+                while (
+                    pi_session._alive(busy["supervisor_pid"])
+                    and time.monotonic() < deadline
+                ):
+                    time.sleep(0.05)
+                self.assertFalse(pi_session._alive(busy["supervisor_pid"]))
 
     def open(self, task: str, steps: dict) -> Path:
         self.project.open_task(
@@ -162,6 +226,7 @@ class PiSessionTests(unittest.TestCase):
                 "report": {
                     "status": "escalated",
                     "summary": "Implemented the levels; one question is open.",
+                    "commit": None,
                     "escalations": [1],
                     "decisions": ["Named the enum Severity."],
                     "open": ["Whether warnings block delivery."],
@@ -263,6 +328,7 @@ class PiSessionTests(unittest.TestCase):
                 "report": {
                     "status": "escalated",
                     "summary": "One question.",
+                    "commit": None,
                     "escalations": [1],
                     "decisions": [],
                     "open": [],
@@ -283,6 +349,7 @@ class PiSessionTests(unittest.TestCase):
                         "status": "delivered",
                         "summary": "Delivered.",
                         "commit": COMMIT,
+                        "escalations": [],
                         "decisions": [],
                         "open": [],
                     }
@@ -366,6 +433,7 @@ class PiSessionTests(unittest.TestCase):
                     "status": "delivered",
                     "summary": "Delivered.",
                     "commit": COMMIT,
+                    "escalations": [],
                     "decisions": [],
                     "open": [],
                 }
@@ -511,9 +579,107 @@ class PiSessionTests(unittest.TestCase):
         self.assertEqual(pi_session.TOOL_SCHEMA, value["reportSchema"])
         self.assertEqual([], store.load_task(self.root, "t1")["sessions"])
 
+    @verifies("scenario.task-session.pi-report-verified")
+    def test_fabricated_escalation_fails_the_supervised_round(self):
+        self.open(
+            "t1",
+            {
+                "report": {
+                    "status": "escalated",
+                    "summary": "Need a decision.",
+                    "commit": None,
+                    "escalations": [1],
+                    "decisions": [],
+                    "open": [],
+                }
+            },
+        )
+        self.start("t1")
+        ended = self.wait("t1", 1)
+        self.assertEqual("failed", ended["status"])
+        self.assertEqual("session_report_unverified", ended["error"]["code"])
+        self.assertIn("escalation 1 does not exist", ended["error"]["detail"])
+
+    @verifies("scenario.task-session.pi-report-shape")
+    def test_report_validators_agree_and_supervisor_rejects_invalid_shapes(self):
+        fields = {"status", "summary", "commit", "escalations", "decisions", "open"}
+        self.assertEqual("object", pi_session.TOOL_SCHEMA["type"])
+        self.assertEqual(fields, set(pi_session.TOOL_SCHEMA["required"]))
+        self.assertEqual(fields, set(pi_session.TOOL_SCHEMA["properties"]))
+        self.assertNotIn("oneOf", pi_session.TOOL_SCHEMA)
+        record = {
+            "deliveries": [{"commit": COMMIT}, {"commit": "b" * 64}],
+            "escalations": [{"error": {"level": "task-session"}}],
+        }
+        for name, report, accepted in report_cases():
+            with self.subTest(name=name):
+                if accepted:
+                    validate(report, pi_session.REPORT_SCHEMA)
+                    validate(report, pi_session.TOOL_SCHEMA)
+                else:
+                    with self.assertRaises(ContractError):
+                        validate(report, pi_session.REPORT_SCHEMA)
+                stream = pi_backend.PiStream(result_tool="concorde_report")
+                stream.result = report
+                result = pi_session.outcome(
+                    "t1",
+                    "session",
+                    {"round": 1, "events": "events.jsonl", "stderr": "stderr.log"},
+                    stream,
+                    0,
+                    False,
+                    record,
+                )
+                self.assertEqual(
+                    report["status"] if accepted else "failed", result["status"]
+                )
+                self.assertEqual(report, result["report"])
+                if not accepted:
+                    self.assertEqual(
+                        "session_report_unverified", result["error"]["code"]
+                    )
+
+    @verifies("scenario.task-session.pi-report-shape")
+    def test_persisted_v1_reports_are_not_revalidated_or_rewritten(self):
+        self.open("t1", {})
+        old_report = {
+            "status": "delivered",
+            "summary": "Historical delivery.",
+            "commit": COMMIT,
+            "decisions": [],
+            "open": [],
+        }
+        directory = self.root / ".concorde/tasks/t1.session"
+        ended = {
+            **pi_session._round(1, directory, os.getpid(), None),
+            "status": "delivered",
+            "ended_at": store.now(),
+            "report": old_report,
+            "error": None,
+        }
+        store.record_session(
+            self.root,
+            "t1",
+            {
+                "program": "pi",
+                "id": "historical",
+                "name": "task-t1",
+                "main": None,
+                "directory": str(directory),
+                "model": None,
+                "started_at": store.now(),
+                "rounds": [ended],
+            },
+        )
+        before = store.load_task(self.root, "t1")
+        self.assertEqual(before, pi_session.settle(self.root, before))
+        self.assertEqual(before, store.load_task(self.root, "t1"))
+        validate(before, contract("")["schema"])
+
     def test_the_report_schema_is_the_contract(self):
         found = contract("## Session report", SESSION_CONTRACTS)
         self.assertEqual("contract.task-session.report", found["id"])
+        self.assertEqual(2, found["version"])
         self.assertEqual(pi_session.REPORT_SCHEMA, found["schema"])
         validate(found["example"], pi_session.REPORT_SCHEMA)
 
@@ -525,11 +691,11 @@ console.log(JSON.stringify({{
   inside: sessionWriteDecision(policy, {inside}),
   log: sessionWriteDecision(policy, {log}),
   outside: sessionWriteDecision(policy, {outside}),
-  delivered: reportProblem({{ status: "delivered", summary: "s", commit: "{commit}", decisions: [], open: [] }}),
-  deliveredWithoutCommit: reportProblem({{ status: "delivered", summary: "s", decisions: [], open: [] }}),
-  escalated: reportProblem({{ status: "escalated", summary: "s", escalations: [1], decisions: [], open: [] }}),
-  escalatedEmpty: reportProblem({{ status: "escalated", summary: "s", escalations: [], decisions: [], open: [] }}),
-  unknown: reportProblem({{ status: "done" }}),
+  delivered: reportProblem({{ status: "delivered", summary: "s", commit: "{commit}", escalations: [], decisions: [], open: [] }}),
+  deliveredWithoutCommit: reportProblem({{ status: "delivered", summary: "s", escalations: [], decisions: [], open: [] }}),
+  escalated: reportProblem({{ status: "escalated", summary: "s", commit: null, escalations: [1], decisions: [], open: [] }}),
+  escalatedEmpty: reportProblem({{ status: "escalated", summary: "s", commit: null, escalations: [], decisions: [], open: [] }}),
+  unknown: reportProblem({{ status: "done", summary: "s", commit: null, escalations: [], decisions: [], open: [] }}),
 }}));
 """
 
@@ -538,6 +704,33 @@ console.log(JSON.stringify({{
     shutil.which("node"), "Node is needed to run the boundary's decisions"
 )
 class BoundaryDecisionTests(unittest.TestCase):
+    @verifies("scenario.task-session.pi-report-shape")
+    def test_report_policy_agrees_with_contract_for_every_case(self):
+        cases = report_cases()
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            for source in (pi_session.DECISIONS_SOURCE, pi_session.PATHS_SOURCE):
+                shutil.copy2(source, base / source.name)
+            probe = base / "probe.mts"
+            probe.write_text(
+                'import { reportProblem } from "./pi_session_policy.ts";\n'
+                + "const cases = "
+                + json.dumps([report for _, report, _ in cases])
+                + ";\n"
+                + "console.log(JSON.stringify(cases.map(reportProblem)));\n"
+            )
+            done = subprocess.run(
+                ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        for (name, _report, accepted), problem in zip(
+            cases, json.loads(done.stdout), strict=True
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(accepted, problem is None, problem)
+
     @verifies("scenario.task-session.pi-boundary")
     def test_writes_outside_the_task_are_refused(self):
         with tempfile.TemporaryDirectory() as directory:

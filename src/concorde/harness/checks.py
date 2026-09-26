@@ -239,14 +239,34 @@ def _timeout(check: dict) -> float:
 
 
 ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# Transport configuration can be required by an enclosing sandbox. Keep this list exact:
+# runtime injection variables (e.g. PYTHONPATH, NODE_OPTIONS) do not belong to a check.
+TRANSPORT_ENV = (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+    "no_proxy",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "REQUESTS_CA_BUNDLE",
+    "CURL_CA_BUNDLE",
+    "NODE_EXTRA_CA_CERTS",
+)
 
 
 def environment(check: dict | None = None) -> dict[str, str]:
-    """The environment of a check: ``PATH`` and ``LANG`` of the host, then the check's own
-    ``env``. Nothing of Concorde's own runtime is added: a check runs the project's tools."""
+    """Host PATH, LANG and explicit transport settings, overridden by the check's own env.
+
+    Runtime settings stay excluded; execute_check supplies its own scratch/cache settings.
+    """
     base = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "LANG": os.environ.get("LANG", "C.UTF-8"),
+        **{key: os.environ[key] for key in TRANSPORT_ENV if key in os.environ},
     }
     own = (check or {}).get("env", {})
     if not isinstance(own, dict) or any(

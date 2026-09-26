@@ -167,10 +167,18 @@ print(json.dumps(str(scratch)))
 
     @verifies("scenario.checks.scratch")
     def test_project_tmpdir_cannot_become_a_writable_project_mount(self):
-        with patch("tempfile.gettempdir", return_value=str(self.root)):
+        # Capture a writable location before masking the process temporary directory. Global
+        # /tmp and /var/tmp may be read-only in the enclosing task-session/check sandbox.
+        with (
+            tempfile.TemporaryDirectory(dir=self.parent) as fallback,
+            patch.dict(os.environ, {"CONCORDE_CHECK_TMPDIR": fallback}),
+            patch("tempfile.gettempdir", return_value=str(self.root)),
+        ):
             result = self.run_check("import tempfile; print(tempfile.mkstemp()[1])")
         self.assertEqual(0, result.returncode, result)
-        self.assertFalse(Path(result.stdout.decode().strip()).is_relative_to(self.root))
+        issued = Path(result.stdout.decode().strip())
+        self.assertTrue(issued.is_relative_to(fallback))
+        self.assertFalse(issued.is_relative_to(self.root))
 
     @verifies("scenario.checks.command-output")
     def test_exit_code_and_separate_streams_are_preserved(self):

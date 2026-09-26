@@ -56,48 +56,49 @@ TEXT = 160
 STRING = {"type": "string", "minLength": 1}
 STRINGS = {"type": "array", "items": STRING}
 # contract.task-session.report (specs/concorde/agents/task-session/contracts.md)
+REPORT_FIELDS = ["status", "summary", "commit", "escalations", "decisions", "open"]
 REPORT_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": REPORT_FIELDS,
+    "properties": {
+        "status": {"type": "string", "enum": ["delivered", "escalated"]},
+        "summary": STRING,
+        "commit": {
+            "type": ["string", "null"],
+            "pattern": r"^[0-9a-f]{40}([0-9a-f]{24})?(?![\s\S])",
+        },
+        "escalations": {
+            "type": "array",
+            "uniqueItems": True,
+            "items": {"type": "integer", "minimum": 1},
+        },
+        "decisions": STRINGS,
+        "open": STRINGS,
+    },
     "oneOf": [
         {
-            "type": "object",
-            "additionalProperties": False,
-            "required": ["status", "summary", "commit", "decisions", "open"],
             "properties": {
                 "status": {"const": "delivered"},
-                "summary": STRING,
-                "commit": {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$",
-                },
-                "decisions": STRINGS,
-                "open": STRINGS,
+                "commit": {"type": "string"},
+                "escalations": {"maxItems": 0},
             },
         },
         {
-            "type": "object",
-            "additionalProperties": False,
-            "required": ["status", "summary", "escalations", "decisions", "open"],
             "properties": {
                 "status": {"const": "escalated"},
-                "summary": STRING,
-                "escalations": {
-                    "type": "array",
-                    "minItems": 1,
-                    "uniqueItems": True,
-                    "items": {"type": "integer", "minimum": 1},
-                },
-                "decisions": STRINGS,
-                "open": STRINGS,
+                "commit": {"type": "null"},
+                "escalations": {"minItems": 1},
             },
         },
-    ]
+    ],
 }
 # The parameters concorde_report offers the model: one object, since model providers expect an
 # object at the top; the extension's reportProblem and REPORT_SCHEMA hold it to the contract.
 TOOL_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["status", "summary", "decisions", "open"],
+    "required": REPORT_FIELDS,
     "properties": {
         "status": {
             "type": "string",
@@ -107,14 +108,14 @@ TOOL_SCHEMA = {
         },
         "summary": {"type": "string", "description": "What this round did."},
         "commit": {
-            "type": "string",
-            "description": "For delivered only: the delivery commit, in full.",
+            "type": ["string", "null"],
+            "description": "The full delivery commit for delivered; null for escalated.",
         },
         "escalations": {
             "type": "array",
             "items": {"type": "integer"},
-            "description": "For escalated only: the numbers concorde task escalate "
-            "--by task-session printed for your escalations.",
+            "description": "Empty for delivered. For escalated: the nonempty, unique positive "
+            "numbers concorde task escalate --by task-session printed for your escalations.",
         },
         "decisions": {
             "type": "array",

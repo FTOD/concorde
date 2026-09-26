@@ -10,96 +10,48 @@ The arguments of the `concorde_report` tool with which a pi task session ends a 
 ```concorde-contract
 {
   "id": "contract.task-session.report",
-  "version": 1,
+  "version": 2,
   "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["status", "summary", "commit", "escalations", "decisions", "open"],
+    "properties": {
+      "status": {"type": "string", "enum": ["delivered", "escalated"]},
+      "summary": {"type": "string", "minLength": 1},
+      "commit": {
+        "type": ["string", "null"],
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?(?![\\s\\S])"
+      },
+      "escalations": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {"type": "integer", "minimum": 1}
+      },
+      "decisions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+      "open": {"type": "array", "items": {"type": "string", "minLength": 1}}
+    },
     "oneOf": [
       {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "status",
-          "summary",
-          "commit",
-          "decisions",
-          "open"
-        ],
         "properties": {
-          "status": {
-            "const": "delivered"
-          },
-          "summary": {
-            "type": "string",
-            "minLength": 1
-          },
-          "commit": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
-          },
-          "decisions": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "open": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
+          "status": {"const": "delivered"},
+          "commit": {"type": "string"},
+          "escalations": {"maxItems": 0}
         }
       },
       {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "status",
-          "summary",
-          "escalations",
-          "decisions",
-          "open"
-        ],
         "properties": {
-          "status": {
-            "const": "escalated"
-          },
-          "summary": {
-            "type": "string",
-            "minLength": 1
-          },
-          "escalations": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "integer",
-              "minimum": 1
-            }
-          },
-          "decisions": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "open": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
+          "status": {"const": "escalated"},
+          "commit": {"type": "null"},
+          "escalations": {"minItems": 1}
         }
       }
     ]
   },
-  "semantics": "The arguments a pi task session passes to concorde_report to end a session round, which the supervisor records as the round's report. status is delivered when delivery committed the task on its branch, with commit the delivery commit, or escalated when the session cannot go further without the main agent, with escalations the numbers (from 1, in record order) of the escalations it recorded with concorde task escalate --by task-session, which carry the error chains. summary says what the round did; decisions lists each decision the session made without the main agent, with its reason; open lists what is still open. The supervisor records delivered or escalated only when the task record holds that delivery commit or those task-session escalations, and a failed round otherwise. A behaviour or field change increments the version.",
+  "semantics": "The arguments a pi task session passes to concorde_report to end a session round, which the supervisor records as the round's report. All six fields are required. status is delivered when delivery committed the task on its branch, with commit the full delivery commit and escalations an empty array, or escalated when the session cannot go further without the main agent, with commit null and escalations a nonempty unique array of positive numbers (from 1, in record order) of the escalations it recorded with concorde task escalate --by task-session, which carry the error chains. summary says what the round did; decisions lists each decision the session made without the main agent, with its reason; open lists what is still open. The supervisor records delivered or escalated only when the task record holds that delivery commit or those task-session escalations, and a failed round otherwise. Version 2 governs admission of new tool reports only; already persisted version 1 reports remain unchanged and are not revalidated. A behaviour or field change increments the version.",
   "example": {
     "status": "escalated",
     "summary": "Implemented the severity levels; the Spec does not say whether warnings block delivery.",
+    "commit": null,
     "escalations": [
       1
     ],

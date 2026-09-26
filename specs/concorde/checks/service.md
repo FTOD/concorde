@@ -35,9 +35,23 @@ one in the worktree the check runs in or, when that has none, in the primary wor
 task worktree rarely has an environment of its own. It is never Concorde's interpreter, which runs
 in its own environment. A check that uses `{python}` without one, or with one that is not an
 executable file there, stops with `project_python_missing`, naming every place looked at. A check
-runs with the host's `PATH` and `LANG` and its own `env`, and nothing of Concorde's runtime: a
-relative `PYTHONPATH` such as `src` is resolved in the worktree the check runs in, so an installed
-copy of the project's code in its environment does not stand in for the code under test.
+runs with the host's `PATH` and `LANG`, the transport variables below when present, and its own
+`env`. No other host variable is inherited, so nothing of Concorde's runtime enters the check: a
+relative `PYTHONPATH` such as `src` explicitly set in the check's `env` is resolved in the worktree
+the check runs in, so an installed copy of the project's code does not stand in for code under test.
+
+| Inherited transport variables | Purpose |
+| --- | --- |
+| `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`, `http_proxy`, `https_proxy`, `all_proxy`, `no_proxy` | Preserve the enclosing host or sandbox's proxy route and bypass list |
+| `SSL_CERT_FILE`, `SSL_CERT_DIR`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `NODE_EXTRA_CA_CERTS` | Preserve standard TLS trust file and directory locations |
+
+Names are matched exactly; upper and lower case values remain independent, including empty
+values, and each client applies its own precedence. The check's `env` overrides inherited values
+by exact name, including with an empty string. The executor then replaces temporary, cache and
+report variables with its own scratch paths as specified in [the boundary](boundary.md). Runtime
+injection settings such as `PYTHONPATH`, `PYTHONHOME`, `VIRTUAL_ENV`, `NODE_OPTIONS` and Concorde or
+agent session variables are not inherited. Transport values are passed as environment data, never
+added to the command line or diagnostic messages.
 
 ## Running checks
 
@@ -137,6 +151,14 @@ start.
 - AND once `env/bin/python` exists, the check runs with it, sees `MARK` and has no `PYTHONPATH`
 - AND in a task worktree without its own `env/bin/python`, the primary worktree's is used
 - BUT an `env` whose names are not variable names is refused with `invalid_check`
+
+### scenario.checks.transport-environment — A nested check keeps its transport configuration
+
+- GIVEN a host with proxy and TLS trust-location variables and unrelated runtime variables
+- WHEN the service runs a configured check inside another check boundary
+- THEN it inherits only `PATH`, `LANG` and the named transport variables, with the check's own `env` taking precedence by exact name
+- AND the check can reach a local proxy while project writes remain denied and its issued scratch remains writable
+- BUT inherited runtime variables do not enter the command, and configured temporary or cache paths cannot replace the executor's scratch paths
 
 ### scenario.checks.selective — A selective check runs the tests that verify the checked Modules
 

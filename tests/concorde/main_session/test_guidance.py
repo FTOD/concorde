@@ -86,7 +86,13 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("End every round by calling `concorde_report`", self.pi_session)
         self.assertIn("with `commit` the delivery commit", self.pi_session)
-        self.assertIn("with `escalations` the numbers", self.pi_session)
+        self.assertIn("`escalations: []`", self.pi_session)
+        self.assertIn("`commit: null`", self.pi_session)
+        self.assertIn("`escalations` a nonempty array of the numbers", self.pi_session)
+        self.assertIn("Always include all six fields", self.pi_session)
+        self.assertIn(
+            "Do not omit the unused field or use an empty string", self.pi_session
+        )
         self.assertIn("its answer is the prompt of your next round", self.pi_session)
         self.assertNotIn("SendMessage", self.pi_session)
         self.assertIn("stage the paths you changed by name", self.pi_session)
