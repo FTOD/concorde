@@ -477,6 +477,9 @@ class InstallTests(unittest.TestCase):
         self.assertEqual({"from": before, "to": after}, report["update"]["protocol"])
         self.assertEqual("unvalidated", report["update"]["state"])
         self.assertEqual(["t1"], [task["id"] for task in report["open_tasks"]])
+        self.assertTrue(
+            any("merge the primary branch" in item for item in report["next"])
+        )
         self.assertTrue((project / ".concorde/update.json").is_file())
         self.assertIn(".concorde/update.json", (project / ".gitignore").read_text())
         # Unvalidated: an error while anything else fails, kept until a validation passes.
@@ -496,6 +499,12 @@ class InstallTests(unittest.TestCase):
             "CONCORDE-UPDATE-002", [f["rule_id"] for f in passing["findings"]]
         )
         self.assertFalse((project / ".concorde/update.json").exists())
+        # An update that brings no new Protocol asks for no task merges.
+        again = json.loads(run("update").stdout)
+        self.assertIsNone(again["update"]["protocol"])
+        self.assertFalse(
+            any("merge the primary branch" in item for item in again["next"])
+        )
 
     @verifies("scenario.distribution.task-worktree-command")
     def test_the_command_of_a_task_worktree_runs_the_primary_framework(self):

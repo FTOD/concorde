@@ -445,7 +445,8 @@ def update(
                     "carries the previous Protocol copy"
                 )
             ]
-            if tasks
+            # Only a new Protocol copy makes an open task's own copy stale.
+            if tasks and rebound
             else []
         ),
     }

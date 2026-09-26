@@ -119,8 +119,8 @@ the versions and Protocol bindings before and after. While that state is there, 
 validate` in the primary worktree reports `CONCORDE-UPDATE-001` as an error, which also stops a
 `task merge`; the first validation that passes removes it and says so (`CONCORDE-UPDATE-002`).
 Only an update sets the state, so a project that stops validating because of its own changes is
-never marked by it. The result lists the open tasks: their worktrees keep the previous Protocol
-copy until the primary branch is merged into them.
+never marked by it. The result lists the open tasks and, when the Protocol copy changed, asks for
+the primary branch to be merged into each, since their worktrees keep the previous copy until then.
 
 With `--pi` the installer also prepares the project for a pi main session and pi workers: it
 places the pi runtime — the sandbox engine `@anthropic-ai/sandbox-runtime` that pi workers run

@@ -55,6 +55,11 @@ change together.
   `["{{python}}", "-m", "pytest", "tests"]`, not a bare `python`, `pytest` or `py.test`. When the
   code is imported from a directory such as `src/`, add `env` `{"PYTHONPATH": "src"}`, so that the
   check tests the code of the worktree it runs in rather than an installed copy.
+  A check runs in a read-only sandbox where only a scratch directory is writable, named by
+  `$CONCORDE_CHECK_REPORT_DIR`: a build, report or cache must go there, never into the project.
+  `argv` runs without a shell, so a command that needs the variable is wrapped, for example
+  `["sh", "-c", "sphinx-build -W -b html docs \"$CONCORDE_CHECK_REPORT_DIR/html\""]`, and pytest
+  runs with `-p no:cacheprovider`.
 - `decisions`: every choice the code left open and you took, such as whether two directories are
   one Module or two, or where a shared helper belongs. Give each an `id` `d.<name>`, the `module`
   it concerns, the `question`, at least two `options`, the `chosen` option, the `reason` and
