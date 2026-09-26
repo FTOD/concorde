@@ -1,4 +1,4 @@
-"""Boundary-set records of Spec Protocol 13 (``protocol/boundaries.md``).
+"""Boundary-set records of Spec Protocol 14 (``protocol/boundaries.md``).
 
 The repository computes every set from declarations alone (``SpecRepository.boundary_sets``,
 ``spec_context``, ``implementation_context``, ``external_context``, ``spec_scope`` and

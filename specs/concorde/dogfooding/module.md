@@ -162,91 +162,7 @@ is a new install with or without `--develop`.
 
 ## Design
 
-**Two repositories, not a submodule.** Concorde could have been placed in the project as a Git
-submodule and edited in place. It is not, because a project's task worktrees would each get their
-own submodule checkout, unbuilt and without Concorde's environment; a submodule is checked out
-detached, so commits made in it are easily lost; and changes to Concorde made from the project
-would bypass the Concorde repository's own tasks, validation and merge lock, racing the other
-sessions that merge there. With two repositories, the project keeps the ordinary copied framework,
-so nothing about its worktrees changes, and Concorde is changed only where its own rules apply.
-
-**The project's main agent reports, it does not repair.** The agent that is stopped by a boundary
-is the one least able to judge that boundary fairly: loosening it is always the quickest way on.
-Keeping every change of Concorde in a different session, in a different repository, under that
-repository's checks, removes the temptation, and the boundary cases make the report say why the
-boundary is wrong before anyone changes it. The same reasoning reserves the design-limitation case
-for the developer: fixing an implementation bug brings the code back to its design, while changing
-the design changes what every project's boundaries mean.
-
-**Issues carry the defect.** A defect report is an ordinary Issue report with two optional
-fields, the origin and the error chain, rather than a format of its own: the Concorde repository
-records, solves and closes it with the Issue machinery it already has, and the error chain stays
-the structured value every level of Concorde passes on. It is written in the project and recorded
-in the Concorde repository, where the Module at fault is known, the fix is made and the closure
-merges with it. The project never writes into the Concorde repository, whose primary worktree must
-stay clean to be installed from.
-
-**Only a clean primary worktree is a source.** The receipt's `source` is where every later update
-installs from, so it must outlive any single task and name a line of development; `source_commit`
-then names exactly the Concorde a defect was seen on, so the Concorde repository can tell whether
-the defect is already fixed at its head.
-
-**One observation rule.** Watching runs closely is asked of the Concorde repository's own agents
-too. Both receive the same sentence, kept once as a prompt fragment and checked against the
-repository's agent instructions ([requirements](requirements.md#req.dogfooding.one-observation-rule)),
-so that the two sides never drift into different ideas of what observing a run means.
-
-How Dogfooding is built:
-
-```d2
-dogfooding: Dogfooding {
-  source: Develop source check {
-    "src/concorde/dogfooding/"
-  }
-  guidance: Develop guidance {
-    "prompts/dogfooding/"
-  }
-}
-```
-
-<a id="realization.dogfooding.source-check"></a>
-
-The **develop source check**, `src/concorde/dogfooding/develop.py`, decides whether a checkout may
-be installed from in develop mode and returns its repository, branch and commit, and reads the
-rendered develop guidance. It runs only Git queries and writes nothing, so the installer calls it
-before writing anything.
-
-<a id="realization.dogfooding.guidance"></a>
-
-The **develop guidance** is written under `prompts/dogfooding/`: `skill.md`, the section added to
-the installed skill, `claude-md.md`, the paragraph added to the `CLAUDE.md` block, and
-`common/observe-runs.md`, the observation rule both sides share. Distribution's build renders them
-into `generated/dogfooding/`.
-
-<a id="realization.dogfooding.tests"></a>
-
-The **Dogfooding tests**, under `tests/concorde/dogfooding/`, make develop installs from temporary
-Concorde repositories, refuse the sources the requirements exclude, update a develop install, and
-check the rendered guidance and the Concorde repository's agent instructions, verifying the
-[requirements](requirements.md) and [scenarios](scenarios.md).
-
-## Relationships
-
-```d2
-dogfooding: Dogfooding
-distribution: Distribution
-issues: Issues
-mainsession: Main session
-tasks: Tasks
-tooling: Spec tooling {
-  spec: Spec core
-}
-dogfooding -> distribution
-dogfooding -> issues
-dogfooding -> mainsession
-dogfooding -> tasks
-dogfooding -> tooling.spec
-```
+### Around it
 
 <a id="uses-distribution"></a>
 
@@ -284,3 +200,60 @@ which builds the main agent's link on top of a run's error chain for the report.
 **Spec core** computes the [grant](../spec-tooling/spec/module.md#concept.spec.grant) a boundary
 case is decided against: `concorde grant` shows what the Protocol derives from the Specs, which the
 main agent compares with what a run actually applied.
+
+### Inside
+
+**Two repositories, not a submodule.** Concorde could have been placed in the project as a Git
+submodule and edited in place. It is not, because a project's task worktrees would each get their
+own submodule checkout, unbuilt and without Concorde's environment; a submodule is checked out
+detached, so commits made in it are easily lost; and changes to Concorde made from the project
+would bypass the Concorde repository's own tasks, validation and merge lock, racing the other
+sessions that merge there. With two repositories, the project keeps the ordinary copied framework,
+so nothing about its worktrees changes, and Concorde is changed only where its own rules apply.
+
+**The project's main agent reports, it does not repair.** The agent that is stopped by a boundary
+is the one least able to judge that boundary fairly: loosening it is always the quickest way on.
+Keeping every change of Concorde in a different session, in a different repository, under that
+repository's checks, removes the temptation, and the boundary cases make the report say why the
+boundary is wrong before anyone changes it. The same reasoning reserves the design-limitation case
+for the developer: fixing an implementation bug brings the code back to its design, while changing
+the design changes what every project's boundaries mean.
+
+**Issues carry the defect.** A defect report is an ordinary Issue report with two optional
+fields, the origin and the error chain, rather than a format of its own: the Concorde repository
+records, solves and closes it with the Issue machinery it already has, and the error chain stays
+the structured value every level of Concorde passes on. It is written in the project and recorded
+in the Concorde repository, where the Module at fault is known, the fix is made and the closure
+merges with it. The project never writes into the Concorde repository, whose primary worktree must
+stay clean to be installed from.
+
+**Only a clean primary worktree is a source.** The receipt's `source` is where every later update
+installs from, so it must outlive any single task and name a line of development; `source_commit`
+then names exactly the Concorde a defect was seen on, so the Concorde repository can tell whether
+the defect is already fixed at its head.
+
+**One observation rule.** Watching runs closely is asked of the Concorde repository's own agents
+too. Both receive the same sentence, kept once as a prompt fragment and checked against the
+repository's agent instructions ([requirements](requirements.md#req.dogfooding.one-observation-rule)),
+so that the two sides never drift into different ideas of what observing a run means.
+
+<a id="realization.dogfooding.source-check"></a>
+
+The **develop source check**, `src/concorde/dogfooding/develop.py`, decides whether a checkout may
+be installed from in develop mode and returns its repository, branch and commit, and reads the
+rendered develop guidance. It runs only Git queries and writes nothing, so the installer calls it
+before writing anything.
+
+<a id="realization.dogfooding.guidance"></a>
+
+The **develop guidance** is written under `prompts/dogfooding/`: `skill.md`, the section added to
+the installed skill, `claude-md.md`, the paragraph added to the `CLAUDE.md` block, and
+`common/observe-runs.md`, the observation rule both sides share. Distribution's build renders them
+into `generated/dogfooding/`.
+
+<a id="realization.dogfooding.tests"></a>
+
+The **Dogfooding tests**, under `tests/concorde/dogfooding/`, make develop installs from temporary
+Concorde repositories, refuse the sources the requirements exclude, update a develop install, and
+check the rendered guidance and the Concorde repository's agent instructions, verifying the
+[requirements](requirements.md) and [scenarios](scenarios.md).

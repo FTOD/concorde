@@ -97,13 +97,59 @@ The omissions are deliberate: configured checks are commands the project itself 
 host and never by a worker, which only receives their results. Because the boundary cannot stop a
 process outside it, or a host service a check talked to, from changing the project during the run,
 the service measures its input before and after and turns that race into `stale_evidence` rather
-than false evidence. The check result is owned here, next to the runner that produces it, so
-Workers, Validation and Delivery consume one record and never run checks another way. Logs go only
-to the directory the caller names, usually the run directory in the primary worktree; a check's
-output reaches a worker only as the bounded log tail Workers puts into a resume round, and whether
-a worker needs more than its last 20,000 bytes is undecided. The timing recorder lives here because
-check runs and sandbox setup are the slowest deterministic steps a host takes; it is passive and
-holds no content, so it can stay on in any run.
+than false evidence.
+
+### Its place in the five levels
+
+Check execution is a [Tool](../vocabulary.md#concept.concorde.tool), grouped under
+[Tools](../tools/module.md): the program half of level 5 of the
+[five levels](../module.md#the-five-levels), beside the workers. Only programs call it, never a
+model: the Operation host's providers, level 4, in steps of their own, and the Workers host code,
+which manages a worker run on behalf of the Operation that launched it, between the worker's
+rounds. It calls nothing above it and starts no worker, Operation or agent.
+
+```d2
+workers: Workers
+operations: Operations {
+  implementation: Implementation
+  codereview: Code review
+  validation: Validation
+  adoption: Adoption
+}
+checks: Check execution
+workers -> checks
+operations.implementation -> checks
+operations.codereview -> checks
+operations.validation -> checks
+operations.adoption -> checks
+```
+
+Workers, Validation and the Operation providers use this Module; it knows none of them. They rely on
+the [check result](#concept.checks.check-result), the stale-measurement rule, and the boundary
+refusing to run rather than running a check unconfined. Every call returns to the caller's step:
+the check results go up as that caller's evidence, and a failure, such as `stale_evidence` or a
+boundary that cannot be established, goes up as this Module's own error link, which the caller
+keeps as a cause under its link. The check result is owned here, next to the runner that produces
+it, so Workers, Validation and Delivery consume one record and never run checks another way.
+Logs go only to the directory the caller names, usually the run directory in the primary worktree;
+a check's output reaches a worker only as the bounded log tail Workers puts into a resume round,
+and whether a worker needs more than its last 20,000 bytes is undecided.
+
+<a id="uses-spec"></a>
+
+**Spec core** loads the configuration and
+[registry](../spec-tooling/spec/module.md#concept.spec.registry), from which the check service
+takes each Module's checks and resolves its `ImplementationScope` — a [boundary
+set](../spec-tooling/spec/module.md#concept.spec.boundary-set) whose digest is part of what a
+check measures; changed paths map the same way. It also supplies safe relative-path rules for
+inputs. Check execution relies on a Module's boundary set resolving the same way from the same
+Specs before and after a run, so that a digest mismatch means the input changed; an invalid or
+unreadable path fails the run before any command starts.
+
+### Inside
+
+The check runner runs each configured check inside the read-only boundary, which provides the
+scratch the check may write, and records a check result and diagnostic spans:
 
 ```d2
 checks: Check execution {
@@ -112,8 +158,22 @@ checks: Check execution {
     "timing.py"
     "checks.py"
   }
+  check: Configured check
+  result: Check result
+  boundary: Read-only check boundary
+  scratch: Check scratch
+  span: Diagnostic span
+  runner -> check: runs
+  runner -> result: records
+  runner -> span: records
+  runner -> boundary: enforces
+  check -> boundary: runs inside
+  boundary -> scratch: provides
 }
 ```
+
+The timing recorder lives here because check runs and sandbox setup are the slowest deterministic
+steps a host takes; it is passive and holds no content, so it can stay on in any run.
 
 - <a id="realization.checks.runner"></a>The **check runner** has three parts: the executor mounts
   the filesystem read-only except the scratch, holding a process descriptor to end every descendant
@@ -123,39 +183,3 @@ checks: Check execution {
 - <a id="realization.checks.tests"></a>The **check tests** run real sandboxed processes, failing
   rather than skipping where the platform can't enforce the boundary — showing what it blocks, not
   that checks are adequate — and exercise the timing recorder and summary.
-
-## Relationships
-
-```d2
-runner: Check runner
-check: Configured check
-result: Check result
-boundary: Read-only check boundary
-scratch: Check scratch
-span: Diagnostic span
-runner -> check: runs
-runner -> result: records
-runner -> span: records
-runner -> boundary: enforces
-check -> boundary: runs inside
-boundary -> scratch: provides
-```
-
-```d2
-me: Check execution
-spec: Spec core
-me -> spec
-```
-
-Workers, Validation and the Operation providers use this Module; it knows none of them. They rely on
-the [check result](#concept.checks.check-result), the stale-measurement rule, and the boundary
-refusing to run rather than running a check unconfined.
-
-<a id="uses-spec"></a>
-
-**Spec core** loads the configuration and
-[registry](../spec-tooling/spec/module.md#concept.spec.registry), from which the check service
-takes each Module's checks and resolves its `ImplementationScope` — a [boundary
-set](../spec-tooling/spec/module.md#concept.spec.boundary-set) whose digest is part of what a
-check measures; changed paths map the same way. It also supplies safe relative-path rules for
-inputs; an invalid or unreadable path fails the run before any command starts.

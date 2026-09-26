@@ -16,7 +16,7 @@ const entry =
   "| Pipe \\| term | A cell with an escaped \\| pipe. |\n\n" +
   "## Usage\n\nSubmit one request.\n\n## Design\n\n" +
   '<a id="concept.example.result"></a><a id="realization.example.service"></a>\n\nThe service produces the result.\n\n' +
-  "## Relationships\n\n```d2\nservice: Example service\nresult: Result\nservice -> result: produces\n```\n";
+  "```d2\nservice: Example service\nresult: Result\nservice -> result: produces\n```\n";
 const declaration = {
   schema_version: 3,
   document: {

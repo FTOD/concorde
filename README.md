@@ -30,28 +30,38 @@ task's Modules define.
 
 ## The idea
 
-Concorde organizes the AI work on a project in three levels, and the project's Specs shape every
-one of them.
+Concorde organizes the AI work on a project in five levels. Agents sit at both ends: your main
+session and the task level at the top, where work is judged and decided, and workers at the bottom,
+where it is done. Between them run programs, not models: a workflow orders a task's Operations, and
+an Operation launches workers and calls Tools, then checks what they did. Calls only go down;
+results and errors come back up. The project's Specs shape every level.
 
 ```mermaid
 flowchart TB
   you(["You"])
-  main["Main session<br/>your Claude Code or pi, primary checkout"]
-  subgraph parallel["Task sessions, side by side"]
-    direction LR
-    t1["Task session<br/>branch + worktree"]
-    t2["Task session<br/>branch + worktree"]
+  subgraph top["Agent layer: sessions"]
+    main["1 · Main session<br/>your Claude Code or pi, primary checkout"]
+    task["2 · Task level<br/>the main agent or a task session,<br/>branch + worktree"]
   end
-  w1["Workers<br/>headless claude -p or pi -p"]
-  w2["Workers<br/>headless claude -p or pi -p"]
+  subgraph mid["Programs"]
+    wf["3 · Workflow<br/>orders a task's Operations"]
+    op["4 · Operation<br/>one bounded job, one checked result"]
+  end
+  subgraph bottom["Agent layer: workers, beside Tools"]
+    w["5 · Worker<br/>headless claude -p or pi -p"]
+    tool["5 · Tool<br/>programmed action, e.g. checks"]
+  end
   specs[("Specs")]
   you <--> main
-  main -->|opens, starts, merges| t1 & t2
-  t1 -->|runs Operations| w1
-  t2 -->|runs Operations| w2
-  specs -.->|harness: context + grant| w1 & w2
-  w1 -.->|evidence or error chain| t1
-  t1 -.->|delivered or escalated| main
+  main -->|opens, enters or delegates, merges| task
+  task -->|starts| wf
+  task -->|or runs directly| op
+  wf -->|runs, one at a time| op
+  op -->|launches| w
+  op -->|calls| tool
+  specs -.->|harness: context + grant| w
+  op -.->|evidence or error chain| task
+  task -.->|delivered or escalated| main
 ```
 
 **The main session: the project.** You work with your own Claude Code or pi session in the
@@ -71,6 +81,14 @@ tasks whose Modules and shared files do not overlap run at once. A task session 
 own task: it changes Specs and code in the worktree, commits verified steps, runs `validate` and
 `delivery`, and reports back when it has delivered or needs a decision beyond its task. A single
 task the main agent can also carry out itself inside the worktree.
+
+**Workflows and Operations: the programs between.** A task either runs Operations one by one or
+starts a **workflow**, a procedure written once for tasks that follow a known path, such as
+`brownfield`, which describes an existing codebase in Specs; the workflow orders the task's
+Operations and stops wherever you must decide. An **Operation** completes one bounded job and
+returns one result: it launches workers, calls deterministic **Tools** such as the check runner,
+and checks the outcome itself. Neither decides the project's direction; they follow declared rules,
+so no model's answer reaches the next level unchecked.
 
 **Workers: one bounded step, inside a harness.** For a bounded step, a task runs an Operation: the
 deterministic Operation host launches a headless `claude -p` or `pi -p` worker for one task type
@@ -171,10 +189,11 @@ For your own project, [scaffold a docsite](docsite/README.md#scaffold-a-docsite)
 
 ## The Spec Protocol in brief
 
-Concorde's independent **[Spec Protocol 13.2.0](protocol/README.md)** has two purposes: a human
+Concorde's independent **[Spec Protocol 14.0.0](protocol/README.md)** has two purposes: a human
 understands a project's backbone from its Specs without reading code, and a harness derives from
-the Specs exactly what each AI task may read and write. A Module's entry answers five questions in
-order — **Purpose**, **Terminology**, **Usage**, **Design**, **Relationships** — and every node and
+the Specs exactly what each AI task may read and write. A Module's entry answers four questions in
+order — **Purpose**, **Terminology**, **Usage** and **Design**, where Design shows how the Module
+is built inside and how it works with the Modules around it — and every node and
 relation is declared exactly once. A Module's context is computed from its own declarations, one
 level deep, and its write sets are its own documents and the files its realizations bind. The
 Protocol also defines the six **task types** and the access level each assigns to every boundary

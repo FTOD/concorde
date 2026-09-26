@@ -569,7 +569,7 @@ class InstallTests(unittest.TestCase):
         # Unvalidated: an error while anything else fails, kept until a validation passes.
         entry = project / "specs/project/module.md"
         text = entry.read_text()
-        entry.write_text(text.replace("## Relationships", "## Drawing"))
+        entry.write_text(text.replace("## Design", "## Drawing"))
         failing = json.loads(run("validate").stdout)
         self.assertEqual("invalid", failing["status"])
         self.assertIn(

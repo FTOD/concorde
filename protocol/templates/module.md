@@ -39,11 +39,12 @@ behaviour as unsupported.]
 
 <a id="realization.example.service"></a>
 
-[Why the decomposition, state, flow, collaboration and failure containment fulfil the guarantees.
-Connect each significant choice to the problem it prevents. Distinguish significant choices from
-incidental implementation and open questions.]
+[How the Module is built and why: the decomposition, state, flow and failure containment, and how
+each significant choice fulfils a guarantee or prevents a problem. Distinguish significant choices
+from incidental implementation and open questions.]
 
-## Relationships
+[The inside, if the Module has structure worth drawing: its children and the realizations that
+carry its function, with the files they bind and the edges that matter.]
 
 ```d2
 example: Example {
@@ -52,6 +53,15 @@ example: Example {
   }
   record: Example record
   service -> record: saves
+}
+```
+
+[The outside: how the Module works with the Modules around it, and which of its parts meets which
+of theirs.]
+
+```d2
+example: Example {
+  service: Example service
 }
 provider: Provider
 example.service -> provider: reserves stock through
@@ -63,17 +73,21 @@ example -> provider
 [For each child and provider: its responsibility, when the collaboration applies, the canonical
 promises relied upon, and this Module's own duties and failure reactions. This is the anchor a
 `contains` or `uses` relation points to. Explain the conditions and reactions a picture cannot
-carry.]
+carry. Draw further diagrams, such as an `illustrative` flow over time, only where they show
+something the prose does not.]
 ````
 
 The first Terminology row defines `concept.example.record`; the second is an import row, which
 links to the provider's concept by identity and leaves the definition empty.
 
-The diagram is checked. `Example` and `Provider` resolve to Module titles, `Example service` and
-`Example record` to this Module's nodes, and `src/example/` to the entry the service binds. Nesting
-asserts that Example owns both nodes and that the service binds its entry; the labelled edges match
-the `relates` declarations below and the unlabelled edge between the two Modules matches the `uses`.
-The look is the publisher's. A picture that should not be checked is marked `d2 illustrative`.
+Both diagrams are checked, and each answers one question: the first how Example is built, the
+second how it meets its provider. `Example` and `Provider` resolve to Module titles, `Example
+service` and `Example record` to this Module's nodes, and `src/example/` to the entry the service
+binds. Nesting asserts that Example owns both nodes and that the service binds its entry; the
+labelled edges match the `relates` declarations below and the unlabelled edge between the two
+Modules matches the `uses`. The look is the publisher's. A picture that should not be checked is
+marked `d2 illustrative`. There is no separate Relationships section: the design holds both the
+inside and the outside.
 
 ## Paired metadata
 

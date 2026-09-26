@@ -133,7 +133,11 @@ Module. In this version, reviewers read Specs directly under their grant, not th
 on one checklist covering all dimensions; splitting by dimension and server queries are future
 work.
 
-## Relationships
+### Around it
+
+Spec review stays inside Spec tooling but reaches outside it for everything a Spec cannot judge on
+its own: it asks Spec core whether a Module can be reviewed at all, and it reaches an agent only
+through Workers.
 
 ```d2
 tooling: Spec tooling {
@@ -147,7 +151,6 @@ agents: Agents {
 operations: Operations
 tooling.review -> agents.workers
 tooling.review -> operations
-operations -> tooling.review
 ```
 
 Operations also uses Spec review in turn, since `spec_review` is one of its own Operations —

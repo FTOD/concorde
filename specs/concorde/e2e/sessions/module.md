@@ -110,16 +110,6 @@ thing under test. The 30-second window that separates a run the turn's end stopp
 session cancelled itself is a heuristic of the testing condition; a session that cancels a run in
 its very last seconds is woken for it too, which only costs a round.
 
-How Headless sessions is built:
-
-```d2
-sessions: Headless sessions {
-  driver: Session driver {
-    "sessions.py"
-  }
-}
-```
-
 <a id="realization.headless-sessions.driver"></a>
 
 The **session driver** is `scripts/e2e/sessions.py`: the command of a round, the environment, the
@@ -132,13 +122,7 @@ The **session driver tests**, `tests/concorde/e2e/test_sessions.py`, check the c
 reading, which runs are unsettled and, with a stand-in for `claude -p`, a whole session that is
 woken once, verifying the [requirements](requirements.md) and [scenarios](scenarios.md).
 
-## Relationships
-
-```d2
-sessions: Headless sessions
-operations: Operations
-sessions -> operations
-```
+### Around it
 
 <a id="uses-operations"></a>
 

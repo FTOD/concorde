@@ -184,6 +184,12 @@
       "source": "realization.workflows.scripts",
       "verb": "runs steps through",
       "target": "realization.workflows.commands"
+    },
+    {
+      "type": "relates",
+      "source": "realization.workflows.commands",
+      "verb": "starts runs through",
+      "target": "module.operations"
     }
   ],
   "extensions": {}

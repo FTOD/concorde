@@ -105,6 +105,36 @@
       "source": "concept.task-session.round",
       "verb": "ends with",
       "target": "concept.task-session.report"
+    },
+    {
+      "type": "relates",
+      "source": "realization.task-session.starter",
+      "verb": "prompts with",
+      "target": "concept.main-session.guidance"
+    },
+    {
+      "type": "relates",
+      "source": "realization.task-session.starter",
+      "verb": "writes",
+      "target": "concept.harness.session-boundary"
+    },
+    {
+      "type": "relates",
+      "source": "realization.task-session.starter",
+      "verb": "reads the program as",
+      "target": "concept.workers.backend"
+    },
+    {
+      "type": "relates",
+      "source": "realization.task-session.starter",
+      "verb": "records rounds in",
+      "target": "concept.tasks.task-record"
+    },
+    {
+      "type": "relates",
+      "source": "concept.task-session.report",
+      "verb": "is checked against",
+      "target": "concept.tasks.task-record"
     }
   ],
   "extensions": {}

@@ -197,6 +197,32 @@ and gives a code and explanation so the main agent can correct the request. The 
 
 ## Design
 
+### Around it
+
+```d2
+issues: Issues
+core: Spec core
+session: Main session
+issues -> core
+session -> issues
+```
+
+Nothing outside the store writes a record; the bookkeeping command is how the main agent adds
+reports and dispositions, usually closing an Issue on the task branch that fixed it. Main session
+declares `session -> issues` above; its [guidance](../agents/main-session/module.md) says when to
+record, solve and close Issues. Issues relies on nobody but Spec core.
+
+<a id="uses-spec"></a>
+
+**Spec core** provides the [typed-value](../spec-tooling/spec/module.md#concept.spec.typed-value)
+machinery Issues' shapes register with, the
+[file transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction) a digest-bound
+record publishes through, and the [registry](../spec-tooling/spec/module.md#concept.spec.registry)
+the command reads for which Modules exist. A stale transaction is refused, reported `stale_issue`,
+writing nothing.
+
+### Inside
+
 The store alone decides what a record may hold, and the command adds what the main agent must not
 be able to claim; everything else is ordinary work run through Operations.
 
@@ -251,27 +277,3 @@ is only noted.
 The **Issues tests** cover the store (temporary directories, concurrent writers, malformed records,
 failed publications), every bookkeeping-command action with its refusals, and the configured store
 check on a fixture project.
-
-## Relationships
-
-```d2
-issues: Issues
-core: Spec core
-session: Main session
-issues -> core
-session -> issues
-```
-
-Nothing outside the store writes a record; the bookkeeping command is how the main agent adds
-reports and dispositions, usually closing an Issue on the task branch that fixed it. Main session
-declares `session -> issues` above; its [guidance](../agents/main-session/module.md) says when to record,
-solve and close Issues. Issues relies on nobody but Spec core.
-
-<a id="uses-spec"></a>
-
-**Spec core** provides the [typed-value](../spec-tooling/spec/module.md#concept.spec.typed-value)
-machinery Issues' shapes register with, the
-[file transaction](../spec-tooling/spec/module.md#concept.spec.file-transaction) a digest-bound
-record publishes through, and the [registry](../spec-tooling/spec/module.md#concept.spec.registry)
-the command reads for which Modules exist. A stale transaction is refused, reported `stale_issue`,
-writing nothing.

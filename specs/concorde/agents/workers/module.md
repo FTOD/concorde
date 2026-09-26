@@ -2,16 +2,16 @@
 
 ## Purpose
 
-Workers runs the lowest level of Concorde's agents: one headless worker for one task under one
-frozen grant, on Claude Code or on pi, turning what happened into a run record the Operation host
-can trust. Each run is its own session, its own process and its own permissions, on the model the
-task worktree's configuration chooses. Workers owns the run's lifecycle: the run directory, the
-brief, the launch and resume rounds, the write audit, the checks after each round and the record.
-The worker's permissions and environment are its [agent
+Workers runs the agent half of level 5, the bottom of Concorde's five levels of work: one headless
+worker for one task under one frozen grant, on Claude Code or on pi, turning what happened into a
+run record the Operation host can trust. Each run is its own session, its own process and its own
+permissions, on the model the task worktree's configuration chooses. Workers owns the run's
+lifecycle: the run directory, the brief, the launch and resume rounds, the write audit, the checks
+after each round and the record. The worker's permissions and environment are its [agent
 harness](../../harness/module.md#concept.harness.harness), which the Harness generates from the
-grant for the chosen program. Workers does not compute the grant, choose the task type or write
-the task-specific brief, and never commits or judges whether the worker's work is correct. Its
-boundary guards against scope drift and mistakes, not a malicious worker.
+grant for the chosen program. Workers does not compute the grant, choose the task type or write the
+task-specific brief, and never commits or judges whether the worker's work is correct. Its boundary
+guards against scope drift and mistakes, not a malicious worker.
 
 ## Terminology
 
@@ -254,102 +254,40 @@ The worker is untrusted in that its claims are proposals: only the host reads Gi
 checks and records, after the worker ends — that is why the run record keeps the worker result
 separate from host evidence.
 
-```d2
-workers: Workers {
-  runtime: Worker runtime {
-    "workers.py"
-    "progress.py"
-    "audit.py"
-    "runs.py"
-    "prompts/workers/common/"
-  }
-  claude: Claude Code backend {
-    "claude_backend.py"
-  }
-  pi: pi backend {
-    "pi_backend.py"
-  }
-  models: Model configuration {
-    "models.py"
-  }
-  runtime -> claude: launches
-  runtime -> pi: launches
-}
-```
+### Its place in the five levels
 
-- <a id="realization.workers.runtime"></a>The **worker runtime** writes the brief, decides rounds,
-  runs the write audit, keeps the progress file, manages run directories/records, and supplies the
-  worker prompt snippets every Operation includes, e.g. reporting an error. Its tests also exercise
-  the Harness's worker settings, write hook and pi path decisions, since a worker run is where they
-  apply.
-- <a id="realization.workers.claude"></a>The **Claude Code backend** places the worker settings and
-  write hook the Harness generates, launches and resumes `claude -p`, and reads its event stream.
-  Tests fake `claude` for host behaviour and, with `CONCORDE_LIVE_CLAUDE=1`, run a real worker for
-  what only Claude Code enforces.
-- <a id="realization.workers.pi"></a>The **pi backend** checks its prerequisites, prepares the pi
-  configuration directory, embeds the run's policy into the Harness's permission extension,
-  launches and resumes `pi -p` and reads its event stream. Tests fake `pi` for host behaviour, run
-  the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`, run a real pi worker.
+Workers carries the agent half of level 5, the bottom of Concorde's
+[five levels](../../module.md#the-five-levels). Its own code is not an agent: it runs in the
+Operation host's process, on behalf of the Operation at level 4 that called it, and launches the one
+process that is, the headless worker. Only an Operation host calls it — the host step runner of
+[Operations](../../operations/module.md) and the providers that run workers, such as Understanding,
+Specification, Implementation, Code review, Adoption and Spec review. Nothing above level 4 launches
+a worker: a workflow reaches workers through its Operations, and neither the main agent nor a task
+session ever starts one. Below it, the worker calls nothing of Concorde's: it never touches Git,
+runs an Operation or starts an agent. Between rounds the Workers host code, not the worker, calls
+its level-5 neighbour, the Check execution Tool, so that a failing check can drive another round
+inside the same Operation.
 
-- <a id="realization.workers.models"></a>The **model configuration** detects the main
-  session's program, resolves a worker's backend and checks that its program is installed,
-  discovers the candidates by running the installed `claude` or `pi`, validates, reads and writes
-  `.concorde/worker-models.json`, and resolves the choice of an Operation's worker role. Tests fake
-  both programs.
+Results travel up in one direction. The worker ends with its worker result; Workers keeps it
+verbatim in the run record beside its own evidence and returns the record to the Operation host,
+which turns it into the Operation's result. When the worker could not finish, its `error` is the
+first link of the [error chain](../../vocabulary.md#concept.concorde.error-chain), and Workers adds
+its own link above it saying why it cannot handle the failure — a Spec gap or grant violation is
+not its to retry — before the Operation adds the next. Delivery later collects the run records into
+the task's evidence.
 
-`bypassPermissions` is used since `-p` mode's `dontAsk` denies every Edit/Write outside the working
-directory even when allowed, and that directory can't be the worktree — Claude Code adds it (and
-every `--add-dir`) to the Bash sandbox's read/write set, defeating per-file confinement — so the
-brief uses absolute paths. The run directory must also avoid any deny-rule path, or the host refuses
-to launch.
-
-Pending files are pre-created since a worker must never create an undeclared file, and Bash can only
-grant writes to existing files; for the same reason it can't delete — only propose deletions,
-performed by the host inside `rw` after a clean audit. An untouched pre-created file is removed
-again, staying pending.
-
-Resume rounds reuse the worker's context — the spike confirmed this fixes a failing check — and
-each resume returns a session id the host continues from. Rounds are only for check failures; a
-Spec gap or grant violation is a decision for the main agent or developer, not to retry.
-
-`--safe-mode`/`--bare` are unused since they'd disable the write hook too. Credentials are a copy of
-the user's file in `config/`; an env-var token was untested, and keeping credentials from the worker
-is future work alongside the outer sandbox. Limits: the [Harness](../../harness/module.md).
-
-Open questions: whether Bash needs read access to Claude Code's shell snapshots in
-`CLAUDE_CONFIG_DIR` (deciding if `config/` stays unreadable) awaits the built runtime; per-task tool
-lists are v1 defaults in [the Harness](../../harness/claude-code.md#tool-sets) and may change.
-
-## Relationships
+A run's collaborators: the Operation that calls it and the three providers it relies on.
 
 ```d2
+operations: Operations
 workers: Workers
 spec: Spec core
 harness: Harness
 checks: Check execution
+operations -> workers
 workers -> spec
 workers -> harness
 workers -> checks
-```
-
-```d2
-runtime: Worker runtime
-brief: Brief
-dir: Run directory
-record: Run record
-audit: Write audit
-round: Resume round
-result: Worker result
-runtime -> brief: generates
-runtime -> record: writes
-dir -> record: holds
-record -> audit: records
-record -> round: records
-record -> result: keeps
-runtime -> progress: keeps
-dir -> progress: holds
-progress: Progress file
-backend: Worker backend
 ```
 
 The Operation providers, Spec review and Delivery use this Module; it knows none of them. They rely
@@ -375,6 +313,19 @@ the task type. Workers relies on them confining the worker's tools to the grant,
 unchanged for every round, and refuses to launch when a generated deny rule would cover the run's
 own directories. It never edits what the Harness generated.
 
+Which of the Harness's parts reaches a worker depends on its backend, and the run directory holds
+what was generated:
+
+```d2
+backend: Worker backend
+dir: Run directory
+settings: Harness / Worker settings
+extension: Harness / Permission extension
+backend -> settings: Claude Code applies
+backend -> extension: pi applies
+dir -> settings: holds
+```
+
 <a id="uses-checks"></a>
 
 **Check execution** is a Tool called by the Workers host code. It runs the
@@ -384,3 +335,100 @@ result](../../checks/module.md#concept.checks.check-result) per check with its l
 checks never changing the worktree; it runs them only after a clean audit, feeds failures into the
 next round, and records every result. Checks that cannot run end the run `failed` with the error as
 evidence and no round.
+
+Three Modules read Workers' definitions without launching a run: the
+[Main session](../main-session/module.md) shows the progress file and changes the worker model
+configuration through `configure_workers`, [Task sessions](../task-session/module.md) reads the main
+session's program the way the worker backend is read, and [Tasks](../../tasks/module.md) copies the
+worker model configuration into a new task worktree.
+
+### Inside
+
+```d2
+workers: Workers {
+  runtime: Worker runtime {
+    "workers.py"
+    "progress.py"
+    "audit.py"
+    "runs.py"
+    "prompts/workers/common/"
+  }
+  claude: Claude Code backend {
+    "claude_backend.py"
+  }
+  pi: pi backend {
+    "pi_backend.py"
+  }
+  models: Model configuration {
+    "models.py"
+  }
+  runtime -> claude: launches
+  runtime -> pi: launches
+}
+```
+
+The runtime drives every run and hands the agent process to one of two backends; the model
+configuration stands apart, because the Operation host, not the runtime, asks it for a worker's
+backend and model before calling Workers.
+
+- <a id="realization.workers.runtime"></a>The **worker runtime** writes the brief, decides rounds,
+  runs the write audit, keeps the progress file, manages run directories/records, and supplies the
+  worker prompt snippets every Operation includes, e.g. reporting an error. Its tests, under
+  `tests/concorde/harness/workers/`, also exercise the Harness's worker settings, write hook and pi
+  path decisions, since a worker run is where they apply.
+- <a id="realization.workers.claude"></a>The **Claude Code backend** places the worker settings and
+  write hook the Harness generates, launches and resumes `claude -p`, and reads its event stream.
+  Tests fake `claude` for host behaviour and, with `CONCORDE_LIVE_CLAUDE=1`, run a real worker for
+  what only Claude Code enforces.
+- <a id="realization.workers.pi"></a>The **pi backend** checks its prerequisites, prepares the pi
+  configuration directory, embeds the run's policy into the Harness's permission extension,
+  launches and resumes `pi -p` and reads its event stream. Tests fake `pi` for host behaviour, run
+  the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`, run a real pi worker.
+
+- <a id="realization.workers.models"></a>The **model configuration** detects the main
+  session's program, resolves a worker's backend and checks that its program is installed,
+  discovers the candidates by running the installed `claude` or `pi`, validates, reads and writes
+  `.concorde/worker-models.json`, and resolves the choice of an Operation's worker role. Tests fake
+  both programs.
+
+What one run leaves behind. The runtime generates the brief, keeps the progress file and writes the
+run record; both files sit in the run directory, and the record is the run's evidence:
+
+```d2
+dir: Run directory
+progress: Progress file
+record: Run record
+audit: Write audit
+round: Resume round
+result: Worker result
+dir -> progress: holds
+dir -> record: holds
+record -> audit: records
+record -> round: records
+record -> result: keeps
+```
+
+### Why the run is built this way
+
+`bypassPermissions` is used since `-p` mode's `dontAsk` denies every Edit/Write outside the working
+directory even when allowed, and that directory can't be the worktree — Claude Code adds it (and
+every `--add-dir`) to the Bash sandbox's read/write set, defeating per-file confinement — so the
+brief uses absolute paths. The run directory must also avoid any deny-rule path, or the host refuses
+to launch.
+
+Pending files are pre-created since a worker must never create an undeclared file, and Bash can only
+grant writes to existing files; for the same reason it can't delete — only propose deletions,
+performed by the host inside `rw` after a clean audit. An untouched pre-created file is removed
+again, staying pending.
+
+Resume rounds reuse the worker's context — the spike confirmed this fixes a failing check — and
+each resume returns a session id the host continues from. Rounds are only for check failures; a
+Spec gap or grant violation is a decision for the main agent or developer, not to retry.
+
+`--safe-mode`/`--bare` are unused since they'd disable the write hook too. Credentials are a copy of
+the user's file in `config/`; an env-var token was untested, and keeping credentials from the worker
+is future work alongside the outer sandbox. Limits: the [Harness](../../harness/module.md).
+
+Open questions: whether Bash needs read access to Claude Code's shell snapshots in
+`CLAUDE_CONFIG_DIR` (deciding if `config/` stays unreadable) awaits the built runtime; per-task tool
+lists are v1 defaults in [the Harness](../../harness/claude-code.md#tool-sets) and may change.

@@ -255,35 +255,9 @@ verification declarations, live in the Modules that own them. Keeping the text a
 distributed copy, pinned by each project's Protocol binding, lets a project keep working under the
 rules it accepted while a newer Protocol is being written.
 
-## Relationships
-
-Spec core uses no Module. Everything else relies on it:
-
-```d2
-tooling: Spec tooling {
-  core: Spec core
-  mcp: Spec MCP server
-  review: Spec review
-  views: Views
-  mcp -> core
-  review -> core
-  views -> core
-}
-agents: Agents {
-  workers: Workers
-}
-checks: Check execution
-operations: Operations
-tasks: Tasks
-issues: Issues
-distribution: Distribution
-agents.workers -> tooling.core
-checks -> tooling.core
-operations -> tooling.core
-tasks -> tooling.core
-issues -> tooling.core
-distribution -> tooling.core
-```
+**Its place among the Modules.** Spec core uses no Module, so nothing it relies on can make its own
+answers wrong; everything else relies on it instead: Spec MCP server, Spec review, Views,
+Workers, Check execution, Operations, Tasks, Issues, Distribution and nearly every other Module.
 
 Each consumer declares its own `uses` with the promises it relies on, and none of them is a
 dependency of Spec core, so their changes never change what it promises.

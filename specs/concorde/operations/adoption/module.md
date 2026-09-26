@@ -125,7 +125,7 @@ only if validation finds no new error.
 <a id="concept.adoption.code-to-spec"></a><a id="concept.adoption.spec-description"></a>
 
 **Code to spec.** A worker of task type `code-to-spec` reads the bound Modules' code and their Specs
-and rewrites their own documents: Purpose, Terminology, Usage, Design and Relationships of each
+and rewrites their own documents: Purpose, Terminology, Usage and Design of each
 entry, and requirements, scenarios and contracts in implementation documents. The host prepares the
 implementation documents the worker may need, `requirements.md`, `scenarios.md` and `contracts.md`,
 as owned stubs before the grant is frozen, and removes again every stub the worker left unchanged,
@@ -309,19 +309,7 @@ The **Adoption tests**, under `tests/concorde/adoption/` with the existing-codeb
 against a small existing codebase with a fake worker, verifying the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
-## Relationships
-
-```d2
-adoption: Adoption
-operations: Operations
-workers: Workers
-checks: Check execution
-spec: Spec core
-adoption -> operations
-adoption -> workers
-adoption -> checks
-adoption -> spec
-```
+### Outside
 
 <a id="uses-operations"></a>
 

@@ -1,4 +1,4 @@
-"""Every family of Protocol 13 structural checks, each on a small fixture project."""
+"""Every family of Protocol 14 structural checks, each on a small fixture project."""
 
 from __future__ import annotations
 
@@ -199,7 +199,8 @@ class CheckTests(unittest.TestCase):
         cases = {
             "missing": original.replace("## Design\n", "## Drawing\n"),
             "repeated": original + "\n## Purpose\n\nAgain.\n",
-            "level": original.replace("## Relationships", "### Relationships"),
+            "level": original.replace("## Usage", "### Usage"),
+            "relationships": original + "\n## Relationships\n\nThe parts.\n",
             "fenced": original.replace("## Usage", "```text\n## Usage\n```"),
         }
         for label, text in cases.items():
@@ -644,8 +645,8 @@ class CheckTests(unittest.TestCase):
             )
             self.edit(
                 self.entry("consumer"),
-                "## Relationships",
-                '<a id="concept.consumer.thing"></a>\n\nWhat a person sees.\n\n## Relationships',
+                "## Design\n\n",
+                '## Design\n\n<a id="concept.consumer.thing"></a>\n\nWhat a person sees.\n\n',
             )
 
         concept("THING")

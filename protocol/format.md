@@ -179,13 +179,13 @@ Purpose
 Terminology
 Usage
 Design
-Relationships
 ```
 
-It MAY have further level-2 sections, for example one that shows how the Module is built. A level-1
-title and brief navigation may precede the first of them. Purpose is nonempty plain prose: no lists,
-tables, nested headings or fences. Usage, Design and Relationships contain explanatory prose, not
-only links, headings or diagrams. Honest unknowns are stated explicitly.
+It MAY have further level-2 sections, but none titled `Relationships`: how the Module relates to its
+children and to other Modules is part of Design. A level-1 title and brief navigation may precede
+the first of them. Purpose is nonempty plain prose: no lists, tables, nested headings or fences.
+Usage and Design contain explanatory prose, not only links, headings or diagrams. Honest unknowns
+are stated explicitly.
 
 A `module`-role topic begins with a short orienting introduction. When the topic defines or imports
 a concept, its first level-2 section is `## Terminology`. In the entry, Terminology may hold only

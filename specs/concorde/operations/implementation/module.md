@@ -52,14 +52,6 @@ via `--input`, and `--rounds` overrides the resume-round limit (0+, default 3). 
 the report severity"` lets the worker create it and change the other Issues files, returning once
 the checks pass or the rounds run out.
 
-```d2
-ops: Implement and test Operations
-change: Code change
-report: Test report
-ops -> change: produces
-ops -> report: produces
-```
-
 <a id="concept.implementation.code-change"></a>
 
 `implement` returns an [Operation result](../module.md#concept.operations.result) whose `output` is
@@ -92,19 +84,6 @@ Modules' realizations are writable (pending entries included), their Specs stay 
 other implementation files show by name only. `test` uses task type `test`: the same files
 readable, nothing writable. Neither worker can change a Spec, so disagreement between Spec and code
 can only be reported.
-
-How Implementation is built:
-
-```d2
-implementation: Implementation {
-  ops: Implement and test Operations {
-    "src/concorde/implementation/"
-    "prompts/workers/implement.md"
-    "prompts/workers/test.md"
-    "tests/concorde/implementation/"
-  }
-}
-```
 
 ### The implement Operation
 
@@ -167,21 +146,7 @@ The **Implement and test Operations** realization holds both Operations' host st
 instructions, result schemas and tests. Each worker returns only its own output part (`addresses`,
 or `failures` and `notes`); the host adds everything it observed itself.
 
-## Relationships
-
-```d2
-implementation: Implementation
-operations: Operations
-agents: Agents {
-  workers: Workers
-}
-checks: Check execution
-spec: Spec core
-implementation -> operations
-implementation -> agents.workers
-implementation -> checks
-implementation -> spec
-```
+### Outside
 
 <a id="uses-operations"></a>
 

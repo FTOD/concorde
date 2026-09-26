@@ -49,12 +49,6 @@ example, `--intent "add an optional severity to Issue reports; declare
 src/concorde/issues/severity.py as pending"` has the worker edit the Issues entry, contract and
 scenario documents, adding the new file as a pending entry.
 
-```d2
-op: Specify Operation
-change: Spec change
-op -> change: produces
-```
-
 <a id="concept.specification.spec-change"></a>
 
 The Operation returns an [Operation result](../module.md#concept.operations.result) whose `output`
@@ -83,18 +77,6 @@ The Operation is worker-backed, run with task type `specify`: the bound Modules'
 (reading files and metadata) are writable, other Modules' selected documents stay read-only, and
 implementation files show by name only. Declaring a pending entry is the one way a `specify` worker
 decides where code goes; only `implement` may create it.
-
-How Specification is built:
-
-```d2
-specification: Specification {
-  op: Specify Operation {
-    "src/concorde/specification/"
-    "prompts/workers/specify.md"
-    "tests/concorde/specification/"
-  }
-}
-```
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
@@ -137,17 +119,7 @@ The **Specify Operation** realization holds the host steps, worker instructions 
 in `src/concorde/specification/` (`operation.py` declares `SPECIFY`), prompt
 `prompts/workers/specify.md`, tested against a fake worker.
 
-## Relationships
-
-```d2
-specification: Specification
-operations: Operations
-workers: Workers
-spec: Spec core
-specification -> operations
-specification -> workers
-specification -> spec
-```
+### Outside
 
 <a id="uses-operations"></a>
 

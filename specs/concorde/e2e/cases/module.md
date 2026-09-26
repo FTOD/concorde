@@ -68,16 +68,6 @@ lists, the files it touches reset to the base commit first. Running it in a thro
 keeps the case's tests from ever reaching the project, where a worker could see them, and leaves
 the project exactly as the merge left it.
 
-How SWE-bench cases is built:
-
-```d2
-cases: SWE-bench cases {
-  casesteps: Case steps {
-    "cases.py"
-  }
-}
-```
-
 <a id="realization.swe-bench-cases.steps"></a>
 
 The **case steps** are `scripts/e2e/cases.py`: `repair_specs`, which runs the Operations of the
@@ -90,13 +80,7 @@ The **case step tests**, `tests/concorde/e2e/test_cases.py`, clone a case at its
 a toy case before and after its fix, and drive the repair round with stand-in Operations, verifying
 the [requirements](requirements.md) and [scenarios](scenarios.md).
 
-## Relationships
-
-```d2
-cases: SWE-bench cases
-distribution: Distribution
-cases -> distribution
-```
+### Around it
 
 <a id="uses-distribution"></a>
 

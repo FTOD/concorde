@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Workflows defines the orchestration layer above Operations. Each workflow describes a task's
-procedure once and the build renders it into a Claude Code workflow and a pi-subagents workflow.
-The main agent opens a task and starts the workflow in its client; the workflow orders that task's
-Operation runs, one at a time, and handles their results and decision points. It returns one
-workflow result with every step, decision, open question and problem, preserving each problem's
-Operation error chain. In interactive mode it stops where the developer must decide; in no-ask
+Workflows is the third of Concorde's five levels, the upper of the two program levels, directly
+above Operations. Each workflow describes a task's procedure once and the build renders it into a
+Claude Code workflow and a pi-subagents workflow. The main agent opens a task and starts the
+workflow in its client; the workflow orders that task's Operation runs, one at a time, and handles
+their results and decision points. It returns one workflow result with every step, decision, open
+question and problem, preserving each problem's Operation error chain. In interactive mode it stops where the developer must decide; in no-ask
 mode it follows the procedure's continuation rules and reports the decisions at the end.
 Workflows adds orchestration, not authority: it never opens, merges or closes a task, and every
 Operation it runs is an ordinary run the main agent could have started itself.
@@ -48,10 +48,10 @@ step key are how a client script runs a step safely; the workflow result is what
 <a id="concept.workflows.workflow"></a>
 
 A **workflow** is started by the main agent in a task it has opened, never by a worker or an
-Operation. It sits above Operations in the execution hierarchy: the Workflow determines which
-Operation runs next, while each Operation owns its worker jobs, Tool calls and internal repair
-rounds. Tasks has a separate role: a task says what work is isolated where, and a workflow says how
-that task's Operations proceed. For the brownfield workflow, from the primary worktree:
+Operation. It is level 3 of the [five levels](../module.md#the-five-levels), directly above
+Operations: the Workflow determines which Operation runs next, while each Operation owns its worker
+jobs, Tool calls and internal repair rounds. Tasks has a separate role: a task says what work is
+isolated where, and a workflow says how that task's Operations proceed. For the brownfield workflow, from the primary worktree:
 
 ```text
 concorde task open adopt --goal "describe the existing code in Specs" --modules module.shop
@@ -236,6 +236,59 @@ a whole job and its result, even when it launches no worker. Each workflow step 
 `concorde run`, so the task's lock allows one Operation at a time and every run is recorded,
 audited and reported exactly as if the main agent had started it.
 
+### Its place in the five levels
+
+Workflows is level 3 of the [five levels](../module.md#the-five-levels). It is called from the
+task level only: the main agent starts a workflow for a task it has opened, and may stay in the
+primary worktree while the workflow runs in its client's background. It calls only the level
+directly below: its commands start each step as an Operation run, and it never reaches a worker or
+a Tool, which only an Operation host calls. What goes back up is one workflow result, assembled
+from what the hosts recorded, in which every Operation's error chain stays whole under the
+workflow's own link. The task level is free to skip this level and run an Operation directly
+whenever no workflow fits, and nothing a workflow does opens, merges or closes a task: those stay
+with the main agent.
+
+```d2
+main: Main session
+workflows: Workflows {
+  scripts: Workflow scripts
+  commands: Workflow commands
+  scripts -> commands: runs steps through
+}
+operations: Operations
+workers: Workers
+main -> workflows
+main -> operations
+workflows.commands -> operations: starts runs through
+operations -> workers
+```
+
+The script never runs a command itself; its step agents relay each step to the Workflow commands,
+which alone start Operation runs and read their results. The main session reaches Operations both
+through a workflow and directly, and only Operations reaches Workers.
+
+<a id="uses-operations"></a>
+
+**Operations** runs every step: `concorde run --detach` starts the host, and the saved [Operation
+result](../operations/module.md#concept.operations.result) is the step's outcome. Workflows relies
+on each run being an ordinary run of that task, under the task's lock, recorded by its host and
+answered by exactly one result, and on no Operation starting another, so the order of the runs is
+the procedure's alone. Workflows reads results and never changes them; an unknown Operation or a
+refused command line is refused by `concorde run` and reported as the step's error, a host that
+did not start makes the step refused, and a run with no result and no living host makes it lost,
+each with its error link in the workflow result.
+
+<a id="uses-tasks"></a>
+
+**Tasks** resolves a task to its worktree and state, and keeps the workflow's part of the task
+record: the workflow's name, each step key with its Operation, run and mode, and each report. It
+refuses a closed task, and Workflows relies on it to keep one Operation running per task. The
+report appends to the task's decision log through it. A step Tasks refuses to record is refused
+with a `step_rejected` link over the Tasks refusal before anything starts, or reported with
+`step_unrecorded` naming the run when the run had already started.
+
+### Steps in the client
+
 The procedure lives in the client's workflow runtime because both clients offer one and run it in
 the background while the main agent stays responsive. That runtime has no shell, so each step is
 carried by a step agent. On Claude Code that agent is a model, whose Bash command ends after two
@@ -251,6 +304,34 @@ The result is assembled by a deterministic command from what the hosts recorded.
 drop or paraphrase what it relays; the report reads each saved Operation result itself. So the chain
 the developer finally reads is the hosts' own, with the workflow's link on top, whatever happened in
 between.
+
+One step over time, for a run that outlives the first call:
+
+```d2 illustrative
+shape: sequence_diagram
+m: Main agent
+s: Workflow script
+a: Step agent
+c: Workflow commands
+h: Operation host
+m -> s: start for the task (mode, answers)
+s -> a: step request for key "survey"
+a -> c: concorde workflow step
+c -> h: concorde run survey --task --detach
+c -> a: exit 3: still running {style.stroke-dash: 3}
+a -> s: outcome: running {style.stroke-dash: 3}
+s -> a: ask again, same key
+a -> c: concorde workflow step
+c -> c: finds the recorded run, waits
+h -> c: Operation result saved {style.stroke-dash: 3}
+c -> a: step outcome {style.stroke-dash: 3}
+a -> s: step outcome {style.stroke-dash: 3}
+s -> c: concorde workflow report (relayed by a step agent)
+c -> s: workflow result, built from the record {style.stroke-dash: 3}
+s -> m: workflow result with its error chain {style.stroke-dash: 3}
+```
+
+### The brownfield procedure
 
 Brownfield's procedure, as a step table:
 
@@ -270,6 +351,18 @@ descriptions rather than their stubs. A `describe` step that did not end `ok` do
 no-ask workflow: the Module keeps its stub or partial description, validation decides whether the
 task can still be delivered, and the problem is reported. Spec review findings are reported, not
 repaired, because repairing a Spec needs a decision.
+
+<a id="uses-adoption"></a>
+
+**Adoption** provides the survey, scaffold and code_to_spec steps and defines the decisions, open
+questions, answers and deviations that the brownfield workflow counts and reports. Workflows reads
+them from the Operation results by their [contracts](../operations/adoption/contracts.md) and
+passes answers back through `--answers`; it never interprets what a decision means. It relies on
+those contracts to tell a survey decision from a code_to_spec decision and an open question from
+a settled one, since that is what makes a decision point; an output that does not follow them is
+the Operation's failure and ends the step as its result says.
+
+### Inside
 
 How Workflows is built:
 
@@ -305,39 +398,6 @@ agents `concorde-step` and `concorde-report`.
 
 The **Workflows tests**, under `tests/concorde/workflows/` with the existing-codebase fixture
 `tests/concorde/support/brownfield_project.py`, run the step and report commands against real task
-records and stand-in Operation results, one step through a real detached run, and run the rendered scripts with both adapters in a
-small JavaScript sandbox that stands in for the client runtime, verifying the
-[requirements](requirements.md) and [scenarios](scenarios.md).
-
-## Relationships
-
-```d2
-workflows: Workflows
-tasks: Tasks
-operations: Operations
-adoption: Adoption
-workflows -> tasks
-workflows -> operations
-workflows -> adoption
-```
-
-<a id="uses-tasks"></a>
-
-**Tasks** resolves a task to its worktree and state, and keeps the workflow's part of the task
-record: the workflow's name, each step key with its Operation, run and mode, and each report. It
-refuses a closed task, and Workflows relies on it to keep one Operation running per task. The
-report appends to the task's decision log through it.
-
-<a id="uses-operations"></a>
-
-**Operations** runs every step: `concorde run --detach` starts the host, and the saved [Operation
-result](../operations/module.md#concept.operations.result) is the step's outcome. Workflows reads
-results and never changes them; an unknown Operation or a refused command line is refused by
-`concorde run` and reported as the step's error.
-
-<a id="uses-adoption"></a>
-
-**Adoption** defines the decisions, open questions, answers and deviations that the brownfield
-workflow counts and reports. Workflows reads them from the Operation results by their
-[contracts](../operations/adoption/contracts.md) and passes answers back through `--answers`; it
-never interprets what a decision means.
+records and stand-in Operation results, one step through a real detached run, and run the rendered
+scripts with both adapters in a small JavaScript sandbox that stands in for the client runtime,
+verifying the [requirements](requirements.md) and [scenarios](scenarios.md).

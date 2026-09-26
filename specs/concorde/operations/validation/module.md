@@ -128,35 +128,12 @@ that clears exactly the listed pending markers in one
 measured metadata digests, then revalidates and rolls back on any remaining error. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
-Validation is built as one realization:
-
-```d2
-validation: Validation {
-  op: Validate Operation {
-    "src/concorde/validation/"
-    "tests/concorde/validation/"
-  }
-}
-```
-
 <a id="realization.validation.operation"></a>
 
 The **Validate Operation** realization holds the steps, the input measurement, the confirmation
 service Delivery calls, and their tests, with the task fixture Delivery's tests share.
 
-## Relationships
-
-```d2
-validation: Validation
-spec: Spec core
-checks: Check execution
-tasks: Tasks
-operations: Operations
-validation -> spec
-validation -> checks
-validation -> tasks
-validation -> operations
-```
+### Outside
 
 - <a id="uses-spec"></a>**Spec core** validates the Specs, answers through its impact indexes which
   Modules bind a path or own a document, and applies confirmations as a file transaction.

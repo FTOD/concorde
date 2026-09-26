@@ -290,7 +290,7 @@ describe("a project holding only initialization outputs", () => {
     );
     expect(mainPage).not.toContain('id="entities"');
     expect(mainPage).not.toContain('id="usage--contract"');
-    expect(mainPage).toContain('id="relationships"');
+    expect(mainPage).not.toContain('id="relationships"');
     expect(mainPage).not.toContain("/diagrams/");
     expect(mainPage).toContain("Spec metadata");
     const detailPage = await readFile(

@@ -55,13 +55,7 @@ it("publishes the current registry and verifies the promoted manifest", async ()
     expect(source).toContain(page.metadataDigest);
     expect(source).toContain("theme-doc-sidebar-container");
     if (!page.primaryOf) continue;
-    const sections = [
-      "purpose",
-      "terminology",
-      "usage",
-      "design",
-      "relationships",
-    ];
+    const sections = ["purpose", "terminology", "usage", "design"];
     for (let i = 1; i < sections.length; i++)
       expect(source.indexOf(`id="${sections[i - 1]}"`)).toBeLessThan(
         source.indexOf(`id="${sections[i]}"`),

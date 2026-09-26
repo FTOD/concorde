@@ -95,7 +95,7 @@ to it.
 
 ### scenario.spec.reader-parts — A well-formed entry and topic
 
-- GIVEN an entry whose first level-2 headings are Purpose, Terminology, Usage, Design and Relationships, in that order
+- GIVEN an entry whose first level-2 headings are Purpose, Terminology, Usage and Design, in that order
 - AND a topic that defines a concept and starts with a Terminology section
 - WHEN the validator runs
 - THEN no document-structure finding is reported
@@ -103,7 +103,7 @@ to it.
 
 ### scenario.spec.reader-parts-invalid — A malformed entry
 
-- GIVEN an entry with a missing or repeated required section, a Purpose containing a list, or a Usage section holding only links
+- GIVEN an entry with a missing or repeated required section, a level-2 Relationships section, a Purpose containing a list, or a Usage section holding only links
 - WHEN the validator runs
 - THEN it reports `CHK.document.sections` or `CHK.document.prose` for each problem
 - BUT headings inside fences do not count as sections

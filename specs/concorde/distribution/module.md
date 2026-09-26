@@ -168,100 +168,7 @@ outside the project; the developer accepts a new Protocol copy later by updating
 
 ## Design
 
-<a id="realization.distribution.descriptor"></a>
-
-The **package descriptor** `concorde.json` is an input of the build, so a licence or version change
-is never shipped with renders made before it.
-
-<a id="realization.distribution.build"></a>
-
-The **build renderer** is a pure function of the source tree followed by a guarded write: includes
-must be safe, acyclic and audience-consistent, and an output is written only inside the build-owned
-`generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)). A
-leftover is removed only when its bytes still match the previous manifest; an edited leftover, a
-link or an unknown file stops the build first.
-
-<a id="realization.distribution.command"></a>
-
-The **command entry points** are thin: they parse the command line, call the owning Module's
-function, and wrap the outcome in Spec core's shared envelope, so a command's meaning changes only
-in its owner.
-
-<a id="realization.distribution.protocol-copy-writer"></a>
-
-The **Protocol copy writer** builds the copy from the tracked manifest and rendered assets after
-checking freshness and each digest
-([requirements](requirements.md#req.distribution.no-stale-copy)), so a project receives exactly the
-Protocol the manifest names.
-
-<a id="realization.distribution.installer"></a>
-
-The **installer program** reuses the writer and the build's freshness check, and installs the
-rendered main-session guidance. Everything that can refuse an install, the build's freshness,
-Dogfooding's develop source check, the running Concorde and the pinned downloads, is decided before
-the first write, so a refused install leaves the project as it was.
-
-How this Module is built:
-
-```d2
-distribution: Distribution {
-  descriptor: Package descriptor {
-    "concorde.json"
-  }
-  build: Build renderer {
-    "build.py"
-    "prompt_resolver.py"
-  }
-  command: Command entry points {
-    "__main__.py"
-    "cli.py"
-    "concorde.py"
-    "concorde.sh"
-    "concorde.ps1"
-  }
-  writer: Protocol copy writer {
-    "project_defaults.py"
-  }
-  installer: Installer program {
-    "install-concorde.py"
-    "install.py"
-    "tools.py"
-    "pi_runtime/"
-  }
-  build -> descriptor: reads
-  command -> build: runs
-  installer -> writer: places through
-}
-```
-
-Python sources are under `src/concorde/distribution/` except `src/concorde/__main__.py` and the
-`scripts/` entry points. The [build manifest](#concept.distribution.build-manifest) and
-[Protocol copy](#concept.distribution.protocol-copy) are recorded and written but bind no file of
-their own.
-
-<a id="realization.distribution.tests"></a>
-
-The **Distribution tests**, under `tests/concorde/distribution/`, exercise the build, the Protocol
-manifest and the installed command on a fresh project, verifying the
-[requirements](requirements.md) and [scenarios](scenarios.md).
-
-## Relationships
-
-```d2
-distribution: Distribution
-tooling: Spec tooling {
-  spec: Spec core
-  views: Views
-}
-mainsession: Main session
-workflows: Workflows
-dogfooding: Dogfooding
-distribution -> tooling.spec
-distribution -> tooling.views
-distribution -> mainsession
-distribution -> workflows
-distribution -> dogfooding
-```
+### Around it
 
 <a id="uses-spec"></a>
 
@@ -301,3 +208,67 @@ adapters and the pi command-runner agent, and the `concorde workflow` command th
 to. Distribution only wraps and places them: the build renders each script for both clients
 unchanged in its steps, and the installer places the renders and the permission rules their step
 agents need, refusing stale renders like any other build output.
+
+### Inside
+
+<a id="realization.distribution.descriptor"></a>
+
+The **package descriptor** `concorde.json` is an input of the build, so a licence or version change
+is never shipped with renders made before it.
+
+<a id="realization.distribution.build"></a>
+
+The **build renderer** is a pure function of the source tree followed by a guarded write: includes
+must be safe, acyclic and audience-consistent, and an output is written only inside the build-owned
+`generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)). A
+leftover is removed only when its bytes still match the previous manifest; an edited leftover, a
+link or an unknown file stops the build first.
+
+<a id="realization.distribution.command"></a>
+
+The **command entry points** are thin: they parse the command line, call the owning Module's
+function, and wrap the outcome in Spec core's shared envelope, so a command's meaning changes only
+in its owner.
+
+<a id="realization.distribution.protocol-copy-writer"></a>
+
+The **Protocol copy writer** builds the copy from the tracked manifest and rendered assets after
+checking freshness and each digest
+([requirements](requirements.md#req.distribution.no-stale-copy)), so a project receives exactly the
+Protocol the manifest names.
+
+<a id="realization.distribution.installer"></a>
+
+The **installer program** reuses the writer and the build's freshness check, and installs the
+rendered main-session guidance. Everything that can refuse an install, the build's freshness,
+Dogfooding's develop source check, the running Concorde and the pinned downloads, is decided before
+the first write, so a refused install leaves the project as it was.
+
+How this Module's realizations call one another:
+
+```d2
+distribution: Distribution {
+  descriptor: Package descriptor {
+    "concorde.json"
+  }
+  build: Build renderer
+  command: Command entry points
+  writer: Protocol copy writer
+  installer: Installer program
+  build -> descriptor: reads
+  command -> build: runs
+  installer -> writer: places through
+}
+```
+
+Python sources are under `src/concorde/distribution/` except `src/concorde/__main__.py` and the
+`scripts/` entry points; each realization's exact files are its metadata's `entries`. The
+[build manifest](#concept.distribution.build-manifest) and
+[Protocol copy](#concept.distribution.protocol-copy) are recorded and written but bind no file of
+their own.
+
+<a id="realization.distribution.tests"></a>
+
+The **Distribution tests**, under `tests/concorde/distribution/`, exercise the build, the Protocol
+manifest and the installed command on a fresh project, verifying the
+[requirements](requirements.md) and [scenarios](scenarios.md).

@@ -105,6 +105,28 @@ tool. Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings
 
 ## Design
 
+The Harness serves every [agent level](../module.md#the-five-levels) of Concorde's five-level
+hierarchy without being a level itself: it sits in no call chain from the main session down to a
+worker, and no result or error chain passes through it. Workers asks it for a worker's harness
+from a frozen grant, Task sessions for a task session's harness from a task's paths, and
+Distribution installs the main session's guidance directly since Concorde places no permission
+limits there. Each level differs only in what it asks for; the Harness holds the one place that
+turns those inputs into a program's own configuration.
+
+### Around it
+
+The agent Modules use the Harness; it knows none of them and receives everything it needs as
+inputs.
+
+<a id="uses-spec"></a>
+
+**Spec core** computes the [grant](../spec-tooling/spec/module.md#concept.spec.grant) a worker's
+harness is generated from. The Harness relies on the grant listing every path's level (`rw`, `ro`,
+`names`, ungranted omitted); it never computes or widens a grant, only receives it frozen from
+Workers, and generates nothing for a grant it cannot read.
+
+### Inside
+
 The Harness is separate from the agents because what it produces does not depend on who runs the
 agent or why: the same deny-rule generator, write-hook table, pi path resolution and sandbox engine
 serve a worker and a task session, and the pi task session's path decisions import the worker's.
@@ -169,31 +191,25 @@ flags and environment listed here; the Harness generates everything the settings
 
 Future work: an outer `srt` sandbox around the agent process and proxied credentials.
 
+Each backend's realization produces the parts of a harness it is responsible for; the Claude Code
+harness alone carries a worker's deny rules and write hook inside one settings file, since both
+must be checked from the same generator to stay consistent, while pi checks the same decisions
+through a single extension instead:
+
 ```d2
-harness: Harness {
-  claude: Claude Code harness {
-    "settings.py"
-    "write_hook.py"
-    "session_hook.py"
-  }
-  pi: pi harness {
-    "pi_permission.ts"
-    "pi_policy.ts"
-    "pi_session.ts"
-    "pi_session_policy.ts"
-  }
-  settings: Worker settings
-  deny: Deny rules
-  hook: Write hook
-  ext: Permission extension
-  session: Session boundary
-  claude -> settings: generates
-  settings -> deny: carries
-  settings -> hook: carries
-  pi -> ext: provides
-  claude -> session: provides the write hook of
-  pi -> session: provides the extension of
-}
+claude: Claude Code harness
+pi: pi harness
+settings: Worker settings
+deny: Deny rules
+hook: Write hook
+ext: Permission extension
+session: Session boundary
+claude -> settings: generates
+settings -> deny: carries
+settings -> hook: carries
+pi -> ext: provides
+claude -> session: provides the write hook of
+pi -> session: provides the extension of
 ```
 
 <a id="realization.harness.package"></a>
@@ -219,21 +235,3 @@ these sources and copy them into place.
 The Harness has no tests of its own yet: its files are exercised by the Workers tests, which run
 fake and, on request, live workers and the pi path decisions under Node, and by the Task session
 tests, which run the task-session hook and boundary decisions.
-
-## Relationships
-
-```d2
-harness: Harness
-spec: Spec core
-harness -> spec
-```
-
-The agent Modules use the Harness; it knows none of them and receives everything it needs as
-inputs.
-
-<a id="uses-spec"></a>
-
-**Spec core** computes the [grant](../spec-tooling/spec/module.md#concept.spec.grant) a worker's
-harness is generated from. The Harness relies on the grant listing every path's level (`rw`, `ro`,
-`names`, ungranted omitted); it never computes or widens a grant, only receives it frozen from
-Workers, and generates nothing for a grant it cannot read.

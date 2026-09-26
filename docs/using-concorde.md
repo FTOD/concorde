@@ -16,20 +16,20 @@ That division of responsibility is also each agent's harness: from the Specs Con
 exactly what an AI task is given as context and may read and write, and runs headless Claude Code
 or pi workers inside that boundary.
 
-You work with three actors:
+**You, the developer**, decide the direction and answer the questions that have a major impact.
+Below you, the work passes down five levels. Agents sit at both ends, and programs run between
+them:
 
-- **You, the developer**, decide the direction and answer the questions that have a major impact.
-- **The main agent** is your own Claude Code or pi session in the project's primary checkout. It discusses
-  the project with you, splits agreed work into tasks, runs Concorde's Operations, reads their
-  results, keeps a decision log and merges what was delivered. It normally does not edit the
-  project itself.
-- **Workers** are headless `claude -p` or `pi -p` processes that one Operation starts for one bounded job,
-  such as implementing a change. Each works under a **grant** computed from the Specs: the paths it
-  may know by name, read and write. Everything else is denied.
+| Level              | Kind            | What it is                                                                                                                                                                                |
+| ------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Main session    | agent           | Your own Claude Code or pi session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                  |
+| 2. Task            | agent           | One task's branch and worktree, worked by the main agent itself or by a **task session** it starts when several tasks run at once.                                                        |
+| 3. Workflow        | program         | A procedure for tasks that follow a known path, such as `brownfield`; it orders the task's Operations and stops where you must decide.                                                    |
+| 4. Operation       | program         | One bounded job with one result. Its deterministic **Operation host** computes the grant, launches workers, runs your checks itself and writes a result you can trust.                    |
+| 5. Worker and Tool | agent / program | A **worker** is a headless `claude -p` or `pi -p` process for one bounded job, under a **grant** computed from the Specs; a **Tool** is a programmed action, such as running your checks. |
 
-Between the main agent and the workers sits the **Operation host**, the deterministic part of every
-Operation: it computes the grant, launches the worker, audits what it changed, runs your checks
-itself and writes a result you can trust.
+Calls only go down: a worker never touches Git, runs an Operation or starts an agent, and an
+Operation never starts another Operation. Results and errors come back up the same levels.
 
 ### Three kinds of documents
 
@@ -151,13 +151,14 @@ Keep the proposal file outside the project. Applying it writes:
 - `specs/project/module.md` with its metadata `module.md.json`, the root Module `module.project`.
 
 The first Spec is deliberately honest and small. From here you describe your project as Modules.
-Every Module's entry document `module.md` answers five questions in order:
+Every Module's entry document `module.md` answers four questions in order:
 
 1. **Purpose** — what the Module is for, in plain prose.
 2. **Terminology** — the words it defines and the ones it imports.
 3. **Usage** — how it is used and how it must react.
-4. **Design** — how it is built, including the files that realize it.
-5. **Relationships** — which Modules it contains and uses, drawn as a `d2` diagram.
+4. **Design** — how it is built and why: inside, its children and the files that realize it;
+   outside, how it works with the Modules it uses and those that use it, drawn in as many `d2`
+   diagrams as help.
 
 Precise requirements, scenarios and contracts go into the Module's implementation documents. The
 [Protocol overview](https://ftod.github.io/concorde/protocol) and its

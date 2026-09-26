@@ -115,7 +115,7 @@ export function entryBody(
     terminology?: string;
     usage?: string;
     design?: string;
-    relationships?: string;
+    architecture?: string;
   } = {},
 ): string {
   return [
@@ -137,9 +137,7 @@ export function entryBody(
     "",
     parts.design ?? `${title} keeps its state in one place.`,
     "",
-    "## Relationships",
-    "",
-    parts.relationships ?? `${title} collaborates as declared.`,
+    parts.architecture ?? `${title} collaborates as declared.`,
     "",
   ].join("\n");
 }
@@ -203,7 +201,7 @@ export function bankProject(): Project {
   putDocument(project, "specs/bank/module.md", {
     owner: "module.bank",
     body: entryBody("Bank", {
-      relationships:
+      architecture:
         '```d2\nbank: Bank {\n  transfer: Transfer\n}\n```\n\n<a id="contains-transfer"></a><a id="contains-audit"></a>\n\nBank is composed of Transfer and Audit.',
     }),
   });
@@ -293,7 +291,7 @@ export function bankProject(): Project {
         "[Hold](../transfer/module.md#concept.transfer.hold)",
         "",
       ]),
-      relationships:
+      architecture:
         '<a id="uses-transfer"></a>\n\nAudit reads the holds Transfer places.',
     }),
   });

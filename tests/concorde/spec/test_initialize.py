@@ -1,4 +1,4 @@
-"""Initialization: an honest Protocol 13 root Module stub, proposed before anything is written."""
+"""Initialization: an honest Protocol 14 root Module stub, proposed before anything is written."""
 
 import copy
 import json
@@ -46,7 +46,7 @@ class InitialModuleTests(unittest.TestCase):
                 f for f in proposal["files"] if f["path"] == "specs/project/module.md"
             )
             before = source["content"]
-            source["content"] = before.replace("## Relationships", "## Drawing")
+            source["content"] = before.replace("## Design", "## Drawing")
             with self.assertRaises(SpecError):
                 apply_project_proposal(root, PACKAGE, proposal)
             self.assertFalse((root / ".concorde/config.json").exists())

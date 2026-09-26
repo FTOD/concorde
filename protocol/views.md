@@ -69,11 +69,15 @@ Any other nesting is an error. Containment is drawn only by nesting, never by an
 - A file shape has no edges; it asserts only its binding.
 
 A checked diagram need not show every declared relation; like a derived view, its omissions are
-scope decisions. The `Relationships` section of an entry SHOULD contain a checked diagram of the
-principal collaboration, and a Module that binds files SHOULD draw the realizations that carry its
-function with the files they bind, so a reader sees how the Module is built. Realizations that only
-keep the repository running, such as project configuration, development tooling or test suites,
-are left to prose: a diagram shows architecture, not an inventory of files.
+scope decisions. An entry's Design draws its structure in as many diagrams as it needs, each
+answering one question: typically the inside, where a Module whose function is carried by several
+realizations draws them with the files they bind and the edges between them, and the outside, where
+the Module stands among the Modules it uses and those that use it. An edge may join any two shapes whose
+relation is declared, whichever Module declares it, so the outside view may draw a consumer's
+`uses` of this Module or a `relates` from one of its realizations to another Module. Realizations
+that only keep the repository running, such as project configuration, development tooling or test
+suites, are left to prose: a diagram shows architecture, not an inventory of files. See
+[Module specifications](module.md#diagrams).
 
 ````markdown
 ```d2

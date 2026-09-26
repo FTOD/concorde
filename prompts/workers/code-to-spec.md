@@ -31,9 +31,9 @@ run anything.
    interface first, then what each one calls.
 3. Rewrite each bound Module's `module.md`: Purpose (plain prose, what the Module is for),
    Terminology (the words a reader needs, defined in one sentence each, with metadata records),
-   Usage (how it is used: entry points, inputs, results, effects, errors, repeated calls), Design
-   (how it is built and why, with its realizations and the files they bind) and Relationships
-   (what it uses and why). Keep the anchors, identities and metadata conformant to the Protocol.
+   Usage (how it is used: entry points, inputs, results, effects, errors, repeated calls) and
+   Design (how it is built and why, with its realizations and the files they bind, and what it
+   uses and why). Keep the anchors, identities and metadata conformant to the Protocol.
 4. Write the precise promises in the implementation documents the host prepared, as needed:
    `requirements.md` for Module-wide `SHALL` statements, `scenarios.md` for concrete
    `GIVEN`/`WHEN`/`THEN` situations, `contracts.md` for exact interfaces. A stub you do not need

@@ -2,9 +2,10 @@
 
 ## Purpose
 
-Agents is how Concorde organizes the agents that change a project, by the level of work each one
-does: the project level in the primary worktree, the task level inside one task worktree, and the
-worker level of one bounded run under a grant. The developer and the main agent rely on it to know
+Agents is the agent layer of Concorde's five levels of work: the levels where a model reasons. At
+the top are the two session levels, the main session in the primary worktree and the task level
+inside one task worktree; at the bottom is the worker level, one bounded run under a grant. The
+workflow and Operation levels between them are programs and belong to other Modules. The developer and the main agent rely on it to know
 who does what, where each works, which harness each gets and how a problem travels up from a
 worker to the developer. It binds no files of its own; its three children do the work: the Main
 session, Task sessions, through which the main agent delegates the task level, and Workers. It
@@ -31,22 +32,23 @@ agents, and on the words of the Modules it points to.
 
 ## Usage
 
-These agent responsibility levels are separate from the execution hierarchy. A Workflow orders
-Operations, and an Operation combines worker runs and deterministic Tool calls. Worker and Tool
-are peers as execution capabilities; a Tool is not another agent level. The Workers Module
-contains the host code that manages AI workers and can call Tools such as Check execution between
-rounds. Tools are grouped separately from Agents.
+Concorde's work passes down [five levels](../module.md#the-five-levels): the main session, the task
+level, workflows, Operations, and workers beside Tools. Agents is the agent layer of that hierarchy,
+the levels where a model reasons: the two session levels at the top and the workers at the bottom.
+The workflow and Operation levels between them are programs, provided by
+[Workflows](../workflows/module.md) and [Operations](../operations/module.md), and a
+[Tool](../vocabulary.md#concept.concorde.tool) at level 5 is a program beside the worker, not an
+agent, grouped under [Tools](../tools/module.md).
 
-The work on a Concorde project has three levels, and every agent works at exactly one of them at a
-time:
+Every agent works at exactly one of the three agent levels at a time:
 
 | Level | Where | Who works there | What it does | Its harness |
 | --- | --- | --- | --- | --- |
-| Project | the primary worktree | the main agent | discusses with the developer, splits work into tasks, decides whether to delegate them, merges delivered tasks, reports | guidance only; Concorde restricts nothing |
-| Task | one task worktree | the main agent itself, or a task session it delegated the task to | changes Specs and code directly or through Operations, keeps the decision log, validates and delivers | none for the main agent; for a task session, writes confined to its task |
-| Worker run | a run directory, over the task worktree | one worker, launched by an Operation host | one bounded job of one task type, such as assessing a Module or changing its code | the grant, fully enforced |
+| 1. Main session | the primary worktree | the main agent | discusses with the developer, splits work into tasks, decides whether to delegate them, merges delivered tasks, reports | guidance only; Concorde restricts nothing |
+| 2. Task | one task worktree | the main agent itself, or a task session it delegated the task to | changes Specs and code directly or through workflows and Operations, keeps the decision log, validates and delivers | none for the main agent; for a task session, writes confined to its task |
+| 5. Worker | a run directory, over the task worktree | one worker, launched by an Operation host | one bounded job of one task type, such as assessing a Module or changing its code | the grant, fully enforced |
 
-The **project level** is the [Main session](main-session/module.md): an ordinary Claude Code or pi
+The **main session level** is the [Main session](main-session/module.md): an ordinary Claude Code or pi
 session in the primary worktree, told by the installed guidance how to work with Concorde. It never
 changes the primary worktree's Specs or code; every change happens at the task level.
 
@@ -59,14 +61,16 @@ it delegate the level: it starts a [task session](task-session/module.md) per ta
 its own program and configuration that follows the same method inside that task, and stays in the
 primary worktree itself. So the task level is stable while who plays it is not.
 
-The **worker level** is [Workers](workers/module.md): a headless `claude -p` or `pi -p` process
-that an Operation host launches for one task type over one task worktree. A worker has no human to
-ask and no view beyond its grant; it never touches Git, runs Operations or starts agents, and its
-answer is a proposal until the host has audited it and run the checks.
+The **worker level** is [Workers](workers/module.md), reached only through an Operation: a
+headless `claude -p` or `pi -p` process that an Operation host launches for one task type over one
+task worktree. A worker has no human to ask and no view beyond its grant; it never touches Git,
+runs Operations or starts agents, and its answer is a proposal until the host has audited it and
+run the checks.
 
 A problem travels up the same levels as an [error chain](../vocabulary.md#concept.concorde.error-chain):
 a worker reports its own link to the host, the Operation adds its link and returns the chain in its
-result, and whoever works the task either decides or escalates. A task session escalates to the
+result, a workflow keeps each Operation's chain whole in its own result, and whoever works the task
+either decides or escalates. A task session escalates to the
 main agent with a link of level `task-session`; the main agent, whether it received a task
 session's escalation or met the problem itself inside a task, decides what is ordinary and adds a
 `main-agent` link when the developer must decide.
@@ -95,53 +99,67 @@ malicious session. Workers are the opposite of the main agent: each has one boun
 to ask, and a boundary derived from the Specs, which is what lets a large change be split into
 small, checkable steps without the developer supervising each one.
 
-The harness of every level comes from one place, the [Harness](../harness/module.md), so the
-mechanisms that confine a worker and a task session are the same code, and each level differs only
-in what it asks for. An extra level of messaging is one more place for an error to be lost, so the
-loss is prevented structurally: every level adds a link to the chain and keeps the links below it
-unchanged.
+The agent levels sit at both ends of the hierarchy on purpose. The sessions at the top judge what
+to do with the developer; the workers at the bottom do the bounded work; and every answer a worker
+gives passes through the programs of an Operation, and often a workflow, before a session sees it.
+A worker therefore never reports to a session directly, and a session never reaches into a worker's
+run: the Operation between them computes the grant, audits the worker and turns its answer into a
+checked result.
 
-## Relationships
+### What the agent levels rely on
+
+Each agent level gets its harness from one place and the task level its workspace from another.
+Each child's own entry draws what else it uses.
 
 ```d2
 agents: Agents {
-  mainsession: Main session
-  tasksession: Task sessions
+  main: Main session
+  task: Task sessions
   workers: Workers
+  main -> task
 }
-harness: Harness
 tasks: Tasks
-agents -> harness
-agents -> tasks
+harness: Harness
+agents.main -> tasks
+agents.task -> tasks
+agents.task -> harness
+agents.workers -> harness
 ```
-
-Each child's own entry draws what it uses; the two providers below are the ones every level shares.
 
 <a id="uses-harness"></a>
 
 The **Harness** generates the [agent harness](../harness/module.md#concept.harness.harness) of each
-level from what that level hands it. The levels rely on it confining an agent to exactly what its
-level allows and never widening it; a level that cannot get its harness does not start its agent.
+level from what that level hands it: a worker's from its grant, a task session's from its task. The
+mechanisms that confine a worker and a task session are therefore the same code, and each level
+differs only in what it asks for. The levels rely on the Harness confining an agent to exactly what
+its level allows and never widening it; a level that cannot get its harness does not start its
+agent.
 
 <a id="uses-tasks"></a>
 
 **Tasks** provides the [task](../tasks/module.md#concept.tasks.task), the workspace of the task
-level, the same for the main agent and a task session. The levels rely on it keeping each task's
-changes in its own worktree and its record and decision log in the primary worktree.
+level, the same for the main agent and a task session. The main session opens, lists and merges
+tasks; a task session works inside one. The levels rely on Tasks keeping each task's changes in its
+own worktree and its record and decision log in the primary worktree.
+
+An extra level of messaging is one more place for an error to be lost, so the loss is prevented
+structurally: every level adds a link to the chain and keeps the links below it unchanged.
+
+### The children
 
 <a id="contains-main-session"></a>
 
-The **Main session** is the project level: the guidance that makes a Claude Code or pi session in
-the primary worktree the main agent, including the method of working inside a task that the main
-agent and its task sessions share, and pi's run view.
+The **Main session** is level 1: the guidance that makes a Claude Code or pi session in the primary
+worktree the main agent, including the method of working inside a task that the main agent and its
+task sessions share, and pi's run view. It starts task sessions when it delegates the task level.
 
 <a id="contains-task-session"></a>
 
-**Task sessions** is the task level delegated: it starts a task session in a task worktree on the
-main agent's own program, confines its writes with the session boundary, and in pi runs and records
-its rounds.
+**Task sessions** is level 2 delegated: it starts a task session in a task worktree on the main
+agent's own program, confines its writes with the session boundary, and in pi runs and records its
+rounds.
 
 <a id="contains-workers"></a>
 
-**Workers** is the worker level: it runs one headless worker under a frozen grant, audits it, runs
-the checks and records the run.
+**Workers** is level 5, the agent half of it: it runs one headless worker under a frozen grant,
+audits it, runs the checks and records the run, on behalf of the Operation that asked for it.

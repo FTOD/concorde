@@ -64,9 +64,11 @@ it needs a design reason, it links to the entry's Design section.
 
 ## The entry
 
-Every entry has the same five sections in the same order, so that every Module reads the same way
+Every entry has the same four sections in the same order, so that every Module reads the same way
 and a newcomer meets them in the order they need: what it is for, the words it uses, how to use
-it, why it is built that way, and how it fits with the rest.
+it, and how it is built and why, inside and in the Modules around it. How a Module fits with the
+rest is part of its design, never a separate section: a separate list of relationships only
+repeats the design, or draws a picture for its own sake.
 
 ### Purpose
 
@@ -106,10 +108,22 @@ definitions rather than restating them.
 ### Design
 
 This section holds the Module's whole design, however long it grows; no part of it moves to a
-topic. Explain why the decomposition, state, control and data flow, collaboration and failure
-containment fulfil the guarantees. Connect each significant choice to a problem it prevents. A list
-of class or function names in call order is not an explanation, and intended design is not evidence
-that code conforms.
+topic. The design has an inside and an outside. Inside, it explains how the Module is built: its
+children, the realizations that carry its function and the files they bind, and how these work
+together. Outside, it explains how the Module works with the Modules around it: the providers it
+relies on and, where a reader needs them, the Modules that rely on it, including which of its parts
+meets which of theirs. Level-3 headings MAY divide the section, for example into its inside and its
+outside.
+
+Explain why the decomposition, state, control and data flow, collaboration and failure containment
+fulfil the guarantees. Connect each significant choice to a problem it prevents. A list of class or
+function names in call order is not an explanation, and intended design is not evidence that code
+conforms.
+
+For every child and every provider, state its responsibility, when the collaboration applies, the
+canonical promises relied upon, and this Module's own duties and failure reactions. These
+explanations are what the `contains` and `uses` `meaning` anchors point to. A declared relation with
+a link and no explanation does not satisfy this.
 
 Record significant choices and required internal constraints, and distinguish them from incidental
 current implementation and unresolved questions. Prefer linking to a guarantee over restating it as
@@ -119,25 +133,30 @@ Concepts and realizations are explained here or in Usage, where understanding th
 Identity and bindings stay in metadata. Several nodes may share one coherent explanation with
 distinct anchors, provided the prose explains all of them.
 
-### Relationships
+#### Diagrams
 
-Explain the architecture: how the Module's concepts and realizations relate, and how it
-collaborates with its children and providers.
+Draw a diagram where a picture shows structure faster than prose, and as many as the design needs.
+Each diagram answers one question and stands next to the prose that explains it. The usual ones are:
 
-- For every child and every provider, state its responsibility, when the collaboration applies, the
-  canonical promises relied upon, and this Module's own duties and failure reactions. These
-  explanations are what the `contains` and `uses` `meaning` anchors point to. A declared relation
-  with a link and no explanation does not satisfy this.
-- Declare the structural relationships a reader should see as `relates`, with a verb: the service
-  *saves* the record, the operator *approves* the request.
-- Draw the principal collaboration as a checked D2 diagram: the Module with its children and the
-  providers it uses. A diagram shows architecture, not an inventory: draw the realizations that
-  carry the Module's function with the files they bind, so a developer sees how it is built, and
-  leave realizations that only keep the repository running, such as project configuration,
-  development tooling or test suites, to prose. A checked diagram may only assert declared
-  relations; a picture that shows something else is marked `illustrative`. See [Views](views.md).
+- **the inside**: the Module with its children and the realizations that carry its function, with
+  the files they bind and the edges between them, so a developer sees how it is built;
+- **the outside**: the Module among the Modules it uses and those that use it, or which of its
+  parts talks to which part of another Module;
+- **a flow or a state**: how one request travels through the parts over time, or the states a record
+  passes through, drawn as an `illustrative` picture.
 
-Explain the conditions, invariants and reactions that a diagram cannot carry.
+A diagram shows architecture, not an inventory. Leave realizations that only keep the repository
+running, such as project configuration, development tooling or test suites, to prose. A picture of
+boxes without edges says nothing a list does not; draw the edges that matter, or write the list.
+The same holds for a single realization shown with its files, which only repeats its binding, and
+for the Module with plain arrows to the few Modules it uses, which only repeats its `uses`: say
+these in prose. A Module with nothing structural to show needs no diagram, and none is drawn only to
+have one.
+
+A checked diagram may only assert declared relations: a labelled edge asserts a `relates`, so
+declare with a verb each relationship drawn that way, such as the service *saves* the record. A
+picture that shows something else is marked `illustrative`. See [Views](views.md). Explain in prose
+the conditions, invariants and reactions that a diagram cannot carry.
 
 ## Precise obligations
 

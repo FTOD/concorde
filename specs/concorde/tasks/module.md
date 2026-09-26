@@ -209,6 +209,15 @@ log -> task: explains the choices of
 
 ## Design
 
+Tasks is the workspace of the task level of Concorde's [five-level hierarchy](../module.md#the-five-levels)
+without being a level itself: the level is played by the main agent or by a Task session it
+delegates to, and Tasks holds what either of them works in — the branch, worktree, record and
+decision log — the same way whichever plays it. It never appears in a call chain itself: the main
+agent and every Operation, workflow and Task session call into it to read or write that workspace,
+and it calls none of them back.
+
+### Inside
+
 The task is the isolation unit because Git already isolates branches and worktrees: changes stay in
 their own checkout until Delivery commits and the main agent merges, so two tasks can change the
 same Module at once, meeting only at merge time where Git reports conflicts — a shared checkout
@@ -251,22 +260,6 @@ reset. The decision log is free Markdown,
 since its readers are the main agent and the developer; Tasks gives it only a fixed place and
 lifetime. See the [requirements](requirements.md) and [scenarios](scenarios.md).
 
-Tasks is built as one realization:
-
-```d2
-tasks: Tasks {
-  store: Task store {
-    "src/concorde/tasks/__init__.py"
-    "cli.py"
-    "store.py"
-    "merge.py"
-    "tests/concorde/tasks/__init__.py"
-    "test_store.py"
-    "test_merge.py"
-  }
-}
-```
-
 <a id="realization.tasks.store"></a>
 
 The **Task store** realization holds the `concorde task` commands (`cli.py`), the record updates
@@ -276,17 +269,7 @@ writing each decision log once, at open; Operations, Validation, Delivery, Workf
 session read and update records through it, relying on Tasks while it relies on none of them. The
 command dispatches `concorde task session` to the code of Task sessions.
 
-## Relationships
-
-```d2
-tasks: Tasks
-spec: Spec core
-workers: Workers
-tasksession: Task sessions
-tasks -> spec
-tasks -> workers
-tasks -> tasksession
-```
+### Around it
 
 - <a id="uses-workers"></a>**Workers** names the file of the [worker model
   configuration](../agents/workers/module.md#concept.workers.model-configuration), which Tasks

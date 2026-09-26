@@ -101,17 +101,6 @@ narrow, and a session that reasons correctly in other words fails it, which the 
 the report rather than trusting the check alone. A model's behaviour varies between runs, so one
 passing run shows the guidance can be followed, not that it always is.
 
-How Dogfood scenarios is built:
-
-```d2
-dogfood: Dogfood scenarios {
-  runner: Scenario runner {
-    "dogfood.py"
-    "scenarios/"
-  }
-}
-```
-
 <a id="realization.dogfood-scenarios.runner"></a>
 
 The **scenario runner** is `scripts/e2e/dogfood.py` with the scenarios under
@@ -124,19 +113,7 @@ The **scenario runner tests**, `tests/concorde/e2e/test_dogfood.py`, check every
 the checkout, the fault injection and the evaluation's checks on local repositories, verifying the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
-## Relationships
-
-```d2
-dogfood: Dogfood scenarios
-sessions: Headless sessions
-dogfooding: Dogfooding
-distribution: Distribution
-issues: Issues
-dogfood -> sessions
-dogfood -> dogfooding
-dogfood -> distribution
-dogfood -> issues
-```
+### Around it
 
 <a id="uses-sessions"></a>
 
@@ -161,5 +138,5 @@ whose files are the installed files the evaluation keeps digests of.
 <a id="uses-issues"></a>
 
 **Issues** provides `issues report --check`, which the evaluation runs in the project, and
-`issues report`, which it runs in a throwaway clone of the scenario's Concorde; a report either
-refuses fails the evaluation with the refusal's text.
+`issues report`, which it runs in a throwaway clone of the scenario's Concorde; a report that
+either command refuses fails the evaluation with the refusal's text.

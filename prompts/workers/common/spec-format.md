@@ -42,9 +42,13 @@ structural error stops your run. The rules workers most often break:
   (`<a id="a"></a><a id="b"></a>`), because a blank line between two anchors leaves the first one
   empty.
 - **The entry** `module.md` has the level-2 sections Purpose (plain prose, no lists or tables),
-  Terminology, Usage, Design and Relationships, each exactly once.
-- **Diagrams** are `d2` blocks. A plain `d2` block may only nest and connect Modules, concepts and
-  realizations that are declared; when in doubt, mark it `d2 illustrative`. Mermaid is an error.
+  Terminology, Usage and Design, each exactly once, and no `Relationships` section: Design holds
+  how the Module is built inside and how it works with the Modules around it, and explains each
+  child and provider at its `meaning` anchor.
+- **Diagrams** are `d2` blocks in Design, as many as help and none drawn only to have one, each
+  answering one question (the inside, the outside, a flow). A plain `d2` block may only nest and
+  connect Modules, concepts and realizations that are declared; when in doubt, mark it
+  `d2 illustrative`. Boxes without edges say nothing a list does not. Mermaid is an error.
   A plain block never uses a D2 keyword, not even as a shape key such as `link: Source link`: its
   D2 keywords are `label`, `shape`, `style`, `class`, `classes`, `direction`, `near`, `icon`,
   `tooltip`, `link`, `width`, `height`, `top`, `left`, `constraint`, `vars`, `layers`,

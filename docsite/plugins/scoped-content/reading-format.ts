@@ -1,4 +1,4 @@
-/** Protocol 13 reading and metadata parsing for publication.
+/** Protocol 14 reading and metadata parsing for publication.
  *
  * Publication reads what it renders: document pairs, identities, anchors, Terminology tables,
  * definition headings, contract fences and D2 blocks. Structural conformance as a whole is
@@ -136,7 +136,7 @@ export function isIllustrative(info: string): boolean {
   const words = info.split(/\s+/);
   return words[0] === "d2" && words.slice(1).includes("illustrative");
 }
-/** Diagrams in reading are D2; a Mermaid block is not part of Protocol 13 reading. */
+/** Diagrams in reading are D2; a Mermaid block is not part of Protocol 14 reading. */
 export function requireMarkedDiagrams(content: string, path: string): void {
   for (const fence of fenceRanges(content)) {
     const line = content.slice(0, fence.start).split("\n").length;
@@ -329,13 +329,9 @@ export function terminologyRows(content: string): TerminologyRow[] {
     };
   });
 }
-const ENTRY_SECTIONS = [
-  "Purpose",
-  "Terminology",
-  "Usage",
-  "Design",
-  "Relationships",
-];
+const ENTRY_SECTIONS = ["Purpose", "Terminology", "Usage", "Design"];
+/** A Module's relationships belong in its Design, never in a section of their own. */
+const FORBIDDEN_ENTRY_SECTIONS = ["Relationships"];
 export function requireReading(
   content: string,
   path: string,
@@ -354,7 +350,14 @@ export function requireReading(
       ENTRY_SECTIONS.every(
         (name) => top.filter((text) => text === name).length === 1,
       ),
-      `Module entry requires level-2 Purpose, Terminology, Usage, Design, Relationships, each exactly once: ${path}`,
+      `Module entry requires level-2 Purpose, Terminology, Usage, Design, each exactly once: ${path}`,
+    );
+    const forbidden = top.filter((text) =>
+      FORBIDDEN_ENTRY_SECTIONS.includes(text),
+    );
+    requireThat(
+      forbidden.length === 0,
+      `Module entry has a level-2 ${forbidden.join(", ")} section; a Module's relationships belong in its Design: ${path}`,
     );
   }
   requireThat(

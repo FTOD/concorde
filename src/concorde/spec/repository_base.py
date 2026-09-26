@@ -1,4 +1,4 @@
-"""Shared constants, value types and path helpers of the Protocol 13 Spec tooling.
+"""Shared constants, value types and path helpers of the Protocol 14 Spec tooling.
 
 The Spec graph is loaded by ``content_repository``; this module holds what every part of the
 tooling shares: identities, errors, safe file reads, realization-entry path rules and the
@@ -25,7 +25,7 @@ from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode
 
 PROFILE_VERSION = 17
-PROTOCOL_VERSION = "13.3.0"
+PROTOCOL_VERSION = "14.0.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 # The installed Protocol copy the configuration binds; the installer places it there.

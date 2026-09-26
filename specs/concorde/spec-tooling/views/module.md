@@ -155,7 +155,9 @@ an existing site or Spec; bringing a site up to a newer template is a manual, re
 and Protocol collection, the repository tests and the Pages workflow. The template excludes it, so
 a scaffolded project never receives Concorde's user documents or Protocol chapters.
 
-## Relationships
+### Around it
+
+Views sits between the Spec core it reads and the Distribution that packages and calls it:
 
 ```d2
 views: Views
