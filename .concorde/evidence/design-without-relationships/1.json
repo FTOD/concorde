@@ -1,0 +1,260 @@
+{
+  "task": "design-without-relationships",
+  "goal": "Merge each Module entry's Relationships section into Design (internal and external structure, several focused diagrams allowed) and restate Concorde's five-level hierarchy (Main session, Task session, Workflow, Operation, Workers/Tools) with sessions and workers as the Agent layer",
+  "modules": [
+    "module.adoption",
+    "module.agents",
+    "module.checks",
+    "module.code-review",
+    "module.concorde",
+    "module.delivery",
+    "module.distribution",
+    "module.dogfooding",
+    "module.dogfood-scenarios",
+    "module.e2e",
+    "module.harness",
+    "module.headless-sessions",
+    "module.implementation",
+    "module.issues",
+    "module.main-session",
+    "module.operations",
+    "module.spec",
+    "module.specification",
+    "module.spec-mcp",
+    "module.spec-review",
+    "module.spec-tooling",
+    "module.swe-bench-cases",
+    "module.tasks",
+    "module.task-session",
+    "module.tools",
+    "module.understanding",
+    "module.validation",
+    "module.views",
+    "module.workers",
+    "module.workflows"
+  ],
+  "sequence": 1,
+  "base_commit": "46e626a4961d119e3d87ff36ea6ba64ed270b448",
+  "parent_commit": "3c9072002e03e2319a88a1cfb636da02aa0f2b43",
+  "readiness": {
+    "run_id": "r-20260926T184753-delivery-8b90c23a",
+    "input_digest": "sha256:f29d94a6852afbce39d1d9b9a03d858f4394bdd20d18bb74cc59b3c69b5b5f82",
+    "modules": [
+      "module.adoption",
+      "module.agents",
+      "module.checks",
+      "module.code-review",
+      "module.concorde",
+      "module.delivery",
+      "module.distribution",
+      "module.dogfood-scenarios",
+      "module.dogfooding",
+      "module.e2e",
+      "module.harness",
+      "module.headless-sessions",
+      "module.implementation",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.spec",
+      "module.spec-mcp",
+      "module.spec-review",
+      "module.spec-tooling",
+      "module.specification",
+      "module.swe-bench-cases",
+      "module.task-session",
+      "module.tasks",
+      "module.tools",
+      "module.understanding",
+      "module.validation",
+      "module.views",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:0a2db6793d0a4a831ab8c70c8221ff5d54b4c91f773ef8c119df1abd7c331a2f"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:7f2509cf4c6b00df3de459aa4ace0c64129d518849371c23ccdafcdf5c5c6338"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:00d23327b651f0c32d1e3faf6d5d4aa288f65546b8e6937a45ae20d6637bddf2"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:b478959f026e07e17c7448a50cb829d4f0115056064c64c311a40b31c37f0108"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:eea9173cc92d73216c10430d74ef7a830a7f87b030217806b5eaf10de03e3435"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:dd8672a20cb00571d61554596bd3220661351e5663fc5da478fc928ed1a3046e"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:866bf825e11ec69e3daa34d7c5eea6e928e0ab453806daaafe90836e86dba461"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:50a6f59d4ebf8d3354f67de5a6e92d7ec9bd4b5ba3b82aac5e6fb22c712283ff"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:50a6f59d4ebf8d3354f67de5a6e92d7ec9bd4b5ba3b82aac5e6fb22c712283ff"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:2f70725bfedb4b69887999881d9491f40a00b2e9a8a1c459f3bb29b3378a9041"
+      },
+      {
+        "check": "check.operations.tests",
+        "module": "module.operations",
+        "status": "passed",
+        "measured_digest": "sha256:80e58e4dc60c98f5f2fba0c3579566874fe3e16fa62e78b7f066986ca4f6e34e"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:84110fc67d861c80ba39e0dc560cfe061010b58c2d876381cdd456c282f5746e"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:e3f92fcbf7f6a796c6f2853835aa3c6ce8a8e51f653d10dd074a4cebd3c80232"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:faa8718320320c1fda2b8f6c8810187fe185238c95779049e9e3268afb94fcc4"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:c589ba6d03f3b2f1d800aafe18eeacb8ea65e7344117922b4673cecfc3228d86"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:77108111f9ff08694972f904933e60bfb67309e6bcdc3ed81a803b48312b4e08"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:58a4139bb7ef65941f2fd75f00270d7193c4df2be0912bb3a7653ba0857ba127"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:6aabca1785efe96d1039a59e53e9dd399af53b298f36ba12cf48cce462eff2fe"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:ddedaff3ce167d865adb305c89cc9d714a72f70f67aae5a831c58337a0ae8828"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:f5ea66aaa42647a130f41df12017056f2487d2daa95a5e45870e3d573bab2830"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:f5ea66aaa42647a130f41df12017056f2487d2daa95a5e45870e3d573bab2830"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:f5ea66aaa42647a130f41df12017056f2487d2daa95a5e45870e3d573bab2830"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:e74aabe312b838d558c4afcfe90027e469e6c22875288bcfa81c5b1acb016fad"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260926T184330-validate-920f97ec",
+      "operation": "validate",
+      "modules": [
+        "module.adoption",
+        "module.agents",
+        "module.checks",
+        "module.code-review",
+        "module.concorde",
+        "module.delivery",
+        "module.distribution",
+        "module.dogfooding",
+        "module.dogfood-scenarios",
+        "module.e2e",
+        "module.harness",
+        "module.headless-sessions",
+        "module.implementation",
+        "module.issues",
+        "module.main-session",
+        "module.operations",
+        "module.spec",
+        "module.specification",
+        "module.spec-mcp",
+        "module.spec-review",
+        "module.spec-tooling",
+        "module.swe-bench-cases",
+        "module.tasks",
+        "module.task-session",
+        "module.tools",
+        "module.understanding",
+        "module.validation",
+        "module.views",
+        "module.workers",
+        "module.workflows"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:5eb56aa1f7838554738a6f26aa2582947d0d8c99e7ac63a3aa0f202c63bc9a54"
+    }
+  ],
+  "created_at": "2026-09-26T18:52:12Z"
+}
