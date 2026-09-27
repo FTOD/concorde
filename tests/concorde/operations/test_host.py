@@ -135,10 +135,14 @@ class HostTests(unittest.TestCase):
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 2,
-                    "claude": {
-                        "default": {"model": "sonnet", "reasoning": "medium"},
-                        "operations": {"implement": {"model": "opus"}},
+                    "schema_version": 3,
+                    "default": {
+                        "backend": "claude",
+                        "model": "sonnet",
+                        "reasoning": "medium",
+                    },
+                    "operations": {
+                        "implement": {"workers": {"worker": {"model": "opus"}}}
                     },
                 }
             )
@@ -150,8 +154,8 @@ class HostTests(unittest.TestCase):
         self.assertEqual("medium", argv[argv.index("--effort") + 1])
         record = self.worker_record(envelope)
         self.assertEqual(
-            ("claude", "opus", "medium"),
-            (record["backend"], record["model"], record["reasoning"]),
+            ("claude", "worker", "opus", "medium"),
+            (record["backend"], record["worker"], record["model"], record["reasoning"]),
         )
         [shown] = [
             item for item in envelope["host_evidence"] if item["kind"] == "worker-model"
@@ -159,7 +163,12 @@ class HostTests(unittest.TestCase):
         self.assertEqual("claude", shown["ref"])
         self.assertIn("model opus, reasoning medium", shown["detail"])
         (self.root / models.CONFIG).write_text(
-            json.dumps({"schema_version": 2, "claude": {"default": {"model": "haiku"}}})
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "default": {"backend": "claude", "model": "haiku"},
+                }
+            )
         )
         status, envelope = self.implement([{}])
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
@@ -189,14 +198,16 @@ class HostTests(unittest.TestCase):
         }
 
     @verifies("scenario.operations.worker-backend-configured")
-    def test_a_claude_code_main_session_runs_a_pi_worker(self):
+    def test_a_claude_code_main_session_runs_its_workers_on_pi(self):
         environ = self.fake_pi()
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 2,
-                    "backend": {"operations": {"implement": {"default": "pi"}}},
-                    "pi": {"operations": {"implement": {"model": "local/fast"}}},
+                    "schema_version": 3,
+                    "operations": {
+                        "implement": {"workers": {"worker": {"model": "local/fast"}}},
+                        "spec_review": {"workers": {"worker": {"backend": "claude"}}},
+                    },
                 }
             )
         )
@@ -212,7 +223,7 @@ class HostTests(unittest.TestCase):
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         record = self.worker_record(envelope)
         self.assertEqual(
-            ("pi", "backend.operations.implement.default", "local/fast"),
+            ("pi", "Concorde's default worker backend", "local/fast"),
             (record["backend"], record["backend_source"], record["model"]),
         )
         argv = self.launched(envelope)
@@ -222,7 +233,7 @@ class HostTests(unittest.TestCase):
             item for item in envelope["host_evidence"] if item["kind"] == "worker-model"
         ]
         self.assertEqual("pi", shown["ref"])
-        self.assertIn("backend.operations.implement.default", shown["detail"])
+        self.assertIn("Concorde's default worker backend", shown["detail"])
         status, envelope = self.project.run(
             "spec_review",
             "--task",
@@ -235,7 +246,7 @@ class HostTests(unittest.TestCase):
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         record = self.worker_record(envelope)
         self.assertEqual(
-            ("claude", "CONCORDE_CLIENT=claude"),
+            ("claude", "operations.spec_review.workers.worker"),
             (record["backend"], record["backend_source"]),
         )
 
@@ -316,32 +327,16 @@ class HostTests(unittest.TestCase):
         )
 
     @verifies("scenario.operations.worker-model-unavailable")
-    def test_a_run_without_a_main_session_program_fails_before_launch(self):
-        status, envelope = self.implement([{}], client=None)
-        self.assertEqual((1, "failed"), (status, envelope["status"]))
-        self.assertEqual([], envelope["worker_runs"])
-        error = envelope["error"]
-        self.assertEqual("worker_model_unavailable", error["code"])
-        [cause] = error["causes"]
-        self.assertEqual(
-            ("component", "client_unknown"), (cause["level"], cause["code"])
-        )
-        self.assertIn("CLAUDECODE", cause["detail"])
-        validate(error, ERROR_SCHEMA)
+    def test_a_worker_whose_backend_or_model_cannot_be_settled_fails_before_launch(
+        self,
+    ):
         (self.worktree / models.CONFIG).write_text("{broken")
         status, envelope = self.implement([{}])
         self.assertEqual((1, "failed"), (status, envelope["status"]))
         [cause] = envelope["error"]["causes"]
         self.assertEqual("config_invalid", cause["code"])
         self.assertIn(str(self.worktree / models.CONFIG), cause["detail"])
-        (self.worktree / models.CONFIG).write_text(
-            json.dumps(
-                {
-                    "schema_version": 2,
-                    "backend": {"operations": {"implement": {"default": "pi"}}},
-                }
-            )
-        )
+        (self.worktree / models.CONFIG).write_text(json.dumps({"schema_version": 3}))
         status, envelope = self.project.run(
             "implement",
             "--task",
@@ -356,8 +351,9 @@ class HostTests(unittest.TestCase):
         [cause] = envelope["error"]["causes"]
         self.assertEqual("backend_missing", cause["code"])
         self.assertEqual("environment", cause["unhandled"]["reason"])
-        self.assertIn("backend.operations.implement.default", cause["detail"])
+        self.assertIn("Concorde's default worker backend", cause["detail"])
         self.assertIn("CONCORDE_PI", cause["detail"])
+        self.assertIn("--backend claude", cause["detail"])
         validate(envelope["error"], ERROR_SCHEMA)
 
     def saved(self, envelope):

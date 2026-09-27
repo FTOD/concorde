@@ -16,27 +16,27 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND the result is printed, saved in the run directory and the run is finished as `ok` in the task record
 - AND the command exits with status 0
 
-### scenario.operations.worker-model — A worker runs on the main session's program with the worktree's model
+### scenario.operations.worker-model — A worker runs with the worktree's model for its id
 
-- GIVEN a Claude Code main session and a task worktree whose worker model configuration sets a Claude Code default model and level and an entry for the `implement` Operation with a model only
+- GIVEN a task worktree whose worker model configuration chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker`
 - WHEN the main agent runs `concorde run implement` for the task
-- THEN the host launches `claude -p` with the Operation's model and the default's level as `--effort`
-- AND the run record and the result's `worker-model` host evidence name the backend, the worker role, the model and the level
+- THEN the host launches `claude -p` with the worker's model and the default's level as `--effort`
+- AND the run record and the result's `worker-model` host evidence name the backend, the worker id, the model and the level
 - BUT a change made afterwards to the primary worktree's configuration does not change what the task's next worker runs on
 
-### scenario.operations.worker-backend-configured — A Claude Code main session runs a pi worker
+### scenario.operations.worker-backend-configured — Workers run on pi, whatever the main session
 
-- GIVEN a Claude Code main session, pi installed, and a task worktree whose worker model configuration chooses `pi` for the `implement` Operation and a pi model for it
-- WHEN the main agent runs `concorde run implement` for the task
-- THEN the host launches `pi -p` with that model, under the same grant a Claude Code worker would get
-- AND the run record and the `worker-model` host evidence name `pi` and the entry `backend.operations.implement.default` it came from
+- GIVEN a Claude Code main session, pi installed, and a task worktree whose worker model configuration gives `implement`'s worker a pi model and puts another Operation's worker on Claude Code
+- WHEN the main agent runs `implement` and then that Operation for the task
+- THEN the host launches `implement`'s worker with `pi -p` and that model, under the same grant a Claude Code worker would get, and the run record and `worker-model` evidence name `pi` as Concorde's default worker backend
+- AND it launches the other Operation's worker with `claude -p`, naming the entry of its worker id that chose it
 
 ### scenario.operations.worker-model-unavailable — A run whose worker backend or model cannot be settled fails before launch
 
-- GIVEN a task, and a `concorde run implement` started outside any Claude Code or pi session with `CONCORDE_CLIENT` unset and no configured backend, a task worktree whose worker model configuration is not valid JSON, or one that chooses `pi` for `implement` on a machine without pi
-- WHEN the host reaches the worker step
+- GIVEN a task whose worktree's worker model configuration is not valid JSON, or chooses nothing on a machine without pi
+- WHEN the main agent runs `concorde run implement` for the task and the host reaches the worker step
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
-- AND its cause is the `component` link of Workers' model configuration with `client_unknown`, `config_invalid` or `backend_missing`, naming the variables looked at, the file, or the entry that chose `pi` and the command looked for
+- AND its cause is the `component` link of Workers' model configuration with `config_invalid` or `backend_missing`, naming the file, or that the worker runs on pi as Concorde's default worker backend, the command looked for and how to choose Claude Code for it
 
 ### scenario.operations.progress-file — A run shows its progress
 
@@ -107,42 +107,41 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 
 ### scenario.operations.configure-list — configure_workers lists the candidates and every worker's choice
 
-- GIVEN a pi main session and a primary worktree without a worker model configuration
+- GIVEN a Claude Code main session and a primary worktree without a worker model configuration
 - WHEN the main agent runs `concorde run configure_workers` without a task
 - THEN the result is `ok` with `task` null and no worker run
-- AND its output lists the models pi offers, and for every Operation that launches workers each worker role with its effective model and level, `spec_review` with `reviewer` and `checker`
+- AND its output lists the models pi offers, since every worker runs on pi when nothing chooses otherwise, and for every Operation that launches workers each worker by its id with its effective backend, model and level: `spec_review` with `reviewer` and `checker`, `spec_panel` with `reviewer1` to `reviewer5` and `chair`
 - AND no configuration file is written
 
 ### scenario.operations.configure-change — A change reaches only the named worktree
 
 - GIVEN a primary worktree and an open task `t1` whose worktree has no worker model configuration
-- WHEN `configure_workers` sets a default model and level, then a model and level for `spec_review`'s `checker`, without a task
-- THEN the primary worktree's file holds both, the checker resolves its own entry and the reviewer the default
+- WHEN `configure_workers` sets a default model and level, then a model and level for `spec_review`'s worker `checker`, without a task
+- THEN the primary worktree's file holds both, the checker resolves its own entry and the reviewer the default, both on pi
 - AND `t1`'s worktree has no file until `configure_workers --task t1` sets a model there, which changes only that copy
 - AND `--unset` of the checker's entry leaves only the default
 
-### scenario.operations.configure-follows-backend — A model change reaches the section its worker reads
+### scenario.operations.configure-backend — A worker is put on Claude Code
 
-- GIVEN a Claude Code main session and a primary worktree whose worker model configuration chooses `pi` for `implement` by hand
-- WHEN `configure_workers --operation implement --model <a pi model>` runs without `--backend`
-- THEN it lists pi's candidates, sets the model in the file's `pi` section and reports `backend_from` as `backend.operations.implement.default`
-- AND its `effective` output gives `implement`'s worker the backend `pi` from that entry and every other worker `claude` from the main session
-- AND the file's `backend` section is unchanged
+- GIVEN a primary worktree without a worker model configuration
+- WHEN `configure_workers --operation spec_panel --worker chair --backend claude` runs
+- THEN the chair's entry chooses `claude`, the output lists Claude Code's candidates and names `--backend` as their source, and the chair resolves to `claude` while every reviewer stays on pi
+- AND a later pi model for the chair is refused with `unknown_model`, since its entry runs on Claude Code
+- BUT `--candidates claude` alone lists Claude Code's models and changes nothing
 
-### scenario.operations.configure-worker — One numbered worker of a role is configured
+### scenario.operations.configure-worker — Each worker is configured by its id
 
-- GIVEN a primary worktree without a worker model configuration, started from a pi main session
-- WHEN the main agent runs `configure_workers --operation spec_panel --role reviewer --worker 2` with a listed model and level
-- THEN the file holds that choice for reviewer 2 alone
-- AND the output's effective choice of `spec_panel`'s reviewer lists workers 1 to 5, worker 2 with the new model and its source
-- AND the same request for `spec_review`'s reviewer, which launches one worker, for reviewer 6, or without `--role` is refused with `invalid_request`, saying why
-- AND `--unset` for reviewer 2 removes the entry and every section it leaves empty
+- GIVEN a primary worktree without a worker model configuration
+- WHEN `configure_workers` sets a model and level for `spec_panel`'s `reviewer1` and another for `reviewer2`
+- THEN the file holds one entry per worker id under `operations.spec_panel.workers`
+- AND the output's effective choices list `reviewer1` to `reviewer5` and `chair`, `reviewer2` with its own model and the entry it came from, and `reviewer3` with the backend's own default
+- AND `--unset` of `reviewer2` removes only that entry
 
 ### scenario.operations.configure-refused — A refused change leaves the file alone
 
 - GIVEN a primary worktree
-- WHEN `configure_workers` names an Operation that launches no worker, a role the Operation does not have, a model the program does not list, or runs outside any main session
-- THEN the result is `failed` with `invalid_request` naming the admitted Operations or roles, or `configuration_refused` whose cause is Workers' `unknown_model` or `client_unknown` link
+- WHEN `configure_workers` names an Operation that launches no worker, a worker id the Operation does not declare, a worker without its Operation, `--candidates` together with a change, or a model the program does not list
+- THEN the result is `failed` with `invalid_request` naming the admitted Operations or worker ids, or `configuration_refused` whose cause is Workers' `unknown_model` link
 - AND the configuration file is unchanged
 
 ## Deterministic runs and refusals

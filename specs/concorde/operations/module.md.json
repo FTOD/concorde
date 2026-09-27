@@ -94,12 +94,6 @@
       "meaning": "#concept.operations.no-task"
     },
     {
-      "id": "concept.operations.worker-role",
-      "type": "concept",
-      "title": "Worker role",
-      "meaning": "#concept.operations.worker-role"
-    },
-    {
       "id": "concept.operations.configure-workers",
       "type": "concept",
       "title": "configure_workers",

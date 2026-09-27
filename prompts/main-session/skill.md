@@ -302,24 +302,24 @@ justified.
 
 ## Worker models
 
-Workers run on your own agent program unless the worktree's `.concorde/worker-models.json` chooses
-another: Claude Code workers when you are a Claude Code session, pi workers when you are a pi
-session, and the program its `backend` section names for every worker, an Operation's workers or
-one worker role otherwise. The model and reasoning level each worker uses come from the same file:
-for each program a default, optional entries per Operation and, for an Operation with several
-workers, per worker role (such as `spec_review`'s `reviewer` and `checker`); the most specific entry
-that sets a field wins, in the section of the program the worker runs on. Git ignores the file.
-`concorde task open` copies the primary worktree's file into the new task worktree, so a task
-keeps the configuration it started with, and a later change in the primary worktree never reaches
-it. Without a file, workers use the program's own default model.
+Workers run on pi, whatever program you are, unless the worktree's `.concorde/worker-models.json`
+puts some of them on Claude Code. The file is keyed by **worker id**, the name each Operation gives
+the workers it launches: `worker` for an Operation with one worker, `reviewer` and `checker` for
+`spec_review`, `reviewer1` to `reviewer5` and `chair` for `spec_panel`. It holds a `default`, and
+per Operation a `default` and one entry per worker id; each entry may set a `backend` (`pi` or
+`claude`), a `model` and a `reasoning` level, and the most specific entry that sets a field wins.
+An entry that chooses a backend starts that program afresh: models named for the other program are
+not inherited. Git ignores the file. `concorde task open` copies the primary worktree's file into
+the new task worktree, so a task keeps the configuration it started with, and a later change in the
+primary worktree never reaches it. Without a file, every worker runs on pi with pi's default model.
 
 The `configure_workers` Operation lists and changes it. It needs no task:
 
 ```bash
-concorde run configure_workers [--task <task>]     # candidates, entries and the effective choice of every worker
-concorde run configure_workers [--task <task>] [--operation <op> [--role <role>]] \
-  [--model <model>] [--reasoning <level>] [--allow-unlisted]
-concorde run configure_workers [--task <task>] [--operation <op> [--role <role>]] --unset
+concorde run configure_workers [--task <task>] [--candidates claude|pi]   # candidates and every worker's choice
+concorde run configure_workers [--task <task>] [--operation <op> [--worker <id>]] \
+  [--backend claude|pi] [--model <model>] [--reasoning <level>] [--allow-unlisted]
+concorde run configure_workers [--task <task>] [--operation <op> [--worker <id>]] --unset
 ```
 
 Change worker models only when the developer asks. Without `--task` it runs in the primary
@@ -329,39 +329,24 @@ Let the developer make the choice:
 
 - In pi, call the `concorde_configure_workers` tool (the developer can also type
   `/concorde-models`). It opens a picker in which the developer chooses, for every worker or one
-  Operation's worker or role, a model from those pi lists and a reasoning level, and it tells you
-  what changed.
+  worker by its id, a model from those pi lists and a reasoning level, and it tells you what
+  changed.
 - In Claude Code, run `concorde run configure_workers` and ask with the AskUserQuestion tool: first
-  the scope (every worker, or an Operation and its role from the output's `effective`), then the
+  the scope (every worker, or an Operation's worker id from the output's `effective`), then the
   model, then the reasoning level from the model's `levels`. Offer the listed models as options,
-  and mention that a full model name can be given as a free-text answer. Claude Code cannot list
-  the models of its account, as the candidates' `note` says, so a model it did not list needs
-  `--allow-unlisted`. Apply each answer with `configure_workers` and show the developer the
-  resulting `effective` table.
+  and mention that a full model name can be given as a free-text answer. A model pi's listing does
+  not show needs `--allow-unlisted`. Apply each answer with `configure_workers` and show the
+  developer the resulting `effective` table.
 
-When the developer asks to run some workers on the other program, edit the `backend` section of
-the file yourself — it is the only part you write by hand, and no command changes it — then run
-`configure_workers` to validate the file and show the developer the resulting `effective` table:
-
-```json
-{
-  "schema_version": 2,
-  "backend": {
-    "default": "pi",
-    "operations": {"spec_review": {"default": "claude", "roles": {"checker": "pi"}}}
-  }
-}
-```
-
-The most specific entry wins (the role's, the Operation's `default`, the section's `default`), and
-without one a worker runs on your program. Both programs must be installed: a worker whose chosen
-program is missing ends `failed` with `backend_missing` rather than running on the other one.
-`configure_workers --operation <op>` without `--backend` changes the models of the program that
-Operation's workers run on; the pi picker offers only workers that run on pi.
+When the developer asks to run some workers on Claude Code, set it with `--backend claude` on the
+default, an Operation or a worker id, then choose their models from `--candidates claude`, whose
+listing Claude Code cannot make complete: it shows its aliases and the models your settings name.
+Both programs must be installed where they are chosen: a worker whose program is missing ends
+`failed` with `backend_missing` rather than running on the other one.
 
 A refused change ends `failed` with the Workers link naming the value and what is listed. An
 Operation whose worker cannot be configured ends `failed` with `worker_model_unavailable`, naming
-the file, the missing client or the missing program.
+the worker, the file or the missing program.
 
 ## Spec queries
 

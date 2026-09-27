@@ -68,7 +68,7 @@ after merging.
 
 ### req.main-session.developer-chooses-models — The developer chooses worker models
 
-The guidance SHALL tell the main agent to change the models workers use only when the developer asks, to let the developer choose among the candidates the `configure_workers` Operation lists, for every worker, an Operation or one of its worker roles (in pi through the model picker, in Claude Code through its question tool), and to change an existing task's configuration only when the developer asks for that task.
+The guidance SHALL tell the main agent to change the models workers use only when the developer asks, to let the developer choose among the candidates the `configure_workers` Operation lists, for every worker or one worker by its id (in pi through the model picker, in Claude Code through its question tool), and to change an existing task's configuration only when the developer asks for that task.
 
 ### req.main-session.no-task-questions — Questions need no task
 

@@ -233,7 +233,7 @@ class GuidanceTests(unittest.TestCase):
 
     @verifies("scenario.main-session.choose-models")
     def test_the_developer_chooses_worker_models(self):
-        self.assertIn("Workers run on your own agent program", self.skill)
+        self.assertIn("Workers run on pi, whatever program you are", self.skill)
         self.assertIn("`.concorde/worker-models.json`", self.skill)
         self.assertIn(
             "copies the primary worktree's file into the new task worktree", self.skill
@@ -249,14 +249,15 @@ class GuidanceTests(unittest.TestCase):
             "already exists",
             self.skill,
         )
-        self.assertIn("per worker role", self.skill)
+        self.assertIn("keyed by **worker id**", self.skill)
+        self.assertIn("`reviewer1` to `reviewer5` and `chair`", self.skill)
         self.assertIn(
             "change the models workers use only when the developer asks", self.block
         )
         self.assertIn(
             "unless the worktree's `.concorde/worker-models.json`", self.skill
         )
-        self.assertIn("edit the `backend` section of the file yourself", self.skill)
+        self.assertIn("set it with `--backend claude`", self.skill)
         self.assertIn("Both programs must be installed", self.skill)
 
     @verifies("scenario.main-session.no-task-operations")

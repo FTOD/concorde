@@ -21,6 +21,8 @@ class ConfigureWorkersTests(unittest.TestCase):
         self.project = OperationProject(self)
         self.root = self.project.root
         self.environ = fake_agents(self.project.base / "bin", self.project.home)
+        # These tests start from a worktree without a worker model configuration.
+        (self.root / models.CONFIG).unlink()
 
     def configure(self, *argv, client="pi"):
         return self.project.run(
@@ -32,13 +34,13 @@ class ConfigureWorkersTests(unittest.TestCase):
 
     @verifies("scenario.operations.configure-list")
     def test_listing_without_a_task(self):
-        status, envelope = self.configure()
+        status, envelope = self.configure(client="claude")
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         self.assertIsNone(envelope["task"])
         self.assertEqual([], envelope["worker_runs"])
         output = envelope["output"]
         self.assertEqual(
-            ("list", "pi", "CONCORDE_CLIENT=pi", False),
+            ("list", "pi", "Concorde's default worker backend", False),
             (
                 output["action"],
                 output["backend"],
@@ -54,7 +56,19 @@ class ConfigureWorkersTests(unittest.TestCase):
         self.assertEqual(
             ["reviewer", "checker"], list(output["effective"]["spec_review"])
         )
+        self.assertEqual(
+            ["reviewer1", "reviewer2", "reviewer3", "reviewer4", "reviewer5", "chair"],
+            list(output["effective"]["spec_panel"]),
+        )
         self.assertEqual(["worker"], list(output["effective"]["implement"]))
+        self.assertEqual(
+            {"pi"},
+            {
+                chosen["backend"]
+                for workers in output["effective"].values()
+                for chosen in workers.values()
+            },
+        )
         self.assertNotIn("validate", output["effective"])
         self.assertNotIn("configure_workers", output["effective"])
         self.assertFalse((self.root / models.CONFIG).exists())
@@ -74,7 +88,7 @@ class ConfigureWorkersTests(unittest.TestCase):
         status, envelope = self.configure(
             "--operation",
             "spec_review",
-            "--role",
+            "--worker",
             "checker",
             "--model",
             "local-openai/plain-7",
@@ -85,12 +99,18 @@ class ConfigureWorkersTests(unittest.TestCase):
         checker = envelope["output"]["effective"]["spec_review"]["checker"]
         reviewer = envelope["output"]["effective"]["spec_review"]["reviewer"]
         self.assertEqual(
-            ("local-openai/plain-7", "off"), (checker["model"], checker["reasoning"])
+            ("local-openai/plain-7", "off", "operations.spec_review.workers.checker"),
+            (checker["model"], checker["reasoning"], checker["model_source"]),
         )
         self.assertEqual(
-            ("anthropic/claude-sonnet-5", "medium"),
-            (reviewer["model"], reviewer["reasoning"]),
+            ("anthropic/claude-sonnet-5", "medium", "default"),
+            (reviewer["model"], reviewer["reasoning"], reviewer["model_source"]),
         )
+        self.assertEqual(
+            {"backend": "pi", "backend_source": "Concorde's default worker backend"},
+            {key: checker[key] for key in ("backend", "backend_source")},
+        )
+        self.assertEqual(self.stored(self.root), envelope["output"]["configured"])
         self.assertFalse((worktree / models.CONFIG).exists())
         before = store.load_task(self.root, "t1")
         status, envelope = self.configure(
@@ -98,6 +118,8 @@ class ConfigureWorkersTests(unittest.TestCase):
             "t1",
             "--operation",
             "implement",
+            "--worker",
+            "worker",
             "--model",
             "a/unlisted",
             "--allow-unlisted",
@@ -105,8 +127,10 @@ class ConfigureWorkersTests(unittest.TestCase):
         self.assertEqual((0, "t1"), (status, envelope["task"]), envelope)
         self.assertEqual(
             {
-                "schema_version": 2,
-                "pi": {"operations": {"implement": {"model": "a/unlisted"}}},
+                "schema_version": 3,
+                "operations": {
+                    "implement": {"workers": {"worker": {"model": "a/unlisted"}}}
+                },
             },
             self.stored(worktree),
         )
@@ -114,7 +138,7 @@ class ConfigureWorkersTests(unittest.TestCase):
         record = store.load_task(self.root, "t1")
         self.assertEqual(len(before["runs"]) + 1, len(record["runs"]))
         status, envelope = self.configure(
-            "--operation", "spec_review", "--role", "checker", "--unset"
+            "--operation", "spec_review", "--worker", "checker", "--unset"
         )
         self.assertEqual(
             (0, "unset", True),
@@ -122,129 +146,132 @@ class ConfigureWorkersTests(unittest.TestCase):
         )
         self.assertIsNone(envelope["output"]["candidates"])
         self.assertEqual(
-            {"default": {"model": "anthropic/claude-sonnet-5", "reasoning": "medium"}},
-            self.stored(self.root)["pi"],
+            {
+                "schema_version": 3,
+                "default": {
+                    "model": "anthropic/claude-sonnet-5",
+                    "reasoning": "medium",
+                },
+            },
+            self.stored(self.root),
         )
 
-    @verifies("scenario.operations.configure-follows-backend")
-    def test_a_model_change_reaches_the_section_its_worker_reads(self):
-        choice = {"operations": {"implement": {"default": "pi"}}}
-        models.save(self.root, {"schema_version": 2, "backend": choice})
+    @verifies("scenario.operations.configure-backend")
+    def test_a_worker_may_be_put_on_claude_code_and_its_model_checked_there(self):
         status, envelope = self.configure(
-            "--operation",
-            "implement",
-            "--model",
-            "anthropic/claude-sonnet-5",
-            client="claude",
+            "--operation", "spec_panel", "--worker", "chair", "--backend", "claude"
         )
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         output = envelope["output"]
         self.assertEqual(
-            ("pi", "backend.operations.implement.default"),
-            (output["backend"], output["backend_from"]),
+            ("claude", "--backend"), (output["backend"], output["backend_from"])
         )
         self.assertEqual(
-            ["anthropic/claude-sonnet-5", "local-openai/plain-7"],
-            [item["id"] for item in output["candidates"]["models"]],
+            {
+                "schema_version": 3,
+                "operations": {
+                    "spec_panel": {"workers": {"chair": {"backend": "claude"}}}
+                },
+            },
+            self.stored(self.root),
         )
-        stored = self.stored(self.root)
-        self.assertEqual(choice, stored["backend"])
+        chair = output["effective"]["spec_panel"]["chair"]
+        reviewer = output["effective"]["spec_panel"]["reviewer1"]
         self.assertEqual(
-            {"operations": {"implement": {"model": "anthropic/claude-sonnet-5"}}},
-            stored["pi"],
+            ("claude", "operations.spec_panel.workers.chair"),
+            (chair["backend"], chair["backend_source"]),
         )
-        self.assertNotIn("claude", stored)
-        worker = output["effective"]["implement"]["worker"]
+        self.assertEqual("pi", reviewer["backend"])
+        # A pi model is not a Claude Code model: the chair's entry is checked on Claude Code.
+        status, envelope = self.configure(
+            "--operation",
+            "spec_panel",
+            "--worker",
+            "chair",
+            "--model",
+            "anthropic/claude-sonnet-5",
+        )
         self.assertEqual(
+            (1, "configuration_refused"), (status, envelope["error"]["code"])
+        )
+        self.assertIn("is not a claude model", envelope["error"]["detail"])
+        status, envelope = self.configure("--candidates", "claude")
+        self.assertEqual(
+            ("list", "claude", "--candidates"),
             (
-                "pi",
-                "backend.operations.implement.default",
-                "anthropic/claude-sonnet-5",
+                envelope["output"]["action"],
+                envelope["output"]["backend"],
+                envelope["output"]["backend_from"],
             ),
-            (worker["backend"], worker["backend_source"], worker["model"]),
-        )
-        reviewer = output["effective"]["spec_review"]["reviewer"]
-        self.assertEqual(
-            ("claude", "CONCORDE_CLIENT=claude", None),
-            (reviewer["backend"], reviewer["backend_source"], reviewer["model"]),
         )
         validate(output, CONFIGURATION_SCHEMA)
 
     @verifies("scenario.operations.configure-worker")
-    def test_one_numbered_worker_of_a_role_can_be_configured(self):
+    def test_each_worker_is_configured_by_its_id(self):
+        for worker, model, level in (
+            ("reviewer1", "anthropic/claude-sonnet-5", "high"),
+            ("reviewer2", "local-openai/plain-7", "off"),
+        ):
+            status, envelope = self.configure(
+                "--operation",
+                "spec_panel",
+                "--worker",
+                worker,
+                "--model",
+                model,
+                "--reasoning",
+                level,
+            )
+            self.assertEqual(
+                (0, "set"), (status, envelope["output"]["action"]), envelope
+            )
+        self.assertEqual(
+            {
+                "reviewer1": {
+                    "model": "anthropic/claude-sonnet-5",
+                    "reasoning": "high",
+                },
+                "reviewer2": {"model": "local-openai/plain-7", "reasoning": "off"},
+            },
+            self.stored(self.root)["operations"]["spec_panel"]["workers"],
+        )
+        panel = envelope["output"]["effective"]["spec_panel"]
+        self.assertEqual(
+            ["reviewer1", "reviewer2", "reviewer3", "reviewer4", "reviewer5", "chair"],
+            list(panel),
+        )
+        self.assertEqual(
+            ("local-openai/plain-7", "operations.spec_panel.workers.reviewer2"),
+            (panel["reviewer2"]["model"], panel["reviewer2"]["model_source"]),
+        )
+        self.assertIsNone(panel["reviewer3"]["model"])
+        self.assertIn("spec_panel reviewer2", envelope["host_evidence"][0]["detail"])
         status, envelope = self.configure(
-            "--operation",
-            "spec_panel",
-            "--role",
-            "reviewer",
-            "--worker",
-            "2",
-            "--model",
-            "local-openai/plain-7",
-            "--reasoning",
-            "off",
+            "--operation", "spec_panel", "--worker", "reviewer2", "--unset"
         )
-        self.assertEqual((0, "set"), (status, envelope["output"]["action"]), envelope)
+        self.assertEqual((0, True), (status, envelope["output"]["changed"]), envelope)
         self.assertEqual(
-            {"workers": {"2": {"model": "local-openai/plain-7", "reasoning": "off"}}},
-            self.stored(self.root)["pi"]["operations"]["spec_panel"]["roles"][
-                "reviewer"
-            ],
+            ["reviewer1"],
+            list(self.stored(self.root)["operations"]["spec_panel"]["workers"]),
         )
-        reviewer = envelope["output"]["effective"]["spec_panel"]["reviewer"]
-        self.assertEqual(["1", "2", "3", "4", "5"], list(reviewer["workers"]))
-        second = reviewer["workers"]["2"]
-        self.assertEqual(
-            (
-                "local-openai/plain-7",
-                "pi.operations.spec_panel.roles.reviewer.workers.2",
-            ),
-            (second["model"], second["model_source"]),
-        )
-        self.assertIsNone(reviewer["workers"]["1"]["model"])
-        self.assertNotIn(
-            "workers", envelope["output"]["effective"]["spec_panel"]["chair"]
-        )
-        self.assertIn("worker 2", envelope["host_evidence"][0]["detail"])
+
+    @verifies("scenario.operations.configure-refused")
+    def test_a_refused_change_leaves_the_file_alone(self):
         for argv, fragment in (
+            (["--operation", "validate", "--model", "x"], "implement"),
             (
-                ["--operation", "spec_review", "--role", "reviewer", "--worker", "1"],
-                "launches one",
+                ["--operation", "spec_panel", "--worker", "reviewer6", "--model", "x"],
+                "its workers: reviewer1, reviewer2, reviewer3, reviewer4, reviewer5, chair",
             ),
-            (
-                ["--operation", "spec_panel", "--role", "reviewer", "--worker", "6"],
-                "from 1 to 5",
-            ),
-            (["--operation", "spec_panel", "--worker", "1"], "no --role"),
+            (["--worker", "reviewer1", "--model", "x"], "no --operation"),
+            (["--candidates", "claude", "--model", "x"], "--candidates only lists"),
         ):
             with self.subTest(argv=argv):
-                status, envelope = self.configure(*argv, "--reasoning", "off")
+                status, envelope = self.configure(*argv)
                 self.assertEqual(
                     (1, "invalid_request"), (status, envelope["error"]["code"])
                 )
                 self.assertIn(fragment, envelope["error"]["detail"])
-        status, envelope = self.configure(
-            "--operation",
-            "spec_panel",
-            "--role",
-            "reviewer",
-            "--worker",
-            "2",
-            "--unset",
-        )
-        self.assertEqual((0, True), (status, envelope["output"]["changed"]), envelope)
-        self.assertNotIn("pi", self.stored(self.root))
-
-    @verifies("scenario.operations.configure-refused")
-    def test_a_refused_change_leaves_the_file_alone(self):
-        status, envelope = self.configure("--operation", "validate", "--model", "x")
-        self.assertEqual((1, "invalid_request"), (status, envelope["error"]["code"]))
-        self.assertIn("implement", envelope["error"]["detail"])
-        status, envelope = self.configure(
-            "--operation", "implement", "--role", "checker", "--model", "x"
-        )
-        self.assertEqual((1, "invalid_request"), (status, envelope["error"]["code"]))
-        self.assertIn("its roles: worker", envelope["error"]["detail"])
         status, envelope = self.configure("--model", "anthropic/claude-nope")
         self.assertEqual(
             (1, "configuration_refused"), (status, envelope["error"]["code"])
@@ -255,11 +282,6 @@ class ConfigureWorkersTests(unittest.TestCase):
         )
         self.assertIn("anthropic/claude-sonnet-5", cause["detail"])
         validate(envelope["error"], ERROR_SCHEMA)
-        status, envelope = self.configure(client=None)
-        self.assertEqual(
-            (1, "configuration_refused"), (status, envelope["error"]["code"])
-        )
-        self.assertEqual("client_unknown", envelope["error"]["causes"][0]["code"])
         self.assertFalse((self.root / models.CONFIG).exists())
 
     def test_the_output_schema_is_the_contract(self):

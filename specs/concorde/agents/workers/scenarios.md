@@ -187,22 +187,21 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ## Worker models
 
-### scenario.workers.backend-from-client — Workers run on the main session's program unless configured
+### scenario.workers.backend-from-client — The main session's program is read from the environment
 
-- GIVEN a worktree whose worker model configuration has no `backend` section, and a command started from a Claude Code session, one started from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and one started from neither
-- WHEN each resolves the worker backend
-- THEN the first resolves `claude` from `CLAUDECODE=1` and the second `pi` from `CONCORDE_CLIENT`
+- GIVEN a command started from a Claude Code session, one started from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and one started from neither
+- WHEN each reads the main session's program, as a task session does
+- THEN the first reads `claude` from `CLAUDECODE=1` and the second `pi` from `CONCORDE_CLIENT`
 - AND the third is refused with `client_unknown`, naming every variable it looked at and how to set one
 - BUT a `CONCORDE_CLIENT` naming neither program is refused with `invalid_client`
 
-### scenario.workers.backend-configured — The configuration may choose another program than the main session's
+### scenario.workers.backend-configured — Workers run on pi unless their configuration chooses Claude Code
 
-- GIVEN a command started from a Claude Code session, both programs installed, and a worker model configuration whose `backend` section chooses `pi` as its default and `claude` for `spec_review`'s `checker`
-- WHEN the backends of `implement`'s worker and of `spec_review`'s `reviewer` and `checker` are resolved
-- THEN `implement` and the reviewer resolve `pi` from `backend.default` and the checker `claude` from its role's entry, each naming the entry it came from
-- AND each worker's model and level are resolved in the section of its own backend
-- AND the same configuration resolved outside any main session gives the same backends, since a configured backend does not need the main session's program to be known
-- BUT when the `pi` command is not installed, a worker whose resolved backend is `pi` is refused with `backend_missing`, naming the entry that chose `pi` and the command it looked for, and never runs on Claude Code instead
+- GIVEN a command started from a Claude Code session, both programs installed, and a worker model configuration whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a level
+- WHEN the choices of `implement`'s worker and of `spec_review`'s `reviewer` and `checker` are resolved
+- THEN a worker without an entry, in an empty configuration, runs on `pi` as Concorde's default worker backend
+- AND the reviewer runs on pi with the default's model, and the checker on `claude` from its own entry, with its own level and Claude Code's own default model, since choosing Claude Code does not carry the pi model over
+- BUT when the `pi` command is not installed, a worker that runs on pi is refused with `backend_missing`, naming the worker, the command it looked for and how to choose Claude Code for it, and never runs on Claude Code instead, while the checker still resolves
 
 ### scenario.workers.models-listed — The installed program's models are the candidates
 
@@ -214,20 +213,10 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.model-resolution — The most specific entry wins, field by field
 
-- GIVEN a configuration with a default model and level, a model for `spec_review` and a level for its `checker` role
-- WHEN the choices of `spec_review`'s checker and reviewer and of `implement`'s worker are resolved
-- THEN the checker gets the Operation's model and its own level, the reviewer the Operation's model and the default level, and `implement` the default, each naming the entry it came from
-- AND another backend's workers get the program's own default
-- AND removing the checker's entry and then the Operation's leaves only the default
-
-### scenario.workers.worker-number — A numbered worker has its own backend, model and level
-
-- GIVEN a configuration whose pi section gives `spec_panel`'s reviewer role a model and a level and its worker 2 another model, and whose `backend` section gives the reviewer role the default `pi` and its worker 3 `claude`
-- WHEN the choices of reviewers 1, 2 and 3 are resolved
-- THEN reviewer 1 gets the role's model and level, and reviewer 2 its own model and the role's level, each naming the entry it came from
-- AND reviewer 2 runs on `pi` from the role's default and reviewer 3 on `claude` from its own entry
-- AND removing reviewer 2's entry leaves the role's entry as it was
-- BUT a `workers` key that is not a worker number, such as `0`, makes the configuration `config_invalid`, naming the key
+- GIVEN a configuration with a default model and level, a model for `spec_panel`'s default, a model for its worker `reviewer2` and a level for its worker `chair`
+- WHEN the choices of `reviewer1`, `reviewer2`, `chair` and `implement`'s `worker` are resolved
+- THEN `reviewer1` gets the Operation's model and the default level, `reviewer2` its own model, the `chair` the Operation's model and its own level, and `implement` the default, each naming the entry it came from
+- AND removing the entries of `reviewer2` and `chair` and then the Operation's default leaves only the default
 
 ### scenario.workers.model-refused — A model or level the program does not offer is refused
 
@@ -241,3 +230,4 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worktree whose `.concorde/worker-models.json` is not valid JSON or has a field the schema does not know
 - WHEN Workers reads it
 - THEN it is refused with `config_invalid`, naming the file and what is wrong with it
+- AND a file of an earlier schema version, keyed by backend and worker role, is refused the same way, saying that the configuration is now keyed by worker id

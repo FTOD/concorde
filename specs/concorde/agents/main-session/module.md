@@ -20,7 +20,7 @@ renders and installs this Module's content.
 | --- | --- |
 | Main-session guidance | The instructions, installed as a project skill for Claude Code and for pi and as a `CLAUDE.md` block, that tell the main agent how to work with Concorde. |
 | Run view | The Concorde extension of a pi main session that starts Operations in the background, shows every run and its worker's progress, and wakes the main agent when a run ends. |
-| Model picker | The dialog of the pi run view in which the developer chooses, for every worker, an Operation's workers or one worker role, the model and reasoning level of pi workers. |
+| Model picker | The dialog of the pi run view in which the developer chooses, for every worker or one worker by its id, the model and reasoning level of the workers that run on pi. |
 | Questions without a task | The guidance's rule that Operations which allow it run without a task for a question or review that changes nothing. |
 | Escalation policy | The rule by which the main agent decides ordinary questions itself, records and reports them, and asks the developer only for decisions with major impact. |
 | [Developer](../../vocabulary.md#concept.concorde.developer) | |
@@ -140,20 +140,19 @@ top of the chain, records it in the task and prints it rendered for the develope
 
 <a id="concept.main-session.model-picker"></a>
 
-**Worker models.** Workers run on the main agent's own program unless the worktree's [worker model
-configuration](../workers/module.md#concept.workers.model-configuration) chooses the other
-one, and take their model from it. When the developer asks to run workers on the other program, the
-main agent edits the configuration's `backend` section by hand, since no Operation changes it, and
-shows the result with `configure_workers`. The guidance
-tells the main agent to change it only when the developer asks, and to let the developer choose
-from what the [`configure_workers`](../../operations/module.md#concept.operations.configure-workers)
-Operation lists. In pi the run view's **model picker** does it: the `/concorde-models` command, or
+**Worker models.** Workers run on pi, whatever program the main agent runs on, unless the
+worktree's [worker model configuration](../workers/module.md#concept.workers.model-configuration)
+chooses Claude Code for some of them, and take their model and level from it, per worker id. The
+guidance tells the main agent to change it only when the developer asks, and to let the developer
+choose from what the
+[`configure_workers`](../../operations/module.md#concept.operations.configure-workers) Operation
+lists; `configure_workers --backend` puts a worker, an Operation's workers or every worker on the
+other program. In pi the run view's **model picker** does it: the `/concorde-models` command, or
 the `concorde_configure_workers` tool the main agent calls on the developer's request, shows the
-default and every Operation's workers — one row per worker role for an Operation with several —
-with the model and level each runs on (only the workers that run on pi), then the models pi
-lists, then the chosen model's levels, and applies each choice with `configure_workers`, removing
-an entry when the developer returns it to the more general one; a task identity limits it to that
-task's copy. In Claude Code, which lets no extension draw a dialog, the main agent asks with its question tool — scope, model,
+default and every worker of every Operation by its id with the model and level it runs on (only
+the workers that run on pi), then the models pi lists, then the chosen model's levels, and applies
+each choice with `configure_workers`, removing an entry when the developer returns it to the more
+general one; a task identity limits it to that task's copy. In Claude Code, which lets no extension draw a dialog, the main agent asks with its question tool — scope, model,
 level — and applies the answers itself. Without a request naming a task, only the worktree the
 command runs in changes, so in the primary worktree only tasks opened later are affected.
 

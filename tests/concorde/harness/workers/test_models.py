@@ -12,6 +12,10 @@ from concorde.spec.verification import verifies
 from tests.concorde.support.agent_fakes import fake_agents
 
 
+def _backend(chosen: dict) -> tuple[str, str]:
+    return chosen["backend"], chosen["backend_source"]
+
+
 class WorkerModelTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -46,64 +50,60 @@ class WorkerModelTests(unittest.TestCase):
         self.assertEqual("invalid_client", raised.exception.code)
 
     @verifies("scenario.workers.backend-configured")
-    def test_the_configuration_may_choose_another_program(self):
-        config = {
-            "schema_version": 2,
-            "backend": {
-                "default": "pi",
-                "operations": {"spec_review": {"roles": {"checker": "claude"}}},
-            },
-            "pi": {"default": {"model": "a/pi"}},
-            "claude": {"default": {"model": "opus"}},
-        }
-        path = models.save(self.base, config)
-        self.assertEqual(config, models.load(self.base))
+    def test_workers_run_on_pi_unless_their_configuration_chooses_claude_code(self):
         session = dict(self.environ, CLAUDECODE="1")
+        empty = {"schema_version": 3}
         self.assertEqual(
-            ("pi", "backend.default"),
-            models.worker_backend(config, "implement", "worker", session),
+            ("pi", "Concorde's default worker backend"),
+            _backend(models.worker_choice(empty, "implement", "worker", session)),
         )
+        config = {
+            "schema_version": 3,
+            "default": {"model": "a/pi"},
+            "operations": {
+                "spec_review": {
+                    "workers": {"checker": {"backend": "claude", "reasoning": "high"}}
+                }
+            },
+        }
+        models.save(self.base, config)
+        self.assertEqual(config, models.load(self.base))
+        reviewer = models.worker_choice(config, "spec_review", "reviewer", session)
+        checker = models.worker_choice(config, "spec_review", "checker", session)
+        self.assertEqual(("pi", "a/pi"), (reviewer["backend"], reviewer["model"]))
+        # Choosing Claude Code starts that program afresh: the pi default model is not inherited.
         self.assertEqual(
-            ("pi", "backend.default"),
-            models.worker_backend(config, "spec_review", "reviewer", session),
-        )
-        self.assertEqual(
-            ("claude", "backend.operations.spec_review.roles.checker"),
-            models.worker_backend(config, "spec_review", "checker", session),
-        )
-        self.assertEqual(
-            ("a/pi", "opus"),
             (
-                models.selection(config, "pi", "spec_review", "reviewer")["model"],
-                models.selection(config, "claude", "spec_review", "checker")["model"],
+                "claude",
+                "operations.spec_review.workers.checker",
+                None,
+                "the backend's own default",
+                "high",
             ),
-        )
-        self.assertEqual(
-            ("pi", "backend.default"),
-            models.worker_backend(config, "implement", "worker", self.environ),
-        )
-        self.assertEqual(
-            ("claude", "CLAUDECODE=1"),
-            models.worker_backend(
-                {"schema_version": 2}, "implement", "worker", session
+            (
+                checker["backend"],
+                checker["backend_source"],
+                checker["model"],
+                checker["model_source"],
+                checker["reasoning"],
             ),
         )
         missing = dict(session, CONCORDE_PI=str(self.base / "nowhere"))
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.worker_backend(config, "implement", "worker", missing)
+            models.worker_choice(config, "implement", "worker", missing)
         self.assertEqual("backend_missing", raised.exception.code)
-        for part in ("backend.default", "CONCORDE_PI", "never falls back"):
+        for part in (
+            "the worker worker of implement runs on pi",
+            "Concorde's default worker backend",
+            "CONCORDE_PI",
+            "never falls back",
+            "--backend claude",
+        ):
             self.assertIn(part, str(raised.exception))
         self.assertEqual(
             "claude",
-            models.worker_backend(config, "spec_review", "checker", missing)[0],
+            models.worker_choice(config, "spec_review", "checker", missing)["backend"],
         )
-        path.write_text(
-            json.dumps({"schema_version": 2, "backend": {"default": "codex"}})
-        )
-        with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(self.base)
-        self.assertEqual("config_invalid", raised.exception.code)
 
     @verifies("scenario.workers.models-listed")
     def test_the_installed_programs_models_are_listed(self):
@@ -141,121 +141,58 @@ class WorkerModelTests(unittest.TestCase):
 
     @verifies("scenario.workers.model-resolution")
     def test_the_most_specific_entry_wins_field_by_field(self):
-        config = {"schema_version": 2}
-        models.set_choice(config, "pi", None, None, "a/default", "medium")
-        models.set_choice(config, "pi", "spec_review", None, "a/review", None)
-        models.set_choice(config, "pi", "spec_review", "checker", None, "low")
-        checker = models.selection(config, "pi", "spec_review", "checker")
+        config = {"schema_version": 3}
+        models.set_choice(config, None, None, None, "a/default", "medium")
+        models.set_choice(config, "spec_panel", None, None, "a/panel", None)
+        models.set_choice(config, "spec_panel", "reviewer2", None, "a/second", None)
+        models.set_choice(config, "spec_panel", "chair", None, None, "high")
+        first = models.choice(config, "spec_panel", "reviewer1")
+        second = models.choice(config, "spec_panel", "reviewer2")
+        chair = models.choice(config, "spec_panel", "chair")
         self.assertEqual(
+            ("a/panel", "operations.spec_panel.default", "medium", "default"),
             (
-                "a/review",
-                "low",
-                "pi.operations.spec_review",
-                "pi.operations.spec_review.roles.checker",
-            ),
-            (
-                checker["model"],
-                checker["reasoning"],
-                checker["model_source"],
-                checker["reasoning_source"],
-            ),
-        )
-        reviewer = models.selection(config, "pi", "spec_review", "reviewer")
-        self.assertEqual(
-            ("a/review", "medium"), (reviewer["model"], reviewer["reasoning"])
-        )
-        other = models.selection(config, "pi", "implement", "worker")
-        self.assertEqual(
-            ("a/default", "pi.default"), (other["model"], other["model_source"])
-        )
-        self.assertIsNone(
-            models.selection(config, "claude", "implement", "worker")["model"]
-        )
-        self.assertTrue(models.unset_choice(config, "pi", "spec_review", "checker"))
-        self.assertEqual(
-            {
-                "default": {"model": "a/default", "reasoning": "medium"},
-                "operations": {"spec_review": {"model": "a/review"}},
-            },
-            config["pi"],
-        )
-        self.assertTrue(models.unset_choice(config, "pi", "spec_review", None))
-        self.assertFalse(models.unset_choice(config, "pi", "spec_review", None))
-        self.assertNotIn("operations", config["pi"])
-
-    @verifies("scenario.workers.worker-number")
-    def test_a_numbered_worker_has_its_own_backend_model_and_level(self):
-        config = {"schema_version": 2}
-        models.set_choice(config, "pi", "spec_panel", "reviewer", "a/review", "high")
-        models.set_choice(config, "pi", "spec_panel", "reviewer", "a/second", None, 2)
-        config["backend"] = {
-            "operations": {
-                "spec_panel": {
-                    "roles": {"reviewer": {"default": "pi", "workers": {"3": "claude"}}}
-                }
-            }
-        }
-        first = models.selection(config, "pi", "spec_panel", "reviewer", 1)
-        second = models.selection(config, "pi", "spec_panel", "reviewer", 2)
-        self.assertEqual(
-            ("a/review", "high", "pi.operations.spec_panel.roles.reviewer"),
-            (first["model"], first["reasoning"], first["model_source"]),
-        )
-        self.assertEqual(
-            (
-                "a/second",
-                "high",
-                "pi.operations.spec_panel.roles.reviewer.workers.2",
-                "pi.operations.spec_panel.roles.reviewer",
-            ),
-            (
-                second["model"],
-                second["reasoning"],
-                second["model_source"],
-                second["reasoning_source"],
+                first["model"],
+                first["model_source"],
+                first["reasoning"],
+                first["reasoning_source"],
             ),
         )
         self.assertEqual(
-            ("pi", "backend.operations.spec_panel.roles.reviewer.default"),
-            models.configured_backend(config, "spec_panel", "reviewer", 2),
+            ("a/second", "operations.spec_panel.workers.reviewer2"),
+            (second["model"], second["model_source"]),
         )
         self.assertEqual(
-            ("claude", "backend.operations.spec_panel.roles.reviewer.workers.3"),
-            models.configured_backend(config, "spec_panel", "reviewer", 3),
+            ("a/panel", "high", "operations.spec_panel.workers.chair"),
+            (chair["model"], chair["reasoning"], chair["reasoning_source"]),
         )
-        worktree = self.base / "numbered"
-        models.save(worktree, config)
-        self.assertEqual(config, models.load(worktree))
-        self.assertTrue(models.unset_choice(config, "pi", "spec_panel", "reviewer", 2))
+        other = models.choice(config, "implement", "worker")
         self.assertEqual(
-            {"model": "a/review", "reasoning": "high"},
-            config["pi"]["operations"]["spec_panel"]["roles"]["reviewer"],
+            ("a/default", "default"), (other["model"], other["model_source"])
         )
-        config["pi"]["operations"]["spec_panel"]["roles"]["reviewer"]["workers"] = {
-            "0": {"model": "a/zero"}
-        }
-        path = worktree / models.CONFIG
-        path.write_text(json.dumps(config))
-        with self.assertRaises(models.ModelConfigError) as raised:
-            models.load(worktree)
-        self.assertEqual("config_invalid", raised.exception.code)
-        self.assertIn("'0', which is not a worker number", str(raised.exception))
+        self.assertTrue(models.unset_choice(config, "spec_panel", "reviewer2"))
+        self.assertTrue(models.unset_choice(config, "spec_panel", "chair"))
+        self.assertEqual(
+            {"default": {"model": "a/panel"}}, config["operations"]["spec_panel"]
+        )
+        self.assertTrue(models.unset_choice(config, "spec_panel", None))
+        self.assertFalse(models.unset_choice(config, "spec_panel", None))
+        self.assertNotIn("operations", config)
 
     @verifies("scenario.workers.model-refused")
     def test_a_model_or_level_the_program_does_not_offer_is_refused(self):
         found = models.candidates("pi", self.environ)
-        config = {"schema_version": 2}
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.check_choice(found, config, "pi", None, None, "a/nope", None, False)
+            models.check_choice(found, "pi", "a/nope", None, False, "a/nope")
         self.assertEqual("unknown_model", raised.exception.code)
         self.assertIn("anthropic/claude-sonnet-5", str(raised.exception))
         with self.assertRaises(models.ModelConfigError) as raised:
             models.check_choice(
-                found, config, "pi", None, None, "local-openai/plain-7", "high", False
+                found, "pi", None, "high", False, "local-openai/plain-7"
             )
         self.assertEqual("unknown_level", raised.exception.code)
         self.assertIn("levels: off", str(raised.exception))
-        models.check_choice(found, config, "pi", None, None, "a/nope", None, True)
+        models.check_choice(found, "pi", "a/nope", None, True, "a/nope")
 
     @verifies("scenario.workers.model-config-invalid")
     def test_an_unreadable_configuration_is_reported(self):
@@ -270,8 +207,12 @@ class WorkerModelTests(unittest.TestCase):
         path.write_text(
             json.dumps(
                 {
-                    "schema_version": 2,
-                    "pi": {"operations": {"understand": {"modle": "x"}}},
+                    "schema_version": 3,
+                    "operations": {
+                        "understand": {
+                            "workers": {"worker": {"model": "x", "modle": "y"}}
+                        }
+                    },
                 }
             )
         )
@@ -279,6 +220,14 @@ class WorkerModelTests(unittest.TestCase):
             models.load(worktree)
         self.assertEqual("config_invalid", raised.exception.code)
         self.assertIn("modle", str(raised.exception))
+        path.write_text(
+            json.dumps({"schema_version": 2, "pi": {"default": {"model": "x"}}})
+        )
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(worktree)
+        self.assertEqual("config_invalid", raised.exception.code)
+        self.assertIn("schema_version 2", str(raised.exception))
+        self.assertIn("keyed by worker id", str(raised.exception))
 
 
 if __name__ == "__main__":

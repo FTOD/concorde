@@ -91,12 +91,12 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 - AND A's outcome and the verdict are `changes_required`
 - BUT no file of the task worktree changes
 
-### scenario.spec-review.panel-worker-models — Each reviewer runs on the model of its seat
+### scenario.spec-review.panel-worker-models — Each reviewer runs on the model of its worker id
 
-- GIVEN a worker model configuration giving `spec_panel`'s reviewers one model and level, reviewer 2 another model, and the chair its own model and level
+- GIVEN a worker model configuration putting every worker on Claude Code, giving `spec_panel`'s default a model and level, `reviewer2` another model, and the `chair` its own model and level
 - WHEN the main agent runs `spec_panel` with two reviewers
-- THEN reviewer 1 runs on the role's model, reviewer 2 on its own model at the role's level, and the chair on its own
-- AND each worker's run record names its role and number, and the host evidence names the model each reviewer used
+- THEN `reviewer1` runs on the Operation's model, `reviewer2` on its own model at the Operation's level, and the `chair` on its own
+- AND each worker's run record names its worker id, and the host evidence names the model each worker used
 
 ### scenario.spec-review.panel-accounting — A report that loses a finding goes back to the chair
 

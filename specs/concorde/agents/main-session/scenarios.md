@@ -84,20 +84,20 @@ check the rendered guidance against them are pending.
 
 ### scenario.main-session.pi-model-picker — pi's picker applies the developer's choice
 
-- GIVEN a pi main session whose `configure_workers` output lists two pi models and configures an entry for `spec_review`'s checker
+- GIVEN a pi main session whose `configure_workers` output lists two pi models and configures an entry for `spec_review`'s worker `checker`
 - WHEN the developer opens the model picker with `/concorde-models` or the main agent calls `concorde_configure_workers`
-- THEN the picker offers the default, each single-worker Operation and each role of `spec_review` with what it runs on now, then the listed models, then the chosen model's reasoning levels
-- AND each choice is applied with `concorde run configure_workers --backend pi` naming the Operation and role, or with `--unset` when the developer returns an entry to the more general one, with `--task` when a task is given
+- THEN the picker offers the default and every worker of every Operation by its id, such as `understand worker` and `spec_review checker`, with what it runs on now, then the listed models, then the chosen model's reasoning levels
+- AND it lists pi's models with `concorde run configure_workers --candidates pi`, and applies each choice with `configure_workers` naming the Operation and worker id, or with `--unset` when the developer returns an entry to the more general one, with `--task` when a task is given
 - AND a refused command is shown with every link of its error chain
-- BUT a worker whose effective backend the configuration's `backend` section sets to `claude` has no row
+- BUT a worker whose configuration puts it on Claude Code has no row
 
 ### scenario.main-session.choose-models — The guidance lets the developer choose worker models
 
 - GIVEN the rendered main-session guidance
 - WHEN a developer asks the main agent to change the models workers use
-- THEN it is told that workers run on its own program unless the worktree's configuration chooses another, and take their models from that configuration, which new tasks inherit
-- AND to let the developer choose, per Operation and worker role, with the picker in pi or with the question tool from the `configure_workers` output in Claude Code
-- AND to run workers on the other program, when the developer asks, by editing the configuration's `backend` section by hand, which needs both programs installed
+- THEN it is told that workers run on pi unless the worktree's configuration chooses Claude Code for them, and take their models from that configuration by worker id, which new tasks inherit
+- AND to let the developer choose, for every worker or one worker by its id, with the picker in pi or with the question tool from the `configure_workers` output in Claude Code
+- AND to put workers on Claude Code, when the developer asks, with `configure_workers --backend claude`, which needs that program installed
 - BUT to change an existing task's configuration only when the developer asks for that task
 
 ### scenario.main-session.no-task-operations — The guidance runs questions and reviews without a task

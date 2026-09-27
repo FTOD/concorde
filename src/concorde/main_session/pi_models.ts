@@ -2,11 +2,11 @@
  * The pure part of the worker model picker of Concorde's pi extension.
  *
  * The `configure_workers` Operation lists the models pi offers workers and what the worktree
- * configures for every worker role of every Operation; these functions turn its output into the
- * choices the picker shows and a chosen row back into a `concorde run configure_workers` command
- * line. The extension owns the dialogs and runs the Operation; the Operation validates and
- * writes the configuration. A worker the configuration's hand-edited `backend` section puts on
- * another program is not the picker's to choose, so it offers only the workers that run on pi.
+ * configures for every worker of every Operation, by worker id; these functions turn its output
+ * into the choices the picker shows and a chosen row back into a `concorde run configure_workers`
+ * command line. The extension owns the dialogs and runs the Operation; the Operation validates and
+ * writes the configuration. A worker whose configuration puts it on Claude Code is not the pi
+ * picker's to choose, so it offers only the workers that run on pi.
  */
 
 export interface ModelEntry {
@@ -27,6 +27,7 @@ export interface Chosen {
 }
 
 interface Choice {
+  backend?: string;
   model?: string;
   reasoning?: string;
 }
@@ -39,14 +40,17 @@ export interface Listing {
   effective: Record<string, Record<string, Chosen>>;
   configured: {
     default?: Choice;
-    operations?: Record<string, Choice & { roles?: Record<string, Choice> }>;
+    operations?: Record<
+      string,
+      { default?: Choice; workers?: Record<string, Choice> }
+    >;
   };
 }
 
-/** What a row configures: the default (no Operation), an Operation, or one of its roles. */
+/** What a row configures: the default (no Operation) or one worker of an Operation, by id. */
 export interface Scope {
   operation: string | null;
-  role: string | null;
+  worker: string | null;
 }
 
 export const DONE = "Done";
@@ -61,14 +65,13 @@ function describe(model: string | null, reasoning: string | null): string {
 function ownEntry(listing: Listing, scope: Scope): Choice | undefined {
   if (scope.operation === null) return listing.configured.default;
   const entry = listing.configured.operations?.[scope.operation];
-  if (scope.role === null) return entry;
-  return entry?.roles?.[scope.role];
+  if (scope.worker === null) return entry?.default;
+  return entry?.workers?.[scope.worker];
 }
 
 /**
- * One row per scope: the default, then every Operation's workers with what they run on now. An
- * Operation with one worker role is one row; one with several has a row per role. A worker whose
- * effective backend is another program than the listing's has no row.
+ * One row per scope: the default, then every worker of every Operation, by its id, with what it
+ * runs on now. A worker whose effective backend is another program than the listing's has no row.
  */
 export function scopeRows(
   listing: Listing,
@@ -77,18 +80,16 @@ export function scopeRows(
   const rows: { label: string; scope: Scope | null }[] = [
     {
       label: `Every worker (default): ${describe(base.model ?? null, base.reasoning ?? null)}`,
-      scope: { operation: null, role: null },
+      scope: { operation: null, worker: null },
     },
   ];
-  for (const [operation, roles] of Object.entries(listing.effective)) {
-    const names = Object.keys(roles);
-    for (const role of names) {
-      const scope = { operation, role: names.length > 1 ? role : null };
-      const chosen = roles[role];
+  for (const [operation, workers] of Object.entries(listing.effective)) {
+    for (const [worker, chosen] of Object.entries(workers)) {
+      const scope = { operation, worker };
       if (chosen.backend && chosen.backend !== listing.backend) continue;
       rows.push({
         label:
-          `${operation}${scope.role ? ` ${role}` : ""}: ` +
+          `${operation} ${worker}: ` +
           describe(chosen.model, chosen.reasoning) +
           (ownEntry(listing, scope) ? " (own setting)" : ""),
         scope,
@@ -140,9 +141,9 @@ export function levelRows(listing: Listing, model: string | null): string[] {
 export function currentModel(listing: Listing, scope: Scope): string | null {
   if (scope.operation === null)
     return listing.configured.default?.model ?? null;
-  const roles = listing.effective[scope.operation] ?? {};
-  const role = scope.role ?? Object.keys(roles)[0];
-  return roles[role]?.model ?? null;
+  const workers = listing.effective[scope.operation] ?? {};
+  const worker = scope.worker ?? Object.keys(workers)[0];
+  return workers[worker]?.model ?? null;
 }
 
 export interface CommandOutcome {
@@ -171,15 +172,20 @@ export function refusalText(outcome: CommandOutcome): string {
   return lines.join("\n");
 }
 
-/** The `concorde` arguments of the listing run, for a worktree or one task's copy. */
+/** The `concorde` arguments of the listing run of pi's models, for a worktree or one task's copy. */
 export function listingCommand(task: string | null): string[] {
   return [
     "run",
     "configure_workers",
-    "--backend",
+    "--candidates",
     "pi",
     ...(task ? ["--task", task] : []),
   ];
+}
+
+/** The `concorde` arguments that name a worktree or one task's copy, and nothing to list. */
+function targetCommand(task: string | null): string[] {
+  return ["run", "configure_workers", ...(task ? ["--task", task] : [])];
 }
 
 /** The `concorde` arguments that apply a choice, or null when nothing changes. */
@@ -191,9 +197,9 @@ export function commandFor(
   task: string | null,
 ): string[] | null {
   const target = [
-    ...listingCommand(task),
+    ...targetCommand(task),
     ...(scope.operation ? ["--operation", scope.operation] : []),
-    ...(scope.role ? ["--role", scope.role] : []),
+    ...(scope.worker ? ["--worker", scope.worker] : []),
   ];
   if (action === "unset") return [...target, "--unset"];
   const values = [

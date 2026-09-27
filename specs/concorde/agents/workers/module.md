@@ -17,9 +17,9 @@ guards against scope drift and mistakes, not a malicious worker.
 
 | Term | Definition |
 | --- | --- |
-| Worker backend | The agent program a worker runs on, Claude Code or pi: the one the worktree's worker model configuration chooses for the worker, its role or its Operation, otherwise the program of the main session that started the run; both enforce the same grant. |
-| Worker model configuration | A worktree's untracked `.concorde/worker-models.json`, which may choose the backend of every worker, of an Operation's workers, of one worker role or of one numbered worker of a role, and gives for each backend a default model and reasoning level and optional entries per Operation, per worker role of an Operation and per worker number of a role. |
-| Worker number | The position, from 1, of one worker among the workers an Operation launches in one role during one run, for a role that launches several, such as `spec_panel`'s reviewers; it lets the configuration address that worker alone. |
+| Worker backend | The agent program a worker runs on, Claude Code or pi: the one the worktree's worker model configuration chooses for the worker or its Operation, otherwise pi; both enforce the same grant. |
+| Worker model configuration | A worktree's untracked `.concorde/worker-models.json`, which gives a backend, a model and a reasoning level for every worker, for an Operation's workers and for one worker by its id, the most specific entry winning field by field. |
+| Worker id | The stable name an Operation gives one worker it may launch, such as `spec_panel`'s `reviewer2` or `chair`, used alike in the worker model configuration, the run record and the evidence. |
 | Progress file | The run's `status.json`, which the host keeps current while the run goes on so the main session can show what it is doing. |
 | Brief | The prompt a worker receives: the Operation's task instructions followed by the grant's `rw`, `ro` and `names` lists as absolute paths and the rules of its boundary. |
 | Worker result | The structured answer a worker ends with, validated against a fixed schema, reporting its status, a summary, its own error link when it could not finish, and the deletions it proposes. |
@@ -106,20 +106,25 @@ as the run exists, so it can name the run even when it is interrupted before the
 
 <a id="concept.workers.backend"></a>
 
-The **worker backend** is the agent program a worker runs on. The `backend` section of the
-[worker model configuration](#concept.workers.model-configuration) may choose it for one worker
-role of an Operation, for an Operation's workers or for every worker; when no entry chooses it, it
-is the agent program of the main session that started the run, which the Operation host reads from
-its environment — `CONCORDE_CLIENT` when set (Concorde's pi extension sets it to `pi`), otherwise
-`claude` when `CLAUDECODE=1`, which Claude Code sets for its commands, otherwise `pi` when pi's
-`PI_SESSION_ID` or `PI_CODING_AGENT` is set — and the run is refused with `client_unknown` when none
-names one. A Claude Code main session may so run pi workers and a pi main session Claude Code
-workers. A backend the configuration chooses must be installed: when its command (`claude` or `pi`,
-or the path in `CONCORDE_CLAUDE` or `CONCORDE_PI`) is missing, the choice is refused with
-`backend_missing`, naming the entry that chose it, and the worker never falls back to the other
-program. Everything but the agent process is shared: the grant, the brief, the run directory, the
-progress file, the audit, the checks, the rounds and the run record, so workers of one Operation on
-different backends exchange nothing but the structured results the host validates.
+The **worker backend** is the agent program a worker runs on. The [worker model
+configuration](#concept.workers.model-configuration) may choose it for one worker, for an
+Operation's workers or for every worker; when no entry chooses it, the worker runs on **pi**,
+whatever program the main session runs on. A Claude Code main session so runs pi workers unless it
+chooses Claude Code for some of them, and a pi main session may do the same. A worker's backend
+must be installed: when its command (`claude` or `pi`, or the path in `CONCORDE_CLAUDE` or
+`CONCORDE_PI`) is missing, the worker is refused with `backend_missing`, naming the worker, the
+program and what chose it, and how to choose the other program for it; it never falls back to the
+other program. Everything but the agent process is shared: the grant, the brief, the run
+directory, the progress file, the audit, the checks, the rounds and the run record, so workers of
+one Operation on different backends exchange nothing but the structured results the host
+validates.
+
+Workers also reads the **main session's program** from the environment, for [Task
+sessions](../task-session/module.md), which run on it: `CONCORDE_CLIENT` when set (Concorde's pi
+extension sets it to `pi`), otherwise `claude` when `CLAUDECODE=1`, which Claude Code sets for its
+commands, otherwise `pi` when pi's `PI_SESSION_ID` or `PI_CODING_AGENT` is set. It refuses with
+`client_unknown` when none names one and with `invalid_client` when `CONCORDE_CLIENT` names neither
+program. No worker depends on it.
 
 On Claude Code the worker's harness is applied by its [worker
 settings](../../harness/module.md#concept.harness.worker-settings), on pi by the [permission
@@ -129,62 +134,52 @@ surface. The pi command line and environment are in [the pi run mechanics](pi.md
 
 ### Choosing worker models
 
-<a id="concept.workers.model-configuration"></a><a id="concept.workers.worker-number"></a>
+<a id="concept.workers.model-configuration"></a><a id="concept.workers.worker-id"></a>
 
 The **worker model configuration** of a worktree is its `.concorde/worker-models.json`, ignored by
-Git because it names models of this machine's installation. Its `backend` section chooses the
-[worker backend](#concept.workers.backend): a `default` for every worker, and under `operations` an
-Operation's `default` and its `roles`, each naming `claude` or `pi`; the most specific entry wins —
-the worker's, then the role's, then the Operation's, then the section's default — and without one
-the worker runs on the main session's program. A role's entry there is a program for all its
-workers, or an object with a `default` program and `workers`, one program per worker number. The section is written by hand: no Operation changes it. The model and
-level are then resolved in the section of the chosen backend. For each backend it holds a `default`,
-entries under `operations` for an Operation's workers, under an Operation's `roles` entries for
-one worker role of it, and under a role's `workers` entries for one **worker number** of that role,
-each with a `model` and a `reasoning` level. A worker number is the position, from 1, of one
-worker among those an Operation launches in one role during one run; only a role that launches
-several has them, and the Operations catalog says which. For each field the most specific entry
-that sets it wins — the worker's, then the role's, then the Operation's, then the default — and a
-field no entry sets leaves the program's own default. The Operation host asks for the choice of
-one worker of its Operation, by role and, for a numbered worker, its number, in the worktree the
-run works on, and passes the model with `--model` and the level with `--effort` to Claude Code or
-`--thinking` to pi:
+Git because it names models of this machine's installation. It is keyed by **worker id**: every
+Operation declares the ids of the workers it may launch in the [Operation
+catalog](../../operations/module.md#concept.operations.catalog), such as `spec_panel`'s `reviewer1`
+to `reviewer5` and `chair`, `spec_review`'s `reviewer` and `checker`, or `worker` for an Operation
+with one worker, and the same id names the worker in its run record and in the Operation's
+evidence. The file holds a `default`, and under `operations` an Operation's `default` and its
+`workers`, one entry per worker id; each entry may set a `backend`, `pi` or `claude`, a `model` and
+a `reasoning` level. For each field the most specific entry that sets it wins — the worker's, then
+the Operation's default, then the default — with one exception: an entry that chooses a backend
+starts that program afresh, so the model and level come only from that entry or a more specific
+one, since a model named for one program means nothing to the other. A field no entry sets leaves
+the program's own default, and a backend no entry sets is pi. The Operation host asks for the
+choice of one worker of its Operation by its id, in the worktree the run works on, and passes the
+model with `--model` and the level with `--effort` to Claude Code or `--thinking` to pi:
 
 ```json
 {
-  "schema_version": 2,
-  "backend": {
-    "operations": {"implement": {"default": "pi"}}
-  },
-  "pi": {
-    "default": {"model": "anthropic/claude-sonnet-5", "reasoning": "medium"},
-    "operations": {
-      "implement": {"model": "local-openai/gpt-6"},
-      "spec_review": {"roles": {"checker": {"reasoning": "low"}}},
-      "spec_panel": {
-        "roles": {
-          "reviewer": {
-            "reasoning": "high",
-            "workers": {"2": {"model": "openai-codex/gpt-6-astra"}}
-          }
-        }
+  "schema_version": 3,
+  "default": {"model": "anthropic/claude-sonnet-5", "reasoning": "medium"},
+  "operations": {
+    "spec_panel": {
+      "workers": {
+        "reviewer1": {"model": "anthropic/claude-opus-5-5", "reasoning": "high"},
+        "reviewer2": {"model": "local-openai/gpt-6", "reasoning": "high"},
+        "reviewer3": {"model": "local-openai/gpt-6"},
+        "chair": {"backend": "claude", "model": "opus"}
       }
     }
   }
 }
 ```
 
-Here an `implement` worker runs on pi whatever the main session's program, on
-`local-openai/gpt-6` at `medium`. From a pi main session `spec_review`'s checker runs on
-`anthropic/claude-sonnet-5` at `low` and every other worker on `anthropic/claude-sonnet-5` at
-`medium`; `spec_panel`'s reviewers run at `high`, reviewer 2 on `openai-codex/gpt-6-astra` and the
-others on `anthropic/claude-sonnet-5`; from a Claude Code main session they run on Claude Code with
-its own default model, since the file has no `claude` section. Each worker's run record names its
-role and number and the model and level it used. Workers knows no Operation names; the entries are whatever the
-[`configure_workers`](../../operations/module.md#concept.operations.configure-workers) Operation
-wrote after checking them against the catalog. [Tasks](../../tasks/module.md) copies the primary
-worktree's file into a task worktree when it opens the task, so a task keeps the configuration it
-started with and a later change in the primary worktree never reaches it.
+Here every worker runs on pi, on `anthropic/claude-sonnet-5` at `medium`, except `spec_panel`'s:
+`reviewer1` on `anthropic/claude-opus-5-5` at `high`, `reviewer2` on `local-openai/gpt-6` at
+`high`, `reviewer3` on `local-openai/gpt-6` at the default's `medium`, and the `chair` on Claude
+Code with its `opus` alias at Claude Code's own default level, since choosing Claude Code does not
+carry the pi default's level over. Workers knows no Operation or worker names; the entries are
+whatever the [`configure_workers`](../../operations/module.md#concept.operations.configure-workers)
+Operation wrote after checking them against the catalog. A file of an earlier schema version, keyed
+by backend and worker role, is refused with `config_invalid`, and never read.
+[Tasks](../../tasks/module.md) copies the primary worktree's file into a task worktree when it
+opens the task, so a task keeps the configuration it started with and a later change in the primary
+worktree never reaches it.
 
 Workers also lists the **candidates** the installed program offers: for pi every model
 `pi --list-models` shows with credentials, as `provider/model` with the levels of `--thinking` or
@@ -401,10 +396,10 @@ backend and model before calling Workers.
   launches and resumes `pi -p` and reads its event stream. Tests fake `pi` for host behaviour, run
   the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`, run a real pi worker.
 
-- <a id="realization.workers.models"></a>The **model configuration** detects the main
-  session's program, resolves a worker's backend and checks that its program is installed,
-  discovers the candidates by running the installed `claude` or `pi`, validates, reads and writes
-  `.concorde/worker-models.json`, and resolves the choice of an Operation's worker role. Tests fake
+- <a id="realization.workers.models"></a>The **model configuration** validates, reads and writes
+  `.concorde/worker-models.json`, resolves the backend, model and level of an Operation's worker by
+  its id and checks that its program is installed, discovers the candidates by running the
+  installed `claude` or `pi`, and detects the main session's program for Task sessions. Tests fake
   both programs.
 
 What one run leaves behind. The runtime generates the brief, keeps the progress file and writes the

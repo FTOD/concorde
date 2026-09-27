@@ -359,7 +359,7 @@ def execute(
         run_id=identity,
         run_dir=run_dir,
         arguments=arguments,
-        roles=chosen.roles,
+        workers=chosen.workers,
     )
     begun = False
     stop: Stop | None = None

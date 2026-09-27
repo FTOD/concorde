@@ -1,20 +1,23 @@
-"""Worker model configuration: which model and reasoning level each worker of an Operation uses.
+"""Worker model configuration: which backend, model and reasoning level each worker uses.
 
 The configuration is the file ``.concorde/worker-models.json`` of one worktree. Git ignores it: it
 names models of this machine's Claude Code or pi installation, and it belongs to the worktree, not
 to the branch. ``concorde task open`` copies the primary worktree's file into a new task worktree,
 so a task starts with the configuration of its creation and keeps its own copy; later changes in
 the primary worktree never reach an existing task, and a task's copy changes only when a request
-names it. For each backend it holds a default and optional entries per Operation, each of which
-may hold entries per worker role; the most specific entry that sets a field wins, field by field.
+names it.
 
-The file's ``backend`` section may choose the agent program, Claude Code or pi, of every worker, of
-an Operation's workers or of one worker role; the most specific entry wins, and without one a
-worker runs on the program of the main session that started the run (``client``). A chosen program
-must be installed, and a worker never falls back to the other one. The section is edited by hand.
+The file is keyed by **worker id**, the stable name an Operation gives each worker it launches,
+such as ``spec_panel``'s ``reviewer1`` or ``chair``: a global ``default``, and per Operation a
+``default`` and one entry per worker id. Each entry may set a ``backend`` (``pi`` or ``claude``), a
+``model`` and a ``reasoning`` level. For each field the worker's entry wins, then the Operation's
+default, then the global default; a worker whose entries choose no backend runs on pi. An entry
+that chooses a backend starts that program afresh: the model and level come only from that entry or
+a more specific one, since a model named for one program means nothing to the other. A chosen
+program must be installed, and a worker never falls back to the other one.
 
-This module knows no Operation names; the ``configure_workers`` Operation checks them against the
-catalog and changes the file through ``set_choice`` and ``unset_choice``.
+This module knows no Operation or worker names; the ``configure_workers`` Operation checks them
+against the catalog and changes the file through ``set_choice`` and ``unset_choice``.
 """
 
 from __future__ import annotations
@@ -30,7 +33,9 @@ from pathlib import Path
 from ..spec.schema import ContractError, validate
 
 CONFIG = ".concorde/worker-models.json"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+# The program a worker runs on when its configuration chooses none.
+DEFAULT_BACKEND = "pi"
 CLIENTS = ("claude", "pi")
 # The command-line flag each backend takes the reasoning level with.
 REASONING_FLAG = {"claude": "--effort", "pi": "--thinking"}
@@ -60,76 +65,24 @@ CLAUDE_PINNED = (
 TIMEOUT = 60.0
 
 TEXT = {"type": "string", "minLength": 1}
-SELECTION_SCHEMA = {
+PROGRAM = {"enum": list(CLIENTS)}
+# One entry: the default, an Operation's default or one worker's.
+ENTRY_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "properties": {"model": TEXT, "reasoning": TEXT},
-    "anyOf": [{"required": ["model"]}, {"required": ["reasoning"]}],
-}
-# A role's entry: its own choice and, under ``workers``, one per worker number of the role; the
-# keys of ``workers`` are worker numbers, checked by ``_check_numbers``.
-ROLE_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "properties": {
-        "model": TEXT,
-        "reasoning": TEXT,
-        "workers": {"type": "object", "additionalProperties": SELECTION_SCHEMA},
-    },
+    "properties": {"backend": PROGRAM, "model": TEXT, "reasoning": TEXT},
     "anyOf": [
+        {"required": ["backend"]},
         {"required": ["model"]},
         {"required": ["reasoning"]},
-        {"required": ["workers"]},
     ],
 }
 OPERATION_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "model": TEXT,
-        "reasoning": TEXT,
-        "roles": {"type": "object", "additionalProperties": ROLE_SCHEMA},
-    },
-}
-BACKEND_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "properties": {
-        "default": SELECTION_SCHEMA,
-        "operations": {"type": "object", "additionalProperties": OPERATION_SCHEMA},
-    },
-}
-PROGRAM = {"enum": list(CLIENTS)}
-# A role's program: one for all its workers, or a ``default`` and one per worker number.
-ROLE_PROGRAM = {
-    "anyOf": [
-        PROGRAM,
-        {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "default": PROGRAM,
-                "workers": {"type": "object", "additionalProperties": PROGRAM},
-            },
-        },
-    ]
-}
-CHOICE_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "properties": {
-        "default": PROGRAM,
-        "operations": {
-            "type": "object",
-            "additionalProperties": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "default": PROGRAM,
-                    "roles": {"type": "object", "additionalProperties": ROLE_PROGRAM},
-                },
-            },
-        },
+        "default": ENTRY_SCHEMA,
+        "workers": {"type": "object", "additionalProperties": ENTRY_SCHEMA},
     },
 }
 SCHEMA = {
@@ -138,8 +91,8 @@ SCHEMA = {
     "required": ["schema_version"],
     "properties": {
         "schema_version": {"const": SCHEMA_VERSION},
-        "backend": CHOICE_SCHEMA,
-        **{name: BACKEND_SCHEMA for name in CLIENTS},
+        "default": ENTRY_SCHEMA,
+        "operations": {"type": "object", "additionalProperties": OPERATION_SCHEMA},
     },
 }
 
@@ -177,9 +130,7 @@ def detect_client(environ=None) -> tuple[str, str]:
     raise ModelConfigError(
         "client_unknown",
         "the command was not started from a Claude Code or pi main session: CONCORDE_CLIENT is "
-        "unset, CLAUDECODE is not 1 and neither PI_SESSION_ID nor PI_CODING_AGENT is set. A worker "
-        "whose program the backend section of .concorde/worker-models.json does not choose runs on "
-        "the main session's own agent program, so it must be known",
+        "unset, CLAUDECODE is not 1 and neither PI_SESSION_ID nor PI_CODING_AGENT is set",
     )
 
 
@@ -201,9 +152,16 @@ def load(worktree: Path) -> dict:
         raise ModelConfigError(
             "config_invalid", f"{path} cannot be read as JSON: {error}"
         ) from error
+    if isinstance(value, dict) and value.get("schema_version") != SCHEMA_VERSION:
+        raise ModelConfigError(
+            "config_invalid",
+            f"{path} has schema_version {value.get('schema_version')!r}, but the worker model "
+            f"configuration is version {SCHEMA_VERSION}, keyed by worker id; earlier versions, "
+            "keyed by backend and worker role, are not read. Delete the file and configure the "
+            "workers again with configure_workers",
+        )
     try:
         validate(value, SCHEMA)
-        _check_numbers(value)
     except ContractError as error:
         raise ModelConfigError(
             "config_invalid",
@@ -212,31 +170,8 @@ def load(worktree: Path) -> dict:
     return value
 
 
-def _check_numbers(value: dict) -> None:
-    """Refuse a ``workers`` key that is not a worker number: a positive integer, from 1."""
-    for section in ("backend", *CLIENTS):
-        for operation, entry in (
-            (value.get(section) or {}).get("operations") or {}
-        ).items():
-            for role, chosen in (entry.get("roles") or {}).items():
-                if not isinstance(chosen, dict):
-                    continue
-                for key in chosen.get("workers") or {}:
-                    if not key.isdigit() or key.startswith("0"):
-                        raise ContractError(
-                            f"{section}.operations.{operation}.roles.{role}.workers has the key "
-                            f"{key!r}, which is not a worker number (1, 2, 3 ...)"
-                        )
-
-
-def worker_label(role: str, number: int | None) -> str:
-    """How a worker is named in messages: its role, and its number when it has one."""
-    return role if number is None else f"{role} {number}"
-
-
 def save(worktree: Path, value: dict) -> Path:
     validate(value, SCHEMA)
-    _check_numbers(value)
     path = config_path(worktree)
     path.parent.mkdir(parents=True, exist_ok=True)
     handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=".worker-models.")
@@ -246,37 +181,49 @@ def save(worktree: Path, value: dict) -> Path:
     return path
 
 
-def selection(
-    config: dict, backend: str, operation: str, role: str, number: int | None = None
-) -> dict:
-    """The model and reasoning level of one worker of an Operation, and where each came from.
-
-    The worker is a role's, or with ``number`` that role's worker with that number; its own entry
-    wins over the role's, the role's over the Operation's, the Operation's over the default.
-    """
-    section = config.get(backend) or {}
-    entry = (section.get("operations") or {}).get(operation) or {}
-    chosen_role = (entry.get("roles") or {}).get(role) or {}
-    where = f"{backend}.operations.{operation}.roles.{role}"
-    layers = (
-        *(
-            [
+def _levels_of(
+    config: dict, operation: str | None, worker: str | None
+) -> list[tuple[dict, str]]:
+    """The entries that decide for one worker, an Operation's default or the default, most
+    specific first, each with its place in the file."""
+    levels = []
+    if operation is not None:
+        entry = (config.get("operations") or {}).get(operation) or {}
+        if worker is not None:
+            levels.append(
                 (
-                    (chosen_role.get("workers") or {}).get(str(number)) or {},
-                    f"{where}.workers.{number}",
+                    (entry.get("workers") or {}).get(worker) or {},
+                    f"operations.{operation}.workers.{worker}",
                 )
-            ]
-            if number is not None
-            else []
-        ),
-        (chosen_role, where),
-        (entry, f"{backend}.operations.{operation}"),
-        (section.get("default") or {}, f"{backend}.default"),
+            )
+        levels.append((entry.get("default") or {}, f"operations.{operation}.default"))
+    levels.append((config.get("default") or {}, "default"))
+    return levels
+
+
+def choice(
+    config: dict, operation: str | None = None, worker: str | None = None
+) -> dict:
+    """The backend, model and reasoning level of the worker ``worker`` of ``operation`` (or of an
+    Operation's default, or of the default), each with the entry it came from.
+
+    The most specific entry that sets a field wins. The backend is pi when no entry chooses one;
+    the model and level come only from the entry that chose the backend or a more specific one.
+    """
+    levels = _levels_of(config, operation, worker)
+    chosen_at = next(
+        (index for index, (entry, _) in enumerate(levels) if "backend" in entry), None
     )
-    chosen = {}
+    if chosen_at is None:
+        backend, source = DEFAULT_BACKEND, "Concorde's default worker backend"
+        eligible = levels
+    else:
+        backend, source = levels[chosen_at][0]["backend"], levels[chosen_at][1]
+        eligible = levels[: chosen_at + 1]
+    chosen = {"backend": backend, "backend_source": source}
     for field in ("model", "reasoning"):
         found = next(
-            ((layer[field], where) for layer, where in layers if field in layer), None
+            ((entry[field], where) for entry, where in eligible if field in entry), None
         )
         chosen[field], chosen[f"{field}_source"] = found or (
             None,
@@ -285,63 +232,23 @@ def selection(
     return chosen
 
 
-def configured_backend(
-    config: dict,
-    operation: str | None,
-    role: str | None,
-    number: int | None = None,
-) -> tuple[str, str] | None:
-    """The program the file's ``backend`` section chooses for the worker with ``number`` of one
-    role, for one worker role of an Operation (``number`` None), for an Operation's workers
-    (``role`` None) or for every worker (``operation`` None), and the entry that chose it; None
-    when no entry does."""
-    section = config.get("backend") or {}
-    layers = []
-    if operation is not None:
-        entry = (section.get("operations") or {}).get(operation) or {}
-        if role is not None:
-            chosen = (entry.get("roles") or {}).get(role)
-            where = f"backend.operations.{operation}.roles.{role}"
-            if isinstance(chosen, dict):
-                if number is not None:
-                    layers.append(
-                        (
-                            (chosen.get("workers") or {}).get(str(number)),
-                            f"{where}.workers.{number}",
-                        )
-                    )
-                layers.append((chosen.get("default"), f"{where}.default"))
-            else:
-                layers.append((chosen, where))
-        layers.append((entry.get("default"), f"backend.operations.{operation}.default"))
-    layers.append((section.get("default"), "backend.default"))
-    return next(((value, where) for value, where in layers if value), None)
-
-
-def worker_backend(
-    config: dict, operation: str, role: str, environ=None, number: int | None = None
-) -> tuple[str, str]:
-    """The program one worker of an Operation runs on, and what chose it: a role's worker, or with
-    ``number`` that role's worker with that number.
-
-    A program the file chooses must be installed; otherwise it is the main session's program.
-    """
+def worker_choice(config: dict, operation: str, worker: str, environ=None) -> dict:
+    """The choice of one worker, refused when its program is not installed."""
     environ = os.environ if environ is None else environ
-    chosen = configured_backend(config, operation, role, number)
-    if chosen is None:
-        return detect_client(environ)
-    backend, where = chosen
+    chosen = choice(config, operation, worker)
+    backend = chosen["backend"]
     if _program(backend, environ) is None:
         variable = "CONCORDE_CLAUDE" if backend == "claude" else "CONCORDE_PI"
+        other = "claude" if backend == "pi" else "pi"
         raise ModelConfigError(
             "backend_missing",
-            f"{where} chooses {backend} for the {worker_label(role, number)} worker of "
-            f"{operation}, but the {backend} "
-            f"command is not installed: it is not on PATH and {variable} does not name an "
-            "executable. A worker runs only on the program its configuration chooses and never "
-            "falls back to the other one",
+            f"the {worker} worker of {operation} runs on {backend} ({chosen['backend_source']}), "
+            f"but the {backend} command is not installed: it is not on PATH and {variable} does "
+            "not name an executable. A worker runs only on the program its configuration chooses "
+            f"and never falls back to the other one; install {backend}, or choose {other} for it "
+            f"with configure_workers --operation {operation} --worker {worker} --backend {other}",
         )
-    return backend, where
+    return chosen
 
 
 def inherit(primary: Path, worktree: Path) -> str | None:
@@ -550,12 +457,11 @@ def candidates(backend: str, environ=None) -> dict:
 HANDLING = {
     "client_unknown": (
         "input",
-        "a worker whose program the configuration does not choose runs on the main session's "
-        "agent program, and nothing names which one it is",
+        "the main session's agent program must be known where the command depends on it, and "
+        "nothing names which one it is",
         [
-            "run the Operation from the Claude Code or pi main session",
+            "run the command from the Claude Code or pi main session",
             "set CONCORDE_CLIENT to claude or pi",
-            "choose the program in the backend section of .concorde/worker-models.json",
         ],
     ),
     "invalid_client": (
@@ -568,8 +474,7 @@ HANDLING = {
         "agent programs are not installed by Concorde; the machine must provide the command",
         [
             "install the agent program, or set CONCORDE_CLAUDE or CONCORDE_PI",
-            "remove the entry of the backend section of .concorde/worker-models.json that "
-            "chooses it",
+            "choose the other program for the worker with configure_workers --backend",
         ],
     ),
     "discovery_failed": (
@@ -602,16 +507,14 @@ HANDLING = {
 
 def check_choice(
     found: dict,
-    config: dict,
     backend: str,
-    operation: str | None,
-    role: str | None,
     model: str | None,
     reasoning: str | None,
     allow_unlisted: bool,
-    number: int | None = None,
+    effective_model: str | None,
 ) -> None:
-    """Refuse a model the listing ``found`` does not show, or a level the model does not offer."""
+    """Refuse a model the listing ``found`` of ``backend`` does not show, or a level that the model
+    the entry will run with, ``effective_model``, does not offer."""
     ids = [item["id"] for item in found["models"]]
     if model and model not in ids and not allow_unlisted:
         raise ModelConfigError(
@@ -620,103 +523,94 @@ def check_choice(
         )
     if not reasoning:
         return
-    if not model:
-        model = (
-            selection(config, backend, operation, role or "", number)["model"]
-            if operation
-            else (config.get(backend) or {}).get("default", {}).get("model")
-        )
-    listed = next((item for item in found["models"] if item["id"] == model), None)
+    listed = next(
+        (item for item in found["models"] if item["id"] == effective_model), None
+    )
     levels = listed["levels"] if listed else found["reasoning_levels"]
     if reasoning not in levels:
         raise ModelConfigError(
             "unknown_level",
             f"{reasoning!r} is not a reasoning level of "
-            f"{model or f'the {backend} default model'} (levels: {', '.join(levels)})",
+            f"{effective_model or f'the {backend} default model'} (levels: {', '.join(levels)})",
         )
+
+
+def _entry(config: dict, operation: str | None, worker: str | None, create: bool):
+    """The entry of the default, an Operation's default or one worker, created when asked."""
+    if operation is None:
+        return config.setdefault("default", {}) if create else config.get("default")
+    operations = (
+        config.setdefault("operations", {})
+        if create
+        else config.get("operations") or {}
+    )
+    entry = (
+        operations.setdefault(operation, {})
+        if create
+        else operations.get(operation) or {}
+    )
+    if worker is None:
+        return entry.setdefault("default", {}) if create else entry.get("default")
+    workers = entry.setdefault("workers", {}) if create else entry.get("workers") or {}
+    return workers.setdefault(worker, {}) if create else workers.get(worker)
 
 
 def set_choice(
     config: dict,
-    backend: str,
     operation: str | None,
-    role: str | None,
+    worker: str | None,
+    backend: str | None,
     model: str | None,
     reasoning: str | None,
-    number: int | None = None,
 ) -> dict:
-    """Set the fields given on the default, an Operation's entry, one of its roles or, with
-    ``number``, that role's worker with that number."""
-    section = config.setdefault(backend, {})
-    if operation is None:
-        entry = section.setdefault("default", {})
-    else:
-        entry = section.setdefault("operations", {}).setdefault(operation, {})
-        if role is not None:
-            entry = entry.setdefault("roles", {}).setdefault(role, {})
-            if number is not None:
-                entry = entry.setdefault("workers", {}).setdefault(str(number), {})
-    if model:
-        entry["model"] = model
-    if reasoning:
-        entry["reasoning"] = reasoning
+    """Set the fields given on the default, an Operation's default or one worker's entry."""
+    entry = _entry(config, operation, worker, create=True)
+    for field, value in (
+        ("backend", backend),
+        ("model", model),
+        ("reasoning", reasoning),
+    ):
+        if value:
+            entry[field] = value
     return config
 
 
-def unset_choice(
-    config: dict,
-    backend: str,
-    operation: str | None,
-    role: str | None,
-    number: int | None = None,
-) -> bool:
-    """Remove the default, an Operation's entry, one role's entry or, with ``number``, the entry of
-    that role's worker with that number; whether one existed."""
-    section = config.get(backend) or {}
+def unset_choice(config: dict, operation: str | None, worker: str | None) -> bool:
+    """Remove the default, an Operation's default or one worker's entry, and every section the
+    removal leaves empty; whether the entry existed."""
     if operation is None:
-        removed = section.pop("default", None)
+        return config.pop("default", None) is not None
+    operations = config.get("operations") or {}
+    entry = operations.get(operation) or {}
+    if worker is None:
+        removed = entry.pop("default", None)
     else:
-        operations = section.get("operations") or {}
-        if role is None:
-            removed = operations.pop(operation, None)
-        else:
-            roles = (operations.get(operation) or {}).get("roles") or {}
-            if number is None:
-                removed = roles.pop(role, None)
-            else:
-                chosen = roles.get(role) or {}
-                removed = (chosen.get("workers") or {}).pop(str(number), None)
-                if chosen.get("workers") == {}:
-                    chosen.pop("workers")
-                if role in roles and chosen == {}:
-                    roles.pop(role)
-            if operation in operations and roles == {}:
-                operations[operation].pop("roles", None)
-            if operations.get(operation) == {}:
-                operations.pop(operation)
-        if section.get("operations") == {}:
-            section.pop("operations")
-    if backend in config and not config[backend]:
-        config.pop(backend)
+        workers = entry.get("workers") or {}
+        removed = workers.pop(worker, None)
+        if "workers" in entry and not workers:
+            entry.pop("workers")
+    if operation in operations and not entry:
+        operations.pop(operation)
+    if "operations" in config and not operations:
+        config.pop("operations")
     return removed is not None
 
 
 __all__ = [
     "CLIENTS",
     "CONFIG",
+    "DEFAULT_BACKEND",
     "HANDLING",
     "ModelConfigError",
     "candidates",
     "check_choice",
+    "choice",
     "config_path",
-    "configured_backend",
     "detect_client",
     "inherit",
     "load",
     "save",
-    "selection",
     "set_choice",
     "unset_choice",
-    "worker_backend",
-    "worker_label",
+    "worker_choice",
 ]

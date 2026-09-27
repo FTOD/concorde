@@ -12,8 +12,9 @@ concorde run spec_review [--task <task-id>] --modules <id>[,<id>...] [--check-fi
 `--modules` names one or more registered Modules of the task worktree. `--check-findings` adds the
 checker. Without `--task` the review runs [without a task](../../operations/module.md#concept.operations.no-task) on the primary worktree and
 judges the Specs as merged there. The reviewer and the checker
-are the Operation's two worker roles, `reviewer` and `checker`, so the worker model configuration
-may give each its own model. The Operation takes no other argument and needs no user consent.
+are the Operation's two workers, with the [worker
+ids](../../agents/workers/module.md#concept.workers.worker-id) `reviewer` and `checker`, so the
+worker model configuration may give each its own backend, model and level. The Operation takes no other argument and needs no user consent.
 
 ## Host sequence {#host-sequence}
 

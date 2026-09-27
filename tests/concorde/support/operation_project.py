@@ -68,12 +68,24 @@ def commit(root: Path, message: str = "change") -> str:
     ).stdout.strip()
 
 
+def claude_workers(root: Path) -> Path:
+    """Choose Claude Code for every worker of ``root``, whose workers would otherwise run on pi, so
+    that the fake ``claude`` answers them; the file is ignored by the fixture's Git."""
+    path = root / ".concorde/worker-models.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{"schema_version": 3, "default": {"backend": "claude"}}\n')
+    return path
+
+
 class OperationProject(WorkerProject):
-    """``WorkerProject`` plus task and Operation helpers; ``home`` isolates deny rules."""
+    """``WorkerProject`` plus task and Operation helpers; ``home`` isolates deny rules. Its
+    workers run on the fake ``claude``: the project's worker model configuration chooses Claude
+    Code for every worker."""
 
     def __init__(self, test, **options):
         super().__init__(test, **options)
         self.test = test
+        claude_workers(self.root)
 
     def open_task(
         self, task_id: str = "t1", modules=("module.a",), goal="Fix A."
@@ -116,4 +128,10 @@ class OperationProject(WorkerProject):
         return "Do the task.\nFAKE-PLAN: " + json.dumps(steps)
 
 
-__all__ = ["OperationProject", "commit", "link_at", "worker_error"]
+__all__ = [
+    "OperationProject",
+    "claude_workers",
+    "commit",
+    "link_at",
+    "worker_error",
+]

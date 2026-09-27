@@ -178,7 +178,7 @@ async function pickWorkerModels(
       `Model for ${
         scope.operation === null
           ? "every worker"
-          : `${scope.operation}${scope.role ? ` ${scope.role}` : ""}`
+          : `${scope.operation}${scope.worker ? ` ${scope.worker}` : ""}`
       }`,
       models.map((row) => row.label),
     );
@@ -611,7 +611,8 @@ export default function (pi: ExtensionAPI) {
     label: "Configure worker models",
     description:
       "Open the developer's picker for the models Concorde's pi workers use: a default and " +
-      "optional overrides per task type, each a model and a reasoning level from the models pi " +
+      "optional overrides per Operation worker by its id, each a model and a reasoning level from " +
+      "the models pi " +
       "lists. Use it when the developer asks to choose or change worker models. Without a task " +
       "it changes this worktree's configuration, which new tasks inherit; with a task it " +
       "changes only that task's copy. The developer makes every choice in the dialog.",

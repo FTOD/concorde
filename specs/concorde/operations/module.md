@@ -18,9 +18,8 @@ own initiative: the task level, directly or through a Workflow, orders the runs.
 | --- | --- |
 | Operation | A named execution unit started from the task level, by the main agent, a task session or a Workflow, in a task unless its catalog entry allows none, that combines host control logic, Tool calls and zero or more worker runs to complete one job and return exactly one Operation result. |
 | Run without a task | A run of an Operation whose catalog entry makes the task optional, started without `--task` in the primary worktree: it works on the primary worktree, begins no task record, and changes no Spec or code. |
-| Worker role | A named worker an Operation launches, such as `spec_review`'s `reviewer` and `checker`; an Operation with a single worker has the role `worker`. |
 | configure_workers | The Operation that lists the models an installed agent program offers workers and changes the model choices of a worktree's worker model configuration, with or without a task. |
-| Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, its worker roles, whether it needs a task, whether it may change the task worktree and the contract of its output. |
+| Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, the ids of its workers, whether it needs a task, whether it may change the task worktree and the contract of its output. |
 | Operation host | The deterministic process started by `concorde run` that executes one Operation's step table for one task, or for none, and alone launches its workers, checks their work and writes its result. |
 | Detached run | A run whose host `concorde run --detach` starts as a process of its own, printing the run identity at once instead of waiting for the result. |
 | Operation progress file | The run's `status.json`, which the host keeps current with the Operation, task, current step and host process, and once finished with the status and summary. |
@@ -35,6 +34,7 @@ own initiative: the task level, directly or through a Workflow, orders the runs.
 | [Grant](../spec-tooling/spec/module.md#concept.spec.grant) | |
 | [Context identity](../spec-tooling/spec/module.md#concept.spec.context-identity) | |
 | [Worker result](../agents/workers/module.md#concept.workers.worker-result) | |
+| [Worker id](../agents/workers/module.md#concept.workers.worker-id) | |
 | [Brief](../agents/workers/module.md#concept.workers.brief) | |
 | [Write audit](../agents/workers/module.md#concept.workers.audit) | |
 | [Resume round](../agents/workers/module.md#concept.workers.resume-round) | |
@@ -100,14 +100,14 @@ must run as a run of that task, under the task's lock.
 
 The **Operation catalog** of this version:
 
-| Operation | Provider | Task type | Worker roles | Task | May write | Output |
+| Operation | Provider | Task type | Worker ids | Task | May write | Output |
 | --- | --- | --- | --- | --- | --- | --- |
 | `understand` | [Understanding](understanding/module.md) | `understand` | `worker` | optional | no | an assessment, with a plan when asked |
 | `specify` | [Specification](specification/module.md) | `specify` | `worker` | required | Specs of the bound Modules | a Spec change |
 | `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | required | code of the bound Modules | a code change |
 | `test` | [Implementation](implementation/module.md) | `test` | `worker` | required | no | a test report |
 | `spec_review` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | optional | no | review findings and a verdict |
-| `spec_panel` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer` (numbered 1–5), `chair` | optional | no | a panel report merged from independent reviews, and a verdict |
+| `spec_panel` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer1` … `reviewer5`, `chair` | optional | no | a panel report merged from independent reviews, and a verdict |
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | optional (`--base` without one) | no | review findings and a verdict |
 | `validate` | [Validation](validation/module.md) | none | none | required | no | [readiness](validation/module.md#concept.validation.readiness) |
 | `delivery` | [Delivery](delivery/module.md) | none | none | required | commits on the task branch | a [delivery commit](delivery/module.md#concept.delivery.delivery-commit) |
@@ -123,31 +123,26 @@ main agent may run `understand` or a review to answer a question before any chan
 before its Specs, `survey`, `scaffold` and `code_to_spec` describe the code in Specs, usually run by
 the [brownfield workflow](../workflows/module.md).
 
-<a id="concept.operations.worker-role"></a>
-
-A **worker role** names one worker an Operation launches: `spec_review` has a `reviewer` and a
-`checker`, `spec_panel` a `reviewer` and a `chair`, every other worker-backed Operation a
-single `worker`. A role that launches several workers in one run, such as `spec_panel`'s
-`reviewer`, numbers them from 1, and the catalog gives its highest number; each numbered worker
-may then have its own backend, model and level. The catalog lists the roles, and
-the worker model configuration may choose a model per Operation and per role.
+Every worker an Operation may launch has a stable [worker
+id](../agents/workers/module.md#concept.workers.worker-id), which the catalog lists: `spec_review`
+has a `reviewer` and a `checker`, `spec_panel` a `reviewer1` to `reviewer5`, one per seat its
+panel may have, and a `chair`, and every other worker-backed Operation a single `worker`. The same
+id keys the worker model configuration, names the worker in its run record and labels the
+Operation's `worker-model` evidence, so each worker may have its own backend, model and level.
 
 <a id="concept.operations.configure-workers"></a>
 
-**`configure_workers`** lists and changes the model choices of the worker model configuration:
-without a model or level it outputs the candidates a program offers, the file's entries for that
-program and the effective backend, model and level of every worker role of every Operation, and
-of every numbered worker of a role that launches several; `--model`, `--reasoning` or both set them
-for the default, for `--operation <op>`, for `--role <role>` of it or for `--worker <n>`, one
-[worker number](../agents/workers/module.md#concept.workers.model-configuration) of that role;
-`--unset` removes that entry. The program is `--backend`, otherwise the backend the named worker,
-role, Operation or default resolves to, so a change reaches the section the worker actually
-reads. The file's `backend` section, which chooses a worker's program, is edited by
-hand only. Without a task it changes the primary worktree's file, which the
-tasks opened from then on inherit, and with `--task` only that task's copy. It checks the
-Operation and role against the catalog and every model and level against the program's listing
-(`--allow-unlisted` admits a model the listing cannot show), and launches no worker. Its exact
-behaviour is in [the host](host.md#configure-workers). A plan is one answer
+**`configure_workers`** lists and changes the worker model configuration: without a change it
+outputs the candidates of the program the named entry runs on (pi unless the configuration chooses
+Claude Code, or the program `--candidates` names), the file as written and the effective backend,
+model and level of every worker of every Operation, by worker id; `--backend`, `--model`,
+`--reasoning` or several of them set those fields on the default, on `--operation <op>`'s default
+or on `--worker <id>` of it, and `--unset` removes that entry. Without a task it changes the
+primary worktree's file, which the tasks opened from then on inherit, and with `--task` only that
+task's copy. It checks the Operation and worker id against the catalog and every model and level
+against the listing of the program the entry will run on (`--allow-unlisted` admits a model the
+listing cannot show), and launches no worker. Its exact behaviour is in [the
+host](host.md#configure-workers). A plan is one answer
 `understand` gives, not a separate Operation; a project's first Spec, Issues and task commands are
 ordinary commands of their own Modules, not Operations.
 
@@ -242,7 +237,7 @@ rounds, so a failing check can drive a repair loop inside one Operation.
 <a id="uses-workers"></a>
 
 **Workers** is the agent half of level 5. A worker-backed Operation hands it the frozen grant,
-the brief and the worker role, and Workers performs the standard worker sequence — settings,
+the brief and the worker id, and Workers performs the standard worker sequence — settings,
 launch, audit, resume rounds, run record — and returns the
 [worker result](../agents/workers/module.md#concept.workers.worker-result) with the evidence it
 gathered. The host relies on Workers launching the worker only under that grant, auditing every
@@ -340,7 +335,7 @@ providers and a fake worker. The `concorde` command itself belongs to
 ### The providers
 
 Each Operation's behaviour lives with the Module that provides it: seven children of Operations and
-Spec review, which lives in Spec tooling. A provider supplies its steps, its worker roles and the
+Spec review, which lives in Spec tooling. A provider supplies its steps, its worker ids and the
 contract of its output; the host runs those steps inside the standard sequence, checks the output
 against its contract and wraps it in the Operation result. A provider relies on the host freezing
 the grant, launching workers only through Workers and recording the run; the host relies on each
@@ -401,7 +396,8 @@ Modules, the host scaffolds them, and `code-to-spec` workers describe each Modul
 **Spec review** provides `spec_review` and `spec_panel` from Spec tooling: reviewers read the bound Modules' Specs
 and return findings and a verdict, listed in the catalog like a contained provider but living in
 Spec tooling because it maintains Specs rather than changing a project. The host runs its
-`reviewer`, `checker` and `chair` roles like any other provider's workers and relies on it
+workers, `spec_review`'s `reviewer` and `checker` and `spec_panel`'s reviewers and `chair`, like any
+other provider's workers and relies on it
 changing nothing; its verdict stays the reviewers' claim. `spec_panel` is the one provider whose
 steps run a LangGraph graph inside the host, which the host neither knows nor needs: the provider
 still returns one Operation result through the ordinary steps.

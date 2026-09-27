@@ -574,7 +574,7 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
         output_schema=REVIEWER_OUTPUT,
         rounds=0,
         modules=[review.module],
-        role="reviewer",
+        worker="reviewer",
     )
     found.extend(_labelled(outcome.evidence, f"{review.module} reviewer"))
     if len(ctx.worker_runs) > launched:
@@ -648,7 +648,7 @@ def _check(ctx: RunContext, review: ModuleReview, prompt: str, findings: list[di
         output_schema=CHECKER_OUTPUT,
         rounds=0,
         modules=[review.module],
-        role="checker",
+        worker="checker",
     )
     found.extend(_labelled(outcome.evidence, f"{review.module} checker"))
     if isinstance(outcome, Stop):
@@ -744,7 +744,7 @@ SPEC_REVIEW = Provider(
     PAYLOAD_SCHEMA,
     add_arguments,
     task_scope="optional",
-    roles=("reviewer", "checker"),
+    workers=("reviewer", "checker"),
 )
 
 __all__ = [

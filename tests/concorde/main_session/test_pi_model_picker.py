@@ -20,12 +20,14 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 SOURCE = REPOSITORY_ROOT / "src/concorde/main_session/pi_models.ts"
 
 
-def chosen(model, reasoning, source="pi.default"):
+def chosen(model, reasoning, source="default"):
     return {
+        "backend": "pi",
+        "backend_source": "Concorde's default worker backend",
         "model": model,
         "reasoning": reasoning,
         "model_source": source,
-        "reasoning_source": "pi.default",
+        "reasoning_source": "default",
     }
 
 
@@ -52,7 +54,8 @@ LISTING = {
     "configured": {
         "default": {"model": "anthropic/claude-sonnet-5", "reasoning": "low"},
         "operations": {
-            "spec_review": {"roles": {"checker": {"model": "local/plain-7"}}}
+            "spec_review": {"workers": {"checker": {"model": "local/plain-7"}}},
+            "implement": {"default": {"backend": "claude"}},
         },
     },
     "effective": {
@@ -61,13 +64,13 @@ LISTING = {
             "worker": dict(
                 chosen(None, None, "the backend's own default"),
                 backend="claude",
-                backend_source="backend.operations.implement.default",
+                backend_source="operations.implement.default",
             )
         },
         "spec_review": {
             "reviewer": chosen("anthropic/claude-sonnet-5", "low"),
             "checker": chosen(
-                "local/plain-7", "low", "pi.operations.spec_review.roles.checker"
+                "local/plain-7", "low", "operations.spec_review.workers.checker"
             ),
         },
     },
@@ -102,13 +105,13 @@ const checker = scopes.find((row) => row.label.startsWith("spec_review checker")
 const understand = scopes.find((row) => row.label.startsWith("understand")).scope;
 console.log(JSON.stringify({
   scopes,
-  defaultModels: picker.modelRows(listing, { operation: null, role: null }),
+  defaultModels: picker.modelRows(listing, { operation: null, worker: null }),
   checkerModels: picker.modelRows(listing, checker),
   understandModels: picker.modelRows(listing, understand),
   levelsPlain: picker.levelRows(listing, "local/plain-7"),
   levelsCurrent: picker.levelRows(listing, picker.currentModel(listing, understand)),
   listing: picker.listingCommand(null),
-  setDefault: picker.commandFor({ operation: null, role: null }, "set", "local/plain-7", "off", null),
+  setDefault: picker.commandFor({ operation: null, worker: null }, "set", "local/plain-7", "off", null),
   setChecker: picker.commandFor(checker, "keep", null, "high", "t1"),
   unsetChecker: picker.commandFor(checker, "unset", null, null, null),
   nothing: picker.commandFor(understand, "keep", null, picker.KEEP, null),
@@ -147,7 +150,7 @@ class ModelPickerTests(unittest.TestCase):
         self.assertEqual(
             [
                 "Every worker (default): anthropic/claude-sonnet-5, low",
-                "understand: anthropic/claude-sonnet-5, low",
+                "understand worker: anthropic/claude-sonnet-5, low",
                 "spec_review reviewer: anthropic/claude-sonnet-5, low",
                 "spec_review checker: local/plain-7, low (own setting)",
                 "Done",
@@ -155,7 +158,7 @@ class ModelPickerTests(unittest.TestCase):
             labels,
         )
         self.assertEqual(
-            {"operation": "understand", "role": None}, out["scopes"][1]["scope"]
+            {"operation": "understand", "worker": "worker"}, out["scopes"][1]["scope"]
         )
         self.assertIsNone(out["scopes"][-1]["scope"])
         self.assertEqual(
@@ -176,19 +179,19 @@ class ModelPickerTests(unittest.TestCase):
         self.assertEqual(
             ["Keep the current value", "off", "low", "high"], out["levelsCurrent"]
         )
-        base = ["run", "configure_workers", "--backend", "pi"]
-        self.assertEqual(base, out["listing"])
+        base = ["run", "configure_workers"]
+        self.assertEqual(base + ["--candidates", "pi"], out["listing"])
         self.assertEqual(
             base + ["--model", "local/plain-7", "--reasoning", "off"], out["setDefault"]
         )
         self.assertEqual(
             base
-            + ["--task", "t1", "--operation", "spec_review", "--role", "checker"]
+            + ["--task", "t1", "--operation", "spec_review", "--worker", "checker"]
             + ["--reasoning", "high"],
             out["setChecker"],
         )
         self.assertEqual(
-            base + ["--operation", "spec_review", "--role", "checker", "--unset"],
+            base + ["--operation", "spec_review", "--worker", "checker", "--unset"],
             out["unsetChecker"],
         )
         self.assertIsNone(out["nothing"])

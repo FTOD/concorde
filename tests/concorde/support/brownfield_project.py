@@ -20,6 +20,7 @@ from concorde.distribution.project_defaults import install_project_defaults
 from concorde.operations.host import execute
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.tasks import store
+from tests.concorde.support.operation_project import claude_workers
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 FAKE = REPOSITORY_ROOT / "tests/concorde/harness/workers/fake_claude.py"
@@ -94,6 +95,7 @@ class BrownfieldProject:
         proposal = project_proposal(self.root, REPOSITORY_ROOT, "Shop", "module.shop")
         apply_project_proposal(self.root, REPOSITORY_ROOT, proposal)
         commit(self.root, "adopt Concorde")
+        claude_workers(self.root)
         self.fake = self.base / "claude"
         self.fake.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FAKE}" "$@"\n')
         self.fake.chmod(0o755)

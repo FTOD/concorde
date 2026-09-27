@@ -285,31 +285,35 @@ without pi-subagents. The view only observes: the Operation keeps running if you
 
 ### Choose the worker models
 
-Workers run on the program you talk to unless you choose otherwise: a Claude Code main agent gets
-Claude Code workers, a pi main agent pi workers. Which model and reasoning level they
-use is yours to choose, for every worker or for one Operation's workers, such as a cheaper model
-for `implement` or a different one for `spec_review`'s checker; ask the main agent to change the
-worker models.
+Workers run on pi, whatever program you talk to, unless you put some of them on Claude Code. Which
+model and reasoning level each worker uses is yours to choose, for every worker or for one worker
+by its id, such as a cheaper model for `implement`'s `worker` or three different models for
+`spec_panel`'s `reviewer1`, `reviewer2` and `reviewer3`; ask the main agent to change the worker
+models.
 
 - In pi, the main agent opens a picker (you can also type `/concorde-models`). You choose the
-  default or an Operation's worker, then a model from the ones pi lists with credentials, then a
-  reasoning level.
+  default or a worker, then a model from the ones pi lists with credentials, then a reasoning
+  level.
 - In Claude Code, the main agent lists the candidates and asks you the same three questions.
-  Claude Code cannot list the models of your account, so it offers its aliases (`fable`, `opus`,
-  `sonnet`, `haiku`) and the models your settings name; type a full model name such as
-  `claude-opus-5-5` as a free answer if you want a specific one.
 
-The choice is stored per worktree in `.concorde/worker-models.json`, which Git ignores. The most
-specific entry wins, field by field:
+The choice is stored per worktree in `.concorde/worker-models.json`, which Git ignores, keyed by
+worker id. The most specific entry wins, field by field:
 
 ```json
 {
-  "schema_version": 2,
-  "pi": {
-    "default": { "model": "anthropic/claude-sonnet-5", "reasoning": "medium" },
-    "operations": {
-      "implement": { "model": "local-openai/gpt-6" },
-      "spec_review": { "roles": { "checker": { "reasoning": "low" } } }
+  "schema_version": 3,
+  "default": { "model": "anthropic/claude-sonnet-5", "reasoning": "medium" },
+  "operations": {
+    "spec_panel": {
+      "workers": {
+        "reviewer1": {
+          "model": "anthropic/claude-opus-5-5",
+          "reasoning": "high"
+        },
+        "reviewer2": { "model": "local-openai/gpt-6", "reasoning": "high" },
+        "reviewer3": { "model": "local-openai/gpt-6", "reasoning": "medium" },
+        "chair": { "backend": "claude", "model": "opus" }
+      }
     }
   }
 }
@@ -320,30 +324,20 @@ applies to tasks opened after it, and changes an existing task only if you ask f
 Behind both is the `configure_workers` Operation, which needs no task and works by hand too:
 
 ```bash
-concorde run configure_workers                       # candidates and every worker's choice
-concorde run configure_workers --model sonnet --reasoning medium
-concorde run configure_workers --operation implement --model opus
-concorde run configure_workers --operation spec_review --role checker --reasoning low
-concorde run configure_workers --operation implement --unset
+concorde run configure_workers                       # pi's candidates and every worker's choice
+concorde run configure_workers --model anthropic/claude-sonnet-5 --reasoning medium
+concorde run configure_workers --operation spec_panel --worker reviewer2 --model local-openai/gpt-6 --reasoning high
+concorde run configure_workers --operation spec_panel --worker chair --backend claude --model opus
+concorde run configure_workers --operation spec_panel --worker reviewer2 --unset
+concorde run configure_workers --candidates claude   # Claude Code's candidates
 concorde run configure_workers --task retry          # one task's own copy
 ```
 
-To run some workers on the other program, such as pi workers under a Claude Code main agent, add
-a `backend` section to the same file (by hand, or ask the main agent to): a `default` for every
-worker, and per Operation a `default` and `roles`. The most specific entry wins, and a worker it
-does not cover runs on the program you talk to. Both programs must be installed; a worker whose
-program is missing fails with `backend_missing` instead of running on the other one.
-
-```json
-{
-  "schema_version": 2,
-  "backend": { "operations": { "implement": { "default": "pi" } } },
-  "pi": { "operations": { "implement": { "model": "local-openai/gpt-6" } } }
-}
-```
-
-`configure_workers --operation implement` then lists and changes the models of the program
-`implement` runs on; `--backend claude` or `--backend pi` names a program explicitly.
+An entry that puts a worker on Claude Code starts that program afresh, so a pi model set more
+generally is not carried over to it. Claude Code cannot list the models of your account, so its
+candidates are its aliases (`fable`, `opus`, `sonnet`, `haiku`) and the models your settings name;
+pass `--allow-unlisted` for another. A worker whose program is not installed fails with
+`backend_missing` instead of running on the other one.
 
 The reasoning level is passed as `--effort` to Claude Code and as `--thinking` to pi. A pi worker
 uses copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.

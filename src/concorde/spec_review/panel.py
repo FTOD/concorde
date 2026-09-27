@@ -34,10 +34,11 @@ from ..spec.schema import validate
 from . import operation as review
 
 TASK_TYPE = "review-spec"
-ROLES = ("reviewer", "chair")
 OUTCOMES = ["accepted", "changes_required", "incomplete"]
 DEFAULT_REVIEWERS = 3
 MAX_REVIEWERS = 5
+# The panel's worker ids: reviewer<seat> for each seat a panel may have, and the chair.
+WORKERS = (*(f"reviewer{seat}" for seat in range(1, MAX_REVIEWERS + 1)), "chair")
 # The chair's attempts: its report, and one repair when the report leaves a label unaccounted.
 CHAIR_ATTEMPTS = 2
 LABEL = r"^r[1-9][0-9]*\.[1-9][0-9]*$"
@@ -124,9 +125,10 @@ PAYLOAD_SCHEMA: dict = {
                         "items": {
                             "type": "object",
                             "additionalProperties": False,
-                            "required": ["reviewer", "status", "findings"],
+                            "required": ["reviewer", "worker", "status", "findings"],
                             "properties": {
                                 "reviewer": {"type": "integer", "minimum": 1},
+                                "worker": {"enum": list(WORKERS[:-1])},
                                 "status": {"enum": ["ok", "blocked", "failed"]},
                                 "findings": {"type": "array", "items": LABELLED},
                             },
@@ -208,27 +210,17 @@ class Panel:
             + ("\n" + material if material else "")
         )
 
-    def _launch(
-        self,
-        role: str,
-        instructions: str,
-        schema: dict,
-        label: str,
-        number: int | None = None,
-    ):
-        """One worker; returns (output or None, host evidence, context identity, stop or None).
-
-        A reviewer passes its seat as its worker number, so the worker model configuration may
-        give each reviewer its own backend, model and thinking level.
-        """
+    def _launch(self, worker: str, instructions: str, schema: dict, label: str):
+        """The worker ``worker``, one of the panel's worker ids, so that the worker model
+        configuration may give each reviewer and the chair its own backend, model and thinking
+        level; returns (output or None, host evidence, context identity, stop or None)."""
         result = self.ctx.run_worker(
             instructions,
             task_type=TASK_TYPE,
             output_schema=schema,
             rounds=0,
             modules=[self.subject.module],
-            role=role,
-            number=number,
+            worker=worker,
         )
         found = review._labelled(result.evidence, f"{self.subject.module} {label}")
         identity = review._identity(result.evidence)
@@ -272,17 +264,22 @@ class Panel:
 
     def review(self, seat_state: dict) -> dict:
         seat = seat_state["seat"]
-        label = f"reviewer {seat}"
+        label = worker = f"reviewer{seat}"
         output, found, identity, stop = self._launch(
-            "reviewer",
+            worker,
             self._brief(
                 "reviewer", f"## Your seat\n\nPanel seat: {seat} of {self.size}.\n"
             ),
             REVIEWER_OUTPUT,
             label,
-            number=seat,
         )
-        entry = {"reviewer": seat, "status": "ok", "findings": [], "identity": identity}
+        entry = {
+            "reviewer": seat,
+            "worker": worker,
+            "status": "ok",
+            "findings": [],
+            "identity": identity,
+        }
         if stop is None:
             findings, corrections, stop = self._normalized(output["findings"], label)
             found += corrections
@@ -310,16 +307,15 @@ class Panel:
             if any(item["stop"]["status"] == "failed" for item in failed)
             else "blocked"
         )
-        seats = ", ".join(str(item["reviewer"]) for item in failed)
+        names = ", ".join(item["worker"] for item in failed)
         stop = self.ctx.fail(
             status,
             "panel_short",
-            f"Reviewer(s) {seats} of the {self.subject.module} panel did not finish.",
+            f"{names} of the {self.subject.module} panel did not finish.",
             f"{len(failed)} of {self.size} reviewer(s) of {self.subject.module} did not finish "
-            f"(seats {seats}), so the panel has no complete set of reviews to merge: "
+            f"({names}), so the panel has no complete set of reviews to merge: "
             + "; ".join(
-                f"reviewer {item['reviewer']}: {item['stop']['summary']}"
-                for item in failed
+                f"{item['worker']}: {item['stop']['summary']}" for item in failed
             ),
             reason="decision",
             explanation="the chair merges only a complete panel, so that the report never "
@@ -541,6 +537,7 @@ def _module_payload(subject: review.ModuleReview, state: PanelState | None) -> d
         "reviews": [
             {
                 "reviewer": item["reviewer"],
+                "worker": item["worker"],
                 "status": item["status"],
                 "findings": item["findings"],
             }
@@ -618,8 +615,7 @@ SPEC_PANEL = Provider(
     PAYLOAD_SCHEMA,
     add_arguments,
     task_scope="optional",
-    roles=ROLES,
-    numbered={"reviewer": MAX_REVIEWERS},
+    workers=WORKERS,
 )
 
 __all__ = [

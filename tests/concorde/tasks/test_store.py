@@ -72,9 +72,7 @@ class TaskStoreTests(unittest.TestCase):
     def test_a_new_task_keeps_its_own_worker_models(self):
         primary_config = self.root / models.CONFIG
         primary_config.write_text(
-            json.dumps(
-                {"schema_version": 2, "pi": {"default": {"model": "anthropic/a"}}}
-            )
+            json.dumps({"schema_version": 3, "default": {"model": "anthropic/a"}})
         )
         worktree = Path(self.project.open_task("t1")["worktree"])
         task_config = worktree / models.CONFIG
@@ -82,9 +80,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(primary_config.read_text(), inherited)
         self.assertEqual("", git(worktree, "status", "--porcelain"))
         primary_config.write_text(
-            json.dumps(
-                {"schema_version": 2, "pi": {"default": {"model": "anthropic/b"}}}
-            )
+            json.dumps({"schema_version": 3, "default": {"model": "anthropic/b"}})
         )
         self.assertEqual(inherited, task_config.read_text())
         status, value = self.project.run(
@@ -99,11 +95,11 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual((0, "t1"), (status, value["task"]), value)
         self.assertEqual(
-            "anthropic/c", json.loads(task_config.read_text())["pi"]["default"]["model"]
+            "anthropic/c", json.loads(task_config.read_text())["default"]["model"]
         )
         self.assertEqual(
             "anthropic/b",
-            json.loads(primary_config.read_text())["pi"]["default"]["model"],
+            json.loads(primary_config.read_text())["default"]["model"],
         )
         primary_config.unlink()
         second = Path(self.project.open_task("t2")["worktree"])

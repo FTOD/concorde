@@ -24,9 +24,7 @@ from ..harness.models import (
     ModelConfigError,
     config_path,
     load,
-    selection,
-    worker_backend,
-    worker_label,
+    worker_choice,
 )
 
 
@@ -58,12 +56,9 @@ class Provider:
     # "required": every run names a task. "optional": a run without --task works on the
     # primary worktree (project scope) and may launch only read-only workers.
     task_scope: str = "required"
-    # The roles of the workers the Operation launches; the first is the default role. The worker
-    # model configuration is keyed by Operation and role.
-    roles: tuple[str, ...] = ("worker",)
-    # The roles that launch several workers in one run, each with the highest worker number it
-    # may use; each such worker has its own entry in the worker model configuration.
-    numbered: dict[str, int] = field(default_factory=dict)
+    # The ids of the workers the Operation may launch, stable across runs; the first is the
+    # default. The worker model configuration, run records and evidence name workers by them.
+    workers: tuple[str, ...] = ("worker",)
 
 
 # Task types whose workers may change files; a project-scope run never launches one.
@@ -330,8 +325,8 @@ class RunContext:
     state: dict = field(default_factory=dict)
     # The run record of the latest worker launch, as Workers wrote it.
     last_record: dict | None = None
-    # The worker roles the provider declares; the first is the default.
-    roles: tuple[str, ...] = ("worker",)
+    # The worker ids the provider declares; the first is the default.
+    workers: tuple[str, ...] = ("worker",)
 
     @property
     def project_scope(self) -> bool:
@@ -351,16 +346,15 @@ class RunContext:
         checks: bool = False,
         rounds: int | None = None,
         modules: list[str] | None = None,
-        role: str | None = None,
+        worker: str | None = None,
         read_only: bool = False,
         readable: tuple[Path, ...] = (),
         after_round=None,
-        number: int | None = None,
     ):
         """The standard worker sequence; returns ``Continue`` or ``Stop``.
 
-        ``number`` is the worker's number among the workers of its role in this run, for a role
-        that launches several; the worker model configuration may choose for it alone.
+        ``worker`` is the id of the worker to launch, one the provider declares; the worker model
+        configuration chooses its backend, model and level.
 
         ``read_only`` withholds every writable level of the task type's grant, turning it into
         read access, as the Protocol lets a harness give less than a type assigns. ``readable``
@@ -374,7 +368,11 @@ class RunContext:
         from ..spec.repository_base import SpecError
 
         bound = modules or self.modules
-        role = role or self.roles[0]
+        worker = worker or self.workers[0]
+        if worker not in self.workers:
+            raise ValueError(
+                f"{self.operation} declares the workers {', '.join(self.workers)}, not {worker}"
+            )
         if self.project_scope and task_type in WRITING_TASK_TYPES and not read_only:
             return self.fail(
                 "failed",
@@ -402,9 +400,9 @@ class RunContext:
                 )
             )
         try:
-            backend, model = self.worker_model(role, number)
+            backend, model = self.worker_model(worker)
         except ModelConfigError as error:
-            return self.model_failure(worker_label(role, number), error)
+            return self.model_failure(worker, error)
         config = self.workers_config()
         runtime = tuple(
             Path(path) if os.path.isabs(path) else self.worktree / path
@@ -438,8 +436,7 @@ class RunContext:
                 backend_source=model["backend_source"],
                 reasoning=model["reasoning"],
                 operation=self.operation,
-                role=role,
-                number=number,
+                worker=worker,
                 after_round=after_round,
                 project_python=interpreter,
                 started=self.worker_started,
@@ -467,31 +464,26 @@ class RunContext:
         except (CheckError, SpecError, OSError):
             return None
 
-    def worker_model(self, role: str, number: int | None = None) -> tuple[str, dict]:
-        """The backend of this Operation's worker ``role``, or of that role's worker ``number`` —
-        the worktree's configured one, or the main session's — and the worktree's model choice for
-        it in that backend."""
-        config = load(self.worktree)
-        backend, source = worker_backend(config, self.operation, role, number=number)
-        return backend, {
-            **selection(config, backend, self.operation, role, number),
-            "backend_source": source,
-        }
+    def worker_model(self, worker: str) -> tuple[str, dict]:
+        """The backend of this Operation's worker ``worker`` — the one the worktree's
+        configuration chooses, otherwise pi — and the model and level chosen for it there."""
+        chosen = worker_choice(load(self.worktree), self.operation, worker)
+        return chosen["backend"], chosen
 
-    def model_failure(self, role: str, error) -> Stop:
+    def model_failure(self, worker: str, error) -> Stop:
         """Stop ``failed``: the backend or the worker model configuration cannot be settled."""
         path = config_path(self.worktree).as_posix()
         reason = HANDLING.get(error.code, ("input",))[0]
         return self.fail(
             "failed",
             "worker_model_unavailable",
-            f"The {role} worker could not be configured ({error.code}).",
-            f"the backend and model of the {role} worker of {self.operation} in {self.worktree} "
+            f"The {worker} worker could not be configured ({error.code}).",
+            f"the backend and model of the {worker} worker of {self.operation} in {self.worktree} "
             f"cannot be settled: {error.code}: {error} (configuration file {path})",
             reason=reason,
             explanation="an Operation runs a worker on the program the worktree's configuration "
-            "chooses, otherwise on the main session's, with the worktree's model choice, and "
-            "never guesses, repairs or falls back from either",
+            "chooses for it, otherwise on pi, with the model and level chosen there, and never "
+            "guesses, repairs or falls back from either",
             evidence=[evidence("worker_models", path, f"{error.code}: {error}")],
             causes=[
                 component(
@@ -499,18 +491,14 @@ class RunContext:
                     error.code,
                     str(error),
                     reason,
-                    "Workers reads the backend and models from the file and the client from the "
-                    "environment, and changes neither",
+                    "Workers reads the backend, model and level from the file and changes "
+                    "nothing",
                 )
             ],
             options=[
                 (
-                    "run the Operation from the Claude Code or pi main session, or set "
-                    "CONCORDE_CLIENT"
-                ),
-                (
-                    "install the program the backend section of the configuration chooses, or "
-                    "change that entry by hand"
+                    "install the program the worker runs on, or choose the other one with "
+                    f"configure_workers --operation {self.operation} --worker {worker} --backend"
                 ),
                 (
                     "inspect and fix the configuration with concorde run configure_workers"
@@ -656,8 +644,7 @@ class RunContext:
             evidence(
                 "worker-model",
                 record.get("backend") or "",
-                f"{worker_label(record.get('role') or 'worker', record.get('number'))} "
-                f"(backend from "
+                f"{record.get('worker') or 'worker'} (backend from "
                 f"{record.get('backend_source') or 'the request'}): model "
                 f"{record.get('model') or 'the backend default'}, reasoning "
                 f"{record.get('reasoning') or 'the backend default'}",

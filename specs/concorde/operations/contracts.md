@@ -365,7 +365,7 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
 ```concorde-contract
 {
   "id": "contract.operations.worker-configuration",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -439,16 +439,9 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
             ],
             "properties": {
               "backend": {
-                "anyOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "enum": [
-                      "claude",
-                      "pi"
-                    ]
-                  }
+                "enum": [
+                  "claude",
+                  "pi"
                 ]
               },
               "backend_source": {
@@ -484,70 +477,6 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
               "reasoning_source": {
                 "type": "string",
                 "minLength": 1
-              },
-              "workers": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "backend",
-                    "backend_source",
-                    "model",
-                    "reasoning",
-                    "model_source",
-                    "reasoning_source"
-                  ],
-                  "properties": {
-                    "backend": {
-                      "anyOf": [
-                        {
-                          "type": "null"
-                        },
-                        {
-                          "enum": [
-                            "claude",
-                            "pi"
-                          ]
-                        }
-                      ]
-                    },
-                    "backend_source": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "model": {
-                      "anyOf": [
-                        {
-                          "type": "null"
-                        },
-                        {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      ]
-                    },
-                    "reasoning": {
-                      "anyOf": [
-                        {
-                          "type": "null"
-                        },
-                        {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      ]
-                    },
-                    "model_source": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "reasoning_source": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  }
-                }
               }
             }
           }
@@ -555,11 +484,11 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
       }
     }
   },
-  "semantics": "The output of configure_workers. action is list when the run changed nothing and was asked for nothing, set when it set a model or level, unset when it removed an entry. backend is the program whose entries were read or changed and backend_from how it was found: --backend, otherwise the entry of the file's backend section that chooses the backend of the named role, Operation or default (such as backend.operations.implement.default), otherwise the main session's variable. worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the primary worktree; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file's entry for the backend as written after the change. effective maps every catalog Operation that launches workers to its worker roles, each with the backend a worker of that role would run on and the entry or main session variable it came from (backend null when neither settles it, with the reason as its source), and the model and reasoning level it would run with in that backend's section and the entry each came from, or null with the source \"the backend's own default\". A role that launches several workers, such as spec_panel's reviewer, also has workers: each worker number the role may use, from 1, with the same fields for that worker alone, whose entries may come from the role's workers entries (such as claude.operations.spec_panel.roles.reviewer.workers.2). A behaviour or field change increments the version.",
+  "semantics": "The output of configure_workers. action is list when the run changed nothing, set when it set a backend, model or level, unset when it removed an entry. backend is the program whose candidates were listed or against which a change was checked: the program the named entry (the default, an Operation's default or one worker's) runs on once the change is applied, pi when no entry chooses one, or for a listing the program --candidates names; backend_from says which: --backend, the entry that chose it (such as operations.spec_panel.workers.chair), --candidates, or Concorde's default worker backend. worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the primary worktree; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file as written after the change. effective maps every catalog Operation that launches workers to its worker ids, each with the backend that worker runs on and the entry it came from (or Concorde's default worker backend), and the model and reasoning level it runs with and the entry each came from, or null with the source \"the backend's own default\". A behaviour or field change increments the version.",
   "example": {
     "action": "set",
     "backend": "pi",
-    "backend_from": "CONCORDE_CLIENT=pi",
+    "backend_from": "Concorde's default worker backend",
     "worktree": "/work/shop",
     "config": "/work/shop/.concorde/worker-models.json",
     "changed": true,
@@ -601,65 +530,79 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
       "note": "pi lists the models it has credentials for in ~/.pi/agent; workers get a copy of its auth.json and models.json."
     },
     "configured": {
+      "schema_version": 3,
       "default": {
         "model": "anthropic/claude-sonnet-5",
         "reasoning": "medium"
       },
       "operations": {
-        "spec_review": {
-          "roles": {
-            "checker": {
-              "reasoning": "low"
+        "spec_panel": {
+          "workers": {
+            "reviewer2": {
+              "model": "local-openai/gpt-6",
+              "reasoning": "high"
+            },
+            "chair": {
+              "backend": "claude",
+              "model": "opus"
             }
           }
         }
       }
     },
     "effective": {
+      "implement": {
+        "worker": {
+          "backend": "pi",
+          "backend_source": "Concorde's default worker backend",
+          "model": "anthropic/claude-sonnet-5",
+          "reasoning": "medium",
+          "model_source": "default",
+          "reasoning_source": "default"
+        }
+      },
       "spec_review": {
         "reviewer": {
           "backend": "pi",
-          "backend_source": "CONCORDE_CLIENT=pi",
+          "backend_source": "Concorde's default worker backend",
           "model": "anthropic/claude-sonnet-5",
           "reasoning": "medium",
-          "model_source": "pi.default",
-          "reasoning_source": "pi.default"
+          "model_source": "default",
+          "reasoning_source": "default"
         },
         "checker": {
           "backend": "pi",
-          "backend_source": "CONCORDE_CLIENT=pi",
+          "backend_source": "Concorde's default worker backend",
           "model": "anthropic/claude-sonnet-5",
-          "reasoning": "low",
-          "model_source": "pi.default",
-          "reasoning_source": "pi.operations.spec_review.roles.checker"
+          "reasoning": "medium",
+          "model_source": "default",
+          "reasoning_source": "default"
         }
       },
       "spec_panel": {
-        "reviewer": {
-          "backend": "claude",
-          "backend_source": "CLAUDECODE=1",
-          "model": "claude-sonnet-5",
+        "reviewer1": {
+          "backend": "pi",
+          "backend_source": "Concorde's default worker backend",
+          "model": "anthropic/claude-sonnet-5",
           "reasoning": "medium",
-          "model_source": "claude.operations.spec_panel.roles.reviewer",
-          "reasoning_source": "claude.operations.spec_panel.roles.reviewer",
-          "workers": {
-            "1": {
-              "backend": "claude",
-              "backend_source": "CLAUDECODE=1",
-              "model": "claude-sonnet-5",
-              "reasoning": "medium",
-              "model_source": "claude.operations.spec_panel.roles.reviewer",
-              "reasoning_source": "claude.operations.spec_panel.roles.reviewer"
-            },
-            "2": {
-              "backend": "claude",
-              "backend_source": "CLAUDECODE=1",
-              "model": "claude-opus-5-5",
-              "reasoning": "high",
-              "model_source": "claude.operations.spec_panel.roles.reviewer.workers.2",
-              "reasoning_source": "claude.operations.spec_panel.roles.reviewer.workers.2"
-            }
-          }
+          "model_source": "default",
+          "reasoning_source": "default"
+        },
+        "reviewer2": {
+          "backend": "pi",
+          "backend_source": "Concorde's default worker backend",
+          "model": "local-openai/gpt-6",
+          "reasoning": "high",
+          "model_source": "operations.spec_panel.workers.reviewer2",
+          "reasoning_source": "operations.spec_panel.workers.reviewer2"
+        },
+        "chair": {
+          "backend": "claude",
+          "backend_source": "operations.spec_panel.workers.chair",
+          "model": "opus",
+          "reasoning": null,
+          "model_source": "operations.spec_panel.workers.chair",
+          "reasoning_source": "the backend's own default"
         }
       }
     }

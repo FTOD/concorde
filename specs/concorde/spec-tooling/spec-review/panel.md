@@ -12,11 +12,11 @@ concorde run spec_panel [--task <task-id>] --modules <id>[,<id>...] [--reviewers
 `--modules` names one or more registered Modules of the task worktree. `--reviewers` is the number
 of reviewers on each Module's panel, 3 by default. Without `--task` the panel runs [without a
 task](../../operations/module.md#concept.operations.no-task) on the primary worktree and judges the
-Specs as merged there. The `reviewer` and the `chair` are the Operation's two worker roles. A reviewer's
-seat is its [worker number](../../agents/workers/module.md#concept.workers.model-configuration), 1
-to 5, so the worker model configuration may give each role, and each reviewer on its own, its own
-backend, model and thinking level: three reviewers on three different models make their reviews
-more independent still. The Operation takes no other argument and needs no user consent.
+Specs as merged there. Each reviewer is the worker `reviewer<seat>`, `reviewer1` to `reviewer5`,
+and the chair the worker `chair`; by these [worker
+ids](../../agents/workers/module.md#concept.workers.worker-id) the worker model configuration gives
+each reviewer and the chair its own backend, model and thinking level, and three reviewers on
+three different models make their reviews more independent still. The Operation takes no other argument and needs no user consent.
 
 The panel runs as a LangGraph graph, one of Concorde's Python dependencies. A host whose
 interpreter cannot import it, such as an install made with `--without-dependencies`, fails the run
@@ -118,7 +118,7 @@ directory.
 ```concorde-contract
 {
   "id": "contract.spec-review.panel-payload",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "required": [
@@ -178,6 +178,7 @@ directory.
                 "additionalProperties": false,
                 "required": [
                   "reviewer",
+                  "worker",
                   "status",
                   "findings"
                 ],
@@ -185,6 +186,15 @@ directory.
                   "reviewer": {
                     "type": "integer",
                     "minimum": 1
+                  },
+                  "worker": {
+                    "enum": [
+                      "reviewer1",
+                      "reviewer2",
+                      "reviewer3",
+                      "reviewer4",
+                      "reviewer5"
+                    ]
                   },
                   "status": {
                     "enum": [
@@ -370,7 +380,7 @@ directory.
       }
     }
   },
-  "semantics": "The outcome of one Spec panel. For each Module, reviews holds every reviewer's own findings in seat order, each labelled r<seat>.<n> by the host; a reviewer that did not finish has its status and whatever findings it returned before stopping, usually none. findings is the chair's report: each merged finding lists in sources the labels it merges, with the chair's note, and reviewers counts the distinct reviewers among those labels. rejected holds the labels the chair judged not to hold, each with its reason. In a complete report every label appears exactly once, in one finding's sources or as one rejection. A Module's outcome is incomplete when its panel stopped, changes_required when a report finding is blocking, and accepted otherwise; the verdict is the highest outcome in the order accepted, changes_required, incomplete. Findings, merges, notes and rejections are worker claims; the host labels, normalizes, counts and checks the accounting. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec panel. For each Module, reviews holds every reviewer's own findings in seat order, each reviewer with its seat and its worker id reviewer<seat>, each labelled r<seat>.<n> by the host; a reviewer that did not finish has its status and whatever findings it returned before stopping, usually none. findings is the chair's report: each merged finding lists in sources the labels it merges, with the chair's note, and reviewers counts the distinct reviewers among those labels. rejected holds the labels the chair judged not to hold, each with its reason. In a complete report every label appears exactly once, in one finding's sources or as one rejection. A Module's outcome is incomplete when its panel stopped, changes_required when a report finding is blocking, and accepted otherwise; the verdict is the highest outcome in the order accepted, changes_required, incomplete. Findings, merges, notes and rejections are worker claims; the host labels, normalizes, counts and checks the accounting. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -394,7 +404,8 @@ directory.
                 "problem": "The requirement states two obligations.",
                 "label": "r1.1"
               }
-            ]
+            ],
+            "worker": "reviewer1"
           },
           {
             "reviewer": 2,
@@ -421,7 +432,8 @@ directory.
                 "suggestion": "Define the retry limit first.",
                 "label": "r2.2"
               }
-            ]
+            ],
+            "worker": "reviewer2"
           }
         ],
         "findings": [

@@ -97,7 +97,7 @@ class SpecPanelTests(unittest.TestCase):
         found = []
         for run_id in envelope["worker_runs"]:
             record = self.record(run_id)
-            if record["role"] == role:
+            if record["worker"].rstrip("0123456789") == role:
                 work = Path(record["run_directory"]) / "work"
                 found.append(
                     json.loads((work / "fake-round-1.json").read_text())["prompt"]
@@ -205,21 +205,17 @@ class SpecPanelTests(unittest.TestCase):
         self.assertEqual("", self.status())
 
     @verifies("scenario.spec-review.panel-worker-models")
-    def test_each_reviewer_runs_on_the_model_configured_for_its_seat(self):
+    def test_each_reviewer_runs_on_the_model_configured_for_its_worker_id(self):
         config = {
-            "schema_version": 2,
-            "claude": {
-                "operations": {
-                    "spec_panel": {
-                        "roles": {
-                            "reviewer": {
-                                "model": "claude-sonnet-5",
-                                "reasoning": "medium",
-                                "workers": {"2": {"model": "claude-opus-5-5"}},
-                            },
-                            "chair": {"model": "claude-opus-5-5", "reasoning": "high"},
-                        }
-                    }
+            "schema_version": 3,
+            "default": {"backend": "claude"},
+            "operations": {
+                "spec_panel": {
+                    "default": {"model": "claude-sonnet-5", "reasoning": "medium"},
+                    "workers": {
+                        "reviewer2": {"model": "claude-opus-5-5"},
+                        "chair": {"model": "claude-opus-5-5", "reasoning": "high"},
+                    },
                 }
             },
         }
@@ -239,15 +235,15 @@ class SpecPanelTests(unittest.TestCase):
             record = self.record(run_id)
             work = Path(record["run_directory"]) / "work"
             argv = json.loads((work / "fake-round-1.json").read_text())["argv"]
-            chosen[(record["role"], record["number"])] = (
+            chosen[record["worker"]] = (
                 argv[argv.index("--model") + 1],
                 argv[argv.index("--effort") + 1],
             )
         self.assertEqual(
             {
-                ("reviewer", 1): ("claude-sonnet-5", "medium"),
-                ("reviewer", 2): ("claude-opus-5-5", "medium"),
-                ("chair", None): ("claude-opus-5-5", "high"),
+                "reviewer1": ("claude-sonnet-5", "medium"),
+                "reviewer2": ("claude-opus-5-5", "medium"),
+                "chair": ("claude-opus-5-5", "high"),
             },
             chosen,
         )
@@ -258,7 +254,8 @@ class SpecPanelTests(unittest.TestCase):
         ]
         self.assertTrue(
             any(
-                "reviewer 2 (backend from" in detail and "claude-opus-5-5" in detail
+                detail.startswith("module.a reviewer2: reviewer2 (backend from")
+                and "claude-opus-5-5" in detail
                 for detail in models
             ),
             models,
@@ -344,7 +341,7 @@ class SpecPanelTests(unittest.TestCase):
         (short,) = error["causes"]
         self.assertEqual("panel_short", short["code"])
         (reviewer,) = short["causes"]
-        self.assertIn("panel of module.a reviewer 2", reviewer["actor"])
+        self.assertIn("panel of module.a reviewer2", reviewer["actor"])
         worker_link = link_at(error, "worker")
         self.assertEqual("The entry of module.c is needed.", worker_link["detail"])
 
