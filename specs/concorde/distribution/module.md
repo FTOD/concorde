@@ -56,7 +56,9 @@ Protocol change's fresh digests, binds the configuration and refreshes this chec
 <a id="concept.distribution.cli"></a>
 
 **The command line.** `scripts/concorde.py` (or the `concorde.sh`/`concorde.ps1` wrappers) takes a
-global `--project-root` and one subcommand:
+global `--project-root` and one subcommand. In a source checkout that `uv sync` prepared, it runs
+itself again on the checkout's own `.venv` interpreter, which holds Concorde's Python
+dependencies; an installed copy has no `.venv` and runs on Concorde's own environment:
 
 | Command | Does | Owned by |
 | --- | --- | --- |
@@ -86,11 +88,16 @@ lives, or a pi task-session round whose supervisor lives, each named in the refu
 `concorde_busy` ([requirements](requirements.md#req.distribution.idle-install)), since replacing
 the framework copy under them would change their code halfway; the progress file of an
 Operation's worker, which lies beside the Operation's and names the same host, is not a run of its
-own — then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy;
-it needs only the Python standard library, and leaves out `scripts/e2e/`, which only
-[End-to-end testing](../e2e/module.md) uses), Concorde's own Python environment, a venv at
-`.concorde/framework/python/` made from the installer's interpreter or `--python` (Python 3.11 or
-newer, else nothing more is written), the `concorde` command as `.concorde/bin/concorde`, which
+own — then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy,
+and leaving out `scripts/e2e/`, which only [End-to-end testing](../e2e/module.md) uses),
+Concorde's own Python environment, a venv at `.concorde/framework/python/` made from the
+installer's interpreter or `--python` (Python 3.11 or newer, else nothing more is written),
+Concorde's Python dependencies in that environment, such as LangGraph, which `spec_panel` runs
+on — exactly the runtime part of the checkout's `uv.lock`, exported with `uv export` to
+`.concorde/framework/requirements.txt` and installed with `uv pip install --require-hashes`, and
+refused with `uv_missing` when `uv` is not on `PATH` or `python_dependencies_failed` with the
+failing command's output when a step fails (`--without-dependencies` skips them, and the
+Operations that need them then refuse) — the `concorde` command as `.concorde/bin/concorde`, which
 runs Concorde only in that environment, with the caller's `PYTHONPATH`, `PYTHONHOME` and user
 site-packages left out, so an activated project venv never becomes Concorde's interpreter,
 the Protocol copy under `.concorde/protocol/` and Concorde-owned defaults only where absent, the
@@ -103,7 +110,9 @@ later install with the same pin
 ([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
 plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/worker-models.json`,
 `.concorde/framework/`, `.concorde/tools/` and `.claude/worktrees/`, where task worktrees go, and a receipt
-`.concorde/install.json`. The receipt names the checkout installed from as `source`, the commit
+`.concorde/install.json`. The receipt names the installed dependencies under `dependencies`
+(the requirements file, the digest of the `uv.lock` they came from and the number of packages, or
+`null` without them), the checkout installed from as `source`, the commit
 it was at as `source_commit` (`null` outside a Git checkout) and the `mode`, `normal` or, for a
 [develop install](../dogfooding/module.md#concept.dogfooding.develop-install) made with
 `--develop`, `develop`. It lists under `files` every file Concorde owns in the project,

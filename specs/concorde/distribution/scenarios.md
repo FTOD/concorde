@@ -122,6 +122,15 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the receipt names that environment, the interpreter it was made from and its version
 - BUT an installer given an interpreter older than Python 3.11 is refused with `python_too_old`
 
+### scenario.distribution.python-dependencies — Concorde's own environment gets its locked dependencies
+
+- GIVEN a Concorde checkout whose `uv.lock` locks its runtime dependencies, and `uv` on `PATH`
+- WHEN the installer runs
+- THEN it exports the lock's runtime part, without the development group, to `.concorde/framework/requirements.txt`
+- AND installs exactly those hashed versions into `.concorde/framework/python/` and checks that the environment imports LangGraph
+- AND the receipt names the requirements file, the digest of the lock and the number of packages
+- BUT without `uv` it is refused with `uv_missing`, a failing step with `python_dependencies_failed` and the step's output, and with `--without-dependencies` the receipt's `dependencies` is `null`
+
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
 - GIVEN a project where Concorde is installed and committed, and a linked worktree of it, which has no Framework copy of its own

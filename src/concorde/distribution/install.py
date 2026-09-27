@@ -5,7 +5,9 @@ It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol``
 the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
 ``.claude/skills/concorde/SKILL.md`` and a delimited block in ``CLAUDE.md``, Concorde-owned
 defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
-state and task worktrees, and a receipt ``.concorde/install.json``. With ``pi`` it also places
+state and task worktrees, and a receipt ``.concorde/install.json``. Concorde's own Python
+environment under ``.concorde/framework/python/`` receives the locked runtime dependencies of the
+package's ``uv.lock``, such as LangGraph, installed with ``uv``. With ``pi`` it also places
 the locked pi runtime under ``.concorde/tools/pi-runtime/``, Concorde's pi extension under
 ``.pi/extensions/concorde/`` and the guidance as the pi skill ``.pi/skills/concorde/SKILL.md``.
 Every rendered workflow is installed for Claude Code under ``.claude/workflows/`` with the
@@ -21,6 +23,7 @@ the project configuration.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -130,7 +133,7 @@ def refusal(
         reason = "environment"
         explanation = (
             "the installer cannot change what it runs among: running Concorde processes, the "
-            "network, npm or the interpreter"
+            "network, npm, uv or the interpreter"
         )
     return link(
         "component", actor, code, message, reason=reason, explanation=explanation
@@ -316,14 +319,16 @@ def install(
     run: Callable | None = None,
     python: str | Path | None = None,
     develop: bool = False,
+    dependencies: bool = True,
 ) -> dict:
     """Install ``package`` into ``project``; return the receipt.
 
     With ``d2`` false the docsite's diagram program is left to the developer. ``fetch`` replaces
     the download of the pinned ``d2`` archive, for tests and offline mirrors. With ``pi`` the pi
-    runtime, extension and skill are installed too; ``run`` replaces the ``npm ci`` call.
-    ``python`` is the interpreter Concorde's own environment is made from, the installer's own by
-    default. ``develop`` makes a develop install.
+    runtime, extension and skill are installed too; ``run`` replaces the ``npm ci`` and ``uv``
+    calls. ``python`` is the interpreter Concorde's own environment is made from, the installer's
+    own by default. ``develop`` makes a develop install. With ``dependencies`` false Concorde's
+    Python dependencies are left out of its environment, and the Operations that need them refuse.
     """
     project, package = Path(project).resolve(), Path(package).resolve()
     if not project.is_dir():
@@ -382,6 +387,11 @@ def install(
     written = install_project_defaults(project, package)
     _copy_runtime(package, project / FRAMEWORK)
     own_python = _own_python(project, Path(python or sys.executable))
+    installed = (
+        _python_dependencies(project, package, run or subprocess.run)
+        if dependencies
+        else None
+    )
     command = project / COMMAND
     command.parent.mkdir(parents=True, exist_ok=True)
     # A task worktree has no framework copy of its own (Git ignores it) unless the task
@@ -447,6 +457,9 @@ def install(
         "framework": FRAMEWORK,
         "command": COMMAND,
         "python": own_python,
+        # The locked Python dependencies placed in Concorde's own environment, or None when the
+        # install left them out.
+        "dependencies": installed,
         "tools": tools,
         # Every file Concorde owns, whether this install wrote it or found it in place: a
         # default is written only when absent, yet stays Concorde's.
@@ -528,6 +541,7 @@ def update(
         run=run,
         python=python or (previous.get("python") or {}).get("base"),
         develop=previous.get("mode") == "develop",
+        dependencies=previous.get("dependencies", {}) is not None,
     )
     config_path = project / ".concorde/config.json"
     rebound = None
@@ -623,6 +637,81 @@ def _own_python(project: Path, base: Path) -> dict:
     }
 
 
+REQUIREMENTS = f"{FRAMEWORK}/requirements.txt"
+
+
+def _python_dependencies(project: Path, package: Path, run: Callable) -> dict:
+    """Install the package's locked Python dependencies into Concorde's own environment.
+
+    ``uv export`` writes the runtime part of the package's ``uv.lock`` (no development group, no
+    project itself) with every hash, and ``uv pip install --require-hashes`` installs exactly those
+    versions; the environment has no pip of its own. A check that the environment imports every
+    top-level dependency closes the step.
+    """
+    uv = shutil.which("uv")
+    if uv is None:
+        raise InstallError(
+            "uv_missing",
+            "Concorde's Python dependencies are installed with uv, which is not on PATH; install "
+            "uv (https://docs.astral.sh/uv/), or install with --without-dependencies and accept "
+            "that the Operations needing them (spec_panel) refuse",
+        )
+    requirements = project / REQUIREMENTS
+    interpreter = project / OWN_PYTHON / "bin/python"
+    steps = [
+        [
+            uv,
+            "export",
+            "--frozen",
+            "--no-dev",
+            "--no-emit-project",
+            "--format",
+            "requirements-txt",
+            "--project",
+            str(package),
+            "--output-file",
+            str(requirements),
+        ],
+        [
+            uv,
+            "pip",
+            "install",
+            "--python",
+            str(interpreter),
+            "--require-hashes",
+            "--no-deps",
+            "-r",
+            str(requirements),
+        ],
+        [str(interpreter), "-E", "-s", "-c", "import langgraph.graph"],
+    ]
+    for command in steps:
+        try:
+            completed = run(
+                command, cwd=project, capture_output=True, text=True, timeout=900
+            )
+        except (OSError, subprocess.SubprocessError) as error:
+            raise InstallError(
+                "python_dependencies_failed", f"`{' '.join(command)}` failed: {error}"
+            ) from error
+        if completed.returncode != 0:
+            output = ((completed.stdout or "") + (completed.stderr or ""))[-2000:]
+            raise InstallError(
+                "python_dependencies_failed",
+                f"`{' '.join(command)}` exited with {completed.returncode} while installing "
+                f"Concorde's Python dependencies into {interpreter.parent.parent}; its output "
+                f"ends with: {output.strip() or '(empty)'}",
+            )
+    lines = requirements.read_text().splitlines() if requirements.is_file() else []
+    return {
+        "requirements": REQUIREMENTS,
+        "lock_sha256": hashlib.sha256((package / "uv.lock").read_bytes()).hexdigest(),
+        "packages": sum(
+            1 for line in lines if "==" in line and not line.startswith("#")
+        ),
+    }
+
+
 def main(argv) -> int:
     import argparse
 
@@ -641,6 +730,12 @@ def main(argv) -> int:
     parser.add_argument(
         "--python",
         help="the interpreter Concorde's own environment is made from (default: this one)",
+    )
+    parser.add_argument(
+        "--without-dependencies",
+        action="store_true",
+        help="do not install Concorde's Python dependencies (with uv); the Operations that "
+        "need them, such as spec_panel, then refuse",
     )
     parser.add_argument(
         "--develop",
@@ -665,6 +760,7 @@ def main(argv) -> int:
                 pi=arguments.pi,
                 python=arguments.python,
                 develop=arguments.develop,
+                dependencies=not arguments.without_dependencies,
             )
     except InstallError as error:
         sys.stdout.write(
@@ -680,8 +776,8 @@ __all__ = [
     "InstallError",
     "active_runs",
     "install",
-    "refusal",
     "main",
     "open_tasks",
+    "refusal",
     "update",
 ]

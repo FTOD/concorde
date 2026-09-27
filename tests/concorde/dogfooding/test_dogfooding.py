@@ -56,7 +56,7 @@ class DevelopInstallTests(unittest.TestCase):
     def test_a_develop_install_records_its_source_and_carries_the_guidance(self):
         package = repository(self)
         project = new_project(package)
-        receipt = install(project, package, d2=False, develop=True)
+        receipt = install(project, package, d2=False, develop=True, dependencies=False)
         self.assertEqual("develop", receipt["mode"])
         self.assertEqual(str(package), receipt["source"])
         self.assertEqual(git(package, "rev-parse", "HEAD"), receipt["source_commit"])
@@ -77,7 +77,7 @@ class DevelopInstallTests(unittest.TestCase):
     def test_a_normal_install_carries_no_develop_guidance(self):
         package = repository(self)
         project = new_project(package)
-        receipt = install(project, package, d2=False)
+        receipt = install(project, package, d2=False, dependencies=False)
         self.assertEqual("normal", receipt["mode"])
         self.assertEqual(git(package, "rev-parse", "HEAD"), receipt["source_commit"])
         self.assertNotIn(
@@ -105,7 +105,7 @@ class DevelopInstallTests(unittest.TestCase):
             with self.subTest(code=code, source=source.name):
                 project = new_project(package, f"project-{index}")
                 with self.assertRaises(InstallError) as raised:
-                    install(project, source, d2=False, develop=True)
+                    install(project, source, d2=False, develop=True, dependencies=False)
                 self.assertEqual(code, raised.exception.code)
                 for fragment in fragments:
                     self.assertIn(fragment, str(raised.exception))
@@ -114,7 +114,7 @@ class DevelopInstallTests(unittest.TestCase):
         git(package, "checkout", "-q", "--detach")
         project = new_project(package, "project-detached")
         with self.assertRaises(InstallError) as raised:
-            install(project, package, d2=False, develop=True)
+            install(project, package, d2=False, develop=True, dependencies=False)
         self.assertEqual("develop_source_detached", raised.exception.code)
         self.assertEqual([".git"], [p.name for p in project.iterdir()])
 
@@ -122,7 +122,7 @@ class DevelopInstallTests(unittest.TestCase):
     def test_an_update_installs_the_new_commit_in_develop_mode(self):
         package = repository(self)
         project = new_project(package)
-        first = install(project, package, d2=False, develop=True)
+        first = install(project, package, d2=False, develop=True, dependencies=False)
         (package / "NOTE.md").write_text("A fix merged into the primary branch.\n")
         git(package, "add", "NOTE.md")
         git(package, "commit", "-qm", "fix")
@@ -143,7 +143,7 @@ class DevelopInstallTests(unittest.TestCase):
     def test_an_update_from_a_dirty_repository_changes_nothing(self):
         package = repository(self)
         project = new_project(package)
-        install(project, package, d2=False, develop=True)
+        install(project, package, d2=False, develop=True, dependencies=False)
         receipt = (project / ".concorde/install.json").read_bytes()
         marker = project / ".concorde/framework/scripts/concorde.py"
         before = marker.stat().st_mtime_ns

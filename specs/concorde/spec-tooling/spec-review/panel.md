@@ -16,6 +16,10 @@ Specs as merged there. The `reviewer` and the `chair` are the Operation's two wo
 worker model configuration may give each its own model; every reviewer of a panel runs on the
 `reviewer` model. The Operation takes no other argument and needs no user consent.
 
+The panel runs as a LangGraph graph, one of Concorde's Python dependencies. A host whose
+interpreter cannot import it, such as an install made with `--without-dependencies`, fails the run
+with `langgraph_unavailable` before any worker is launched.
+
 ## Host sequence
 
 | # | Step | Actor | On failure |
