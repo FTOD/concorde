@@ -21,7 +21,6 @@
         "relies_on": [
           "concept.execution.runner",
           "concept.execution.run",
-          "concept.execution.recorded-command",
           "concept.execution.run-result",
           "concept.execution.workspace-binding",
           "concept.execution.workspace-lock",
@@ -50,6 +49,20 @@
       {
         "target": "module.adoption",
         "meaning": "#uses-adoption"
+      },
+      {
+        "target": "module.scaffold",
+        "meaning": "#uses-scaffold",
+        "relies_on": [
+          "contract.scaffold.record"
+        ]
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-commands",
+        "relies_on": [
+          "concept.commands.execution-command"
+        ]
       }
     ],
     "includes": [

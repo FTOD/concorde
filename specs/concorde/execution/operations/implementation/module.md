@@ -8,7 +8,7 @@ audits it and runs the configured checks, resuming the worker with failures for 
 of rounds; `test` runs the checks itself and lets a read-only worker interpret
 the results into a test report. Neither worker ever changes a Spec — a missing or contradictory
 promise stops the run with a Spec gap — and `implement`'s only Spec edit is the Operation clearing a
-pending marker once its file exists; readiness and delivery are the recorded commands of other
+pending marker once its file exists; readiness and delivery are the execution commands of other
 Modules.
 
 ## Terminology

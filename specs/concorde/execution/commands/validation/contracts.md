@@ -1,6 +1,6 @@
 # Validation contracts
 
-The readiness that the recorded command `task-validation` of [Validation](module.md) returns as its
+The readiness that the execution command `task-validation` of [Validation](module.md) returns as its
 output, and the exact input measurement it is bound to.
 
 ## Input measurement

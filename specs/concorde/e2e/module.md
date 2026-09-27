@@ -188,7 +188,7 @@ record listing the saved results in order and each step with its run.
 
 <a id="uses-execution"></a>
 
-**Execution** runs every workflow step, Operation and recorded command of a test project in the
+**Execution** runs every workflow step, Operation and execution command of a test project in the
 workspace its task worktree is bound as: Tasks writes that
 [workspace binding](../execution/module.md#concept.execution.workspace-binding) when `prepare`
 opens the task, and End-to-end testing never writes it. `watch` reads the run store's progress

@@ -11,7 +11,7 @@ task is part of this guidance, because the task level is the main agent's own wo
 method when it works a task itself, and a task session it delegates the task to starts with the same
 method in the guidance it is given. It is advice to a model, not enforcement — Concorde places no
 permission limits on the main agent, and nothing here constrains the developer. In pi it adds a run
-view, an extension that starts Operations and recorded commands in a task's worktree in the
+view, an extension that starts Operations and execution commands in a task's worktree in the
 background and shows their progress. Distribution renders and installs this Module's content.
 
 ## Terminology
@@ -19,7 +19,7 @@ background and shows their progress. Distribution renders and installs this Modu
 | Term | Definition |
 | --- | --- |
 | Main-session guidance | The instructions, installed as a project skill for Claude Code and for pi and as a `CLAUDE.md` block, that tell the main agent how to work with Concorde. |
-| Run view | The Concorde extension of a pi main session that starts Operations and recorded commands in the background, shows every run and its worker's progress, and wakes the main agent when a run ends. |
+| Run view | The Concorde extension of a pi main session that starts Operations and execution commands in the background, shows every run and its worker's progress, and wakes the main agent when a run ends. |
 | Model picker | The dialog of the pi run view in which the developer chooses, for every worker or one worker by its id, the model and reasoning level of the workers that run on pi. |
 | Questions without a task | The guidance's rule that the Operations which allow it run unbound, in a worktree without a workspace binding such as the primary worktree, for a question or review that changes nothing. |
 | Escalation policy | The rule by which the main agent decides ordinary questions itself, records and reports them, and asks the developer only for decisions with major impact. |
@@ -32,7 +32,7 @@ background and shows their progress. Distribution renders and installs this Modu
 | [Decision log](../tasks/module.md#concept.tasks.decision-log) | |
 | [Workspace binding](../../execution/module.md#concept.execution.workspace-binding) | |
 | [Operation](../../execution/operations/module.md#concept.operations.operation) | |
-| [Recorded command](../../execution/module.md#concept.execution.recorded-command) | |
+| [Execution command](../../execution/commands/module.md#concept.commands.execution-command) | |
 | [Run result](../../execution/module.md#concept.execution.run-result) | |
 | [Unbound run](../../execution/module.md#concept.execution.unbound-run) | |
 | [Issue](../../issues/module.md#concept.issues.issue) | |
@@ -54,7 +54,7 @@ Concorde project's primary worktree that it is the main agent, and gives it a wo
   task, enter its worktree (Claude Code's EnterWorktree), change Specs and code there directly or
   by running [Operations](../../execution/operations/module.md#concept.operations.operation) with
   `concorde run <operation> …` and the
-  [recorded commands](../../execution/module.md#concept.execution.recorded-command)
+  [execution commands](../../execution/commands/module.md#concept.commands.execution-command)
   `concorde task-validation` and `concorde delivery` in background Bash, reading each
   [run result](../../execution/module.md#concept.execution.run-result), and run every `concorde`
   command with the worktree's own copy; leave after delivery. None of these names the task: the
@@ -106,7 +106,7 @@ main -> developer: merge; report the exponential back-off it chose
 **The run view in pi.** In Claude Code the main agent runs `concorde run` and the recorded
 commands in background Bash inside the task worktree and is woken when they exit. In pi the
 installed extension gives the same with more to watch. The `concorde_run` tool takes an Operation
-or a recorded command (`task-validation`, `delivery`, `scaffold`), the task and further arguments,
+or an execution command (`task-validation`, `delivery`, `scaffold`), the task and further arguments,
 and starts `concorde run <operation> …` or `concorde <command> …` as a detached process in the
 task's worktree, found through the task record, since a pi session cannot move into the task
 worktree itself: the task worktree's own `concorde` runs there and reads its workspace binding, so
@@ -117,7 +117,7 @@ with the run identity. The extension follows every run of the project, Operation
 command, through its [run progress file](../../execution/module.md#concept.execution.progress-file)
 in the primary worktree's run store, where every task worktree's binding records its runs, and
 through the [progress file](../../execution/workers/module.md#concept.workers.progress-file) of the
-worker an Operation launched, paired by the runner's process identifier; a recorded command has no
+worker an Operation launched, paired by the runner's process identifier; an execution command has no
 worker. It shows each run as an external job in pi-subagents' FleetView — its workspace (or
 `unbound`) and name, its step, the worker's round and latest tool call, and on its end the
 result's status and summary. A `bg_wait` call without an id waits for the running ones (with an id
@@ -281,7 +281,7 @@ top of Coordination. Nothing in Concorde calls it: the developer talks to it, an
 skill and `CLAUDE.md` block are Concorde's only way to reach a session at all. It calls only
 downward. At level 2 it opens a task and either works it itself or delegates it to a task session;
 from inside a task, its own or a task session's, workflows (level 3) and runs (level 4), Operations
-and recorded commands, are started in the task worktree; and it reaches workers (level 5) only
+and execution commands, are started in the task worktree; and it reaches workers (level 5) only
 through an Operation, touching Workers otherwise only to watch a run and to configure worker
 models. What comes back up is structured: run results, workflow results, and task-session reports
 and escalations, each failure carrying its
@@ -297,7 +297,7 @@ mainsession: Main session
 tasks: Tasks
 tasksession: Task sessions
 workflows: Workflows
-runs: "Runs: Operations and recorded commands"
+runs: "Runs: Operations and execution commands"
 workers: Workers
 mainsession -> tasks: opens, merges, closes
 mainsession -> tasksession: delegates a task to
@@ -362,7 +362,7 @@ main agent copy a report's decisions and problems there.
 <a id="uses-execution"></a>
 
 **Execution** runs the work the main agent starts in a task worktree: `concorde run` for an
-Operation and the [recorded commands](../../execution/module.md#concept.execution.recorded-command)
+Operation and the [execution commands](../../execution/commands/module.md#concept.commands.execution-command)
 `concorde task-validation`, `concorde delivery` and `concorde scaffold`, each reading the
 worktree's [workspace binding](../../execution/module.md#concept.execution.workspace-binding), and
 the Operations that run [unbound](../../execution/module.md#concept.execution.unbound-run) in the
@@ -378,6 +378,14 @@ primary worktree's run store, which every task worktree's binding names as its r
 **Operations** provides the [Operation](../../execution/operations/module.md#concept.operations.operation)
 catalog: which Operations exist, what each takes and which may run unbound. The guidance names
 them, and the main agent chooses which to run for a task's next step.
+
+<a id="uses-commands"></a>
+
+**Commands** provides the catalog of
+[execution commands](../../execution/commands/module.md#concept.commands.execution-command), the
+deterministic runs `task-validation`, `delivery` and `scaffold` that the main agent starts by name
+in a task worktree. The guidance names them apart from the Operations, since they launch no worker
+and a caller starts them without `run`.
 
 ### Beside the levels
 
@@ -443,7 +451,7 @@ observes. The skill is also installed for pi as `.pi/skills/concorde/SKILL.md`.
 The **pi run view** is `src/concorde/main_session/pi_extension.ts`, installed as
 `.pi/extensions/concorde/index.ts`, with the pure reading of progress files in `pi_runs.ts` beside
 it. It also sets `CONCORDE_CLIENT=pi` for every command the session starts, so a run it starts
-launches pi workers and `concorde task session` starts pi task sessions. It tells a recorded command
+launches pi workers and `concorde task session` starts pi task sessions. It tells an execution command
 from an Operation by name and starts the first as `concorde <command>`, the second as
 `concorde run <operation>`. `pi_runs.ts` also reads the progress files of task-session
 rounds. The tests run `pi_runs.ts` under Node against progress files; the extension itself needs a

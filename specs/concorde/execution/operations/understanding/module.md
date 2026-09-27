@@ -61,7 +61,7 @@ is an **assessment**, defined by the
 [assessment contract](contracts.md#contract.understanding.assessment): for each bound Module, what
 it promises that matters for the goal, and whether the Spec is **sufficient**. When it is and a
 plan was requested, the plan names the Modules to change, the files to declare as pending entries
-and where, the ordered next runs — Operations, and the recorded commands `task-validation` and
+and where, the ordered next runs — Operations, and the execution commands `task-validation` and
 `delivery` that end a task's work — and the open decisions the main agent has to take. The
 plan has no separate Operation: breaking work into steps is one use of understanding.
 

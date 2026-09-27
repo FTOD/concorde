@@ -1,0 +1,242 @@
+"""The ``concorde scaffold`` execution command end to end on an existing codebase, after a survey
+with the fake ``claude``."""
+
+from __future__ import annotations
+
+import json
+
+from concorde.scaffold.command import SCAFFOLD_RECORD_SCHEMA
+from concorde.spec.validation import validate_repository
+from concorde.spec.verification import verifies
+from tests.concorde.support.adoption_case import PROPOSAL, AdoptionCase, contract
+from tests.concorde.support.brownfield_project import git
+
+
+class ScaffoldTests(AdoptionCase):
+    def test_the_schema_is_the_contract(self):
+        self.assertEqual(
+            contract(
+                "specs/concorde/execution/commands/scaffold/contracts.md",
+                "contract.scaffold.record",
+            ),
+            SCAFFOLD_RECORD_SCHEMA,
+        )
+
+    # --- scaffold --------------------------------------------------------------------------
+
+    @verifies("scenario.scaffold.creates")
+    def test_a_scaffold_creates_the_proposed_modules(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        config_before = (worktree / ".concorde/config.json").read_text()
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        record = envelope["output"]
+        self.assertEqual(
+            ["module.checkout", "module.inventory"],
+            [item["id"] for item in record["created"]],
+        )
+        checkout = worktree / "specs/project/checkout/module.md"
+        text = checkout.read_text()
+        self.assertIn("Checkout turns a basket into one order.", text)
+        self.assertIn("not specified yet", text)
+        self.assertIn('<a id="uses-inventory"></a>', text)
+        self.assertTrue((worktree / "specs/project/inventory/module.md.json").is_file())
+        root = json.loads((worktree / "specs/project/module.md.json").read_text())
+        self.assertEqual(
+            ["module.checkout", "module.inventory"],
+            [item["target"] for item in root["module"]["contains"]],
+        )
+        entries = [
+            e
+            for r in root["defines"]
+            if r["type"] == "realization"
+            for e in r["entries"]
+        ]
+        self.assertIn("src/db.py", entries)
+        self.assertFalse(
+            any(
+                e.startswith(("src/checkout", "src/inventory")) or e == "src/"
+                for e in entries
+            )
+        )
+        self.assertEqual(sorted(entries), sorted(record["parent_entries_after"]))
+        self.assertIn(
+            '<a id="contains-checkout"></a>',
+            (worktree / "specs/project/module.md").read_text(),
+        )
+        registry = json.loads((worktree / ".concorde/specs.json").read_text())
+        self.assertEqual(
+            {"module.shop", "module.checkout", "module.inventory"},
+            {item["id"] for item in registry["modules"]},
+        )
+        self.assertEqual(
+            config_before, (worktree / ".concorde/config.json").read_text()
+        )
+        report = validate_repository(worktree)
+        self.assertEqual(
+            [], [f.message for f in report.findings if f.severity == "error"]
+        )
+
+    @verifies("scenario.scaffold.vendored-external")
+    def test_vendored_code_becomes_external_material_of_its_user(self):
+        worktree = self.open()
+        vendored = json.loads(json.dumps(PROPOSAL))
+        vendored["externals"] = [
+            {
+                "path": "src/db.py",
+                "used_by": "module.checkout",
+                "reason": "a copy of another project's connection helper",
+            }
+        ]
+        status, survey = self.survey(vendored)
+        self.assertEqual(0, status, survey)
+        self.assertNotIn("src/db.py", survey["output"]["remaining_entries"])
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertEqual(vendored["externals"], envelope["output"]["externals"])
+        checkout = json.loads(
+            (worktree / "specs/project/checkout/module.md.json").read_text()
+        )
+        self.assertEqual(
+            [
+                {
+                    "kind": "external",
+                    "target": "src/db.py",
+                    "reason": "a copy of another project's connection helper",
+                }
+            ],
+            checkout["module"]["includes"],
+        )
+        root = json.loads((worktree / "specs/project/module.md.json").read_text())
+        entries = [
+            e
+            for r in root["defines"]
+            if r["type"] == "realization"
+            for e in r["entries"]
+        ]
+        self.assertNotIn("src/db.py", entries)
+        report = validate_repository(worktree)
+        self.assertEqual(
+            [], [f.message for f in report.findings if f.severity == "error"]
+        )
+        # Vendored code is never also a child's entry.
+        overlapping = json.loads(json.dumps(PROPOSAL))
+        overlapping["externals"] = [
+            {"path": "src/checkout/", "used_by": "module.checkout", "reason": "r"}
+        ]
+        _, envelope = self.survey(overlapping)
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn("overlaps a child's entries", envelope["error"]["detail"])
+
+    @verifies("scenario.scaffold.vendored-external")
+    def test_vendored_code_inside_a_child_narrows_that_child(self):
+        worktree = self.open()
+        vendored = json.loads(json.dumps(PROPOSAL))
+        vendored["externals"] = [
+            {
+                "path": "src/checkout/payment.py",
+                "used_by": "module.checkout",
+                "reason": "a copied payment client",
+            }
+        ]
+        status, survey = self.survey(vendored)
+        self.assertEqual(0, status, survey)
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        checkout = json.loads(
+            (worktree / "specs/project/checkout/module.md.json").read_text()
+        )
+        (code,) = [r for r in checkout["defines"] if r["type"] == "realization"]
+        self.assertEqual(["src/checkout/api.py"], code["entries"])
+        self.assertEqual(
+            ["src/checkout/payment.py"],
+            [item["target"] for item in checkout["module"]["includes"]],
+        )
+        report = validate_repository(worktree)
+        self.assertEqual(
+            [], [f.message for f in report.findings if f.severity == "error"]
+        )
+
+    @verifies("scenario.scaffold.stale")
+    def test_a_stale_proposal_writes_nothing(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        for path in (worktree / "src/checkout").iterdir():
+            path.unlink()
+        (worktree / "src/checkout").rmdir()
+        before = git(worktree, "status", "--porcelain")
+        _status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual("blocked", envelope["status"])
+        self.assertEqual("stale_proposal", envelope["error"]["code"])
+        self.assertIn("src/checkout/", envelope["error"]["detail"])
+        self.assertEqual(before, git(worktree, "status", "--porcelain"))
+        self.assertFalse((worktree / "specs/project/checkout").exists())
+
+    @verifies("scenario.scaffold.refused-input")
+    def test_the_scaffold_needs_one_survey_of_its_task(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        _, second = self.survey()
+        _, validate = self.project.run("task-validation", "--task", "adopt")
+        self.assertEqual("ok", validate["status"], validate)
+        for inputs in ([], [survey["run_id"], second["run_id"]], [validate["run_id"]]):
+            with self.subTest(inputs=inputs):
+                argv = [word for run in inputs for word in ("--input", run)]
+                _, envelope = self.project.run("scaffold", "--task", "adopt", *argv)
+                self.assertEqual("failed", envelope["status"])
+                self.assertEqual("invalid_request", envelope["error"]["code"])
+        self.assertFalse((worktree / "specs/project/checkout").exists())
+        # A survey of another task is refused before the run begins.
+        _, foreign = self.survey(task=False)
+        _status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", foreign["run_id"]
+        )
+        self.assertEqual("failed", envelope["status"])
+        self.assertEqual("input_not_admissible", envelope["host_evidence"][0]["ref"])
+
+    @verifies("scenario.scaffold.unbound")
+    def test_the_scaffold_is_an_execution_command_of_a_bound_workspace(self):
+        _, survey = self.survey(task=False)
+        status, envelope = self.project.run("scaffold", "--input", survey["run_id"])
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual(("command", "scaffold"), (envelope["kind"], envelope["name"]))
+        self.assertIsNone(envelope["workspace"])
+        error = envelope["error"]
+        self.assertEqual(("command", "refused"), (error["level"], error["code"]))
+        self.assertIn("Command scaffold", error["actor"])
+        self.assertEqual("binding_required", error["causes"][0]["code"])
+        self.assertFalse((self.project.root / "specs/project/checkout").exists())
+        self.open()
+        _, survey = self.survey()
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertEqual(
+            ("command", "scaffold", "adopt", None, []),
+            (
+                envelope["kind"],
+                envelope["name"],
+                envelope["workspace"],
+                envelope["worker"],
+                envelope["worker_runs"],
+            ),
+        )
+        # Its run is recorded in the primary's run store, where a later run may admit it.
+        self.assertTrue(
+            (
+                self.project.root
+                / ".concorde/runs"
+                / envelope["run_id"]
+                / "result.json"
+            ).is_file()
+        )

@@ -1,4 +1,4 @@
-"""The recorded commands: deterministic run definitions the runner records like Operations.
+"""The command catalog: the execution commands, deterministic runs recorded like Operations.
 
 Each is a ``concorde <name>`` command of the bound workspace that launches no worker. Its run is
 recorded in the run store, so a later run may admit its output with ``--input`` and a workflow
@@ -13,12 +13,12 @@ import importlib
 COMMANDS: dict[str, str] = {
     "task-validation": "concorde.validation.command:TASK_VALIDATION",
     "delivery": "concorde.delivery.command:DELIVERY",
-    "scaffold": "concorde.adoption.scaffold:SCAFFOLD",
+    "scaffold": "concorde.scaffold.command:SCAFFOLD",
 }
 
 
 def command(name: str):
-    """The definition of a recorded command; KeyError for an unknown name."""
+    """The definition of an execution command; KeyError for an unknown name."""
     module, attribute = COMMANDS[name].split(":")
     return getattr(importlib.import_module(module), attribute)
 

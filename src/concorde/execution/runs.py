@@ -1,4 +1,4 @@
-"""The run store: every Operation run and recorded command run, and the workspace lock.
+"""The run store: every Operation run and execution command run, and the workspace lock.
 
 A run lives in ``<records>/runs/<run_id>/``: its progress file ``status.json``, kept current by the
 process running it, and once it ended its run result ``result.json``. ``<records>`` is the

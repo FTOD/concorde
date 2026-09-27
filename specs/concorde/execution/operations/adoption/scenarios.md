@@ -30,15 +30,6 @@ shapes are in the [contracts](contracts.md).
 - THEN the run is unbound and the result is `ok` with `workspace` null and a decomposition proposal
 - AND no task record exists or changes
 
-### scenario.adoption.vendored-external — Vendored code becomes external material
-
-- GIVEN a survey whose worker proposes `src/db.py` as vendored third-party code used by the proposed child `module.checkout`
-- WHEN the survey ends and the scaffold applies its proposal
-- THEN `src/db.py` is among no Module's entries and `module.checkout` includes it as external material with the worker's reason
-- AND the project validates without errors
-- AND a vendored path inside a child's directory entry, such as `src/checkout/payment.py` inside `src/checkout/`, leaves that child binding the rest of the directory, `src/checkout/api.py`
-- BUT a vendored path that a child would bind itself, or part of it, fails the survey with `inconsistent_proposal`
-
 ### scenario.adoption.survey-checks — Proposed checks take the configuration's form
 
 - GIVEN a survey whose worker proposes a check with the inputs `src/checkout/` and `tests/` and the env `{"PYTHONPATH": "src"}`
@@ -62,44 +53,6 @@ shapes are in the [contracts](contracts.md).
 - WHEN the main agent runs the survey again with `--answers` and `--input` naming the first run
 - THEN the new proposal has a child for the database helper
 - AND its decision `d.db-helper` is decided by the developer with that answer
-
-## Scaffold
-
-### scenario.adoption.scaffold-creates — A scaffold creates the proposed Modules
-
-- GIVEN the workspace `adopt` with an `ok` survey proposing `module.checkout` bound to `src/checkout/` and `module.inventory` bound to `src/inventory/`, and a pytest check for checkout
-- WHEN the main agent runs `concorde scaffold --input <survey run>` in its worktree
-- THEN `specs/shop/checkout/module.md` and `specs/shop/inventory/module.md` exist with their metadata, each stating its purpose and that its behaviour is not yet specified
-- AND the root's entry contains both with an explaining paragraph each and its realization no longer binds `src/checkout/` or `src/inventory/`
-- AND the root still binds every other file it bound under `src/`
-- AND the registry has both records
-- BUT the project configuration is unchanged, and the proposed check stays in the survey's proposal
-- AND the worktree validates with no new error
-- AND the result is `ok`, of kind `command` with no worker, with a scaffold record listing every file written
-
-### scenario.adoption.scaffold-stale — A proposal overtaken by the worktree
-
-- GIVEN a survey proposing `module.checkout` bound to `src/checkout/`
-- AND `src/checkout/` was removed from the workspace after the survey
-- WHEN the main agent runs the scaffold with that survey as input
-- THEN the result is `blocked` with `stale_proposal` naming the missing entry
-- AND no file was written
-
-### scenario.adoption.scaffold-refused-input — The scaffold needs one survey of its workspace
-
-- GIVEN a workspace `adopt`
-- WHEN the main agent runs the scaffold with no `--input`, with two, or with a run of the workspace that is not a survey
-- THEN the result is `failed` with `invalid_request` naming what was given and what is needed
-- AND no file was written
-- BUT an unbound survey, or one of another workspace, is refused before the run begins with `input_not_admissible`
-
-### scenario.adoption.scaffold-unbound — The scaffold needs a bound workspace
-
-- GIVEN an unbound survey run in the primary worktree
-- WHEN the main agent runs `concorde scaffold --input <that run>` in the primary worktree
-- THEN the result is `failed`, of kind `command` with `workspace` null, and its `command` link `refused` has the cause `binding_required`
-- AND no file was written
-- BUT the same command in a bound task worktree, with a survey of that workspace, scaffolds `ok`
 
 ## Code to spec
 

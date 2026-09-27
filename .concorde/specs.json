@@ -780,12 +780,12 @@
     {
       "id": "module.validation",
       "title": "Validation",
-      "entry": "specs/concorde/execution/validation/module.md",
+      "entry": "specs/concorde/execution/commands/validation/module.md",
       "owns": [
-        "specs/concorde/execution/validation/module.md",
-        "specs/concorde/execution/validation/contracts.md",
-        "specs/concorde/execution/validation/requirements.md",
-        "specs/concorde/execution/validation/scenarios.md"
+        "specs/concorde/execution/commands/validation/module.md",
+        "specs/concorde/execution/commands/validation/contracts.md",
+        "specs/concorde/execution/commands/validation/requirements.md",
+        "specs/concorde/execution/commands/validation/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -793,7 +793,6 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.recorded-command",
             "concept.execution.run-result",
             "concept.execution.workspace-binding",
             "concept.execution.workspace-lock",
@@ -810,6 +809,13 @@
         {
           "target": "module.checks",
           "meaning": "#uses-checks"
+        },
+        {
+          "target": "module.commands",
+          "meaning": "#uses-commands",
+          "relies_on": [
+            "concept.commands.execution-command"
+          ]
         }
       ],
       "includes": [
@@ -829,12 +835,12 @@
     {
       "id": "module.delivery",
       "title": "Delivery",
-      "entry": "specs/concorde/execution/delivery/module.md",
+      "entry": "specs/concorde/execution/commands/delivery/module.md",
       "owns": [
-        "specs/concorde/execution/delivery/module.md",
-        "specs/concorde/execution/delivery/contracts.md",
-        "specs/concorde/execution/delivery/requirements.md",
-        "specs/concorde/execution/delivery/scenarios.md"
+        "specs/concorde/execution/commands/delivery/module.md",
+        "specs/concorde/execution/commands/delivery/contracts.md",
+        "specs/concorde/execution/commands/delivery/requirements.md",
+        "specs/concorde/execution/commands/delivery/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -842,7 +848,6 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.recorded-command",
             "concept.execution.run-result",
             "concept.execution.run-store",
             "concept.execution.workspace-binding",
@@ -859,6 +864,13 @@
         {
           "target": "module.workers",
           "meaning": "#uses-workers"
+        },
+        {
+          "target": "module.commands",
+          "meaning": "#uses-commands",
+          "relies_on": [
+            "concept.commands.execution-command"
+          ]
         }
       ],
       "includes": [
@@ -932,7 +944,6 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution.workspace-binding",
-            "concept.execution.recorded-command",
             "concept.execution.run-result",
             "concept.execution.unbound-run",
             "concept.execution.progress-file",
@@ -989,6 +1000,13 @@
           "meaning": "#uses-spec-mcp",
           "relies_on": [
             "concept.spec-mcp.server"
+          ]
+        },
+        {
+          "target": "module.commands",
+          "meaning": "#uses-commands",
+          "relies_on": [
+            "concept.commands.execution-command"
           ]
         }
       ],
@@ -1062,13 +1080,19 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution.run",
-            "concept.execution.recorded-command",
             "concept.execution.progress-file"
           ]
         },
         {
           "target": "module.workflows",
           "meaning": "#uses-workflows"
+        },
+        {
+          "target": "module.commands",
+          "meaning": "#uses-commands",
+          "relies_on": [
+            "concept.commands.execution-command"
+          ]
         }
       ],
       "includes": [
@@ -1098,7 +1122,6 @@
           "relies_on": [
             "concept.execution.runner",
             "concept.execution.run",
-            "concept.execution.recorded-command",
             "concept.execution.run-result",
             "concept.execution.workspace-binding",
             "concept.execution.workspace-lock",
@@ -1127,6 +1150,20 @@
         {
           "target": "module.adoption",
           "meaning": "#uses-adoption"
+        },
+        {
+          "target": "module.scaffold",
+          "meaning": "#uses-scaffold",
+          "relies_on": [
+            "contract.scaffold.record"
+          ]
+        },
+        {
+          "target": "module.commands",
+          "meaning": "#uses-commands",
+          "relies_on": [
+            "concept.commands.execution-command"
+          ]
         }
       ],
       "includes": [
@@ -1161,7 +1198,6 @@
           "relies_on": [
             "concept.execution.runner",
             "concept.execution.workspace",
-            "concept.execution.recorded-command",
             "concept.execution.run-result",
             "concept.execution.unbound-run",
             "req.execution.inputs-same-workspace",
@@ -1595,12 +1631,8 @@
           "meaning": "#contains-operations"
         },
         {
-          "target": "module.validation",
-          "meaning": "#contains-validation"
-        },
-        {
-          "target": "module.delivery",
-          "meaning": "#contains-delivery"
+          "target": "module.commands",
+          "meaning": "#contains-commands"
         },
         {
           "target": "module.workers",
@@ -1627,6 +1659,105 @@
           "kind": "document",
           "target": "document.concorde.contracts",
           "reason": "the Framework's error contract, which every run's errors follow"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.commands",
+      "title": "Commands",
+      "entry": "specs/concorde/execution/commands/module.md",
+      "owns": [
+        "specs/concorde/execution/commands/module.md"
+      ],
+      "contains": [
+        {
+          "target": "module.validation",
+          "meaning": "#contains-validation"
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#contains-delivery"
+        },
+        {
+          "target": "module.scaffold",
+          "meaning": "#contains-scaffold"
+        }
+      ],
+      "uses": [
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.run-result",
+            "concept.execution.workspace"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.scaffold",
+      "title": "Scaffold",
+      "entry": "specs/concorde/execution/commands/scaffold/module.md",
+      "owns": [
+        "specs/concorde/execution/commands/scaffold/module.md",
+        "specs/concorde/execution/commands/scaffold/requirements.md",
+        "specs/concorde/execution/commands/scaffold/scenarios.md",
+        "specs/concorde/execution/commands/scaffold/contracts.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.workspace",
+            "concept.execution.run-result",
+            "req.execution.inputs-same-workspace",
+            "contract.execution.run-result"
+          ]
+        },
+        {
+          "target": "module.commands",
+          "meaning": "#uses-commands",
+          "relies_on": [
+            "concept.commands.execution-command"
+          ]
+        },
+        {
+          "target": "module.adoption",
+          "meaning": "#uses-adoption",
+          "relies_on": [
+            "concept.adoption.survey",
+            "concept.adoption.decomposition",
+            "contract.adoption.decomposition"
+          ]
+        },
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec"
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
         }
       ],
       "participates": []

@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Adoption describes a project whose code came before its Specs. It provides two Operations and
-one recorded command: the Operation `survey` reads a Module's code and proposes how to split it
-into child Modules, the recorded command `scaffold` creates those child Modules from an accepted
-proposal, and the Operation `code_to_spec` has a worker read a Module's code and write that
-Module's Spec. They are the only runs that turn code into Specs, and they exist for the uncommon
-project adopted after its code was written; a project specified first never needs them. Adoption never changes what code does, records behaviour as it is instead of
-improving it, and never writes a behaviour whose intent the code does not settle as a promise:
+Adoption describes a project whose code came before its Specs. It provides two Operations: `survey`
+has a worker read a Module's code and propose how to split it into child Modules, and `code_to_spec`
+has a worker read a Module's code and write that Module's Spec. Between them the execution command
+`scaffold` of [Scaffold](../../commands/scaffold/module.md) creates the proposed child Modules. The
+three are the only runs that turn code into Specs, and they exist for the uncommon project adopted
+after its code was written; a project specified first never needs them. Adoption never changes what
+code does, records behaviour as it is instead of improving it, and never writes a behaviour whose intent the code does not settle as a promise:
 such behaviour becomes an open question for the developer. The one edit it makes outside Specs
 marks the project's existing tests with the scenarios taken from them.
 
@@ -18,8 +18,6 @@ marks the project's existing tests with the scenarios taken from them.
 | --- | --- |
 | Survey | The read-only Operation in which a worker reads one Module's code and proposes a decomposition, without writing anything. |
 | Decomposition proposal | The output of a survey: the child Modules to create with their purposes, bound entries and uses, the checks it proposes, the decisions it took and its open questions. |
-| Scaffold | The recorded command that turns one accepted decomposition proposal into child Module stubs, a narrower parent realization and registry records, without a worker. |
-| Scaffold record | The output of a scaffold: the Modules and documents it created and the parent's realization entries before and after. |
 | Code to spec | The Operation in which a worker of task type `code-to-spec` reads the bound Modules' code and writes their own documents to describe it. |
 | Spec description | The output of a code_to_spec run: the documents changed, the promises written, the decisions taken, the open questions, the deviations between stated intent and code, and the validation outcome. |
 | Decision | A choice between named options that a worker took where the code allowed several, recorded with its reason and whether the worker or the developer made it. |
@@ -36,20 +34,18 @@ marks the project's existing tests with the scenarios taken from them.
 | [Operation](../module.md#concept.operations.operation) | |
 | [Execution runner](../../module.md#concept.execution.runner) | |
 | [Workspace](../../module.md#concept.execution.workspace) | |
-| [Recorded command](../../module.md#concept.execution.recorded-command) | |
 | [Run result](../../module.md#concept.execution.run-result) | |
 | [Unbound run](../../module.md#concept.execution.unbound-run) | |
 | [Grant](../../../spec-tooling/spec/module.md#concept.spec.grant) | |
 | [Structural check](../../../spec-tooling/spec/module.md#concept.spec.structural-check) | |
 | [Project registry](../../../spec-tooling/spec/module.md#concept.spec.registry) | |
-| [File transaction](../../../spec-tooling/spec/module.md#concept.spec.file-transaction) | |
 | [Brief](../../workers/module.md#concept.workers.brief) | |
 | [Worker result](../../workers/module.md#concept.workers.worker-result) | |
 | [Write audit](../../workers/module.md#concept.workers.audit) | |
 | [Configured check](../../tools/checks/module.md#concept.checks.configured-check) | |
 
-Read Survey, Scaffold and Code to spec first: they are the three steps. Decisions and open questions
-are how every step says what it could not settle alone; answers are how the developer settles them.
+Read Survey and Code to spec first: with the scaffold between them they are the three steps.
+Decisions and open questions are how both Operations say what they could not settle alone; answers are how the developer settles them.
 
 ## Usage
 
@@ -72,16 +68,12 @@ answers.
 ```d2
 survey: Survey
 proposal: Decomposition proposal
-scaffold: Scaffold
-record: Scaffold record
 codetospec: Code to spec
 description: Spec description
 decision: Decision
 question: Open question
 answers: Answers
 survey -> proposal: produces
-scaffold -> proposal: applies
-scaffold -> record: produces
 codetospec -> description: produces
 proposal -> decision: lists
 description -> decision: lists
@@ -108,29 +100,14 @@ The host gives the worker, as task material, an inventory of every file the surv
 with its size in lines, so the worker can plan what to read in a large codebase instead of opening
 everything.
 
-<a id="concept.adoption.scaffold"></a><a id="concept.adoption.scaffold-record"></a>
-
-**Scaffold.** The [recorded command](../../module.md#concept.execution.recorded-command)
-`concorde scaffold`, with no worker, applies exactly one proposal admitted with `--input` from an
-`ok` survey of the same workspace, and returns a **scaffold record**
-([contract](contracts.md#contract.adoption.scaffold-record)). For each child it writes an entry
-`module.md` and its metadata in a folder named after the child's identity, next to the parent's
-entry, stating the survey's purpose, a realization binding the proposed entries, and the proposed
-`uses`, with every other section saying honestly that it is not specified yet. It adds the children
-to the parent's `contains` with one explaining paragraph each, removes the children's paths from the
-parent's realizations and adds the registry records. Vendored code leaves the parent's
-realizations too, but never becomes a Module: it becomes an `includes` of kind `external` of the
-Module that uses it, which that Module reads and nobody describes or reviews as the project's
-code, as the Protocol treats pinned third-party material. Adding Modules is the project-level step the
-Protocol reserves for the registry and the parent's `contains`, which is why deterministic code
-does it and not a worker. Since no model is involved it is a recorded command rather than an
-Operation; it is still a run, so a workflow takes it as a step and its result records exactly what
-it wrote. It needs a bound workspace: in a worktree without a binding it is refused with
-`binding_required` and writes nothing. It never configures the proposed checks: a check is a command the host later runs,
-and a command a model chose after reading code nobody vouched for must be accepted by the developer
-first, so the checks stay a proposal the workflow reports. Everything is written in one
-[file transaction](../../../spec-tooling/spec/module.md#concept.spec.file-transaction) that is kept
-only if validation finds no new error.
+**Scaffold.** The execution command `concorde scaffold` of
+[Scaffold](../../commands/scaffold/module.md), with no worker, applies exactly one proposal admitted
+with `--input` from an `ok` survey of the same workspace: it creates each proposed child as a stub
+Module that states the survey's purpose and says honestly that nothing else is specified yet,
+narrows the parent's realizations, makes vendored code an external inclusion of its user, and
+returns a [scaffold record](../../commands/scaffold/module.md#concept.scaffold.record). Adding
+Modules is a project-level step no worker's write set includes, which is why deterministic code
+makes it and not a worker, and why it is not an Operation of this Module.
 
 <a id="concept.adoption.code-to-spec"></a><a id="concept.adoption.spec-description"></a>
 
@@ -174,19 +151,18 @@ the code, as Concorde expects.
 
 Status follows the other worker-backed Operations. A survey or code_to_spec run is `ok` when the
 worker completed its proposal or description, whatever decisions and open questions it lists. It is
-`blocked` when the worker could not do the work at all, when a code_to_spec change adds a structural
-error, or, for a scaffold, when the proposal no longer fits the worktree; the error chain then names
-each finding or mismatch as a cause. It is `failed` when the request or the answers are invalid, the
+`blocked` when the worker could not do the work at all or when a code_to_spec change adds a
+structural error; the error chain then names each finding as a cause. It is `failed` when the request or the answers are invalid, the
 host could not run the worker, the audit found a write outside the grant, or the output is
 inconsistent, with every inconsistency listed in the Operation's own link. Every code is in the
 [error table](contracts.md#errors).
 
 ## Design
 
-The three Operations keep the Protocol's separation of reading, deciding and writing. The survey
-worker reads code but writes nothing; deciding which Modules exist is then a deterministic host
-step anyone can check against the proposal; describing a Module is a worker bounded by that Module's
-own documents. A worker never adds or removes Modules, because the registry is outside every
+The two Operations and the scaffold between them keep the Protocol's separation of reading,
+deciding and writing. The survey worker reads code but writes nothing; deciding which Modules exist
+is then a deterministic step, Scaffold's, that anyone can check against the proposal; describing
+a Module is a worker bounded by that Module's own documents. A worker never adds or removes Modules, because the registry is outside every
 Module's write set.
 
 The `code-to-spec` task type is what makes this legal: it reads the bound Modules'
@@ -207,17 +183,6 @@ checks the answers first, and removes every stub left unchanged on every way out
 failed grant or a stopped worker included: a run that ends early leaves behind only what its worker
 changed.
 
-Scaffold writes where it can decide by rules alone. A child's folder is the parent entry's folder
-plus the child identity's last segment. The parent keeps every path its realizations covered that no
-child took. A directory entry of the parent that contains a child's entry is replaced by the entries
-below it that no child took: a directory stays one entry when no child took anything inside it, and
-a file is listed exactly. A directory that would bind no file, such as an empty one or one holding
-only skipped files, and a symbolic link are left out, as a directory entry never bound them.
-Conversely a file a child's directory entry does not bind, such as a dot file the parent binds
-exactly because its own directory entry skips it, stays with the parent. So no
-path is bound by both parent and child unless the proposal deliberately gives one path to several
-children.
-
 How Adoption is built:
 
 ```d2
@@ -225,9 +190,6 @@ adoption: Adoption {
   survey: Survey Operation {
     "src/concorde/adoption/survey.py"
     "prompts/workers/survey.md"
-  }
-  scaffold: Scaffold command {
-    "src/concorde/adoption/scaffold.py"
   }
   codetospec: Code to spec Operation {
     "src/concorde/adoption/code_to_spec.py"
@@ -238,7 +200,6 @@ adoption: Adoption {
     "src/concorde/adoption/records.py"
   }
   survey -> shared: validates proposals with
-  scaffold -> shared: validates proposals with
   codetospec -> shared: validates answers with
 }
 ```
@@ -256,19 +217,6 @@ The **Survey Operation** realization declares the `SURVEY` provider and its step
 | 5 | Audit: nothing is writable, so any change is a violation | Workers | any change (`failed`) |
 | 6 | Check the proposal against the worktree and the answers; add the remaining entries | host | an inconsistency or an answer not followed (`failed`, `inconsistent_proposal`) |
 | 7 | Return the run result | host | — |
-
-<a id="realization.adoption.scaffold"></a>
-
-The **Scaffold command** realization declares the `SCAFFOLD` recorded command, which launches no
-worker:
-
-| # | Step | Actor | Stops the run when |
-| --- | --- | --- | --- |
-| 1 | Admit exactly one `ok` survey of the same workspace as input | host | none or several, or not a survey (`failed`, `invalid_request`) |
-| 2 | Validate the worktree as a baseline and check the proposal against it again | host, Spec core | the proposal no longer fits (`blocked`, `stale_proposal`) |
-| 3 | Compute every file change: child entries, parent entry and realization, registry | host | a target file already exists (`blocked`, `stale_proposal`) |
-| 4 | Apply them as one file transaction, kept only if validation finds no new error | host, Spec core | a new error (`failed`, `scaffold_invalid`), nothing kept |
-| 5 | Return the run result with the scaffold record | host | — |
 
 <a id="realization.adoption.code-to-spec"></a>
 
@@ -307,8 +255,9 @@ the task level or the workflow goes on.
 <a id="realization.adoption.shared"></a>
 
 The **Adoption shared records** realization holds the schemas of the decomposition proposal, the
-answers and the decision and open-question records, and the checks the survey and the scaffold both
-apply to a proposal.
+answers and the decision and open-question records, and the checks of a proposal against a
+worktree, which the survey applies and [Scaffold](../../commands/scaffold/module.md) applies again
+before writing.
 
 <a id="realization.adoption.tests"></a>
 
@@ -316,27 +265,27 @@ Adoption is tried on real codebases with real workers by
 [End-to-end testing](../../../e2e/module.md), on projects from SWE-bench.
 
 The **Adoption tests**, under `tests/concorde/adoption/` with the existing-codebase fixture
-`tests/concorde/support/brownfield_project.py` they share with Workflows, run the survey, the
-scaffold and code_to_spec in a bound task worktree of a small existing codebase with a fake
+`tests/concorde/support/brownfield_project.py` and the adoption test case
+`tests/concorde/support/adoption_case.py` they share with Workflows and Scaffold, run the survey and
+code_to_spec, after a scaffold, in a bound task worktree of a small existing codebase with a fake
 worker, verifying the [requirements](requirements.md) and [scenarios](scenarios.md).
 
 ### Outside
 
 <a id="uses-execution"></a>
 
-**Execution**'s runner runs all three: it reads the workspace binding, holds the workspace lock,
+**Execution**'s runner runs both: it reads the workspace binding, holds the workspace lock,
 admits `--input` runs only when they ended `ok` in the same workspace (or, for an unbound survey,
 in none), and wraps each output in the [run result](../../module.md#concept.execution.run-result).
-Its table of recorded commands names `scaffold`, and it refuses the scaffold and code_to_spec
-unbound. Adoption relies on it refusing another workspace's survey before the scaffold's first
-step, so the scaffold only checks that its one input is a survey.
+It refuses code_to_spec unbound, and Adoption relies on it admitting only runs of the same
+workspace as inputs, so that a rerun sees only that workspace's earlier proposal or description.
 
 <a id="uses-operations"></a>
 
 **Operations** lists `survey` and `code_to_spec` in its catalog and dispatches to this Module;
 `survey` is the one Adoption Operation its catalog lets run unbound. Adoption never starts another
-run: the order of the three, and whether to ask the developer between them, is decided by the task
-level or a workflow.
+run: the order of the survey, the scaffold and code_to_spec, and whether to ask the developer
+between them, is decided by the task level or a workflow.
 
 <a id="uses-workers"></a>
 
@@ -355,7 +304,6 @@ check.
 
 **Spec core** computes the `code-to-spec` [grant](../../../spec-tooling/spec/module.md#concept.spec.grant),
 lists a Module's bound files, runs the [structural checks](../../../spec-tooling/spec/module.md#concept.spec.structural-check),
-regenerates the [registry](../../../spec-tooling/spec/module.md#concept.spec.registry) mirror and
-applies the scaffold's [file transaction](../../../spec-tooling/spec/module.md#concept.spec.file-transaction),
+and regenerates the [registry](../../../spec-tooling/spec/module.md#concept.spec.registry) mirror,
 always on the workspace. Adoption relies on its checks as the definition of a valid Spec and adds
 none of its own; a Spec that cannot be loaded ends the run `failed`.

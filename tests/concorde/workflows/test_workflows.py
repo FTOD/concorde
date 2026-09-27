@@ -15,7 +15,7 @@ from typing import ClassVar
 from unittest.mock import patch
 
 from concorde import errors
-from concorde.execution.commands import COMMANDS
+from concorde.commands.catalog import COMMANDS
 from concorde.execution.runs import workspace_lock, workspace_runs
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies

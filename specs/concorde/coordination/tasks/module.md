@@ -15,7 +15,7 @@ into the primary branch under a lock, so several main sessions never merge at on
 if the checks that follow fail. Tasks is independent of the sessions that work in its tasks: it
 does not start or follow them, which [Task sessions](../task-session/module.md) does, and it does
 not decide how work is split, which tasks run in parallel or when a task is merged. It never runs
-an Operation or a recorded command, never commits on a task branch, and never interprets the
+an Operation or an execution command, never commits on a task branch, and never interprets the
 decision log.
 
 ## Terminology
@@ -38,7 +38,7 @@ decision log.
 | [Run result](../../execution/module.md#concept.execution.run-result) | |
 | [Run store](../../execution/module.md#concept.execution.run-store) | |
 | [Workspace lock](../../execution/module.md#concept.execution.workspace-lock) | |
-| [Delivery commit](../../execution/delivery/module.md#concept.delivery.delivery-commit) | |
+| [Delivery commit](../../execution/commands/delivery/module.md#concept.delivery.delivery-commit) | |
 | [File transaction](../../spec-tooling/spec/module.md#concept.spec.file-transaction) | |
 | [Registry](../../spec-tooling/spec/module.md#concept.spec.registry) | |
 
@@ -91,7 +91,7 @@ The workspace is named after the task, so its runs, its workspace lock and its d
 found by the task identity. The records directory is the primary worktree's `.concorde`, so the
 runs of every task land in one [run store](../../execution/module.md#concept.execution.run-store)
 beside the task records, and survive the worktree. From then on the task's work happens inside that
-worktree with the worktree's own `concorde`: every Operation, recorded command and workflow started
+worktree with the worktree's own `concorde`: every Operation, execution command and workflow started
 there reads the binding and works on this task's goal, Modules, branch and base without naming the
 task. Tasks writes the binding once and never again; closing removes it with the worktree. A copy
 of the configuration or a binding the file system refuses ends the open with `config_copy_failed`
@@ -115,7 +115,7 @@ open and never change; a run that names further Modules with `--modules` records
 in one value: the record with its derived state, the workspace's
 [runs](../../execution/module.md#concept.execution.run) read from the run store (each with its kind,
 name, Modules and status, `running` while its runner lives and `lost` when the runner died without
-a result), its [delivery commits](../../execution/delivery/module.md#concept.delivery.delivery-commit)
+a result), its [delivery commits](../../execution/commands/delivery/module.md#concept.delivery.delivery-commit)
 read from the task branch, who holds its workspace lock now, and the path of the decision log.
 
 Since every Module was registered when the task opened, one the task worktree no longer registers
@@ -367,7 +367,7 @@ that is neither finished nor alive is shown as `lost` rather than trusted as run
 <a id="uses-delivery"></a>
 
 **Delivery** commits a delivered workspace as a
-[delivery commit](../../execution/delivery/module.md#concept.delivery.delivery-commit) on the bound
+[delivery commit](../../execution/commands/delivery/module.md#concept.delivery.delivery-commit) on the bound
 branch, whose subject and trailers name the workspace, its evidence bundle and the run that decided
 its readiness. Tasks relies on that commit being the only record of a delivery and reads the
 delivery commits of the task's workspace on the task branch since its base commit, with Delivery's

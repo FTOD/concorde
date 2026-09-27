@@ -24,12 +24,8 @@
         "meaning": "#contains-operations"
       },
       {
-        "target": "module.validation",
-        "meaning": "#contains-validation"
-      },
-      {
-        "target": "module.delivery",
-        "meaning": "#contains-delivery"
+        "target": "module.commands",
+        "meaning": "#contains-commands"
       },
       {
         "target": "module.workers",
@@ -84,12 +80,6 @@
       "type": "concept",
       "title": "Run",
       "meaning": "#concept.execution.run"
-    },
-    {
-      "id": "concept.execution.recorded-command",
-      "type": "concept",
-      "title": "Recorded command",
-      "meaning": "#concept.execution.recorded-command"
     },
     {
       "id": "concept.execution.run-result",

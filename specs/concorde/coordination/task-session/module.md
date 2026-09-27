@@ -27,7 +27,7 @@ Its boundary guards against mistakes, not a malicious session.
 | [Decision log](../tasks/module.md#concept.tasks.decision-log) | |
 | [Workspace binding](../../execution/module.md#concept.execution.workspace-binding) | |
 | [Run result](../../execution/module.md#concept.execution.run-result) | |
-| [Delivery commit](../../execution/delivery/module.md#concept.delivery.delivery-commit) | |
+| [Delivery commit](../../execution/commands/delivery/module.md#concept.delivery.delivery-commit) | |
 | [Session boundary](../../harness/module.md#concept.harness.session-boundary) | |
 | [Worker backend](../../execution/workers/module.md#concept.workers.backend) | |
 
@@ -101,7 +101,7 @@ round's outcome in the task record:
 
 | Outcome | When |
 | --- | --- |
-| `delivered` | the report says delivered and names a commit that the task branch holds as a [delivery commit](../../execution/delivery/module.md#concept.delivery.delivery-commit) of the task's workspace, read from Git |
+| `delivered` | the report says delivered and names a commit that the task branch holds as a [delivery commit](../../execution/commands/delivery/module.md#concept.delivery.delivery-commit) of the task's workspace, read from Git |
 | `escalated` | the report says escalated and names escalations the task record holds with the level `task-session` |
 | `failed` | pi exited without a report, or the report names a commit that is no delivery commit of the task's workspace on its branch, or an escalation the record does not hold; the round's `error` is a link naming pi's exit code, stop reason and error message, the logs, and each mismatch |
 | `stopped` | `--stop` ended the round |
@@ -141,7 +141,7 @@ task level, in place of the main agent. Only the main agent at level 1 calls thi
 line checks the task and the main session's program before handing it here. Task sessions then
 starts one agent session in the task worktree, and that session, not this Module, does the task's
 work: following its guidance, it changes Specs and code, starts workflows (level 3) and runs
-Operations and recorded commands (level 4) inside its task worktree, and never reaches a worker
+Operations and execution commands (level 4) inside its task worktree, and never reaches a worker
 except through an Operation. Its
 results go up to level 1 only, never to the developer: a Claude Code session reports to the main
 agent with SendMessage, and a pi session ends each round with a session report that this Module
@@ -154,7 +154,7 @@ with its own link.
 main: Main session
 tasksession: Task sessions
 workflows: Workflows
-runs: "Runs: Operations and recorded commands"
+runs: "Runs: Operations and execution commands"
 workers: Workers
 main -> tasksession: starts, answers, stops
 tasksession -> workflows: starts in its task worktree
@@ -177,7 +177,7 @@ closes the task, which stays the main agent's.
 
 **Execution** is level 4, which a task session runs directly whenever no workflow fits: an
 [Operation](../../execution/operations/module.md#concept.operations.operation) with
-`concorde run`, or the recorded commands `concorde task-validation` and `concorde delivery`, always
+`concorde run`, or the execution commands `concorde task-validation` and `concorde delivery`, always
 inside its task worktree with the worktree's own `concorde`. Every run reads the worktree's
 [workspace binding](../../execution/module.md#concept.execution.workspace-binding), which Tasks
 wrote when the task opened, so it works on the task's goal and Modules without naming the task, and
@@ -342,7 +342,7 @@ inside a task that the main agent follows. A missing rendered guidance refuses t
 <a id="uses-delivery"></a>
 
 **Delivery** commits a delivered task as a
-[delivery commit](../../execution/delivery/module.md#concept.delivery.delivery-commit) of its
+[delivery commit](../../execution/commands/delivery/module.md#concept.delivery.delivery-commit) of its
 workspace on the task branch, the only record of a delivery. A pi session report that says
 `delivered` must name one of those commits; the supervisor reads them through Tasks when it records
 the round, never from the session's own claim.

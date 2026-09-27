@@ -16,10 +16,6 @@ The survey host SHALL give its worker no writable path and end the run `failed` 
 The survey withholds the Spec side of the `code-to-spec` grant, which the Protocol permits, so the
 survey may also run unbound.
 
-### req.adoption.vendored-external — Vendored code is never a Module
-
-The scaffold SHALL make every path the survey proposes as vendored third-party code an external inclusion of the Module that uses it, bound by no Module, so that no worker describes or reviews it as the project's code.
-
 ### req.adoption.no-code-change — Adoption never changes code
 
 No Adoption Operation SHALL create, change or delete a file of the workspace other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
@@ -45,7 +41,7 @@ the environment of one run and would let a worker change files through a command
 
 ### req.adoption.modules-by-host — Only the scaffold adds Modules
 
-A survey or code_to_spec worker SHALL NOT be able to add or remove a Module; only the scaffold command does, from an admitted survey.
+A survey or code_to_spec worker SHALL NOT be able to add or remove a Module; only the `scaffold` execution command of [Scaffold](../../commands/scaffold/module.md) does, from an admitted survey.
 
 ## Honest description
 
@@ -88,44 +84,6 @@ installer replaces them on every update.
 ### req.adoption.one-module-surveyed — One Module per survey
 
 A survey SHALL be bound to exactly one Module.
-
-## Scaffold
-
-### req.adoption.scaffold-input — The scaffold applies one survey of its workspace
-
-The scaffold host SHALL apply exactly one proposal, from an `ok` survey run admitted with `--input`, refusing no input, several inputs or an input that is not a survey with `invalid_request`.
-
-A run of another workspace, or an unbound one, never reaches the scaffold: the runner refuses it
-before the run begins with `input_not_admissible`, as for every run.
-
-### req.adoption.checks-proposed-only — Proposed checks are never configured
-
-The scaffold host SHALL NOT change the project configuration.
-
-A proposed check is a command a model chose after reading code; the developer configures the ones
-they accept.
-
-### req.adoption.scaffold-rechecked — The proposal is checked again before writing
-
-The scaffold host SHALL check the proposal against the workspace again before writing, ending the run `blocked` with `stale_proposal` and every mismatch listed when it no longer fits or a file it would create exists.
-
-### req.adoption.scaffold-atomic — A scaffold is kept whole or not at all
-
-The scaffold host SHALL write all its changes in one file transaction that is kept only when it adds no structural error.
-
-### req.adoption.parent-narrowed — A child's paths leave the parent
-
-After a scaffold, every file the parent's realizations bound SHALL be bound by exactly one of the parent and the created children, unless the proposal gave it to several children.
-
-A child's directory entry binds only what the exclusion rule admits, so a dot file below it that
-the parent bound exactly stays with the parent.
-
-A parent directory entry that contains a child's entry is replaced by the entries below it that no
-child took, a directory staying one entry when no child took anything inside it.
-
-### req.adoption.stub-honest — A scaffolded entry states what is unknown
-
-Every entry the scaffold creates SHALL state the survey's purpose and say in its Usage and Design sections that the Module's behaviour and design are not yet specified.
 
 ## Code to spec
 

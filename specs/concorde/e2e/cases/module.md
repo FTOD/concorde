@@ -42,7 +42,7 @@ review as input and an intent to change only what the Specs say, keeping every p
 the code and turning a repair that needs a decision about intent into an open question, reviews
 them once more, runs `task-validation` and `delivery`, and merges the task
 ([requirements](requirements.md#req.swe-bench-cases.repair-specs-only)). Every run is started in the
-task's worktree and names no task: the Operations with `concorde run`, the recorded commands as
+task's worktree and names no task: the Operations with `concorde run`, the execution commands as
 `concorde task-validation` and `concorde delivery`, each working on the worktree's workspace
 binding. One round bounds it; what the second review still finds is reported. A review that
 accepts the Specs is followed by `task-validation` and `delivery` with no repair, and a step that
@@ -73,7 +73,7 @@ the project exactly as the merge left it.
 <a id="realization.swe-bench-cases.steps"></a>
 
 The **case steps** are `scripts/e2e/cases.py`: `repair_specs`, which runs the Operations and
-recorded commands of the repair round through the `concorde` command in the task's worktree, and
+execution commands of the repair round through the `concorde` command in the task's worktree, and
 `grade` with its helpers. The
 `repair-specs` and `grade` commands of `scripts/e2e/e2e.py` call it.
 
@@ -88,7 +88,7 @@ the [requirements](requirements.md) and [scenarios](scenarios.md).
 <a id="uses-distribution"></a>
 
 **Distribution** provides the project's `concorde` command, through which the repair round opens
-its task, runs its Operations and recorded commands in the task's worktree and merges the task;
+its task, runs its Operations and execution commands in the task's worktree and merges the task;
 the case steps never write the project's Specs, task records or workspace binding themselves.
 
 SWE-bench is external material, included by [End-to-end testing](../module.md): its instances

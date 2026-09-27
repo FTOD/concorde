@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Tools groups the reusable deterministic execution capabilities that Operations, recorded commands
+Tools groups the reusable deterministic execution capabilities that Operations, execution commands
 and the Workers host code call to perform specific actions and obtain results. They are the program
 half of the bottom of Concorde's [levels of work](../../module.md#the-levels-of-work), beside the AI
 workers an Operation launches, and this group gives the reader one place to find them. Its first child, Check
@@ -23,7 +23,7 @@ An Operation combines calls to workers and Tools to complete one job. For exampl
 asks a worker to change code, then the Workers host code calls Check execution to run the
 configured tests. If a check fails, Workers can pass the recorded failure to the worker in a
 resume round. The Tool executes the check; the worker reasons about how to repair the code.
-The recorded command `task-validation`, and `delivery` through the same steps, also call Check
+The execution command `task-validation`, and `delivery` through the same steps, also call Check
 execution, without launching an AI worker.
 
 Call the concrete Tool through its documented interface. Tools introduces no generic command,
@@ -41,8 +41,8 @@ the worker process, and its recorded results stay separate from the worker's cla
 
 Tools is the program half of level 5 of the [levels of work](../../module.md#the-levels-of-work),
 beside the workers that are its agent half. Each level answers a different question: a workflow
-orders runs; a run completes one job, an Operation by combining worker jobs and Tool calls, a
-recorded command with deterministic steps and Tool calls alone; and at the bottom a worker performs
+orders runs; a run completes one job, an Operation by combining worker jobs and Tool calls, an
+execution command with deterministic steps and Tool calls alone; and at the bottom a worker performs
 model reasoning while a Tool performs a specific action through programmed logic. Worker and Tool
 are peers at that level, and neither calls upward: a Tool never starts a run, a worker or another
 agent.
@@ -60,7 +60,7 @@ workers -> tools.checks
 ```
 
 A Tool is called by programs only. A run, level 4, calls one in a step of its own: an Operation's
-step, such as `test` running the checks it asks a worker to interpret, or a recorded command's, such
+step, such as `test` running the checks it asks a worker to interpret, or an execution command's, such
 as `task-validation` running the checks of the changed Modules. The Workers Module, which includes
 deterministic management code around its AI processes, calls one from that host code as part of
 that management, such as running the checks after a worker's round, on behalf of the Operation that
@@ -97,7 +97,7 @@ separately specified reusable execution service.
 them within its read-only boundary and returns input-bound results and logs. It is called whenever
 a run needs to know whether a Module's configured checks pass: by the Workers host code after a
 clean audit and between resume rounds, by Operations such as testing and code review, and by the
-recorded commands `task-validation` and `delivery`, through Validation's steps. It owns the check runner, temporary storage, input measurement and failure reporting.
+execution commands `task-validation` and `delivery`, through Validation's steps. It owns the check runner, temporary storage, input measurement and failure reporting.
 Its boundary restricts direct filesystem writes outside temporary storage, not reads, network,
 host sockets or credentials; measuring inputs before and after the run detects changed inputs and
 turns them into a refused result rather than false evidence, and a boundary it cannot establish

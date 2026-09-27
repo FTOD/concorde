@@ -1,0 +1,92 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.scaffold.module",
+    "owner": "module.scaffold",
+    "role": "module"
+  },
+  "module": {
+    "title": "Scaffold",
+    "owns": [
+      "specs/concorde/execution/commands/scaffold/module.md",
+      "specs/concorde/execution/commands/scaffold/requirements.md",
+      "specs/concorde/execution/commands/scaffold/scenarios.md",
+      "specs/concorde/execution/commands/scaffold/contracts.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.runner",
+          "concept.execution.workspace",
+          "concept.execution.run-result",
+          "req.execution.inputs-same-workspace",
+          "contract.execution.run-result"
+        ]
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-commands",
+        "relies_on": [
+          "concept.commands.execution-command"
+        ]
+      },
+      {
+        "target": "module.adoption",
+        "meaning": "#uses-adoption",
+        "relies_on": [
+          "concept.adoption.survey",
+          "concept.adoption.decomposition",
+          "contract.adoption.decomposition"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.scaffold.record",
+      "type": "concept",
+      "title": "Scaffold record",
+      "meaning": "#concept.scaffold.record"
+    },
+    {
+      "id": "realization.scaffold.command",
+      "type": "realization",
+      "title": "Scaffold command",
+      "meaning": "#realization.scaffold.command",
+      "entries": [
+        "src/concorde/scaffold/",
+        "tests/concorde/scaffold/"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.scaffold.command",
+      "verb": "produces",
+      "target": "concept.scaffold.record"
+    }
+  ],
+  "extensions": {}
+}

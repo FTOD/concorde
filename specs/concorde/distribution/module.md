@@ -17,6 +17,7 @@ configuration — the installer never writes Specs.
 | Build manifest | The generated record of the digest of every source the build read and of every output it wrote. |
 | Command-line interface | The `concorde` command, whose subcommands each print exactly one JSON result envelope and exit with a status derived from it. |
 | Protocol copy | The rendered Spec Protocol bundle placed in a project under `.concorde/protocol/`, whose manifest digest the project configuration binds. |
+| Distribution command | A `concorde` command Distribution owns itself rather than routing to another Module: `build` and `protocol-manifest`. |
 | Installer | The program that places the Protocol copy, the `concorde` command and the main-session guidance into a project without writing its Specs. |
 | [Developer](../vocabulary.md#concept.concorde.developer) | |
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
@@ -27,7 +28,7 @@ configuration — the installer never writes Specs.
 | [Main-session guidance](../coordination/main-session/module.md#concept.main-session.guidance) | |
 | [Develop install](../dogfooding/module.md#concept.dogfooding.develop-install) | |
 | [Run](../execution/module.md#concept.execution.run) | |
-| [Recorded command](../execution/module.md#concept.execution.recorded-command) | |
+| [Execution command](../execution/commands/module.md#concept.commands.execution-command) | |
 | [Run progress file](../execution/module.md#concept.execution.progress-file) | |
 
 ## Usage
@@ -73,14 +74,24 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first Spec | [Spec core](../spec-tooling/spec/module.md) |
 | `task open`, `list`, `show` or `close` | opens, lists, shows or closes tasks; prints the task command's own JSON | [Tasks](../coordination/tasks/module.md) |
 | `run <operation>` | runs one Operation in the workspace of the current worktree or, when the Operation allows it, unbound; prints the run result | [Execution](../execution/module.md), with the catalog of [Operations](../execution/operations/module.md) |
-| `task-validation`, `delivery` or `scaffold` | runs one recorded command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with [Validation](../execution/validation/module.md), [Delivery](../execution/delivery/module.md) and [Adoption](../execution/operations/adoption/module.md) |
+| `task-validation`, `delivery` or `scaffold` | runs one execution command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with the catalog of [Commands](../execution/commands/module.md) |
 | `workflow step` or `report` | runs one workflow step, or reports a workflow's result; prints its own JSON | [Workflows](../execution/workflows/module.md) |
 | `configure-workers` | lists or changes the worker model configuration of the current worktree; prints its own JSON | [Workers](../execution/workers/module.md) |
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 
-Every command but `spec-mcp`, `task`, `run`, the recorded commands, `workflow`,
+<a id="concept.distribution.distribution-command"></a>
+
+A command is named after the part of Concorde that owns it: `task` gives the coordination
+commands, `spec-validation`, `registry`, `docsite`, `grant`, `spec-mcp` and `init` the Spec tooling
+commands, `issues` the Issues commands, and `build` and `protocol-manifest` the **distribution
+commands**, the only ones Distribution owns itself. Of Execution's, `task-validation`, `delivery`
+and `scaffold` are the [execution commands](../execution/commands/module.md#concept.commands.execution-command),
+runs without a worker; `run` starts an Operation, `workflow` a workflow step and
+`configure-workers` changes the worker configuration.
+
+Every command but `spec-mcp`, `task`, `run`, the execution commands, `workflow`,
 `configure-workers` and `issues` prints exactly one JSON envelope and exits with its status, even
 when refused ([requirements](requirements.md#req.distribution.one-envelope)); those route to their
 owners, which define their own JSON and exit codes.
@@ -89,7 +100,7 @@ owners, which define their own JSON and exit codes.
 
 **Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale
 build and a project in which Concorde is still running — a [run](../execution/module.md#concept.execution.run)
-of an Operation or of a [recorded command](../execution/module.md#concept.execution.recorded-command)
+of an Operation or of an [execution command](../execution/commands/module.md#concept.commands.execution-command)
 whose runner process lives, as its [run progress file](../execution/module.md#concept.execution.progress-file)
 says, or a pi task-session round whose supervisor lives, each named in the refusal
 `concorde_busy` ([requirements](requirements.md#req.distribution.idle-install)), since replacing
@@ -229,13 +240,18 @@ the skill and the `CLAUDE.md` block and records the mode and the checked commit 
 
 <a id="uses-execution"></a>
 
-**Execution** owns what `run` and the recorded commands `task-validation`, `delivery` and
+**Execution** owns what `run` and the execution commands `task-validation`, `delivery` and
 `scaffold` do: the entry point hands each the rest of its command line and the Execution runner
 parses it, reads the workspace binding, runs the steps and prints the run result, with its own
-exit codes. Distribution names no Operation or command's meaning and passes no task; a new
-recorded command is one more name to route. The installer also reads the run store's
-[run progress files](../execution/module.md#concept.execution.progress-file) to refuse while a run
+exit codes. Distribution names no Operation or command's meaning and passes no task. The
+installer also reads the run store's [run progress files](../execution/module.md#concept.execution.progress-file) to refuse while a run
 of either kind lives, relying on each naming its kind, its runner's process and its phase.
+
+<a id="uses-commands"></a>
+
+**Commands** lists the [execution commands](../execution/commands/module.md#concept.commands.execution-command)
+in its catalog. The entry point routes each name the catalog lists to the Execution runner, so a
+new execution command is one more catalog entry and no change here.
 
 The same entry point hands `configure-workers` to [Workers](../execution/workers/module.md), which
 owns the worker model configuration and prints the command's own result.

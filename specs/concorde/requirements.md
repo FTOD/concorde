@@ -22,7 +22,7 @@ The model and reasoning level of every worker SHALL come from the worker model c
 
 ### req.concorde.halves-apart — The execution core knows no task
 
-No Operation, recorded command, workflow or worker SHALL read or write a task record, a decision log or any other state of the task store.
+No Operation, execution command, workflow or worker SHALL read or write a task record, a decision log or any other state of the task store.
 
 The upper half hands a task to the execution core only by writing its worktree's workspace binding,
 and learns what happened there only from the run store and the delivery commits.
@@ -35,7 +35,7 @@ either half change without the other.
 
 Every Operation SHALL launch at least one AI worker.
 
-Deterministic work that a task or a workflow runs is a recorded command or a plain `concorde`
+Deterministic work that a task or a workflow runs is an execution command or a plain `concorde`
 command instead.
 
 ## Boundaries
@@ -48,7 +48,7 @@ Concorde's flow is Spec first, and every other worker sees code at most by name 
 Spec. A project whose code came before its Specs is described through the
 [Adoption](execution/operations/adoption/module.md) Operations: their `code-to-spec` workers record behaviour
 as it is and return doubtful intent as open questions instead of promises, and the one Adoption
-step without a worker, the recorded command `scaffold`, writes only what such a worker proposed.
+step without a worker, the execution command `scaffold`, writes only what such a worker proposed.
 
 ### req.concorde.grant-from-task-worktree — Grants come from the workspace's own Specs
 
@@ -66,7 +66,7 @@ A worker SHALL NOT be able to read or change Git metadata; diffs and delivery co
 
 ### req.concorde.detailed-errors — Errors are reported in detail
 
-Every Operation, recorded command, worker, step, `concorde` command and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
+Every Operation, execution command, worker, step, `concorde` command and the main agent SHALL report a failure to its parent as an error link that describes it completely: what failed, where, the exact message or output, the evidence and what was tried.
 
 A status, a code or a one-line summary alone is never the whole report. The parent must be able to reason about the error from the link without asking the actor that wrote it.
 

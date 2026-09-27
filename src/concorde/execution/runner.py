@@ -1,4 +1,4 @@
-"""The Execution runner: ``concorde run <operation>`` and the recorded commands.
+"""The Execution runner: ``concorde run <operation>`` and the execution commands.
 
 One runner executes both kinds of run definition in the worktree it is started in:
 
@@ -119,17 +119,17 @@ def prog(kind: str, name: str) -> str:
 
 
 def definition(kind: str, name: str) -> Provider:
-    """The Operation or recorded command ``name``; ``UsageError`` for an unknown one."""
+    """The Operation or execution command ``name``; ``UsageError`` for an unknown one."""
     if kind == "operation":
         from ..operations.catalog import CATALOG, provider
 
         table, load = CATALOG, provider
     else:
-        from .commands import COMMANDS, command
+        from ..commands.catalog import COMMANDS, command
 
         table, load = COMMANDS, command
     if name not in table:
-        from .commands import COMMANDS
+        from ..commands.catalog import COMMANDS
 
         if kind == "operation" and name in COMMANDS:
             raise UsageError(
@@ -286,7 +286,7 @@ def execute(
     cwd: Path | None = None,
     identity: str | None = None,
 ) -> tuple[int, dict]:
-    """Run one Operation or recorded command; the exit status and the run result.
+    """Run one Operation or execution command; the exit status and the run result.
 
     ``UsageError`` for a malformed command line. ``identity`` is the run identity a detaching
     parent chose and announced; its run directory may already hold the detached runner's output.

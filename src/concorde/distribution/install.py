@@ -167,7 +167,7 @@ def _source_commit(package: Path) -> str | None:
 
 def active_runs(project: Path) -> list[str]:
     """Every Concorde run in ``project`` whose process still lives, described for a refusal:
-    Operation and recorded command runs from their progress files and pi task-session rounds
+    Operation and execution command runs from their progress files and pi task-session rounds
     from theirs."""
     found = []
     for path in sorted((project / ".concorde/runs").glob("*/status.json")):

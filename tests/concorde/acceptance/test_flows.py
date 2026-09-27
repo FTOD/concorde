@@ -92,7 +92,7 @@ class BrownfieldFlowTests(unittest.TestCase):
     def test_describe_an_existing_codebase_in_no_ask_mode(self):
         import shutil
 
-        from concorde.adoption.scaffold import child_reading
+        from concorde.scaffold.command import child_reading
         from concorde.workflows.catalog import render
         from tests.concorde.support.brownfield_project import FILES
 

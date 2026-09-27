@@ -1,4 +1,4 @@
-"""The ``concorde delivery`` recorded command end to end on a fixture task."""
+"""The ``concorde delivery`` execution command end to end on a fixture task."""
 
 from __future__ import annotations
 

@@ -19,7 +19,6 @@
         "meaning": "#uses-execution",
         "relies_on": [
           "concept.execution.workspace-binding",
-          "concept.execution.recorded-command",
           "concept.execution.run-result",
           "concept.execution.unbound-run",
           "concept.execution.progress-file",
@@ -76,6 +75,13 @@
         "meaning": "#uses-spec-mcp",
         "relies_on": [
           "concept.spec-mcp.server"
+        ]
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-commands",
+        "relies_on": [
+          "concept.commands.execution-command"
         ]
       }
     ],

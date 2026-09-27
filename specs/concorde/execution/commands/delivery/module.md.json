@@ -8,10 +8,10 @@
   "module": {
     "title": "Delivery",
     "owns": [
-      "specs/concorde/execution/delivery/module.md",
-      "specs/concorde/execution/delivery/contracts.md",
-      "specs/concorde/execution/delivery/requirements.md",
-      "specs/concorde/execution/delivery/scenarios.md"
+      "specs/concorde/execution/commands/delivery/module.md",
+      "specs/concorde/execution/commands/delivery/contracts.md",
+      "specs/concorde/execution/commands/delivery/requirements.md",
+      "specs/concorde/execution/commands/delivery/scenarios.md"
     ],
     "contains": [],
     "uses": [
@@ -19,7 +19,6 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.recorded-command",
           "concept.execution.run-result",
           "concept.execution.run-store",
           "concept.execution.workspace-binding",
@@ -36,6 +35,13 @@
       {
         "target": "module.workers",
         "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-commands",
+        "relies_on": [
+          "concept.commands.execution-command"
+        ]
       }
     ],
     "includes": [

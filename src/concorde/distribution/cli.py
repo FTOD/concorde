@@ -485,7 +485,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         from ..execution.runner import run_main
 
         return run_main("operation", None, words[1:])
-    if words and words[0] in ("task-validation", "delivery", "scaffold"):
+    from ..commands.catalog import COMMANDS
+
+    if words and words[0] in COMMANDS:
         from ..execution.runner import run_main
 
         return run_main("command", words[0], words[1:])

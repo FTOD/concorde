@@ -21,7 +21,6 @@
         "relies_on": [
           "concept.execution.runner",
           "concept.execution.workspace",
-          "concept.execution.recorded-command",
           "concept.execution.run-result",
           "concept.execution.unbound-run",
           "req.execution.inputs-same-workspace",
@@ -73,18 +72,6 @@
       "meaning": "#concept.adoption.decomposition"
     },
     {
-      "id": "concept.adoption.scaffold",
-      "type": "concept",
-      "title": "Scaffold",
-      "meaning": "#concept.adoption.scaffold"
-    },
-    {
-      "id": "concept.adoption.scaffold-record",
-      "type": "concept",
-      "title": "Scaffold record",
-      "meaning": "#concept.adoption.scaffold-record"
-    },
-    {
       "id": "concept.adoption.code-to-spec",
       "type": "concept",
       "title": "Code to spec",
@@ -131,15 +118,6 @@
       ]
     },
     {
-      "id": "realization.adoption.scaffold",
-      "type": "realization",
-      "title": "Scaffold command",
-      "meaning": "#realization.adoption.scaffold",
-      "entries": [
-        "src/concorde/adoption/scaffold.py"
-      ]
-    },
-    {
       "id": "realization.adoption.code-to-spec",
       "type": "realization",
       "title": "Code to spec Operation",
@@ -167,7 +145,8 @@
       "meaning": "#realization.adoption.tests",
       "entries": [
         "tests/concorde/adoption/",
-        "tests/concorde/support/brownfield_project.py"
+        "tests/concorde/support/brownfield_project.py",
+        "tests/concorde/support/adoption_case.py"
       ]
     }
   ],
@@ -177,18 +156,6 @@
       "source": "concept.adoption.survey",
       "verb": "produces",
       "target": "concept.adoption.decomposition"
-    },
-    {
-      "type": "relates",
-      "source": "concept.adoption.scaffold",
-      "verb": "applies",
-      "target": "concept.adoption.decomposition"
-    },
-    {
-      "type": "relates",
-      "source": "concept.adoption.scaffold",
-      "verb": "produces",
-      "target": "concept.adoption.scaffold-record"
     },
     {
       "type": "relates",
@@ -229,12 +196,6 @@
     {
       "type": "relates",
       "source": "realization.adoption.survey",
-      "verb": "validates proposals with",
-      "target": "realization.adoption.shared"
-    },
-    {
-      "type": "relates",
-      "source": "realization.adoption.scaffold",
       "verb": "validates proposals with",
       "target": "realization.adoption.shared"
     },

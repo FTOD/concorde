@@ -1,6 +1,6 @@
 """The records Adoption's Operations share: schemas, answers, and the checks of a proposal.
 
-The schemas are the contracts of ``specs/concorde/operations/adoption/contracts.md``; the tests
+The schemas are the contracts of ``specs/concorde/execution/operations/adoption/contracts.md``; the tests
 hold them equal. ``proposal_problems`` is the one check of a decomposition proposal against a
 worktree, used by the survey after its worker and by the scaffold again before it writes, and
 ``narrowed_entries`` is the one rule by which a parent's realization entries lose the paths its
@@ -127,28 +127,6 @@ DECOMPOSITION_SCHEMA = obj(
         "checks": {"type": "array", "items": CHECK},
         "decisions": {"type": "array", "items": DECISION},
         "open_questions": {"type": "array", "items": QUESTION},
-    }
-)
-# contract.adoption.scaffold-record, version 2
-SCAFFOLD_RECORD_SCHEMA = obj(
-    {
-        "parent": MODULE_ID,
-        "survey_run": S,
-        "created": {
-            "type": "array",
-            "items": obj(
-                {
-                    "id": MODULE_ID,
-                    "title": S,
-                    "entry": S,
-                    "entries": {"type": "array", "items": S},
-                }
-            ),
-        },
-        "externals": {"type": "array", "items": EXTERNAL},
-        "parent_entries_before": {"type": "array", "items": S},
-        "parent_entries_after": {"type": "array", "items": S},
-        "files_written": {"type": "array", "items": S},
     }
 )
 PROMISE = obj(
@@ -555,14 +533,17 @@ __all__ = [
     "ANSWERS_SCHEMA",
     "DECOMPOSITION_SCHEMA",
     "DESCRIBE_WORKER_SCHEMA",
-    "SCAFFOLD_RECORD_SCHEMA",
+    "EXTERNAL",
+    "MODULE_ID",
     "SPEC_DESCRIPTION_SCHEMA",
     "SURVEY_WORKER_SCHEMA",
     "AnswersError",
+    "S",
     "SpecError",
     "answer_problems",
     "child_folder",
     "load_answers",
     "narrowed_entries",
+    "obj",
     "proposal_problems",
 ]
