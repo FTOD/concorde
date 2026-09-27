@@ -53,6 +53,13 @@ The specify Operation SHALL resume the worker only with the structural errors it
 
 A worker that ends `blocked` or `failed`, or whose change introduced no new error, is not resumed.
 
+### req.specification.created-documents — Needed documents are created, once
+
+The specify Operation SHALL create a document a `blocked` worker proposes only when it belongs to a bound Module, lies in the folder of that Module's entry and does not exist, and then launch a worker for it at most once per run.
+
+A document is created empty and registered in its Module's `owns`, so that the second worker's
+grant makes it writable; the Operation writes nothing else into it.
+
 ## Result
 
 ### req.specification.observed-facts — The result reports what the Operation observed

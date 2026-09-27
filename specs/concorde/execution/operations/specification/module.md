@@ -15,7 +15,7 @@ documents; a Spec that fails validation stops the run for a decision, not anothe
 
 | Term | Definition |
 | --- | --- |
-| Spec change | The result of one specify run: the documents the worker changed, the pending entries declared, the worker's account of the promises it changed, the Modules affected and the validation outcome. |
+| Spec change | The result of one specify run: the documents the worker changed, the documents the Operation created for it, the pending entries declared, the worker's account of the promises it changed, the Modules affected and the validation outcome. |
 | [Main agent](../../../vocabulary.md#concept.concorde.main-agent) | |
 | [Worker](../../../vocabulary.md#concept.concorde.worker) | |
 | [Spec](../../../vocabulary.md#concept.concorde.spec) | |
@@ -59,7 +59,7 @@ scenario documents, adding the new file as a pending entry.
 The Operation returns a [run result](../../module.md#concept.execution.run-result) whose `output`
 is a **Spec change**, defined by the
 [Spec change contract](contracts.md#contract.specification.spec-change): the Operation's own
-observation of the changed/deleted documents, added pending entries, affected Modules and
+observation of the changed, created and deleted documents, added pending entries, affected Modules and
 validation findings, plus the worker's summary of what it changed and what it would still need.
 
 `status` is `ok` when the change was made and validation reports no new error; `blocked` when the
@@ -71,9 +71,14 @@ not be run or the audit found a write outside the grant. Edits stay uncommitted,
 main agent to accept, retry, repair or discard; `blocked`/`failed` still carries the observed
 change, except after an audit violation or a failure before the worker ran.
 
-The worker can write only documents its Modules already own — it proposes new ones instead, for the
-main agent to register before the next run — and can have an owned document deleted only by
-proposing it; the Operation performs the deletion after a clean audit. A change spanning several
+The worker can write only documents its Modules already own. When the change needs a new document of
+a bound Module, the worker proposes it and ends `blocked`; the Operation then creates each proposed
+document, empty and registered in its Module's `owns` and the registry mirror, and launches a
+worker once more, with the same intent and a brief naming the created documents, to fill them. A
+proposal it may not create — a Module the run is not bound to, a path outside the folder of that
+Module's entry, a file already there — creates nothing and the run stays `blocked`, with
+`document-refused` evidence naming the reason. An owned document is deleted only by proposing it;
+the Operation performs the deletion after a clean audit. A change spanning several
 Modules, such as a contract version increment, needs them all bound in one run.
 
 ## Design
@@ -90,6 +95,7 @@ decides where code goes; only `implement` may create it.
 | 3 | Generate settings, tools and the [brief](../../workers/module.md#concept.workers.brief) | Workers | — |
 | 4 | Launch the worker and wait for its [worker result](../../workers/module.md#concept.workers.worker-result) | Workers, worker | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
 | 5 | [Audit](../../workers/module.md#concept.workers.audit), perform proposed deletions, write the run record | Workers | a write outside the grant (`failed`) |
+| 5a | When the worker ended `blocked` proposing new documents of bound Modules: create them, empty and owned, regenerate the registry mirror, and repeat steps 2–5 once with a brief naming them | Operation, Workers | a proposal it may not create (`blocked`, `document-refused`); the second worker's own outcome |
 | 6 | Regenerate the [registry](../../../spec-tooling/spec/module.md#concept.spec.registry) mirror from the changed entries | Operation, Spec core | — |
 | 7 | Validate again and compare with the baseline | Operation, Spec core | a new error (`blocked`) |
 | 8 | Compute changed documents, added entries and affected Modules via the [impact index](../../../spec-tooling/spec/module.md#concept.spec.impact-index) | Operation, Spec core | — |

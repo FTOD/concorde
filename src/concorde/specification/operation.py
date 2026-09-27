@@ -5,9 +5,11 @@ Steps (the step table of the Specification Module Spec):
 1. ``baseline``: validate the task worktree's Specs and remember the errors, the bound Modules'
    owned documents and their pending realization entries.
 2. ``change``: the standard worker sequence for task type ``specify`` (grant, settings, brief,
-   launch, audit, proposed deletions, run record) with one round and no checks. An audit
-   violation or a run without a worker ends the run here; a worker that ended ``blocked`` or
-   ``failed`` for any other reason is remembered and the following steps still run.
+   launch, audit, proposed deletions, run record) with repair rounds and no checks. When the
+   worker ends ``blocked`` proposing new documents of the bound Modules, the host creates them,
+   empty and registered, and launches the worker once more to fill them. An audit violation or a
+   run without a worker ends the run here; a worker that ended ``blocked`` or ``failed`` for any
+   other reason is remembered and the following steps still run.
 3. ``reconcile``: regenerate the registry's mirrored fields in the task worktree.
 4. ``revalidate``: validate again and split the errors into new and pre-existing ones.
 5. ``observe``: compute the Spec change from the host's own observations and decide the status:
@@ -98,7 +100,7 @@ WORKER_OUTPUT_SCHEMA: dict = {
     },
 }
 
-# contract.specification.spec-change, version 1 (specs/concorde/operations/specification/contracts.md)
+# contract.specification.spec-change, version 2 (specs/concorde/execution/operations/specification/contracts.md)
 SPEC_CHANGE_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -106,6 +108,7 @@ SPEC_CHANGE_SCHEMA: dict = {
         "intent",
         "summary",
         "changed_documents",
+        "created_documents",
         "deleted_documents",
         "pending_declared",
         "promise_changes",
@@ -117,6 +120,10 @@ SPEC_CHANGE_SCHEMA: dict = {
         "intent": {"type": "string", "minLength": 1},
         "summary": {"type": "string", "minLength": 1},
         "changed_documents": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+        },
+        "created_documents": {
             "type": "array",
             "items": {"type": "string", "minLength": 1},
         },
@@ -168,6 +175,10 @@ class State:
     pending: set = field(default_factory=set)
     stop: Stop | None = None
     record: dict | None = None
+    # The run records of every worker launch, the relaunch after creating documents included.
+    records: list = field(default_factory=list)
+    # The reading files of the documents the host created for the worker.
+    created: list = field(default_factory=list)
     validation: dict | None = None
 
 
@@ -303,35 +314,169 @@ def validation_repair(ctx: RunContext) -> str | None:
     return spec_repair_prompt(errors)
 
 
-def change(ctx: RunContext):
-    """Steps 2 to 5: run the specify worker once; stop only when nothing may be observed."""
-    from ..harness.runs import read_record
+def title_of(path: str) -> str:
+    """A document title from its file name: ``delivery-terms.md`` gives ``Delivery terms``."""
+    words = Path(path).stem.replace("_", " ").replace("-", " ").split()
+    return " ".join(words).capitalize() or "Document"
 
-    current = state(ctx)
-    outcome = ctx.run_worker(
-        instructions(ctx),
+
+def document_refusal(ctx: RunContext, proposal: dict) -> str | None:
+    """Why the host does not create a proposed document, or None when it may."""
+    repository = state(ctx).repository
+    module, path = proposal["module"], proposal["path"]
+    if (
+        module not in ctx.modules
+        or repository is None
+        or module not in repository.modules
+    ):
+        return f"{module} is not a Module this run is bound to"
+    entry = repository.modules[module].primary_document
+    folder = Path(entry).parent
+    candidate = Path(path)
+    if candidate.is_absolute() or ".." in candidate.parts or candidate.suffix != ".md":
+        return "the path is not a project-relative Markdown file"
+    if folder not in candidate.parents:
+        return f"the path lies outside {folder.as_posix()}/, the folder of {module}'s entry"
+    if (ctx.worktree / path).exists() or (ctx.worktree / (path + ".json")).exists():
+        return "a file already exists at the path or its metadata path"
+    return None
+
+
+def create_documents(ctx: RunContext, proposals: list[dict]):
+    """Create every proposed document, empty and owned by its Module, or none of them.
+
+    Returns the created reading files and the evidence; a proposal the host refuses leaves every
+    proposal uncreated, since the worker's change needs all of them.
+    """
+    from ..spec.registry import registry_command
+
+    refusals = [
+        (proposal, reason)
+        for proposal in proposals
+        if (reason := document_refusal(ctx, proposal)) is not None
+    ]
+    if refusals:
+        return [], [
+            evidence("document-refused", proposal["path"], reason)
+            for proposal, reason in refusals
+        ]
+    repository = state(ctx).repository
+    created, found = [], []
+    for proposal in proposals:
+        module, path = proposal["module"], proposal["path"]
+        entry = repository.modules[module].primary_document
+        link = Path(entry).relative_to(Path(path).parent).as_posix()
+        title = repository.modules[module].title
+        reading = ctx.worktree / path
+        reading.parent.mkdir(parents=True, exist_ok=True)
+        reading.write_text(
+            f"# {title_of(path)}\n\nPart of the Spec of [{title}]({link}).\n",
+            encoding="utf-8",
+        )
+        local = module.split(".", 1)[1]
+        (ctx.worktree / (path + ".json")).write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "document": {
+                        "id": f"document.{local}.{Path(path).stem}",
+                        "owner": module,
+                        "role": proposal["role"],
+                    },
+                    "defines": [],
+                    "relations": [],
+                    "extensions": {},
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        metadata_path = ctx.worktree / (entry + ".json")
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["module"]["owns"].append(path)
+        metadata_path.write_text(
+            json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        created.append(path)
+        found.append(
+            evidence(
+                "document-created",
+                path,
+                f"{proposal['role']} document of {module}: {proposal['reason']}",
+            )
+        )
+    registry = registry_command(ctx.worktree, write=True)
+    found.append(evidence("registry", registry.status, "after creating documents"))
+    return created, found
+
+
+def launch(ctx: RunContext, created: list[str]):
+    """One specify worker launch; ``created`` names the documents the host made for it."""
+    text = instructions(ctx)
+    if created:
+        text += (
+            "\n\n## Documents the host created for you\n\n"
+            "An earlier worker of this run needed these documents, so the host created them, "
+            "empty and owned by their Modules; fill them to carry out the intent:\n\n"
+            + "".join(f"- `{path}` (and `{path}.json`)\n" for path in created)
+        )
+    return ctx.run_worker(
+        text,
         task_type="specify",
         output_schema=WORKER_OUTPUT_SCHEMA,
         checks=False,
         rounds=REPAIR_ROUNDS,
         after_round=lambda: validation_repair(ctx),
     )
-    if not ctx.worker_runs:
-        return outcome  # the grant could not be computed; no worker ran
-    record = read_record(ctx.records, ctx.worker_runs[-1])
-    current.record = record
-    if isinstance(outcome, Continue):
-        return Continue(evidence=outcome.evidence)
-    violated = any(
+
+
+def violated(record: dict) -> bool:
+    return any(
         error["code"] == "audit_violation" for error in record.get("errors") or []
     ) or any(
         (item.get("audit") or {}).get("verdict") == "violation"
         for item in record.get("rounds") or []
     )
-    if violated:
+
+
+def change(ctx: RunContext):
+    """Steps 2 to 5: run the specify worker, once more after creating the documents it needs;
+    stop only when nothing may be observed."""
+    from ..harness.runs import read_record
+
+    current = state(ctx)
+    outcome = launch(ctx, [])
+    if not ctx.worker_runs:
+        return outcome  # the grant could not be computed; no worker ran
+    record = read_record(ctx.records, ctx.worker_runs[-1])
+    current.records.append(record)
+    found = list(outcome.evidence)
+    proposals = ((record.get("worker_result") or {}).get("output") or {}).get(
+        "proposed_documents"
+    ) or []
+    if (
+        isinstance(outcome, Stop)
+        and outcome.status == "blocked"
+        and proposals
+        and not violated(record)
+    ):
+        created, notes = create_documents(ctx, proposals)
+        found += notes
+        if created:
+            current.created = created
+            outcome = launch(ctx, created)
+            record = read_record(ctx.records, ctx.worker_runs[-1])
+            current.records.append(record)
+            found += outcome.evidence
+    current.record = record
+    if isinstance(outcome, Continue):
+        return Continue(evidence=found)
+    if violated(record):
+        outcome.evidence[:] = found
         return outcome  # a write outside the grant: no validation, nothing is observed
-    current.stop = outcome
-    return Continue(evidence=outcome.evidence)
+    current.stop = Stop(outcome.status, outcome.summary, found, outcome.error)
+    return Continue(evidence=found)
 
 
 def reconcile(ctx: RunContext):
@@ -405,14 +550,17 @@ def observe(ctx: RunContext):
     """Steps 8 and 9: the Spec change from the host's own observations, and the status."""
     current = state(ctx)
     record = current.record or {}
+    records = current.records or [record]
     changed = sorted(
         {
             path
-            for item in record.get("rounds") or []
+            for each in records
+            for item in each.get("rounds") or []
             for path in (item.get("audit") or {}).get("changed", [])
         }
+        | set(current.created)
     )
-    deleted = sorted(record.get("deleted") or [])
+    deleted = sorted({path for each in records for path in each.get("deleted") or []})
     after = pending_entries(ctx.worktree, current.documents)
     declared = [
         {"module": module, "realization": realization, "path": path}
@@ -426,6 +574,7 @@ def observe(ctx: RunContext):
         or (record.get("worker_result") or {}).get("summary")
         or "The worker gave no account of its change.",
         "changed_documents": changed,
+        "created_documents": list(current.created),
         "deleted_documents": deleted,
         "pending_declared": declared,
         "promise_changes": claims.get("promise_changes", []),
@@ -443,7 +592,8 @@ def observe(ctx: RunContext):
     ]
     found += [
         evidence("deletion-refused", path, "not an owned document of a bound Module")
-        for path in record.get("deletions_refused") or []
+        for each in records
+        for path in each.get("deletions_refused") or []
     ]
     if current.stop is not None:
         ctx.output = output

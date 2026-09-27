@@ -18,8 +18,11 @@ read-only or hidden.
 3. When the intent needs a new implementation file, declare it: add its project-relative path to
    the `entries` of the right realization in the owning Module's metadata and also to that
    realization's `pending` list. Never create the file; an `implement` run creates it.
-4. You cannot create a new document. If the change needs one, describe it in
-   `proposed_documents` instead. To remove an owned document, list both its reading file and its
+4. You cannot create a new document yourself. If the change needs a new document of a bound
+   Module, in the folder of that Module's entry, list it in `proposed_documents` (its `module`,
+   project-relative `path`, `role` and `reason`) and return `blocked`: the host then creates each
+   one, empty and owned by its Module, and launches a worker again to fill it. Make the edits that
+   do not depend on the new document first. To remove an owned document, list both its reading file and its
    metadata file in `proposed_deletions`; the host deletes them after your run.
 
 You may know implementation files only by name. Never state a promise because a file name suggests
@@ -42,7 +45,7 @@ Specs still validate; do not report those.
 
 Return `blocked` when you cannot carry out the intent within your boundary: it contradicts a
 promise another Module relies on, it needs a document of a Module you are not bound to, or it needs
-a new document. Name the other Module or the document, what you tried and the options you see.
+a new document (listed in `proposed_documents`, which the host then creates for a second worker). Name the other Module or the document, what you tried and the options you see.
 Leave any edits you already made consistent, and still fill `output` (with an empty list where
 nothing applies).
 

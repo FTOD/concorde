@@ -9,27 +9,75 @@ The exact shape of what [Specification](module.md) returns. The Spec change is t
 ```concorde-contract
 {
   "id": "contract.specification.spec-change",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["intent", "summary", "changed_documents", "deleted_documents", "pending_declared",
-                 "promise_changes", "proposed_documents", "affected_modules", "validation"],
+    "required": [
+      "intent",
+      "summary",
+      "changed_documents",
+      "created_documents",
+      "deleted_documents",
+      "pending_declared",
+      "promise_changes",
+      "proposed_documents",
+      "affected_modules",
+      "validation"
+    ],
     "properties": {
-      "intent": {"type": "string", "minLength": 1},
-      "summary": {"type": "string", "minLength": 1},
-      "changed_documents": {"type": "array", "items": {"type": "string", "minLength": 1}},
-      "deleted_documents": {"type": "array", "items": {"type": "string", "minLength": 1}},
+      "intent": {
+        "type": "string",
+        "minLength": 1
+      },
+      "summary": {
+        "type": "string",
+        "minLength": 1
+      },
+      "changed_documents": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "created_documents": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "deleted_documents": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
       "pending_declared": {
         "type": "array",
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["module", "realization", "path"],
+          "required": [
+            "module",
+            "realization",
+            "path"
+          ],
           "properties": {
-            "module": {"type": "string", "pattern": "^module\\."},
-            "realization": {"type": "string", "pattern": "^realization\\."},
-            "path": {"type": "string", "minLength": 1}
+            "module": {
+              "type": "string",
+              "pattern": "^module\\."
+            },
+            "realization": {
+              "type": "string",
+              "pattern": "^realization\\."
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       },
@@ -38,14 +86,51 @@ The exact shape of what [Specification](module.md) returns. The Spec change is t
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["module", "kind", "id", "change", "description"],
+          "required": [
+            "module",
+            "kind",
+            "id",
+            "change",
+            "description"
+          ],
           "properties": {
-            "module": {"type": "string", "pattern": "^module\\."},
-            "kind": {"enum": ["requirement", "scenario", "contract", "concept", "realization",
-                              "relation", "explanation"]},
-            "id": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
-            "change": {"enum": ["added", "changed", "removed"]},
-            "description": {"type": "string", "minLength": 1}
+            "module": {
+              "type": "string",
+              "pattern": "^module\\."
+            },
+            "kind": {
+              "enum": [
+                "requirement",
+                "scenario",
+                "contract",
+                "concept",
+                "realization",
+                "relation",
+                "explanation"
+              ]
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "change": {
+              "enum": [
+                "added",
+                "changed",
+                "removed"
+              ]
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       },
@@ -54,24 +139,68 @@ The exact shape of what [Specification](module.md) returns. The Spec change is t
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["module", "path", "role", "reason"],
+          "required": [
+            "module",
+            "path",
+            "role",
+            "reason"
+          ],
           "properties": {
-            "module": {"type": "string", "pattern": "^module\\."},
-            "path": {"type": "string", "minLength": 1},
-            "role": {"enum": ["module", "implementation"]},
-            "reason": {"type": "string", "minLength": 1}
+            "module": {
+              "type": "string",
+              "pattern": "^module\\."
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "role": {
+              "enum": [
+                "module",
+                "implementation"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       },
-      "affected_modules": {"type": "array", "items": {"type": "string", "pattern": "^module\\."}},
+      "affected_modules": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^module\\."
+        }
+      },
       "validation": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["new_errors", "pre_existing_errors", "warnings"],
+        "required": [
+          "new_errors",
+          "pre_existing_errors",
+          "warnings"
+        ],
         "properties": {
-          "new_errors": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
-          "pre_existing_errors": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
-          "warnings": {"type": "array", "items": {"$ref": "#/$defs/finding"}}
+          "new_errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          },
+          "pre_existing_errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          }
         }
       }
     },
@@ -79,16 +208,36 @@ The exact shape of what [Specification](module.md) returns. The Spec change is t
       "finding": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["rule_id", "path", "message"],
+        "required": [
+          "rule_id",
+          "path",
+          "message"
+        ],
         "properties": {
-          "rule_id": {"type": "string", "minLength": 1},
-          "path": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
-          "message": {"type": "string", "minLength": 1}
+          "rule_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }
   },
-  "semantics": "The outcome of one specify run. intent repeats the --intent argument. summary, promise_changes and proposed_documents are the worker's claims: its account of the promises it added, changed or removed in each bound Module (id is the stable identity when the promise has one, null for an explanation), and the new documents it would need, with their owning Module and role, which it cannot create itself; the Operation never creates a proposed document. changed_documents, deleted_documents, pending_declared, affected_modules and validation are computed by the Operation from the workspace after the audit: changed_documents lists every changed or new reading or metadata file, deleted_documents every owned document file the Operation deleted at the worker's request inside the grant, pending_declared every pending realization entry that was not pending before the run, affected_modules every Module whose Spec context contains a changed document, and validation the structural findings after the change, split into errors the baseline did not have, errors it already had, and warnings. The run's status is ok only when new_errors is empty.",
+  "semantics": "The outcome of one specify run. intent repeats the --intent argument. summary, promise_changes and proposed_documents are the worker's claims: its account of the promises it added, changed or removed in each bound Module (id is the stable identity when the promise has one, null for an explanation), and the new documents it would need, with their owning Module and role, which it cannot create itself; when a blocked worker proposes documents of bound Modules in the folders of their entries, the Operation creates them empty and launches a second worker once, and the second worker's proposals are only reported. changed_documents (which includes the documents the Operation created), created_documents (the documents the Operation created, empty and owned, for a second worker to fill, because the first proposed them),, deleted_documents, pending_declared, affected_modules and validation are computed by the Operation from the workspace after the audit: changed_documents lists every changed or new reading or metadata file, deleted_documents every owned document file the Operation deleted at the worker's request inside the grant, pending_declared every pending realization entry that was not pending before the run, affected_modules every Module whose Spec context contains a changed document, and validation the structural findings after the change, split into errors the baseline did not have, errors it already had, and warnings. The run's status is ok only when new_errors is empty.",
   "example": {
     "intent": "add an optional severity to Issue reports",
     "summary": "Added severity to the report contract and a scenario for reporting with a severity.",
@@ -96,15 +245,35 @@ The exact shape of what [Specification](module.md) returns. The Spec change is t
       "specs/concorde/issues/interface.md",
       "specs/concorde/issues/scenarios.md"
     ],
+    "created_documents": [],
     "deleted_documents": [],
     "pending_declared": [],
     "promise_changes": [
-      {"module": "module.issues", "kind": "contract", "id": "contract.issues.report", "change": "changed", "description": "reports may carry severity low, medium or high"},
-      {"module": "module.issues", "kind": "scenario", "id": "scenario.issues.report-severity", "change": "added", "description": "a report with a severity is saved with it"}
+      {
+        "module": "module.issues",
+        "kind": "contract",
+        "id": "contract.issues.report",
+        "change": "changed",
+        "description": "reports may carry severity low, medium or high"
+      },
+      {
+        "module": "module.issues",
+        "kind": "scenario",
+        "id": "scenario.issues.report-severity",
+        "change": "added",
+        "description": "a report with a severity is saved with it"
+      }
     ],
     "proposed_documents": [],
-    "affected_modules": ["module.issues", "module.main-session"],
-    "validation": {"new_errors": [], "pre_existing_errors": [], "warnings": []}
+    "affected_modules": [
+      "module.issues",
+      "module.main-session"
+    ],
+    "validation": {
+      "new_errors": [],
+      "pre_existing_errors": [],
+      "warnings": []
+    }
   }
 }
 ```

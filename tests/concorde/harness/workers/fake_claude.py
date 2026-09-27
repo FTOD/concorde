@@ -6,7 +6,9 @@ with ``writes`` (absolute path to content), ``result`` (the structured output, m
 ``raw`` (print this instead of an envelope), ``envelope`` (fields merged over the result envelope,
 such as an error subtype), ``no_structured`` (omit the structured output) or ``actions``
 (``[tool, input]`` pairs printed first as ``stream-json`` assistant tool uses).
-The fake records its argument list, environment and prompt per round in its working directory. It
+The plan may instead be ``{"first": [...], "relaunch": [...]}``, whose relaunch rounds serve a
+launch whose brief says the host created documents for it. The fake records its argument list,
+environment and prompt per round in its working directory. It
 does not enforce anything: enforcement is Claude Code's and is covered by the live test.
 """
 
@@ -47,7 +49,13 @@ def main() -> int:
     state = json.loads(state_file.read_text()) if state_file.exists() else {"round": 0}
     if state["round"] == 0:
         match = re.search(r"FAKE-PLAN: (.*)", prompt)
-        state["plan"] = json.loads(match.group(1)) if match else [{}]
+        plan = json.loads(match.group(1)) if match else [{}]
+        if isinstance(plan, dict):
+            # {"first": [...], "relaunch": [...]}: the relaunch plan serves a launch whose brief
+            # says the host created documents for it.
+            relaunched = "## Documents the host created for you" in prompt
+            plan = plan["relaunch" if relaunched else "first"]
+        state["plan"] = plan
     state["round"] += 1
     number = state["round"]
     state_file.write_text(json.dumps(state))

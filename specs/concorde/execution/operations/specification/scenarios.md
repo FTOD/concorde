@@ -45,6 +45,15 @@ is in the [contracts](contracts.md).
 - THEN the result has status `blocked`
 - AND its error chain ends in the worker's own link naming the other Module, the reason it could not change it and the options it sees
 
+### scenario.specification.new-document — A needed document is created and filled
+
+- GIVEN an intent whose precise obligations belong in a new implementation document of the bound Module
+- WHEN the worker ends `blocked` proposing `specs/a/rules.md` for that Module
+- THEN the Operation creates `specs/a/rules.md` and its metadata, empty and owned by the Module, and adds it to the Module's `owns` and the registry mirror
+- AND it launches a second worker whose brief names the created document, and that worker fills it
+- AND the result lists the document under `created_documents` and `changed_documents`, with `document-created` evidence, and two worker runs
+- BUT a proposal for a Module the run is not bound to, or outside the folder of the Module's entry, creates nothing, launches no second worker and leaves the run `blocked` with `document-refused` evidence
+
 ### scenario.specification.code-write — A write to code fails the run
 
 - GIVEN a specify run whose write audit finds a changed implementation file

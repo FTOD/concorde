@@ -259,6 +259,94 @@ class SpecifyTests(unittest.TestCase):
         self.assertEqual(["specs/a/module.md"], envelope["output"]["changed_documents"])
         self.assertIn("validation", self.kinds(envelope))
 
+    def needs(self, path: str, module: str = "module.a") -> dict:
+        """A first round that ends blocked because it needs a new document at ``path``."""
+        return {
+            "result": {
+                "status": "blocked",
+                "summary": "needs a new document",
+                "error": worker_error(
+                    f"the intent's obligations belong in a new document {path}",
+                    code="needs_new_document",
+                    reason="permission",
+                    options=["create the document"],
+                ),
+                "output": {
+                    **CLAIMS,
+                    "proposed_documents": [
+                        {
+                            "module": module,
+                            "path": path,
+                            "role": "implementation",
+                            "reason": "the precise obligations need an implementation document",
+                        }
+                    ],
+                },
+            }
+        }
+
+    @verifies("scenario.specification.new-document")
+    def test_a_needed_document_is_created_and_the_worker_fills_it(self):
+        worktree = self.open()
+        filled = "# Rules\n\nThe precise rules of [A](module.md).\n"
+        status, envelope = self.specify(
+            {
+                "first": [self.needs("specs/a/rules.md")],
+                "relaunch": [
+                    {
+                        "writes": {str(worktree / "specs/a/rules.md"): filled},
+                        "result": {"output": CLAIMS},
+                    }
+                ],
+            }
+        )
+        self.assertEqual(0, status, envelope)
+        output = envelope["output"]
+        self.assertEqual(["specs/a/rules.md"], output["created_documents"])
+        self.assertIn("specs/a/rules.md", output["changed_documents"])
+        self.assertEqual([], output["validation"]["new_errors"])
+        self.assertEqual(filled, (worktree / "specs/a/rules.md").read_text())
+        metadata = json.loads((worktree / "specs/a/rules.md.json").read_text())
+        self.assertEqual(
+            {"id": "document.a.rules", "owner": "module.a", "role": "implementation"},
+            metadata["document"],
+        )
+        owns = json.loads((worktree / "specs/a/module.md.json").read_text())["module"][
+            "owns"
+        ]
+        self.assertIn("specs/a/rules.md", owns)
+        registry = json.loads((worktree / ".concorde/specs.json").read_text())
+        [record] = [m for m in registry["modules"] if m["id"] == "module.a"]
+        self.assertIn("specs/a/rules.md", record["owns"])
+        self.assertEqual(2, len(envelope["worker_runs"]))
+        self.assertIn("document-created", self.kinds(envelope))
+        second = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][1]
+        )
+        brief = (Path(second["run_directory"]) / "control/brief.md").read_text()
+        self.assertIn("Documents the host created for you", brief)
+
+    @verifies("scenario.specification.new-document")
+    def test_a_document_outside_the_bound_modules_is_not_created(self):
+        worktree = self.open()
+        for path, module in (
+            ("specs/b/rules.md", "module.b"),
+            ("docs/rules.md", "module.a"),
+        ):
+            with self.subTest(path=path):
+                status, envelope = self.specify(
+                    {
+                        "first": [self.needs(path, module)],
+                        "relaunch": [{"result": {"output": CLAIMS}}],
+                    }
+                )
+                self.assertEqual(1, status)
+                self.assertEqual("blocked", envelope["status"])
+                self.assertEqual([], envelope["output"]["created_documents"])
+                self.assertIn("document-refused", self.kinds(envelope))
+                self.assertFalse((worktree / path).exists())
+                self.assertEqual(1, len(envelope["worker_runs"]))
+
     @verifies("scenario.specification.code-write")
     def test_a_write_to_code_fails_the_run(self):
         worktree = self.open()
