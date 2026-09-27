@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "document": {
-    "id": "document.spec-review.debate",
+    "id": "document.spec-review.panel",
     "owner": "module.spec-review",
     "role": "implementation"
   },

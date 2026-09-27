@@ -1,8 +1,8 @@
 # Spec review scenarios
 
 Concrete situations of [Spec review](module.md). The host sequence and the payload are in the
-[Operation definition](operation.md), and those of the Spec debate in its
-[definition](debate.md).
+[Operation definition](operation.md), and those of the Spec panel in its
+[definition](panel.md).
 
 ## Reviewing
 
@@ -79,38 +79,29 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 - THEN the Module's outcome is `incomplete`
 - AND the audit violation is returned as host evidence
 
-## Debating
+## Paneling
 
-### scenario.spec-review.debate-agreement — Findings both debaters agree on stand
+### scenario.spec-review.panel-merged — The chair merges independent reviews into one report
 
-- GIVEN a reviewer that reports one blocking and one advisory finding for Module A
-- AND a challenger that agrees with the blocking finding, objects to the advisory one and adds a blocking finding the reviewer missed
-- WHEN the reviewer, answering in turn, agrees with the objection and with the added finding
-- THEN the two blocking findings are `agreed` and the advisory one is `withdrawn`
+- GIVEN a panel of two reviewers for Module A
+- AND reviewer 1 reports that a requirement holds two obligations, and reviewer 2 reports the same problem in other words and an advisory wording problem
+- WHEN the chair merges the two reports of the requirement and rejects the wording problem with a reason
+- THEN the panel report has one blocking finding whose sources are `r1.1` and `r2.1`, reported by 2 reviewers, and the rejection of `r2.2`
+- AND each reviewer's own findings are in the result, labelled
 - AND A's outcome and the verdict are `changes_required`
-- AND no second challenge turn runs, because nothing awaits the challenger
 - BUT no file of the task worktree changes
 
-### scenario.spec-review.debate-contested — A disagreement after the last turn is a decision point
+### scenario.spec-review.panel-accounting — A report that loses a finding goes back to the chair
 
-- GIVEN a reviewer that reports one blocking finding for Module A and a challenger that objects to it
-- AND both keep objecting on every later turn
-- WHEN the main agent runs `spec_debate` for Module A with `--challenges 2`
-- THEN the debate ends after two challenge turns and the reviewer's second answer
-- AND the finding is `contested`, with the reviewer's finding and the challenger's "does not hold" as the two positions and every objection in its history
-- AND A's outcome and the verdict are `undecided`
+- GIVEN a panel whose reviewers report `r1.1` and `r2.1`
+- AND a chair whose first report accounts only for `r1.1`
+- WHEN the host checks the report
+- THEN the chair runs a second time with its previous report and the problem "r2.1 is not accounted for"
+- AND the second report, which accounts for both, is the panel report
 
-### scenario.spec-review.debate-amended — An agreed amendment is what stands
+### scenario.spec-review.panel-short — A reviewer that cannot finish stops the panel
 
-- GIVEN a reviewer that reports a blocking finding for Module A
-- AND a challenger that amends it to an advisory finding
-- WHEN the reviewer agrees with the amendment
-- THEN the advisory finding is `agreed`
-- AND A's outcome and the verdict are `accepted`
-
-### scenario.spec-review.debate-incomplete — A debater that cannot finish
-
-- GIVEN a reviewer that reports a finding for Module A and a challenger that ends `blocked` because it needs a document outside its grant
-- WHEN the host collects the challenger's result
-- THEN A's debate stops with its item still `open`, and A's outcome and the verdict are `incomplete`
-- AND the result's error is the Operation's `debate_incomplete` link whose cause for A names the turn and ends in the challenger's own link, unchanged
+- GIVEN a panel of two reviewers for Module A, of which reviewer 2 ends `blocked` because it needs a document outside its grant
+- WHEN the reviewers have ended
+- THEN the chair does not run, and A's outcome and the verdict are `incomplete`
+- AND the result's error is the Operation's `panel_incomplete` link whose cause for A is `panel_short`, with reviewer 2's link, naming its seat, and below it the reviewer's own link unchanged

@@ -1,10 +1,11 @@
-"""A stand-in ``claude`` for Spec debate tests that picks one plan per debater turn.
+"""A stand-in ``claude`` for Spec panel tests that picks one plan per reviewer seat and chair attempt.
 
-The task goal carries ``FAKE-PLANS: <json>``, an object whose keys are ``"<role> <module> <turn>"``,
-for example ``"reviewer module.a 1"`` or ``"challenger module.a 2"``, and whose values are plans in
-the form of the worker tests' fake ``claude``. The role, Module and turn are read from the Spec
-debate brief; the chosen plan is handed to that fake as ``FAKE-PLAN``, with every ``@WORKTREE@``
-replaced by the task worktree's absolute path taken from the brief.
+The task goal carries ``FAKE-PLANS: <json>``, an object whose keys are ``"<role> <module> <n>"``,
+where ``n`` is the reviewer's seat or the chair's attempt, for example ``"reviewer module.a 2"`` or
+``"chair module.a 1"``, and whose values are plans in the form of the worker tests' fake
+``claude``. The role, Module and number are read from the Spec panel brief; the chosen plan is
+handed to that fake as ``FAKE-PLAN``, with every ``@WORKTREE@`` replaced by the task worktree's
+absolute path taken from the brief.
 """
 
 import json
@@ -24,8 +25,8 @@ def main() -> int:
         plans = json.loads(match.group(1))
     role = re.search(r"Your role: (\w+)\.", prompt)
     module = re.search(r"Reviewed Module: `([^`]+)`", prompt)
-    turn = re.search(r"Debate turn: (\d+) ", prompt)
-    key = " ".join(found.group(1) if found else "?" for found in (role, module, turn))
+    number = re.search(r"(?:Panel seat|Chair attempt): (\d+)", prompt)
+    key = " ".join(found.group(1) if found else "?" for found in (role, module, number))
     plan = json.dumps(plans.get(key, [{}]))
     worktree = re.search(r"The task worktree is (\S+?);", prompt)
     if worktree:
@@ -34,6 +35,7 @@ def main() -> int:
         [sys.executable, str(FAKE), *sys.argv[1:]],
         input=f"FAKE-PLAN: {plan}\n{prompt}",
         text=True,
+        check=False,
     ).returncode
 
 

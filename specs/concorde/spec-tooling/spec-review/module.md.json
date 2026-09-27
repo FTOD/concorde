@@ -10,7 +10,7 @@
     "owns": [
       "specs/concorde/spec-tooling/spec-review/module.md",
       "specs/concorde/spec-tooling/spec-review/operation.md",
-      "specs/concorde/spec-tooling/spec-review/debate.md",
+      "specs/concorde/spec-tooling/spec-review/panel.md",
       "specs/concorde/spec-tooling/spec-review/requirements.md",
       "specs/concorde/spec-tooling/spec-review/scenarios.md"
     ],
@@ -84,16 +84,16 @@
       "meaning": "#concept.spec-review.memory"
     },
     {
-      "id": "concept.spec-review.debate",
+      "id": "concept.spec-review.panel",
       "type": "concept",
-      "title": "Spec debate",
-      "meaning": "#concept.spec-review.debate"
+      "title": "Spec panel",
+      "meaning": "#concept.spec-review.panel"
     },
     {
-      "id": "concept.spec-review.debate-item",
+      "id": "concept.spec-review.panel-report",
       "type": "concept",
-      "title": "Debate item",
-      "meaning": "#concept.spec-review.debate-item"
+      "title": "Panel report",
+      "meaning": "#concept.spec-review.panel-report"
     },
     {
       "id": "realization.spec-review.operation",
@@ -116,12 +116,12 @@
       ]
     },
     {
-      "id": "realization.spec-review.debater",
+      "id": "realization.spec-review.panel",
       "type": "realization",
-      "title": "Debater brief",
-      "meaning": "#realization.spec-review.debater",
+      "title": "Panel brief",
+      "meaning": "#realization.spec-review.panel",
       "entries": [
-        "prompts/workers/debate-spec.md"
+        "prompts/workers/panel-spec.md"
       ]
     }
   ],
@@ -165,20 +165,20 @@
     {
       "type": "relates",
       "source": "realization.spec-review.operation",
-      "verb": "hands debaters",
-      "target": "realization.spec-review.debater"
+      "verb": "hands the panel",
+      "target": "realization.spec-review.panel"
     },
     {
       "type": "relates",
-      "source": "realization.spec-review.debater",
+      "source": "realization.spec-review.panel",
       "verb": "shares the checklist of",
       "target": "realization.spec-review.checklist"
     },
     {
       "type": "relates",
       "source": "realization.spec-review.operation",
-      "verb": "settles",
-      "target": "concept.spec-review.debate-item"
+      "verb": "checks the accounting of",
+      "target": "concept.spec-review.panel-report"
     }
   ],
   "extensions": {}

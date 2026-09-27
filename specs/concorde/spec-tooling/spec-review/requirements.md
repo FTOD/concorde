@@ -15,7 +15,7 @@ A Spec review inside a task SHALL merge its findings into each reviewed Module's
 
 ### req.spec-review.review-spec-grant — Reviewers read under a review-spec grant
 
-Every reviewer, checker and debater SHALL run under the `review-spec` grant of exactly one
+Every reviewer, checker and chair SHALL run under the `review-spec` grant of exactly one
 reviewed Module, computed from the task worktree's Specs.
 
 ### req.spec-review.own-documents — Only the Module's own documents can block
@@ -35,7 +35,7 @@ A Spec review SHALL NOT launch a reviewer for a Module whose context identity is
 
 ### req.spec-review.host-verdict — The host derives the verdict
 
-The verdict of a Spec review or a Spec debate SHALL be derived by the host by the rule of that
+The verdict of a Spec review or a Spec panel SHALL be derived by the host by the rule of that
 Operation's payload contract, never taken from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
@@ -53,13 +53,13 @@ under.
 The Operation result SHALL keep reviewer findings and checker statuses apart from the evidence the
 host produced itself.
 
-## Debate
+## Panel
 
-### req.spec-review.debate-by-stances — The host settles a debate item only by stances
+### req.spec-review.panel-accounted — A panel report accounts for every reviewer finding
 
-In a Spec debate the host SHALL NOT make a debate item `agreed` or `withdrawn` except by a
-debater's stance on it.
+A Spec panel SHALL NOT complete a Module whose panel report leaves a reviewer finding unaccounted
+for.
 
-### req.spec-review.debate-bounded — A debate is bounded
+### req.spec-review.panel-independent — Panel reviewers review independently
 
-A Spec debate SHALL run at most `--challenges` challenge turns for each Module.
+A panel reviewer's brief SHALL NOT contain another reviewer's findings.
