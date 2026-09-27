@@ -32,7 +32,6 @@ guards against scope drift and mistakes, not a malicious worker.
 | Run directory | The directory `runs/<run-id>/` of the run store that holds one worker run's record, generated configuration and the worker's private state and working directory. |
 | configure-workers | The command `concorde configure-workers`, which lists the models the installed agent programs offer workers and changes the worker model configuration of the worktree it runs in, without launching a worker or recording a run. |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
-| [Tool](../../vocabulary.md#concept.concorde.tool) | |
 | [Agent harness](../../harness/module.md#concept.harness.harness) | |
 | [Worker settings](../../harness/module.md#concept.harness.worker-settings) | |
 | [Permission extension](../../harness/module.md#concept.harness.permission-extension) | |
@@ -44,8 +43,8 @@ guards against scope drift and mistakes, not a malicious worker.
 | [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 | [Grant](../../spec-tooling/spec/module.md#concept.spec.grant) | |
 | [Context identity](../../spec-tooling/spec/module.md#concept.spec.context-identity) | |
-| [Configured check](../tools/checks/module.md#concept.checks.configured-check) | |
-| [Check result](../tools/checks/module.md#concept.checks.check-result) | |
+| [Configured check](../checks/module.md#concept.checks.configured-check) | |
+| [Check result](../checks/module.md#concept.checks.check-result) | |
 | [Run store](../module.md#concept.execution.run-store) | |
 | [Run progress file](../module.md#concept.execution.progress-file) | |
 | [Unbound run](../module.md#concept.execution.unbound-run) | |
@@ -64,9 +63,9 @@ evidence.
 
 Workers is the deterministic management code, the **host** of a worker run; the worker it launches
 is the AI process. An Operation's step calls Workers, which launches the worker and, after a clean
-audit, calls the Check execution Tool when checks were requested. A check failure can lead to
-another AI round within the same Operation. This is a host Tool call, not an AI worker calling Check
-execution or starting another run. A workflow reaches workers through its Operations, never by
+audit, calls Check execution when checks were requested. A check failure can lead to another AI
+round within the same Operation. This is a host call, not an AI worker calling Check execution or
+starting another run. A workflow reaches workers through its Operations, never by
 directly launching a Concorde worker. Task sessions have their own task-level lifecycle outside
 Workers.
 
@@ -333,7 +332,7 @@ workers, such as Understanding, Specification, Implementation, Code review, Adop
 review. No execution command launches a worker, and nothing above level 4 does: a workflow reaches
 workers through its Operations, and neither the main agent nor a task session ever starts one. Below it, the worker calls nothing of Concorde's: it never touches Git,
 runs an Operation or starts an agent. Between rounds the Workers host code, not the worker, calls
-its level-5 neighbour, the Check execution Tool, so that a failing check can drive another round
+Check execution, so that a failing check can drive another round
 inside the same Operation.
 
 Results travel up in one direction. The worker ends with its worker result; Workers keeps it
@@ -398,10 +397,10 @@ dir -> settings: holds
 
 <a id="uses-checks"></a>
 
-**Check execution** is a Tool called by the Workers host code. It runs the
-[configured checks](../tools/checks/module.md#concept.checks.configured-check)
+**Check execution** is a service the Workers host code calls. It runs the
+[configured checks](../checks/module.md#concept.checks.configured-check)
 on the worktree in its read-only boundary, returning a [check
-result](../tools/checks/module.md#concept.checks.check-result) per check with its log. Workers relies on
+result](../checks/module.md#concept.checks.check-result) per check with its log. Workers relies on
 checks never changing the worktree; it runs them only after a clean audit, feeds failures into the
 next round, and records every result. Checks that cannot run end the run `failed` with the error as
 evidence and no round.

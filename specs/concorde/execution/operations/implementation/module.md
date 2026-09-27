@@ -32,8 +32,8 @@ Modules.
 | [Worker result](../../workers/module.md#concept.workers.worker-result) | |
 | [Write audit](../../workers/module.md#concept.workers.audit) | |
 | [Resume round](../../workers/module.md#concept.workers.resume-round) | |
-| [Configured check](../../tools/checks/module.md#concept.checks.configured-check) | |
-| [Check result](../../tools/checks/module.md#concept.checks.check-result) | |
+| [Configured check](../../checks/module.md#concept.checks.configured-check) | |
+| [Check result](../../checks/module.md#concept.checks.check-result) | |
 
 A code change is what `implement` produced; a test report is what `test` found. Both carry check
 results the Operation recorded itself, never a worker's word about whether checks passed.
@@ -98,7 +98,7 @@ can only be reported.
 | 3 | Generate settings, tools and the [brief](../../workers/module.md#concept.workers.brief) | Workers | — |
 | 4 | Launch the worker and wait for its [worker result](../../workers/module.md#concept.workers.worker-result) | Workers, worker | launch error/timeout (`failed`) |
 | 5 | [Audit](../../workers/module.md#concept.workers.audit) against the grant | Workers | write outside the grant (`failed`); worker `blocked`/`failed` (passed on) |
-| 6 | Run the bound Modules' [configured checks](../../tools/checks/module.md#concept.checks.configured-check) | Workers, Check execution | — |
+| 6 | Run the bound Modules' [configured checks](../../checks/module.md#concept.checks.configured-check) | Workers, Check execution | — |
 | 7 | While a check fails with rounds left, [resume](../../workers/module.md#concept.workers.resume-round) the session, repeat 5–6 | Workers, worker | rounds used, still failing (`failed`) |
 | 8 | Perform proposed deletions after a clean audit; write the run record | Workers | — |
 | 9 | Remove empty pre-created paths; clear the pending marker of every entry that now exists | Operation, Spec core | — |
@@ -177,8 +177,8 @@ worktree and writes the run record — the last defence against a write outside 
 <a id="uses-checks"></a>
 
 **Check execution** runs the bound Modules'
-[configured checks](../../tools/checks/module.md#concept.checks.configured-check) read-only,
-returning a [check result](../../tools/checks/module.md#concept.checks.check-result) per check —
+[configured checks](../../checks/module.md#concept.checks.configured-check) read-only,
+returning a [check result](../../checks/module.md#concept.checks.check-result) per check —
 command, exit status and log — the only evidence of whether checks passed.
 
 <a id="uses-spec"></a>

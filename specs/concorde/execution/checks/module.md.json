@@ -8,10 +8,10 @@
   "module": {
     "title": "Check execution",
     "owns": [
-      "specs/concorde/execution/tools/checks/module.md",
-      "specs/concorde/execution/tools/checks/boundary.md",
-      "specs/concorde/execution/tools/checks/service.md",
-      "specs/concorde/execution/tools/checks/timing.md"
+      "specs/concorde/execution/checks/module.md",
+      "specs/concorde/execution/checks/boundary.md",
+      "specs/concorde/execution/checks/service.md",
+      "specs/concorde/execution/checks/timing.md"
     ],
     "contains": [],
     "uses": [

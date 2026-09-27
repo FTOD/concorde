@@ -32,8 +32,8 @@
         "meaning": "#contains-workers"
       },
       {
-        "target": "module.tools",
-        "meaning": "#contains-tools"
+        "target": "module.checks",
+        "meaning": "#contains-checks"
       }
     ],
     "uses": [

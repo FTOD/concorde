@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Check execution is a deterministic Tool: it runs a project's configured checks, such as a test
-suite or linter, and returns their status and logs without model reasoning. It belongs to Tools
-and is called by the Workers host code between rounds, directly by Operations such as testing and
+Check execution is a deterministic service: it runs a project's configured checks, such as a test
+suite or linter, and returns their status and logs without model reasoning. It is called by the
+Workers host code between rounds, directly by Operations such as testing and
 code review, and by the execution commands `task-validation` and `delivery`. Checks read the
 worktree but cannot directly change its files; the boundary restricts filesystem writes only, not
 reads, network or credentials. The service records which inputs were checked and refuses a result
@@ -20,14 +20,13 @@ whether a workspace is ready to deliver.
 | Read-only check boundary | The Linux sandbox in which a check runs: the whole host filesystem read-only, one fresh writable scratch directory, private process and IPC namespaces, and the host's network. |
 | Check scratch | The fresh directory outside the project that one run may write, holding its temporary files, caches and reports, removed after the run. |
 | Diagnostic span | A bounded timing record of one named unit of host work, with its trace, parent, status and duration and never its arguments, output or messages. |
-| [Tool](../../../vocabulary.md#concept.concorde.tool) | |
-| [Module](../../../vocabulary.md#concept.concorde.module) | |
-| [Evidence](../../../vocabulary.md#concept.concorde.evidence) | |
-| [Boundary set](../../../spec-tooling/spec/module.md#concept.spec.boundary-set) | |
+| [Module](../../vocabulary.md#concept.concorde.module) | |
+| [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
+| [Boundary set](../../spec-tooling/spec/module.md#concept.spec.boundary-set) | |
 
 ## Usage
 
-For a project checked with `pytest tests/`, this Tool starts that command, waits for it and
+For a project checked with `pytest tests/`, this service starts that command, waits for it and
 returns its exit status and captured output. Pytest performs the assertions; Check execution
 manages the command, its boundary, timeout and result. A configured command can itself depend on
 external services, so its output need not be identical on every run.
@@ -102,10 +101,10 @@ than false evidence.
 
 ### Its place in the levels of work
 
-Check execution is a [Tool](../../../vocabulary.md#concept.concorde.tool), grouped under
-[Tools](../module.md): the program half of level 5 of the
-[levels of work](../../../module.md#the-levels-of-work), beside the workers. Only programs call it,
-never a model: runs at level 4, in steps of their own — the Operation providers' steps and the
+Check execution is no level of the [levels of work](../../module.md#the-levels-of-work): it is a
+service the runs call in-process, like Spec core, and it cannot itself be a run, since the runs
+that call it hold their workspace's lock while it works. Only programs call it, never a model: runs
+at level 4, in steps of their own — the Operation providers' steps and the
 steps of the execution commands `task-validation` and `delivery`, which are Validation's — and the
 Workers host code, which manages a worker run on behalf of the Operation that launched it, between
 the worker's rounds. It calls nothing above it and starts no worker, run or agent.
@@ -141,9 +140,9 @@ and whether a worker needs more than its last 20,000 bytes is undecided.
 <a id="uses-spec"></a>
 
 **Spec core** loads the configuration and
-[registry](../../../spec-tooling/spec/module.md#concept.spec.registry), from which the check service
+[registry](../../spec-tooling/spec/module.md#concept.spec.registry), from which the check service
 takes each Module's checks and resolves its `ImplementationScope` — a [boundary
-set](../../../spec-tooling/spec/module.md#concept.spec.boundary-set) whose digest is part of what a
+set](../../spec-tooling/spec/module.md#concept.spec.boundary-set) whose digest is part of what a
 check measures; changed paths map the same way. It also supplies safe relative-path rules for
 inputs. Check execution relies on a Module's boundary set resolving the same way from the same
 Specs before and after a run, so that a digest mismatch means the input changed; an invalid or

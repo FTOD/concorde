@@ -28,8 +28,8 @@ level.
 | [Structural check](../../../spec-tooling/spec/module.md#concept.spec.structural-check) | |
 | [Impact index](../../../spec-tooling/spec/module.md#concept.spec.impact-index) | |
 | [File transaction](../../../spec-tooling/spec/module.md#concept.spec.file-transaction) | |
-| [Configured check](../../tools/checks/module.md#concept.checks.configured-check) | |
-| [Check result](../../tools/checks/module.md#concept.checks.check-result) | |
+| [Configured check](../../checks/module.md#concept.checks.configured-check) | |
+| [Check result](../../checks/module.md#concept.checks.check-result) | |
 
 ## Usage
 
@@ -64,7 +64,7 @@ established, not only the first, each of one kind:
 | `load` | the Specs fail to load at all |
 | `structural` | a [structural check](../../../spec-tooling/spec/module.md#concept.spec.structural-check) error, e.g. a broken link or stale registry mirror, or a run Module the workspace's registry no longer registers |
 | `unbound` | a changed path is not a Spec document, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
-| `check` | a changed or run Module's [configured check](../../tools/checks/module.md#concept.checks.configured-check) failed, timed out or couldn't run |
+| `check` | a changed or run Module's [configured check](../../checks/module.md#concept.checks.configured-check) failed, timed out or couldn't run |
 
 Warnings, such as missing scenario coverage, are reported but never block. A pending entry whose
 file now exists is not an error but a **confirmation**, cleared by Delivery on commit. Changed
@@ -165,7 +165,7 @@ tests share.
   Validation relies on the validator being deterministic and on loading refusing, not partially
   reading, a Spec that cannot support a boundary; it always roots Spec core at the workspace.
 - <a id="uses-checks"></a>**Check execution** runs each changed Module's
-  [configured checks](../../tools/checks/module.md#concept.checks.configured-check) read-only,
+  [configured checks](../../checks/module.md#concept.checks.configured-check) read-only,
   with the workspace as the project, and returns one
-  [check result](../../tools/checks/module.md#concept.checks.check-result) per check, copied into
+  [check result](../../checks/module.md#concept.checks.check-result) per check, copied into
   the readiness unchanged; a boundary it cannot establish fails the run.

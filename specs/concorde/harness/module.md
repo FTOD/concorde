@@ -10,7 +10,7 @@ the frozen grant of its task; Task sessions for a task session, from its task's 
 decision log; the main session's harness is its installed guidance alone, since Concorde places no
 permission limits on the main agent. The Harness generates the configuration that applies a
 harness; it does not launch or resume agents, compute grants, audit what an agent changed or run
-checks, which the agent Modules and [Check execution](../execution/tools/checks/module.md) do. What it enforces
+checks, which the agent Modules and [Check execution](../execution/checks/module.md) do. What it enforces
 guards against scope drift and mistakes, not a malicious agent.
 
 ## Terminology

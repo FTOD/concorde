@@ -13,7 +13,7 @@ The workflow commands SHALL refuse to run a step or build a report in a worktree
 
 A workflow step SHALL start its run only as `concorde run <operation> --detach` or `concorde <command> --detach` of the workspace's own `concorde`, in the workspace the step runs in.
 
-The workflow leaves worker launches and domain Tool calls inside the run. Client step agents only
+The workflow leaves worker launches and service calls inside the run. Client step agents only
 relay the workflow commands; they do not perform the worker's job or bypass the run's grant, audit
 and result handling.
 

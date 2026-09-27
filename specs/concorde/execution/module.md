@@ -5,8 +5,8 @@
 Execution is Concorde's execution core, the lower of its two halves: given one bound workspace, it
 gets Spec-bounded work done there and returns checked results. It holds the workflows that order
 that work, the Operations that combine AI workers with host logic, the execution commands that do
-deterministic work such as deciding readiness and delivering, the workers themselves and the
-Tools they call. Everything in it learns what it works on from one place, the workspace binding in
+deterministic work such as deciding readiness and delivering, the workers themselves and Check
+execution, which runs the project's checks for them. Everything in it learns what it works on from one place, the workspace binding in
 the worktree it starts in, and records what it did in its own run store. Whoever prepares a
 workspace and reads those records relies on it: in Concorde that is the task level of
 [Coordination](../coordination/module.md), which binds each task worktree and derives the task's
@@ -34,7 +34,6 @@ what runs next.
 | [Operation](operations/module.md#concept.operations.operation) | |
 | [Execution command](commands/module.md#concept.commands.execution-command) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
-| [Tool](../vocabulary.md#concept.concorde.tool) | |
 | [Module](../vocabulary.md#concept.concorde.module) | |
 | [Evidence](../vocabulary.md#concept.concorde.evidence) | |
 | [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
@@ -176,10 +175,10 @@ take them as steps, delivery must cite the run that decided the readiness it com
 caller must be able to wait for them, read their evidence and receive their error chain like any
 Operation's. Running execution commands with the same runner gives them all of that without the
 Operation catalog or any worker machinery: the only difference a caller sees is the result's
-`kind` and the error link's level, `command` instead of `operation`. Being runs is also what keeps
-them out of [Tools](tools/module.md), which are deterministic too: a Tool is an action a run's step
-calls and gets an answer from, while an execution command is itself the run, with a workspace, a
-lock and a recorded result.
+`kind` and the error link's level, `command` instead of `operation`. Being a run is also what
+tells an execution command from a deterministic service such as [Check execution](checks/module.md):
+a service is called by a run's step and answers it, while an execution command is itself the run,
+with a workspace, a lock and a recorded result.
 
 ### The runner
 
@@ -217,19 +216,15 @@ execution: Execution {
 
 ### The children
 
-Execution is the composition of five children, which together make up levels 3 to 5 of Concorde's
-[levels of work](../module.md#the-levels-of-work). Levels 4 and 5 each have an AI half and a
-deterministic half:
-
-| Level | With AI workers | Deterministic |
-| --- | --- | --- |
-| 4. Run | Operations | Commands |
-| 5. Worker or Tool | Workers | Tools |
+Execution is the composition of five children. Workflows is level 3 of Concorde's
+[levels of work](../module.md#the-levels-of-work); level 4, the runs, has an AI half, Operations,
+and a deterministic half, Commands; Workers manages level 5, the workers. Check execution is no
+level: it is a service the runs' steps and the Workers host code call in-process.
 
 A run is something the task level or a workflow starts and waits for, and its result is recorded;
-a worker or a Tool is started or called by a run's step and answers only to that step. Being
-deterministic therefore places work in Commands or in Tools according to its level, never by
-itself.
+a worker or a service is started or called by a run's step and answers only to that step. So
+deterministic work that is taken and cited as a step of its own is an execution command, and
+deterministic work that a step calls is a service.
 
 ```d2 illustrative
 execution: Execution {
@@ -237,12 +232,13 @@ execution: Execution {
   operations: Operations
   commands: Commands
   workers: Workers
-  tools: Tools
+  checks: Check execution
   workflows -> operations: runs
   workflows -> commands: runs
   operations -> workers: launches workers through
-  operations -> tools: calls
-  commands -> tools: calls
+  operations -> checks: runs checks through
+  commands -> checks: runs checks through
+  workers -> checks: runs checks through
 }
 ```
 
@@ -255,7 +251,7 @@ and awaited; the workflow keeps its own record in the run store and never reache
 <a id="contains-operations"></a>
 
 **Operations** holds the catalog of Operations and their providers. Each Operation combines host
-steps with workers launched through Workers and Tools such as Check execution; the runner runs its
+steps with workers launched through Workers and calls of Check execution; the runner runs its
 steps like any other definition's.
 
 <a id="contains-commands"></a>
@@ -272,10 +268,11 @@ creates the child Modules a survey proposed. The runner runs their steps like an
 runs its checks and records the worker run in the run store, and owns the worker model
 configuration and the `configure-workers` command that changes it.
 
-<a id="contains-tools"></a>
+<a id="contains-checks"></a>
 
-**Tools** groups the deterministic execution services that Operations, execution commands and
-Workers call, beginning with Check execution.
+**Check execution** runs the project's configured checks in a read-only boundary and returns each
+result with its log. Operations' steps, execution commands' steps and the Workers host code call it
+in-process; it starts no run and no worker.
 
 ### What Execution relies on
 

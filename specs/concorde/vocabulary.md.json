@@ -31,12 +31,6 @@
       "meaning": "#concept.concorde.worker"
     },
     {
-      "id": "concept.concorde.tool",
-      "type": "concept",
-      "title": "Tool",
-      "meaning": "#concept.concorde.tool"
-    },
-    {
       "id": "concept.concorde.module",
       "type": "concept",
       "title": "Module",

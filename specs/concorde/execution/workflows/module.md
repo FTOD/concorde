@@ -42,7 +42,6 @@ run whoever works the workspace could have started itself.
 | [Operation](../operations/module.md#concept.operations.operation) | |
 | [Main agent](../../vocabulary.md#concept.concorde.main-agent) | |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
-| [Tool](../../vocabulary.md#concept.concorde.tool) | |
 | [Developer](../../vocabulary.md#concept.concorde.developer) | |
 | [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
 | [Decision](../operations/adoption/module.md#concept.adoption.decision) | |
@@ -61,7 +60,7 @@ A **workflow** is started in a bound [workspace](../module.md#concept.execution.
 by a worker or a run. In Concorde the task level starts it: the main agent inside a task it has
 opened, or the task session the task was delegated to. It is level 3 of the [levels of
 work](../../module.md#the-levels-of-work), directly above the runs: the workflow determines which
-run comes next, while each run owns its workers, Tool calls and internal repair rounds. A task
+run comes next, while each run owns its workers, check calls and internal repair rounds. A task
 says what work is isolated where; a workflow says how the runs in that workspace proceed. For the
 brownfield workflow, the main agent opens a task from the primary worktree:
 
@@ -179,7 +178,7 @@ runs as a Claude Code workflow or a pi-subagents workflow, both starting Concord
 
 The platform's step agent is an adapter, not a Concorde worker: it relays a command and result,
 while the run decides whether to launch AI workers. Converting a workflow does not expand
-Operations into platform agents or expose Tools to those agents. The two clients use the same run
+Operations into platform agents or expose Concorde's services to those agents. The two clients use the same run
 command lines, the same workspace lock and the same recorded results. The current mechanism renders
 authored JavaScript workflow scripts; it is not a general converter for arbitrary platform
 workflows or free-form plans.
@@ -264,9 +263,9 @@ brownfield -> workflow: is a
 ## Design
 
 A workflow orchestrates runs from the client of whoever works the workspace. Each run completes one
-job, an Operation by combining workers, Tools and host steps, an execution command deterministically,
+job, an Operation by combining workers, services and host steps, an execution command deterministically,
 and never starts another run. The workflow sees only their command lines and results; it leaves
-worker prompts, grants, Tool calls, audits and repair loops inside the run. Each workflow step is
+worker prompts, grants, check calls, audits and repair loops inside the run. Each workflow step is
 an ordinary run of the [Execution runner](../module.md#concept.execution.runner), so the workspace
 lock allows one run at a time and every run is recorded, audited and reported exactly as if the
 task level had started it.
@@ -277,7 +276,7 @@ Workflows is level 3 of the [levels of work](../../module.md#the-levels-of-work)
 from the task level only: the main agent inside a task it has opened, or a task session inside the
 task delegated to it, starts a workflow in the task worktree and may go on with other work while it
 runs in its client's background. It calls only the level directly below: its commands start each
-step as a run, and it never reaches a worker or a Tool, which only a run calls. What goes back up is
+step as a run, and it never reaches a worker or a service, which only a run calls. What goes back up is
 one workflow result, assembled from what the runs recorded, in which every run's error chain stays
 whole under the workflow's own link. The task level is free to skip this level and start a run
 directly whenever no workflow fits, and nothing a workflow does opens, merges or closes a task.

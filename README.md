@@ -34,7 +34,7 @@ Concorde organizes the AI work on a project in two halves and five levels. The u
 coordination, is where work is judged and decided: your main session and the task level, where
 each task has its own branch and worktree. The lower half, execution, does the work in one task's
 worktree, bound to it as a workspace, and knows nothing about tasks: a workflow orders runs, an
-Operation launches AI workers and calls Tools and then checks what they did, and execution commands
+Operation launches AI workers and runs the project's checks and then checks what they did, and execution commands
 such as `task-validation` and `delivery` do the deterministic steps. Calls only go down; results and
 errors come back up. The project's Specs shape every level.
 
@@ -49,9 +49,8 @@ flowchart TB
     wf["3 · Workflow<br/>orders the workspace's runs"]
     op["4 · Run<br/>an Operation or an execution command,<br/>one checked result"]
   end
-  subgraph bottom["Execution: workers, beside Tools"]
+  subgraph bottom["Execution: workers"]
     w["5 · Worker<br/>headless claude -p or pi -p"]
-    tool["5 · Tool<br/>programmed action, e.g. checks"]
   end
   specs[("Specs")]
   you <--> main
@@ -60,7 +59,6 @@ flowchart TB
   task -->|or runs directly| op
   wf -->|runs, one at a time| op
   op -->|launches| w
-  op -->|calls| tool
   specs -.->|harness: context + grant| w
   op -.->|evidence or error chain| task
   task -.->|delivered or escalated| main
@@ -90,7 +88,7 @@ and whether a task is active or delivered is read from what those runs recorded.
 starts a **workflow**, a procedure written once for tasks that follow a known path, such as
 `brownfield`, which describes an existing codebase in Specs; the workflow orders the workspace's
 runs and stops wherever you must decide. An **Operation** completes one bounded AI job and returns
-one result: it launches workers, calls deterministic **Tools** such as the check runner, and checks
+one result: it launches workers, runs the project's configured checks itself, and checks
 the outcome itself. An **execution command** does a deterministic step, such as deciding readiness or
 delivering, and returns the same kind of result without any worker. None of them decides the
 project's direction; they follow declared rules, so no model's answer reaches the next level

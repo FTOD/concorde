@@ -29,7 +29,6 @@ rest belong to Coordination, Spec tooling, Issues or Distribution, as
 | [Workspace](../module.md#concept.execution.workspace) | |
 | [Workspace lock](../module.md#concept.execution.workspace-lock) | |
 | [Execution runner](../module.md#concept.execution.runner) | |
-| [Tool](../../vocabulary.md#concept.concorde.tool) | |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
 | [Module](../../vocabulary.md#concept.concorde.module) | |
 
@@ -81,11 +80,10 @@ worker machinery.
 
 Commands is the deterministic half of level 4 of the [levels of work](../../module.md#the-levels-of-work),
 beside Operations, its AI half. Both are runs: the task level or a workflow starts one and waits for
-its recorded result. At level 5, Workers and [Tools](../tools/module.md) are the halves that a run's
-steps start or call. Being deterministic does not make an execution command a Tool: a Tool is an
-action a step calls and gets an answer from, while an execution command is itself the run, with a
-workspace, a lock and a result. So `task-validation` is an execution command that calls the Tool
-Check execution, as an Operation's step does.
+its recorded result. Being deterministic does not make every program an execution command: a
+service such as [Check execution](../checks/module.md) is called by a step and answers it, while an
+execution command is itself the run, with a workspace, a lock and a result. So `task-validation` is
+an execution command whose step calls Check execution, as an Operation's step does.
 
 ```d2
 commands: Commands {

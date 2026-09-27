@@ -52,29 +52,6 @@
       "participates": []
     },
     {
-      "id": "module.tools",
-      "title": "Tools",
-      "entry": "specs/concorde/execution/tools/module.md",
-      "owns": [
-        "specs/concorde/execution/tools/module.md"
-      ],
-      "contains": [
-        {
-          "target": "module.checks",
-          "meaning": "#contains-checks"
-        }
-      ],
-      "uses": [],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared definitions of Tool, Worker and Evidence"
-        }
-      ],
-      "participates": []
-    },
-    {
       "id": "module.spec-tooling",
       "title": "Spec tooling",
       "entry": "specs/concorde/spec-tooling/module.md",
@@ -405,12 +382,12 @@
     {
       "id": "module.checks",
       "title": "Check execution",
-      "entry": "specs/concorde/execution/tools/checks/module.md",
+      "entry": "specs/concorde/execution/checks/module.md",
       "owns": [
-        "specs/concorde/execution/tools/checks/module.md",
-        "specs/concorde/execution/tools/checks/boundary.md",
-        "specs/concorde/execution/tools/checks/service.md",
-        "specs/concorde/execution/tools/checks/timing.md"
+        "specs/concorde/execution/checks/module.md",
+        "specs/concorde/execution/checks/boundary.md",
+        "specs/concorde/execution/checks/service.md",
+        "specs/concorde/execution/checks/timing.md"
       ],
       "contains": [],
       "uses": [
@@ -1639,8 +1616,8 @@
           "meaning": "#contains-workers"
         },
         {
-          "target": "module.tools",
-          "meaning": "#contains-tools"
+          "target": "module.checks",
+          "meaning": "#contains-checks"
         }
       ],
       "uses": [

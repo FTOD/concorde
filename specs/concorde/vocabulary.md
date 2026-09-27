@@ -12,7 +12,6 @@ such as Operation, Task, Grant or Issue, are defined by that Module.
 | Main agent | The developer-facing Claude Code or pi session in the primary worktree that discusses the project, splits work into tasks, carries them out or hands them to task sessions, and merges their results. |
 | Task session | A session of the main agent's own program to which the main agent delegates the work of one task when it runs several at once, working only inside that task's worktree until delivery and reporting to the main agent. |
 | Worker | One headless Claude Code or pi process that performs one bounded task of one task type under a frozen grant and reports only to the Operation run that launched it. |
-| Tool | A callable execution capability that performs a specific action through programmed logic without model reasoning and returns its result or error to its caller. |
 | Module | One cohesive responsibility of the software, with its own Spec; it need not be a package or directory. |
 | Spec | The documents in which a Module explains what it is for, how to use it, how it is designed and what it precisely promises. |
 | Task type | One of the seven Protocol task types (understand, specify, implement, test, review-spec, review-code, code-to-spec) that fixes the access level of every boundary set a task receives. |
@@ -50,24 +49,10 @@ It has a task-wide goal and reports to the main agent. Its lifecycle is explaine
 A **worker** carries one bounded job under a frozen grant and reports to the Operation run that
 launched it, whose steps the [Execution runner](execution/module.md#concept.execution.runner)
 executes. Its answer is a proposal until those steps verify it. [Workers](execution/workers/module.md)
-explains how a worker is launched, audited and recorded. A worker and a Tool are peer execution
-capabilities inside an Operation: the worker uses model reasoning; the Tool executes programmed
-logic. Workers, plural, names the Execution code that manages workers, not the AI process itself.
-
-<a id="concept.concorde.tool"></a>
-
-A **Tool** takes explicit inputs, performs a specific action and returns a result or error to its
-caller. [Tools](execution/tools/module.md) groups reusable deterministic execution services, beginning with
-Check execution. An Operation or an execution command, such as `task-validation`, can call a Tool
-directly, and Workers can call one while managing a worker run, such as running checks after a
-round. Calling a Tool neither starts another run nor delegates a job to an AI worker. Deterministic describes the Tool's control logic; external
-commands, network responses and test outcomes can still vary.
-
-The Tool category adds no access right. Each concrete capability has its own interface and
-boundary. An agent program's file and shell tools belong to the worker's capability context only
-when the Harness exposes them; a Tool the runs call, such as Check execution, is not
-automatically exposed to the worker. Being implemented without AI does not by itself make a whole subsystem a Tool:
-Tasks, Spec core and Harness keep their lifecycle, specification and confinement responsibilities.
+explains how a worker is launched, audited and recorded. Inside a run, a worker is the only part
+that reasons with a model; the run's steps and the services they call, such as
+[Check execution](execution/checks/module.md), are programs. Workers, plural, names the Execution
+code that manages workers, not the AI process itself.
 
 ## Specs, context and boundaries
 

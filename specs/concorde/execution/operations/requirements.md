@@ -34,4 +34,4 @@ A job that needs no model is an execution command of its own Module instead.
 
 An Operation SHALL NOT start another Operation or an execution command.
 
-Calling a Tool or resuming a worker is not starting a run.
+Calling a service such as Check execution or resuming a worker is not starting a run.

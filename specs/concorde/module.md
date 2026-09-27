@@ -14,8 +14,8 @@ where each task gets its own branch and worktree and is worked by the main agent
 task session it delegates the task to. The lower half, [Execution](execution/module.md), is the
 execution core: in one bound workspace, workflows order runs for a known procedure; Operations
 complete bounded jobs with AI workers under Spec-derived grants and return checked results;
-execution commands such as `task-validation` and `delivery` do the deterministic work; workers and
-Tools act at the bottom. The upper half hands a task to the lower half only through the task
+execution commands such as `task-validation` and `delivery` do the deterministic work; workers act
+at the bottom. The upper half hands a task to the lower half only through the task
 worktree's workspace binding and learns what happened only from what the lower half recorded.
 Spec tooling checks, serves and publishes the Specs on its own. Concorde never chooses the
 developer's direction or repairs a Spec on its own. The main agent and the workers run on Claude
@@ -43,7 +43,7 @@ travels back up them. The first two are Coordination's, the rest Execution's:
 | 2. Task | Coordination | the main agent inside the task, or a task session it delegated the task to | one task worktree | changes Specs and code directly or through runs of Execution, keeps the decision log, validates and delivers | [Task sessions](coordination/task-session/module.md), with the workspace from [Tasks](coordination/tasks/module.md) |
 | 3. Workflow | Execution | a procedure rendered for Claude Code and pi | one bound workspace | orders the workspace's runs for a known procedure and stops where the developer must decide | [Workflows](execution/workflows/module.md) |
 | 4. Run | Execution | the Execution runner, running an Operation or an execution command | one bound workspace | completes one bounded job and returns one run result with evidence: an Operation with AI workers, an execution command without | [Execution](execution/module.md), [Operations](execution/operations/module.md), [Commands](execution/commands/module.md) |
-| 5. Worker or Tool | Execution | a headless `claude -p` or `pi -p` process, or a programmed action | a run over the workspace | a worker reasons within its grant; a Tool performs one action, such as running the configured checks | [Workers](execution/workers/module.md), [Tools](execution/tools/module.md) |
+| 5. Worker | Execution | a headless `claude -p` or `pi -p` process | a run over the workspace | reasons within its grant on one bounded job and returns a worker result the run checks | [Workers](execution/workers/module.md) |
 
 ```d2 illustrative
 classes: {
@@ -63,10 +63,8 @@ execution: "Execution: the core, in one bound workspace" {
   workflow: "3  Workflow\norders one workspace's runs\nfor a known procedure" {class: program}
   run: "4  Run\nan Operation (with workers)\nor an execution command" {class: program}
   worker: "5  Worker\nheadless AI, one job\nunder a grant" {class: agent}
-  tool: "5  Tool\nprogrammed action,\nsuch as running checks" {class: program}
   workflow -> run: "runs, one at a time"
   run -> worker: launches
-  run -> tool: calls
 }
 developer -> coordination.main: "discusses, decides"
 coordination.task -> execution.workflow: "starts, in the task worktree"
@@ -77,9 +75,11 @@ Calls go only downward, and a level may be skipped: the task level runs an Opera
 directly whenever no workflow fits, and the execution commands use no worker at all. Nothing calls
 upward. A worker never touches Git, runs an Operation or starts an agent; a run never starts
 another run; a workflow never opens, merges or closes a task; nothing in Execution reads or writes
-a task record; and only the main agent merges. The [Workers](execution/workers/module.md) code may
-also call a Tool between a worker's rounds, so that failing checks can drive a repair loop inside
-one Operation.
+a task record; and only the main agent merges. A run's steps, and the [Workers](execution/workers/module.md) code
+between a worker's rounds, call deterministic services such as
+[Check execution](execution/checks/module.md) in-process; such a call is not a level of its own,
+starts no run and returns to the step that made it, so that failing checks can drive a repair loop
+inside one Operation.
 
 The levels are levels of work, not of Modules. [Coordination](coordination/module.md) groups the
 sessions and the task workspace; [Execution](execution/module.md) groups everything that works in a
@@ -351,7 +351,7 @@ Execution recorded.
 
 **Execution** is the lower half, levels 3 to 5 in one bound workspace: Workflows, the runner that
 runs Operations and execution commands, the Operation catalog and its providers, the command
-catalog with Validation, Delivery and Scaffold, Workers and Tools. It knows no task and records every run in its run store.
+catalog with Validation, Delivery and Scaffold, Workers and Check execution. It knows no task and records every run in its run store.
 
 <a id="contains-harness"></a>
 

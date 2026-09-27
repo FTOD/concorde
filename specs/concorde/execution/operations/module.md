@@ -4,7 +4,7 @@
 
 Operations is how bounded AI work gets done in a workspace. It holds the Operation catalog and
 delegates each Operation to the Module that provides it (see [The providers](#the-providers)).
-Every Operation combines host steps, Tool calls and one or more AI workers to complete one job,
+Every Operation combines host steps, service calls and one or more AI workers to complete one job,
 and ends with one [run result](../module.md#concept.execution.run-result) that keeps what the host
 steps established apart from what a worker claims. Work that needs no model is not an Operation:
 it is an [execution command](../commands/module.md#concept.commands.execution-command) of its own Module.
@@ -19,7 +19,7 @@ Operation's steps like any other definition's.
 
 | Term | Definition |
 | --- | --- |
-| Operation | A named job that combines host steps, Tool calls and one or more AI worker runs under Spec-derived grants, started with `concorde run` in a workspace, and returns exactly one run result. |
+| Operation | A named job that combines host steps, service calls and one or more AI worker runs under Spec-derived grants, started with `concorde run` in a workspace, and returns exactly one run result. |
 | Operation catalog | The fixed list of Operations that gives, for each, its providing Module, its task type, the ids of its workers, whether it may run unbound, whether it may change the workspace and the contract of its output. |
 | Standard worker sequence | The fixed sequence by which an Operation's step launches one worker: freeze the grant, prepare the brief and settings, launch through Workers, audit, run checks with resume rounds and record the worker run. |
 | [Run](../module.md#concept.execution.run) | |
@@ -28,7 +28,6 @@ Operation's steps like any other definition's.
 | [Workspace](../module.md#concept.execution.workspace) | |
 | [Execution runner](../module.md#concept.execution.runner) | |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
-| [Tool](../../vocabulary.md#concept.concorde.tool) | |
 | [Task type](../../vocabulary.md#concept.concorde.task-type) | |
 | [Module](../../vocabulary.md#concept.concorde.module) | |
 | [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
@@ -41,7 +40,7 @@ Operation's steps like any other definition's.
 | [Write audit](../workers/module.md#concept.workers.audit) | |
 | [Resume round](../workers/module.md#concept.workers.resume-round) | |
 | [Run record](../workers/module.md#concept.workers.run-record) | |
-| [Configured check](../tools/checks/module.md#concept.checks.configured-check) | |
+| [Configured check](../checks/module.md#concept.checks.configured-check) | |
 
 The catalog lists Operations; the Execution runner runs one of them per process and returns its
 run result. Read Operation and the catalog first; the imported worker terms matter for what a
@@ -50,7 +49,7 @@ worker-backed step does inside the run.
 ## Usage
 
 An Operation hides the internal execution of one AI job from its caller. For `implement`, it
-prepares a grant and brief, delegates code changes to a worker through Workers, and uses Tool
+prepares a grant and brief, delegates code changes to a worker through Workers, and uses check
 results to check the changes and drive bounded repair rounds. The caller receives one run result
 without managing those rounds.
 
@@ -133,9 +132,9 @@ so the catalog holds exactly the jobs that involve a model.
 Operations is called only through the [Execution runner](../module.md#concept.execution.runner):
 by the task level with `concorde run`, or by a [workflow](../workflows/module.md) step that runs
 the same command detached. The runner reads the workspace binding, holds the workspace lock and
-writes the result; an Operation's steps call only downward, into Workers and the Tools. Nothing
-below calls back up: a worker never runs an Operation, and a Tool call returns to the step that
-made it.
+writes the result; an Operation's steps call only downward, into Workers and services such as
+Check execution. Nothing below calls back up: a worker never runs an Operation, and a service call
+returns to the step that made it.
 
 ```d2
 operations: Operations {
@@ -162,8 +161,8 @@ violation ends the run `failed`, with Workers' link as a cause of the Operation'
 
 <a id="uses-checks"></a>
 
-**Check execution** is the deterministic Tool that runs
-[configured checks](../tools/checks/module.md#concept.checks.configured-check) read-only, for the
+**Check execution** is the deterministic service that runs
+[configured checks](../checks/module.md#concept.checks.configured-check) read-only, for the
 resume rounds Workers drives and for providers that run checks themselves, returning each result's
 command, exit code and log as evidence. An Operation relies on a check never changing the workspace
 it measures and on a result being refused as `stale_evidence` when its input changed during the
@@ -183,7 +182,7 @@ type and Modules from the **workspace's** Specs and freeze it with its
 pending files it makes writable, generate the worker's settings, tools and
 [brief](../workers/module.md#concept.workers.brief), launch the worker, run the
 [write audit](../workers/module.md#concept.workers.audit), run the bound Modules'
-[configured checks](../tools/checks/module.md#concept.checks.configured-check) outside the worker,
+[configured checks](../checks/module.md#concept.checks.configured-check) outside the worker,
 feed failures back as a [resume round](../workers/module.md#concept.workers.resume-round) until they
 pass or the rounds run out, and write the
 [run record](../workers/module.md#concept.workers.run-record). Workers performs that sequence; the
