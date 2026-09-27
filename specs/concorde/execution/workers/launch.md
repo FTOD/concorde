@@ -235,6 +235,10 @@ A worker SHALL have no access to Git metadata through any tool.
 
 The host SHALL audit the worktree against the grant after every round and before any configured check of that round runs.
 
+### req.workers.glossary-by-entry — The glossary is audited by entry
+
+When the grant names a writable glossary, the audit SHALL report as a violation every glossary entry a round added, changed or removed whose owner, before or after the round, is not one of the grant's Modules.
+
 ### req.workers.violation-ends-run — A violation is never retried
 
 A run whose audit finds a violation SHALL end `failed` without another round.

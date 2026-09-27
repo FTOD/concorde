@@ -1,4 +1,4 @@
-"""Initialization: an honest Protocol 14 root Module stub, proposed before anything is written."""
+"""Initialization: an honest Protocol 15 root Module stub, proposed before anything is written."""
 
 import copy
 import json

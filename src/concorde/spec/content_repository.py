@@ -213,7 +213,7 @@ class _Load:
 
 
 class DocumentUnitRepository:
-    """The loaded Protocol 14 graph of one project checkout."""
+    """The loaded Protocol 15 graph of one project checkout."""
 
     def __init__(
         self,
@@ -372,7 +372,7 @@ class DocumentUnitRepository:
         ):
             raise SpecError(
                 'the Spec registry must be {"schema_version": 3, "modules": [...]} '
-                "(Protocol 14); migrate explicitly",
+                "(Protocol 15); migrate explicitly",
                 "unsupported_profile",
             )
         self.registry = value

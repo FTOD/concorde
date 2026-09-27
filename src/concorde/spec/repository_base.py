@@ -1,4 +1,4 @@
-"""Shared constants, value types and path helpers of the Protocol 14 Spec tooling.
+"""Shared constants, value types and path helpers of the Protocol 15 Spec tooling.
 
 The Spec graph is loaded by ``content_repository``; this module holds what every part of the
 tooling shares: identities, errors, safe file reads, realization-entry path rules and the
