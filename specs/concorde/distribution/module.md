@@ -139,9 +139,12 @@ there, so its command runs the primary worktree's copy, found through Git's comm
 
 **Updating an installed Concorde.** `concorde update` runs, in update mode, the installer of the
 Concorde checkout the receipt names as its `source` (or `--from <checkout>`): it installs as the
-first install did, keeping `d2`, the pi runtime and develop mode when they were installed and
-Concorde's own environment's interpreter unless `--python` names another, and refusing like an
-install while Concorde runs in the project; binds the new Protocol copy in the
+first install did, keeping `d2`, the pi main session's files and develop mode when they were
+installed (`--pi` adds the pi main session's files to an install that has none), always placing
+the pi runtime unless the first install left it out with `--without-pi-runtime` (so an update
+adds it to an install made before the runtime was placed by default), keeping Concorde's own
+environment's interpreter unless `--python` names another, and refusing like an install while
+Concorde runs in the project; binds the new Protocol copy in the
 configuration itself, the one write of the project configuration an installer makes; and marks
 the project **Concorde unvalidated** by writing `.concorde/update.json`, which Git ignores, with
 the versions, installed commits and Protocol bindings before and after; the findings below name
@@ -152,19 +155,25 @@ Only an update sets the state, so a project that stops validating because of its
 never marked by it. The result lists the open tasks and, when the Protocol copy changed, asks for
 the primary branch to be merged into each, since their worktrees keep the previous copy until then.
 
-With `--pi` the installer also prepares the project for a pi main session and pi workers: it
-places the pi runtime — the sandbox engine `@anthropic-ai/sandbox-runtime` that pi workers run
-their commands in — under `.concorde/tools/pi-runtime/` by copying the package's
+Workers run on pi unless the worker model configuration chooses Claude Code for them, whatever
+program the main session is, so every install places the **pi runtime** — the sandbox engine
+`@anthropic-ai/sandbox-runtime` that pi workers run their commands in — under
+`.concorde/tools/pi-runtime/` by copying the package's
 `src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
 `npm ci --ignore-scripts`, which installs exactly the locked versions after checking each
-package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime));
-the [run view](../coordination/main-session/module.md#concept.main-session.run-view), with its model picker, as
+package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime)).
+A later install with the same lockfile keeps the runtime it placed. Without npm the install
+refuses before writing anything else. `--without-pi-runtime` leaves the runtime out, for a
+machine where every worker runs on Claude Code; the receipt records that choice (`pi_runtime`)
+so that an update keeps it, and a pi worker then fails with `pi_runtime_missing`, naming the
+command that installs the runtime.
+
+With `--pi` the installer also prepares the project for a pi main session: it places the
+[run view](../coordination/main-session/module.md#concept.main-session.run-view), with its model picker, as
 `.pi/extensions/concorde/`; the skill a second time as `.pi/skills/concorde/SKILL.md`; every
 rendered pi workflow script under `.concorde/workflows/pi/`; and the command-runner agents
 `concorde-step` and `concorde-report` under `.pi/agents/`, where pi-subagents finds the project's
-agents. A later
-install with the same lockfile keeps the runtime it placed. Without npm it refuses before writing
-anything else. Both skills carry the same frontmatter, whose values are bare names or
+agents. The receipt records the choice (`pi`), which an update keeps. Both skills carry the same frontmatter, whose values are bare names or
 double-quoted strings, because pi parses it as strict YAML and drops a skill it cannot parse. pi
 loads the project's extension and skill only once the developer trusts the project, which its
 interactive start asks for and a headless `pi -p` or RPC run grants with `--approve`.

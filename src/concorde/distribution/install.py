@@ -7,9 +7,11 @@ the Protocol copy under ``.concorde/protocol/``, the main-session guidance as th
 defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
 state and task worktrees, and a receipt ``.concorde/install.json``. Concorde's own Python
 environment under ``.concorde/framework/python/`` receives the locked runtime dependencies of the
-package's ``uv.lock``, such as LangGraph, installed with ``uv``. With ``pi`` it also places
-the locked pi runtime under ``.concorde/tools/pi-runtime/``, Concorde's pi extension under
-``.pi/extensions/concorde/`` and the guidance as the pi skill ``.pi/skills/concorde/SKILL.md``.
+package's ``uv.lock``, such as LangGraph, installed with ``uv``, and the locked pi runtime
+under ``.concorde/tools/pi-runtime/``, which every pi worker runs in (workers run on pi unless the
+worker model configuration chooses Claude Code). With ``pi`` it also places, for a pi main
+session, Concorde's pi extension under ``.pi/extensions/concorde/`` and the guidance as the pi
+skill ``.pi/skills/concorde/SKILL.md``.
 Every rendered workflow is installed for Claude Code under ``.claude/workflows/`` with the
 permission rules its step agents need in ``.claude/settings.json``, and with ``pi`` under
 ``.concorde/workflows/pi/`` with the command-runner agents under ``.pi/agents/``.
@@ -318,6 +320,7 @@ def install(
     d2: bool = True,
     fetch: Callable[[str], bytes] | None = None,
     pi: bool = False,
+    pi_runtime: bool = True,
     run: Callable | None = None,
     python: str | Path | None = None,
     develop: bool = False,
@@ -326,9 +329,10 @@ def install(
     """Install ``package`` into ``project``; return the receipt.
 
     With ``d2`` false the docsite's diagram program is left to the developer. ``fetch`` replaces
-    the download of the pinned ``d2`` archive, for tests and offline mirrors. With ``pi`` the pi
-    runtime, extension and skill are installed too; ``run`` replaces the ``npm ci`` and ``uv``
-    calls. ``python`` is the interpreter Concorde's own environment is made from, the installer's
+    the download of the pinned ``d2`` archive, for tests and offline mirrors. With
+    ``pi_runtime`` (the default) the pi runtime every pi worker runs in is installed; without it
+    workers can run only on Claude Code. With ``pi`` the pi main session's extension, skill and
+    workflows are installed too; ``run`` replaces the ``npm ci`` and ``uv`` calls. ``python`` is the interpreter Concorde's own environment is made from, the installer's
     own by default. ``develop`` makes a develop install. With ``dependencies`` false Concorde's
     Python dependencies are left out of its environment, and the Operations that need them refuse.
     """
@@ -379,7 +383,7 @@ def install(
             )
         except ToolError as error:
             raise InstallError(error.code, str(error)) from error
-    if pi:
+    if pi_runtime:
         try:
             tools["pi-runtime"] = install_pi_runtime(
                 project, package, **({"run": run} if run else {})
@@ -463,6 +467,10 @@ def install(
         # install left them out.
         "dependencies": installed,
         "tools": tools,
+        # What the developer chose, which `concorde update` keeps: the pi main session's files,
+        # and whether the pi worker runtime was left out.
+        "pi": pi,
+        "pi_runtime": pi_runtime,
         # Every file Concorde owns, whether this install wrote it or found it in place: a
         # default is written only when absent, yet stays Concorde's.
         "files": sorted(
@@ -514,11 +522,13 @@ def update(
     python: str | Path | None = None,
     fetch: Callable[[str], bytes] | None = None,
     run: Callable | None = None,
+    pi: bool = False,
 ) -> dict:
     """Update the Concorde installed in ``project`` from ``package``.
 
-    It installs as the first install did (keeping d2, pi and develop mode when they were
-    installed), binds the
+    It installs as the first install did (keeping d2, the pi main session's files and develop
+    mode when they were installed, and adding them with ``pi``), always with the pi worker runtime
+    unless the first install left it out, binds the
     new Protocol copy in the configuration, and marks the project Concorde unvalidated until a
     validation passes; open tasks keep the old Protocol copy until the primary branch is merged
     into them, so they are listed.
@@ -534,12 +544,15 @@ def update(
             f"{project} has no readable {RECEIPT} ({error}); install Concorde first",
         ) from error
     tools = previous.get("tools") or {}
+    # A receipt from before these fields existed installed the pi files only with the runtime.
+    had_pi = previous.get("pi", PI_SKILL in (previous.get("files") or []))
     receipt = install(
         project,
         package,
         d2="d2" in tools,
         fetch=fetch,
-        pi="pi-runtime" in tools,
+        pi=pi or had_pi,
+        pi_runtime=previous.get("pi_runtime", True),
         run=run,
         python=python or (previous.get("python") or {}).get("base"),
         develop=previous.get("mode") == "develop",
@@ -727,7 +740,14 @@ def main(argv) -> int:
     parser.add_argument(
         "--pi",
         action="store_true",
-        help="also install the pi runtime (with npm), Concorde's pi extension and the pi skill",
+        help="also install Concorde's pi extension, pi skill and pi workflows, for a pi main "
+        "session; with --update, add them to an existing install",
+    )
+    parser.add_argument(
+        "--without-pi-runtime",
+        action="store_true",
+        help="do not install the pi runtime (with npm) that pi workers run in; workers must "
+        "then all run on Claude Code",
     )
     parser.add_argument(
         "--python",
@@ -753,13 +773,16 @@ def main(argv) -> int:
     package = Path(__file__).resolve().parents[3]
     try:
         if arguments.update:
-            receipt = update(arguments.project, package, python=arguments.python)
+            receipt = update(
+                arguments.project, package, python=arguments.python, pi=arguments.pi
+            )
         else:
             receipt = install(
                 arguments.project,
                 package,
                 d2=not arguments.without_d2,
                 pi=arguments.pi,
+                pi_runtime=not arguments.without_pi_runtime,
                 python=arguments.python,
                 develop=arguments.develop,
                 dependencies=not arguments.without_dependencies,

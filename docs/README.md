@@ -85,7 +85,7 @@ command, the Protocol copy and the main agent's guidance; it never writes your S
 git clone https://github.com/FTOD/concorde.git
 cd concorde
 python3 scripts/concorde.py build
-python3 scripts/install-concorde.py /absolute/path/to/project   # add --pi for pi
+python3 scripts/install-concorde.py /absolute/path/to/project   # add --pi for a pi session
 
 cd /absolute/path/to/project
 .concorde/bin/concorde init --propose --name "My project"

@@ -161,7 +161,7 @@ Install Concorde into a Git project and initialize its first Spec:
 
 ```bash
 python3 /path/to/concorde/scripts/concorde.py build
-python3 /path/to/concorde/scripts/install-concorde.py /path/to/project   # add --pi for pi
+python3 /path/to/concorde/scripts/install-concorde.py /path/to/project   # add --pi for a pi session
 cd /path/to/project
 .concorde/bin/concorde init --propose --name "My project" > /tmp/proposal.json
 jq .result /tmp/proposal.json > /tmp/accepted.json   # inspect it first
@@ -172,8 +172,9 @@ jq .result /tmp/proposal.json > /tmp/accepted.json   # inspect it first
 The installer places the runtime under `.concorde/framework/`, the `.concorde/bin/concorde`
 command, the Protocol copy under `.concorde/protocol/`, the main agent's guidance (a Claude Code
 skill and a block in `CLAUDE.md`) and the pinned [`d2`](https://github.com/d2lang/d2) program that
-renders your Specs' diagrams. With `--pi` it also places the locked pi runtime, the pi run view and
-the pi skill. It never writes your Specs. Then open Claude Code or pi in the project and talk to it:
+renders your Specs' diagrams, and the locked pi runtime your workers run in (they run on pi unless
+you choose Claude Code for them). With `--pi` it also places the pi run view and the pi skill for a
+pi main session. It never writes your Specs. Then open Claude Code or pi in the project and talk to it:
 it is now the main agent.
 
 [Using Concorde](docs/using-concorde.md) walks through installation, the first Spec, worker models,
@@ -221,7 +222,7 @@ CONCORDE_LIVE_PI=1 .venv/bin/python -m pytest tests/concorde/harness/workers/tes
 
 The last two commands run a real worker to check what only the agent itself enforces: the first
 needs a logged-in Claude Code and costs a few cents; the second needs a configured pi
-(`CONCORDE_LIVE_PI_MODEL` names the model) and the pi runtime, from `install-concorde.py --pi` or
+(`CONCORDE_LIVE_PI_MODEL` names the model) and the pi runtime, which every install places, or
 `CONCORDE_SANDBOX_RUNTIME`. Never edit build output under `generated/`; change the
 sources (`prompts/`, `protocol/`, `src/`) and rebuild. See the [source-checkout rules](AGENTS.md) and
 [Concorde's own Specs](specs/concorde/module.md).

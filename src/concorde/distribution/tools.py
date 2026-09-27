@@ -178,8 +178,9 @@ def install_pi_runtime(
     if npm is None:
         raise ToolError(
             "npm_missing",
-            "the pi runtime is installed with npm, which is not on PATH; install Node.js and "
-            "npm, or install without --pi",
+            "the pi runtime, which every pi worker runs in, is installed with npm, which is "
+            "not on PATH; install Node.js and npm, or install with --without-pi-runtime and put "
+            "every worker on Claude Code",
         )
     target.mkdir(parents=True, exist_ok=True)
     for name in ("package.json", "package-lock.json"):

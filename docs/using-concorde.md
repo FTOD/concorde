@@ -85,14 +85,17 @@ The installer places:
   of the file is left untouched);
 - the [`d2`](https://github.com/d2lang/d2) program that draws your Specs' diagrams, as
   `.concorde/tools/d2`, at a pinned release whose checksum it verifies (`--without-d2` skips it);
+- the sandbox engine pi workers run their commands in, `@anthropic-ai/sandbox-runtime`, under
+  `.concorde/tools/pi-runtime/`, installed with `npm ci --ignore-scripts` from the lockfile
+  Concorde ships, so you get exactly the versions it was tested with. Workers run on pi unless you
+  choose Claude Code for them, whatever your own session is, so this needs npm;
+  `--without-pi-runtime` skips it when every worker will run on Claude Code;
 - ignore rules for the directories Concorde writes at run time, and a receipt
   `.concorde/install.json`.
 
-To use pi, add `--pi`. The installer then also places:
+To work with pi as your main session, add `--pi` (or `concorde update --pi` later). The installer
+then also places:
 
-- the sandbox engine pi workers run their commands in, `@anthropic-ai/sandbox-runtime`, under
-  `.concorde/tools/pi-runtime/`, installed with `npm ci --ignore-scripts` from the lockfile
-  Concorde ships, so you get exactly the versions it was tested with;
 - Concorde's pi extension, the **run view**, as `.pi/extensions/concorde/`;
 - the main agent's guidance a second time, as the pi skill `.pi/skills/concorde/SKILL.md`.
 

@@ -302,13 +302,15 @@ def with_update_state(root: Path, result):
 
 
 def update_main(words: list[str]) -> int:
-    """`concorde update [--from <checkout>] [--python <interpreter>]`: run the installer of the
-    Concorde checkout this project was installed from (or ``--from``) in update mode."""
+    """`concorde update [--from <checkout>] [--python <interpreter>] [--pi]`: run the installer of
+    the Concorde checkout this project was installed from (or ``--from``) in update mode; ``--pi``
+    adds the pi main session's files."""
     import subprocess
 
     parser = argparse.ArgumentParser(prog="concorde update")
     parser.add_argument("--from", dest="source")
     parser.add_argument("--python")
+    parser.add_argument("--pi", action="store_true")
     parser.add_argument("--project-root", default=".")
     arguments = parser.parse_args(words)
     root = Path(arguments.project_root).resolve()
@@ -346,6 +348,8 @@ def update_main(words: list[str]) -> int:
     command = [sys.executable, str(installer), str(root), "--update"]
     if arguments.python:
         command += ["--python", arguments.python]
+    if arguments.pi:
+        command.append("--pi")
     return subprocess.run(command, check=False).returncode
 
 

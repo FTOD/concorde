@@ -145,12 +145,28 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND nothing is written into the project
 - BUT with `--without-d2` the installer places everything else and leaves `d2` to the developer
 
-### scenario.distribution.install-pi — Install for pi as well
+### scenario.distribution.install-pi — Install for a pi main session as well
 
 - GIVEN a project and a machine with npm
 - WHEN the developer installs Concorde with `--pi`
-- THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile
+- THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile, as in every install
 - AND the run view is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
 - AND every rendered pi workflow script is under `.concorde/workflows/pi/` and the command-runner agents `concorde-step` and `concorde-report` under `.pi/agents/`
 - AND a second install with the same lockfile does not run npm again
 - BUT without npm the install is refused before anything else is written
+
+### scenario.distribution.pi-runtime-default — Every install places the runtime pi workers run in
+
+- GIVEN a project and a machine with npm
+- WHEN the developer installs Concorde without `--pi`
+- THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/`, since workers run on pi unless configured otherwise
+- AND no file of the pi main session is placed, and the receipt records `pi` false and `pi_runtime` true
+- BUT with `--without-pi-runtime` the runtime is left out, npm is not needed, and the receipt records `pi_runtime` false
+
+### scenario.distribution.update-pi — An update adds the pi runtime and, on request, the pi files
+
+- GIVEN a project installed without the pi runtime by an installer that did not record the choice
+- WHEN the developer runs `concorde update`
+- THEN the pi runtime is placed and the receipt records `pi_runtime` true, while no file of the pi main session is placed
+- AND `concorde update --pi` places the pi main session's files, and later updates keep both
+- BUT an install made with `--without-pi-runtime` stays without the runtime after an update
