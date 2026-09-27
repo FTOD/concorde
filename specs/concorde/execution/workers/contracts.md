@@ -189,38 +189,23 @@ its [command result](#contract.workers.configure-workers-result).
 ```concorde-contract
 {
   "id": "contract.workers.worker-configuration",
-  "version": 6,
+  "version": 7,
   "schema": {
     "type": "object",
     "additionalProperties": false,
     "required": [
       "action",
-      "backend",
-      "backend_from",
       "worktree",
       "config",
-      "changed",
-      "candidates",
       "configured",
       "effective"
     ],
     "properties": {
       "action": {
         "enum": [
-          "list",
-          "set",
-          "unset"
+          "show",
+          "check"
         ]
-      },
-      "backend": {
-        "enum": [
-          "claude",
-          "pi"
-        ]
-      },
-      "backend_from": {
-        "type": "string",
-        "minLength": 1
       },
       "worktree": {
         "type": "string",
@@ -229,19 +214,6 @@ its [command result](#contract.workers.configure-workers-result).
       "config": {
         "type": "string",
         "minLength": 1
-      },
-      "changed": {
-        "type": "boolean"
-      },
-      "candidates": {
-        "anyOf": [
-          {
-            "type": "null"
-          },
-          {
-            "type": "object"
-          }
-        ]
       },
       "configured": {
         "type": "object"
@@ -308,51 +280,10 @@ its [command result](#contract.workers.configure-workers-result).
       }
     }
   },
-  "semantics": "The output of concorde configure-workers. action is list when the run changed nothing, set when it set a backend, model or level, unset when it removed an entry. backend is the program whose candidates were listed or against which a change was checked: the program the named entry (the default, an Operation's default or one worker's) runs on once the change is applied, pi when no entry chooses one, or for a listing the program --candidates names; backend_from says which: --backend, the entry that chose it (such as operations.spec_panel.workers.chair), --candidates, or Concorde's default worker backend. worktree is the worktree whose configuration file config was read or changed, the Git worktree the command ran in: the primary worktree, whose file new task worktrees inherit, or a task worktree, whose own copy only it reads; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file as written after the change. effective maps every catalog Operation that launches workers to its worker ids, each with the backend that worker runs on and the entry it came from (or Concorde's default worker backend), and the model and reasoning level it runs with and the entry each came from, or null with the source \"the backend's own default\". A behaviour or field change increments the version.",
+  "semantics": "Read-only output of configure-workers --show or --check. action names the inspection. worktree and config identify the current Git worktree and its source file. configured is the validated JSON file (schema_version 3 when absent). effective maps every catalog Operation and worker id to its resolved backend, model and reasoning with each source. Resolution is sparse and field by field; an explicit backend resets inherited model and reasoning. No discovery, backend installation or credentials are required. No file, task or run record is written. Model names are accepted without discovery; structural, catalog and backend reasoning vocabulary errors fail validation. A behaviour or field change increments the version.",
   "example": {
-    "action": "set",
-    "backend": "pi",
-    "backend_from": "Concorde's default worker backend",
     "worktree": "/work/shop",
     "config": "/work/shop/.concorde/worker-models.json",
-    "changed": true,
-    "candidates": {
-      "backend": "pi",
-      "program": "/usr/local/bin/pi",
-      "version": "0.87.1",
-      "complete": true,
-      "reasoning_flag": "--thinking",
-      "reasoning_levels": [
-        "off",
-        "minimal",
-        "low",
-        "medium",
-        "high",
-        "xhigh",
-        "max"
-      ],
-      "models": [
-        {
-          "id": "anthropic/claude-sonnet-5",
-          "source": "pi --list-models",
-          "reasoning": true,
-          "levels": [
-            "off",
-            "minimal",
-            "low",
-            "medium",
-            "high",
-            "xhigh",
-            "max"
-          ],
-          "context": "1M",
-          "max_output": "128K",
-          "images": true,
-          "note": ""
-        }
-      ],
-      "note": "pi lists the models it has credentials for in ~/.pi/agent; workers get a copy of its auth.json and models.json."
-    },
     "configured": {
       "schema_version": 3,
       "default": {
@@ -429,20 +360,21 @@ its [command result](#contract.workers.configure-workers-result).
           "reasoning_source": "the backend's own default"
         }
       }
-    }
+    },
+    "action": "show"
   }
 }
 ```
 
 ## Command result of configure-workers
 
-What the command prints on standard output for every well-formed command line, whether it listed,
-changed or refused.
+What read-only inspection prints with `--json`, including a refused validation.
+The interactive editor uses a terminal screen and writes only on Save.
 
 ```concorde-contract
 {
   "id": "contract.workers.configure-workers-result",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -614,7 +546,7 @@ changed or refused.
       }
     }
   },
-  "semantics": "What concorde configure-workers prints on standard output. command is always configure-workers. status is ok when the listing or change succeeded and failed when the request was refused, in which case the configuration file is unchanged. output is the worker configuration (contract.workers.worker-configuration) when the status is ok and null otherwise. evidence names the configuration file and what was done to it. error is null exactly when the status is ok; otherwise it is the command's own error link, level command, actor concorde configure-workers (<worktree>), code invalid_request or configuration_refused, whose cause for configuration_refused is the component link of Workers' model configuration. The command writes no run record. A malformed command line prints {\"error\": <link>} with exit status 2. A behaviour or field change increments the version.",
+  "semantics": "JSON result printed only for --show --json or --check --json. command is configure-workers. status ok returns contract.workers.worker-configuration in output and exit status 0; failed returns output null and the full command error chain with exit status 1. Error configuration_refused carries the Workers component cause, including config_invalid for bad structure or catalog names. The file remains unchanged. Malformed options, a nonterminal editor invocation or a directory outside Git print {\"error\": <link>} and exit 2. With no flags an interactive terminal opens a draft editor, not JSON output; Save validates and atomically writes; a dirty Cancel, q, Escape or Ctrl-C offers Keep editing by default or explicit Discard changes, while a clean exit needs no prompt. Scope and model search uses / and returning from Edit preserves the selected scope and filter. --show and --check without --json print human-readable inspection. No run is recorded. A behaviour or field change increments the version.",
   "example": {
     "command": "configure-workers",
     "status": "failed",
@@ -623,19 +555,19 @@ changed or refused.
       {
         "kind": "worker-models",
         "ref": "/home/dev/shop/.concorde/worker-models.json",
-        "detail": "unknown_model: no-such-model is not a model pi lists"
+        "detail": "config_invalid: unknown worker reviewer6 of spec_panel"
       }
     ],
     "error": {
       "level": "command",
       "actor": "concorde configure-workers (/home/dev/shop)",
       "code": "configuration_refused",
-      "detail": "configure-workers could not complete for /home/dev/shop/.concorde/worker-models.json: unknown_model: no-such-model is not a model pi lists",
+      "detail": "configure-workers could not complete for /home/dev/shop/.concorde/worker-models.json: config_invalid: unknown worker reviewer6 of spec_panel",
       "evidence": [
         {
           "kind": "worker-models",
           "ref": "/home/dev/shop/.concorde/worker-models.json",
-          "detail": "unknown_model: no-such-model is not a model pi lists"
+          "detail": "config_invalid: unknown worker reviewer6 of spec_panel"
         }
       ],
       "attempts": [],
@@ -644,23 +576,23 @@ changed or refused.
         "explanation": "the command neither guesses a program or model nor repairs the configuration or the installed program"
       },
       "options": [
-        "choose a model from the candidates concorde configure-workers lists"
+        "edit .concorde/worker-models.json and run concorde configure-workers --check"
       ],
-      "recommendation": "choose a model from the candidates concorde configure-workers lists",
+      "recommendation": "edit .concorde/worker-models.json and run concorde configure-workers --check",
       "causes": [
         {
           "level": "component",
           "actor": "Workers (worker model configuration)",
-          "code": "unknown_model",
-          "detail": "no-such-model is not a model pi lists",
+          "code": "config_invalid",
+          "detail": "unknown worker reviewer6 of spec_panel",
           "evidence": [],
           "attempts": [],
           "unhandled": {
             "reason": "input",
-            "explanation": "only the caller can name a model the program offers"
+            "explanation": "the file must name a catalog worker"
           },
           "options": [
-            "choose a model from the candidates concorde configure-workers lists"
+            "edit .concorde/worker-models.json and run concorde configure-workers --check"
           ],
           "recommendation": "",
           "causes": []

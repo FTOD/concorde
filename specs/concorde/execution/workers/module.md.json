@@ -203,7 +203,9 @@
       "title": "Model configuration",
       "meaning": "#realization.workers.models",
       "entries": [
-        "src/concorde/harness/models.py"
+        "src/concorde/harness/models.py",
+        "src/concorde/harness/available_models.py",
+        "scripts/available_models.py"
       ],
       "pending": []
     },
@@ -214,6 +216,7 @@
       "meaning": "#realization.workers.configure",
       "entries": [
         "src/concorde/harness/configure.py",
+        "src/concorde/harness/configure_tui.py",
         "tests/concorde/harness/test_configure.py"
       ],
       "pending": []

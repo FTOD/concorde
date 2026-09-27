@@ -265,14 +265,16 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("Change worker models only when the developer asks.", self.skill)
         self.assertIn("call the `concorde_configure_workers` tool", self.skill)
         self.assertIn(
-            "run `concorde configure-workers` and ask with the AskUserQuestion tool",
+            "For AI-driven changes, edit `.concorde/worker-models.json` directly",
             self.skill,
         )
-        self.assertIn(
-            "The `concorde configure-workers` command lists and changes the file of the "
-            "worktree it runs in",
-            self.skill,
-        )
+        self.assertIn("Edits stay in a draft until Save", self.skill)
+        self.assertIn("dirty exits offer Keep editing or Discard changes", self.skill)
+        self.assertIn("including Ctrl-C", self.skill)
+        self.assertIn("concorde configure-workers --show --json", self.skill)
+        self.assertIn("concorde configure-workers --check", self.skill)
+        self.assertIn("scripts/available_models.py --backend pi", self.skill)
+        self.assertIn("custom/offline model names", self.skill)
         self.assertIn(
             "run it in a task worktree only when the developer asks to change a task that "
             "already exists",
@@ -288,8 +290,12 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn(
             "unless the worktree's `.concorde/worker-models.json`", self.skill
         )
-        self.assertIn("set it with `--backend claude`", self.skill)
-        self.assertIn("Both programs must be installed", self.skill)
+        self.assertIn('Set `backend: "claude"`', self.skill)
+        self.assertIn(
+            "chosen backend must be installed when a worker launches", self.skill
+        )
+        for old in ("--allow-unlisted", "--candidates", "--unset", "--operation <op>"):
+            self.assertNotIn(old, self.skill)
 
     @verifies("scenario.main-session.no-task-operations")
     def test_questions_and_reviews_may_run_without_a_task(self):

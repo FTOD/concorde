@@ -325,41 +325,42 @@ not inherited. Git ignores the file. `concorde task open` copies the primary wor
 the new task worktree, so a task keeps the configuration it started with, and a later change in the
 primary worktree never reaches it. Without a file, every worker runs on pi with pi's default model.
 
-The `concorde configure-workers` command lists and changes the file of the worktree it runs in.
-It launches no worker and records no run:
+The `concorde configure-workers` command opens a human-facing terminal editor of the current
+worktree's file. It launches no worker and records no run. The editor shows backend, model,
+reasoning and each effective source for the global default, Operation defaults and individual
+workers. Edits stay in a draft until Save; dirty exits offer Keep editing or Discard changes,
+including Ctrl-C. Search scopes or models with `/`; an empty search clears the filter. Remove fields to
+inherit, or remove a whole override. The same editor opens in pi when you call the
+`concorde_configure_workers` tool or the developer types `/concorde-models`; it requires a terminal.
+
+Change worker models only when the developer asks. Edit the primary worktree's file to choose
+what future tasks inherit; run it in a task worktree only when the developer asks to change a task
+that already exists. For AI-driven changes, edit `.concorde/worker-models.json` directly,
+preserving unrelated entries, then validate and inspect:
 
 ```bash
-concorde configure-workers [--candidates claude|pi]   # candidates and every worker's choice
-concorde configure-workers [--operation <op> [--worker <id>]] \
-  [--backend claude|pi] [--model <model>] [--reasoning <level>] [--allow-unlisted]
-concorde configure-workers [--operation <op> [--worker <id>]] --unset
+concorde configure-workers --check
+concorde configure-workers --show --json
 ```
 
-Change worker models only when the developer asks. Run it in the primary worktree to change the
-file the tasks you open from now on inherit; run it in a task worktree only when the developer asks
-to change a task that already exists, and only that worktree's copy changes.
-Let the developer make the choice:
+Use `schema_version: 3`, a `default` entry and sparse `operations.<operation>.default` or
+`operations.<operation>.workers.<worker-id>` entries. Set `backend: "claude"` to choose Claude Code;
+an explicit backend resets model and reasoning inheritance. Remove a field to inherit it rather
+than writing null. The shared validator checks structure and catalog names at runtime as well as
+on Save or `--check`. Inspection never writes or discovers models. Old mutation flags are gone.
 
-- In pi, call the `concorde_configure_workers` tool (the developer can also type
-  `/concorde-models`). It opens a picker in which the developer chooses, for every worker or one
-  worker by its id, a model from those pi lists and a reasoning level, and it tells you what
-  changed.
-- In Claude Code, run `concorde configure-workers` and ask with the AskUserQuestion tool: first
-  the scope (every worker, or an Operation's worker id from the output's `effective`), then the
-  model, then the reasoning level from the model's `levels`. Offer the listed models as options,
-  and mention that a full model name can be given as a free-text answer. A model pi's listing does
-  not show needs `--allow-unlisted`. Apply each answer with `configure-workers` and show the
-  developer the resulting `effective` table.
+For suggestions, run `python3 scripts/available_models.py --backend pi` or `--backend claude`,
+optionally with `--json`. In an installed project the script is under
+`.concorde/framework/scripts/available_models.py`. It works outside Git and calls no inference
+API: pi lists configured credentialed candidates; Claude's aliases and settings-derived names
+are incomplete and do not prove account access. Discovery failure or an empty list does not block
+custom/offline model names. AI may use these suggestions when the developer asks for options;
+if a requested model is already known, edit it directly without a mandatory question flow.
 
-When the developer asks to run some workers on Claude Code, set it with `--backend claude` on the
-default, an Operation or a worker id, then choose their models from `--candidates claude`, whose
-listing Claude Code cannot make complete: it shows its aliases and the models your settings name.
-Both programs must be installed where they are chosen: a worker whose program is missing ends
-`failed` with `backend_missing` rather than running on the other one.
-
-A refused change ends `failed` with the Workers link naming the value and what is listed. An
-Operation whose worker cannot be configured ends `failed` with `worker_model_unavailable`, naming
-the worker, the file or the missing program.
+The chosen backend must be installed when a worker launches, but it need not be installed to
+edit or validate configuration. A missing program causes `backend_missing`, never fallback.
+An Operation whose worker cannot be configured ends `failed` with `worker_model_unavailable`,
+naming the worker, file or missing program.
 
 ## Spec queries
 

@@ -87,22 +87,22 @@ run view and model picker do in them.
 
 ### scenario.main-session.pi-model-picker — pi's picker applies the developer's choice
 
-- GIVEN a pi main session whose `concorde configure-workers` output lists two pi models and configures an entry for `spec_review`'s worker `checker`
-- WHEN the developer opens the model picker with `/concorde-models` or the main agent calls `concorde_configure_workers`
-- THEN the picker offers the default and every worker of every Operation by its id, such as `understand worker` and `spec_review checker`, with what it runs on now, then the listed models, then the chosen model's reasoning levels
-- AND it lists pi's models with `concorde configure-workers --candidates pi`, and applies each choice with `concorde configure-workers` naming the Operation and worker id, or with `--unset` when the developer returns an entry to the more general one
-- AND it runs both in the task's worktree when a task is given and in the session's worktree otherwise, never naming the task
-- AND a refused command is shown with every link of its error chain
-- BUT a worker whose configuration puts it on Claude Code has no row
+- GIVEN a pi terminal main session and an optional task worktree
+- WHEN the developer opens `/concorde-models` or the main agent calls `concorde_configure_workers`
+- THEN the picker opens Workers' shared terminal editor in exactly that worktree, with backend, model, reasoning, inheritance and Save/Cancel
+- AND it restores pi's terminal after normal exit, cancellation or a launch failure
+- AND read-only `configure-workers --show --json` inspection reports saved changes and preserves refusal chains
+- BUT RPC and headless modes are told to use direct JSON edits and read-only validation, and a missing task worktree is refused without primary fallback
 
 ### scenario.main-session.choose-models — The guidance lets the developer choose worker models
 
 - GIVEN the rendered main-session guidance
 - WHEN a developer asks the main agent to change the models workers use
 - THEN it is told that workers run on pi unless the worktree's configuration chooses Claude Code for them, and take their models from that configuration by worker id, which new tasks inherit
-- AND that `concorde configure-workers` lists and changes the file of the worktree it runs in, launching no worker and recording no run
-- AND to let the developer choose, for every worker or one worker by its id, with the picker in pi or with the question tool from the `concorde configure-workers` output in Claude Code
-- AND to put workers on Claude Code, when the developer asks, with `concorde configure-workers --backend claude`, which needs that program installed
+- AND that the human-facing `concorde configure-workers` editor keeps drafts until Save and changes only the current worktree, launching no worker and recording no run
+- AND to edit JSON directly for AI-driven changes, preserve unrelated overrides and validate with `--check`, inspecting sources with `--show --json`
+- AND that separate `scripts/available_models.py` discovery supplies advisory configured candidates without inference API probes, while custom/offline names require no discovery
+- AND to set the JSON backend to `claude` when asked, with program installation required at launch rather than at configuration time
 - BUT to run it in an existing task's worktree only when the developer asks to change that task
 
 ### scenario.main-session.no-task-operations — The guidance runs questions and reviews without a task

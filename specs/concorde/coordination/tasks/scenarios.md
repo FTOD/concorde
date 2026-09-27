@@ -21,7 +21,8 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN a primary worktree whose `.concorde/worker-models.json` chooses a default model
 - WHEN the main agent opens a task and then changes the primary worktree's default model
 - THEN the task worktree holds the configuration as it was when the task opened, untracked by Git
-- AND it changes only when `concorde configure-workers` runs in the task worktree, which leaves the primary worktree's file as it is
+- AND direct JSON edits or a saved `concorde configure-workers` draft in the task worktree change only the task's copy, leaving the primary worktree's file as it is
+- AND read-only inspection and validation never change either file
 - BUT a task opened from a primary worktree without the file gets none, and its workers use the program's default
 
 ### scenario.tasks.open-taken — Refuse a taken identity

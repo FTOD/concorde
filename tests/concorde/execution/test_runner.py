@@ -411,13 +411,20 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertEqual((1, "failed"), (status, envelope["status"]))
         self.assertEqual([], envelope["worker_runs"])
+        assert envelope is not None
         self.assertEqual("worker_model_unavailable", envelope["error"]["code"])
         [cause] = envelope["error"]["causes"]
         self.assertEqual("backend_missing", cause["code"])
         self.assertEqual("environment", cause["unhandled"]["reason"])
         self.assertIn("Concorde's default worker backend", cause["detail"])
         self.assertIn("CONCORDE_PI", cause["detail"])
-        self.assertIn("--backend claude", cause["detail"])
+        self.assertIn(
+            "edit its backend in .concorde/worker-models.json", cause["detail"]
+        )
+        self.assertTrue(
+            any("--check" in option for option in envelope["error"]["options"])
+        )
+        self.assertNotIn("--backend", json.dumps(envelope["error"]))
         validate(envelope["error"], ERROR_SCHEMA)
 
     @verifies("scenario.operations.worker-ok")

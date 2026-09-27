@@ -48,14 +48,10 @@ import {
 } from "./pi_runs.ts";
 import {
   type CommandOutcome,
-  commandFor,
-  currentModel,
-  levelRows,
-  type Listing,
+  editorCommand,
+  runEditor,
   listingCommand,
-  modelRows,
   refusalText,
-  scopeRows,
 } from "./pi_models.ts";
 
 const SOURCE = "concorde";
@@ -149,66 +145,30 @@ function concorde(cwd: string, args: string[]): Promise<CommandOutcome> {
   });
 }
 
-/**
- * The worker model picker: choose, per scope (every worker, one Operation's or one worker), a pi
- * model and a reasoning level from what `concorde configure-workers` lists in the chosen worktree
- * (a task's, or this one), and apply each choice with `concorde configure-workers` there. Returns
- * what it changed, or throws the command's refusal.
- */
+/** Open the shared terminal editor in exactly the requested worktree. */
 async function pickWorkerModels(
   ctx: ExtensionContext,
   task: string | null,
 ): Promise<string[]> {
-  const cwd = task
-    ? (taskWorktree(primaryRoot(ctx.cwd), task) ?? ctx.cwd)
-    : ctx.cwd;
-  const changes: string[] = [];
-  for (;;) {
-    const listed = await concorde(cwd, listingCommand());
-    const output = listed.value?.output;
-    if (listed.code !== 0 || !output)
-      throw new Error(
-        `concorde ${listingCommand().join(" ")} failed:\n${refusalText(listed)}`,
-      );
-    const listing = output as unknown as Listing;
-    const scopes = scopeRows(listing);
-    const scopeLabel = await ctx.ui.select(
-      `Worker models (${task ? `task ${task}` : "this worktree"}, ${listing.config})`,
-      scopes.map((row) => row.label),
+  if (ctx.mode !== "tui")
+    throw new Error(
+      "The worker editor needs a terminal. Edit .concorde/worker-models.json directly and run configure-workers --check; use --show --json to inspect it.",
     );
-    const scope = scopes.find((row) => row.label === scopeLabel)?.scope;
-    if (!scope) return changes;
-    const models = modelRows(listing, scope);
-    const modelLabel = await ctx.ui.select(
-      `Model for ${
-        scope.operation === null
-          ? "every worker"
-          : `${scope.operation}${scope.worker ? ` ${scope.worker}` : ""}`
-      }`,
-      models.map((row) => row.label),
-    );
-    const picked = models.find((row) => row.label === modelLabel);
-    if (!picked) continue;
-    let level: string | null = null;
-    if (picked.action !== "unset") {
-      const model = picked.model ?? currentModel(listing, scope);
-      level =
-        (await ctx.ui.select(
-          `Reasoning level for ${model ?? "pi's default model"}`,
-          levelRows(listing, model),
-        )) ?? null;
-      if (level === null) continue;
-    }
-    const args = commandFor(scope, picked.action, picked.model, level);
-    if (!args) continue;
-    const applied = await concorde(cwd, args);
-    if (applied.code !== 0)
-      throw new Error(
-        `concorde ${args.join(" ")} failed:\n${refusalText(applied)}`,
-      );
-    changes.push(args.slice(1).join(" "));
-    ctx.ui.notify(`Worker models: ${args.slice(1).join(" ")}`, "info");
-  }
+  const cwd = task ? taskWorktree(primaryRoot(ctx.cwd), task) : ctx.cwd;
+  if (!cwd) throw new Error(`Task ${task} has no worktree`);
+  const before = await concorde(cwd, listingCommand());
+  if (before.code !== 0) throw new Error(refusalText(before));
+  const code = await ctx.ui.custom<number>((tui, _theme, _keys, done) => {
+    done(runEditor(tui, [...concordeCommand(cwd), ...editorCommand()], cwd));
+    return { render: () => [], invalidate: () => {} };
+  });
+  const after = await concorde(cwd, listingCommand());
+  if (after.code !== 0) throw new Error(refusalText(after));
+  if (code !== 0) throw new Error(`Worker editor exited with status ${code}`);
+  return JSON.stringify(before.value?.output) ===
+    JSON.stringify(after.value?.output)
+    ? []
+    : [`saved configuration in ${cwd}`];
 }
 
 export default function (pi: ExtensionAPI) {
@@ -620,15 +580,12 @@ export default function (pi: ExtensionAPI) {
     name: "concorde_configure_workers",
     label: "Configure worker models",
     description:
-      "Open the developer's picker for the models Concorde's pi workers use: a default and " +
-      "optional overrides per Operation worker by its id, each a model and a reasoning level from " +
-      "the models pi " +
-      "lists. Use it when the developer asks to choose or change worker models. Without a task " +
-      "it changes this worktree's configuration, which new tasks inherit; with a task it " +
-      "changes only the copy in that task's worktree. The developer makes every choice in the " +
-      "dialog.",
+      "Open the terminal draft editor for worker backends, models and reasoning, with inheritance, " +
+      "Save and Cancel. Use when the developer asks to choose worker models. Without a task it " +
+      "edits this worktree's file, which new tasks inherit; with a task only that task's copy. " +
+      "Requires interactive terminal mode; for AI edits, edit the JSON directly and run --check.",
     promptSnippet:
-      "Let the developer choose the models of Concorde's pi workers",
+      "Let the developer edit Concorde worker models in the terminal",
     parameters: Type.Object({
       task: Type.Optional(
         Type.String({
@@ -638,10 +595,10 @@ export default function (pi: ExtensionAPI) {
       ),
     }),
     async execute(_id, params, _signal, _onUpdate, ctx) {
-      if (!ctx.hasUI)
+      if (ctx.mode !== "tui")
         throw new Error(
-          "the worker model picker needs pi's interactive interface; run concorde " +
-            "configure-workers instead",
+          "the worker model editor needs a terminal; edit .concorde/worker-models.json directly " +
+            "and run configure-workers --check",
         );
       const changes = await pickWorkerModels(ctx, params.task ?? null);
       return {
@@ -649,7 +606,7 @@ export default function (pi: ExtensionAPI) {
           {
             type: "text",
             text: changes.length
-              ? `The developer changed the worker models: ${changes.join("; ")}. Run concorde configure-workers for the result.`
+              ? `The developer changed the worker models: ${changes.join("; ")}. Run concorde configure-workers --show --json for the result.`
               : "The developer changed nothing.",
           },
         ],
