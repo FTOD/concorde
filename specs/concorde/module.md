@@ -102,6 +102,29 @@ primary worktree and merges. For work split into several tasks, it starts a
 [task session](vocabulary.md#concept.concorde.task-session) per task with `concorde task session`,
 which does the same inside its task and reports back, so several tasks run at once.
 
+The normal path moves from opening a task to work in its bound workspace, then back to the main
+agent for merge. Operations, validation and delivery run through Execution in the task worktree;
+only the main agent merges in the primary worktree.
+
+```d2 illustrative
+grid-rows: 1
+primary: "Primary worktree\nMain agent" {
+  grid-columns: 1
+  vertical-gap: 152
+  open: "Open task\nbranch + bound worktree"
+  merge: "Merge delivered task"
+}
+task: "Task worktree\nMain agent or task session" {
+  grid-columns: 1
+  work: "Change Specs and code\ndirectly or through Operations"
+  validate: "task-validation\ncheck readiness"
+  deliver: "delivery\ncommit result + evidence"
+  work -> validate -> deliver
+}
+primary.open -> task.work: enter or delegate
+task.deliver -> primary.merge: delivered
+```
+
 Some tasks follow a known procedure. A [workflow](execution/workflows/module.md) records that
 procedure: the main agent opens a task as usual and starts the workflow inside its worktree, which
 orders the workspace's runs one at a time and returns one workflow result. In **interactive** mode

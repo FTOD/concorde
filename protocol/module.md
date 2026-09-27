@@ -103,7 +103,10 @@ template. A logical responsibility may participate in a collaboration without ha
 entry point, and MUST NOT invent one.
 
 Usage is canonical explanatory prose, not a second summary with weaker promises. Link to precise
-definitions rather than restating them.
+definitions rather than restating them. Place a diagram next to the normal path wherever it makes
+the process clearer. A lightweight workflow can show steps and progression, with responsibility
+lanes when they help. Use a sequence diagram when the order of messages between participants is
+what needs explaining. The [diagram guidance](#diagrams) applies to Usage as well as Design.
 
 ### Design
 
@@ -135,28 +138,42 @@ distinct anchors, provided the prose explains all of them.
 
 #### Diagrams
 
-Draw a diagram where a picture shows structure faster than prose, and as many as the design needs.
-Each diagram answers one question and stands next to the prose that explains it. The usual ones are:
+Use diagrams wherever they make relationships, order, branching, state or data clearer. Choose the
+view by the reader's question, not by a quota or a fixed set of pictures. Each diagram answers one
+clear question and stands next to the prose that explains it: Usage diagrams next to the normal
+path or other behaviour they explain, design diagrams in Design.
 
-- **the inside**: the Module with its children and the realizations that carry its function, with
-  the files they bind and the edges between them, so a developer sees how it is built;
-- **the outside**: the Module among the Modules it uses and those that use it, or which of its
-  parts talks to which part of another Module;
-- **a flow or a state**: how one request travels through the parts over time, or the states a record
-  passes through, drawn as an `illustrative` picture.
+| Reader's question | Useful view |
+| --- | --- |
+| How does a process progress, including branches, joins, retries and stopping points? | Lightweight workflow, activity or flow diagram, with responsibility lanes or stage groups when helpful |
+| In what order do participants send and receive messages? | Sequence diagram |
+| What states can a record or task occupy, and what causes each transition? | State diagram |
+| How do the children and realizations carry the Module's function together? | Component view of the inside, with the bindings and edges that explain it |
+| How does the Module interact with its users, providers and consumers? | Context view of the outside, or of the parts that meet across Modules |
+| Where do processes or services run, and which boundaries do they cross? | Deployment view |
+| How do records relate, or how is data transformed and passed between parts? | Data-model or data-flow view |
 
-A diagram shows architecture, not an inventory. Leave realizations that only keep the repository
-running, such as project configuration, development tooling or test suites, to prose. A picture of
-boxes without edges says nothing a list does not; draw the edges that matter, or write the list.
-The same holds for a single realization shown with its files, which only repeats its binding, and
-for the Module with plain arrows to the few Modules it uses, which only repeats its `uses`: say
-these in prose. A Module with nothing structural to show needs no diagram, and none is drawn only to
-have one.
+For a process, start with action or step nodes and directed edges. Make the main path easy to
+follow and separate branches, recovery and evidence where these matter. Add lanes when ownership
+helps explain the process; ordinary process descriptions do not need sequence lifelines.
 
-A checked diagram may only assert declared relations: a labelled edge asserts a `relates`, so
-declare with a verb each relationship drawn that way, such as the service *saves* the record. A
-picture that shows something else is marked `illustrative`. See [Views](views.md). Explain in prose
-the conditions, invariants and reactions that a diagram cannot carry.
+All these views use D2. A checked `d2` diagram uses only the semantic subset and asserts only
+declared static relations: nesting for containment, ownership and bindings, unlabelled edges
+between Modules for `uses`, and labelled edges for `relates` with their declared verbs. Mark every
+other view `d2 illustrative`, including workflow/activity/flow, sequence, state and deployment views
+that show behaviour or runtime facts beyond those relations. A component, context or data-model view
+is checked only when it fits those same rules. See [Views](views.md).
+
+Keep names and meanings consistent with the surrounding Spec. A diagram complements explanatory
+prose: explain the conditions, invariants, effects and failure reactions it cannot carry, and do
+not invent a promise or a relation to fill a picture. An illustrative view grants no authority and
+never replaces the declaration and prose of a load-bearing collaboration.
+
+Draw the relationships that matter to the question. An inventory of disconnected boxes or files
+usually adds nothing to a list; leave realizations that only keep the repository running, such as
+project configuration, development tooling or test suites, to prose. A small Module may need no
+diagram, while a Module with little static structure may still benefit from a workflow, sequence
+or state view. Use as many diagrams as help understanding, with none drawn only to have one.
 
 ## Precise obligations
 

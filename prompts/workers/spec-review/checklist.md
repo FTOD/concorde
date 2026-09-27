@@ -26,7 +26,15 @@ Work through every document the reviewed Module owns, dimension by dimension.
   stop, in short plain prose. Usage starts with a coherent normal path a reader can follow from an
   input to its result, with a concrete illustration where an abstraction hides a decision, before
   errors, repeats and cancellation. A reader never has to assemble instructions from formal
-  statements. Unknowns and unsupported behaviour are stated honestly, not invented.
+  statements. Unknowns and unsupported behaviour are stated honestly, not invented. Look for places
+  where a diagram would make relationships, order, branching, state or data easier to understand.
+  Suggest a lightweight workflow/activity/flow view for a process, with action or step nodes, a clear
+  main path and lanes when responsibility helps; a sequence when participant message ordering needs
+  explanation; a state view for lifecycle; or a component, context, deployment or data-model view
+  for the relevant design question. Ordinary process descriptions need no sequence lifelines.
+  Usage diagrams belong next to the normal path or other behaviour they explain, design diagrams
+  in Design. Each should answer one clear question and complement explanatory prose, using the same
+  terminology. Do not require a diagram count or every kind of view.
 - `obligations`: each requirement is one decidable Module-wide obligation with exactly one `SHALL`
   or `SHALL NOT`, not two obligations joined in one sentence, and not a situation-specific
   guarantee that belongs in a scenario. Each scenario is one testable situation whose `THEN` steps
@@ -38,8 +46,11 @@ Work through every document the reviewed Module owns, dimension by dimension.
   explanation of its responsibility, when the collaboration applies, the promises relied upon and
   this Module's own duties and failure reactions. Interfaces are explained by behaviour, not only
   by a schema.
-- `views`: every diagram asserts only what the prose and the declared relations say, and a
-  load-bearing collaboration is never described only in an illustrative diagram.
+- `views`: checked D2 diagrams explain only declared static relations within the semantic subset;
+  all other views use `d2 illustrative`, with no authority beyond the surrounding prose. Judge
+  whether a diagram faithfully explains that prose without inventing promises, and whether its
+  labels use the Spec's terminology. A load-bearing collaboration is never described only in an
+  illustrative diagram. Leave syntax and declaration matching to the deterministic checks.
 - `terminology`: every defined term has one clear one-sentence definition, is used with that
   meaning throughout, and does not collide with an imported term or a common meaning without
   saying so. Words a reader needs are defined or imported before Usage and Design rely on them.
@@ -64,6 +75,11 @@ Report every problem you can establish as one finding:
 - `problem`: what is wrong, in one or two sentences.
 - `evidence`: the text of the Spec that shows it, quoted exactly where possible.
 - `suggestion`: a concrete repair.
+
+For a missing helpful diagram, report a concrete `readability` finding as `advisory`: cite the
+passage, name the reader's question, and suggest the view and what it would clarify. Absence alone
+is not blocking. If necessary meaning is actually missing or contradictory, identify that gap and
+apply the existing blocking threshold; adding a picture alone cannot supply an unstated promise.
 
 Only the reviewed Module's own documents can be blocking. A problem you notice in a provider's or
 an included document is an `advisory` finding naming that Module; reviewing it is a separate run.

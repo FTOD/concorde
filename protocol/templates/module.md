@@ -29,7 +29,18 @@ Short plain prose. Do not restate the directory or package name as a responsibil
 [Audience, use conditions, prerequisites and actual entry points. Follow one representative input
 through its result and effects. Then errors, repeat invocation, cancellation and compatibility.
 Include a concrete illustration where abstraction would hide a user decision. Name unsupported
-behaviour as unsupported.]
+behaviour as unsupported. Use a diagram next to the normal path when it makes the process clearer.
+The lightweight workflow below shows progression; replace its placeholders with the actual steps
+and explain their conditions and effects in prose, or omit it if it adds no clarity. Add lanes or
+stage groups only when responsibility or phases matter.]
+
+```d2 illustrative
+direction: right
+start: "[User's first step]"
+act: "[Module's action]"
+finish: "[Result and effects]"
+start -> act -> finish
+```
 
 <a id="concept.example.record"></a>
 
@@ -73,21 +84,31 @@ example -> provider
 [For each child and provider: its responsibility, when the collaboration applies, the canonical
 promises relied upon, and this Module's own duties and failure reactions. This is the anchor a
 `contains` or `uses` relation points to. Explain the conditions and reactions a picture cannot
-carry. Draw further diagrams, such as an `illustrative` flow over time, only where they show
-something the prose does not.]
+carry. Use further diagrams wherever they clarify relationships, order, branching, state or data:
+a workflow/activity/flow view for a process and its branches or retries, a sequence for participant
+message ordering, a state view for a lifecycle, or a component, context, deployment or data-model
+view for the design question at hand. Each answers one question next to explanatory prose, using
+the same terminology. There is no required count or set of diagrams; invent no promises to fill
+them.]
 ````
 
 The first Terminology row defines `concept.example.record`; the second is an import row, which
 links to the provider's concept by identity and leaves the definition empty.
 
-Both diagrams are checked, and each answers one question: the first how Example is built, the
-second how it meets its provider. `Example` and `Provider` resolve to Module titles, `Example
+The Usage workflow is `d2 illustrative`: its steps and progression explain behaviour, not declared
+static relations. Sequence lifelines are useful when message ordering needs explanation, not a
+prerequisite for drawing a process. Keep Usage views by the normal path or other behaviour they
+explain, and design views in Design.
+
+Both Design diagrams are checked, and each answers one question: the first how Example is built,
+the second how it meets its provider. `Example` and `Provider` resolve to Module titles, `Example
 service` and `Example record` to this Module's nodes, and `src/example/` to the entry the service
 binds. Nesting asserts that Example owns both nodes and that the service binds its entry; the
 labelled edges match the `relates` declarations below and the unlabelled edge between the two
-Modules matches the `uses`. The look is the publisher's. A picture that should not be checked is
-marked `d2 illustrative`. There is no separate Relationships section: the design holds both the
-inside and the outside.
+Modules matches the `uses`. Checked diagrams use only the D2 semantic subset and declared static
+relations; the look is the publisher's. All other views use `d2 illustrative`, with no authority
+beyond the surrounding prose and no substitute for declaring load-bearing collaborations. There
+is no separate Relationships section: the design holds both the inside and the outside.
 
 ## Paired metadata
 

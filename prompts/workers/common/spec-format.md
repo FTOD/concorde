@@ -45,10 +45,21 @@ structural error stops your run. The rules workers most often break:
   Terminology, Usage and Design, each exactly once, and no `Relationships` section: Design holds
   how the Module is built inside and how it works with the Modules around it, and explains each
   child and provider at its `meaning` anchor.
-- **Diagrams** are `d2` blocks in Design, as many as help and none drawn only to have one, each
-  answering one question (the inside, the outside, a flow). A plain `d2` block may only nest and
-  connect Modules, concepts and realizations that are declared; when in doubt, mark it
-  `d2 illustrative`. Boxes without edges say nothing a list does not. Mermaid is an error.
+- **Diagrams** use D2 wherever they make relationships, order, branching, state or data clearer.
+  Place Usage diagrams next to the normal path or other behaviour they explain, and design diagrams
+  in Design. Choose a lightweight workflow/activity/flow diagram for a process, including branches
+  and retries: action or step nodes, directed edges and a clear main path, with responsibility lanes
+  or stage groups when helpful. Use a sequence diagram when participant message ordering needs
+  explanation; ordinary processes do not need lifelines. Use a state diagram for a lifecycle, or
+  component, context, deployment and data-model views for the design question at hand. Each diagram
+  answers one clear question, uses the Spec's terminology and complements explanatory prose about
+  conditions, effects and failure reactions. There is no quota; invent no promises to fill a view.
+  A checked `d2` block uses only the semantic subset and declared static relations: nesting for
+  containment, ownership and bindings, unlabelled Module edges for `uses`, labelled edges for
+  `relates` with their declared verbs. All other views use `d2 illustrative`, including workflows,
+  sequences and state transitions. Illustrative views carry no authority beyond the prose and never
+  replace the declaration and explanation of a load-bearing collaboration. Disconnected inventories
+  usually add nothing to a list. Mermaid is an error.
   A plain block never uses a D2 keyword, not even as a shape key such as `link: Source link`: its
   D2 keywords are `label`, `shape`, `style`, `class`, `classes`, `direction`, `near`, `icon`,
   `tooltip`, `link`, `width`, `height`, `top`, `left`, `constraint`, `vars`, `layers`,

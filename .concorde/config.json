@@ -3,7 +3,7 @@
   "registry": ".concorde/specs.json",
   "protocol": {
     "version": "14.0.0",
-    "digest": "sha256:d403133705575dd4bae67f788415803a97dde100feed92f82caa797834e2e8a4"
+    "digest": "sha256:cdf4b480a710883f3bf7220551662996b4c557b0765337cf366325f9d5bcab03"
   },
   "python": ".venv/bin/python",
   "checks": [
@@ -31,7 +31,10 @@
     {
       "id": "check.views.publication-types",
       "module": "module.views",
-      "argv": ["{python}", "scripts/development/check-docsite-types.py"],
+      "argv": [
+        "{python}",
+        "scripts/development/check-docsite-types.py"
+      ],
       "timeout_seconds": 120,
       "inputs": [
         "docsite/tsconfig.json",
@@ -45,7 +48,10 @@
     {
       "id": "check.views.repository-regressions",
       "module": "module.views",
-      "argv": [".venv/bin/python", "docsite/tests/repository/run-checks.py"],
+      "argv": [
+        ".venv/bin/python",
+        "docsite/tests/repository/run-checks.py"
+      ],
       "timeout_seconds": 600,
       "inputs": [
         "AGENTS.md",
@@ -84,7 +90,11 @@
     {
       "id": "check.issues.store",
       "module": "module.issues",
-      "argv": ["{python}", "scripts/issues.py", "check"],
+      "argv": [
+        "{python}",
+        "scripts/issues.py",
+        "check"
+      ],
       "timeout_seconds": 60,
       "inputs": [
         ".concorde/issues",

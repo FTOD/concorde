@@ -6,7 +6,7 @@
   "assets": [
     {
       "path": "generated/protocol/kinds/module.md",
-      "digest": "sha256:271b1d53aefb7d133efce85466305dc53d337c219d5161e9eae31bff23ca9a43"
+      "digest": "sha256:49ce9332fbe9f8fe76264ba3c7e29ab6d3e91a8bf92a6e9f4f71c62207dc39f0"
     },
     {
       "path": "generated/protocol/principles.md",
