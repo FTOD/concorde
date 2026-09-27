@@ -330,7 +330,7 @@ Execution runner's process, on behalf of the Operation run at level 4 that calle
 the one process that is, the headless worker. Only a worker-backed step of an Operation calls it —
 the standard worker sequence of [Operations](../operations/module.md) and the providers that run
 workers, such as Understanding, Specification, Implementation, Code review, Adoption and Spec
-review. No recorded command launches a worker, and nothing above level 4 does: a workflow reaches
+review. No execution command launches a worker, and nothing above level 4 does: a workflow reaches
 workers through its Operations, and neither the main agent nor a task session ever starts one. Below it, the worker calls nothing of Concorde's: it never touches Git,
 runs an Operation or starts an agent. Between rounds the Workers host code, not the worker, calls
 its level-5 neighbour, the Check execution Tool, so that a failing check can drive another round

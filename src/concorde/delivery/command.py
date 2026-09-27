@@ -1,6 +1,6 @@
 """``concorde delivery``: validate a whole workspace, then commit it (see the Delivery Spec).
 
-A recorded command of the bound workspace; it launches no worker. The delivery commits on the
+An execution command of the bound workspace; it launches no worker. The delivery commits on the
 bound branch are its only record: their subject and trailers name the workspace, the evidence
 bundle and the run that decided the readiness.
 

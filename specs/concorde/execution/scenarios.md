@@ -43,7 +43,7 @@ run result and the binding are defined in the [contracts](contracts.md) and the 
 - THEN no worker starts and the result is `failed` with `unbound_write`, its actor naming the run as unbound
 - AND an `--input` naming a run of a workspace is refused with `input_not_admissible`
 
-### scenario.execution.recorded-command — A recorded command is a run without a worker
+### scenario.execution.command-run — An execution command is a run without a worker
 
 - GIVEN a bound workspace
 - WHEN the task level runs `concorde task-validation` there
@@ -75,7 +75,7 @@ run result and the binding are defined in the [contracts](contracts.md) and the 
 ### scenario.execution.bad-command — A malformed command line
 
 - GIVEN a command line with an unknown Operation name, an unknown argument, or a directory outside every Git worktree
-- WHEN `concorde run` or a recorded command is invoked
+- WHEN `concorde run` or an execution command is invoked
 - THEN it exits with status 2
 - AND standard error names what is wrong, such as the unknown Operation or argument
 - AND no result and no run directory are written

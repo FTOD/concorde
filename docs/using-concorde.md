@@ -22,13 +22,13 @@ where work is decided and split into tasks. The last three, **execution**, do th
 task's worktree, which Concorde binds to the task as a **workspace**; execution never sees the task
 itself, only that binding. Agents sit at both ends, and programs run between them:
 
-| Level              | Kind            | What it is                                                                                                                                                                                                                              |
-| ------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Main session    | agent           | Your own Claude Code or pi session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                                                                |
-| 2. Task            | agent           | One task's branch and worktree, worked by the main agent itself or by a **task session** it starts when several tasks run at once.                                                                                                      |
-| 3. Workflow        | program         | A procedure for tasks that follow a known path, such as `brownfield`; it orders the runs in the task's worktree and stops where you must decide.                                                                                        |
-| 4. Run             | program         | One bounded job with one result: an **Operation**, which computes the grant, launches AI workers and runs your checks itself, or a **recorded command** such as `task-validation` or `delivery`, a deterministic step without a worker. |
-| 5. Worker and Tool | agent / program | A **worker** is a headless `claude -p` or `pi -p` process for one bounded job, under a **grant** computed from the Specs; a **Tool** is a programmed action, such as running your checks.                                               |
+| Level              | Kind            | What it is                                                                                                                                                                                                                                |
+| ------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Main session    | agent           | Your own Claude Code or pi session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                                                                  |
+| 2. Task            | agent           | One task's branch and worktree, worked by the main agent itself or by a **task session** it starts when several tasks run at once.                                                                                                        |
+| 3. Workflow        | program         | A procedure for tasks that follow a known path, such as `brownfield`; it orders the runs in the task's worktree and stops where you must decide.                                                                                          |
+| 4. Run             | program         | One bounded job with one result: an **Operation**, which computes the grant, launches AI workers and runs your checks itself, or an **execution command** such as `task-validation` or `delivery`, a deterministic step without a worker. |
+| 5. Worker and Tool | agent / program | A **worker** is a headless `claude -p` or `pi -p` process for one bounded job, under a **grant** computed from the Specs; a **Tool** is a programmed action, such as running your checks.                                                 |
 
 Calls only go down: a worker never touches Git, runs an Operation or starts an agent, a run never
 starts another run, and nothing in the execution half reads or writes a task record. Results and
@@ -116,7 +116,7 @@ install did, binds the new Protocol copy in `.concorde/config.json` (read what c
 their worktrees keep the previous Protocol copy. Your project is then **Concorde unvalidated**:
 `concorde spec-validation` reports it as an error, and nothing merges, until you have repaired what the
 new version finds and a validation passes. That mark comes only from an update; your own changes
-never set it. An update also waits for Concorde to be idle: while an Operation, a recorded command
+never set it. An update also waits for Concorde to be idle: while an Operation, an execution command
 or a pi task session is still running in your project, it refuses and names what runs.
 
 ### Use Concorde while developing it
@@ -191,7 +191,7 @@ and runs, one after another:
 
 1. `survey`: a worker reads the code and proposes child Modules, which paths each binds, and the
    test and lint commands it found;
-2. `scaffold`: a recorded command, without any worker, creates those Modules as honest stubs
+2. `scaffold`: an execution command, without any worker, creates those Modules as honest stubs
    and moves their paths out of the root;
 3. `code_to_spec` for each Module: a worker reads its code and writes its Spec, and names the
    existing tests each scenario comes from; Concorde then marks those tests with a small
@@ -389,7 +389,7 @@ Operations for bounded steps. Every `concorde` command for the task runs from th
 with that worktree's own command, never your primary checkout's, because only the task branch
 knows the Specs and checks the task changes.
 
-Each Operation is one `concorde run` command and each deterministic step one recorded command, all
+Each Operation is one `concorde run` command and each deterministic step one execution command, all
 run inside the task worktree. Each prints one JSON result, also saved as
 `.concorde/runs/<run-id>/result.json` of your primary checkout, and one task's worktree runs one of
 them at a time. The main agent runs them in the background (background Bash in Claude Code, the

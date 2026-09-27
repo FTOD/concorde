@@ -1,4 +1,4 @@
-"""Run an Operation or recorded command in-process the way a caller in a task would.
+"""Run an Operation or execution command in-process the way a caller in a task would.
 
 A test names its run as ``<name> [--task <task>] [arguments]``: the task picks the worktree the run
 starts in, whose workspace binding the runner reads, and ``--task`` itself never reaches the
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from concorde.execution.commands import COMMANDS
+from concorde.commands.catalog import COMMANDS
 from concorde.execution.runner import execute
 from concorde.tasks import store
 

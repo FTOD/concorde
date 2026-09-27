@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Delivery turns a workspace's new work into a delivered commit. It provides the recorded command
+Delivery turns a workspace's new work into a delivered commit. It provides the execution command
 `concorde delivery`: when the bound workspace has new work — commits on its branch since the base
 commit, or uncommitted changes — it validates the whole workspace itself, exactly as Validation
 decides a readiness, and when that is ready it commits the remaining changes on the bound branch
@@ -19,18 +19,18 @@ record, or delivers anything it did not validate in the same run.
 | --- | --- |
 | Delivery commit | The commit Delivery creates on top of a workspace's branch it validated, holding the evidence bundle, the metadata its confirmations changed and every change not yet committed, and naming the workspace, the bundle and its readiness run in its trailers. |
 | Evidence bundle | The JSON file committed with a delivery that records the workspace, the readiness the delivery decided and the runs of the workspace that led to it. |
-| [Workspace](../module.md#concept.execution.workspace) | |
-| [Workspace binding](../module.md#concept.execution.workspace-binding) | |
-| [Run](../module.md#concept.execution.run) | |
-| [Recorded command](../module.md#concept.execution.recorded-command) | |
-| [Run result](../module.md#concept.execution.run-result) | |
-| [Run store](../module.md#concept.execution.run-store) | |
-| [Workspace lock](../module.md#concept.execution.workspace-lock) | |
+| [Workspace](../../module.md#concept.execution.workspace) | |
+| [Workspace binding](../../module.md#concept.execution.workspace-binding) | |
+| [Run](../../module.md#concept.execution.run) | |
+| [Execution command](../module.md#concept.commands.execution-command) | |
+| [Run result](../../module.md#concept.execution.run-result) | |
+| [Run store](../../module.md#concept.execution.run-store) | |
+| [Workspace lock](../../module.md#concept.execution.workspace-lock) | |
 | [Readiness](../validation/module.md#concept.validation.readiness) | |
-| [Run record](../workers/module.md#concept.workers.run-record) | |
-| [Worker](../../vocabulary.md#concept.concorde.worker) | |
-| [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
-| [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
+| [Run record](../../workers/module.md#concept.workers.run-record) | |
+| [Worker](../../../vocabulary.md#concept.concorde.worker) | |
+| [Evidence](../../../vocabulary.md#concept.concorde.evidence) | |
+| [Error chain](../../../vocabulary.md#concept.concorde.error-chain) | |
 
 ## Usage
 
@@ -41,10 +41,10 @@ verified step may already be committed on the branch, so a clean worktree is the
 concorde delivery [--adoption] [--detach]
 ```
 
-It is a [recorded command](../module.md#concept.execution.recorded-command): the
-[Execution runner](../runner.md) runs it in the workspace whose
-[binding](../module.md#concept.execution.workspace-binding) lies in the worktree it starts in,
-under the [workspace lock](../module.md#concept.execution.workspace-lock), and records it in the
+It is an [execution command](../module.md#concept.commands.execution-command): the
+[Execution runner](../../runner.md) runs it in the workspace whose
+[binding](../../module.md#concept.execution.workspace-binding) lies in the worktree it starts in,
+under the [workspace lock](../../module.md#concept.execution.workspace-lock), and records it in the
 run store. In a worktree without a binding it is refused with `binding_required` and commits
 nothing. It requires new work since the base commit, then decides the
 [readiness](../validation/module.md#concept.validation.readiness) of the whole workspace with
@@ -54,12 +54,12 @@ change — and requires it ready. An earlier `task-validation` run is only a pre
 trusts it or the checks of single steps. When the workspace changed code, Delivery also requires a
 test declaring that it verifies every scenario the workspace added or changed. Ready, it clears the
 confirmed pending markers, writes the evidence bundle and commits it with any uncommitted change on
-the bound branch. The [run result](../module.md#concept.execution.run-result), of kind `command`
+the bound branch. The [run result](../../module.md#concept.execution.run-result), of kind `command`
 with no worker, carries the commit ([contract](contracts.md#contract.delivery.output)). The task
 level then has the branch merged, in Concorde by the main agent, and ends the task.
 
 `--adoption` marks a delivery that describes code which already existed, as the
-[brownfield workflow](../workflows/module.md#concept.workflows.brownfield) delivers: such a
+[brownfield workflow](../../workflows/module.md#concept.workflows.brownfield) delivers: such a
 delivery changes no behaviour and adds no test, so the scenarios it writes are exempt from the rule
 that a code change ships only with a test for each scenario it added or changed. The exemption is
 recorded as `scenario-tests` evidence. Every other rule applies unchanged.
@@ -85,8 +85,8 @@ The **evidence bundle** is committed at `.concorde/evidence/<workspace>/<n>.json
 workspace's deliveries from 1): the workspace, goal, Modules, base and parent commits, the readiness
 the delivery decided (input digest, check results), applied confirmations, and each run of the
 workspace since the previous delivery (kind, name, status, summary, worker run identities, result
-digest). Full results, [run records](../workers/module.md#concept.workers.run-record) and worker
-transcripts stay in the Git-ignored [run store](../module.md#concept.execution.run-store); the
+digest). Full results, [run records](../../workers/module.md#concept.workers.run-record) and worker
+transcripts stay in the Git-ignored [run store](../../module.md#concept.execution.run-store); the
 bundle carries only identities and digests
 ([exact shape](contracts.md#contract.delivery.evidence-bundle)).
 
@@ -119,7 +119,7 @@ digests, since it lives in the repository forever. Clearing the pending markers 
 before the commit, since until then a filled pending file is still a proposal; doing it in the same
 commit keeps the Spec and its files consistent.
 
-Delivery is a recorded command rather than an Operation because it involves no model; it is a run
+Delivery is an execution command rather than an Operation because it involves no model; it is a run
 nonetheless, so that a workflow can take it as a step, its readiness run is a run identity others
 can cite, and its evidence and error chain reach its caller like any run's.
 
@@ -169,15 +169,17 @@ path, so every commit carries it.
   binding, which gives the steps the workspace's name, goal, Modules, bound branch and base commit,
   holds the workspace lock for the whole run, so no other run changes the workspace between the
   readiness and the commit, and records the run. Delivery reads the runs of the workspace from the
-  [run store](../module.md#concept.execution.run-store) to write the bundle's run entries, relying
+  [run store](../../module.md#concept.execution.run-store) to write the bundle's run entries, relying
   on each saved result being the run's own and on the store listing a workspace's runs in the order
   they started.
+- <a id="uses-commands"></a>**Commands** lists `delivery` in its catalog, which is how the
+  runner finds this Module's definition by the command's name.
 - <a id="uses-validation"></a>**Validation** provides the readiness steps and the confirmations.
   Delivery runs those steps as its own, so its readiness is decided exactly as a `task-validation`
   run's, relies on their final remeasurement to prove the workspace did not change while checks
   ran, and on confirmations applying exactly or not at all; it never changes a finding, treating a
   readiness that is not ready as blocking.
 - <a id="uses-workers"></a>**Workers** keeps a
-  [run record](../workers/module.md#concept.workers.run-record) for every launch.
+  [run record](../../workers/module.md#concept.workers.run-record) for every launch.
   Delivery lists each run's worker run identities in the bundle so evidence can be matched locally,
   relying on those identities being unique and stable; it never reads a transcript.

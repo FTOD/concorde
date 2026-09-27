@@ -105,7 +105,7 @@ class ConfigureWorkersTests(unittest.TestCase):
                 for chosen in workers.values()
             },
         )
-        # Recorded commands launch no worker, so they have no worker to configure.
+        # Execution commands launch no worker, so they have no worker to configure.
         for name in ("task-validation", "delivery", "scaffold", "configure_workers"):
             self.assertNotIn(name, output["effective"])
         self.assertFalse((self.root / models.CONFIG).exists())

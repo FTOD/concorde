@@ -31,12 +31,12 @@ REPAIR_INTENT = (
 )
 
 
-# The recorded commands, which run as ``concorde <command>``; every other name is an Operation.
+# The execution commands, which run as ``concorde <command>``; every other name is an Operation.
 COMMANDS = ("task-validation", "delivery", "scaffold")
 
 
 def concorde_run(concorde: str, worktree: Path, argv: list[str]) -> dict:
-    """One Operation or recorded command run in ``worktree``, whose workspace binding it works
+    """One Operation or execution command run in ``worktree``, whose workspace binding it works
     on; its result, whatever its exit status."""
     prefix = [] if argv[0] in COMMANDS else ["run"]
     done = subprocess.run(

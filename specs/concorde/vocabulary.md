@@ -58,7 +58,7 @@ logic. Workers, plural, names the Execution code that manages workers, not the A
 
 A **Tool** takes explicit inputs, performs a specific action and returns a result or error to its
 caller. [Tools](execution/tools/module.md) groups reusable deterministic execution services, beginning with
-Check execution. An Operation or a recorded command, such as `task-validation`, can call a Tool
+Check execution. An Operation or an execution command, such as `task-validation`, can call a Tool
 directly, and Workers can call one while managing a worker run, such as running checks after a
 round. Calling a Tool neither starts another run nor delegates a job to an AI worker. Deterministic describes the Tool's control logic; external
 commands, network responses and test outcomes can still vary.

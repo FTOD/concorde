@@ -1,4 +1,4 @@
-"""The Execution runner: ``concorde run`` and the recorded commands, with test definitions
+"""The Execution runner: ``concorde run`` and the execution commands, with test definitions
 standing in for real ones, the workspace binding it reads and the run store it writes."""
 
 from __future__ import annotations
@@ -16,7 +16,8 @@ from unittest.mock import patch
 
 from concorde.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
 from concorde.execution import binding as binding_file
-from concorde.execution import commands, runs
+from concorde.commands import catalog as commands
+from concorde.execution import runs
 from concorde.execution.context import Continue, Provider, command, evidence
 from concorde.execution.runner import UsageError, detach, execute, run_main
 from concorde.execution.runs import RESULT_SCHEMA
@@ -91,7 +92,7 @@ def refusing_step(ctx):
 WORKER = Provider("implement", "implement", True, (worker_step,), None, goal_arguments)
 RAISING = Provider("test", None, False, (raising_step,))
 ADMITTED = Provider("understand", None, False, (admitted_step,))
-# Recorded commands: deterministic, no worker.
+# Execution commands: deterministic, no worker.
 DETERMINISTIC = command("task-validation", (deterministic_step,), writes=False)
 REFUSING = command("delivery", (refusing_step,), writes=True)
 
@@ -589,7 +590,7 @@ class RunnerTests(unittest.TestCase):
             any(item["kind"] == "check" for item in envelope["host_evidence"])
         )
 
-    @verifies("scenario.execution.recorded-command")
+    @verifies("scenario.execution.command-run")
     def test_a_recorded_command_launches_no_worker(self):
         status, envelope = self.project.run("task-validation", "--task", "t1")
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)

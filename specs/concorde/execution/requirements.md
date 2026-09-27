@@ -25,7 +25,7 @@ breaks the binding contract or names a root other than that worktree.
 
 ### req.execution.one-result — Every accepted command line ends with one result
 
-Every `concorde run` or recorded command whose command line names a known Operation or command
+Every `concorde run` or execution command whose command line names a known Operation or command
 SHALL write and print exactly one run result, including when the run is refused, fails or is
 cancelled.
 

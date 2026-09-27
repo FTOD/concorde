@@ -1,7 +1,7 @@
 /**
  * Concorde's extension for a pi main session.
  *
- * It lets the main agent run Operations and recorded commands the way Concorde expects in pi:
+ * It lets the main agent run Operations and execution commands the way Concorde expects in pi:
  * `concorde_run` starts `concorde run <operation>` or `concorde <command>` as a detached process in
  * the task's worktree, whose workspace binding the run reads, and returns at once; every run of the
  * project is followed through its progress files and shown in pi-subagents' FleetView as an
@@ -105,7 +105,7 @@ async function loadSubagents(): Promise<Subagents> {
   return found;
 }
 
-// The recorded commands, which run as `concorde <command>`; every other name is an Operation.
+// The execution commands, which run as `concorde <command>`; every other name is an Operation.
 const COMMANDS = ["task-validation", "delivery", "scaffold"];
 
 interface Tracked {
@@ -404,7 +404,7 @@ export default function (pi: ExtensionAPI) {
     name: "concorde_run",
     label: "Concorde run",
     description:
-      "Start a Concorde Operation (`concorde run <operation> [arguments]`) or recorded command " +
+      "Start a Concorde Operation (`concorde run <operation> [arguments]`) or execution command " +
       "(`concorde task-validation|delivery|scaffold [arguments]`) in the background, in the " +
       "worktree of the named task, whose workspace binding the run works on. Without a task, " +
       "an Operation that allows it (understand, survey, spec_review, spec_panel, code_review) " +
@@ -415,11 +415,11 @@ export default function (pi: ExtensionAPI) {
       "until every running Concorde run ends, call bg_wait without an id; bg_wait with an id " +
       "sees only subagent runs.",
     promptSnippet:
-      "Start a Concorde Operation or recorded command in the background and be woken when it finishes",
+      "Start a Concorde Operation or execution command in the background and be woken when it finishes",
     parameters: Type.Object({
       operation: Type.String({
         description:
-          "The Operation, such as implement, or the recorded command task-validation, delivery or scaffold",
+          "The Operation, such as implement, or the execution command task-validation, delivery or scaffold",
       }),
       task: Type.Optional(
         Type.String({
@@ -678,7 +678,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerCommand("concorde", {
     description:
-      "List Concorde runs (Operations and recorded commands) and task-session rounds of this project",
+      "List Concorde runs (Operations and execution commands) and task-session rounds of this project",
     handler: async (_args, ctx) => {
       const sessions = sessionRounds(root).map((status) => {
         const shown = sessionView(

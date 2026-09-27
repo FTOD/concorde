@@ -1,7 +1,7 @@
 """The workspace binding: the one file through which the execution core learns its workspace.
 
 Whoever prepares a workspace (Tasks, for a task worktree) writes ``.concorde/workspace.json`` at
-the workspace's root; every Operation, recorded command and workflow started there reads it and
+the workspace's root; every Operation, execution command and workflow started there reads it and
 never writes it. A worktree without the file is unbound: its runs work on that worktree alone,
 record no workspace and may only read.
 """

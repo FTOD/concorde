@@ -49,13 +49,19 @@
         "meaning": "#uses-execution",
         "relies_on": [
           "concept.execution.run",
-          "concept.execution.recorded-command",
           "concept.execution.progress-file"
         ]
       },
       {
         "target": "module.workflows",
         "meaning": "#uses-workflows"
+      },
+      {
+        "target": "module.commands",
+        "meaning": "#uses-commands",
+        "relies_on": [
+          "concept.commands.execution-command"
+        ]
       }
     ],
     "includes": [
@@ -91,6 +97,12 @@
       "type": "concept",
       "title": "Command-line interface",
       "meaning": "#concept.distribution.cli"
+    },
+    {
+      "id": "concept.distribution.distribution-command",
+      "type": "concept",
+      "title": "Distribution command",
+      "meaning": "#concept.distribution.distribution-command"
     },
     {
       "id": "concept.distribution.protocol-copy",

@@ -9,7 +9,7 @@ establish. The [scenarios](scenarios.md) show the intended behaviour.
 ### req.main-session.tasks-own-changes — Changes run in tasks
 
 The guidance SHALL tell the main agent to make every change of Spec meaning or code behaviour in a
-task, from inside the task worktree, directly or through runs of Operations and recorded commands,
+task, from inside the task worktree, directly or through runs of Operations and execution commands,
 and never in the primary worktree.
 
 Trivial housekeeping that changes neither, such as regenerating the registry mirror after a merge,
@@ -49,7 +49,7 @@ when their Modules and shared files do not overlap.
 
 ### req.main-session.background-operations — Runs start in the background inside the task
 
-The guidance SHALL tell the main agent to start each Operation and recorded command of a task
+The guidance SHALL tell the main agent to start each Operation and execution command of a task
 inside the task worktree, without naming the task, in the background (background Bash in Claude
 Code, the `concorde_run` tool in pi), and to act on its run result.
 

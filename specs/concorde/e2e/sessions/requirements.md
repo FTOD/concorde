@@ -13,7 +13,7 @@ what users get.
 
 ### req.headless-sessions.wake — A run left behind wakes the session once
 
-When a round ends with a run of an Operation or recorded command of the session still running, or stopped by the round's
+When a round ends with a run of an Operation or execution command of the session still running, or stopped by the round's
 end, the driver SHALL wait for it to finish and resume the same session with a wake message naming
 it.
 

@@ -1,6 +1,6 @@
 """``concorde task-validation``: decide a bound workspace's readiness (see the Validation Spec).
 
-A recorded command: it launches no worker, and delivery cites its run.
+An execution command: it launches no worker, and delivery cites its run.
 
 1. Require that the workspace's head is the branch its binding names.
 2. Measure the inputs.

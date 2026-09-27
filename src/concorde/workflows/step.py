@@ -1,6 +1,6 @@
 """``concorde workflow step``: start or await one keyed run of a workflow in its workspace.
 
-A step key names one run of the bound workspace: an Operation, or a recorded command such as
+A step key names one run of the bound workspace: an Operation, or an execution command such as
 ``task-validation``, ``delivery`` or ``scaffold``. The first call for a key starts the run
 detached, with the workspace's own ``concorde``, and records it in the workspace's workflow record;
 every later call finds the recorded run and only waits for it, so repeating a call or relaunching a
@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 from .. import errors
-from ..execution.commands import COMMANDS
+from ..commands.catalog import COMMANDS
 from ..execution.runs import (
     RUN_ID_PATTERN,
     load_result,
@@ -236,7 +236,7 @@ def concorde_command(worktree: Path) -> list[str]:
 def start_run(workflow: str, space: Workspace, argv: list[str]) -> dict:
     """Start the step's run detached in the workspace; the announced run.
 
-    An Operation starts with ``concorde run <argv> --detach``, a recorded command with
+    An Operation starts with ``concorde run <argv> --detach``, an execution command with
     ``concorde <argv> --detach``. ``StepError`` carries a ``step_refused`` link when the runner
     rejected the command line (its standard error as the cause) or the detached runner did not
     start (its link as the cause).

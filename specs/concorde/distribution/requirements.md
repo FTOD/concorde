@@ -55,7 +55,7 @@ The installed `concorde` command SHALL run Concorde only with the interpreter of
 ### req.distribution.idle-install — Concorde is never replaced while it runs
 
 The installer SHALL refuse, before writing anything, to install into a project in which the
-runner process of an Operation or recorded command run or a pi task-session round's supervisor is
+runner process of an Operation or execution command run or a pi task-session round's supervisor is
 still running, naming each.
 
 The update runs the installer, so the same holds for `concorde update`.

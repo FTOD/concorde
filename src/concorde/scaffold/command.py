@@ -1,7 +1,7 @@
 """``concorde scaffold``: create the child Modules one accepted survey proposed.
 
-A recorded command of the bound workspace; steps (the scaffold command's step table of the
-Adoption Module Spec):
+An execution command of the bound workspace; steps (the Scaffold command's step table of the
+Scaffold Module Spec):
 
 1. ``admit``: exactly one ``ok`` survey of the same workspace, admitted with ``--input``.
 2. ``recheck``: validate the worktree as a baseline and check the proposal against it again.
@@ -18,6 +18,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ..adoption.records import (
+    DECOMPOSITION_SCHEMA,
+    EXTERNAL,
+    MODULE_ID,
+    S,
+    child_folder,
+    narrowed_entries,
+    obj,
+    proposal_problems,
+)
 from ..execution.context import (
     Continue,
     RunContext,
@@ -26,12 +36,28 @@ from ..execution.context import (
     spec_cause,
     spec_finding,
 )
-from .records import (
-    DECOMPOSITION_SCHEMA,
-    SCAFFOLD_RECORD_SCHEMA,
-    child_folder,
-    narrowed_entries,
-    proposal_problems,
+
+# contract.scaffold.record, version 2
+SCAFFOLD_RECORD_SCHEMA = obj(
+    {
+        "parent": MODULE_ID,
+        "survey_run": S,
+        "created": {
+            "type": "array",
+            "items": obj(
+                {
+                    "id": MODULE_ID,
+                    "title": S,
+                    "entry": S,
+                    "entries": {"type": "array", "items": S},
+                }
+            ),
+        },
+        "externals": {"type": "array", "items": EXTERNAL},
+        "parent_entries_before": {"type": "array", "items": S},
+        "parent_entries_after": {"type": "array", "items": S},
+        "files_written": {"type": "array", "items": S},
+    }
 )
 
 # The sentence initialization writes into a root stub's Design section, which stops being true

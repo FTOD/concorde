@@ -12,7 +12,7 @@ shapes are in the [contracts](contracts.md).
 - THEN it starts `concorde run survey --modules module.shop --detach` with the workspace's own `concorde`
 - AND the workspace's workflow record names the workflow `brownfield` and the key `survey` with the run
 - AND once the run has finished it prints the step outcome with state `finished`, the workspace `adopt` and the result's status, and exits with status 0
-- AND a step naming the recorded command `task-validation` starts `concorde task-validation --detach`, and its outcome carries the readiness's `ready`
+- AND a step naming the execution command `task-validation` starts `concorde task-validation --detach`, and its outcome carries the readiness's `ready`
 
 ### scenario.workflows.unbound-refused — No workflow runs in an unbound worktree
 

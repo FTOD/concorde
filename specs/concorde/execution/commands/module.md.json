@@ -1,0 +1,86 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.commands.module",
+    "owner": "module.commands",
+    "role": "module"
+  },
+  "module": {
+    "title": "Commands",
+    "owns": [
+      "specs/concorde/execution/commands/module.md"
+    ],
+    "contains": [
+      {
+        "target": "module.validation",
+        "meaning": "#contains-validation"
+      },
+      {
+        "target": "module.delivery",
+        "meaning": "#contains-delivery"
+      },
+      {
+        "target": "module.scaffold",
+        "meaning": "#contains-scaffold"
+      }
+    ],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.runner",
+          "concept.execution.run-result",
+          "concept.execution.workspace"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.commands.execution-command",
+      "type": "concept",
+      "title": "Execution command",
+      "meaning": "#concept.commands.execution-command"
+    },
+    {
+      "id": "concept.commands.catalog",
+      "type": "concept",
+      "title": "Command catalog",
+      "meaning": "#concept.commands.catalog"
+    },
+    {
+      "id": "realization.commands.catalog",
+      "type": "realization",
+      "title": "Command table",
+      "meaning": "#realization.commands.catalog",
+      "entries": [
+        "src/concorde/commands/"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "concept.commands.catalog",
+      "verb": "lists",
+      "target": "concept.commands.execution-command"
+    },
+    {
+      "type": "relates",
+      "source": "realization.commands.catalog",
+      "verb": "realizes",
+      "target": "concept.commands.catalog"
+    }
+  ],
+  "extensions": {}
+}

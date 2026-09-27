@@ -7,7 +7,7 @@ delegates each Operation to the Module that provides it (see [The providers](#th
 Every Operation combines host steps, Tool calls and one or more AI workers to complete one job,
 and ends with one [run result](../module.md#concept.execution.run-result) that keeps what the host
 steps established apart from what a worker claims. Work that needs no model is not an Operation:
-it is a [recorded command](../module.md#concept.execution.recorded-command) of its own Module.
+it is an [execution command](../commands/module.md#concept.commands.execution-command) of its own Module.
 
 Operations never chooses the next Operation, runs one Operation from another, asks the developer
 anything or changes a Spec on its own initiative: whoever works the workspace, directly or through
@@ -85,9 +85,9 @@ The **Operation catalog** of this version:
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules and the registry mirror | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
 
 A typical task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then the
-recorded commands `task-validation` and `delivery`, repeating or skipping steps as the results tell
+execution commands `task-validation` and `delivery`, repeating or skipping steps as the results tell
 it. Unbound, in the primary worktree, `understand` or a review answers a question before any change
-is agreed. For a project whose code came before its Specs, `survey`, the recorded command
+is agreed. For a project whose code came before its Specs, `survey`, the execution command
 `scaffold` and `code_to_spec` describe the code in Specs, usually run by the
 [brownfield workflow](../workflows/module.md).
 
@@ -125,7 +125,7 @@ relies on it. Between the task level, which has the workspace's goal, and a work
 narrow brief, an Operation's host steps freeze the grant, launch the worker through Workers, audit
 what it changed, run checks themselves, and turn the outcome into a result whose facts they
 produced. A worker's answer is a proposal until those steps have checked it, and the run result
-keeps the two apart. Deterministic work, which needs no such check, is left to recorded commands,
+keeps the two apart. Deterministic work, which needs no such check, is left to execution commands,
 so the catalog holds exactly the jobs that involve a model.
 
 ### Its place among the runs
@@ -245,7 +245,7 @@ keeps the verdict as the worker's claim; acting on a finding is the task level's
 <a id="contains-adoption"></a>
 
 **Adoption** provides `survey` and `code_to_spec`, the Operations that describe existing code in
-Specs for a project whose code came before them, and the recorded command `scaffold` between them:
+Specs for a project whose code came before them, and the execution command `scaffold` between them:
 a read-only survey proposes child Modules, the scaffold creates them, and `code-to-spec` workers
 describe each Module's code. The [brownfield workflow](../workflows/module.md) usually runs them in
 that order.

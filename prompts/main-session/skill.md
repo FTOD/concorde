@@ -56,7 +56,7 @@ Never change Specs or code in the primary worktree.
 Everything that works on a task's files, Operations, commands and workflows, reads that binding
 from the worktree it starts in and never names the task, so run it inside the task worktree. Two
 kinds of run work on a workspace: an **Operation** (`concorde run <operation>`) launches AI
-workers under a grant; a **recorded command** (`concorde task-validation`, `concorde delivery`,
+workers under a grant; an **execution command** (`concorde task-validation`, `concorde delivery`,
 `concorde scaffold`) is deterministic and launches none. Both are recorded the same way, and one
 workspace runs one of them at a time: a second is refused with `workspace_busy`.
 

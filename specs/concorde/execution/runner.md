@@ -15,8 +15,8 @@ concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--det
 ```
 
 - `<operation>` is a name from the [Operation catalog](operations/module.md#concept.operations.catalog);
-  `<command>` is one of the recorded commands `task-validation`, `delivery` and `scaffold`.
-  `concorde run` naming a recorded command is a command-line error that names the command to use
+  `<command>` is one of the execution commands `task-validation`, `delivery` and `scaffold`.
+  `concorde run` naming an execution command is a command-line error that names the command to use
   instead.
 - The run works on the worktree the command starts in: the Git worktree containing the current
   directory. A directory outside every Git worktree is a command-line error.
@@ -125,7 +125,7 @@ A failed write never changes the run.
 
 When a run does not end `ok`, the result's `error` is the run's own link of the
 [error chain](../contracts.md#contract.concorde.error): the level `operation` for an Operation and
-`command` for a recorded command, the actor `Operation <name> <run-id> (workspace <workspace>)`,
+`command` for an execution command, the actor `Operation <name> <run-id> (workspace <workspace>)`,
 `Command <name> <run-id> (workspace <workspace>)` or, unbound, `… (unbound, <worktree>)`, a code, a
 detail naming the workspace, the Modules, the run, the paths and the messages concerned, the reason
 the run cannot handle the error, the options it offers with a recommendation, and as causes the

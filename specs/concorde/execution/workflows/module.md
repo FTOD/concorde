@@ -7,7 +7,7 @@ Workflows is level 3 of Concorde's [levels of work](../../module.md#the-levels-o
 such as describing existing code in Specs, and handles their results and decision points. Each
 workflow's procedure is written once and the build renders it into a Claude Code workflow and a
 pi-subagents workflow. Whoever works a workspace, in Concorde the task level inside a task
-worktree, starts the workflow there; it runs Operations and recorded commands one at a time,
+worktree, starts the workflow there; it runs Operations and execution commands one at a time,
 records its steps in its own workflow record in the run store, and returns one workflow result
 with every step, decision, open question and problem, preserving each problem's error chain. In
 interactive mode it stops where the developer must decide; in no-ask mode it follows the
@@ -24,7 +24,7 @@ run whoever works the workspace could have started itself.
 | Workflow | A named procedure that orders the runs of one bound workspace and handles their results and decision points, written once and rendered for Claude Code and pi. |
 | Workflow mode | Whether a workflow run is interactive, ending at the first decision point so the developer can decide, or no-ask, taking every decision itself and reporting it at the end. |
 | Decision point | A decision or open question in a run's output that the workflow treats as the developer's to settle: every open question, and every decision of a survey. |
-| Workflow step | One run of a workflow, of an Operation or a recorded command, named by a step key and started and awaited through `concorde workflow step`, which returns the recorded run for a key it has seen before. |
+| Workflow step | One run of a workflow, of an Operation or an execution command, named by a step key and started and awaited through `concorde workflow step`, which returns the recorded run for a key it has seen before. |
 | Step key | The name of a workflow step within its workspace, made of the name the script gives it and, when a restart label or answers are passed, that label and a digest of those answers. |
 | Workflow record | The file in the run store in which Workflows records the workflow of one workspace: its name, every step with its run, and every report. |
 | Step agent | The client-side runner of a workflow step: on Claude Code a small subagent that runs `concorde workflow step` until the run has finished, on pi a command-runner agent that runs it once. |
@@ -34,7 +34,7 @@ run whoever works the workspace could have started itself.
 | [Workspace](../module.md#concept.execution.workspace) | |
 | [Workspace binding](../module.md#concept.execution.workspace-binding) | |
 | [Run](../module.md#concept.execution.run) | |
-| [Recorded command](../module.md#concept.execution.recorded-command) | |
+| [Execution command](../commands/module.md#concept.commands.execution-command) | |
 | [Run result](../module.md#concept.execution.run-result) | |
 | [Detached run](../module.md#concept.execution.detached-run) | |
 | [Run store](../module.md#concept.execution.run-store) | |
@@ -111,8 +111,8 @@ reports it.
 
 <a id="concept.workflows.step"></a><a id="concept.workflows.step-key"></a>
 
-A **workflow step** is one [run](../module.md#concept.execution.run), of an Operation or of a
-[recorded command](../module.md#concept.execution.recorded-command). The script asks for it by a
+A **workflow step** is one [run](../module.md#concept.execution.run), of an Operation or of an
+[execution command](../commands/module.md#concept.commands.execution-command). The script asks for it by a
 base **step key**:
 
 ```text
@@ -127,8 +127,8 @@ answers list in canonical JSON (keys sorted, no whitespace), so a restarted or a
 new step while the same label and answers find the same step again. Holding the workspace's step
 lock, the command looks the key up among the current steps of the workspace's workflow record.
 When it is not there, it starts the run detached with the workspace's own `concorde`:
-`concorde run <operation> … --detach` for an Operation and `concorde <command> … --detach` for a
-recorded command such as `task-validation`, `delivery` or `scaffold`. For an answered step it adds
+`concorde run <operation> … --detach` for an Operation and `concorde <command> … --detach` for an
+execution command such as `task-validation`, `delivery` or `scaffold`. For an answered step it adds
 `--answers` with the answers written next to the workflow record and `--input` naming the latest
 `ok` run of the same base key, whose questions the answers settle; then it records the key and
 run. It waits for the result at most `--wait` seconds (default 540). Asked again, it finds the
@@ -264,7 +264,7 @@ brownfield -> workflow: is a
 ## Design
 
 A workflow orchestrates runs from the client of whoever works the workspace. Each run completes one
-job, an Operation by combining workers, Tools and host steps, a recorded command deterministically,
+job, an Operation by combining workers, Tools and host steps, an execution command deterministically,
 and never starts another run. The workflow sees only their command lines and results; it leaves
 worker prompts, grants, Tool calls, audits and repair loops inside the run. Each workflow step is
 an ordinary run of the [Execution runner](../module.md#concept.execution.runner), so the workspace
@@ -330,16 +330,24 @@ whose result carries that refusal.
 returning its output under its catalog entry's contract and never starting another Operation. It
 never looks inside an Operation.
 
+<a id="uses-commands"></a>
+
+**Commands** names the deterministic runs. A step names an
+[execution command](../commands/module.md#concept.commands.execution-command) of its catalog, such
+as `task-validation` or `scaffold`, by the command's own name, and the step command starts it as
+`concorde <command>` instead of `concorde run`; Workflows relies on the catalog to tell the two
+kinds apart and treats their results alike.
+
 <a id="uses-validation"></a>
 
-**Validation** provides the recorded command `task-validation`. A workflow runs it before delivery;
-the step outcome's `ready` is the [readiness](../validation/contracts.md#contract.validation.readiness)'s
+**Validation** provides the execution command `task-validation`. A workflow runs it before delivery;
+the step outcome's `ready` is the [readiness](../commands/validation/contracts.md#contract.validation.readiness)'s
 `ready`, and the procedure delivers only when it is true. Workflows relies on the readiness saying
 whether the workspace is ready and never decides readiness itself.
 
 <a id="uses-delivery"></a>
 
-**Delivery** provides the recorded command `delivery`, a workflow's last step, which decides the
+**Delivery** provides the execution command `delivery`, a workflow's last step, which decides the
 readiness again and commits the workspace. The brownfield workflow passes `--adoption`, because an
 adoption describes code that already exists and adds no test, so a scenario it writes need not
 have a new verifying test to be delivered. Workflows relies on delivery refusing a workspace that is
@@ -347,14 +355,21 @@ not ready rather than committing it, and leaves the merge to the task level.
 
 <a id="uses-adoption"></a>
 
-**Adoption** provides the survey, scaffold and code_to_spec steps and defines the decisions, open
+**Adoption** provides the survey and code_to_spec steps and defines the decisions, open
 questions, answers and deviations that the brownfield workflow counts and reports. Workflows reads
 them from the run results by their [contracts](../operations/adoption/contracts.md) and passes
 answers back through `--answers`; it never interprets what a decision means. It relies on those
 contracts to tell a survey decision from a code_to_spec decision and an open question from a
 settled one, since that is what makes a decision point; an output that does not follow them is the
-run's failure and ends the step as its result says. A scaffold's output names the Modules it
-created, and the step outcome lists them with the `uses` the survey proposed among them.
+run's failure and ends the step as its result says.
+
+<a id="uses-scaffold"></a>
+
+**Scaffold** provides the scaffold step between them. Its
+[scaffold record](../commands/scaffold/contracts.md#contract.scaffold.record) names the Modules it
+created, and the step outcome lists them with the `uses` the survey proposed among them; Workflows
+relies on the record listing every Module the scaffold created, which the brownfield workflow then
+describes one by one.
 
 ### Steps in the client
 
@@ -407,11 +422,11 @@ Brownfield's procedure, as a step table:
 | # | Step key | Run | Runs when | Ends the workflow when |
 | --- | --- | --- | --- | --- |
 | 1 | `survey` | Operation `survey --modules <module>` | always | not `ok`; interactive with decision points not answered |
-| 2 | `scaffold` | recorded command `scaffold --input <survey run>` | the survey is `ok` | not `ok` |
+| 2 | `scaffold` | execution command `scaffold --input <survey run>` | the survey is `ok` | not `ok` |
 | 3 | `describe:<id>` | Operation `code_to_spec --modules <id>` | for each created Module, providers before the Modules that use them, then `<module>` | interactive with open questions not answered, or not `ok` |
 | 4 | `spec_review` | Operation `spec_review --modules <module and created Modules>` | always after 3 | interactive and not `ok` |
-| 5 | `validate` | recorded command `task-validation` | always after 4 | not `ok`, or readiness not ready |
-| 6 | `delivery` | recorded command `delivery --adoption` | validation ready | — |
+| 5 | `validate` | execution command `task-validation` | always after 4 | not `ok`, or readiness not ready |
+| 6 | `delivery` | execution command `delivery --adoption` | validation ready | — |
 | 7 | — | `concorde workflow report` | always, last | — |
 
 Created Modules are described providers first, by the `uses` the survey proposed among them, and

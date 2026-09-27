@@ -240,7 +240,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the main agent runs `concorde configure-workers` there
 - THEN it prints a command result with status `ok` and exits with status 0, and records no run
 - AND its output lists the models pi offers, since every worker runs on pi when nothing chooses otherwise, and for every Operation that launches workers each worker by its id with its effective backend, model and level: `spec_review` with `reviewer` and `checker`, `spec_panel` with `reviewer1` to `reviewer5` and `chair`
-- AND the recorded commands, which launch no worker, are not listed
+- AND the execution commands, which launch no worker, are not listed
 - AND no configuration file is written
 
 ### scenario.workers.configure-change — A change reaches only the worktree it runs in

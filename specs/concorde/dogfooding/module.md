@@ -62,7 +62,7 @@ own task worktrees therefore work exactly as in a normal install; only the main 
 differs.
 
 **What the project's main agent does.** Besides its work on the project, it watches Concorde. It
-observes every run of an Operation or recorded command, every workflow and every worker run
+observes every run of an Operation or execution command, every workflow and every worker run
 closely, the result, error chain, host evidence,
 run record and the changes it made, rather than trusting its status, and treats a run that ended
 `ok` but did something wrong like a failure. It never changes the Concorde repository, the
@@ -149,7 +149,7 @@ the project's own problem or overreaching work is closed `not-actionable` with t
 **Taking the fix.** Once the fix is merged, which the project's main agent learns from the
 developer or by listing the Concorde repository's Issues with `concorde issues list --root
 <source>`, it runs `concorde update` from the project's primary worktree. The update refuses while
-a run of an Operation or recorded command or a pi task-session round is still running in the
+a run of an Operation or execution command or a pi task-session round is still running in the
 project, re-checks that the
 Concorde repository's primary worktree is clean, installs from it again in develop mode
 ([requirements](requirements.md#req.dogfooding.develop-kept)) and, like every update, leaves the

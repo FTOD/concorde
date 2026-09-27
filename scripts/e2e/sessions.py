@@ -276,7 +276,7 @@ def runs_of(project: Path) -> Path:
 
 
 def _state(directory: Path) -> dict | None:
-    """The progress file of an Operation or recorded command run; None for a worker's."""
+    """The progress file of an Operation or execution command run; None for a worker's."""
     try:
         value = json.loads((directory / "status.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):

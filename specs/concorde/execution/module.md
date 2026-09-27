@@ -4,7 +4,7 @@
 
 Execution is Concorde's execution core, the lower of its two halves: given one bound workspace, it
 gets Spec-bounded work done there and returns checked results. It holds the workflows that order
-that work, the Operations that combine AI workers with host logic, the recorded commands that do
+that work, the Operations that combine AI workers with host logic, the execution commands that do
 deterministic work such as deciding readiness and delivering, the workers themselves and the
 Tools they call. Everything in it learns what it works on from one place, the workspace binding in
 the worktree it starts in, and records what it did in its own run store. Whoever prepares a
@@ -24,15 +24,15 @@ what runs next.
 | Workspace | One worktree prepared for a bounded piece of work, with a name, a goal, the Modules it works on, the branch it works on and the commit it started from. |
 | Workspace binding | The file `.concorde/workspace.json` at a workspace's root that names it, its goal, Modules, branch, base commit and the records directory, written by whoever prepares the workspace and only read by Execution. |
 | Unbound run | A run started in a worktree without a workspace binding, such as the primary worktree, which works on that worktree alone, records no workspace and may only read. |
-| Run | One execution of an Operation or a recorded command in one worktree, with its own run identity, progress file and run result. |
-| Recorded command | A deterministic `concorde` command, such as `task-validation`, `delivery` or `scaffold`, that launches no worker and is run and recorded exactly like an Operation. |
+| Run | One execution of an Operation or an execution command in one worktree, with its own run identity, progress file and run result. |
 | Run result | The structured envelope every run returns and saves: what ran, in which workspace, its status, its output, the worker's claims when there was a worker, the runner's own evidence and, when it is not ok, its error chain. |
 | Run store | The `runs/` directory of the records directory, holding every run's progress file and result, the workers' run records and the workflows' records. |
 | Workspace lock | The lock of one workspace, held by the process running one of its runs for that run's whole life, so that a workspace runs one thing at a time. |
 | Detached run | A run whose runner the command starts as a process of its own, printing the run identity at once instead of waiting for the result. |
 | Run progress file | A run's `status.json`, which the runner keeps current with what is running, where and in which step, and once finished with the status and summary. |
-| Execution runner | The deterministic process that runs one Operation's or recorded command's steps in its workspace, launches workers only through the steps that ask for them and writes the run result. |
+| Execution runner | The deterministic process that runs one Operation's or execution command's steps in its workspace, launches workers only through the steps that ask for them and writes the run result. |
 | [Operation](operations/module.md#concept.operations.operation) | |
+| [Execution command](commands/module.md#concept.commands.execution-command) | |
 | [Worker](../vocabulary.md#concept.concorde.worker) | |
 | [Tool](../vocabulary.md#concept.concorde.tool) | |
 | [Module](../vocabulary.md#concept.concorde.module) | |
@@ -59,7 +59,7 @@ reads it and never writes it; a binding that breaks its contract, or that names 
 the worktree it lies in, is refused rather than trusted, since a copied binding would bind the
 wrong workspace.
 
-<a id="concept.execution.run"></a><a id="concept.execution.recorded-command"></a>
+<a id="concept.execution.run"></a>
 
 **Running work.** Inside a bound workspace, every run works on that workspace without naming it:
 
@@ -73,10 +73,11 @@ concorde workflow step|report …
 
 An [Operation](operations/module.md#concept.operations.operation) launches AI workers under a
 grant computed from the workspace's Specs; the catalog of [Operations](operations/module.md) lists
-them. A **recorded command** is deterministic and launches no worker:
-[`task-validation`](validation/module.md) decides whether the workspace is ready to deliver,
-[`delivery`](delivery/module.md) validates it again and commits it with its evidence, and
-[`scaffold`](operations/adoption/module.md) creates the child Modules a survey proposed. Both
+them. An [execution command](commands/module.md#concept.commands.execution-command) is
+deterministic and launches no worker: [`task-validation`](commands/validation/module.md) decides
+whether the workspace is ready to deliver, [`delivery`](commands/delivery/module.md) validates it
+again and commits it with its evidence, and [`scaffold`](commands/scaffold/module.md) creates the
+child Modules a survey proposed; the catalog of [Commands](commands/module.md) lists them. Both
 kinds are **runs**: the same runner parses their command line, resolves the workspace, takes the
 workspace lock, runs their steps and writes one run result, so a workflow, the task level or an
 observer treats them alike. `--modules` names the Modules the run works on (default: the
@@ -121,7 +122,7 @@ worktree without a binding such as the primary worktree: `understand`, `survey`,
 `spec_panel` and `code_review` (with `--base`). It works on that worktree with the Modules
 `--modules` names, records `workspace` null, admits only unbound inputs, takes no lock and may
 launch only reading workers, so it changes no Spec or code. Every other Operation and every
-recorded command is refused unbound with `binding_required`.
+execution command is refused unbound with `binding_required`.
 
 <a id="concept.execution.detached-run"></a><a id="concept.execution.progress-file"></a>
 
@@ -173,9 +174,12 @@ An Operation exists to combine AI workers with host logic that checks them. Deci
 delivering and scaffolding need no model, so they are not Operations; but a workflow must be able to
 take them as steps, delivery must cite the run that decided the readiness it committed, and a
 caller must be able to wait for them, read their evidence and receive their error chain like any
-Operation's. Making them recorded commands of the same runner gives them all of that without the
+Operation's. Running execution commands with the same runner gives them all of that without the
 Operation catalog or any worker machinery: the only difference a caller sees is the result's
-`kind` and the error link's level, `command` instead of `operation`.
+`kind` and the error link's level, `command` instead of `operation`. Being runs is also what keeps
+them out of [Tools](tools/module.md), which are deterministic too: a Tool is an action a run's step
+calls and gets an answer from, while an execution command is itself the run, with a workspace, a
+lock and a recorded result.
 
 ### The runner
 
@@ -190,9 +194,9 @@ steps, a step that raises, a signal or an invalid result each still end in a wri
 the runner's link on top. Its exact behaviour is in [How a run is executed](runner.md).
 
 The **Runner and run store** realization binds the binding reader, the run store, the run context and
-definitions that steps work with, the runner itself and the table of recorded commands, with their
-tests. The `concorde` command belongs to [Distribution](../distribution/module.md), which hands
-`run`, the recorded commands and `workflow` to this Module's parts.
+definitions that steps work with and the runner itself, with their tests; the runner finds an
+execution command by name in the catalog of [Commands](commands/module.md). The `concorde` command belongs to [Distribution](../distribution/module.md), which hands
+`run`, the execution commands and `workflow` to this Module's parts.
 
 ```d2
 execution: Execution {
@@ -213,24 +217,32 @@ execution: Execution {
 
 ### The children
 
-Execution is the composition of six children, which together make up levels 3 to 5 of Concorde's
-[levels of work](../module.md#the-levels-of-work).
+Execution is the composition of five children, which together make up levels 3 to 5 of Concorde's
+[levels of work](../module.md#the-levels-of-work). Levels 4 and 5 each have an AI half and a
+deterministic half:
+
+| Level | With AI workers | Deterministic |
+| --- | --- | --- |
+| 4. Run | Operations | Commands |
+| 5. Worker or Tool | Workers | Tools |
+
+A run is something the task level or a workflow starts and waits for, and its result is recorded;
+a worker or a Tool is started or called by a run's step and answers only to that step. Being
+deterministic therefore places work in Commands or in Tools according to its level, never by
+itself.
 
 ```d2 illustrative
 execution: Execution {
   workflows: Workflows
   operations: Operations
-  validation: Validation
-  delivery: Delivery
+  commands: Commands
   workers: Workers
   tools: Tools
   workflows -> operations: runs
-  workflows -> validation: runs
-  workflows -> delivery: runs
+  workflows -> commands: runs
   operations -> workers: launches workers through
   operations -> tools: calls
-  delivery -> validation: decides readiness with
-  validation -> tools: runs checks through
+  commands -> tools: calls
 }
 ```
 
@@ -246,16 +258,13 @@ and awaited; the workflow keeps its own record in the run store and never reache
 steps with workers launched through Workers and Tools such as Check execution; the runner runs its
 steps like any other definition's.
 
-<a id="contains-validation"></a>
+<a id="contains-commands"></a>
 
-**Validation** provides the recorded command `task-validation`, which decides whether the bound
-workspace is ready to deliver and binds that readiness to the inputs it examined.
-
-<a id="contains-delivery"></a>
-
-**Delivery** provides the recorded command `delivery`, the only run that commits: it decides the
-readiness again with Validation's steps and commits the workspace's changes with their evidence on
-the bound branch. Its delivery commits are the only record of a delivery.
+**Commands** holds the catalog of execution commands and their Modules: Validation's
+`task-validation`, which decides whether the bound workspace is ready to deliver; Delivery's
+`delivery`, the only run that commits, which decides the readiness again and commits the
+workspace's changes with their evidence on the bound branch; and Scaffold's `scaffold`, which
+creates the child Modules a survey proposed. The runner runs their steps like an Operation's.
 
 <a id="contains-workers"></a>
 
@@ -265,7 +274,7 @@ configuration and the `configure-workers` command that changes it.
 
 <a id="contains-tools"></a>
 
-**Tools** groups the deterministic execution services that Operations, recorded commands and
+**Tools** groups the deterministic execution services that Operations, execution commands and
 Workers call, beginning with Check execution.
 
 ### What Execution relies on

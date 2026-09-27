@@ -1,6 +1,6 @@
 """What a run definition declares, and the context and outcomes its steps work with.
 
-An Operation (an AI worker job) and a recorded command (a deterministic one) are both a fixed list
+An Operation (an AI worker job) and an execution command (a deterministic one) are both a fixed list
 of steps run by the Execution runner. Each step receives the run's ``RunContext`` and returns
 ``Continue`` (with any output and host evidence it produced) or ``Stop`` (with a status, a summary,
 host evidence and, unless the status is ``ok``, the run's error link). ``RunContext.fail`` builds
@@ -45,8 +45,8 @@ class Stop:
 
 @dataclass(frozen=True)
 class Provider:
-    """One runnable definition: an Operation (``kind`` operation, launching AI workers) or a
-    recorded command (``kind`` command, deterministic, launching none)."""
+    """One runnable definition: an Operation (``kind`` operation, launching AI workers) or an
+    execution command (``kind`` command, deterministic, launching none)."""
 
     name: str
     task_type: str | None
@@ -67,7 +67,7 @@ class Provider:
 
 
 def command(name: str, steps, **fields) -> Provider:
-    """A recorded command: deterministic steps, no worker and no task type."""
+    """An execution command: deterministic steps, no worker and no task type."""
     return Provider(
         name=name,
         task_type=None,

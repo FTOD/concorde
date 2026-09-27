@@ -1,4 +1,4 @@
-"""The ``concorde task-validation`` recorded command end to end on a fixture task, and the
+"""The ``concorde task-validation`` execution command end to end on a fixture task, and the
 confirmation service."""
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ class ValidateTests(unittest.TestCase):
         )
         self.assertEqual(json.loads(saved.read_text()), readiness)
         self.assertEqual(snapshot(self.worktree), before)
-        # A recorded command of the bound workspace launches no worker.
+        # An execution command of the bound workspace launches no worker.
         self.assertEqual(
             ("command", "task-validation", "t1", ["module.a"]),
             (

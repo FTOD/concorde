@@ -72,7 +72,7 @@ own cost, which the record adds up; Claude Code reports the session's total.
 <a id="concept.headless-sessions.wake"></a>
 
 **Waking the session.** When a round ends, the tool looks at the [runs](../../execution/module.md#concept.execution.run)
-of Operations and recorded commands started since the session began that it has not reported yet
+of Operations and execution commands started since the session began that it has not reported yet
 ([requirements](requirements.md#req.headless-sessions.wake)), in the
 [run store](../../execution/module.md#concept.execution.run-store) of the session's worktree: the
 one its workspace binding names when the session runs in a task worktree, otherwise the worktree's

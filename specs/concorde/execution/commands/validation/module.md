@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Validation decides whether a bound workspace is ready to deliver, with the recorded command
+Validation decides whether a bound workspace is ready to deliver, with the execution command
 `concorde task-validation`: it checks the Spec structure, finds the Modules the workspace changed,
 runs their configured checks, and returns a readiness — ready or not, with every blocking finding —
 bound to the exact state of the workspace it examined. Whoever works the workspace, in Concorde the
@@ -17,19 +17,19 @@ level.
 | Term | Definition |
 | --- | --- |
 | Readiness | The outcome of Validation's readiness steps in one `task-validation` or `delivery` run: whether the workspace may be delivered, with its blocking findings, the checks run and the pending entries to confirm, bound to a digest of the exact inputs examined. |
-| [Module](../../vocabulary.md#concept.concorde.module) | |
-| [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
-| [Error chain](../../vocabulary.md#concept.concorde.error-chain) | |
-| [Workspace](../module.md#concept.execution.workspace) | |
-| [Workspace binding](../module.md#concept.execution.workspace-binding) | |
-| [Recorded command](../module.md#concept.execution.recorded-command) | |
-| [Run result](../module.md#concept.execution.run-result) | |
-| [Workspace lock](../module.md#concept.execution.workspace-lock) | |
-| [Structural check](../../spec-tooling/spec/module.md#concept.spec.structural-check) | |
-| [Impact index](../../spec-tooling/spec/module.md#concept.spec.impact-index) | |
-| [File transaction](../../spec-tooling/spec/module.md#concept.spec.file-transaction) | |
-| [Configured check](../tools/checks/module.md#concept.checks.configured-check) | |
-| [Check result](../tools/checks/module.md#concept.checks.check-result) | |
+| [Module](../../../vocabulary.md#concept.concorde.module) | |
+| [Evidence](../../../vocabulary.md#concept.concorde.evidence) | |
+| [Error chain](../../../vocabulary.md#concept.concorde.error-chain) | |
+| [Workspace](../../module.md#concept.execution.workspace) | |
+| [Workspace binding](../../module.md#concept.execution.workspace-binding) | |
+| [Execution command](../module.md#concept.commands.execution-command) | |
+| [Run result](../../module.md#concept.execution.run-result) | |
+| [Workspace lock](../../module.md#concept.execution.workspace-lock) | |
+| [Structural check](../../../spec-tooling/spec/module.md#concept.spec.structural-check) | |
+| [Impact index](../../../spec-tooling/spec/module.md#concept.spec.impact-index) | |
+| [File transaction](../../../spec-tooling/spec/module.md#concept.spec.file-transaction) | |
+| [Configured check](../../tools/checks/module.md#concept.checks.configured-check) | |
+| [Check result](../../tools/checks/module.md#concept.checks.check-result) | |
 
 ## Usage
 
@@ -41,14 +41,14 @@ readiness again itself, so a `task-validation` run is a preview, not a precondit
 concorde task-validation [--modules <id>[,<id>…]] [--detach]
 ```
 
-It is a [recorded command](../module.md#concept.execution.recorded-command): the
-[Execution runner](../runner.md) runs it like any Operation, in the workspace whose
-[binding](../module.md#concept.execution.workspace-binding) lies in the worktree it starts in, and
+It is an [execution command](../module.md#concept.commands.execution-command): the
+[Execution runner](../../runner.md) runs it like any Operation, in the workspace whose
+[binding](../../module.md#concept.execution.workspace-binding) lies in the worktree it starts in, and
 records it in the run store, so that Delivery and a workflow can find it. In a worktree without a
 binding it is refused with `binding_required`, since readiness concerns a workspace's changes from
 its base commit. The command takes no arguments of its own. Its Modules (`--modules`, the
 binding's by default) never narrow what is validated — readiness concerns the whole workspace — but
-add their checks to the changed Modules'. It returns a [run result](../module.md#concept.execution.run-result)
+add their checks to the changed Modules'. It returns a [run result](../../module.md#concept.execution.run-result)
 of kind `command`, with no worker, whose `output` is the readiness
 ([contract](contracts.md#contract.validation.readiness)), one per run, which it also saves as
 `readiness.json` in its run directory.
@@ -62,14 +62,14 @@ established, not only the first, each of one kind:
 | Kind | Blocking when |
 | --- | --- |
 | `load` | the Specs fail to load at all |
-| `structural` | a [structural check](../../spec-tooling/spec/module.md#concept.spec.structural-check) error, e.g. a broken link or stale registry mirror, or a run Module the workspace's registry no longer registers |
+| `structural` | a [structural check](../../../spec-tooling/spec/module.md#concept.spec.structural-check) error, e.g. a broken link or stale registry mirror, or a run Module the workspace's registry no longer registers |
 | `unbound` | a changed path is not a Spec document, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
-| `check` | a changed or run Module's [configured check](../tools/checks/module.md#concept.checks.configured-check) failed, timed out or couldn't run |
+| `check` | a changed or run Module's [configured check](../../tools/checks/module.md#concept.checks.configured-check) failed, timed out or couldn't run |
 
 Warnings, such as missing scenario coverage, are reported but never block. A pending entry whose
 file now exists is not an error but a **confirmation**, cleared by Delivery on commit. Changed
 Modules bind a changed file or own a changed Spec document, found through the
-[impact indexes](../../spec-tooling/spec/module.md#concept.spec.impact-index); a shared file runs
+[impact indexes](../../../spec-tooling/spec/module.md#concept.spec.impact-index); a shared file runs
 all its Modules' checks.
 
 The readiness records its inputs — head, base, every changed path's digest and the configuration
@@ -88,7 +88,7 @@ change of the workspace alters it.
 The error is the run's own link of level `command`, with the actor `Command task-validation
 <run-id> (workspace <workspace>)`. A blocked summary starts `Not deliverable:` with the finding
 count; each finding is named by kind, location and message, as host evidence and as the
-[error chain](../../vocabulary.md#concept.concorde.error-chain)'s causes — so whoever reads the
+[error chain](../../../vocabulary.md#concept.concorde.error-chain)'s causes — so whoever reads the
 result sees everything blocking delivery from the result alone. The readiness is always the output;
 the usual fix is another `implement`, a `specify`, or regenerating a stale registry mirror. Each
 `failed` code carries a host evidence entry with the same code. Running `task-validation` again on
@@ -98,7 +98,7 @@ an unchanged workspace gives the same readiness with fresh check results.
 
 Readiness is decided by deterministic code alone, so Delivery can run the same steps and trust
 their outcome without asking — a model's opinion of completeness is not enough. That is also why it
-is a recorded command and not an Operation: it involves no model, yet delivery must cite the run
+is an execution command and not an Operation: it involves no model, yet delivery must cite the run
 that decided a readiness, a workflow must be able to take it as a step, and its caller must receive
 its evidence and error chain like any run's. Binding the readiness to an input digest, remeasured
 at the end, proves the inputs did not change while the checks ran, rather than trusting a
@@ -139,7 +139,7 @@ check, which can take minutes.
 A `task-validation` run writes nothing in the workspace; its logs and readiness go to its run
 directory in the run store. Delivery reuses the readiness steps and a confirmation service that
 clears exactly the listed pending markers in one
-[file transaction](../../spec-tooling/spec/module.md#concept.spec.file-transaction), bound to the
+[file transaction](../../../spec-tooling/spec/module.md#concept.spec.file-transaction), bound to the
 measured metadata digests, then revalidates and rolls back on any remaining error. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
@@ -153,17 +153,19 @@ tests share.
 
 - <a id="uses-execution"></a>**Execution**'s runner runs the command: it reads the workspace
   binding, which gives the steps the workspace's name, branch, base commit and Modules, holds the
-  [workspace lock](../module.md#concept.execution.workspace-lock) for the whole run, so no other
+  [workspace lock](../../module.md#concept.execution.workspace-lock) for the whole run, so no other
   run changes the workspace during validation, wraps the readiness in the
-  [run result](../module.md#concept.execution.run-result) and records it in the run store.
+  [run result](../../module.md#concept.execution.run-result) and records it in the run store.
   Validation relies on the runner refusing a run without a sound binding before any step and on it
   leaving the Specs to the command's own diagnosis; it never reads a task record.
+- <a id="uses-commands"></a>**Commands** lists `task-validation` in its catalog, which is how
+  the runner finds this Module's definition by the command's name.
 - <a id="uses-spec"></a>**Spec core** validates the Specs, answers through its impact indexes which
   Modules bind a path or own a document, and applies confirmations as a file transaction.
   Validation relies on the validator being deterministic and on loading refusing, not partially
   reading, a Spec that cannot support a boundary; it always roots Spec core at the workspace.
 - <a id="uses-checks"></a>**Check execution** runs each changed Module's
-  [configured checks](../tools/checks/module.md#concept.checks.configured-check) read-only,
+  [configured checks](../../tools/checks/module.md#concept.checks.configured-check) read-only,
   with the workspace as the project, and returns one
-  [check result](../tools/checks/module.md#concept.checks.check-result) per check, copied into
+  [check result](../../tools/checks/module.md#concept.checks.check-result) per check, copied into
   the readiness unchanged; a boundary it cannot establish fails the run.

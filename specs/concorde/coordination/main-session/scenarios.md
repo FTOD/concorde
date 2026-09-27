@@ -8,7 +8,7 @@ run view and model picker do in them.
 ### scenario.main-session.pi-task-worktree — pi runs a task's work with its worktree's copy
 
 - GIVEN a pi main session in the primary worktree and a task whose record names an existing worktree
-- WHEN the main agent starts an Operation or a recorded command of that task with the `concorde_run` tool
+- WHEN the main agent starts an Operation or an execution command of that task with the `concorde_run` tool
 - THEN the run view starts the task worktree's own `concorde`, with the task worktree as working directory, as `concorde run <operation>` or `concorde <command>` without naming the task
 - AND the run works on the workspace the worktree's binding names
 - BUT for a task whose record names no existing worktree the tool is refused before anything starts, naming the task
@@ -19,7 +19,7 @@ run view and model picker do in them.
 - WHEN the run view reads the progress files of the run store
 - THEN it shows the run with its workspace, Operation, step, the worker's round and latest tool call
 - AND a worker of another runner process or an earlier run is not attributed to it
-- AND a recorded command's run is shown the same way without a worker, and an unbound run with `unbound` in place of the workspace
+- AND an execution command's run is shown the same way without a worker, and an unbound run with `unbound` in place of the workspace
 - AND a finished run shows `completed`, `stopped` or `failed` for `ok`, `blocked` or `failed` with the result's summary
 - AND a run whose runner process ended without finishing shows `failed`
 - AND the message the main agent is given for a finished run names the run, its workspace and name, its status and summary, and its run result's file
@@ -29,7 +29,7 @@ run view and model picker do in them.
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to carry out a change agreed with the developer
 - THEN it is told to open a task with its own branch and worktree for the Modules involved
-- AND to enter that worktree and make the change there, directly or with Operations and the recorded commands `task-validation` and `delivery` run in background Bash
+- AND to enter that worktree and make the change there, directly or with Operations and the execution commands `task-validation` and `delivery` run in background Bash
 - AND to run every `concorde` command for the task with the worktree's own copy
 - AND that `concorde task open` bound the worktree as the task's workspace, whose binding every run reads without naming the task, and that a second run while one runs is refused with `workspace_busy`
 - BUT it is told never to change Specs or code in the primary worktree

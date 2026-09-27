@@ -95,7 +95,7 @@ cd /absolute/path/to/project
 
 ## Commands
 
-In an installed project the command is `.concorde/bin/concorde`; Operations and recorded commands
+In an installed project the command is `.concorde/bin/concorde`; Operations and execution commands
 print one JSON result. Run them inside a task's worktree, whose workspace binding names the task.
 
 | Command                                                 | Use                                                                          |
@@ -106,7 +106,7 @@ print one JSON result. Run them inside a task's worktree, whose workspace bindin
 | `concorde task open\|list\|show\|session\|merge\|close` | Manage tasks: branch, worktree, record, decision log, task sessions, merges. |
 | `concorde task escalate`                                | Add the main agent's link on top of an error chain and record it.            |
 | `concorde run <operation>`                              | Run one Operation in the current workspace and print its result.             |
-| `concorde task-validation\|delivery\|scaffold`          | Run one recorded command in the current workspace and print its result.      |
+| `concorde task-validation\|delivery\|scaffold`          | Run one execution command in the current workspace and print its result.     |
 | `concorde configure-workers`                            | List and change the worker models of the current worktree.                   |
 | `concorde issues report\|list\|show\|close`             | Record problems a task will not fix, so they survive it.                     |
 | `concorde init --propose\|--apply`                      | Propose and apply a project's first Spec.                                    |

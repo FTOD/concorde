@@ -1,6 +1,6 @@
 /**
  * The pure part of Concorde's pi run view: read the progress files of the runs recorded in the
- * project's run store (Operations and recorded commands) and their workers, pair them, and
+ * project's run store (Operations and execution commands) and their workers, pair them, and
  * describe each run for pi-subagents' FleetView; and the same for the rounds of pi task sessions.
  *
  * A run's `status.json` is written by the Execution runner; each worker run an Operation launches
@@ -106,7 +106,7 @@ function isRun(value: Record<string, unknown>): boolean {
   return value.kind === "operation" || value.kind === "command";
 }
 
-/** Every run of an Operation or recorded command with a progress file, oldest first. */
+/** Every run of an Operation or execution command with a progress file, oldest first. */
 export function recordedRuns(root: string): RunStatus[] {
   return (statuses(root).filter(isRun) as unknown as RunStatus[]).sort((a, b) =>
     a.started_at.localeCompare(b.started_at),

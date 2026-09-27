@@ -28,10 +28,10 @@ end with status `failed`.
 Every Operation in the catalog SHALL launch at least one AI worker on a run that reaches its worker
 step.
 
-A job that needs no model is a recorded command of its own Module instead.
+A job that needs no model is an execution command of its own Module instead.
 
 ### req.operations.no-chaining — Operations do not start Operations
 
-An Operation SHALL NOT start another Operation or a recorded command.
+An Operation SHALL NOT start another Operation or an execution command.
 
 Calling a Tool or resuming a worker is not starting a run.

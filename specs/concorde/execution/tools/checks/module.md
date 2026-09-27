@@ -5,7 +5,7 @@
 Check execution is a deterministic Tool: it runs a project's configured checks, such as a test
 suite or linter, and returns their status and logs without model reasoning. It belongs to Tools
 and is called by the Workers host code between rounds, directly by Operations such as testing and
-code review, and by the recorded commands `task-validation` and `delivery`. Checks read the
+code review, and by the execution commands `task-validation` and `delivery`. Checks read the
 worktree but cannot directly change its files; the boundary restricts filesystem writes only, not
 reads, network or credentials. The service records which inputs were checked and refuses a result
 if they changed during the run. It never decides whether a passing check means correct code or
@@ -38,7 +38,7 @@ The calling code, not an AI worker, decides when to run checks:
 | --- | --- |
 | Workers host code | After a clean audit, record the checks and pass failures to a worker's next round when allowed |
 | `test` and `code_review` Operations | Supply recorded check results to a worker for interpretation or review |
-| `task-validation` and `delivery` recorded commands | Use the results in the readiness decision; Delivery reuses Validation's steps |
+| `task-validation` and `delivery` execution commands | Use the results in the readiness decision; Delivery reuses Validation's steps |
 
 These are ordinary service calls inside a run, not nested runs. Check execution launches no
 Concorde worker. Users configure commands and see the results through the runs that call it; there
@@ -106,7 +106,7 @@ Check execution is a [Tool](../../../vocabulary.md#concept.concorde.tool), group
 [Tools](../module.md): the program half of level 5 of the
 [levels of work](../../../module.md#the-levels-of-work), beside the workers. Only programs call it,
 never a model: runs at level 4, in steps of their own — the Operation providers' steps and the
-steps of the recorded commands `task-validation` and `delivery`, which are Validation's — and the
+steps of the execution commands `task-validation` and `delivery`, which are Validation's — and the
 Workers host code, which manages a worker run on behalf of the Operation that launched it, between
 the worker's rounds. It calls nothing above it and starts no worker, run or agent.
 
