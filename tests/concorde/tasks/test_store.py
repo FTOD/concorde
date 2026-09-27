@@ -18,7 +18,6 @@ from concorde.harness import configure, models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
-from tests.concorde.support.agent_fakes import fake_agents
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.tasks.deliveries import deliver, write_run
@@ -123,21 +122,18 @@ class TaskStoreTests(unittest.TestCase):
             json.dumps({"schema_version": 3, "default": {"model": "anthropic/b"}})
         )
         self.assertEqual(inherited, task_config.read_text())
-        # configure-workers changes the configuration of the worktree it runs in.
+        # AI edits the task's source file directly; validation is read-only and offline.
+        task_config.write_text(
+            json.dumps({"schema_version": 3, "default": {"model": "anthropic/c"}})
+        )
+        edited = task_config.read_bytes()
         output = io.StringIO()
-        environ = {
-            **fake_agents(self.project.base / "bin", self.project.home),
-            "CONCORDE_CLIENT": "pi",
-        }
         with (
-            patch.dict(os.environ, environ),
-            patch("pathlib.Path.home", return_value=self.project.home),
             contextlib.redirect_stdout(output),
             contextlib.redirect_stderr(io.StringIO()),
         ):
-            status = configure.main(
-                ["--model", "anthropic/c", "--allow-unlisted"], cwd=worktree
-            )
+            status = configure.main(["--check", "--json"], cwd=worktree)
+        self.assertEqual(edited, task_config.read_bytes())
         value = json.loads(output.getvalue())
         self.assertEqual((0, "ok"), (status, value["status"]), value)
         self.assertEqual(str(task_config), value["output"]["config"])

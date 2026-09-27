@@ -15,7 +15,7 @@ configuration — the installer never writes Specs.
 | Package | The set of Concorde files, described by `concorde.json`, that is built, checked and installed as one unit. |
 | Build | The deterministic rendering of every registered prompt root under `prompts/` into plain files under `generated/`. |
 | Build manifest | The generated record of the digest of every source the build read and of every output it wrote. |
-| Command-line interface | The `concorde` command, whose subcommands each print exactly one JSON result envelope and exit with a status derived from it. |
+| Command-line interface | The `concorde` command, which routes requests to their owning Modules and prints their results or opens the worker configuration terminal editor. |
 | Protocol copy | The rendered Spec Protocol bundle placed in a project under `.concorde/protocol/`, whose manifest digest the project configuration binds. |
 | Distribution command | A `concorde` command Distribution owns itself rather than routing to another Module: `build` and `protocol-manifest`. |
 | Installer | The program that places the Protocol copy, the `concorde` command and the main-session guidance into a project without writing its Specs. |
@@ -76,7 +76,7 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `run <operation>` | runs one Operation in the workspace of the current worktree or, when the Operation allows it, unbound; prints the run result | [Execution](../execution/module.md), with the catalog of [Operations](../execution/operations/module.md) |
 | `task-validation`, `delivery` or `scaffold` | runs one execution command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with the catalog of [Commands](../execution/commands/module.md) |
 | `workflow step` or `report` | runs one workflow step, or reports a workflow's result; prints its own JSON | [Workflows](../execution/workflows/module.md) |
-| `configure-workers` | lists or changes the worker model configuration of the current worktree; prints its own JSON | [Workers](../execution/workers/module.md) |
+| `configure-workers [--show [--json] \| --check [--json]]` | opens the terminal draft editor by default; read-only options inspect or validate without discovery | [Workers](../execution/workers/module.md) |
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
@@ -94,7 +94,13 @@ runs without a worker; `run` starts an Operation, `workflow` a workflow step and
 Every command but `spec-mcp`, `task`, `run`, the execution commands, `workflow`,
 `configure-workers` and `issues` prints exactly one JSON envelope and exits with its status, even
 when refused ([requirements](requirements.md#req.distribution.one-envelope)); those route to their
-owners, which define their own JSON and exit codes.
+owners, which define their own output and exit codes. Worker configuration defaults to a human
+terminal editor; only its explicit read-only JSON options print a configuration envelope.
+
+The standalone Workers entry point `scripts/available_models.py --backend pi|claude [--json]`
+is shipped under `.concorde/framework/scripts/available_models.py` with the runtime. It resolves
+its imports relative to itself and works outside a Git worktree; it lists advisory configured
+candidates without probing inference API access. Configuration validation does not call it.
 
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
 

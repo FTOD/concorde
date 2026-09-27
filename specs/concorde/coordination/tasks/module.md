@@ -64,8 +64,9 @@ primary worktree's [worker model
 configuration](../../execution/workers/module.md#concept.workers.model-configuration) into it when
 there is one, binds the worktree as a workspace, writes the record and log, and prints the record.
 Git ignores that configuration, so the copy is the task's own: the task's workers keep the models
-chosen when it opened, whatever the primary worktree chooses later, until `concorde
-configure-workers` runs in the task worktree. A worktree path inside the primary worktree must be
+chosen when it opened, whatever the primary worktree chooses later, until someone edits the task's
+JSON file directly or saves changes with `concorde configure-workers` in the task worktree.
+Read-only `--show` and `--check` never change it. A worktree path inside the primary worktree must be
 ignored by Git there, or the open is refused with `worktree_not_ignored`; the installer adds
 `.claude/worktrees/` to `.gitignore`.
 

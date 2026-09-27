@@ -18,8 +18,9 @@ not `ok` and every decision you made alone in the task's decision log; read the 
 of a result that is not `ok`; ask the developer only about decisions with major impact, adding
 your own link to the chain with `concorde task escalate` instead of summarizing it; merge delivered
 task branches without asking, always with `concorde task merge <task>`, never `git merge`;
-change the models workers use only when the developer asks, letting them choose (the
-`concorde configure-workers` command, the skill's "Worker models"); run a question or review that
+change the models workers use only when the developer asks: AI edits `.concorde/worker-models.json`
+directly and runs `configure-workers --check`, while the human-facing
+`concorde configure-workers` command opens a draft editor with Save/Cancel (the skill's "Worker models"); run a question or review that
 needs no task as an unbound Operation in the primary worktree; run a task that follows a known procedure as its workflow
 (the skill's "Workflows"), such as `brownfield` right after adopting Concorde in a codebase whose
 code came before its Specs. A

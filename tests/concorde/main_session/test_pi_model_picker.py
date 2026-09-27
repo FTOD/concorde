@@ -1,11 +1,4 @@
-"""The pure part of the pi model picker, ``pi_models.ts``, run by Node against a listing.
-
-The dialogs around it live in ``pi_extension.ts`` and need a pi session; these tests cover what the
-picker offers for the output of ``concorde configure-workers``, which command each choice
-becomes, and how a refusal is shown.
-"""
-
-from __future__ import annotations
+"""The pi picker launches the shared editor with terminal restoration on every exit."""
 
 import json
 import shutil
@@ -20,191 +13,65 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 SOURCE = REPOSITORY_ROOT / "src/concorde/main_session/pi_models.ts"
 
 
-def chosen(model, reasoning, source="default"):
-    return {
-        "backend": "pi",
-        "backend_source": "Concorde's default worker backend",
-        "model": model,
-        "reasoning": reasoning,
-        "model_source": source,
-        "reasoning_source": "default",
-    }
-
-
-LISTING = {
-    "backend": "pi",
-    "config": "/p/.concorde/worker-models.json",
-    "candidates": {
-        "reasoning_levels": ["off", "low", "high"],
-        "models": [
-            {
-                "id": "anthropic/claude-sonnet-5",
-                "reasoning": True,
-                "levels": ["off", "low", "high"],
-                "context": "1M",
-            },
-            {
-                "id": "local/plain-7",
-                "reasoning": False,
-                "levels": ["off"],
-                "context": "200K",
-            },
-        ],
-    },
-    "configured": {
-        "default": {"model": "anthropic/claude-sonnet-5", "reasoning": "low"},
-        "operations": {
-            "spec_review": {"workers": {"checker": {"model": "local/plain-7"}}},
-            "implement": {"default": {"backend": "claude"}},
-        },
-    },
-    "effective": {
-        "understand": {"worker": chosen("anthropic/claude-sonnet-5", "low")},
-        "implement": {
-            "worker": dict(
-                chosen(None, None, "the backend's own default"),
-                backend="claude",
-                backend_source="operations.implement.default",
-            )
-        },
-        "spec_review": {
-            "reviewer": chosen("anthropic/claude-sonnet-5", "low"),
-            "checker": chosen(
-                "local/plain-7", "low", "operations.spec_review.workers.checker"
-            ),
-        },
-    },
-}
-REFUSAL = {
-    "error": {
-        "actor": "concorde configure-workers (/p)",
-        "code": "configuration_refused",
-        "detail": "'x' is not a pi model this machine lists",
-        "unhandled": {
-            "reason": "input",
-            "explanation": "only listed models are admitted",
-        },
-        "options": ["choose a model from the candidates configure-workers lists"],
-        "causes": [
-            {
-                "actor": "Workers (worker model configuration)",
-                "code": "unknown_model",
-                "detail": "two models",
-                "unhandled": {"reason": "input", "explanation": "inner"},
-                "options": [],
-                "causes": [],
-            }
-        ],
-    }
-}
-PROBE = """
-import * as picker from %(source)s;
-const listing = %(listing)s;
-const scopes = picker.scopeRows(listing);
-const checker = scopes.find((row) => row.label.startsWith("spec_review checker")).scope;
-const understand = scopes.find((row) => row.label.startsWith("understand")).scope;
-console.log(JSON.stringify({
-  scopes,
-  defaultModels: picker.modelRows(listing, { operation: null, worker: null }),
-  checkerModels: picker.modelRows(listing, checker),
-  understandModels: picker.modelRows(listing, understand),
-  levelsPlain: picker.levelRows(listing, "local/plain-7"),
-  levelsCurrent: picker.levelRows(listing, picker.currentModel(listing, understand)),
-  listing: picker.listingCommand(),
-  setDefault: picker.commandFor({ operation: null, worker: null }, "set", "local/plain-7", "off"),
-  setChecker: picker.commandFor(checker, "keep", null, "high"),
-  unsetChecker: picker.commandFor(checker, "unset", null, null),
-  nothing: picker.commandFor(understand, "keep", null, picker.KEEP),
-  refusal: picker.refusalText({ code: 1, value: %(refusal)s, text: "" }),
-  bare: picker.refusalText({ code: 1, value: null, text: "Traceback: boom" }),
-}));
-"""
-
-
-@unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_models.ts")
+@unittest.skipUnless(shutil.which("node"), "Node is needed for the pi adapter")
 class ModelPickerTests(unittest.TestCase):
-    def probe(self) -> dict:
+    @verifies("scenario.main-session.pi-model-picker")
+    def test_shared_editor_restores_terminal_and_uses_target_worktree(self):
+        probe = """
+import * as picker from SOURCE;
+const calls = [];
+const tui = {
+  stop: () => calls.push("stop"),
+  start: () => calls.push("start"),
+  requestRender: (force) => calls.push(["render", force]),
+};
+const code = picker.runEditor(tui, ["python3", "scripts/concorde.py", ...picker.editorCommand()], "/task", (cmd, args, options) => {
+  calls.push({cmd, args, cwd: options.cwd, stdio: options.stdio});
+  return {status: 0};
+});
+let failed = false;
+try {
+  picker.runEditor(tui, ["missing"], "/task", () => { throw new Error("missing"); });
+} catch { failed = true; }
+const refusal = picker.refusalText({code: 1, text: "", value: {error: {
+  actor: "command", code: "configuration_refused", detail: "invalid config",
+  unhandled: {reason: "input", explanation: "the command cannot repair the file"},
+  causes: [{actor: "Workers", code: "config_invalid", detail: "unknown worker", unhandled: {reason: "input", explanation: "catalog name required"}, causes: []}]
+}}});
+console.log(JSON.stringify({code, calls, failed, listing: picker.listingCommand(), refusal}));
+""".replace("SOURCE", json.dumps(SOURCE.as_uri()))
         with tempfile.TemporaryDirectory() as directory:
-            probe = Path(directory) / "probe.mts"
-            probe.write_text(
-                PROBE
-                % {
-                    "source": json.dumps(SOURCE.as_uri()),
-                    "listing": json.dumps(LISTING),
-                    "refusal": json.dumps(REFUSAL),
-                }
-            )
+            path = Path(directory) / "probe.mts"
+            path.write_text(probe)
             done = subprocess.run(
-                ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+                ["node", "--experimental-strip-types", "--no-warnings", str(path)],
                 capture_output=True,
                 text=True,
-                check=False,
             )
         self.assertEqual(0, done.returncode, done.stderr)
-        return json.loads(done.stdout)
-
-    @verifies("scenario.main-session.pi-model-picker")
-    def test_the_picker_offers_the_listing_and_applies_each_choice(self):
-        out = self.probe()
-        labels = [row["label"] for row in out["scopes"]]
+        value = json.loads(done.stdout)
+        self.assertEqual(0, value["code"])
+        self.assertTrue(value["failed"])
+        self.assertEqual(["configure-workers", "--show", "--json"], value["listing"])
         self.assertEqual(
             [
-                "Every worker (default): anthropic/claude-sonnet-5, low",
-                "understand worker: anthropic/claude-sonnet-5, low",
-                "spec_review reviewer: anthropic/claude-sonnet-5, low",
-                "spec_review checker: local/plain-7, low (own setting)",
-                "Done",
+                "stop",
+                {
+                    "cmd": "python3",
+                    "args": ["scripts/concorde.py", "configure-workers"],
+                    "cwd": "/task",
+                    "stdio": "inherit",
+                },
+                "start",
+                ["render", True],
+                "stop",
+                "start",
+                ["render", True],
             ],
-            labels,
+            value["calls"],
         )
-        self.assertEqual(
-            {"operation": "understand", "worker": "worker"}, out["scopes"][1]["scope"]
-        )
-        self.assertIsNone(out["scopes"][-1]["scope"])
-        self.assertEqual(
-            ["keep", "set", "set"], [row["action"] for row in out["defaultModels"]]
-        )
-        self.assertEqual(
-            ["keep", "unset", "set", "set"],
-            [row["action"] for row in out["checkerModels"]],
-        )
-        self.assertEqual(
-            ["keep", "set", "set"], [row["action"] for row in out["understandModels"]]
-        )
+        self.assertIn("Workers: config_invalid: unknown worker", value["refusal"])
         self.assertIn(
-            "local/plain-7 (200K context, no reasoning)",
-            [row["label"] for row in out["checkerModels"]],
+            "not handled: input: the command cannot repair the file", value["refusal"]
         )
-        self.assertEqual(["Keep the current value", "off"], out["levelsPlain"])
-        self.assertEqual(
-            ["Keep the current value", "off", "low", "high"], out["levelsCurrent"]
-        )
-        base = ["configure-workers"]
-        self.assertEqual(base + ["--candidates", "pi"], out["listing"])
-        self.assertEqual(
-            base + ["--model", "local/plain-7", "--reasoning", "off"], out["setDefault"]
-        )
-        self.assertEqual(
-            base
-            + ["--operation", "spec_review", "--worker", "checker"]
-            + ["--reasoning", "high"],
-            out["setChecker"],
-        )
-        self.assertEqual(
-            base + ["--operation", "spec_review", "--worker", "checker", "--unset"],
-            out["unsetChecker"],
-        )
-        self.assertIsNone(out["nothing"])
-        self.assertIn(
-            "concorde configure-workers (/p): configuration_refused", out["refusal"]
-        )
-        self.assertIn("not handled: only listed models are admitted", out["refusal"])
-        self.assertIn(
-            "\n  Workers (worker model configuration): unknown_model: two models",
-            out["refusal"],
-        )
-        self.assertEqual("Traceback: boom", out["bare"])
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assertIn("not handled: input: catalog name required", value["refusal"])

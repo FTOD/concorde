@@ -20,7 +20,7 @@ background and shows their progress. Distribution renders and installs this Modu
 | --- | --- |
 | Main-session guidance | The instructions, installed as a project skill for Claude Code and for pi and as a `CLAUDE.md` block, that tell the main agent how to work with Concorde. |
 | Run view | The Concorde extension of a pi main session that starts Operations and execution commands in the background, shows every run and its worker's progress, and wakes the main agent when a run ends. |
-| Model picker | The dialog of the pi run view in which the developer chooses, for every worker or one worker by its id, the model and reasoning level of the workers that run on pi. |
+| Model picker | The pi entry point that opens Workers' shared terminal draft editor for backend, model, reasoning and inheritance choices with Save and Cancel. |
 | Questions without a task | The guidance's rule that the Operations which allow it run unbound, in a worktree without a workspace binding such as the primary worktree, for a question or review that changes nothing. |
 | Escalation policy | The rule by which the main agent decides ordinary questions itself, records and reports them, and asks the developer only for decisions with major impact. |
 | [Developer](../../vocabulary.md#concept.concorde.developer) | |
@@ -162,20 +162,24 @@ top of the chain, records it in the task and prints it rendered for the develope
 **Worker models.** Workers run on pi, whatever program the main agent runs on, unless the
 worktree's [worker model configuration](../../execution/workers/module.md#concept.workers.model-configuration)
 chooses Claude Code for some of them, and take their model and level from it, per worker id. The
-guidance tells the main agent to change it only when the developer asks, and to let the developer
-choose from what the `concorde configure-workers` command lists; the command lists and changes the
-file of the worktree it runs in, launches no worker and records no run, and
-`configure-workers --backend` puts a worker, an Operation's workers or every worker on the other
-program. In pi the run view's **model picker** does it: the `/concorde-models` command, or the
-`concorde_configure_workers` tool the main agent calls on the developer's request, shows the
-default and every worker of every Operation by its id with the model and level it runs on (only the
-workers that run on pi), then the models pi lists, then the chosen model's levels, and applies each
-choice with `concorde configure-workers`, removing an entry when the developer returns it to the
-more general one. The picker runs the command in the primary worktree, whose file the tasks opened
-later inherit, or, given a task, in that task's worktree, whose copy alone then changes. In Claude
-Code, which lets no extension draw a dialog, the main agent asks with its question tool — scope,
-model, level — and applies the answers itself with the command, run in the worktree whose
-configuration the developer wants changed.
+guidance tells the main agent to change it only when the developer asks. The human-facing
+`concorde configure-workers` opens Workers' terminal draft editor; the pi **model picker**,
+`/concorde-models` or the `concorde_configure_workers` tool, opens that same editor after
+releasing pi's terminal, and restores the terminal on success, cancellation or failure. It
+shows all backends, global and Operation defaults and every worker, each field's effective
+source, custom input and optional discovery. Only Save writes; dirty exits offer Keep editing
+by default or explicit Discard changes, including Ctrl-C. Scope and model search use `/`, and
+returning from Edit keeps the selected scope and filter.
+A named task must have a worktree; the picker never falls back to the primary worktree.
+It requires pi's terminal mode, and reports that requirement to RPC and headless callers.
+
+For AI-driven changes the guidance tells the agent to edit the worktree's JSON directly,
+preserving unrelated entries, then use `configure-workers --check` and `--show --json`.
+The separate `scripts/available_models.py --backend pi|claude [--json]` supplies optional
+suggestions without Git or inference API calls. Discovery does not gate custom/offline
+configuration or impose an extra question flow when the developer already chose a model.
+Primary edits affect future tasks; a task's existing copy changes only when the developer
+asks for that task. No worker is launched and no run is recorded.
 
 <a id="concept.main-session.no-task-operations"></a>
 
@@ -459,11 +463,11 @@ pi session and is exercised in one.
 
 <a id="realization.main-session.pi-model-picker"></a>
 
-The **pi model picker**'s dialogs live in the extension; the pure part, turning the output of
-`concorde configure-workers` into the rows it offers and a chosen row into a `configure-workers`
-command line, is `pi_models.ts`, installed beside it. The extension runs both in the worktree the
-developer chose, so the command line never names a task. Tests run it under Node; the dialogs themselves were
-exercised by driving a pi RPC session.
+The **pi model picker** adapter lives in `pi_models.ts`, installed beside the extension. It
+suspends pi's terminal while Workers' editor runs, restores it even after a spawn failure,
+and uses read-only inspection before and after to report saved changes. The extension
+chooses the worktree; there is no second mutation protocol or duplicated configuration
+validator. Tests run the adapter under Node and the editor through a pseudo-terminal.
 
 The pi extension is the only part of this Module that is code meeting other Modules directly. It
 observes what they record and starts their commands, and the records it reads stay theirs:
@@ -489,10 +493,11 @@ recording the phase, round and latest tool call, and the runner process that lau
 and on it being an observation only: the run record, not the progress file, is the evidence, so the
 view shows but never judges a run from it. Workers also owns the [worker model
 configuration](../../execution/workers/module.md#concept.workers.model-configuration) and the
-`concorde configure-workers` command; the model picker and the guidance change the configuration
-only through that command, which lists the candidates, validates every choice and changes only the
-file of the worktree it runs in, so neither writes the file itself. A refused change comes back as
-the command's error link with Workers' link beneath it, which the picker shows whole.
+`concorde configure-workers` command. The picker opens its terminal editor; the guidance
+instructs AI agents to edit the JSON directly and validate with `--check`. Both depend on
+Workers' shared structural and catalog validation, and preserve per-worktree configuration.
+The separate discovery helper supplies suggestions without proving API access or gating
+edits. Inspection refusals retain their full error chain for display.
 
 ### Who relies on it
 

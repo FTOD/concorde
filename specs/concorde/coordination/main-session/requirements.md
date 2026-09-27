@@ -72,7 +72,7 @@ on the primary branch after merging.
 
 ### req.main-session.developer-chooses-models — The developer chooses worker models
 
-The guidance SHALL tell the main agent to change the models workers use only when the developer asks, to let the developer choose among the candidates `concorde configure-workers` lists, for every worker or one worker by its id (in pi through the model picker, in Claude Code through its question tool), and to run the command in an existing task's worktree only when the developer asks for that task.
+The guidance SHALL tell the main agent to change worker models only when the developer asks, using direct JSON edits followed by read-only validation for AI changes or the shared terminal draft editor for human choices, and to change an existing task's configuration only when the developer asks for that task.
 
 ### req.main-session.no-task-questions — Questions need no task
 

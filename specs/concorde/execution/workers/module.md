@@ -8,7 +8,7 @@ on Claude Code or on pi, turning what happened into a run record the Operation t
 trust. Each run is its own session, its own process and its own permissions, on the model the
 worktree's worker model configuration chooses, and its run directory lies in the run store beside
 the Operation run that launched it. Workers also owns that configuration and the command
-`concorde configure-workers` that lists and changes it. Of each run it owns the whole
+`concorde configure-workers` that edits it in a terminal and inspects it read-only. Of each run it owns the whole
 lifecycle: the run directory, the brief, the launch and resume rounds, the write audit, the checks
 after each round and the record. The worker's permissions and environment are its [agent
 harness](../../harness/module.md#concept.harness.harness), which the Harness generates from the
@@ -30,7 +30,7 @@ guards against scope drift and mistakes, not a malicious worker.
 | Resume round | One continuation of the same worker session with the failures of the configured checks. |
 | Run record | The host's durable record of one worker run: its grant and context identity, settings, transcript path, audits, checks, rounds and result. |
 | Run directory | The directory `runs/<run-id>/` of the run store that holds one worker run's record, generated configuration and the worker's private state and working directory. |
-| configure-workers | The command `concorde configure-workers`, which lists the models the installed agent programs offer workers and changes the worker model configuration of the worktree it runs in, without launching a worker or recording a run. |
+| configure-workers | The command that opens a draft terminal editor of the current worktree's worker configuration, or inspects and validates it read-only, without launching a worker or recording a run. |
 | [Worker](../../vocabulary.md#concept.concorde.worker) | |
 | [Agent harness](../../harness/module.md#concept.harness.harness) | |
 | [Worker settings](../../harness/module.md#concept.harness.worker-settings) | |
@@ -189,66 +189,59 @@ Here every worker runs on pi, on `anthropic/claude-sonnet-5` at `medium`, except
 `reviewer1` on `anthropic/claude-opus-5-5` at `high`, `reviewer2` on `local-openai/gpt-6` at
 `high`, `reviewer3` on `local-openai/gpt-6` at the default's `medium`, and the `chair` on Claude
 Code with its `opus` alias at Claude Code's own default level, since choosing Claude Code does not
-carry the pi default's level over. The model configuration code knows no Operation or worker
-names; the entries are whatever [`concorde configure-workers`](#concept.workers.configure-workers)
-wrote after checking them against the catalog. A file of an earlier schema version, keyed by
-backend and worker role, is refused with `config_invalid`, and never read.
-[Tasks](../../coordination/tasks/module.md) copies the primary worktree's file into a task worktree when it
-opens the task, so a task keeps the configuration it started with and a later change in the primary
-worktree never reaches it.
+carry the pi default's level over. The JSON file is the editable source of truth: a human may use
+the terminal editor and an AI edits it directly. The shared validator checks structure, duplicate
+keys, Operation and worker names against the catalog, and the effective backend's reasoning
+vocabulary whenever the runtime loads the file, inspection checks it, or the editor saves it.
+It accepts custom model names without discovery, installed backends or credentials. A malformed
+file is refused with `config_invalid`, naming the file and problem; earlier schema versions are
+not migrated or ignored.
+[Tasks](../../coordination/tasks/module.md) copies the primary worktree's file into a task worktree
+when it opens the task, so later primary edits never reach an existing task.
 
-Workers also lists the **candidates** the installed program offers: for pi every model
-`pi --list-models` shows with credentials, as `provider/model` with the levels of `--thinking` or
-only `off` for a model without reasoning; for Claude Code, which has no command listing an
-account's models, its aliases, the models named by `model` and `availableModels` of the user's
-Claude Code settings and those pinned by `ANTHROPIC_*MODEL` variables, marked incomplete, with the
-levels of `--effort`. A change is refused with `unknown_model` for a model the listing does not show,
-unless the caller admits unlisted models, and with `unknown_level` for a level the model does not
-offer, each naming what is listed. A file that is not valid JSON or does not match the schema is
-refused with `config_invalid`, naming the file and the problem, and never ignored.
-
-The main session lets the developer choose: pi's run view has a picker for it and Claude Code's
-main agent asks with its question tool ([Main session](../../coordination/main-session/module.md));
-both change the file through `concorde configure-workers`.
+Discovery is separate and advisory. `python3 scripts/available_models.py --backend pi|claude`
+(optionally `--json`) works outside Git, and its shared functions supply the editor. pi lists
+configured credentialed candidates with `pi --no-extensions --list-models`; Claude Code offers
+an incomplete list of aliases and names from user settings and environment because it cannot
+list account entitlements. Discovery makes no inference API calls and does not verify access.
+An empty listing, a missing program or failed discovery does not prevent custom/offline edits.
+The candidate output names the source and reasoning levels, with pi's non-reasoning models
+listing only `off`; these are suggestions, not the configuration's admission policy.
 
 ### Changing worker models: configure-workers
 
 <a id="concept.workers.configure-workers"></a>
 
-**configure-workers** is how anyone lists and changes the worker model configuration:
+Run `concorde configure-workers` in a terminal to edit a draft. It shows the worktree, global
+default, Operation defaults and every worker, the effective backend/model/reasoning and each
+field's source. Open a scope to choose a backend, model or reasoning level, inherit a field,
+or remove the whole entry. A backend selection clears that entry's model and reasoning so the
+new program starts afresh. Custom model input is always available; discovery runs only when the
+human requests candidates. Unsaved changes stay in memory. Save validates the entire draft
+and writes atomically. Cancel, q or Escape at the top screen and Ctrl-C anywhere offer
+Keep editing (the default) or Discard changes when the draft is dirty; a clean draft exits
+without a prompt. Escape or another Ctrl-C at the confirmation keeps the draft. `/` filters
+scope and candidate model lists; an empty search restores all rows. Returning from Edit
+preserves the selected scope and its filter. A file
+changed by another editor while the draft is open is refused rather than overwritten.
 
-```text
-concorde configure-workers [--operation <op> [--worker <id>]]
-    [--backend claude|pi] [--model <model>] [--reasoning <level>] [--allow-unlisted]
-    [--unset] [--candidates claude|pi]
-```
+AI agents edit `.concorde/worker-models.json` directly, preserving unrelated sparse overrides,
+then run `concorde configure-workers --check`. `--show --json` returns the validated source and
+every worker's effective values and sources; `--check --json` returns the same read-only result
+with action `check`. Without `--json`, these options print human-readable inspection. Neither
+performs discovery or writes any file. Mutation flags and `--candidates` are not supported.
 
-It works on the Git worktree it runs in, from any directory inside it: in the primary worktree it
-changes the file that task worktrees opened from then on inherit, in a task worktree only that
-worktree's copy. It is a plain command, not a run: it launches no worker, needs no workspace
-binding, takes no workspace lock, records no run and never touches a task record, because the file
-it writes is this machine's configuration and no part of any workspace's change.
+The command resolves the Git worktree from any directory inside it: primary edits affect future
+tasks, and task edits affect only that task's copy. It launches no worker, needs no workspace
+binding, takes no workspace lock and records no run. A bare invocation without an interactive
+terminal is refused with instructions for direct edits and read-only inspection.
 
-Without a change it lists: the candidates of the program the named entry runs on (pi unless the
-configuration chooses Claude Code, or the program `--candidates` names), the file as written, and
-the effective backend, model and level of every worker of every Operation in the [Operation
-catalog](../operations/module.md#concept.operations.catalog) that launches workers, by worker id.
-`--backend`, `--model`, `--reasoning` or several of them set those fields on the default, on
-`--operation <op>`'s default or on `--worker <id>` of it, and `--unset` removes that entry and every
-section it leaves empty. A change is checked against the listing of the program the entry will run
-on once it is applied: a model the listing does not show is refused unless `--allow-unlisted`
-admits it, and a level the model does not offer is refused. The file is written atomically, and
-only once every check passed; a refused request leaves it as it was.
-
-The command prints one [command result](contracts.md#contract.workers.configure-workers-result):
-`ok` with the [worker configuration](contracts.md#contract.workers.worker-configuration) as its
-output and exit status 0, or `failed` with the command's own error link, level `command`, and exit
-status 1: `invalid_request` for a request it cannot carry out, such as a `--worker` without its
-`--operation`, an Operation that launches no worker or a worker id the Operation does not declare,
-naming what is admitted; `configuration_refused` when the model configuration refused, whose cause
-is that refusal's `component` link, such as `unknown_model` or `backend_missing`. A malformed
-command line, or a directory outside every Git worktree, prints only an error link and exits with
-status 2.
+JSON inspection follows the [command result](contracts.md#contract.workers.configure-workers-result):
+exit 0 and the [configuration](contracts.md#contract.workers.worker-configuration) on success;
+exit 1 with `configuration_refused` and its Workers cause on invalid configuration. Malformed
+options or a directory outside Git return `invalid_request` and exit 2. A refused Save leaves
+the file unchanged and the draft available for correction. The terminal editor is also opened
+by pi's [model picker](../../coordination/main-session/module.md#concept.main-session.model-picker).
 
 Before the first round Workers asks the Harness for the worker's configuration from the frozen
 grant and the run's own paths: on Claude Code the [worker
@@ -359,8 +352,8 @@ workers -> checks
 
 The Operation providers, Spec review and Delivery use this Module; the worker runtime knows none of
 them. They rely on the run record and on the rule that a worker's result is kept apart from host
-evidence. Only the configure-workers command looks at the Operation catalog, to check the names it
-is given.
+evidence. The shared configuration validator looks at the Operation catalog when the runtime
+loads the file, inspection checks it or the editor saves it.
 
 <a id="uses-spec"></a>
 
@@ -417,14 +410,13 @@ unbound run's writing worker before it reaches Workers, and never reads a worksp
 <a id="uses-operations"></a>
 
 **Operations** declares, in its [catalog](../operations/module.md#concept.operations.catalog), which
-Operations launch workers and the ids of their workers. `concorde configure-workers` checks every
-`--operation` and `--worker` against it and lists the effective choice of each of those workers;
-it relies on the catalog naming every worker an Operation may launch, since a worker it does not
-name could not be configured.
+Operations launch workers and the ids of their workers. The shared validator checks all configured
+Operation and worker names against it; inspection and the editor list each worker's effective choice.
+It relies on the catalog naming every worker an Operation may launch.
 
 Three Modules read Workers' definitions without launching a run: the
 [Main session](../../coordination/main-session/module.md) shows the progress file and changes the worker model
-configuration through `concorde configure-workers`, [Task sessions](../../coordination/task-session/module.md) reads the main
+configuration through the terminal editor or direct JSON edits, [Task sessions](../../coordination/task-session/module.md) reads the main
 session's program the way the worker backend is read, and [Tasks](../../coordination/tasks/module.md) copies the
 worker model configuration into a new task worktree.
 
@@ -478,13 +470,13 @@ through it.
 
 - <a id="realization.workers.models"></a>The **model configuration** validates, reads and writes
   `.concorde/worker-models.json`, resolves the backend, model and level of an Operation's worker by
-  its id and checks that its program is installed, discovers the candidates by running the
-  installed `claude` or `pi`, and detects the main session's program for Task sessions. Tests fake
-  both programs.
-- <a id="realization.workers.configure"></a>The **configure-workers command** parses the request,
-  checks it against the Operation catalog, lists the candidates, applies a checked change through
-  the model configuration and prints the command result. Its tests run the command in a primary
-  and a task worktree with both programs faked.
+  its id and checks that its program is installed at launch. The separate `available_models.py`
+  module and `scripts/available_models.py` entry point discover advisory candidates without Git
+  or inference probes. Model configuration also detects the main session's program for Task sessions.
+- <a id="realization.workers.configure"></a>The **configure-workers command** provides read-only
+  inspection and the draft terminal editor in `configure_tui.py`. Both use shared validation;
+  the editor alone writes through model configuration, after explicit Save. Tests exercise the
+  command and terminal in primary and task worktrees with discovery faked.
 
 What one run leaves behind. The runtime generates the brief, keeps the progress file and writes the
 run record; both files sit in the run directory, and the record is the run's evidence:

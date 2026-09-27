@@ -478,12 +478,12 @@ class RunContext:
             ],
             options=[
                 (
-                    "install the program the worker runs on, or choose the other one with "
-                    f"concorde configure-workers --operation {self.name} --worker {worker} "
-                    "--backend"
+                    "install the program the worker runs on, or edit the backend of "
+                    f"operations.{self.name}.workers.{worker} in {path}"
                 ),
-                f"inspect and fix the configuration with concorde configure-workers in "
-                f"{self.worktree}",
+                f"inspect with concorde configure-workers --show --json in {self.worktree}; "
+                "edit the JSON directly or use the terminal editor, then run "
+                "concorde configure-workers --check",
             ],
         )
 

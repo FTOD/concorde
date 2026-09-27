@@ -1,21 +1,4 @@
-"""``concorde configure-workers``: list and change the worker model configuration.
-
-A plain command of the worktree it runs in: it launches no worker, records no run and changes no
-Spec or code, only that worktree's ``.concorde/worker-models.json``. In the primary worktree it
-changes the configuration new task worktrees inherit; in a task worktree only that worktree's copy.
-
-1. Check the request: ``--operation`` names a catalog Operation that launches workers,
-   ``--worker`` one of the worker ids it declares, and ``--unset`` comes without a backend, model
-   or level.
-2. Read ``.concorde/worker-models.json`` and find the entry the request names: the default, an
-   Operation's default or one worker's. A change is checked against the candidates of the
-   program the entry resolves to after it (pi when nothing chooses one); ``--candidates`` lists
-   another program's models without changing anything.
-3. List the candidates of that program (not for ``--unset``), refuse a model or level it does not
-   offer, and apply the change to the file.
-4. Print the command result: the candidates, the file as written and the effective backend, model
-   and level of every worker of every Operation, by worker id; or the error link.
-"""
+"""Human worker configuration editor and read-only inspection/check commands."""
 
 from __future__ import annotations
 
@@ -34,14 +17,10 @@ from .models import (
     CLIENTS,
     HANDLING,
     ModelConfigError,
-    candidates,
-    check_choice,
     choice,
     config_path,
     load,
-    save,
-    set_choice,
-    unset_choice,
+    worker_ids,
 )
 
 TEXT = {"type": "string", "minLength": 1}
@@ -66,29 +45,14 @@ CHOSEN_SCHEMA = {
         "reasoning_source": TEXT,
     },
 }
-# contract.operations.worker-configuration (specs/concorde/operations/contracts.md)
-CONFIGURATION_SCHEMA: dict = {
+CONFIGURATION_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": [
-        "action",
-        "backend",
-        "backend_from",
-        "worktree",
-        "config",
-        "changed",
-        "candidates",
-        "configured",
-        "effective",
-    ],
+    "required": ["action", "worktree", "config", "configured", "effective"],
     "properties": {
-        "action": {"enum": ["list", "set", "unset"]},
-        "backend": {"enum": list(CLIENTS)},
-        "backend_from": TEXT,
+        "action": {"enum": ["show", "check"]},
         "worktree": TEXT,
         "config": TEXT,
-        "changed": {"type": "boolean"},
-        "candidates": {"anyOf": [{"type": "null"}, {"type": "object"}]},
         "configured": {"type": "object"},
         "effective": {
             "type": "object",
@@ -99,10 +63,7 @@ CONFIGURATION_SCHEMA: dict = {
         },
     },
 }
-
-
-# contract.workers.configure-workers-result, version 1
-RESULT_SCHEMA: dict = {
+RESULT_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "required": ["command", "status", "output", "evidence", "error"],
@@ -126,252 +87,134 @@ class _Parser(argparse.ArgumentParser):
         raise UsageError(f"{self.prog}: {message}")
 
 
-class Refused(Exception):
-    """The command's own error link, carried to the result."""
-
-    def __init__(self, link: dict):
-        super().__init__(link["detail"])
-        self.link = link
-
-
-def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--operation")
-    parser.add_argument("--worker")
-    parser.add_argument("--backend", choices=CLIENTS)
-    parser.add_argument("--candidates", choices=CLIENTS)
-    parser.add_argument("--model")
-    parser.add_argument("--reasoning")
-    parser.add_argument("--unset", action="store_true")
-    parser.add_argument("--allow-unlisted", action="store_true")
+def add_arguments(parser):
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument(
+        "--show",
+        action="store_true",
+        help="show configuration and effective sources, without discovery",
+    )
+    actions.add_argument(
+        "--check",
+        action="store_true",
+        help="validate the file without discovery or writes",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="JSON result (requires --show or --check)"
+    )
 
 
-def worker_ids() -> dict[str, tuple[str, ...]]:
-    """Every catalog Operation that launches workers, with the ids of its workers."""
-    from ..operations.catalog import CATALOG, provider
-
-    found = {}
-    for name in CATALOG:
-        chosen = provider(name)
-        if chosen.task_type is not None:
-            found[name] = chosen.workers
-    return found
-
-
-def _request_problem(arguments, ids: dict) -> str | None:
-    if arguments.worker and not arguments.operation:
-        return "--worker names a worker but no --operation says whose"
-    if arguments.operation and arguments.operation not in ids:
-        return (
-            f"--operation {arguments.operation} is not a catalog Operation that launches "
-            f"workers (those are: {', '.join(ids)})"
-        )
-    if arguments.worker and arguments.worker not in ids[arguments.operation]:
-        return (
-            f"--worker {arguments.worker} is not a worker of {arguments.operation} (its workers: "
-            f"{', '.join(ids[arguments.operation])})"
-        )
-    if arguments.unset and (
-        arguments.backend or arguments.model or arguments.reasoning
-    ):
-        return "--unset removes an entry and takes no --backend, --model or --reasoning"
-    if arguments.candidates and (
-        arguments.backend or arguments.model or arguments.reasoning or arguments.unset
-    ):
-        return (
-            "--candidates only lists a program's models; a change is checked against the "
-            "program its entry runs on, which --backend sets"
-        )
-    if arguments.allow_unlisted and not arguments.model:
-        return "--allow-unlisted applies only to a --model"
-    return None
-
-
-def actor(worktree: Path) -> str:
+def actor(worktree):
     return f"concorde configure-workers ({worktree})"
 
 
-def _refuse(worktree: Path, error: ModelConfigError) -> Refused:
+def refusal(worktree, error):
     reason, explanation, options = HANDLING.get(
-        error.code,
-        ("input", "the request is not admitted", []),
+        error.code, ("input", "the request cannot be completed", [])
     )
-    return Refused(
-        errors.link(
-            "command",
-            actor(worktree),
-            "configuration_refused",
-            f"configure-workers could not complete for {config_path(worktree)}: "
-            f"{error.code}: {error}",
-            reason=reason,
-            explanation="the command neither guesses a program or model nor repairs the "
-            "configuration or the installed program",
-            evidence=[
-                evidence("worker-models", config_path(worktree).as_posix(), str(error))
-            ],
-            causes=[
-                errors.link(
-                    "component",
-                    "Workers (worker model configuration)",
-                    error.code,
-                    str(error),
-                    reason=reason,
-                    explanation=explanation,
-                    options=options,
-                )
-            ],
-            options=options,
-        )
-    )
-
-
-def configure(worktree: Path, arguments) -> tuple[dict, list[dict]]:
-    """The output and evidence of one request; ``Refused`` carries the command's error link."""
-    ids = worker_ids()
-    problem = _request_problem(arguments, ids)
-    if problem:
-        raise Refused(
+    return errors.link(
+        "command",
+        actor(worktree),
+        "configuration_refused",
+        f"{config_path(worktree)}: {error.code}: {error}",
+        reason=reason,
+        explanation="the command does not repair configuration or the environment",
+        evidence=[evidence("worker-models", str(config_path(worktree)), str(error))],
+        causes=[
             errors.link(
-                "command",
-                actor(worktree),
-                "invalid_request",
-                f"configure-workers was asked for an impossible change: {problem}",
-                reason="input",
-                explanation="only the caller can say which Operation, worker and value it "
-                "means",
-                options=[
-                    "run concorde configure-workers without arguments to see the Operations "
-                    "and their workers"
-                ],
-            )
-        )
-    operation, worker = arguments.operation, arguments.worker
-    try:
-        config = load(worktree)
-        found = None
-        if arguments.unset:
-            action = "unset"
-            current = choice(config, operation, worker)
-            backend, told = current["backend"], current["backend_source"]
-            changed = unset_choice(config, operation, worker)
-            if changed:
-                save(worktree, config)
-        else:
-            changed = bool(arguments.backend or arguments.model or arguments.reasoning)
-            action = "set" if changed else "list"
-            proposed = copy.deepcopy(config)
-            if changed:
-                set_choice(
-                    proposed,
-                    operation,
-                    worker,
-                    arguments.backend,
-                    arguments.model,
-                    arguments.reasoning,
-                )
-            after = choice(proposed, operation, worker)
-            backend = after["backend"]
-            told = "--backend" if arguments.backend else after["backend_source"]
-            if arguments.candidates and not changed:
-                backend, told = arguments.candidates, "--candidates"
-            found = candidates(backend)
-            if changed:
-                check_choice(
-                    found,
-                    backend,
-                    arguments.model,
-                    arguments.reasoning,
-                    arguments.allow_unlisted,
-                    after["model"],
-                )
-                config = proposed
-                save(worktree, config)
-    except ModelConfigError as error:
-        raise _refuse(worktree, error) from None
-    path = config_path(worktree).as_posix()
-    target = (
-        "the default"
-        if not operation
-        else f"{operation} {worker}"
-        if worker
-        else f"{operation}'s default"
-    )
-    return (
-        {
-            "action": action,
-            "backend": backend,
-            "backend_from": told,
-            "worktree": worktree.as_posix(),
-            "config": path,
-            "changed": changed,
-            "candidates": found,
-            "configured": config,
-            "effective": {
-                name: {each: choice(config, name, each) for each in workers}
-                for name, workers in ids.items()
-            },
-        },
-        [
-            evidence(
-                "worker-models",
-                path,
-                f"{action} {target} on {backend}"
-                + (
-                    ""
-                    if action == "list"
-                    else f": {'changed' if changed else 'no entry'}"
-                ),
+                "component",
+                "Workers (worker model configuration)",
+                error.code,
+                str(error),
+                reason=reason,
+                explanation=explanation,
+                options=options,
             )
         ],
+        options=options,
     )
-
-
-def _toplevel(here: Path) -> Path:
-    result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        cwd=here,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise UsageError(
-            f"{here} is not inside a Git worktree: {result.stderr.strip() or 'git refused'}"
-        )
-    return Path(os.path.realpath(result.stdout.strip()))
 
 
 def result(worktree: Path, arguments) -> dict:
-    """The command result of one parsed request in ``worktree``."""
     try:
-        output, found = configure(worktree, arguments)
+        config = load(worktree)
+        output = {
+            "action": "check" if arguments.check else "show",
+            "worktree": str(worktree),
+            "config": str(config_path(worktree)),
+            "configured": config,
+            "effective": {
+                name: {worker: choice(config, name, worker) for worker in workers}
+                for name, workers in worker_ids().items()
+            },
+        }
+        validate(output, CONFIGURATION_SCHEMA)
         value = {
             "command": "configure-workers",
             "status": "ok",
             "output": output,
-            "evidence": found,
+            "evidence": [
+                evidence(
+                    "worker-models",
+                    str(config_path(worktree)),
+                    "validated without model discovery",
+                )
+            ],
             "error": None,
         }
-        validate(output, CONFIGURATION_SCHEMA)
-    except Refused as refusal:
+    except ModelConfigError as error:
+        link = refusal(worktree, error)
         value = {
             "command": "configure-workers",
             "status": "failed",
             "output": None,
-            "evidence": list(refusal.link["evidence"]),
-            "error": refusal.link,
+            "evidence": link["evidence"],
+            "error": link,
         }
     validate(value, RESULT_SCHEMA)
     return value
 
 
+def _toplevel(here: Path) -> Path:
+    try:
+        found = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=here,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        raise UsageError(str(error)) from error
+    if found.returncode:
+        raise UsageError(f"{here} is not inside a Git worktree: {found.stderr.strip()}")
+    return Path(os.path.realpath(found.stdout.strip()))
+
+
 def main(argv, cwd: Path | None = None) -> int:
-    """``concorde configure-workers``: print the command result; 0 ok, 1 refused, 2 usage."""
-    parser = _Parser(prog="concorde configure-workers")
+    parser = _Parser(prog="concorde configure-workers", description=__doc__)
     add_arguments(parser)
     here = Path(os.path.realpath(cwd or Path.cwd()))
     try:
         arguments = parser.parse_args(list(argv))
+        if arguments.json and not (arguments.show or arguments.check):
+            raise UsageError("--json requires --show or --check")
         worktree = _toplevel(here)
+        if not (arguments.show or arguments.check):
+            if not sys.stdin.isatty() or not sys.stdout.isatty():
+                raise UsageError(
+                    "the editor needs an interactive terminal; use --show --json or --check, or edit .concorde/worker-models.json directly"
+                )
+            from .configure_tui import run
+
+            try:
+                changed = run(worktree)
+                print("Worker configuration saved." if changed else "No changes saved.")
+                return 0
+            except ModelConfigError as error:
+                print(errors.render(refusal(worktree, error)), file=sys.stderr)
+                return 1
+        value = result(worktree, arguments)
     except UsageError as error:
         link = errors.link(
             "command",
@@ -379,16 +222,25 @@ def main(argv, cwd: Path | None = None) -> int:
             "invalid_request",
             str(error),
             reason="input",
-            explanation="the command runs only a well-formed request inside a Git worktree",
-            options=["correct the command line; see concorde configure-workers --help"],
+            explanation="the command requires a supported request inside a Git worktree",
+            options=["see concorde configure-workers --help"],
         )
-        sys.stdout.write(json.dumps({"error": link}, indent=2) + "\n")
+        print(json.dumps({"error": link}, indent=2))
         return 2
-    value = result(worktree, arguments)
-    sys.stdout.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
-    if value["error"] is not None:
-        sys.stderr.write(errors.render(value["error"]) + "\n")
+    if arguments.json:
+        print(json.dumps(value, indent=2, ensure_ascii=False))
+    elif value["status"] == "ok":
+        output = value["output"]
+        print(f"Valid worker configuration: {output['config']}")
+        if arguments.show:
+            print(json.dumps(output["configured"], indent=2))
+            for operation, workers in output["effective"].items():
+                for worker, selected in workers.items():
+                    print(f"{operation} / {worker}")
+                    for field in ("backend", "model", "reasoning"):
+                        print(
+                            f"  {field}: {selected[field] or 'backend default'} (from {selected[field + '_source']})"
+                        )
+    if value["error"]:
+        print(errors.render(value["error"]), file=sys.stderr)
     return 0 if value["status"] == "ok" else 1
-
-
-__all__ = ["CONFIGURATION_SCHEMA", "RESULT_SCHEMA", "main", "result", "worker_ids"]

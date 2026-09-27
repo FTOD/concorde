@@ -7,13 +7,13 @@ import io
 import json
 import os
 import shutil
-import tarfile
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.distribution.build import (
     BuildError,
@@ -22,11 +22,11 @@ from concorde.distribution.build import (
     write_build,
 )
 from concorde.distribution.install import InstallError, install, refusal, update
-from concorde.errors import ERROR_SCHEMA
-from concorde.spec.schema import validate
-from concorde.distribution.tools import platform_key
 from concorde.distribution.project_defaults import write_protocol_copy
+from concorde.distribution.tools import platform_key
+from concorde.errors import ERROR_SCHEMA
 from concorde.spec.repository_base import SpecError
+from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -107,14 +107,16 @@ def fake_d2(test, package: Path, *, corrupt: bool = False):
     ).hexdigest()
     (package / "concorde.json").write_text(json.dumps(descriptor, indent=2) + "\n")
     write_build(package)
-    urls: list[str] = []
 
-    def fetch(url: str) -> bytes:
-        urls.append(url)
-        return archive + (b"x" if corrupt else b"")
+    class Fetch:
+        def __init__(self):
+            self.urls: list[str] = []
 
-    fetch.urls = urls
-    return fetch
+        def __call__(self, url: str) -> bytes:
+            self.urls.append(url)
+            return archive + (b"x" if corrupt else b"")
+
+    return Fetch()
 
 
 def command(*argv, cwd=REPOSITORY_ROOT):
@@ -353,6 +355,35 @@ class InstallTests(unittest.TestCase):
         self.assertTrue(
             (project / ".concorde/framework/generated/main-session/skill.md").exists()
         )
+        # Standalone discovery ships with the runtime and runs from outside Git.
+        discovery = project / ".concorde/framework/scripts/available_models.py"
+        self.assertTrue(discovery.is_file())
+        discovered = subprocess.run(
+            [
+                str(project / ".concorde/framework/python/bin/python"),
+                str(discovery),
+                "--help",
+            ],
+            cwd=package.parent,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, discovered.returncode, discovered.stderr)
+        self.assertIn("--backend", discovered.stdout)
+        inspected = subprocess.run(
+            [
+                str(project / ".concorde/bin/concorde"),
+                "configure-workers",
+                "--show",
+                "--json",
+            ],
+            cwd=project,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, inspected.returncode, inspected.stderr)
+        self.assertEqual("show", json.loads(inspected.stdout)["output"]["action"])
+        self.assertFalse((project / ".concorde/worker-models.json").exists())
         # End-to-end testing serves Concorde's developers only.
         self.assertFalse((project / ".concorde/framework/scripts/e2e").exists())
         skill = (project / ".claude/skills/concorde/SKILL.md").read_text()
@@ -870,9 +901,11 @@ class InstallTests(unittest.TestCase):
         package = package_copy(self)
         project = package.parent / "project"
         project.mkdir()
-        with patch("concorde.distribution.tools.shutil.which", return_value=None):
-            with self.assertRaises(InstallError) as raised:
-                install(project, package, d2=False, pi=True, dependencies=False)
+        with (
+            patch("concorde.distribution.tools.shutil.which", return_value=None),
+            self.assertRaises(InstallError) as raised,
+        ):
+            install(project, package, d2=False, pi=True, dependencies=False)
         self.assertEqual("npm_missing", raised.exception.code)
         self.assertFalse((project / ".concorde/framework").exists())
 

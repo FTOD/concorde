@@ -218,12 +218,12 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN `reviewer1` gets the Operation's model and the default level, `reviewer2` its own model, the `chair` the Operation's model and its own level, and `implement` the default, each naming the entry it came from
 - AND removing the entries of `reviewer2` and `chair` and then the Operation's default leaves only the default
 
-### scenario.workers.model-refused — A model or level the program does not offer is refused
+### scenario.workers.model-refused — Validation admits custom models but rejects invalid entries
 
-- GIVEN pi listing its models
-- WHEN a change names a model it does not list, or a level the chosen model does not offer
-- THEN it is refused with `unknown_model` or `unknown_level`, naming the value and the models or levels that are listed
-- BUT a caller that admits unlisted models may name one
+- GIVEN a configuration with a custom model absent from discovery
+- WHEN the shared validator checks it without installed backends or credentials
+- THEN the custom model is accepted
+- BUT invalid structure, unknown Operation or worker names, and reasoning outside the effective backend's vocabulary are refused with `config_invalid`
 
 ### scenario.workers.model-config-invalid — An unreadable configuration is reported, never ignored
 
@@ -234,44 +234,64 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ## Changing the configuration
 
-### scenario.workers.configure-list — configure-workers lists the candidates and every worker's choice
+### scenario.workers.configure-list — Read-only inspection shows every worker's choice
 
-- GIVEN a Claude Code main session and a primary worktree without a worker model configuration
-- WHEN the main agent runs `concorde configure-workers` there
-- THEN it prints a command result with status `ok` and exits with status 0, and records no run
-- AND its output lists the models pi offers, since every worker runs on pi when nothing chooses otherwise, and for every Operation that launches workers each worker by its id with its effective backend, model and level: `spec_review` with `reviewer` and `checker`, `spec_panel` with `reviewer1` to `reviewer5` and `chair`
-- AND the execution commands, which launch no worker, are not listed
-- AND no configuration file is written
+- GIVEN a worktree without configuration and without installed agent programs
+- WHEN the main agent runs `concorde configure-workers --show --json`
+- THEN it returns the validated source and every catalog worker's effective backend, model, reasoning and sources with status `ok`
+- AND execution commands are absent, discovery is not run and no file or run record is written
 
-### scenario.workers.configure-change — A change reaches only the worktree it runs in
+### scenario.workers.configure-change — Save changes only the current worktree
 
-- GIVEN a primary worktree and an open task `t1` whose worktree has no worker model configuration
-- WHEN `concorde configure-workers` sets a default model and level in the primary worktree, then a model and level for `spec_review`'s worker `checker`
-- THEN the primary worktree's file holds both, the checker resolves its own entry and the reviewer the default, both on pi
-- AND `t1`'s worktree has no file until `concorde configure-workers`, run from any directory inside that worktree, sets a model there, which changes only that copy
-- AND the command neither records a run nor changes the task record
-- AND `--unset` of the checker's entry leaves only the default
+- GIVEN a primary worktree and a task that inherited its worker configuration
+- WHEN the developer edits and saves a draft in the task worktree
+- THEN only that task's copy changes, with unrelated entries preserved
+- AND neither a task record nor a run record changes
+- BUT edits discarded with Cancel never reach the file
 
 ### scenario.workers.configure-backend — A worker is put on Claude Code
 
-- GIVEN a primary worktree without a worker model configuration
-- WHEN `concorde configure-workers --operation spec_panel --worker chair --backend claude` runs
-- THEN the chair's entry chooses `claude`, the output lists Claude Code's candidates and names `--backend` as their source, and the chair resolves to `claude` while every reviewer stays on pi
-- AND a later pi model for the chair is refused with `configuration_refused`, since its entry runs on Claude Code
-- BUT `--candidates claude` alone lists Claude Code's models and changes nothing
+- GIVEN a default pi model and reasoning level
+- WHEN the developer selects Claude Code for the panel's chair in the draft and saves
+- THEN the chair runs on Claude Code, with no inherited pi model or reasoning, while reviewers stay on pi
+- AND selecting a new backend clears the chosen entry's own model and reasoning
+- AND no discovery or credential check is required to save
 
-### scenario.workers.configure-worker — Each worker is configured by its id
+### scenario.workers.configure-worker — Each worker and field may inherit
 
-- GIVEN a primary worktree without a worker model configuration
-- WHEN `concorde configure-workers` sets a model and level for `spec_panel`'s `reviewer1` and another for `reviewer2`
-- THEN the file holds one entry per worker id under `operations.spec_panel.workers`
-- AND the output's effective choices list `reviewer1` to `reviewer5` and `chair`, `reviewer2` with its own model and the entry it came from, and `reviewer3` with the backend's own default
-- AND `--unset` of `reviewer2` removes only that entry
+- GIVEN an Operation default and separate overrides for two panel reviewers
+- WHEN the developer removes one field or the whole entry of one reviewer and saves
+- THEN that reviewer inherits the removed fields from the more general entries
+- AND the other reviewer's override remains, with each effective field's source displayed
+- AND sections emptied by removal are pruned
 
-### scenario.workers.configure-refused — A refused change leaves the file alone
+### scenario.workers.configure-refused — Refused edits leave the file alone
 
-- GIVEN a primary worktree
-- WHEN `concorde configure-workers` names an Operation that launches no worker, a worker id the Operation does not declare, a worker without its Operation, `--candidates` together with a change, or a model the program does not list
-- THEN the command result is `failed` with exit status 1 and a `command` link `invalid_request` naming the admitted Operations or worker ids, or `configuration_refused` whose cause is Workers' `unknown_model` link
-- AND the configuration file is unchanged
-- BUT a malformed command line, or a directory outside every Git worktree, prints only an `invalid_request` link and exits with status 2
+- GIVEN a draft with invalid structure or catalog names, or a file changed externally since the editor opened
+- WHEN the developer chooses Save
+- THEN saving is refused and the file stays unchanged
+- AND the draft remains available for correction or cancellation
+- BUT obsolete mutation or candidate flags, a bare invocation without a terminal, and a directory outside Git are refused with `invalid_request` and exit 2
+
+### scenario.workers.configure-terminal — A terminal session saves only deliberately
+
+- GIVEN a worktree without a worker configuration
+- WHEN the developer opens the terminal editor and enters a custom model
+- THEN the file stays absent until Save, which writes the validated draft atomically
+- BUT Cancel, q, Escape at the top screen or Ctrl-C offers Keep editing by default or explicit Discard changes when the draft is dirty
+- AND Keep editing, Escape or a second Ctrl-C at the confirmation preserves the draft, while a clean exit needs no prompt
+
+### scenario.workers.configure-search — Search retains the selected scope
+
+- GIVEN a terminal editor with many worker scopes and a discovered list of models
+- WHEN the developer filters scopes and candidate models with `/`, chooses a model and returns from Edit
+- THEN the selected scope and its filter remain, and only the intended worker's draft entry changes
+- AND an empty search restores all rows while Save and Cancel remain available
+
+### scenario.workers.models-standalone — Discovery works outside a worktree
+
+- GIVEN a directory outside Git with configured agent programs
+- WHEN `python3 scripts/available_models.py --backend pi` or `--backend claude` runs, with optional `--json`
+- THEN it lists configured candidates with sources and reasoning levels, explaining that no inference API access was probed
+- AND pi uses its credentialed listing while Claude's aliases and settings-derived list is explicitly incomplete
+- BUT a missing program or failed listing returns a discovery error without gating custom/offline configuration

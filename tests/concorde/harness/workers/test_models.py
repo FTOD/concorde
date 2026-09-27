@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from concorde.harness import models
+from concorde.harness.available_models import candidates
 from concorde.spec.verification import verifies
 from tests.concorde.support.agent_fakes import fake_agents
+from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 def _backend(chosen: dict) -> tuple[str, str]:
@@ -97,7 +102,7 @@ class WorkerModelTests(unittest.TestCase):
             "Concorde's default worker backend",
             "CONCORDE_PI",
             "never falls back",
-            "--backend claude",
+            "edit its backend",
         ):
             self.assertIn(part, str(raised.exception))
         self.assertEqual(
@@ -107,7 +112,7 @@ class WorkerModelTests(unittest.TestCase):
 
     @verifies("scenario.workers.models-listed")
     def test_the_installed_programs_models_are_listed(self):
-        pi = models.candidates("pi", self.environ)
+        pi = candidates("pi", self.environ)
         self.assertTrue(pi["complete"])
         listed = {item["id"]: item for item in pi["models"]}
         self.assertEqual(
@@ -121,7 +126,7 @@ class WorkerModelTests(unittest.TestCase):
         (self.home / ".claude/settings.json").write_text(
             json.dumps({"model": "claude-opus-5-5"})
         )
-        claude = models.candidates(
+        claude = candidates(
             "claude",
             dict(self.environ, ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5"),
         )
@@ -136,12 +141,12 @@ class WorkerModelTests(unittest.TestCase):
         )
         missing = dict(self.environ, CONCORDE_PI=str(self.base / "nowhere"))
         with self.assertRaises(models.ModelConfigError) as raised:
-            models.candidates("pi", missing)
+            candidates("pi", missing)
         self.assertEqual("backend_missing", raised.exception.code)
 
     @verifies("scenario.workers.model-resolution")
     def test_the_most_specific_entry_wins_field_by_field(self):
-        config = {"schema_version": 3}
+        config: dict = {"schema_version": 3}
         models.set_choice(config, None, None, None, "a/default", "medium")
         models.set_choice(config, "spec_panel", None, None, "a/panel", None)
         models.set_choice(config, "spec_panel", "reviewer2", None, "a/second", None)
@@ -180,19 +185,67 @@ class WorkerModelTests(unittest.TestCase):
         self.assertNotIn("operations", config)
 
     @verifies("scenario.workers.model-refused")
-    def test_a_model_or_level_the_program_does_not_offer_is_refused(self):
-        found = models.candidates("pi", self.environ)
-        with self.assertRaises(models.ModelConfigError) as raised:
-            models.check_choice(found, "pi", "a/nope", None, False, "a/nope")
-        self.assertEqual("unknown_model", raised.exception.code)
-        self.assertIn("anthropic/claude-sonnet-5", str(raised.exception))
-        with self.assertRaises(models.ModelConfigError) as raised:
-            models.check_choice(
-                found, "pi", None, "high", False, "local-openai/plain-7"
+    def test_validation_accepts_custom_models_and_rejects_invalid_structure(self):
+        config = {
+            "schema_version": 3,
+            "default": {"model": "offline/custom", "reasoning": "high"},
+        }
+        models.validate_config(config)
+        models.save(self.base, config)
+        self.assertEqual(
+            "offline/custom",
+            models.worker_choice(config, "implement", "worker", self.environ)["model"],
+        )
+        for invalid in (
+            {"schema_version": 3, "default": {"model": " "}},
+            {"schema_version": 3, "default": {"model": "\x00"}},
+            {"schema_version": 3, "default": {"model": "custom\n"}},
+            {"schema_version": 3, "default": {"reasoning": "bogus"}},
+            {"schema_version": 3, "default": {"backend": "claude", "reasoning": "off"}},
+            {"schema_version": 3, "operations": {"typo": {"default": {"model": "x"}}}},
+            {"schema_version": 3, "operations": {"delivery": {}}},
+        ):
+            with (
+                self.subTest(config=invalid),
+                self.assertRaises(models.ModelConfigError),
+            ):
+                models.validate_config(invalid)
+
+    @verifies("scenario.workers.models-standalone")
+    def test_standalone_discovery_outside_git_and_missing_program(self):
+        script = REPOSITORY_ROOT / "scripts/available_models.py"
+        for backend in ("pi", "claude"):
+            done = subprocess.run(
+                [sys.executable, str(script), "--backend", backend, "--json"],
+                cwd=self.base,
+                env=dict(os.environ, **self.environ),
+                capture_output=True,
+                text=True,
             )
-        self.assertEqual("unknown_level", raised.exception.code)
-        self.assertIn("levels: off", str(raised.exception))
-        models.check_choice(found, "pi", "a/nope", None, True, "a/nope")
+            self.assertEqual(0, done.returncode, done.stderr)
+            value = json.loads(done.stdout)
+            self.assertEqual(backend, value["backend"])
+            self.assertIn("no API call is probed", value["note"])
+        done = subprocess.run(
+            [sys.executable, str(script), "--backend", "pi", "--json"],
+            cwd=self.base,
+            env=dict(
+                os.environ, **dict(self.environ, CONCORDE_PI=str(self.base / "missing"))
+            ),
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(1, done.returncode)
+        self.assertEqual("backend_missing", json.loads(done.stdout)["error"]["code"])
+
+    def test_duplicate_json_keys_are_refused(self):
+        path = models.config_path(self.base)
+        path.parent.mkdir()
+        path.write_text(
+            '{"schema_version": 3, "default": {"model": "x", "model": "y"}}'
+        )
+        with self.assertRaisesRegex(models.ModelConfigError, "duplicate key"):
+            models.load(self.base)
 
     @verifies("scenario.workers.model-config-invalid")
     def test_an_unreadable_configuration_is_reported(self):

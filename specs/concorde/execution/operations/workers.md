@@ -21,8 +21,13 @@ launch the step resolves, for the worker the provider names by its id — or its
 [worker backend](../workers/module.md#concept.workers.backend), the model and the reasoning level
 from the run worktree's [worker model
 configuration](../workers/module.md#concept.workers.model-configuration); the backend is pi unless
-the configuration chooses Claude Code for that worker, its Operation or every worker. Workers
-records the Operation, worker id, backend and where it came from, model and level in the run
+the configuration chooses Claude Code for that worker, its Operation or every worker.
+The shared validator checks the file's structure and every configured Operation and worker name
+against the catalog before resolving any worker. It does not discover models or require
+credentials; custom/offline model names remain valid. A malformed or unknown-name entry fails
+even when it is for a different Operation, so runtime and editor validation agree.
+
+Workers records the Operation, worker id, backend and where it came from, model and level in the run
 record, and the step adds `worker-model` evidence naming the worker id, the backend and its source,
 the model and the level the worker ran with. When the worker's program is not installed or the
 configuration file cannot be read, the step stops `failed` with `worker_model_unavailable` before
