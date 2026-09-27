@@ -1,0 +1,56 @@
+{
+  "workspace": "installer-pi-runtime",
+  "goal": "Install the pi worker runtime by default, since workers run on pi by default: plain installs and updates place it (updates add it to installs that lack it) unless --without-pi-runtime; --pi only adds the pi main-session files, and --update --pi adds them to an existing install.",
+  "modules": [
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "ace3f84b7e6c5b614f30107f4b2dbcbaf6e2a70c",
+  "parent_commit": "29aa78a98520d843cc0a08348df2afa72e50f9a2",
+  "readiness": {
+    "run_id": "r-20260927T162122-delivery-7e99c517",
+    "input_digest": "sha256:c374bae7d10afab16068a5940b0c546a28be800ee62ecdeeaed24b94c6b969b3",
+    "modules": [
+      "module.concorde",
+      "module.distribution",
+      "module.dogfooding"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:d4a58d6969ac47ecb1b8c283884a1c884791732060d3df18dde5e048b37e7a01"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:71c129c57c868b91c1fd9ec35741353619c37efd5e504c4bdf2ef59f9ff501c5"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:0fbfa0de506c35603b18c0846e37b30eebfc06d7eab58be52e4622f9d2b5538f"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260927T162100-task_validation-b17c13f0",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:55965228f45c7cbc4c329c0a638fd7a7c250f59bd3f1c41262c1b9f084a5b247"
+    }
+  ],
+  "created_at": "2026-09-27T16:21:45Z"
+}
