@@ -1076,6 +1076,11 @@ several sets, it receives the highest level any of them assigns, ordered `none`,
 
 # Required format
 
+This is the structure and syntax part of [Spec writing guidelines](writing.md), covering the
+machine-checkable rules. Read it with [Writing guidance](module.md), which explains the content
+readers need and the judgments authors and reviewers must make. Semantic requirements still apply
+where they accompany a format rule; the [Checks](checks.md) chapter states what tools establish.
+
 This chapter defines how the [node types](model.md) and [relations](relations.md) are written.
 The fixed reading structure serves understanding: every Module reads the same way. The fixed
 declaration syntax serves boundaries: a tool computes every set without interpreting prose.
@@ -1589,7 +1594,7 @@ relation is declared, whichever Module declares it, so the outside view may draw
 `uses` of this Module or a `relates` from one of its realizations to another Module. Realizations
 that only keep the repository running, such as project configuration, development tooling or test
 suites, are left to prose: a diagram shows architecture, not an inventory of files. See
-[Module specifications](module.md#diagrams).
+[Writing guidance](module.md#diagrams).
 
 ````markdown
 ```d2

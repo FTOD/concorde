@@ -578,8 +578,10 @@ proposal fails with `stale_proposal`, and a validation error rolls every file ba
 `version` is the Protocol version. `source_profile` and `workspace_protocol` are compatibility
 numbers of the bundle sources and of the configuration profile the bundle was released with; the
 loader reads neither. The assets are `generated/protocol/principles.md` (the Protocol chapters, assembled from
-`prompts/protocol/principles.md`) and `generated/protocol/kinds/module.md` (the Module chapter and
-the templates, from `prompts/protocol/kinds/module.md`). The bundle sources include nothing but
+`prompts/protocol/principles.md`) and `generated/protocol/kinds/module.md` (Spec writing guidelines:
+the overview, Required format, Writing guidance and the templates, assembled from
+`prompts/protocol/kinds/module.md`). Required format remains in the principles bundle as well, so
+each guide includes the syntax its readers need. The bundle sources include nothing but
 Protocol text. The installer copies the manifest and the assets into `.concorde/protocol/`. The
 project's binding is the manifest's `version` and the digest of the manifest's bytes. The loader
 reads the installed copy, checks each asset against its recorded digest, and requires the copy's

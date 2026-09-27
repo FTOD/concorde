@@ -193,8 +193,11 @@ The `code-to-spec` task type is what makes this legal: it reads the bound Module
 ImplementationScope and writes their SpecScope, which no other task type combines. The survey runs
 under the same task type with the Spec side withheld, as the Protocol lets a harness give less than
 a type assigns, so it can read code and write nothing. As for `specify`, the code_to_spec brief
-states the rules for writing Spec documents and ends with the project's copy of the Protocol's
-writing guide, since no grant shows the Protocol copy. Both workers get only Read, Glob and Grep,
+states the rules for writing Spec documents and ends with the project's copy of Spec writing
+guidelines, since no grant shows the Protocol copy. That guide includes the overview, Required
+format, Writing guidance and templates: both machine-checkable structure and syntax and content
+requiring reader and editor judgment. Structural validation does not establish semantic
+sufficiency. Both workers get only Read, Glob and Grep,
 and the code_to_spec worker also Edit and Write; neither gets Bash, so neither can run the code it
 describes. What the code does is taken from reading it.
 

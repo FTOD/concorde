@@ -1,8 +1,347 @@
-# Module specifications
+# Spec writing guidelines
+
+Use these guidelines to write and review a Module's Specs. They have two separately maintained
+parts, used together:
+
+- **[Required format](format.md)** defines the machine-checkable structure and syntax: document
+  pairs, declarations, metadata, identities, anchors, reading sections and precise obligations.
+- **[Writing guidance](module.md)** explains what the content must communicate to its intended
+  reader: responsibility, terminology, correct use, design, collaborations and meaningful diagrams.
+  Applying it requires reader and editor judgment.
+
+Both parts serve the Protocol's purposes of understanding and boundaries. Semantic writing
+requirements still apply when structural checks pass. Mandatory terms retain their force in both
+parts: **MUST** and **MUST NOT** state requirements and prohibitions, **SHOULD** allows departure
+for an explained reason, and **MAY** permits a choice. The chapter titles do not change these
+meanings or introduce new conformance checks.
+
+Start with the reader's problem and the Module's responsibility, use Required format to express
+its declarations, and use Writing guidance to explain their meaning. The
+[Module entry template](templates/module.md) and [Scenario fragment](templates/scenario.md) are
+starting points. Keep diagrams next to the prose they clarify, choosing a lightweight workflow
+for process progression or another view suited to the reader's question; see
+[Writing guidance on diagrams](module.md#diagrams).
+
+[Checks](checks.md) establish structural conformance only. Review the content for semantic
+sufficiency as well; evidence from the implementation establishes implementation conformance.
+None of these substitutes for another; see [Conformance](principles.md#conformance).
+
+# Required format
+
+This is the structure and syntax part of [Spec writing guidelines](writing.md), covering the
+machine-checkable rules. Read it with [Writing guidance](module.md), which explains the content
+readers need and the judgments authors and reviewers must make. Semantic requirements still apply
+where they accompany a format rule; the [Checks](checks.md) chapter states what tools establish.
+
+This chapter defines how the [node types](model.md) and [relations](relations.md) are written.
+The fixed reading structure serves understanding: every Module reads the same way. The fixed
+declaration syntax serves boundaries: a tool computes every set without interpreting prose.
+Satisfying the syntax establishes structural conformance only; it proves nothing about meaning.
+
+## Documents
+
+A registered document is a pair: an explicit project-relative Markdown reading path, and that same
+path with `.json` appended. `checkout/module.md` and `checkout/module.md.json` are **one** document.
+
+Reading files are nonempty UTF-8 Markdown. Metadata files are UTF-8 JSON with unique keys and no
+non-JSON numeric constants. Paths use canonical project-relative POSIX spelling: no absolute paths,
+backslashes, empty, dot or traversal components, control characters or symlink aliases.
+
+Both members always travel together: same owner, same identity, same selection provenance, both in
+context, both in source digests. Registering a reading path
+registers its exact companion. Tools MUST NOT discover documents from the filesystem or by
+following Markdown links; this is what lets every boundary set be enumerated from declarations
+alone.
+
+## Module declaration
+
+A Module declares itself and its Module-level relations in a `module` block of its **entry's**
+metadata. This is the one declaration site of those relations: a task bound to the Module reads and
+writes it as part of its own documents, and learns who it relates to without any global file.
+
+```json
+{
+  "schema_version": 3,
+  "document": {"id": "document.checkout.module", "owner": "module.checkout", "role": "module"},
+  "module": {
+    "title": "Checkout",
+    "owns": ["checkout/module.md", "checkout/contracts.md"],
+    "contains": [],
+    "uses": [
+      {"target": "module.inventory", "meaning": "#uses-inventory",
+       "relies_on": ["req.inventory.hold-expiry", "concept.inventory.reservation",
+                     "contract.inventory.reserve"]}
+    ],
+    "includes": [
+      {"kind": "document", "target": "document.delivery-terms", "reason": "delivery window wording"},
+      {"kind": "external", "target": "references/payment-sdk/", "reason": "payment request fields"}
+    ],
+    "participates": [
+      {"contract": "contract.inventory.reserve", "version": 1, "role": "required",
+       "peer": "module.inventory", "meaning": "checkout/contracts.md#reserve-participation"}
+    ]
+  },
+  "defines": [],
+  "relations": []
+}
+```
+
+- The `module` block appears in the entry's metadata and in no other document. The Module's
+  identity is the entry's `document.owner`.
+- `title` is required. Module titles are unique in the project.
+- `owns` lists reading paths, is nonempty and includes the entry itself.
+- `contains` and `uses` entries have `target` and `meaning`, and optionally a nonempty `relies_on`
+  list of identities of requirements, scenarios, contracts and concepts the target owns. Without
+  `relies_on` the whole target is selected.
+- `includes` entries have `kind` (`module`, `document` or `external`), `target` (a Module identity,
+  a document identity, or a project-relative path; a directory ends in `/`) and a nonempty `reason`.
+- `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
+  Module identity or `external`) and `meaning`.
+- `contains`, `uses`, `includes` and `participates` are explicit arrays and MAY be empty.
+- A relation `meaning` is a local `#anchor` into the entry, or a qualified `<reading path>#<anchor>`
+  into another document the Module owns.
+
+## Project registry
+
+The project registry is the index of all Modules and a **mirror** of their declarations. It gives
+a project-wide view, such as the one a coordinating session uses to plan work and set each task's
+boundary, without opening every Module. It is not a declaration site.
+
+```json
+{
+  "modules": [
+    {"id": "module.checkout", "title": "Checkout", "entry": "checkout/module.md",
+     "owns": ["checkout/module.md", "checkout/contracts.md"], "contains": [],
+     "uses": [{"target": "module.inventory", "meaning": "#uses-inventory",
+               "relies_on": ["req.inventory.hold-expiry", "concept.inventory.reservation",
+                             "contract.inventory.reserve"]}],
+     "includes": ["..."], "participates": ["..."]}
+  ]
+}
+```
+
+- Every Module has exactly one registry record: `id`, `title`, `entry` (the entry's reading path)
+  and every field of its `module` block, equal to that block.
+- The registry lists which Modules exist. A tool MAY regenerate the mirrored fields from the
+  entries; adding or removing a Module is a deliberate registry change.
+- A disagreement between the registry and an entry is a structural error
+  (`CHK.registry.mirror`). Neither side silently wins; the change that caused it is reconciled.
+
+The Protocol fixes the registry's content. Its serialization and location are a tool agreement.
+
+## Metadata
+
+```json
+{
+  "schema_version": 3,
+  "document": {"id": "document.checkout.topic.holds", "owner": "module.checkout", "role": "module"},
+  "defines": [
+    {"id": "concept.checkout.basket", "type": "concept", "title": "Basket",
+     "meaning": "#concept.checkout.basket"},
+    {"id": "concept.checkout.hold", "type": "concept", "title": "Hold",
+     "meaning": "#concept.checkout.hold"},
+    {"id": "realization.checkout.service", "type": "realization", "title": "Checkout service",
+     "meaning": "#realization.checkout.service", "entries": ["src/checkout/"], "pending": []}
+  ],
+  "relations": [
+    {"type": "narrows", "source": "concept.checkout.hold",
+     "target": "concept.inventory.reservation"},
+    {"type": "contrasts", "source": "concept.checkout.basket", "target": "concept.catalog.basket",
+     "reason": "a catalog basket is a saved wish list; this one is submitted immediately"},
+    {"type": "relates", "source": "realization.checkout.service", "verb": "records",
+     "target": "concept.checkout.hold"}
+  ],
+  "extensions": {}
+}
+```
+
+- `schema_version` is the integer `3`.
+- `document` has exactly `id`, `owner` and `role`, agreeing with the owner's `owns`. `role` is
+  exactly `module` or `implementation` with no default; the entry `module.md` has role `module`.
+- `module` is present exactly in the entry; see [Module declaration](#module-declaration).
+- `defines` lists only `concept` and `realization` records. Concepts are defined only in `module`
+  documents, and each concept's definition is its row in the document's Terminology table.
+  Requirements, scenarios and contracts are located by their reading syntax below.
+- `relations` lists `narrows`, `supersedes`, `contrasts` and `relates`, each naming a `source` that
+  this document defines or, for `relates`, the owning Module itself. Imports are declared by
+  Terminology rows, not here.
+- `defines` and `relations` are explicit arrays and MAY be empty.
+- `extensions`, if present, is an object keyed by stable names holding tool data. A tool MUST define
+  and validate the extension vocabulary it uses. An extension MUST NOT create a relation, change
+  ownership or selection, or hide essential meaning.
+
+## Identities and anchors
+
+Module, document, concept, realization, requirement, scenario and contract identities are
+project-wide unique and match:
+
+```text
+^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$
+```
+
+Requirement identities begin `req.`; scenario identities begin `scenario.`. Prefixes do not
+establish ownership. Stable identities let links survive renames and moves, and let boundaries,
+reviews and tests name exactly one thing.
+
+A readable anchor is one of three forms:
+
+- a **standalone** line of one or more `<a id="identity"></a>` before its explanation, which
+  extends to the next heading;
+- an **opening** group of one or more `<a id="identity"></a>` at the very start of a paragraph or of
+  a list item's text, which explains exactly that paragraph or list item: the paragraph ends at the
+  next blank line, heading or fence, and the list item also at the next list item that is not
+  indented deeper;
+- an ATX heading carrying a trailing `{#identity}`, which extends to the next heading of the same or
+  higher level. Requirement and scenario headings supply their identity directly.
+
+A standalone or heading anchor also ends at the next anchor group. Anchors are unique within their
+document and outside fences, and an anchor anywhere else, such as inside a sentence or a table, is
+not a readable anchor.
+
+Several anchors in one group identify several nodes explained together by the same prose, and that
+prose MUST explain all of them. The region of an anchor is the text a tool attributes to its nodes,
+for instance when it compares definitions between revisions, so an opening group is the precise
+choice for an item in a list of short explanations.
+
+## Reading structure
+
+An entry `module.md` has these level-2 sections, outside fences, each exactly once and in any order:
+
+```text
+Purpose
+Terminology
+Usage
+Design
+```
+
+It MAY have further level-2 sections, but none titled `Relationships`: how the Module relates to its
+children and to other Modules is part of Design. A level-1 title and brief navigation may precede
+the first of them. Purpose is nonempty plain prose: no lists, tables, nested headings or fences.
+Usage and Design contain explanatory prose, not only links, headings or diagrams. Honest unknowns
+are stated explicitly.
+
+A `module`-role topic begins with a short orienting introduction. When the topic defines or imports
+a concept, its first level-2 section is `## Terminology`. In the entry, Terminology may hold only
+prose when the entry defines and imports nothing.
+
+`module` documents MUST NOT contain requirement or scenario definitions or canonical contract
+fences. `implementation` documents contain those definitions and MAY group them under headings
+that carry no identity. Both roles are reading content; role never filters context.
+
+Exact private APIs, wire fields, serialization rules, internal limits and executable topology belong
+in `implementation` reading regardless of the syntax used to write them. Conceptual design and
+safe-use explanation stay in `module` reading. A `module` document MUST NOT hide destructive
+defaults, security limits or known unfulfilled guarantees behind a link.
+
+## Terminology
+
+The Terminology section of a `module` document holds exactly one Markdown table with the columns
+`Term` and `Definition`, optionally followed by orienting prose. Every row is one of two kinds:
+
+```markdown
+## Terminology
+
+| Term | Definition |
+| --- | --- |
+| Hold | Stock withheld from other customers until a submission succeeds or expires. |
+| [Reservation](../inventory/module.md#concept.inventory.reservation) | |
+```
+
+- A **defining row** has the plain title of a concept this document defines and its definition: one
+  sentence. The row is the definition's only home; the metadata record holds the concept's identity,
+  title, explanation anchor and relations.
+- An **import row** has a link to another Module's concept, addressed by that concept's identity,
+  and an empty `Definition` cell. The row declares the `imports` relation. It never copies the
+  definition, because copies drift; the link text is free, so renaming the concept breaks nothing.
+
+The rows correspond one to one with the concepts the document defines and imports. A document with
+neither has no table. A publisher MAY show imported definitions inline; that enrichment is a
+[view](views.md) and never written into the file.
+
+Each definition is written once, in its owner's table. A change to it rewrites no document of an
+importer; the importer's context still changes, because the defining document is in it.
+
+## Requirements
+
+In an `implementation` document, a requirement is a level-2 to level-5 ATX heading
+`req.<identity> — Title`, followed by its statement. A spaced en dash or hyphen is accepted.
+
+```markdown
+### req.checkout.single-order — One order per submission
+
+Checkout SHALL create at most one order for a successfully admitted request.
+```
+
+The first paragraph is one sentence containing uppercase `SHALL` or `SHALL NOT` exactly once. The
+section ends at the next heading of any level and contains no nested heading. Later paragraphs,
+lists and fences explain the statement; a list item beginning with a requirement identity is
+invalid.
+
+## Scenarios
+
+In an `implementation` document, a scenario is a level-2 to level-5 ATX heading
+`scenario.<identity> — Title`, followed by its steps.
+
+```markdown
+### scenario.checkout.submit — Successful checkout
+
+- GIVEN a customer has a valid basket and delivery details
+- WHEN the customer submits it
+- THEN Checkout creates one order
+- AND returns its identifier
+- BUT does not charge the payment method twice
+```
+
+Every list item in the section is a step beginning with `GIVEN`, `WHEN`, `THEN`, `AND` or `BUT` and
+a space. The first step is `GIVEN` or `WHEN`; at least one `WHEN` and one `THEN` are required.
+`AND` and `BUT` continue the preceding kind, and the sequence never returns to an earlier kind. The
+section ends at the next heading of any level and has no nested heading. Prose may explain the
+situation.
+
+## Canonical contracts
+
+In an `implementation` document, a `concorde-contract` JSON fence defines exactly `id`, `version`,
+`schema`, `semantics`, `example`. The version is a positive integer, `semantics` is nonempty, and
+the example satisfies the schema. Schema references MUST NOT load Spec documents or remote
+resources. Publishers expose the contract identity as an anchor at the fence.
+
+A schema is checked offline and uses only these JSON Schema keywords: `$schema`, `$id`, `$defs`, `$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and `format`. Any other keyword, such as `propertyNames` or `patternProperties`, is an error;
+what it would express goes into `semantics`.
+
+No role or peer appears in a definition; those belong to `participates`. A behaviour or schema
+change increments the version, and every participant is reconciled in the same change. Editorial
+changes need no version increment.
+
+## Diagrams
+
+Diagrams in reading are D2 blocks. A `d2` block is either a **checked diagram**, written in the
+semantic subset and allowed only in `module` reading, or marked `d2 illustrative`. A block in any
+other diagram language, such as Mermaid, is an error. The rules are in [Views](views.md).
+
+## Links
+
+Ordinary Markdown links navigate to readable definitions. A stable-identity fragment MUST name an
+actual definition in the addressed reading document; other fragments use the renderer's slug rules.
+A link never adds a document to context.
+
+## Evidence declarations
+
+A test declares the scenario identities it verifies in the test source, in a syntax documented by
+the development tool. Tools read these declarations without executing tests and reject unknown
+identities. Reading content MUST NOT contain that syntax outside fences, list test locations or
+prescribe coverage declarations.
+
+# Writing guidance
+
+<a id="module-specifications"></a>
+
+This is the content part of [Spec writing guidelines](writing.md). Its companion,
+[Required format](format.md), defines the machine-checkable structure and syntax. This chapter
+explains what the **reading content** must communicate; applying it requires reader and editor
+judgment. Its semantic requirements remain in force even when structural checks pass.
 
 [Node types](model.md) and [Relations](relations.md) define what a specification declares.
-[Format](format.md) defines how declarations are written. This chapter defines what the **reading
-content** must explain, because no declaration establishes understanding.
+No declaration alone establishes understanding.
 
 This chapter serves understanding above all: it is what makes a structurally valid specification
 worth reading.
@@ -78,7 +417,7 @@ non-goals. Short plain prose. A directory or package name establishes no respons
 ### Terminology
 
 List the words a reader needs before Usage and Design make sense, in the table defined by
-[Format](format.md#terminology): one row per concept this document defines, with its one-sentence
+[Required format](format.md#terminology): one row per concept this document defines, with its one-sentence
 definition, and one link-only row per concept it imports from another Module.
 
 Deciding which concepts exist is substantive. Declare a concept for a domain word, a record, a
@@ -227,8 +566,9 @@ are ordinary specification changes and leave every doubtful intent a reported ga
 
 # Module entry template
 
-A starter for `module.md`. Satisfying this shape establishes nothing about meaning; see
-[Module specifications](../module.md) for what each section must explain.
+A starter for `module.md`. Begin with [Spec writing guidelines](../writing.md) and use both parts:
+[Required format](../format.md) for structure and syntax, and [Writing guidance](../module.md) for
+what each section must explain. Satisfying this shape establishes nothing about meaning.
 
 Register the entry in the project registry and write its paired `.md.json` with
 `schema_version: 3`, `document.role: module`, the `module` block and explicit `defines` and
@@ -408,6 +748,10 @@ The project registry mirrors the `module` block and adds the entry path:
 ````
 
 # Scenario fragment
+
+Use both parts of [Spec writing guidelines](../writing.md):
+[Required format](../format.md#scenarios) for the step syntax and
+[Writing guidance](../module.md#precise-obligations) for choosing and explaining the situation.
 
 A scenario belongs to the Module owning its defining document. It may describe boundary use or an
 internal verification situation. It is not a separate Spec kind, document owner or context filter.

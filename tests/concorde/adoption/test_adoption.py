@@ -838,7 +838,10 @@ class AdoptionTests(unittest.TestCase):
         self.assertIn("Describing the code you read", fake["prompt"])
         # Spec-writing workers see no Protocol file, so the brief carries the project's guide.
         self.assertIn("The Protocol's writing guide", fake["prompt"])
-        self.assertIn("# Module specifications", fake["prompt"])
+        self.assertIn("# Spec writing guidelines", fake["prompt"])
+        self.assertIn("# Required format", fake["prompt"])
+        self.assertIn("# Writing guidance", fake["prompt"])
+        self.assertIn("# Module entry template", fake["prompt"])
         self.assertIn("holds only `concept` and `realization` records", fake["prompt"])
         self.assertEqual("", git(self.worktree, "status", "--porcelain", "src"))
         owned = json.loads((entry.parent / "module.md.json").read_text())["module"][

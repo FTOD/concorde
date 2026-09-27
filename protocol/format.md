@@ -1,5 +1,10 @@
 # Required format
 
+This is the structure and syntax part of [Spec writing guidelines](writing.md), covering the
+machine-checkable rules. Read it with [Writing guidance](module.md), which explains the content
+readers need and the judgments authors and reviewers must make. Semantic requirements still apply
+where they accompany a format rule; the [Checks](checks.md) chapter states what tools establish.
+
 This chapter defines how the [node types](model.md) and [relations](relations.md) are written.
 The fixed reading structure serves understanding: every Module reads the same way. The fixed
 declaration syntax serves boundaries: a tool computes every set without interpreting prose.

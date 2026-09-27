@@ -1,7 +1,8 @@
 # Module entry template
 
-A starter for `module.md`. Satisfying this shape establishes nothing about meaning; see
-[Module specifications](../module.md) for what each section must explain.
+A starter for `module.md`. Begin with [Spec writing guidelines](../writing.md) and use both parts:
+[Required format](../format.md) for structure and syntax, and [Writing guidance](../module.md) for
+what each section must explain. Satisfying this shape establishes nothing about meaning.
 
 Register the entry in the project registry and write its paired `.md.json` with
 `schema_version: 3`, `document.role: module`, the `module` block and explicit `defines` and
