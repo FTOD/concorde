@@ -19,7 +19,9 @@ is role `implementation`, an **Implementation documents** tab, both showing the 
 from `contains`. Every **[canonical page](../../glossary.json#concept.canonical-page)** sits under
 its owner; a Module reading it through `uses` or `includes` links there instead of copying it. Each
 page shows its owner, the Modules selecting it and why, and its source digests, with every identity
-anchored, imports showing the imported definition, and illustrative diagrams labelled non-normative.
+anchored, term links leading to the glossary page, and illustrative diagrams labelled
+non-normative. The glossary is one page under the root Module, and an owning Module's entry page
+lists the terms it owns.
 
 <a id="concept.user-documents"></a><a id="concept.custom-docs"></a>
 
@@ -39,9 +41,10 @@ may contain a registered document, or is ever agent context.
 | `npm run validate` | Checks without building. |
 | `npm run build` | Builds a **[publication candidate](../../glossary.json#concept.publication-candidate)**, checks it, and promotes it to the **[published site](../../glossary.json#concept.published-site)** in `docsite/build/`. |
 
-A successful build writes a **[site build manifest](../../glossary.json#concept.site-build-manifest)** — every
-page's route, owner and source digests, nothing about the code. A failure, such as a moved anchor's
-link, deletes the candidate and keeps the published site.
+A successful build writes a
+**[site build manifest](../../glossary.json#concept.site-build-manifest)** — every page's route,
+owner and source digests, nothing about the code. A failure, such as a moved anchor's link, deletes
+the candidate and keeps the published site.
 
 <a id="concept.scaffold-proposal"></a><a id="concept.site-identity"></a>
 
@@ -167,5 +170,6 @@ Distribution calls the scaffold and packages it — `distribution -> views` abov
 declared there. Its CLI dispatches `concorde docsite` to the scaffold, which reads templates from
 the installed package, returning `invalid` (asking for a reinstall) if `concorde.json` omits
 `docsite` as a package root or lists it unsafely; its installer ships `docsite/` by the inventory
-rule Views defines, so the two cannot disagree on the template. Its [build manifest](../../glossary.json#concept.build-manifest), unrelated to
-the docsite's, records Concorde's own build outputs.
+rule Views defines, so the two cannot disagree on the template. Its
+[build manifest](../../glossary.json#concept.build-manifest), unrelated to the docsite's, records
+Concorde's own build outputs.

@@ -615,13 +615,20 @@ def _remote_reference(schema) -> bool:
     return False
 
 
+def _prose_block(lines) -> str:
+    """The reading with every non-prose line emptied and inline code blanked, one string whose
+    line breaks and columns are the reading's, so a link whose text wraps is one match."""
+    return "\n".join(
+        INLINE_CODE.sub(_blank, line) if kind == "prose" else ""
+        for _, kind, line in lines
+    )
+
+
 def _links(lines, reading: Reading) -> None:
-    for number, kind, line in lines:
-        if kind != "prose":
-            continue
-        text = INLINE_CODE.sub("", line)
-        for match in LINK.finditer(text):
-            reading.links.append((number, match.group(2)))
+    block = _prose_block(lines)
+    for match in LINK.finditer(block):
+        # A link is attributed to the line its target is on.
+        reading.links.append((block.count("\n", 0, match.start(2)) + 1, match.group(2)))
 
 
 def parse_reading(text: str) -> Reading:
@@ -736,14 +743,16 @@ def prose_text(text: str) -> list[tuple[int, str]]:
     ``CHK.term.unlinked`` searches this text for term titles, so a title inside inline code, a
     link's text or target, an anchor or a heading never counts as an unlinked use.
     """
+    lines = walk_lines(text)
+    # Links are blanked over the whole prose, since a link's text may wrap onto the next line.
+    block = LINK.sub(
+        lambda match: re.sub(r"[^\n]", " ", match.group(0)), _prose_block(lines)
+    ).split("\n")
     result = []
-    for number, kind, line in walk_lines(text):
+    for (number, kind, line), stripped in zip(lines, block):
         if kind != "prose" or HEADING.match(line):
             continue
-        stripped = INLINE_CODE.sub(_blank, line)
-        stripped = LINK.sub(_blank, stripped)
-        stripped = HTML_ANCHOR.sub(_blank, stripped)
-        result.append((number, stripped))
+        result.append((number, HTML_ANCHOR.sub(_blank, stripped)))
     return result
 
 

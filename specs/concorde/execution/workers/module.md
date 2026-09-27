@@ -111,8 +111,7 @@ workers of one Operation on different backends exchange nothing but the structur
 validates.
 
 Workers also reads the **main session's program** from the environment, for
-[[Task](../../glossary.json#concept.task)
-sessions](../../coordination/[task-session](../../glossary.json#concept.task-session)/module.md),
+[Task sessions](../../coordination/task-session/module.md),
 which run on it: `CONCORDE_CLIENT` when set (Concorde's pi extension sets it to `pi`), otherwise
 `claude` when `CLAUDECODE=1`, which Claude Code sets for its commands, otherwise `pi` when pi's
 `PI_SESSION_ID` or `PI_CODING_AGENT` is set. It refuses with `client_unknown` when none names one
@@ -310,10 +309,10 @@ the [standard worker sequence](../../glossary.json#concept.standard-worker-seque
 Specification, Implementation, Code review, Adoption and Spec review. No
 [execution command](../../glossary.json#concept.execution-command) launches a worker, and nothing
 above level 4 does: a workflow reaches workers through its Operations, and neither the main agent
-nor a task session ever starts one. Below it, the worker calls nothing of Concorde's: it never
-touches Git, runs an Operation or starts an agent. Between rounds the Workers host code, not the
-worker, calls Check execution, so that a failing check can drive another round inside the same
-Operation.
+nor a [task session](../../glossary.json#concept.task-session) ever starts one. Below it, the worker
+calls nothing of Concorde's: it never touches Git, runs an Operation or starts an agent. Between
+rounds the Workers host code, not the worker, calls Check execution, so that a failing check can
+drive another round inside the same Operation.
 
 Results travel up in one direction. The worker ends with its worker result; Workers keeps it
 verbatim in the run record beside its own evidence and returns the record to the Operation's step,

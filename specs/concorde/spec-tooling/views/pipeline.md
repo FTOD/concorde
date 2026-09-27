@@ -31,17 +31,21 @@ Loading fails with an `Error` naming the source when:
 - metadata is not schema 3, has unknown fields, names another owner, or has a `role` other than
   `module` or `implementation`;
 - an entry's metadata lacks the `module` block, or any other document's metadata has one;
-- an entry has role `implementation`, does not have the level-2 headings Purpose, Terminology,
-  Usage and Design, each exactly once, or has a level-2 Relationships section — the loader rejects
+- an entry has role `implementation`, does not have the level-2 headings Purpose, Usage and
+  Design, each exactly once, or has a level-2 Relationships section — the loader rejects
   it (`requireReading` in `docsite/plugins/scoped-content/reading-format.ts`), since a Module's
   relationships belong in its Design;
 - a `module`-role document contains a requirement or scenario heading or a `concorde-contract`
-  fence, or an `implementation`-role document defines a concept;
+  fence, or any document's metadata holds a concept record;
 - a document contains a Mermaid block: diagrams in reading are D2;
-- a concept or realization `meaning` anchor has no readable prose;
+- a realization `meaning` anchor, or a concept's explanation anchor, has no readable prose;
+- the glossary is malformed, not sorted by identity, declared by more than one Module or by a
+  contained one, or has an entry whose identity or title repeats, whose owner is no registered
+  Module, whose explanation is not in a `module` document of its owner, or whose definition links
+  an undeclared concept;
 - a `concorde-contract` fence has no valid identity or no positive integer version (the publisher
   does not check the schema or example; the Spec validator does);
-- a Terminology import row links to a concept anywhere but its defining document;
+- a term link names a concept the glossary does not declare;
 - a `relies_on` identity names no node defined by the relation's target, or an inclusion names an
   unknown Module or document;
 - two documents would share a route.
@@ -95,16 +99,16 @@ no other route.
    the reading with these rewrites, applied outside fenced code only:
    - **links**: a relative Markdown link `[label](path)` or image `![label](path)` whose target
      path resolves, relative to the source file, to a registered document is replaced by that
-     page's route; the query and fragment are kept in order. A path that resolves to no
-     registered document fails staging. URLs with a scheme or starting with `/`, bare
-     `#fragment` links and links inside inline code spans are left unchanged;
-   - **imported definitions** (in `module`-role documents): the empty definition cell of each
-     Terminology import row is filled with the definition from the defining row, its links
-     addressed from the defining page, followed by *Imported from [Owner](entry route)*. A cell
-     that is already written is left as written;
-   - **concept and realization anchors**: a defining Terminology row whose concept has no anchor
-     in the reading gets one; any other node whose identity the reading does not carry gets an
-     anchor at its `meaning` anchor;
+     page's route; the query and fragment are kept in order. A link whose target is the
+     glossary is replaced by the glossary page's route, with the concept's anchor when it has a
+     fragment; a fragment naming no declared concept fails staging. A path that resolves to no
+     registered document fails staging. A link's text may wrap onto the next line. URLs with a
+     scheme or starting with `/`, bare `#fragment` links and links inside inline code spans are
+     left unchanged;
+   - **realization anchors**: a node whose identity the reading does not carry gets an anchor at
+     its `meaning` anchor;
+   - **owned terms**: the entry page of a Module that owns concepts ends with a Terms list linking
+     each to the glossary page;
    - **definition headings**: a level-2 to level-5 heading `req.<id> — Title` or
      `scenario.<id> — Title` (em dash, en dash or hyphen) becomes `Title {#<id>}`;
    - **contract anchors**: an HTML anchor whose id is the contract identity is inserted before
@@ -122,9 +126,15 @@ no other route.
      declares no relationship.";
    - **page anchors**: the Module identity (on its entry) and the document identity are inserted
      as anchors after the level-1 title, unless the reading already carries them.
-3. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` and, when any page has the
-   `implementation` collection, `implementationDocumentsSidebar`.
-4. Last, it writes the staging identity record `scoped-materialization.json`:
+3. When the root Module declares a glossary, it writes the Glossary page at the route of the
+   glossary's path without `.json` (`/specs/concorde/glossary` here): every concept sorted by title,
+   each a level-2 heading anchored by its identity, with its definition (term links inside it
+   pointing to anchors on the same page), its owning Module's entry and a link to its explanation,
+   and any retirement or external-conflict note.
+4. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` and, when any page has the
+   `implementation` collection, `implementationDocumentsSidebar`. The Glossary page is the last
+   item of the declaring Module's category in `moduleDocumentsSidebar`.
+5. Last, it writes the staging identity record `scoped-materialization.json`:
    `{"schema_version": 2, "sourceDigest": "<source digest>"}`.
 
 A failure leaves no identity record; the build hooks then refuse the partial staging.

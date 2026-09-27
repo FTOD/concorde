@@ -12,7 +12,6 @@ import {
   definitionHeadings,
   fenceRanges,
   isIllustrative,
-  terminologyRows,
 } from "../../plugins/scoped-content/reading-format";
 import { loadSiteIdentity } from "../../plugins/scoped-content/site-identity";
 
@@ -55,7 +54,7 @@ it("publishes the current registry and verifies the promoted manifest", async ()
     expect(source).toContain(page.metadataDigest);
     expect(source).toContain("theme-doc-sidebar-container");
     if (!page.primaryOf) continue;
-    const sections = ["purpose", "terminology", "usage", "design"];
+    const sections = ["purpose", "usage", "design"];
     for (let i = 1; i < sections.length; i++)
       expect(source.indexOf(`id="${sections[i - 1]}"`)).toBeLessThan(
         source.indexOf(`id="${sections[i]}"`),
@@ -124,24 +123,11 @@ it("exposes every stable identity as an anchor on its page", async () => {
   }
 });
 
-// verifies: scenario.views.import-definition scenario.views.illustrative-label
-it("shows imported definitions and labels illustrative diagrams", async () => {
-  let imports = 0,
-    illustrative = 0;
+// verifies: scenario.views.illustrative-label
+it("labels illustrative diagrams", async () => {
+  let illustrative = 0;
   for (const page of registry.pages) {
     const source = await html(page.route);
-    const rows =
-      page.readingCollection === "module"
-        ? terminologyRows(page.content).filter(
-            (row) =>
-              row.link?.fragment.startsWith("concept.") && !row.definition,
-          )
-        : [];
-    imports += rows.length;
-    expect(
-      source.split("Imported from").length - 1,
-      page.sourcePath,
-    ).toBeGreaterThanOrEqual(rows.length);
     const labels = fenceRanges(page.content).filter((f) =>
       isIllustrative(f.info),
     ).length;
@@ -151,8 +137,26 @@ it("shows imported definitions and labels illustrative diagrams", async () => {
       page.sourcePath,
     ).toBeGreaterThanOrEqual(labels);
   }
-  expect(imports).toBeGreaterThan(0);
   expect(illustrative).toBeGreaterThan(0);
+});
+
+// verifies: scenario.views.publish-reference-link, scenario.views.glossary-page, scenario.views.term-links
+it("publishes the glossary page and rewrites term links to it", async () => {
+  expect(registry.glossary).not.toBeNull();
+  const glossary = registry.glossary!;
+  expect(glossary.concepts.length).toBeGreaterThan(0);
+  const glossaryHtml = await html(glossary.route);
+  expect(glossaryHtml).toContain("theme-doc-sidebar-container");
+  for (const concept of glossary.concepts)
+    expect(glossaryHtml, concept.id).toContain(`id="${concept.id}"`);
+  const base = loadSiteIdentity(site).baseUrl.replace(/\/$/, "");
+  const termLinkHref = `href="${base}${glossary.route}#concept.`;
+  let termLinks = 0;
+  for (const page of registry.pages) {
+    const source = await html(page.route);
+    termLinks += source.split(termLinkHref).length - 1;
+  }
+  expect(termLinks).toBeGreaterThan(0);
 });
 
 // verifies: scenario.views.protocol-docs-tab

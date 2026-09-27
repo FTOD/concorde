@@ -32,6 +32,8 @@ import {
 } from "../scripts/prepare-publication";
 import {
   bankProject,
+  glossaryFile,
+  glossaryPath,
   put as putFile,
   read,
   readJson,
@@ -210,7 +212,7 @@ it.each([
       updateMetadata(project, "specs/ledger/module.md", (m) => {
         m.defines[0].id = "concept.transfer.hold";
       }),
-    /Duplicate identity: concept\.transfer\.hold \(specs\/ledger\/module\.md\)/,
+    /Duplicate identity: concept\.transfer\.hold \(specs\/bank\/glossary\.json\)/,
   ],
   [
     "a composition cycle",
@@ -241,16 +243,21 @@ it.each([
     /module\.transfer: req\.transfer\.unknown/,
   ],
   [
-    "an import row that does not link its concept's defining document",
+    "a glossary concept owned by a Module that is not registered",
     () =>
       put(
-        "specs/audit/module.md",
-        read(project, "specs/audit/module.md").replace(
-          "../transfer/module.md#concept.transfer.hold",
-          "../transfer/requirements.md#concept.transfer.hold",
-        ),
+        glossaryPath,
+        glossaryFile([
+          {
+            id: "concept.transfer.hold",
+            title: "Hold",
+            owner: "module.unknown",
+            definition: "Money withheld until a transfer settles.",
+            explanation: "specs/transfer/module.md#concept.transfer.hold",
+          },
+        ]),
       ),
-    /specs\/audit\/module\.md/,
+    /Concept owner is not a registered Module: concept\.transfer\.hold/,
   ],
 ])(
   "refuses to publish %s and stages or promotes nothing",
@@ -276,6 +283,27 @@ it("refuses a checked D2 diagram that sets its own look and promotes nothing", a
   );
   await expect(buildScript()()).rejects.toThrow(
     /specs\/bank\/module\.md.*outside the semantic subset|outside the semantic subset.*specs\/bank\/module\.md/s,
+  );
+  expect(spawned).toBe(0);
+  expect(existsSync(resolve(root, "docsite/.generated/candidate"))).toBe(false);
+  expect(snapshot(published())).toEqual(previous);
+});
+
+// verifies: scenario.views.term-links
+it("refuses a term link naming an unknown glossary concept and promotes nothing", async () => {
+  // The unknown term surfaces while staging Audit's page, after earlier pages may already be
+  // written, so this checks the weaker promise: no candidate is promoted and the published site
+  // is unchanged, not that nothing at all was staged.
+  const previous = await publishedSite();
+  put(
+    "specs/audit/module.md",
+    read(project, "specs/audit/module.md").replace(
+      "concept.transfer.hold",
+      "concept.transfer.unknown",
+    ),
+  );
+  await expect(buildScript()()).rejects.toThrow(
+    /Unknown glossary term: specs\/audit\/module\.md/,
   );
   expect(spawned).toBe(0);
   expect(existsSync(resolve(root, "docsite/.generated/candidate"))).toBe(false);

@@ -19,7 +19,7 @@ does.
 
 ### scenario.views.load-registry-refused — Inputs the publisher cannot publish are refused
 
-- GIVEN an unsafe path, a symbolic link, duplicate JSON keys, a duplicate identity, a composition cycle, a Mermaid block, a `relies_on` identity its target does not define, or a Terminology import row that does not link to its concept's defining document
+- GIVEN an unsafe path, a symbolic link, duplicate JSON keys, a duplicate identity, a composition cycle, a Mermaid block, a `relies_on` identity its target does not define, a concept record in document metadata, or a glossary that is malformed, declared twice or by a contained Module, or has an entry whose owner or explanation does not resolve
 - WHEN the publisher loads the project
 - THEN loading fails with an error naming the source
 - BUT nothing is staged or promoted
@@ -107,12 +107,20 @@ See [req.views.d2-program](requirements.md#req.views.d2-program).
 Two definitions with the same title keep distinct anchors, and changing a title does not change its
 anchor.
 
-### scenario.views.import-definition — An import row shows the imported definition
+### scenario.views.glossary-page — The glossary is one page under the root Module
 
-- GIVEN a Terminology table with an import row linking to another Module's concept
+- GIVEN a project whose root Module declares a glossary with several concepts
 - WHEN the site is built
-- THEN the rendered row shows the link and, beside it, the concept's one-sentence definition from its defining document, followed by "Imported from" and a link to the owning Module's entry
-- BUT the importing document's source still holds only the link
+- THEN one Glossary page, listed under the root Module in the navigation, shows every concept sorted by title with its identity as anchor, its definition, its owning Module and a link to its explanation
+- AND the entry page of a Module that owns concepts lists them, each linking to the glossary page
+- BUT no document's source changes
+
+### scenario.views.term-links — Term links lead to the glossary page
+
+- GIVEN a document that links a term to the glossary, and another that links the glossary file without a fragment
+- WHEN the site is built
+- THEN the term link leads to the concept's anchor on the glossary page, and the plain link to the page itself
+- BUT a term link to a concept the glossary does not declare fails the build and promotes nothing
 
 ### scenario.views.illustrative-label — An illustrative diagram is labelled
 

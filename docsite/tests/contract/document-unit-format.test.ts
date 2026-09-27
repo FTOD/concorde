@@ -6,14 +6,10 @@ import {
   parseJson,
   readingMeanings,
   requireReading,
-  terminologyRows,
 } from "../../plugins/scoped-content/reading-format";
 
 const entry =
-  "# Example\n\n## Purpose\n\nProvide one result.\n\n## Terminology\n\n" +
-  "| Term | Definition |\n| --- | --- |\n| Result | The returned value. |\n" +
-  "| [Request](../provider/module.md#concept.provider.request) |  |\n" +
-  "| Pipe \\| term | A cell with an escaped \\| pipe. |\n\n" +
+  "# Example\n\n## Purpose\n\nProvide one result.\n\n" +
   "## Usage\n\nSubmit one request.\n\n## Design\n\n" +
   '<a id="concept.example.result"></a><a id="realization.example.service"></a>\n\nThe service produces the result.\n\n' +
   "```d2\nservice: Example service\nresult: Result\nservice -> result: produces\n```\n";
@@ -42,12 +38,6 @@ const declaration = {
   },
   defines: [
     {
-      id: "concept.example.result",
-      type: "concept",
-      title: "Result",
-      meaning: "#concept.example.result",
-    },
-    {
       id: "realization.example.service",
       type: "realization",
       title: "Example service",
@@ -74,7 +64,7 @@ const parse = (value: unknown, entryDocument = true) =>
     entryDocument,
   );
 
-describe("Protocol 11 reading and document metadata", () => {
+describe("Protocol 15 reading and document metadata", () => {
   it("reads schema-3 metadata with the entry's module block", () => {
     expect(parse(declaration)).toEqual(declaration);
     const { module: _block, ...topic } = declaration;
@@ -131,7 +121,7 @@ describe("Protocol 11 reading and document metadata", () => {
       [
         {
           ...declaration,
-          defines: [{ ...declaration.defines[1], entries: [] }],
+          defines: [{ ...declaration.defines[0], entries: [] }],
         },
         true,
       ],
@@ -235,29 +225,6 @@ describe("Protocol 11 reading and document metadata", () => {
     expect(meanings.get("concept.x.z")).toBe(
       "**Z** is a concept explained here.",
     );
-  });
-  it("reads defining and import rows of the Terminology table", () => {
-    expect(terminologyRows(entry)).toEqual([
-      { term: "Result", definition: "The returned value." },
-      {
-        term: "[Request](../provider/module.md#concept.provider.request)",
-        definition: "",
-        link: {
-          text: "Request",
-          href: "../provider/module.md#concept.provider.request",
-          fragment: "concept.provider.request",
-        },
-      },
-      {
-        term: "Pipe \\| term",
-        definition: "A cell with an escaped \\| pipe.",
-      },
-    ]);
-    expect(
-      terminologyRows(
-        entry.replace(/\| Term[\s\S]*?\n\n## Usage/, "No terms.\n\n## Usage"),
-      ),
-    ).toEqual([]);
   });
   it("rejects any Mermaid block, wherever it is marked", () => {
     for (const diagram of [

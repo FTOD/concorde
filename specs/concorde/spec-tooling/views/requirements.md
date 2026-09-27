@@ -39,9 +39,13 @@ heading or the presence of definitions.
 
 Publication SHALL expose every concept, realization, requirement, scenario and contract identity as an anchor on the canonical page of the document that defines it.
 
-### req.views.import-definition — Imported definitions are shown
+### req.views.glossary-page — The glossary is one published page
 
-Publication SHALL show next to each Terminology import row the definition of the imported concept as written in its defining document at build time.
+Publication SHALL publish the project glossary as one page under the root Module.
+
+### req.views.term-links — Term links lead to the glossary
+
+Publication SHALL send every term link to its concept's entry on the glossary page.
 
 ### req.views.illustrative-label — Illustrative diagrams are labelled
 

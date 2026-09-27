@@ -44,10 +44,12 @@ describe("Concorde's registered Specs", () => {
           p.sourcePath.startsWith("protocol/"),
       ),
     ).toBe(false);
+    // The glossary page is a derived view, addressable but not one of the registered pages.
+    const glossaryId = registry.glossary?.stagedPath.replace(/\.md$/, "");
     const ids = [
       ...docs(scopedSidebar(registry)),
       ...docs(scopedSidebar(registry, "implementation")),
-    ];
+    ].filter((id) => id !== glossaryId);
     expect(ids.sort()).toEqual(
       registry.pages.map((p) => p.stagedPath.replace(/\.md$/, "")).sort(),
     );
