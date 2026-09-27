@@ -12,9 +12,11 @@ concorde run spec_panel [--task <task-id>] --modules <id>[,<id>...] [--reviewers
 `--modules` names one or more registered Modules of the task worktree. `--reviewers` is the number
 of reviewers on each Module's panel, 3 by default. Without `--task` the panel runs [without a
 task](../../operations/module.md#concept.operations.no-task) on the primary worktree and judges the
-Specs as merged there. The `reviewer` and the `chair` are the Operation's two worker roles, so the
-worker model configuration may give each its own model; every reviewer of a panel runs on the
-`reviewer` model. The Operation takes no other argument and needs no user consent.
+Specs as merged there. The `reviewer` and the `chair` are the Operation's two worker roles. A reviewer's
+seat is its [worker number](../../agents/workers/module.md#concept.workers.model-configuration), 1
+to 5, so the worker model configuration may give each role, and each reviewer on its own, its own
+backend, model and thinking level: three reviewers on three different models make their reviews
+more independent still. The Operation takes no other argument and needs no user consent.
 
 The panel runs as a LangGraph graph, one of Concorde's Python dependencies. A host whose
 interpreter cannot import it, such as an install made with `--without-dependencies`, fails the run

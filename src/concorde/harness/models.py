@@ -66,13 +66,29 @@ SELECTION_SCHEMA = {
     "properties": {"model": TEXT, "reasoning": TEXT},
     "anyOf": [{"required": ["model"]}, {"required": ["reasoning"]}],
 }
+# A role's entry: its own choice and, under ``workers``, one per worker number of the role; the
+# keys of ``workers`` are worker numbers, checked by ``_check_numbers``.
+ROLE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "model": TEXT,
+        "reasoning": TEXT,
+        "workers": {"type": "object", "additionalProperties": SELECTION_SCHEMA},
+    },
+    "anyOf": [
+        {"required": ["model"]},
+        {"required": ["reasoning"]},
+        {"required": ["workers"]},
+    ],
+}
 OPERATION_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
         "model": TEXT,
         "reasoning": TEXT,
-        "roles": {"type": "object", "additionalProperties": SELECTION_SCHEMA},
+        "roles": {"type": "object", "additionalProperties": ROLE_SCHEMA},
     },
 }
 BACKEND_SCHEMA = {
@@ -84,6 +100,20 @@ BACKEND_SCHEMA = {
     },
 }
 PROGRAM = {"enum": list(CLIENTS)}
+# A role's program: one for all its workers, or a ``default`` and one per worker number.
+ROLE_PROGRAM = {
+    "anyOf": [
+        PROGRAM,
+        {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "default": PROGRAM,
+                "workers": {"type": "object", "additionalProperties": PROGRAM},
+            },
+        },
+    ]
+}
 CHOICE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -96,7 +126,7 @@ CHOICE_SCHEMA = {
                 "additionalProperties": False,
                 "properties": {
                     "default": PROGRAM,
-                    "roles": {"type": "object", "additionalProperties": PROGRAM},
+                    "roles": {"type": "object", "additionalProperties": ROLE_PROGRAM},
                 },
             },
         },
@@ -173,6 +203,7 @@ def load(worktree: Path) -> dict:
         ) from error
     try:
         validate(value, SCHEMA)
+        _check_numbers(value)
     except ContractError as error:
         raise ModelConfigError(
             "config_invalid",
@@ -181,8 +212,31 @@ def load(worktree: Path) -> dict:
     return value
 
 
+def _check_numbers(value: dict) -> None:
+    """Refuse a ``workers`` key that is not a worker number: a positive integer, from 1."""
+    for section in ("backend", *CLIENTS):
+        for operation, entry in (
+            (value.get(section) or {}).get("operations") or {}
+        ).items():
+            for role, chosen in (entry.get("roles") or {}).items():
+                if not isinstance(chosen, dict):
+                    continue
+                for key in chosen.get("workers") or {}:
+                    if not key.isdigit() or key.startswith("0"):
+                        raise ContractError(
+                            f"{section}.operations.{operation}.roles.{role}.workers has the key "
+                            f"{key!r}, which is not a worker number (1, 2, 3 ...)"
+                        )
+
+
+def worker_label(role: str, number: int | None) -> str:
+    """How a worker is named in messages: its role, and its number when it has one."""
+    return role if number is None else f"{role} {number}"
+
+
 def save(worktree: Path, value: dict) -> Path:
     validate(value, SCHEMA)
+    _check_numbers(value)
     path = config_path(worktree)
     path.parent.mkdir(parents=True, exist_ok=True)
     handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=".worker-models.")
@@ -192,15 +246,30 @@ def save(worktree: Path, value: dict) -> Path:
     return path
 
 
-def selection(config: dict, backend: str, operation: str, role: str) -> dict:
-    """The model and reasoning level of one worker role of an Operation, and where each came from."""
+def selection(
+    config: dict, backend: str, operation: str, role: str, number: int | None = None
+) -> dict:
+    """The model and reasoning level of one worker of an Operation, and where each came from.
+
+    The worker is a role's, or with ``number`` that role's worker with that number; its own entry
+    wins over the role's, the role's over the Operation's, the Operation's over the default.
+    """
     section = config.get(backend) or {}
     entry = (section.get("operations") or {}).get(operation) or {}
+    chosen_role = (entry.get("roles") or {}).get(role) or {}
+    where = f"{backend}.operations.{operation}.roles.{role}"
     layers = (
-        (
-            (entry.get("roles") or {}).get(role) or {},
-            f"{backend}.operations.{operation}.roles.{role}",
+        *(
+            [
+                (
+                    (chosen_role.get("workers") or {}).get(str(number)) or {},
+                    f"{where}.workers.{number}",
+                )
+            ]
+            if number is not None
+            else []
         ),
+        (chosen_role, where),
         (entry, f"{backend}.operations.{operation}"),
         (section.get("default") or {}, f"{backend}.default"),
     )
@@ -217,36 +286,48 @@ def selection(config: dict, backend: str, operation: str, role: str) -> dict:
 
 
 def configured_backend(
-    config: dict, operation: str | None, role: str | None
+    config: dict,
+    operation: str | None,
+    role: str | None,
+    number: int | None = None,
 ) -> tuple[str, str] | None:
-    """The program the file's ``backend`` section chooses for one worker role of an Operation, for
-    an Operation's workers (``role`` None) or for every worker (``operation`` None), and the entry
-    that chose it; None when no entry does."""
+    """The program the file's ``backend`` section chooses for the worker with ``number`` of one
+    role, for one worker role of an Operation (``number`` None), for an Operation's workers
+    (``role`` None) or for every worker (``operation`` None), and the entry that chose it; None
+    when no entry does."""
     section = config.get("backend") or {}
     layers = []
     if operation is not None:
         entry = (section.get("operations") or {}).get(operation) or {}
         if role is not None:
-            layers.append(
-                (
-                    (entry.get("roles") or {}).get(role),
-                    f"backend.operations.{operation}.roles.{role}",
-                )
-            )
+            chosen = (entry.get("roles") or {}).get(role)
+            where = f"backend.operations.{operation}.roles.{role}"
+            if isinstance(chosen, dict):
+                if number is not None:
+                    layers.append(
+                        (
+                            (chosen.get("workers") or {}).get(str(number)),
+                            f"{where}.workers.{number}",
+                        )
+                    )
+                layers.append((chosen.get("default"), f"{where}.default"))
+            else:
+                layers.append((chosen, where))
         layers.append((entry.get("default"), f"backend.operations.{operation}.default"))
     layers.append((section.get("default"), "backend.default"))
     return next(((value, where) for value, where in layers if value), None)
 
 
 def worker_backend(
-    config: dict, operation: str, role: str, environ=None
+    config: dict, operation: str, role: str, environ=None, number: int | None = None
 ) -> tuple[str, str]:
-    """The program one worker role of an Operation runs on, and what chose it.
+    """The program one worker of an Operation runs on, and what chose it: a role's worker, or with
+    ``number`` that role's worker with that number.
 
     A program the file chooses must be installed; otherwise it is the main session's program.
     """
     environ = os.environ if environ is None else environ
-    chosen = configured_backend(config, operation, role)
+    chosen = configured_backend(config, operation, role, number)
     if chosen is None:
         return detect_client(environ)
     backend, where = chosen
@@ -254,7 +335,8 @@ def worker_backend(
         variable = "CONCORDE_CLAUDE" if backend == "claude" else "CONCORDE_PI"
         raise ModelConfigError(
             "backend_missing",
-            f"{where} chooses {backend} for the {role} worker of {operation}, but the {backend} "
+            f"{where} chooses {backend} for the {worker_label(role, number)} worker of "
+            f"{operation}, but the {backend} "
             f"command is not installed: it is not on PATH and {variable} does not name an "
             "executable. A worker runs only on the program its configuration chooses and never "
             "falls back to the other one",
@@ -527,6 +609,7 @@ def check_choice(
     model: str | None,
     reasoning: str | None,
     allow_unlisted: bool,
+    number: int | None = None,
 ) -> None:
     """Refuse a model the listing ``found`` does not show, or a level the model does not offer."""
     ids = [item["id"] for item in found["models"]]
@@ -539,7 +622,7 @@ def check_choice(
         return
     if not model:
         model = (
-            selection(config, backend, operation, role or "")["model"]
+            selection(config, backend, operation, role or "", number)["model"]
             if operation
             else (config.get(backend) or {}).get("default", {}).get("model")
         )
@@ -560,8 +643,10 @@ def set_choice(
     role: str | None,
     model: str | None,
     reasoning: str | None,
+    number: int | None = None,
 ) -> dict:
-    """Set the fields given on the default, an Operation's entry or one of its roles."""
+    """Set the fields given on the default, an Operation's entry, one of its roles or, with
+    ``number``, that role's worker with that number."""
     section = config.setdefault(backend, {})
     if operation is None:
         entry = section.setdefault("default", {})
@@ -569,6 +654,8 @@ def set_choice(
         entry = section.setdefault("operations", {}).setdefault(operation, {})
         if role is not None:
             entry = entry.setdefault("roles", {}).setdefault(role, {})
+            if number is not None:
+                entry = entry.setdefault("workers", {}).setdefault(str(number), {})
     if model:
         entry["model"] = model
     if reasoning:
@@ -577,9 +664,14 @@ def set_choice(
 
 
 def unset_choice(
-    config: dict, backend: str, operation: str | None, role: str | None
+    config: dict,
+    backend: str,
+    operation: str | None,
+    role: str | None,
+    number: int | None = None,
 ) -> bool:
-    """Remove the default, an Operation's entry or one role's entry; whether one existed."""
+    """Remove the default, an Operation's entry, one role's entry or, with ``number``, the entry of
+    that role's worker with that number; whether one existed."""
     section = config.get(backend) or {}
     if operation is None:
         removed = section.pop("default", None)
@@ -589,7 +681,15 @@ def unset_choice(
             removed = operations.pop(operation, None)
         else:
             roles = (operations.get(operation) or {}).get("roles") or {}
-            removed = roles.pop(role, None)
+            if number is None:
+                removed = roles.pop(role, None)
+            else:
+                chosen = roles.get(role) or {}
+                removed = (chosen.get("workers") or {}).pop(str(number), None)
+                if chosen.get("workers") == {}:
+                    chosen.pop("workers")
+                if role in roles and chosen == {}:
+                    roles.pop(role)
             if operation in operations and roles == {}:
                 operations[operation].pop("roles", None)
             if operations.get(operation) == {}:
@@ -618,4 +718,5 @@ __all__ = [
     "set_choice",
     "unset_choice",
     "worker_backend",
+    "worker_label",
 ]

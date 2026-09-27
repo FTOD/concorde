@@ -220,6 +220,15 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - AND another backend's workers get the program's own default
 - AND removing the checker's entry and then the Operation's leaves only the default
 
+### scenario.workers.worker-number — A numbered worker has its own backend, model and level
+
+- GIVEN a configuration whose pi section gives `spec_panel`'s reviewer role a model and a level and its worker 2 another model, and whose `backend` section gives the reviewer role the default `pi` and its worker 3 `claude`
+- WHEN the choices of reviewers 1, 2 and 3 are resolved
+- THEN reviewer 1 gets the role's model and level, and reviewer 2 its own model and the role's level, each naming the entry it came from
+- AND reviewer 2 runs on `pi` from the role's default and reviewer 3 on `claude` from its own entry
+- AND removing reviewer 2's entry leaves the role's entry as it was
+- BUT a `workers` key that is not a worker number, such as `0`, makes the configuration `config_invalid`, naming the key
+
 ### scenario.workers.model-refused — A model or level the program does not offer is refused
 
 - GIVEN pi listing its models

@@ -208,8 +208,19 @@ class Panel:
             + ("\n" + material if material else "")
         )
 
-    def _launch(self, role: str, instructions: str, schema: dict, label: str):
-        """One worker; returns (output or None, host evidence, context identity, stop or None)."""
+    def _launch(
+        self,
+        role: str,
+        instructions: str,
+        schema: dict,
+        label: str,
+        number: int | None = None,
+    ):
+        """One worker; returns (output or None, host evidence, context identity, stop or None).
+
+        A reviewer passes its seat as its worker number, so the worker model configuration may
+        give each reviewer its own backend, model and thinking level.
+        """
         result = self.ctx.run_worker(
             instructions,
             task_type=TASK_TYPE,
@@ -217,6 +228,7 @@ class Panel:
             rounds=0,
             modules=[self.subject.module],
             role=role,
+            number=number,
         )
         found = review._labelled(result.evidence, f"{self.subject.module} {label}")
         identity = review._identity(result.evidence)
@@ -268,6 +280,7 @@ class Panel:
             ),
             REVIEWER_OUTPUT,
             label,
+            number=seat,
         )
         entry = {"reviewer": seat, "status": "ok", "findings": [], "identity": identity}
         if stop is None:
@@ -606,6 +619,7 @@ SPEC_PANEL = Provider(
     add_arguments,
     task_scope="optional",
     roles=ROLES,
+    numbered={"reviewer": MAX_REVIEWERS},
 )
 
 __all__ = [

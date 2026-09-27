@@ -87,6 +87,9 @@ class WorkerRequest:
     # The Operation and worker role the model was chosen for, recorded only.
     operation: str | None = None
     role: str | None = None
+    # The worker's number among its Operation's workers of that role, for a role that launches
+    # several; recorded only.
+    number: int | None = None
     pi: str | None = None
     pi_config: Path | None = None
     sandbox_runtime: Path | None = None
@@ -370,6 +373,7 @@ def run_worker(request: WorkerRequest) -> dict:
         "backend_source": request.backend_source,
         "operation": request.operation,
         "role": request.role,
+        "number": request.number,
         "model": request.model,
         "reasoning": request.reasoning,
         "worktree": worktree.as_posix(),

@@ -365,7 +365,7 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
 ```concorde-contract
 {
   "id": "contract.operations.worker-configuration",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -484,6 +484,70 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
               "reasoning_source": {
                 "type": "string",
                 "minLength": 1
+              },
+              "workers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "backend",
+                    "backend_source",
+                    "model",
+                    "reasoning",
+                    "model_source",
+                    "reasoning_source"
+                  ],
+                  "properties": {
+                    "backend": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "enum": [
+                            "claude",
+                            "pi"
+                          ]
+                        }
+                      ]
+                    },
+                    "backend_source": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "model": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      ]
+                    },
+                    "reasoning": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      ]
+                    },
+                    "model_source": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "reasoning_source": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
               }
             }
           }
@@ -491,7 +555,7 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
       }
     }
   },
-  "semantics": "The output of configure_workers. action is list when the run changed nothing and was asked for nothing, set when it set a model or level, unset when it removed an entry. backend is the program whose entries were read or changed and backend_from how it was found: --backend, otherwise the entry of the file's backend section that chooses the backend of the named role, Operation or default (such as backend.operations.implement.default), otherwise the main session's variable. worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the primary worktree; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file's entry for the backend as written after the change. effective maps every catalog Operation that launches workers to its worker roles, each with the backend a worker of that role would run on and the entry or main session variable it came from (backend null when neither settles it, with the reason as its source), and the model and reasoning level it would run with in that backend's section and the entry each came from, or null with the source \"the backend's own default\". A behaviour or field change increments the version.",
+  "semantics": "The output of configure_workers. action is list when the run changed nothing and was asked for nothing, set when it set a model or level, unset when it removed an entry. backend is the program whose entries were read or changed and backend_from how it was found: --backend, otherwise the entry of the file's backend section that chooses the backend of the named role, Operation or default (such as backend.operations.implement.default), otherwise the main session's variable. worktree is the worktree whose configuration file config was read or changed, the task's with --task and otherwise the primary worktree; changed says whether the file changed. candidates is null for unset and otherwise the listing of the installed program: backend, program, version, complete (false for Claude Code, which cannot list an account's models), reasoning_flag, reasoning_levels, models (each with id, source, reasoning, levels and a note, and for pi context, max_output and images) and a note. configured is the file's entry for the backend as written after the change. effective maps every catalog Operation that launches workers to its worker roles, each with the backend a worker of that role would run on and the entry or main session variable it came from (backend null when neither settles it, with the reason as its source), and the model and reasoning level it would run with in that backend's section and the entry each came from, or null with the source \"the backend's own default\". A role that launches several workers, such as spec_panel's reviewer, also has workers: each worker number the role may use, from 1, with the same fields for that worker alone, whose entries may come from the role's workers entries (such as claude.operations.spec_panel.roles.reviewer.workers.2). A behaviour or field change increments the version.",
   "example": {
     "action": "set",
     "backend": "pi",
@@ -568,6 +632,34 @@ The output of [`configure_workers`](module.md#concept.operations.configure-worke
           "reasoning": "low",
           "model_source": "pi.default",
           "reasoning_source": "pi.operations.spec_review.roles.checker"
+        }
+      },
+      "spec_panel": {
+        "reviewer": {
+          "backend": "claude",
+          "backend_source": "CLAUDECODE=1",
+          "model": "claude-sonnet-5",
+          "reasoning": "medium",
+          "model_source": "claude.operations.spec_panel.roles.reviewer",
+          "reasoning_source": "claude.operations.spec_panel.roles.reviewer",
+          "workers": {
+            "1": {
+              "backend": "claude",
+              "backend_source": "CLAUDECODE=1",
+              "model": "claude-sonnet-5",
+              "reasoning": "medium",
+              "model_source": "claude.operations.spec_panel.roles.reviewer",
+              "reasoning_source": "claude.operations.spec_panel.roles.reviewer"
+            },
+            "2": {
+              "backend": "claude",
+              "backend_source": "CLAUDECODE=1",
+              "model": "claude-opus-5-5",
+              "reasoning": "high",
+              "model_source": "claude.operations.spec_panel.roles.reviewer.workers.2",
+              "reasoning_source": "claude.operations.spec_panel.roles.reviewer.workers.2"
+            }
+          }
         }
       }
     }

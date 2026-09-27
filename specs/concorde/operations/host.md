@@ -143,16 +143,16 @@ the task's lock, or a writing run of the same task would change files under its 
 
 ```text
 concorde run configure_workers [--task <task-id>] [--backend claude|pi]
-    [--operation <op> [--role <role>]] [--model <model>] [--reasoning <level>] [--allow-unlisted] [--unset]
+    [--operation <op> [--role <role> [--worker <n>]]] [--model <model>] [--reasoning <level>] [--allow-unlisted] [--unset]
 ```
 
 | # | Step | Stops the run when |
 | --- | --- | --- |
-| 1 | Check the request: `--role` only with `--operation`; `--operation` a catalog Operation with a task type; `--role` one of its roles; `--unset` without `--model` or `--reasoning`; `--allow-unlisted` only with `--model` | the request is impossible (`invalid_request`) |
+| 1 | Check the request: `--role` only with `--operation`; `--operation` a catalog Operation with a task type; `--role` one of its roles; `--worker` only with `--role`, for a role the catalog numbers, from 1 to its highest number; `--unset` without `--model` or `--reasoning`; `--allow-unlisted` only with `--model` | the request is impossible (`invalid_request`) |
 | 2 | Read the run worktree's configuration file | it cannot be read (`configuration_refused`) |
-| 3 | Take the backend from `--backend`, otherwise the one the file's `backend` section chooses for the named role, Operation or default, otherwise the main session's program | none of them names one (`configuration_refused`) |
+| 3 | Take the backend from `--backend`, otherwise the one the file's `backend` section chooses for the named worker, role, Operation or default, otherwise the main session's program | none of them names one (`configuration_refused`) |
 | 4 | Unless `--unset`, list the candidates of the installed program | the program is missing or does not answer (`configuration_refused`) |
-| 5 | With `--model` or `--reasoning`, refuse a model the listing does not show (unless `--allow-unlisted`) or a level the model does not offer, then set the fields on the default, the Operation's entry or the role's entry; with `--unset`, remove that entry; write the file atomically | the value is not offered (`configuration_refused`) |
+| 5 | With `--model` or `--reasoning`, refuse a model the listing does not show (unless `--allow-unlisted`) or a level the model does not offer, then set the fields on the default, the Operation's entry, the role's entry or the numbered worker's entry; with `--unset`, remove that entry; write the file atomically | the value is not offered (`configuration_refused`) |
 | 6 | Output the [worker configuration](contracts.md#contract.operations.worker-configuration) | — |
 
 The worktree is the task's with `--task` and otherwise the one the command runs in. The file is

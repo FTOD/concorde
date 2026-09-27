@@ -17,8 +17,9 @@ guards against scope drift and mistakes, not a malicious worker.
 
 | Term | Definition |
 | --- | --- |
-| Worker backend | The agent program a worker runs on, Claude Code or pi: the one the worktree's worker model configuration chooses for the worker's Operation and role, otherwise the program of the main session that started the run; both enforce the same grant. |
-| Worker model configuration | A worktree's untracked `.concorde/worker-models.json`, which may choose the backend of every worker, of an Operation's workers or of one worker role, and gives for each backend a default model and reasoning level and optional entries per Operation and per worker role of an Operation. |
+| Worker backend | The agent program a worker runs on, Claude Code or pi: the one the worktree's worker model configuration chooses for the worker, its role or its Operation, otherwise the program of the main session that started the run; both enforce the same grant. |
+| Worker model configuration | A worktree's untracked `.concorde/worker-models.json`, which may choose the backend of every worker, of an Operation's workers, of one worker role or of one numbered worker of a role, and gives for each backend a default model and reasoning level and optional entries per Operation, per worker role of an Operation and per worker number of a role. |
+| Worker number | The position, from 1, of one worker among the workers an Operation launches in one role during one run, for a role that launches several, such as `spec_panel`'s reviewers; it lets the configuration address that worker alone. |
 | Progress file | The run's `status.json`, which the host keeps current while the run goes on so the main session can show what it is doing. |
 | Brief | The prompt a worker receives: the Operation's task instructions followed by the grant's `rw`, `ro` and `names` lists as absolute paths and the rules of its boundary. |
 | Worker result | The structured answer a worker ends with, validated against a fixed schema, reporting its status, a summary, its own error link when it could not finish, and the deletions it proposes. |
@@ -128,21 +129,26 @@ surface. The pi command line and environment are in [the pi run mechanics](pi.md
 
 ### Choosing worker models
 
-<a id="concept.workers.model-configuration"></a>
+<a id="concept.workers.model-configuration"></a><a id="concept.workers.worker-number"></a>
 
 The **worker model configuration** of a worktree is its `.concorde/worker-models.json`, ignored by
 Git because it names models of this machine's installation. Its `backend` section chooses the
 [worker backend](#concept.workers.backend): a `default` for every worker, and under `operations` an
 Operation's `default` and its `roles`, each naming `claude` or `pi`; the most specific entry wins —
-the role's, then the Operation's, then the section's default — and without one the worker runs on
-the main session's program. The section is written by hand: no Operation changes it. The model and
+the worker's, then the role's, then the Operation's, then the section's default — and without one
+the worker runs on the main session's program. A role's entry there is a program for all its
+workers, or an object with a `default` program and `workers`, one program per worker number. The section is written by hand: no Operation changes it. The model and
 level are then resolved in the section of the chosen backend. For each backend it holds a `default`,
-entries under `operations` for an Operation's workers, and under an Operation's `roles` entries for
-one worker role of it, each with a `model` and a `reasoning` level. For each field the most specific
-entry that sets it wins — the role's, then the Operation's, then the default — and a field no entry
-sets leaves the program's own default. The Operation host asks for the choice of one worker role of
-its Operation, in the worktree the run works on, and passes the model with `--model` and the level
-with `--effort` to Claude Code or `--thinking` to pi:
+entries under `operations` for an Operation's workers, under an Operation's `roles` entries for
+one worker role of it, and under a role's `workers` entries for one **worker number** of that role,
+each with a `model` and a `reasoning` level. A worker number is the position, from 1, of one
+worker among those an Operation launches in one role during one run; only a role that launches
+several has them, and the Operations catalog says which. For each field the most specific entry
+that sets it wins — the worker's, then the role's, then the Operation's, then the default — and a
+field no entry sets leaves the program's own default. The Operation host asks for the choice of
+one worker of its Operation, by role and, for a numbered worker, its number, in the worktree the
+run works on, and passes the model with `--model` and the level with `--effort` to Claude Code or
+`--thinking` to pi:
 
 ```json
 {
@@ -154,7 +160,15 @@ with `--effort` to Claude Code or `--thinking` to pi:
     "default": {"model": "anthropic/claude-sonnet-5", "reasoning": "medium"},
     "operations": {
       "implement": {"model": "local-openai/gpt-6"},
-      "spec_review": {"roles": {"checker": {"reasoning": "low"}}}
+      "spec_review": {"roles": {"checker": {"reasoning": "low"}}},
+      "spec_panel": {
+        "roles": {
+          "reviewer": {
+            "reasoning": "high",
+            "workers": {"2": {"model": "openai-codex/gpt-6-astra"}}
+          }
+        }
+      }
     }
   }
 }
@@ -163,8 +177,10 @@ with `--effort` to Claude Code or `--thinking` to pi:
 Here an `implement` worker runs on pi whatever the main session's program, on
 `local-openai/gpt-6` at `medium`. From a pi main session `spec_review`'s checker runs on
 `anthropic/claude-sonnet-5` at `low` and every other worker on `anthropic/claude-sonnet-5` at
-`medium`; from a Claude Code main session they run on Claude Code with its own default model, since
-the file has no `claude` section. Workers knows no Operation names; the entries are whatever the
+`medium`; `spec_panel`'s reviewers run at `high`, reviewer 2 on `openai-codex/gpt-6-astra` and the
+others on `anthropic/claude-sonnet-5`; from a Claude Code main session they run on Claude Code with
+its own default model, since the file has no `claude` section. Each worker's run record names its
+role and number and the model and level it used. Workers knows no Operation names; the entries are whatever the
 [`configure_workers`](../../operations/module.md#concept.operations.configure-workers) Operation
 wrote after checking them against the catalog. [Tasks](../../tasks/module.md) copies the primary
 worktree's file into a task worktree when it opens the task, so a task keeps the configuration it

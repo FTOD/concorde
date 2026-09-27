@@ -107,7 +107,7 @@ The **Operation catalog** of this version:
 | `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | required | code of the bound Modules | a code change |
 | `test` | [Implementation](implementation/module.md) | `test` | `worker` | required | no | a test report |
 | `spec_review` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | optional | no | review findings and a verdict |
-| `spec_panel` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `chair` | optional | no | a panel report merged from independent reviews, and a verdict |
+| `spec_panel` | [Spec review](../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer` (numbered 1–5), `chair` | optional | no | a panel report merged from independent reviews, and a verdict |
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | optional (`--base` without one) | no | review findings and a verdict |
 | `validate` | [Validation](validation/module.md) | none | none | required | no | [readiness](validation/module.md#concept.validation.readiness) |
 | `delivery` | [Delivery](delivery/module.md) | none | none | required | commits on the task branch | a [delivery commit](delivery/module.md#concept.delivery.delivery-commit) |
@@ -127,18 +127,22 @@ the [brownfield workflow](../workflows/module.md).
 
 A **worker role** names one worker an Operation launches: `spec_review` has a `reviewer` and a
 `checker`, `spec_panel` a `reviewer` and a `chair`, every other worker-backed Operation a
-single `worker`. The catalog lists the roles, and
+single `worker`. A role that launches several workers in one run, such as `spec_panel`'s
+`reviewer`, numbers them from 1, and the catalog gives its highest number; each numbered worker
+may then have its own backend, model and level. The catalog lists the roles, and
 the worker model configuration may choose a model per Operation and per role.
 
 <a id="concept.operations.configure-workers"></a>
 
 **`configure_workers`** lists and changes the model choices of the worker model configuration:
 without a model or level it outputs the candidates a program offers, the file's entries for that
-program and the effective backend, model and level of every worker role of every Operation;
-`--model`, `--reasoning` or both set them for the default, for `--operation <op>` or for
-`--role <role>` of it; `--unset` removes that entry. The program is `--backend`, otherwise the
-backend the named role, Operation or default resolves to, so a change reaches the section the
-worker actually reads. The file's `backend` section, which chooses a worker's program, is edited by
+program and the effective backend, model and level of every worker role of every Operation, and
+of every numbered worker of a role that launches several; `--model`, `--reasoning` or both set them
+for the default, for `--operation <op>`, for `--role <role>` of it or for `--worker <n>`, one
+[worker number](../agents/workers/module.md#concept.workers.model-configuration) of that role;
+`--unset` removes that entry. The program is `--backend`, otherwise the backend the named worker,
+role, Operation or default resolves to, so a change reaches the section the worker actually
+reads. The file's `backend` section, which chooses a worker's program, is edited by
 hand only. Without a task it changes the primary worktree's file, which the
 tasks opened from then on inherit, and with `--task` only that task's copy. It checks the
 Operation and role against the catalog and every model and level against the program's listing

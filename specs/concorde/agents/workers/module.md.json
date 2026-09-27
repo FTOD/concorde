@@ -92,6 +92,12 @@
       "meaning": "#concept.workers.model-configuration"
     },
     {
+      "id": "concept.workers.worker-number",
+      "type": "concept",
+      "title": "Worker number",
+      "meaning": "#concept.workers.worker-number"
+    },
+    {
       "id": "concept.workers.progress-file",
       "type": "concept",
       "title": "Progress file",

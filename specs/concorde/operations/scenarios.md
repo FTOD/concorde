@@ -129,6 +129,15 @@ envelope is defined in the [contracts](contracts.md) and the runner in
 - AND its `effective` output gives `implement`'s worker the backend `pi` from that entry and every other worker `claude` from the main session
 - AND the file's `backend` section is unchanged
 
+### scenario.operations.configure-worker — One numbered worker of a role is configured
+
+- GIVEN a primary worktree without a worker model configuration, started from a pi main session
+- WHEN the main agent runs `configure_workers --operation spec_panel --role reviewer --worker 2` with a listed model and level
+- THEN the file holds that choice for reviewer 2 alone
+- AND the output's effective choice of `spec_panel`'s reviewer lists workers 1 to 5, worker 2 with the new model and its source
+- AND the same request for `spec_review`'s reviewer, which launches one worker, for reviewer 6, or without `--role` is refused with `invalid_request`, saying why
+- AND `--unset` for reviewer 2 removes the entry and every section it leaves empty
+
 ### scenario.operations.configure-refused — A refused change leaves the file alone
 
 - GIVEN a primary worktree

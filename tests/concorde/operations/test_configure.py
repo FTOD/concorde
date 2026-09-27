@@ -170,6 +170,71 @@ class ConfigureWorkersTests(unittest.TestCase):
         )
         validate(output, CONFIGURATION_SCHEMA)
 
+    @verifies("scenario.operations.configure-worker")
+    def test_one_numbered_worker_of_a_role_can_be_configured(self):
+        status, envelope = self.configure(
+            "--operation",
+            "spec_panel",
+            "--role",
+            "reviewer",
+            "--worker",
+            "2",
+            "--model",
+            "local-openai/plain-7",
+            "--reasoning",
+            "off",
+        )
+        self.assertEqual((0, "set"), (status, envelope["output"]["action"]), envelope)
+        self.assertEqual(
+            {"workers": {"2": {"model": "local-openai/plain-7", "reasoning": "off"}}},
+            self.stored(self.root)["pi"]["operations"]["spec_panel"]["roles"][
+                "reviewer"
+            ],
+        )
+        reviewer = envelope["output"]["effective"]["spec_panel"]["reviewer"]
+        self.assertEqual(["1", "2", "3", "4", "5"], list(reviewer["workers"]))
+        second = reviewer["workers"]["2"]
+        self.assertEqual(
+            (
+                "local-openai/plain-7",
+                "pi.operations.spec_panel.roles.reviewer.workers.2",
+            ),
+            (second["model"], second["model_source"]),
+        )
+        self.assertIsNone(reviewer["workers"]["1"]["model"])
+        self.assertNotIn(
+            "workers", envelope["output"]["effective"]["spec_panel"]["chair"]
+        )
+        self.assertIn("worker 2", envelope["host_evidence"][0]["detail"])
+        for argv, fragment in (
+            (
+                ["--operation", "spec_review", "--role", "reviewer", "--worker", "1"],
+                "launches one",
+            ),
+            (
+                ["--operation", "spec_panel", "--role", "reviewer", "--worker", "6"],
+                "from 1 to 5",
+            ),
+            (["--operation", "spec_panel", "--worker", "1"], "no --role"),
+        ):
+            with self.subTest(argv=argv):
+                status, envelope = self.configure(*argv, "--reasoning", "off")
+                self.assertEqual(
+                    (1, "invalid_request"), (status, envelope["error"]["code"])
+                )
+                self.assertIn(fragment, envelope["error"]["detail"])
+        status, envelope = self.configure(
+            "--operation",
+            "spec_panel",
+            "--role",
+            "reviewer",
+            "--worker",
+            "2",
+            "--unset",
+        )
+        self.assertEqual((0, True), (status, envelope["output"]["changed"]), envelope)
+        self.assertNotIn("pi", self.stored(self.root))
+
     @verifies("scenario.operations.configure-refused")
     def test_a_refused_change_leaves_the_file_alone(self):
         status, envelope = self.configure("--operation", "validate", "--model", "x")

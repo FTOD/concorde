@@ -204,6 +204,66 @@ class SpecPanelTests(unittest.TestCase):
         # A panel writes nothing.
         self.assertEqual("", self.status())
 
+    @verifies("scenario.spec-review.panel-worker-models")
+    def test_each_reviewer_runs_on_the_model_configured_for_its_seat(self):
+        config = {
+            "schema_version": 2,
+            "claude": {
+                "operations": {
+                    "spec_panel": {
+                        "roles": {
+                            "reviewer": {
+                                "model": "claude-sonnet-5",
+                                "reasoning": "medium",
+                                "workers": {"2": {"model": "claude-opus-5-5"}},
+                            },
+                            "chair": {"model": "claude-opus-5-5", "reasoning": "high"},
+                        }
+                    }
+                }
+            },
+        }
+        (self.root / ".concorde/worker-models.json").write_text(json.dumps(config))
+        exit_status, envelope = self.panel(
+            {
+                "reviewer module.a 1": worker(findings=[]),
+                "reviewer module.a 2": worker(findings=[]),
+                "chair module.a 1": worker(findings=[], rejected=[]),
+            },
+            "--reviewers",
+            "2",
+        )
+        self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
+        chosen = {}
+        for run_id in envelope["worker_runs"]:
+            record = self.record(run_id)
+            work = Path(record["run_directory"]) / "work"
+            argv = json.loads((work / "fake-round-1.json").read_text())["argv"]
+            chosen[(record["role"], record["number"])] = (
+                argv[argv.index("--model") + 1],
+                argv[argv.index("--effort") + 1],
+            )
+        self.assertEqual(
+            {
+                ("reviewer", 1): ("claude-sonnet-5", "medium"),
+                ("reviewer", 2): ("claude-opus-5-5", "medium"),
+                ("chair", None): ("claude-opus-5-5", "high"),
+            },
+            chosen,
+        )
+        models = [
+            item["detail"]
+            for item in envelope["host_evidence"]
+            if item["kind"] == "worker-model"
+        ]
+        self.assertTrue(
+            any(
+                "reviewer 2 (backend from" in detail and "claude-opus-5-5" in detail
+                for detail in models
+            ),
+            models,
+        )
+
     @verifies("scenario.spec-review.panel-accounting")
     def test_a_report_that_drops_a_finding_goes_back_to_the_chair_once(self):
         plans = {

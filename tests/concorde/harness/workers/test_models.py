@@ -183,6 +183,64 @@ class WorkerModelTests(unittest.TestCase):
         self.assertFalse(models.unset_choice(config, "pi", "spec_review", None))
         self.assertNotIn("operations", config["pi"])
 
+    @verifies("scenario.workers.worker-number")
+    def test_a_numbered_worker_has_its_own_backend_model_and_level(self):
+        config = {"schema_version": 2}
+        models.set_choice(config, "pi", "spec_panel", "reviewer", "a/review", "high")
+        models.set_choice(config, "pi", "spec_panel", "reviewer", "a/second", None, 2)
+        config["backend"] = {
+            "operations": {
+                "spec_panel": {
+                    "roles": {"reviewer": {"default": "pi", "workers": {"3": "claude"}}}
+                }
+            }
+        }
+        first = models.selection(config, "pi", "spec_panel", "reviewer", 1)
+        second = models.selection(config, "pi", "spec_panel", "reviewer", 2)
+        self.assertEqual(
+            ("a/review", "high", "pi.operations.spec_panel.roles.reviewer"),
+            (first["model"], first["reasoning"], first["model_source"]),
+        )
+        self.assertEqual(
+            (
+                "a/second",
+                "high",
+                "pi.operations.spec_panel.roles.reviewer.workers.2",
+                "pi.operations.spec_panel.roles.reviewer",
+            ),
+            (
+                second["model"],
+                second["reasoning"],
+                second["model_source"],
+                second["reasoning_source"],
+            ),
+        )
+        self.assertEqual(
+            ("pi", "backend.operations.spec_panel.roles.reviewer.default"),
+            models.configured_backend(config, "spec_panel", "reviewer", 2),
+        )
+        self.assertEqual(
+            ("claude", "backend.operations.spec_panel.roles.reviewer.workers.3"),
+            models.configured_backend(config, "spec_panel", "reviewer", 3),
+        )
+        worktree = self.base / "numbered"
+        models.save(worktree, config)
+        self.assertEqual(config, models.load(worktree))
+        self.assertTrue(models.unset_choice(config, "pi", "spec_panel", "reviewer", 2))
+        self.assertEqual(
+            {"model": "a/review", "reasoning": "high"},
+            config["pi"]["operations"]["spec_panel"]["roles"]["reviewer"],
+        )
+        config["pi"]["operations"]["spec_panel"]["roles"]["reviewer"]["workers"] = {
+            "0": {"model": "a/zero"}
+        }
+        path = worktree / models.CONFIG
+        path.write_text(json.dumps(config))
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(worktree)
+        self.assertEqual("config_invalid", raised.exception.code)
+        self.assertIn("'0', which is not a worker number", str(raised.exception))
+
     @verifies("scenario.workers.model-refused")
     def test_a_model_or_level_the_program_does_not_offer_is_refused(self):
         found = models.candidates("pi", self.environ)

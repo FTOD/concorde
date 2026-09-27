@@ -26,6 +26,7 @@ from ..harness.models import (
     load,
     selection,
     worker_backend,
+    worker_label,
 )
 
 
@@ -60,6 +61,9 @@ class Provider:
     # The roles of the workers the Operation launches; the first is the default role. The worker
     # model configuration is keyed by Operation and role.
     roles: tuple[str, ...] = ("worker",)
+    # The roles that launch several workers in one run, each with the highest worker number it
+    # may use; each such worker has its own entry in the worker model configuration.
+    numbered: dict[str, int] = field(default_factory=dict)
 
 
 # Task types whose workers may change files; a project-scope run never launches one.
@@ -351,8 +355,12 @@ class RunContext:
         read_only: bool = False,
         readable: tuple[Path, ...] = (),
         after_round=None,
+        number: int | None = None,
     ):
         """The standard worker sequence; returns ``Continue`` or ``Stop``.
+
+        ``number`` is the worker's number among the workers of its role in this run, for a role
+        that launches several; the worker model configuration may choose for it alone.
 
         ``read_only`` withholds every writable level of the task type's grant, turning it into
         read access, as the Protocol lets a harness give less than a type assigns. ``readable``
@@ -394,9 +402,9 @@ class RunContext:
                 )
             )
         try:
-            backend, model = self.worker_model(role)
+            backend, model = self.worker_model(role, number)
         except ModelConfigError as error:
-            return self.model_failure(role, error)
+            return self.model_failure(worker_label(role, number), error)
         config = self.workers_config()
         runtime = tuple(
             Path(path) if os.path.isabs(path) else self.worktree / path
@@ -431,6 +439,7 @@ class RunContext:
                 reasoning=model["reasoning"],
                 operation=self.operation,
                 role=role,
+                number=number,
                 after_round=after_round,
                 project_python=interpreter,
                 started=self.worker_started,
@@ -458,13 +467,14 @@ class RunContext:
         except (CheckError, SpecError, OSError):
             return None
 
-    def worker_model(self, role: str) -> tuple[str, dict]:
-        """The backend of this Operation's worker ``role`` — the worktree's configured one, or the
-        main session's — and the worktree's model choice for it in that backend."""
+    def worker_model(self, role: str, number: int | None = None) -> tuple[str, dict]:
+        """The backend of this Operation's worker ``role``, or of that role's worker ``number`` —
+        the worktree's configured one, or the main session's — and the worktree's model choice for
+        it in that backend."""
         config = load(self.worktree)
-        backend, source = worker_backend(config, self.operation, role)
+        backend, source = worker_backend(config, self.operation, role, number=number)
         return backend, {
-            **selection(config, backend, self.operation, role),
+            **selection(config, backend, self.operation, role, number),
             "backend_source": source,
         }
 
@@ -646,7 +656,8 @@ class RunContext:
             evidence(
                 "worker-model",
                 record.get("backend") or "",
-                f"{record.get('role') or 'worker'} (backend from "
+                f"{worker_label(record.get('role') or 'worker', record.get('number'))} "
+                f"(backend from "
                 f"{record.get('backend_source') or 'the request'}): model "
                 f"{record.get('model') or 'the backend default'}, reasoning "
                 f"{record.get('reasoning') or 'the backend default'}",
