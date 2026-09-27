@@ -1,5 +1,9 @@
 # Scenario fragment
 
+Use both parts of [Spec writing guidelines](../writing.md):
+[Required format](../format.md#scenarios) for the step syntax and
+[Writing guidance](../module.md#precise-obligations) for choosing and explaining the situation.
+
 A scenario belongs to the Module owning its defining document. It may describe boundary use or an
 internal verification situation. It is not a separate Spec kind, document owner or context filter.
 

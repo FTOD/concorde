@@ -166,6 +166,7 @@ it("publishes the Protocol as its own collection without Spec provenance", async
     "relations",
     "context",
     "boundaries",
+    "writing",
     "module",
     "format",
     "checks",

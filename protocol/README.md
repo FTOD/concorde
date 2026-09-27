@@ -34,14 +34,14 @@ Architecture diagrams either assert only declared relations or are marked illust
 4. [Context](context.md) — the read side: three channels, selection and the reconciliation.
 5. [Boundaries](boundaries.md) — the write side, the impact of a write, and the task types that
    compose a task's boundary.
-6. [Module specifications](module.md) — what the reading content must explain.
-7. [Required format](format.md) — Module declaration, registry, metadata schema 3, identities, anchors, reading
-   structure and definition syntax.
-8. [Checks](checks.md) — every decidable rule and its limits.
-9. [Views](views.md) — derived views, checked D2 diagrams and illustrative blocks.
-10. [Migration](migration.md) — what changed from version 10, in 11.1, in 13, 13.1, 13.2, 13.3 and 14.
-11. [`model.yaml`](model.yaml) — the machine-readable vocabulary.
-12. Templates: [Module](templates/module.md) and [Scenario fragment](templates/scenario.md).
+6. [Spec writing guidelines](writing.md) — the authoring entry, with two separately maintained parts:
+   [Required format](format.md) for machine-checkable structure and syntax, and
+   [Writing guidance](module.md) for content requiring reader and editor judgment.
+7. [Checks](checks.md) — every decidable rule and its limits.
+8. [Views](views.md) — derived views, checked D2 diagrams and illustrative blocks.
+9. [Migration](migration.md) — what changed from version 10, in 11.1, in 13, 13.1, 13.2, 13.3 and 14.
+10. [`model.yaml`](model.yaml) — the machine-readable vocabulary.
+11. Templates: [Module](templates/module.md) and [Scenario fragment](templates/scenario.md).
 
 These are chapters of one standard, not project Module Specs. A project needs neither the Concorde
 Framework, nor a particular publisher, nor a particular agent runtime to use the language.

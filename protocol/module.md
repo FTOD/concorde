@@ -1,8 +1,14 @@
-# Module specifications
+# Writing guidance
+
+<a id="module-specifications"></a>
+
+This is the content part of [Spec writing guidelines](writing.md). Its companion,
+[Required format](format.md), defines the machine-checkable structure and syntax. This chapter
+explains what the **reading content** must communicate; applying it requires reader and editor
+judgment. Its semantic requirements remain in force even when structural checks pass.
 
 [Node types](model.md) and [Relations](relations.md) define what a specification declares.
-[Format](format.md) defines how declarations are written. This chapter defines what the **reading
-content** must explain, because no declaration establishes understanding.
+No declaration alone establishes understanding.
 
 This chapter serves understanding above all: it is what makes a structurally valid specification
 worth reading.
@@ -78,7 +84,7 @@ non-goals. Short plain prose. A directory or package name establishes no respons
 ### Terminology
 
 List the words a reader needs before Usage and Design make sense, in the table defined by
-[Format](format.md#terminology): one row per concept this document defines, with its one-sentence
+[Required format](format.md#terminology): one row per concept this document defines, with its one-sentence
 definition, and one link-only row per concept it imports from another Module.
 
 Deciding which concepts exist is substantive. Declare a concept for a domain word, a record, a

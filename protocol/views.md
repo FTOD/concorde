@@ -77,7 +77,7 @@ relation is declared, whichever Module declares it, so the outside view may draw
 `uses` of this Module or a `relates` from one of its realizations to another Module. Realizations
 that only keep the repository running, such as project configuration, development tooling or test
 suites, are left to prose: a diagram shows architecture, not an inventory of files. See
-[Module specifications](module.md#diagrams).
+[Writing guidance](module.md#diagrams).
 
 ````markdown
 ```d2

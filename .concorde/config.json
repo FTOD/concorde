@@ -3,7 +3,7 @@
   "registry": ".concorde/specs.json",
   "protocol": {
     "version": "14.0.0",
-    "digest": "sha256:cdf4b480a710883f3bf7220551662996b4c557b0765337cf366325f9d5bcab03"
+    "digest": "sha256:720b047d850bc8b72774608e6df8e57452e80cdf0ca76f530187912d9bcf6292"
   },
   "python": ".venv/bin/python",
   "checks": [

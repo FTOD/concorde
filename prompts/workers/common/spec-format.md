@@ -4,10 +4,13 @@ audience: worker
 
 ## How Spec documents are written
 
-You cannot read the Spec Protocol from the project, so its rules for writing a Module
-specification are given here, and the host appends the project's own copy of the Protocol's guide
-to writing one, with its templates, at the end of this brief. The host validates every document after you finish, and a
-structural error stops your run. The rules workers most often break:
+You cannot read the Spec Protocol from the project, so the host appends its installed
+**Spec writing guidelines** and templates at the end of this brief. Use both parts: **Required
+format** for machine-checkable structure and syntax, and **Writing guidance** for what the content
+must explain to its reader. Semantic requirements and mandatory terms retain their force;
+passing structural validation does not establish semantic sufficiency. The host validates every
+document after you finish, and a structural error stops your run. The reminders below cover
+common format mistakes and writing judgments; the complete guidelines follow.
 
 - **A document is a pair**: a reading file `X.md` and its metadata `X.md.json`. Every document a
   Module owns is listed in `module.owns` of the Module's entry metadata. Never edit the project
