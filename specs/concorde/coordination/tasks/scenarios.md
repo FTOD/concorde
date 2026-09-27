@@ -14,7 +14,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - AND the worktree's `.concorde/workspace.json` binds it as the workspace `severity`, with its real path as root, the branch, the base commit, the goal, `module.issues` and the primary worktree's `.concorde` as records directory, untracked by Git
 - AND `.concorde/tasks/severity.json` holds the record in state `open` with that base commit and no runs, deliveries or workflow
 - AND `.concorde/tasks/severity.decisions.md` holds the heading and the goal
-- AND the command prints the record
+- AND the command prints the record and the decision log's absolute path
 
 ### scenario.tasks.open-inherits-worker-models — A new task keeps its own copy of the worker models
 
@@ -173,6 +173,14 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - AND `concorde spec-validation` ran in the primary worktree after the merge and passed, its output in `.concorde/tasks/<task-id>.merge.log`
 - AND the task is closed as merged with its worktree removed
 - AND the output names the commits before and after the merge, each check with its exit status, and how long the command waited for the lock
+
+### scenario.tasks.merge-empty-log — A merge warns of an unwritten decision log
+
+- GIVEN a delivered task whose decision log holds only the heading and goal `open` wrote
+- WHEN the main agent runs `concorde task merge <task-id>` in the primary worktree
+- THEN the task is merged and closed as merged
+- AND the output's `warnings` names the decision log's path and says that nothing was recorded in it
+- BUT a task whose decision log has an entry of its own merges with no warning
 
 ### scenario.tasks.merge-checks — Run the named checks instead of the default
 

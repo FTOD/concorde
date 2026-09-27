@@ -121,7 +121,9 @@ class CaseTests(unittest.TestCase):
 
             def fake_run(command, cwd, **options):
                 commands.append(command[1:3])
-                return SimpleNamespace(stdout=json.dumps({"worktree": "/tmp/w"}))
+                return SimpleNamespace(
+                    stdout=json.dumps({"record": {"worktree": "/tmp/w"}})
+                )
 
             def operation(concorde, worktree, argv):
                 operations.append(argv)

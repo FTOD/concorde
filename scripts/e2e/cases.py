@@ -98,7 +98,7 @@ def repair_specs(
             cwd=project,
         ).stdout
     )
-    worktree = Path(opened["worktree"])
+    worktree = Path(opened["record"]["worktree"])
     steps: list[dict] = []
 
     def step(name: str, argv: list[str]) -> dict | None:

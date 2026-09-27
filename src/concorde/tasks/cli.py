@@ -425,7 +425,7 @@ def main(argv, cwd: Path | None = None) -> int:
         return 0 if exit_.code in (0, None) else 2
     try:
         if arguments.command == "open":
-            value = store.open_task(
+            record = store.open_task(
                 here,
                 arguments.task_id,
                 arguments.goal,
@@ -433,6 +433,12 @@ def main(argv, cwd: Path | None = None) -> int:
                 base=arguments.base,
                 path=Path(arguments.path) if arguments.path else None,
             )
+            value = {
+                "record": record,
+                "decision_log": store.decision_log_path(
+                    store.primary_of(here), record["id"]
+                ).as_posix(),
+            }
         elif arguments.command == "list":
             value = store.list_tasks(store.primary_of(here), arguments.state)
         elif arguments.command == "show":

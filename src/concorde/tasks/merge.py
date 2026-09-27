@@ -229,6 +229,12 @@ def merge_task(
                 f"after merging task {task_id} into {branch} at {after}, {problem}{left}; "
                 f"the checks' output is in {log}; the task is still delivered",
             )
+        # Read before closing, which appends how the task ended.
+        warnings = [
+            text
+            for text in (store.unwritten_decision_log(primary, record),)
+            if text is not None
+        ]
         try:
             record = store.close_locked(primary, task_id, "merged")
         except TaskError as error:
@@ -247,6 +253,7 @@ def merge_task(
             "waited_seconds": waited,
             "log": log.as_posix(),
         },
+        "warnings": warnings,
     }
 
 

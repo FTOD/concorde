@@ -111,6 +111,31 @@ class MergeTests(unittest.TestCase):
         self.assertIn("[exit 0 after", log)
         self.assertEqual("", store.merge_lock_path(self.root).read_text())
 
+    @verifies("scenario.tasks.merge-empty-log")
+    def test_a_merge_warns_of_an_unwritten_decision_log(self):
+        passing = ["--check", python("")]
+        self.project.open_task("t1")
+        self.deliver()
+        status, value = self.command("merge", "t1", *passing)
+        self.assertEqual(0, status, value)
+        self.assertEqual("merged", value["record"]["closed"]["outcome"])
+        log = self.root / ".concorde/tasks/t1.decisions.md"
+        (warning,) = value["warnings"]
+        self.assertIn(str(log), warning)
+        self.assertIn("holds only its heading and goal", warning)
+        # The close still appends how the task ended.
+        self.assertIn("## Closed: merged", log.read_text())
+        # A log with an entry of its own merges without a warning.
+        self.project.open_task("t2")
+        with (self.root / ".concorde/tasks/t2.decisions.md").open("a") as stream:
+            stream.write(
+                "\n## Decisions\n\n- Kept the old name; nothing depends on it.\n"
+            )
+        self.deliver("t2", path="src/a/other.py")
+        status, value = self.command("merge", "t2", *passing)
+        self.assertEqual(0, status, value)
+        self.assertEqual([], value["warnings"])
+
     def test_a_task_whose_workspace_ran_merges(self):
         # A bound run leaves its run store and workspace lock in the primary worktree's records
         # directory; an installed project ignores them, so they never block a merge.

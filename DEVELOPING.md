@@ -26,7 +26,7 @@ Developing this checkout itself is direct developer-authorized maintenance, done
 
 1. From the primary worktree, open it with
    `python3 scripts/concorde.py task open <task> --goal "<goal>" --modules <ids>`; its worktree is
-   `.claude/worktrees/<task>`.
+   `.claude/worktrees/<task>` and its decision log the `decision_log` path the command prints.
 2. Use the host workflow in `AGENTS.md` (pi) or `CLAUDE.md` (Claude Code) to work inside the
    task. A session is inside at most one task at a time.
 3. Create what Git ignores there: `uv sync --locked --group dev`, `npm --prefix docsite ci`,
@@ -37,15 +37,17 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    `task-validation`, `delivery`) from the task worktree, never the primary worktree's copy: only
    the branch's copy knows the branch's Protocol, checks and prompts, and only the task worktree
    holds the workspace binding the runs read.
-5. Run `python3 scripts/concorde.py task-validation` and `python3 scripts/concorde.py delivery`
-   there.
+5. Append every decision taken without the developer and every non-`ok` result to the decision
+   log, then run `python3 scripts/concorde.py task-validation` and
+   `python3 scripts/concorde.py delivery` there.
 6. After delivery, the main agent returns to or remains in the primary worktree, according to
    its host workflow, and runs
    `python3 scripts/concorde.py task merge <task> --check "python3 scripts/concorde.py build"
 --check "python3 scripts/concorde.py spec-validation"`. It takes the merge lock, merges the task
    branch into main, runs the build and `spec-validation` on main as a cross-check of the branch's
-   self-validation, undoes the merge if either fails, and closes the task. Never merge with
-   `git merge` directly: other main sessions may be merging at the same time. On `merge_busy`, run
+   self-validation, undoes the merge if either fails, and closes the task; its `warnings` name a
+   decision log nobody wrote in. Never merge with `git merge` directly: other main sessions may be
+   merging at the same time. On `merge_busy`, run
    it again; on `merge_conflict`, the main agent arranges resolution in the task worktree by
    merging main into the task branch, resolving, and repeating steps 4 and 5. A task session
    reports the conflict to the main agent; it never merges, rebases or switches branches.

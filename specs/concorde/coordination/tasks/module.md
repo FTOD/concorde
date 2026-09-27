@@ -129,8 +129,10 @@ heading and the goal at open, then only appends escalations and how the task end
 working on the task, the main agent or the task's task session, appends directly: every uncertainty
 it decided alone, with options and reason, every non-`ok` run result and what it did about it, and
 the decisions and problems of a workflow's report, which Workflows saves beside its own record and
-never writes here. The main agent reads the log when it reports to the developer at the end of the
-task.
+never writes here. `concorde task open` prints the log's path beside the new record, and
+`concorde task merge` warns when the log still holds only its heading and goal, since a task
+worked without writing it has lost the record of every decision taken alone. The main agent reads
+the log when it reports to the developer at the end of the task.
 
 When it cannot handle an error itself, the session escalates with `concorde task escalate`, naming
 the runs of the task's workspace, saved refusals or earlier escalations it cannot handle and
@@ -220,7 +222,7 @@ as a project that must build first. A failed check, or checks that leave uncommi
 the primary branch with `git reset --keep` to the commit it had and refuses with `check_failed`,
 naming the check, its exit status and its log, `.concorde/tasks/<task-id>.merge.log`. When
 everything passed, Tasks closes the task as merged and prints the record with the commits before
-and after, each check and how long it waited.
+and after, each check, how long it waited and its warnings, such as a decision log nobody wrote in.
 
 The lock is a `flock` held by the command's own process, so no session has to release it or
 announce that it is done: the kernel releases it when the process ends, even when it is killed, and

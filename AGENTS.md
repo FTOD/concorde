@@ -3,8 +3,9 @@
 These instructions apply to pi only, including when both `AGENTS.md` and `CLAUDE.md` are loaded.
 Claude Code follows `CLAUDE.md` for its host workflow.
 
-Read [DEVELOPING.md](DEVELOPING.md) in full before working on this source checkout. It contains
-shared development rules, preparation, verification, delivery, merge checks and defect handling.
+Read [DEVELOPING.md](DEVELOPING.md) in full before working on this source checkout; pi does not
+import files named in `AGENTS.md`, so open it with the read tool. It contains shared development
+rules, preparation, verification, delivery, merge checks and defect handling.
 
 ## Main session
 
@@ -22,10 +23,11 @@ a shell `cd` changes only that command's working directory, not the session's co
    from the primary worktree. This starts pi in the task worktree; use `--answer` on the same
    command for a subsequent round, or the tool's `answer` input when using the extension.
 4. Monitor the session's recorded result and read any escalation's complete chain with
-   `python3 scripts/concorde.py task show <task>`. Record decisions, answer escalations within
+   `python3 scripts/concorde.py task show <task>`. Append to the task's decision log (the path
+   `task open` printed) every decision you take without the developer, answer escalations within
    your authority, and have the session finish validation and delivery.
 5. After delivery, inspect the result and merge from the primary worktree with the command and
-   both merge checks in `DEVELOPING.md`.
+   both merge checks in `DEVELOPING.md`, and act on every warning the merge prints.
 
 For several tasks, start one session per task and coordinate their results from the primary
 worktree. Do not edit task sources from the primary pi session or treat shell `cd` as entering a

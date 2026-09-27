@@ -61,6 +61,11 @@ class TaskStoreTests(unittest.TestCase):
             "module.a",
         )
         self.assertEqual(0, status, value)
+        self.assertEqual(
+            str(self.root / ".concorde/tasks/severity.decisions.md"),
+            value["decision_log"],
+        )
+        value = value["record"]
         worktree = self.root / ".claude/worktrees/severity"
         self.assertEqual(str(worktree), value["worktree"])
         self.assertEqual(("open", head), (value["state"], value["base_commit"]))

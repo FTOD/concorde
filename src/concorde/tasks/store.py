@@ -109,6 +109,23 @@ def decision_log_path(primary: Path, task_id: str) -> Path:
     return tasks_directory(primary) / f"{task_id}.decisions.md"
 
 
+def unwritten_decision_log(primary: Path, record: dict) -> str | None:
+    """A warning when the task's decision log holds nothing beyond what ``open`` wrote."""
+    log = decision_log_path(primary, record["id"])
+    opened = f"# Decision log: {record['id']}\n\nGoal: {record['goal']}"
+    try:
+        text = log.read_text(encoding="utf-8")
+    except OSError:
+        return f"the decision log {log} of task {record['id']} is missing"
+    if text.strip() != opened.strip():
+        return None
+    return (
+        f"the decision log {log} of task {record['id']} holds only its heading and goal: "
+        "no decision taken without the developer and no non-ok result was recorded; "
+        "append them before reporting the task"
+    )
+
+
 def _unknown(primary: Path, task_id: str) -> TaskError:
     directory = tasks_directory(primary)
     known = (
@@ -771,6 +788,7 @@ __all__ = [
     "close_locked",
     "close_task",
     "decision_log_path",
+    "unwritten_decision_log",
     "deliveries",
     "derived_state",
     "escalate",

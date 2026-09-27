@@ -3,8 +3,11 @@
 These instructions apply to Claude Code only, including when both `CLAUDE.md` and `AGENTS.md` are
 loaded. pi follows `AGENTS.md` for its host workflow.
 
-Read [DEVELOPING.md](DEVELOPING.md) in full before working on this source checkout. It contains
-shared development rules, preparation, verification, delivery, merge checks and defect handling.
+[DEVELOPING.md](DEVELOPING.md) contains the shared development rules, preparation, verification,
+delivery, merge checks and defect handling. Claude Code imports it here, so it is always in
+context; follow it in full:
+
+@DEVELOPING.md
 
 ## Main session
 
@@ -13,11 +16,15 @@ For a single task:
 1. Open the task from the primary worktree as described in `DEVELOPING.md`.
 2. Enter its worktree with EnterWorktree (`path` set to the task worktree). A session is inside
    at most one task at a time.
-3. Prepare dependencies and references, change sources, verify and commit each verified step,
-   then run validation and delivery, following `DEVELOPING.md`. Run every task command with the
-   task worktree's own `python3 scripts/concorde.py`.
-4. Leave with ExitWorktree (`action: "keep"`). From the primary worktree, merge with the command
-   and both merge checks in `DEVELOPING.md`.
+3. Prepare dependencies and references, change sources, and verify and commit each verified step,
+   following `DEVELOPING.md`. Run every task command with the task worktree's own
+   `python3 scripts/concorde.py`.
+4. Append to the task's decision log (the path `task open` printed) every decision you took
+   without the developer, with its options and reason, and every non-`ok` result with what you
+   did about it; reporting them to the developer does not replace the log. Then run validation
+   and delivery.
+5. Leave with ExitWorktree (`action: "keep"`). From the primary worktree, merge with the command
+   and both merge checks in `DEVELOPING.md`, and act on every warning the merge prints.
 
 For work split into several tasks, stay in the primary worktree. Before starting each task
 session, run `python3 scripts/development/init-references.py` from that task's worktree. Then run

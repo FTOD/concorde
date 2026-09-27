@@ -146,6 +146,13 @@ start time.
 passed and the task closed as merged, or at the commit it started from with the task still
 delivered, apart from a `rollback_failed` or a failed close that it reports.
 
+### req.tasks.empty-log-warned — A merge warns of an unwritten decision log
+
+`concorde task merge` SHALL list, in its output's `warnings`, the task's decision log with its path when the log is missing or holds nothing beyond the heading and goal that `open` wrote, without refusing or undoing the merge for it.
+
+Tasks cannot tell whether a task needed any decision, so an empty log is a reminder to whoever
+merges, not a failure: the main agent appends what it decided alone before it reports the task.
+
 ### req.tasks.merge-clean-primary — A merge starts from a clean primary
 
 `concorde task merge` SHALL refuse, before merging, a primary worktree with a detached `HEAD` or any

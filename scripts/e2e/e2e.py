@@ -164,7 +164,7 @@ def prepare(
         "repository": repo,
         "revision": rev,
         "task": task,
-        "worktree": opened["worktree"],
+        "worktree": opened["record"]["worktree"],
     }
 
 
