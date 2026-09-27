@@ -1,8 +1,8 @@
 # Delivery requirements
 
-The Module-wide obligations of [Delivery](module.md). The commit, the evidence bundle and the
-output are defined in the [contracts](contracts.md); the [scenarios](scenarios.md) show the
-obligations at work.
+The Module-wide obligations of [Delivery](module.md). The commit, the
+[evidence bundle](../../../glossary.json#concept.evidence-bundle) and the output are defined in the
+[contracts](contracts.md); the [scenarios](scenarios.md) show the obligations at work.
 
 ## Preconditions
 
@@ -14,7 +14,7 @@ over every commit on the bound branch since the base commit and every uncommitte
 ### req.delivery.committed-steps — Committed steps are deliverable
 
 Delivery SHALL accept a workspace without uncommitted changes when its branch head is past the base
-commit and is no delivery commit of the workspace.
+commit and is no [delivery commit](../../../glossary.json#concept.delivery-commit) of the workspace.
 
 ### req.delivery.scenarios-verified — A code change ships only with tests for its scenarios
 
@@ -40,8 +40,9 @@ ones the readiness examined.
 
 ### req.delivery.bound-branch — Commits go on the bound branch
 
-Delivery SHALL create its commit only on the branch the workspace binding names, with the validated
-head as its only parent.
+Delivery SHALL create its commit only on the branch the
+[workspace binding](../../../glossary.json#concept.workspace-binding) names, with the validated head
+as its only parent.
 
 ### req.delivery.evidence — Every delivery commit carries its bundle
 
@@ -60,8 +61,8 @@ examined.
 
 ### req.delivery.commit-is-record — The commit is the only record
 
-Delivery SHALL record a delivery only in its delivery commit, writing no task record and no other
-record of it.
+Delivery SHALL record a delivery only in its delivery commit, writing no
+[task record](../../../glossary.json#concept.task-record) and no other record of it.
 
 Whoever needs to know whether and how often a workspace was delivered reads the delivery commits on
 its branch, as the [contract](contracts.md#delivery-commit) defines them.

@@ -1,8 +1,9 @@
 # Understanding contracts
 
 The exact shape of what [Understanding](module.md) returns. The assessment is the `output` of the
-[run result](../../module.md#concept.execution.run-result). The worker proposes it as the
-Operation-specific part of its answer, and the Operation's steps pass it on once their checks have
+[run result](../../../glossary.json#concept.run-result). The worker proposes it as the
+Operation-specific part of its answer, and the
+[Operation](../../../glossary.json#concept.operation)'s steps pass it on once their checks have
 passed, with `goal` set to the run's own `--goal` argument.
 
 ## Assessment

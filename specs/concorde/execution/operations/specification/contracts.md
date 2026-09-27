@@ -1,8 +1,11 @@
 # Specification contracts
 
-The exact shape of what [Specification](module.md) returns. The Spec change is the `output` of the
-[run result](../../module.md#concept.execution.run-result). The Operation computes its observed fields; the worker supplies only `summary`,
-`promise_changes` and `proposed_documents` as the Operation-specific part of its answer.
+The exact shape of what [Specification](module.md) returns. The
+[Spec change](../../../glossary.json#concept.spec-change) is the `output` of the
+[run result](../../../glossary.json#concept.run-result). The
+[Operation](../../../glossary.json#concept.operation) computes its observed fields; the worker
+supplies only `summary`, `promise_changes` and `proposed_documents` as the Operation-specific part
+of its answer.
 
 ## Spec change
 

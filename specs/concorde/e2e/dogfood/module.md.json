@@ -18,67 +18,37 @@
         "target": "module.headless-sessions",
         "meaning": "#uses-sessions",
         "relies_on": [
-          "concept.headless-sessions.session"
+          "concept.headless-session"
         ]
       },
       {
         "target": "module.dogfooding",
         "meaning": "#uses-dogfooding",
         "relies_on": [
-          "concept.dogfooding.develop-install",
-          "concept.dogfooding.boundary-case",
-          "concept.dogfooding.defect-report"
+          "concept.develop-install",
+          "concept.boundary-case",
+          "concept.defect-report"
         ]
       },
       {
         "target": "module.distribution",
         "meaning": "#uses-distribution",
         "relies_on": [
-          "concept.distribution.installer"
+          "concept.installer"
         ]
       },
       {
         "target": "module.issues",
         "meaning": "#uses-issues",
         "relies_on": [
-          "concept.issues.report"
+          "concept.issue-report"
         ]
       }
     ],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      }
-    ],
+    "includes": [],
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.dogfood-scenarios.scenario",
-      "type": "concept",
-      "title": "Dogfood scenario",
-      "meaning": "#concept.dogfood-scenarios.scenario"
-    },
-    {
-      "id": "concept.dogfood-scenarios.fault",
-      "type": "concept",
-      "title": "Fault",
-      "meaning": "#concept.dogfood-scenarios.fault"
-    },
-    {
-      "id": "concept.dogfood-scenarios.directory",
-      "type": "concept",
-      "title": "Scenario directory",
-      "meaning": "#concept.dogfood-scenarios.directory"
-    },
-    {
-      "id": "concept.dogfood-scenarios.evaluation",
-      "type": "concept",
-      "title": "Evaluation",
-      "meaning": "#concept.dogfood-scenarios.evaluation"
-    },
     {
       "id": "realization.dogfood-scenarios.runner",
       "type": "realization",

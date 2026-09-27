@@ -15,11 +15,11 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.build-workflows — Render every workflow for both clients
 
-- GIVEN a workflow catalog with the brownfield workflow
+- GIVEN a workflow catalog with the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
 - WHEN the developer runs `build`
 - THEN `generated/workflows/claude/concorde-brownfield.js` starts with a `meta` block naming `concorde-brownfield`, followed by the Claude Code step adapter and the procedure
 - AND `generated/workflows/pi/brownfield.js` holds the pi step adapter and the same procedure, and `generated/workflows/pi/agents/` the command-runner agents `concorde-step.md` and `concorde-report.md`
-- AND the build manifest records all four
+- AND the [build manifest](../glossary.json#concept.build-manifest) records all four
 
 ### scenario.distribution.build-check-stale — Report a stale build without writing
 
@@ -30,7 +30,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.build-refuses-unsafe — Refuse an unsafe prompt tree
 
-- GIVEN a prompt file that no root includes, an include cycle, an include of a Spec document or an owned output replaced by a link
+- GIVEN a prompt file that no root includes, an include cycle, an include of a [Spec](../glossary.json#concept.spec) document or an owned output replaced by a link
 - WHEN the developer runs `build`
 - THEN the result is `invalid` with a finding naming the problem
 - BUT no output is written or removed
@@ -54,7 +54,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 ### scenario.distribution.stale-copy-refused — Refuse to copy from a stale build
 
 - GIVEN a package whose Protocol source changed after its last build
-- WHEN the Protocol copy is written into a project
+- WHEN the [Protocol copy](../glossary.json#concept.protocol-copy) is written into a project
 - THEN the copy is refused as a stale build
 - BUT the project's existing Protocol copy is unchanged
 
@@ -73,14 +73,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN a Git project with Specs and a fresh Concorde package
 - WHEN the developer runs the installer on the project
-- THEN the project has the Protocol copy under `.concorde/protocol/`, the `concorde` command and the main-session guidance as a project skill and a `CLAUDE.md` block
+- THEN the project has the Protocol copy under `.concorde/protocol/`, the `concorde` command and the [main-session guidance](../glossary.json#concept.main-session-guidance) as a project skill and a `CLAUDE.md` block
 - AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
 - AND installing again with the same pin downloads nothing
-- AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go, and `.concorde/workspace.json`, their workspace binding
+- AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go, and `.concorde/workspace.json`, their [workspace binding](../glossary.json#concept.workspace-binding)
 - AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
 - AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
-- BUT no Spec document, registry or Protocol binding of the project changed
+- BUT no Spec document, registry or [Protocol binding](../glossary.json#concept.protocol-binding) of the project changed
 
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
 
@@ -99,9 +99,9 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.install-busy — Concorde is not replaced while it runs
 
-- GIVEN an installed project in which the runner process of an Operation or execution command run, or a pi task-session round's supervisor, is still running
+- GIVEN an installed project in which the runner process of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run, or a pi [task-session](../glossary.json#concept.task-session) round's supervisor, is still running
 - WHEN the developer installs Concorde again or runs `concorde update`
-- THEN the install is refused with `concorde_busy`, naming each running run or round with its process and progress file
+- THEN the install is refused with `concorde_busy`, naming each running run or round with its process and [progress file](../glossary.json#concept.progress-file)
 - BUT the progress file of the running Operation's worker is not named as a run of its own
 - BUT nothing in the project changes
 - AND once the run has finished, the same install succeeds
@@ -150,8 +150,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN a project and a machine with npm
 - WHEN the developer installs Concorde with `--pi`
 - THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile, as in every install
-- AND the run view is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
-- AND every rendered pi workflow script is under `.concorde/workflows/pi/` and the command-runner agents `concorde-step` and `concorde-report` under `.pi/agents/`
+- AND the [run view](../glossary.json#concept.run-view) is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
+- AND every rendered pi [workflow script](../glossary.json#concept.workflow-script) is under `.concorde/workflows/pi/` and the command-runner agents `concorde-step` and `concorde-report` under `.pi/agents/`
 - AND a second install with the same lockfile does not run npm again
 - BUT without npm the install is refused before anything else is written
 

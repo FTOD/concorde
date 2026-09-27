@@ -1,9 +1,10 @@
 # Development environment
 
-The root Module binds the files that set up development of this checkout: the Python project and
-lock, the pytest configuration and its evidence plugin, the reference initializer, the Claude
-Code documentation fetcher and the docsite type check. These promises concern how Concorde's own
-tests and checks run, not what Concorde offers a consumer project.
+The root [Module](glossary.json#concept.module) binds the files that set up development of this
+checkout: the Python project and lock, the pytest configuration and its evidence plugin, the
+reference initializer, the Claude Code documentation fetcher and the docsite type check. These
+promises concern how Concorde's own tests and checks run, not what Concorde offers a consumer
+project.
 
 ## Test evidence
 

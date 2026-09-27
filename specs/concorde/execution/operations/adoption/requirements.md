@@ -1,24 +1,25 @@
 # Adoption requirements
 
 The Module-wide obligations of [Adoption](module.md). The shapes are in the
-[contracts](contracts.md); the [scenarios](scenarios.md) show the obligations in concrete situations.
+[contracts](contracts.md); the [scenarios](scenarios.md) show the obligations in concrete
+situations.
 
 ## Reading and writing
 
 ### req.adoption.task-type — Adoption workers run under code-to-spec
 
-The survey and code_to_spec hosts SHALL compute their workers' grants for task type `code-to-spec` from the Specs of the worktree the run works on.
+The survey and code_to_spec hosts SHALL compute their workers' grants for [task type](../../../glossary.json#concept.task-type) `code-to-spec` from the Specs of the worktree the run works on.
 
 ### req.adoption.survey-read-only — A survey writes nothing
 
 The survey host SHALL give its worker no writable path and end the run `failed` when the audit finds any change.
 
-The survey withholds the Spec side of the `code-to-spec` grant, which the Protocol permits, so the
-survey may also run unbound.
+The survey withholds the [Spec](../../../glossary.json#concept.spec) side of the `code-to-spec`
+grant, which the Protocol permits, so the survey may also run unbound.
 
 ### req.adoption.no-code-change — Adoption never changes code
 
-No Adoption Operation SHALL create, change or delete a file of the workspace other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
+No Adoption [Operation](../../../glossary.json#concept.operation) SHALL create, change or delete a file of the workspace other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
 
 ### req.adoption.self-repair — The worker repairs the Specs it breaks
 
@@ -41,13 +42,13 @@ the environment of one run and would let a worker change files through a command
 
 ### req.adoption.modules-by-host — Only the scaffold adds Modules
 
-A survey or code_to_spec worker SHALL NOT be able to add or remove a Module; only the `scaffold` execution command of [Scaffold](../../commands/scaffold/module.md) does, from an admitted survey.
+A survey or code_to_spec worker SHALL NOT be able to add or remove a [Module](../../../glossary.json#concept.module); only the `scaffold` [execution command](../../../glossary.json#concept.execution-command) of [Scaffold](../../commands/scaffold/module.md) does, from an admitted survey.
 
 ## Honest description
 
 ### req.adoption.open-questions — Doubtful intent is never a promise
 
-A code_to_spec worker SHALL report every behaviour whose intent the code does not settle as an open question instead of writing it as a requirement, scenario or contract.
+A code_to_spec worker SHALL report every behaviour whose intent the code does not settle as an [open question](../../../glossary.json#concept.open-question) instead of writing it as a requirement, scenario or contract.
 
 The Spec may name such a behaviour as an honest unknown so that a reader is warned; it states no
 promise about it until an answer does.
@@ -104,7 +105,7 @@ attempt's errors as the project's and let the same errors pass.
 
 ### req.adoption.no-resume-on-spec — A Spec error stops the run
 
-The code_to_spec host SHALL end the run `blocked` with every new structural error as a cause, without a resume round, when the change adds a structural error.
+The code_to_spec host SHALL end the run `blocked` with every new structural error as a cause, without a [resume round](../../../glossary.json#concept.resume-round), when the change adds a structural error.
 
 ### req.adoption.mirror-reconciled — The registry mirror follows the entries
 

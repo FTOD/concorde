@@ -60,7 +60,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.uses.no-self` | A Module does not use itself. | error |
 | `CHK.uses.unique` | A Module uses each provider at most once. | error |
 | `CHK.relies-on.owned` | Every identity in `relies_on` names a requirement, scenario, contract or concept owned by the relation's target. | error |
-| `CHK.relies-on.linked` | When `relies_on` is present, every stable-identity link from the relation's `meaning` section to a node of the target names a listed node. | error |
+| `CHK.relies-on.linked` | When `relies_on` is present, every stable-identity link from the relation's `meaning` section to a requirement, scenario or contract of the target names a listed node; a term link names a word and needs no listing. | error |
 | `CHK.includes.no-self` | A Module does not include itself or a document it owns. | error |
 | `CHK.includes.unique` | No duplicate `(kind, target)` pairs. | error |
 | `CHK.includes.reason` | Each `includes` has a nonempty `reason`. | error |
@@ -69,10 +69,10 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.external.no-overlap` | External paths overlap no document member and no realization entry. | error |
 | `CHK.binds.exists` | Non-pending entries exist; exact entries are files and `/` entries are directories. | error |
 | `CHK.binds.disjoint` | No two realizations in one Module list the same entry. | error |
-| `CHK.binds.no-spec` | No document member, generated output or control record is bound; a bound directory contains no document member. | error |
+| `CHK.binds.no-spec` | No document member, the glossary, generated output or control record is bound; a bound directory contains no document member. | error |
 | `CHK.binds.installed` | No directory entry covers an installed file, which is bound only by its exact path. | error |
 | `CHK.binds.pending-subset` | `pending` is a subset of `entries`, and pending entries do not exist. | error |
-| `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, generated output, external material or a control record such as the project registry and configuration. | error |
+| `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, the glossary, generated output, external material or a control record such as the project registry and configuration. | error |
 | `CHK.narrows.acyclic` | `narrows` never relates a concept to itself, directly or through other `narrows`. | error |
 | `CHK.contrasts.required` | A concept and a Module other than its owner whose titles normalize equal have a `contrasts` between them. | error |
 | `CHK.contrasts.once` | At most one `contrasts` is declared per unordered pair, and it has a nonempty `reason`. | error |

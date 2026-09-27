@@ -35,6 +35,7 @@ class InitialModuleTests(unittest.TestCase):
                     ".concorde/specs.json",
                     "specs/project/module.md",
                     "specs/project/module.md.json",
+                    "specs/project/glossary.json",
                 ],
                 [item["path"] for item in proposal["files"]],
             )
@@ -85,6 +86,7 @@ class InitialModuleTests(unittest.TestCase):
                             "uses": [],
                             "includes": [],
                             "participates": [],
+                            "glossary": "specs/project/glossary.json",
                         }
                     ],
                 },

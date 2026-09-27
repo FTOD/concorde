@@ -3,11 +3,12 @@
 ## Purpose
 
 Coordination is the upper of Concorde's two halves: project management and task-level parallelism.
-It is where the developer and the main agent decide what to work on, split it into tasks, give each
-task its own branch and worktree, run several tasks at once through task sessions, keep the reasons
-behind decisions taken without the developer, escalate what matters and merge what was delivered.
-The developer and the main agent rely on it; it binds no files of its own, and its three children
-do the work: the Main session, Tasks and Task sessions.
+It is where the developer and the [main agent](../glossary.json#concept.main-agent) decide what to
+work on, split it into tasks, give each task its own branch and worktree, run several tasks at once
+through [task sessions](../glossary.json#concept.task-session), keep the reasons behind decisions
+taken without the developer, escalate what matters and merge what was delivered. The developer and
+the main agent rely on it; it binds no files of its own, and its three children do the work: the
+Main session, Tasks and Task sessions.
 
 Coordination does not do the bounded work itself. Inside a task's worktree the changes are made
 directly by whoever works the task, or through [Execution](../execution/module.md), the lower half,
@@ -15,30 +16,15 @@ which knows nothing of tasks: Coordination hands it a workspace by writing that 
 workspace binding, and learns what happened there only from what Execution recorded. It decides
 direction, splitting and merging, never how a worker is bounded, launched or checked.
 
-## Terminology
-
-This entry defines no terms of its own. It relies on the words the root defines for the people and
-agents, and on the words of the Modules it points to.
-
-| Term | Definition |
-| --- | --- |
-| [Developer](../vocabulary.md#concept.concorde.developer) | |
-| [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
-| [Task session](../vocabulary.md#concept.concorde.task-session) | |
-| [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
-| [Agent harness](../harness/module.md#concept.harness.harness) | |
-| [Task](tasks/module.md#concept.tasks.task) | |
-| [Workspace binding](../execution/module.md#concept.execution.workspace-binding) | |
-| [Run store](../execution/module.md#concept.execution.run-store) | |
-
 ## Usage
 
 The developer works with the main agent in the primary worktree. For each piece of work the main
-agent opens a task, which Tasks makes into a branch, a worktree bound as a workspace, a record and
-a decision log. It then either works the task itself, inside that worktree, or, when it wants
-several tasks to run at once, starts a task session for each. Whoever works a task changes Specs and
-code there, directly or through runs of Execution, validates and delivers it. The main agent then
-merges the delivered task from the primary worktree and reports to the developer.
+agent opens a task, which Tasks makes into a branch, a worktree bound as a workspace, a record and a
+[decision log](../glossary.json#concept.decision-log). It then either works the task itself, inside
+that worktree, or, when it wants several tasks to run at once, starts a task session for each.
+Whoever works a task changes Specs and code there, directly or through runs of Execution, validates
+and delivers it. The main agent then merges the delivered task from the primary worktree and reports
+to the developer.
 
 The task level is stable, but who plays it is not:
 
@@ -80,13 +66,13 @@ coordination.tasks -> execution.commits: reads whether a task is delivered
 ```
 
 The upper half talks to the lower half in exactly three ways. Tasks writes the
-[workspace binding](../execution/module.md#concept.execution.workspace-binding) of each task
-worktree when it opens the task, naming the workspace after the task. Whoever works the task runs
-Execution's commands inside that worktree, never naming the task. And Tasks reads back what
-Execution recorded: the task's runs in the [run store](../execution/module.md#concept.execution.run-store)
-and its delivery commits on the task branch, from which it derives whether a task is active or
-delivered. No record is written by both halves, so neither can leave the other with a state that
-disagrees with what happened.
+[workspace binding](../glossary.json#concept.workspace-binding) of each task worktree when it opens
+the task, naming the workspace after the task. Whoever works the task runs Execution's commands
+inside that worktree, never naming the task. And Tasks reads back what Execution recorded: the
+task's runs in the [run store](../glossary.json#concept.run-store) and its
+[delivery commits](../glossary.json#concept.delivery-commit) on the task branch, from which it
+derives whether a task is active or delivered. No record is written by both halves, so neither can
+leave the other with a state that disagrees with what happened.
 
 <a id="uses-execution"></a>
 
@@ -116,12 +102,13 @@ coordination.task -> harness
 
 <a id="uses-harness"></a>
 
-The **Harness** generates the [agent harness](../harness/module.md#concept.harness.harness) of a
-task session from its task: the session boundary that confines its writes to its task worktree,
-its decision log, and what its commits, runs and escalations write: the Git directory, the run
-store and the task records. The main session's harness is its installed guidance
-alone, since Concorde places no permission limits on the main agent. A task session that cannot get
-its harness does not start.
+The **Harness** generates the [agent harness](../glossary.json#concept.agent-harness) of a task
+session from its task: the [session boundary](../glossary.json#concept.session-boundary) that
+confines its writes to its task worktree, its decision log, and what its commits, runs and
+escalations write: the Git directory, the run store and the
+[task records](../glossary.json#concept.task-record). The main session's harness is its installed
+guidance alone, since Concorde places no permission limits on the main agent. A task session that
+cannot get its harness does not start.
 
 An extra level of messaging is one more place for an error to be lost, so the loss is prevented
 structurally: a task session escalates with its own link on top of the chains it received, and the
@@ -131,10 +118,11 @@ main agent adds its link on top of that before the developer sees it.
 
 <a id="contains-main-session"></a>
 
-The **Main session** is the level where the developer and the main agent work on the whole
-project: the guidance that makes a Claude Code or pi session in the primary worktree the main
-agent, including the method of working inside a task that the main agent and its task sessions
-share, and pi's run view. It starts task sessions when it delegates the task level.
+The **Main session** is the level where the developer and the main agent work on the whole project:
+the guidance that makes a Claude Code or pi session in the primary worktree the main agent,
+including the method of working inside a task that the main agent and its task sessions share, and
+pi's [run view](../glossary.json#concept.run-view). It starts task sessions when it delegates the
+task level.
 
 <a id="contains-tasks"></a>
 

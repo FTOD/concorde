@@ -1,4 +1,4 @@
-"""Protocol 14 reading syntax: anchors, sections, Terminology tables, definitions and diagrams.
+"""Protocol 15 reading syntax: anchors, sections, definitions, term links and diagrams.
 
 Every parser here reads one reading document's text and returns what it declares together with
 the problems it found, each tagged with the identity of the check it violates. Nothing here reads
@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from .errors import SpecError
 from .repository_base import HEADING, IDENTITY, walk_lines
 
-READING_SECTIONS = ("Purpose", "Terminology", "Usage", "Design")
+READING_SECTIONS = ("Purpose", "Usage", "Design")
 # A level-2 section an entry must not have: how a Module relates to others is part of its Design.
 FORBIDDEN_SECTIONS = ("Relationships",)
 HEADING_ANCHOR = re.compile(r"[ \t]+\{#([^{}\s]+)\}[ \t]*$")
@@ -75,14 +75,6 @@ class Anchor:
     group: tuple[str, ...]
 
 
-@dataclass(frozen=True)
-class TermRow:
-    line: int
-    term: str
-    href: str | None
-    definition: str
-
-
 @dataclass
 class Reading:
     """Everything one reading document declares, and the syntax problems found in it."""
@@ -95,7 +87,6 @@ class Reading:
     contracts: list = field(default_factory=list)
     diagrams: list = field(default_factory=list)
     links: list = field(default_factory=list)
-    terminology: list[TermRow] | None = None
     problems: list[Problem] = field(default_factory=list)
 
 
@@ -624,112 +615,6 @@ def _remote_reference(schema) -> bool:
     return False
 
 
-def _cells(line: str) -> list[str]:
-    stripped = line.strip()
-    if stripped.startswith("|"):
-        stripped = stripped[1:]
-    if stripped.endswith("|") and not stripped.endswith("\\|"):
-        stripped = stripped[:-1]
-    cells, current, code = [], "", False
-    index = 0
-    while index < len(stripped):
-        character = stripped[index]
-        if (
-            character == "\\"
-            and index + 1 < len(stripped)
-            and stripped[index + 1] == "|"
-        ):
-            current += "|"
-            index += 2
-            continue
-        if character == "`":
-            code = not code
-        if character == "|" and not code:
-            cells.append(current.strip())
-            current = ""
-        else:
-            current += character
-        index += 1
-    cells.append(current.strip())
-    return cells
-
-
-def _terminology(lines, found: list[Heading], reading: Reading) -> None:
-    """Parse the Terminology section's table into defining and import rows."""
-    top = [heading for heading in found if heading.level <= 2]
-    section = next(
-        (
-            heading
-            for heading in top
-            if heading.level == 2 and heading.text == "Terminology"
-        ),
-        None,
-    )
-    if section is None:
-        return
-    end = next((heading.line for heading in top if heading.line > section.line), None)
-    region = [
-        (number, kind, line)
-        for number, kind, line in lines
-        if number > section.line and (end is None or number < end)
-    ]
-    tables: list[list[tuple[int, str]]] = []
-    previous_table = False
-    for number, kind, line in region:
-        is_row = kind == "prose" and line.strip().startswith("|")
-        if is_row:
-            if not previous_table:
-                tables.append([])
-            tables[-1].append((number, line))
-        previous_table = is_row
-    rows: list[TermRow] = []
-    reading.terminology = rows
-    if len(tables) > 1:
-        reading.problems.append(
-            Problem(
-                "CHK.terminology.rows",
-                "a Terminology section holds at most one table",
-                tables[1][0][0],
-            )
-        )
-    if not tables:
-        return
-    table = tables[0]
-    header = _cells(table[0][1])
-    if (
-        header != ["Term", "Definition"]
-        or len(table) < 2
-        or not all(re.fullmatch(r":?-{3,}:?", cell) for cell in _cells(table[1][1]))
-    ):
-        reading.problems.append(
-            Problem(
-                "CHK.terminology.rows",
-                "the Terminology table must have the columns Term and Definition",
-                table[0][0],
-            )
-        )
-        return
-    for number, line in table[2:]:
-        cells = _cells(line)
-        if len(cells) != 2:
-            reading.problems.append(
-                Problem(
-                    "CHK.terminology.rows",
-                    "a Terminology row has exactly two cells",
-                    number,
-                )
-            )
-            continue
-        term, definition = cells
-        link = re.fullmatch(r"\[([^\]]+)\]\(([^\s)]+)\)", term)
-        if link:
-            rows.append(
-                TermRow(number, link.group(1).strip(), link.group(2), definition)
-            )
-        else:
-            rows.append(TermRow(number, term.strip("*_ ").strip(), None, definition))
-
-
 def _links(lines, reading: Reading) -> None:
     for number, kind, line in lines:
         if kind != "prose":
@@ -747,7 +632,6 @@ def parse_reading(text: str) -> Reading:
     _anchors(lines, reading.headings, reading)
     _definitions(lines, reading)
     _fences(lines, reading)
-    _terminology(lines, reading.headings, reading)
     _links(lines, reading)
     return reading
 
@@ -776,7 +660,7 @@ def entry_section_problems(text: str) -> list[Problem]:
         problems.append(
             Problem(
                 "CHK.document.sections",
-                "an entry has the level-2 sections Purpose, Terminology, Usage and Design, "
+                "an entry has the level-2 sections Purpose, Usage and Design, "
                 "each exactly once in any order; found " + ", ".join(wrong),
             )
         )
@@ -819,7 +703,7 @@ def entry_section_problems(text: str) -> list[Problem]:
                         heading.line,
                     )
                 )
-        elif heading.text != "Terminology":
+        else:
             meaningful = [
                 line
                 for n, k, line in region
@@ -841,9 +725,70 @@ def entry_section_problems(text: str) -> list[Problem]:
     return problems
 
 
-def first_section(text: str) -> str | None:
-    found = [heading for heading in headings(walk_lines(text)) if heading.level == 2]
-    return found[0].text if found else None
+def _blank(match: re.Match) -> str:
+    return " " * len(match.group(0))
+
+
+def prose_text(text: str) -> list[tuple[int, str]]:
+    """Each prose line as a reader sees its words: code, links and anchors blanked out, headings
+    left out. Blanking keeps every column, so a position found here is a position in the line.
+
+    ``CHK.term.unlinked`` searches this text for term titles, so a title inside inline code, a
+    link's text or target, an anchor or a heading never counts as an unlinked use.
+    """
+    result = []
+    for number, kind, line in walk_lines(text):
+        if kind != "prose" or HEADING.match(line):
+            continue
+        stripped = INLINE_CODE.sub(_blank, line)
+        stripped = LINK.sub(_blank, stripped)
+        stripped = HTML_ANCHOR.sub(_blank, stripped)
+        result.append((number, stripped))
+    return result
+
+
+def term_pattern(title: str) -> re.Pattern:
+    """How ``CHK.term.unlinked`` recognises a title in prose, between word boundaries: a one-word
+    title only as written, a longer title in any letter case and also with a plural ``s``."""
+    words = [re.escape(word) for word in title.split()]
+    body = r"[\s-]+".join(words)
+    if len(words) == 1:
+        return re.compile(rf"(?<![\w.-]){body}(?![\w-])")
+    return re.compile(rf"(?<![\w.-]){body}s?(?![\w-])", re.IGNORECASE)
+
+
+# What may precede a word that starts a sentence, a list item, a quote or a table cell.
+SENTENCE_START = re.compile(r"(?:^|[.!?:|>]|^\s*(?:[-*+]|\d+[.)]))\s*$")
+
+
+def term_uses(
+    text: str, titles: dict[str, str], module_titles: list[str]
+) -> dict[str, tuple[int, int, int]]:
+    """The first use of each term, by concept identity, as (line, start column, end column).
+
+    ``titles`` maps concept identities to titles. Where titles overlap the longest wins, so
+    ``Task`` inside ``Task type`` is no use of ``Task``; a Module's own title, such as ``Tasks``,
+    is never a use of a term. A one-word title does not count as the first word of a sentence,
+    list item, quote or table cell, where a capital letter says nothing about the word.
+    """
+    ordered = sorted(titles.items(), key=lambda item: (-len(item[1]), item[0]))
+    patterns = [(identity, term_pattern(title)) for identity, title in ordered]
+    modules = [
+        re.compile(rf"(?<![\w.-]){re.escape(title)}(?![\w-])")
+        for title in sorted(module_titles, key=len, reverse=True)
+    ]
+    found: dict[str, tuple[int, int, int]] = {}
+    for number, line in prose_text(text):
+        for pattern in modules:
+            line = pattern.sub(_blank, line)
+        for identity, pattern in patterns:
+            single = " " not in titles[identity]
+            for match in pattern.finditer(line):
+                if single and SENTENCE_START.search(line[: match.start()]):
+                    continue
+                found.setdefault(identity, (number, match.start(), match.end()))
+            line = pattern.sub(_blank, line)
+    return found
 
 
 def link_target(document_path: str, href: str) -> tuple[str, str] | None:

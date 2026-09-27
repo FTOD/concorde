@@ -19,17 +19,12 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.registry",
-          "concept.spec.boundary-set"
+          "concept.registry",
+          "concept.boundary-set"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -39,36 +34,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.checks.configured-check",
-      "type": "concept",
-      "title": "Configured check",
-      "meaning": "#concept.checks.configured-check"
-    },
-    {
-      "id": "concept.checks.check-result",
-      "type": "concept",
-      "title": "Check result",
-      "meaning": "#concept.checks.check-result"
-    },
-    {
-      "id": "concept.checks.read-only-boundary",
-      "type": "concept",
-      "title": "Read-only check boundary",
-      "meaning": "#concept.checks.read-only-boundary"
-    },
-    {
-      "id": "concept.checks.scratch",
-      "type": "concept",
-      "title": "Check scratch",
-      "meaning": "#concept.checks.scratch"
-    },
-    {
-      "id": "concept.checks.diagnostic-span",
-      "type": "concept",
-      "title": "Diagnostic span",
-      "meaning": "#concept.checks.diagnostic-span"
-    },
     {
       "id": "realization.checks.runner",
       "type": "realization",
@@ -95,45 +60,28 @@
   ],
   "relations": [
     {
-      "type": "narrows",
-      "source": "concept.checks.check-result",
-      "target": "concept.concorde.evidence"
-    },
-    {
       "type": "relates",
       "source": "realization.checks.runner",
       "verb": "runs",
-      "target": "concept.checks.configured-check"
+      "target": "concept.configured-check"
     },
     {
       "type": "relates",
       "source": "realization.checks.runner",
       "verb": "records",
-      "target": "concept.checks.check-result"
+      "target": "concept.check-result"
     },
     {
       "type": "relates",
       "source": "realization.checks.runner",
       "verb": "records",
-      "target": "concept.checks.diagnostic-span"
+      "target": "concept.diagnostic-span"
     },
     {
       "type": "relates",
       "source": "realization.checks.runner",
       "verb": "enforces",
-      "target": "concept.checks.read-only-boundary"
-    },
-    {
-      "type": "relates",
-      "source": "concept.checks.configured-check",
-      "verb": "runs inside",
-      "target": "concept.checks.read-only-boundary"
-    },
-    {
-      "type": "relates",
-      "source": "concept.checks.read-only-boundary",
-      "verb": "provides",
-      "target": "concept.checks.scratch"
+      "target": "concept.read-only-check-boundary"
     }
   ]
 }

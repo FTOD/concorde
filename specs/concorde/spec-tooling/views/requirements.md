@@ -7,9 +7,11 @@ The Module-wide obligations of [Views](module.md). The entry explains why they e
 
 ### req.views.registry-derived-pages — Pages derive from the registry
 
-Publication SHALL publish as Spec pages exactly the documents that the registry's Modules own.
+Publication SHALL publish as [Spec](../../glossary.json#concept.spec) pages exactly the documents
+that the registry's Modules own.
 
-User documents and custom docs are separate surfaces and are not Spec pages.
+[User documents](../../glossary.json#concept.user-documents) and
+[custom docs](../../glossary.json#concept.custom-docs) are separate surfaces and are not Spec pages.
 
 ### req.views.no-directory-scanning — No discovery of documents
 
@@ -17,19 +19,19 @@ Publication SHALL NOT discover Spec documents by scanning directories or followi
 
 ### req.views.one-page-per-document — One canonical page per document
 
-Publication SHALL publish every registered document at exactly one canonical page, however many Modules select it.
+Publication SHALL publish every registered document at exactly one [canonical page](../../glossary.json#concept.canonical-page), however many Modules select it.
 
 ### req.views.navigation-follows-composition — Navigation follows composition
 
-The Spec navigation SHALL nest one Module under another only where the other declares `contains` for it.
+The Spec navigation SHALL nest one [Module](../../glossary.json#concept.module) under another only where the other declares `contains` for it.
 
 ### req.views.reading-collections — Role selects the reading collection
 
-Publication SHALL place each document in the reading collection named by its declared role without changing its route, owner or selecting Modules.
+Publication SHALL place each document in the [reading collection](../../glossary.json#concept.reading-collection) named by its declared role without changing its route, owner or selecting Modules.
 
 A document with role `module` is listed in Module documents and one with role `implementation` in
-Implementation documents. The role is read from metadata and never inferred from a file name, a heading
-or the presence of definitions.
+Implementation documents. The role is read from metadata and never inferred from a file name, a
+heading or the presence of definitions.
 
 ## Rendering
 
@@ -115,11 +117,12 @@ promise that another website stays available.
 
 ### req.views.promote-requires-checked-candidate — Only checked candidates are promoted
 
-The build SHALL promote only a candidate whose build manifest, source digest and page inventory match the current sources.
+The build SHALL promote only a candidate whose [site build manifest](../../glossary.json#concept.site-build-manifest), source digest and page inventory match the current sources.
 
 ### req.views.promote-atomic — Failed promotion restores the published site
 
-Promotion SHALL restore the previous published site when moving the candidate into place fails.
+Promotion SHALL restore the previous [published site](../../glossary.json#concept.published-site)
+when moving the candidate into place fails.
 
 ### req.views.production-preview-isolation — Production does not disturb the preview
 
@@ -127,7 +130,7 @@ A production build SHALL NOT clear or overwrite the generated files of the devel
 
 ### req.views.preview-follows-specs — The preview follows the Specs
 
-While `npm run start` runs, a change to the site identity, the configuration, the registry or either member of a registered document SHALL stage the Specs again and restart the preview.
+While `npm run start` runs, a change to the [site identity](../../glossary.json#concept.site-identity), the configuration, the registry or either member of a registered document SHALL stage the Specs again and restart the preview.
 
 A staging that fails during the preview reports its error in full, and the command keeps waiting
 for the next change instead of exiting.

@@ -1,18 +1,19 @@
 # Framework requirements
 
-These requirements hold for the Framework as a whole. Each Module states the precise behaviour it
-contributes; a requirement here promises what the Modules achieve together.
+These requirements hold for the Framework as a whole. Each [Module](glossary.json#concept.module)
+states the precise behaviour it contributes; a requirement here promises what the Modules achieve
+together.
 
 ## Runtime
 
 ### req.concorde.agent-runtimes — Claude Code and pi are the agent runtimes
 
-The Framework SHALL support a main agent in Claude Code or in pi and run every worker of that main agent, under the same grant, on the agent program the worktree's worker model configuration chooses for it, and on the main agent's own program when it chooses none.
+The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code or in pi and run every worker of that main agent, under the same grant, on the agent program the worktree's [worker model configuration](glossary.json#concept.worker-model-configuration) chooses for it, and on the main agent's own program when it chooses none.
 
-The Spec Protocol needs no change for this, because it defines visibility, not how an agent is
-run; each backend compiles the same grant into its own mechanism, so a Claude Code main agent may
-run pi workers and a pi main agent Claude Code workers. A worker whose chosen program is not
-installed is refused, never moved to the other program.
+The [Spec](glossary.json#concept.spec) Protocol needs no change for this, because it defines
+visibility, not how an agent is run; each backend compiles the same grant into its own mechanism, so
+a Claude Code main agent may run pi workers and a pi main agent Claude Code workers. A worker whose
+chosen program is not installed is refused, never moved to the other program.
 
 ### req.concorde.worker-models-per-worktree — Worker models belong to the worktree
 
@@ -22,10 +23,12 @@ The model and reasoning level of every worker SHALL come from the worker model c
 
 ### req.concorde.halves-apart — The execution core knows no task
 
-No Operation, execution command, workflow or worker SHALL read or write a task record, a decision log or any other state of the task store.
+No [Operation](glossary.json#concept.operation), [execution command](glossary.json#concept.execution-command), workflow or worker SHALL read or write a [task record](glossary.json#concept.task-record), a [decision log](glossary.json#concept.decision-log) or any other state of the task store.
 
-The upper half hands a task to the execution core only by writing its worktree's workspace binding,
-and learns what happened there only from the run store and the delivery commits.
+The upper half hands a task to the execution core only by writing its worktree's
+[workspace binding](glossary.json#concept.workspace-binding), and learns what happened there only
+from the [run store](glossary.json#concept.run-store) and the
+[delivery commits](glossary.json#concept.delivery-commit).
 
 The upper half, [Coordination](coordination/module.md), organizes the work; the lower half,
 [Execution](execution/module.md), does it. Keeping every piece of shared state on one side lets
@@ -42,13 +45,14 @@ command instead.
 
 ### req.concorde.spec-first — Specs are derived from code only by code-to-spec
 
-Every Spec statement that an Operation writes from the contents of implementation files SHALL originate from a worker of task type `code-to-spec`.
+Every Spec statement that an Operation writes from the contents of implementation files SHALL originate from a worker of [task type](glossary.json#concept.task-type) `code-to-spec`.
 
 Concorde's flow is Spec first, and every other worker sees code at most by name when it writes a
 Spec. A project whose code came before its Specs is described through the
-[Adoption](execution/operations/adoption/module.md) Operations: their `code-to-spec` workers record behaviour
-as it is and return doubtful intent as open questions instead of promises, and the one Adoption
-step without a worker, the execution command `scaffold`, writes only what such a worker proposed.
+[Adoption](execution/operations/adoption/module.md) Operations: their `code-to-spec` workers record
+behaviour as it is and return doubtful intent as
+[open questions](glossary.json#concept.open-question) instead of promises, and the one Adoption step
+without a worker, the execution command `scaffold`, writes only what such a worker proposed.
 
 ### req.concorde.grant-from-task-worktree — Grants come from the workspace's own Specs
 
@@ -78,7 +82,7 @@ The reasons are the fixed set of the [error contract](contracts.md#contract.conc
 
 ### req.concorde.structured-errors — The chain is structured data
 
-Every error link SHALL conform to the error contract wherever it appears: in a run result, a worker run record, a worker result, a refusal of a `concorde` command and an escalation of the main agent.
+Every error link SHALL conform to the error contract wherever it appears: in a [run result](glossary.json#concept.run-result), a worker [run record](glossary.json#concept.run-record), a [worker result](glossary.json#concept.worker-result), a refusal of a `concorde` command and an escalation of the main agent.
 
 ### req.concorde.claims-apart — Host evidence and worker claims stay apart
 
@@ -88,9 +92,10 @@ The worker's link in the chain is marked with the level `worker`; the run never 
 
 ### req.concorde.spec-gaps-stop — Automatic rounds never repair Specs
 
-An Operation SHALL stop and return its error chain instead of resuming a worker when the failure is a Spec gap, a needed path outside the grant, or a failed structural Spec check.
+An Operation SHALL stop and return its [error chain](glossary.json#concept.error-chain) instead of resuming a worker when the failure is a [Spec gap](glossary.json#concept.spec-gap), a needed path outside the grant, or a failed structural Spec check.
 
-Only failures of configured checks against code are fed back to the same worker automatically.
+Only failures of [configured checks](glossary.json#concept.configured-check) against code are fed
+back to the same worker automatically.
 
 ## Change control
 

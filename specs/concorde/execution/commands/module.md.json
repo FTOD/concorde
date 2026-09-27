@@ -29,34 +29,16 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.runner",
-          "concept.execution.run-result",
-          "concept.execution.workspace"
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.workspace"
         ]
       }
     ],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      }
-    ],
+    "includes": [],
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.commands.execution-command",
-      "type": "concept",
-      "title": "Execution command",
-      "meaning": "#concept.commands.execution-command"
-    },
-    {
-      "id": "concept.commands.catalog",
-      "type": "concept",
-      "title": "Command catalog",
-      "meaning": "#concept.commands.catalog"
-    },
     {
       "id": "realization.commands.catalog",
       "type": "realization",
@@ -71,15 +53,9 @@
   "relations": [
     {
       "type": "relates",
-      "source": "concept.commands.catalog",
-      "verb": "lists",
-      "target": "concept.commands.execution-command"
-    },
-    {
-      "type": "relates",
       "source": "realization.commands.catalog",
       "verb": "realizes",
-      "target": "concept.commands.catalog"
+      "target": "concept.command-catalog"
     }
   ],
   "extensions": {}

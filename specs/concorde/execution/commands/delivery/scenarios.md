@@ -10,14 +10,14 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - GIVEN a task worktree bound to the workspace `severity` on the branch `concorde/severity`, with uncommitted changes that pass validation
 - WHEN the task level runs `concorde delivery` there
 - THEN Delivery decides the readiness itself and names its own run as the readiness run
-- AND a delivery commit `concorde: deliver severity` with the trailers `Concorde-Workspace`, `Concorde-Evidence` and `Concorde-Readiness` is created on `concorde/severity` with the validated head as its parent
-- AND it contains every uncommitted change and the evidence bundle `.concorde/evidence/severity/1.json`
+- AND a [delivery commit](../../../glossary.json#concept.delivery-commit) `concorde: deliver severity` with the trailers `Concorde-Workspace`, `Concorde-Evidence` and `Concorde-Readiness` is created on `concorde/severity` with the validated head as its parent
+- AND it contains every uncommitted change and the [evidence bundle](../../../glossary.json#concept.evidence-bundle) `.concorde/evidence/severity/1.json`
 - AND the result has kind `command`, no worker and status `ok`, with the commit as output, and the worktree is clean
-- BUT no task record changes: the task level reads the delivery back from the commit
+- BUT no [task record](../../../glossary.json#concept.task-record) changes: the task level reads the delivery back from the commit
 
 ### scenario.delivery.unverified-scenarios — An untested new scenario stops a code change
 
-- GIVEN a workspace that changes `src/a/calc.py` and adds `scenario.a.sum` to Module A's Specs, while the untouched `scenario.a.answer` has no test either
+- GIVEN a workspace that changes `src/a/calc.py` and adds `scenario.a.sum` to [Module](../../../glossary.json#concept.module) A's Specs, while the untouched `scenario.a.answer` has no test either
 - WHEN delivery runs
 - THEN delivery is `blocked` with `unverified_scenarios` naming `scenario.a.sum` and its document, and not `scenario.a.answer`
 - AND once a test in a file Module A binds declares that it verifies `scenario.a.sum`, delivery commits the workspace
@@ -80,7 +80,7 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 
 ### scenario.delivery.unbound — Delivery needs a bound workspace
 
-- GIVEN a worktree without a workspace binding, such as the primary worktree, with a changed file
+- GIVEN a worktree without a [workspace binding](../../../glossary.json#concept.workspace-binding), such as the primary worktree, with a changed file
 - WHEN `concorde delivery` is run there
 - THEN the result is `failed` with `workspace` null and a `command` link `refused` whose cause is `binding_required`
 - AND nothing is committed

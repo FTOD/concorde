@@ -493,16 +493,30 @@ class Scenario:
 
 @dataclass(frozen=True)
 class Concept:
-    """One named meaning, declared in a module document's metadata and defined by a table row."""
+    """One named meaning: an entry of the project glossary.
+
+    ``document`` and ``anchor`` locate the explanation the entry names, in a document of the
+    owner; ``source`` is the glossary path. ``mentions`` are the concepts the definition links.
+    """
 
     id: str
     title: str
     owner: str
     document: str
-    meaning: str
+    anchor: str
     definition: str | None
     retired: dict | None = None
     external_conflict: str | None = None
+    source: str = ""
+    narrows: tuple[str, ...] = ()
+    supersedes: str | None = None
+    contrasts: tuple[dict, ...] = ()
+    relates: tuple[dict, ...] = ()
+    mentions: tuple[str, ...] = ()
+
+    @property
+    def explanation(self) -> str:
+        return f"{self.document}#{self.anchor}"
 
 
 @dataclass(frozen=True)

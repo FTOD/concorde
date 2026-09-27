@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 
 from .changes import apply_files, file_change
-from .content_model import MODULE_FIELDS, metadata_path
+from .content_model import MODULE_FIELDS, MODULE_OPTIONAL, metadata_path
 from .model import Finding, ToolResult
 from .errors import system_cause
 from .repository_base import SpecError, decode, read_file
@@ -25,6 +25,8 @@ RECORD_FIELDS = (
     "entry",
     *(name for name in MIRRORED if name != "title"),
 )
+# Mirrored when the block declares them: only the root's block declares the glossary.
+OPTIONAL_FIELDS = MODULE_OPTIONAL
 
 
 def _registry_path(root: Path) -> str:
@@ -107,8 +109,9 @@ def mirrored_registry(
             "title": block["title"],
             "entry": entry,
             **{name: block[name] for name in RECORD_FIELDS[3:]},
+            **{name: block[name] for name in OPTIONAL_FIELDS if name in block},
         }
-        if regenerated != record or list(record) != list(RECORD_FIELDS):
+        if regenerated != record or list(record) != list(regenerated):
             stale.append(record["id"])
         records.append(regenerated)
     return {"schema_version": 3, "modules": records}, stale

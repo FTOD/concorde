@@ -19,18 +19,13 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.typed-value",
-          "concept.spec.file-transaction",
-          "concept.spec.registry"
+          "concept.typed-value",
+          "concept.file-transaction",
+          "concept.registry"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -45,36 +40,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.issues.issue",
-      "type": "concept",
-      "title": "Issue",
-      "meaning": "#concept.issues.issue"
-    },
-    {
-      "id": "concept.issues.report",
-      "type": "concept",
-      "title": "Issue report",
-      "meaning": "#concept.issues.report"
-    },
-    {
-      "id": "concept.issues.disposition",
-      "type": "concept",
-      "title": "Disposition",
-      "meaning": "#concept.issues.disposition"
-    },
-    {
-      "id": "concept.issues.status",
-      "type": "concept",
-      "title": "Issue status",
-      "meaning": "#concept.issues.status"
-    },
-    {
-      "id": "concept.issues.revision",
-      "type": "concept",
-      "title": "Issue revision",
-      "meaning": "#concept.issues.revision"
-    },
     {
       "id": "realization.issues.store",
       "type": "realization",
@@ -92,7 +57,9 @@
       "type": "realization",
       "title": "Bookkeeping command",
       "meaning": "#realization.issues.command",
-      "entries": ["scripts/issues.py"],
+      "entries": [
+        "scripts/issues.py"
+      ],
       "pending": []
     },
     {
@@ -112,21 +79,9 @@
   "relations": [
     {
       "type": "relates",
-      "source": "concept.issues.issue",
-      "verb": "holds",
-      "target": "concept.issues.report"
-    },
-    {
-      "type": "relates",
-      "source": "concept.issues.disposition",
-      "verb": "closes or reopens",
-      "target": "concept.issues.issue"
-    },
-    {
-      "type": "relates",
       "source": "realization.issues.store",
       "verb": "keeps",
-      "target": "concept.issues.issue"
+      "target": "concept.issue"
     },
     {
       "type": "relates",

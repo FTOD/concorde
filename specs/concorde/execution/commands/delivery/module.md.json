@@ -19,10 +19,10 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.run-result",
-          "concept.execution.run-store",
-          "concept.execution.workspace-binding",
-          "concept.execution.workspace-lock",
+          "concept.run-result",
+          "concept.run-store",
+          "concept.workspace-binding",
+          "concept.workspace-lock",
           "req.execution.workspace-lock",
           "contract.execution.run-result",
           "contract.execution.workspace-binding"
@@ -40,16 +40,11 @@
         "target": "module.commands",
         "meaning": "#uses-commands",
         "relies_on": [
-          "concept.commands.execution-command"
+          "concept.execution-command"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -59,18 +54,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.delivery.delivery-commit",
-      "type": "concept",
-      "title": "Delivery commit",
-      "meaning": "#concept.delivery.delivery-commit"
-    },
-    {
-      "id": "concept.delivery.evidence-bundle",
-      "type": "concept",
-      "title": "Evidence bundle",
-      "meaning": "#concept.delivery.evidence-bundle"
-    },
     {
       "id": "realization.delivery.command",
       "type": "realization",
@@ -88,13 +71,7 @@
       "type": "relates",
       "source": "realization.delivery.command",
       "verb": "creates",
-      "target": "concept.delivery.delivery-commit"
-    },
-    {
-      "type": "relates",
-      "source": "concept.delivery.delivery-commit",
-      "verb": "carries",
-      "target": "concept.delivery.evidence-bundle"
+      "target": "concept.delivery-commit"
     }
   ],
   "extensions": {}

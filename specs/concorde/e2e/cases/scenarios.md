@@ -23,5 +23,5 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the developer runs `repair-specs` for it
 - THEN a task over the named Modules runs, in its worktree, `spec_review`, then `specify` with that review as input and an intent to change the Specs and never the code, then `spec_review` once more, `task-validation` and `delivery`, and is merged
 - AND a review that accepts the Specs is followed by `task-validation` and `delivery` with no repair
-- AND no run names the task: each works on the worktree's workspace binding
+- AND no run names the task: each works on the worktree's [workspace binding](../../glossary.json#concept.workspace-binding)
 - BUT a step that does not end `ok` stops the repair with its result, and the task stays open

@@ -1,7 +1,8 @@
 # Validation contracts
 
-The readiness that the execution command `task-validation` of [Validation](module.md) returns as its
-output, and the exact input measurement it is bound to.
+The readiness that the [execution command](../../../glossary.json#concept.execution-command)
+`task-validation` of [Validation](module.md) returns as its output, and the exact input measurement
+it is bound to.
 
 ## Input measurement
 

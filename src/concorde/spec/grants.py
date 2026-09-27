@@ -1,4 +1,4 @@
-"""Task-type grants of Spec Protocol 14 (``protocol/boundaries.md``, task types).
+"""Task-type grants of Spec Protocol 15 (``protocol/boundaries.md``, task types).
 
 Code-phase task types read the whole project's implementation (``ProjectImplementation``): a
 worker runs the code it changes together with the code it uses, and a package is only importable
@@ -8,7 +8,9 @@ A grant lists the paths a task of one task type, bound to one or more Modules, m
 (``names``), read (``ro``) or change (``rw``); every other path is denied and omitted. It is
 computed from one worktree's declarations alone and carries the context identity of the bound
 Modules, so a harness can freeze it when a worker starts and tell later whether anything inside it
-changed.
+changed. It also carries the bound Modules' terms, the glossary entries their contexts select, which
+is how a worker learns the definitions its documents link: the glossary file is listed only when
+the task type writes Specs, and which of its entries such a task changed is Workers' audit.
 """
 
 from __future__ import annotations
@@ -143,10 +145,12 @@ def context_identity(repository, modules: Sequence[str]) -> str:
     """Digest of the bound Modules' selected sources and external material (see contracts)."""
     items = []
     for module in _modules(repository, modules):
+        context = repository.spec_context(module).value
         items.append(
             {
                 "module": module,
-                "sources": repository.spec_context(module).value["sources"],
+                "sources": context["sources"],
+                "terms": context["terms"],
                 "external": sorted(
                     (
                         {"path": entry.path, "digest": entry.digest}
@@ -221,12 +225,20 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
             for other, cover in directories
         )
     ]
+    terms = {
+        identity: repository.glossary_entries[identity]
+        for module in bound
+        for identity in repository.terms(module)
+    }
     return Grant(
         {
             "task_type": task_type,
             "modules": bound,
             "context_identity": context_identity(repository, bound),
             "entries": entries,
+            "terms": [terms[identity] for identity in sorted(terms)],
+            # Named so the write audit can hold a change of it to the bound Modules' entries.
+            "glossary": repository.glossary_path,
         }
     )
 

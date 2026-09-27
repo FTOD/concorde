@@ -6,7 +6,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.dogfooding.develop-install — Install Concorde in develop mode
 
-- GIVEN a Concorde repository whose primary worktree is on a branch, built and fully committed
+- GIVEN a [Concorde repository](../glossary.json#concept.concorde-repository) whose primary worktree is on a branch, built and fully committed
 - AND a project
 - WHEN the developer runs the repository's installer on the project with `--develop`
 - THEN Concorde is installed as a normal install would install it
@@ -29,7 +29,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.dogfooding.update-keeps-develop — Update a develop install
 
-- GIVEN a develop install
+- GIVEN a [develop install](../glossary.json#concept.develop-install)
 - AND a new commit merged into the Concorde repository's primary worktree
 - WHEN the project runs `concorde update`
 - THEN Concorde is installed again in develop mode with the develop guidance
@@ -48,11 +48,11 @@ Concrete situations that show the [requirements](requirements.md) at work.
 ### scenario.dogfooding.guidance — The develop guidance states how to watch and report
 
 - GIVEN the rendered develop guidance
-- WHEN a develop install's main agent reads it
+- WHEN a develop install's [main agent](../glossary.json#concept.main-agent) reads it
 - THEN it is told to observe every run closely and to treat a wrong `ok` run like a failure
-- AND never to change the Concorde repository, the framework copy or an installed file, nor to work around a Concorde defect
-- AND to place a refused read, write or tool in one of the four boundary cases, with the evidence each needs, sending only the two Concorde cases to the Concorde repository
-- AND to write a defect report under `.concorde/runs/defects/` with every required field, among them `report_key` and `subtype`, a `null` owner, its `origin` and the error chain with its own link on top built by `concorde task escalate`
+- AND never to change the Concorde repository, the framework copy or an installed file, nor to work around a [Concorde defect](../glossary.json#concept.concorde-defect)
+- AND to place a refused read, write or tool in one of the four [boundary cases](../glossary.json#concept.boundary-case), with the evidence each needs, sending only the two Concorde cases to the Concorde repository
+- AND to write a [defect report](../glossary.json#concept.defect-report) under `.concorde/runs/defects/` with every required field, among them `report_key` and `subtype`, a `null` owner, its `origin` and the [error chain](../glossary.json#concept.error-chain) with its own link on top built by `concorde task escalate`
 - AND to check it with `concorde issues report --check` before handing it over
 - AND to take the fix with `concorde update` while nothing runs
 
@@ -62,6 +62,6 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN the Concorde repository's agent instructions
 - WHEN a session there is handed a defect report
-- THEN the instructions tell it to record the report as an Issue in a task, fix the defect generally and close the Issue with the fix
+- THEN the instructions tell it to record the report as an [Issue](../glossary.json#concept.issue) in a task, fix the defect generally and close the Issue with the fix
 - AND to wait for the developer's decision before a design limitation changes Concorde's design or Protocol or loosens a boundary
 - AND they contain the same observation rule as the develop guidance

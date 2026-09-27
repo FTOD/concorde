@@ -31,10 +31,10 @@
         "target": "module.workflows",
         "meaning": "#uses-workflows",
         "relies_on": [
-          "concept.workflows.workflow",
-          "concept.workflows.result",
-          "concept.workflows.record",
-          "concept.workflows.script"
+          "concept.workflow",
+          "concept.workflow-result",
+          "concept.workflow-record",
+          "concept.workflow-script"
         ]
       },
       {
@@ -45,18 +45,13 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.workspace-binding",
-          "concept.execution.run-store",
-          "concept.execution.progress-file"
+          "concept.workspace-binding",
+          "concept.run-store",
+          "concept.run-progress-file"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "external",
         "target": "references/swe-bench/",
@@ -66,30 +61,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.e2e.test-project",
-      "type": "concept",
-      "title": "Test project",
-      "meaning": "#concept.e2e.test-project"
-    },
-    {
-      "id": "concept.e2e.root",
-      "type": "concept",
-      "title": "End-to-end root",
-      "meaning": "#concept.e2e.root"
-    },
-    {
-      "id": "concept.e2e.headless-run",
-      "type": "concept",
-      "title": "Headless run",
-      "meaning": "#concept.e2e.headless-run"
-    },
-    {
-      "id": "concept.e2e.driver-run",
-      "type": "concept",
-      "title": "Driver run",
-      "meaning": "#concept.e2e.driver-run"
-    },
     {
       "id": "realization.e2e.tool",
       "type": "realization",

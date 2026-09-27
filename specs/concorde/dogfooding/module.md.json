@@ -18,80 +18,44 @@
         "target": "module.distribution",
         "meaning": "#uses-distribution",
         "relies_on": [
-          "concept.distribution.installer"
+          "concept.installer"
         ]
       },
       {
         "target": "module.main-session",
         "meaning": "#uses-main-session",
         "relies_on": [
-          "concept.main-session.guidance"
+          "concept.main-session-guidance"
         ]
       },
       {
         "target": "module.issues",
         "meaning": "#uses-issues",
         "relies_on": [
-          "concept.issues.issue",
-          "concept.issues.report"
+          "concept.issue",
+          "concept.issue-report"
         ]
       },
       {
         "target": "module.tasks",
         "meaning": "#uses-tasks",
         "relies_on": [
-          "concept.tasks.task",
-          "concept.tasks.decision-log"
+          "concept.task",
+          "concept.decision-log"
         ]
       },
       {
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.grant"
+          "concept.grant"
         ]
       }
     ],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      }
-    ],
+    "includes": [],
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.dogfooding.develop-install",
-      "type": "concept",
-      "title": "Develop install",
-      "meaning": "#concept.dogfooding.develop-install"
-    },
-    {
-      "id": "concept.dogfooding.concorde-repository",
-      "type": "concept",
-      "title": "Concorde repository",
-      "meaning": "#concept.dogfooding.concorde-repository"
-    },
-    {
-      "id": "concept.dogfooding.concorde-defect",
-      "type": "concept",
-      "title": "Concorde defect",
-      "meaning": "#concept.dogfooding.concorde-defect"
-    },
-    {
-      "id": "concept.dogfooding.defect-report",
-      "type": "concept",
-      "title": "Defect report",
-      "meaning": "#concept.dogfooding.defect-report"
-    },
-    {
-      "id": "concept.dogfooding.boundary-case",
-      "type": "concept",
-      "title": "Boundary case",
-      "meaning": "#concept.dogfooding.boundary-case"
-    },
     {
       "id": "realization.dogfooding.source-check",
       "type": "realization",

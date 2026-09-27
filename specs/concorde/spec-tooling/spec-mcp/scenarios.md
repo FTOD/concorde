@@ -29,9 +29,9 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 ### scenario.spec-mcp.boundary — Asking for a grant
 
-- GIVEN a root whose Module A binds `src/a/` and uses Module B
-- WHEN the client calls `boundary` with Modules `["module.a"]` and task type `implement`
-- THEN the result equals the context identity and entries of Spec core's grant for the same root, Module and task type
+- GIVEN a root whose [Module](../../glossary.json#concept.module) A binds `src/a/` and uses Module B
+- WHEN the client calls `boundary` with Modules `["module.a"]` and [task type](../../glossary.json#concept.task-type) `implement`
+- THEN the result equals the [context identity](../../glossary.json#concept.context-identity) and entries of Spec core's grant for the same root, Module and task type
 - AND `src/a/` is listed as `rw` and A's and B's selected documents as `ro`
 - BUT no file is written and no grant is stored
 
@@ -46,7 +46,7 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 - GIVEN a root with several registered Modules
 - WHEN the client calls `modules`, `module` for one of them, `context` for it and `impact` for one of its bound files
-- THEN each result equals Spec core's registry records, Module descriptor, Spec context records and binding Modules for the same root
+- THEN each result equals Spec core's registry records, Module descriptor, [Spec context](../../glossary.json#concept.spec-context) records and binding Modules for the same root
 - AND every path in the results is project-relative
 
 ### scenario.spec-mcp.validate — Validating through the server

@@ -1,9 +1,10 @@
-"""Protocol 14 Spec graph loader and the repository API every consumer reads.
+"""Protocol 15 Spec graph loader and the repository API every consumer reads.
 
 The registry says which Modules exist and where each entry is. Every declaration is read from the
-entries' ``module`` blocks and from the registered documents: the registry's mirrored fields are
-never trusted for the graph, only compared with it by ``CHK.registry.mirror``. Documents are
-registered through ``owns`` and never discovered from the filesystem or from links.
+entries' ``module`` blocks, from the registered documents and from the project glossary the root
+Module declares: the registry's mirrored fields are never trusted for the graph, only compared with
+it by ``CHK.registry.mirror``. Documents are registered through ``owns`` and never discovered from
+the filesystem or from links.
 
 Loading collects problems as findings instead of stopping at the first one, so ``validate`` can
 report every problem. A repository opened for runtime use (the default) refuses a Spec whose
@@ -24,6 +25,8 @@ from .content_model import (
     metadata_path,
 )
 from .errors import from_finding, system_cause
+from .glossary import concept as glossary_concept
+from .glossary import problems as glossary_problems
 from .model import Finding
 from .repository_base import (
     REFERENCE_SKIPPED_SUFFIXES,
@@ -70,7 +73,7 @@ WARNING_CHECKS = frozenset(
         "CHK.node.explained",
         "CHK.contains.root",
         "CHK.includes.redundant",
-        "CHK.imports.owner",
+        "CHK.term.unlinked",
     }
 )
 
@@ -79,9 +82,8 @@ def severity(check: str) -> str:
     return "warning" if check in WARNING_CHECKS else "error"
 
 
-# Version of a resolved Spec context record; 3 records only the Protocol relations that selected
-# each source.
-CONTEXT_SCHEMA = 3
+# Version of a resolved Spec context record; 4 adds the selected glossary entries (``terms``).
+CONTEXT_SCHEMA = 4
 NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
 LISTING_ENTRY = {**STRING, "pattern": r"^[^/](?:[^/]*/)*[^/]*$"}
 # One relation that selected a context source: ``owns``, ``contains`` and ``uses`` name a Module;
@@ -98,6 +100,23 @@ SELECTION_REASON = {
         ),
     ]
 }
+# One declaration that selected a glossary entry: the Module owning it, a document or concept that
+# mentions it, a Module relying on it, or a concept or node relating to it.
+TERM_REASON = obj(
+    {
+        "relation": {
+            "enum": [
+                "owns",
+                "mentions",
+                "relies_on",
+                "relates",
+                "narrows",
+                "supersedes",
+            ]
+        },
+        "id": STRING,
+    }
+)
 REFERENCE = {
     "anyOf": [
         obj({"kind": {"enum": ["module", "document"]}, "id": STRING}),
@@ -132,6 +151,13 @@ def context_record_schema() -> dict:
             "reasons": array(SELECTION_REASON, unique=True),
         }
     )
+    term = obj(
+        {
+            # The glossary entry exactly as written; its shape is CHK.glossary.schema's.
+            "entry": {"type": "object", "additionalProperties": {}},
+            "reasons": {**array(TERM_REASON, unique=True), "minItems": 1},
+        }
+    )
     return obj(
         {
             "schema_version": {"const": CONTEXT_SCHEMA},
@@ -143,6 +169,7 @@ def context_record_schema() -> dict:
             "references": array(REFERENCE, unique=True),
             "registration": TARGET_DESCRIPTOR,
             "sources": array(source, unique=True),
+            "terms": array(term, unique=True),
         }
     )
 
@@ -161,6 +188,7 @@ class ModuleDeclaration:
     participates: tuple[dict, ...]
     block: dict | None
     record: dict
+    glossary: str | None = None
 
     def relations(self, kind: str) -> tuple[dict, ...]:
         return getattr(self, kind)
@@ -240,8 +268,13 @@ class DocumentUnitRepository:
         self.requirement_nodes: dict[str, Requirement] = {}
         self.scenario_nodes: dict[str, Scenario] = {}
         self.contract_nodes: dict[str, dict] = {}
-        self.imports: list[dict] = []
+        self.mentions: list[dict] = []
         self.metadata_relations: list[dict] = []
+        self.glossary_path: str | None = None
+        self.glossary_bytes: bytes | None = None
+        self.glossary_value: dict | None = None
+        self.glossary_entries: dict[str, dict] = {}
+        self._terms_cache: dict[str, dict[str, list[dict]]] = {}
         self.checks: dict[str, dict] = {}
         self._identity_paths: dict[str, str] = {}
         self._reference_digest_cache: dict[str, str] = {}
@@ -249,14 +282,20 @@ class DocumentUnitRepository:
         self._registry()
         self._documents()
         self._targets(configured_checks or [])
-        outside = sorted(self.document_overrides.keys() - self.source_documents.keys())
+        self._glossary()
+        outside = sorted(
+            self.document_overrides.keys()
+            - self.source_documents.keys()
+            - {self.glossary_path}
+        )
         if outside:
             raise SpecError(
-                "source overrides name paths that are no registered document member: "
-                + ", ".join(outside),
+                "source overrides name paths that are no registered document member and not "
+                "the glossary: " + ", ".join(outside),
                 "permission_denied",
                 path=outside[0],
-                reason="an override may only replace the bytes of a registered Spec document",
+                reason="an override may only replace the bytes of a registered Spec document or "
+                "of the project glossary",
             )
         if self._load.fatal and not _defer_document_admission:
             fatal = self._load.fatal
@@ -487,6 +526,9 @@ class DocumentUnitRepository:
             ),
             block,
             record,
+            block.get("glossary")
+            if block and isinstance(block.get("glossary"), str)
+            else None,
         )
         self.declarations[module_id] = declaration
         for path in owns:
@@ -647,9 +689,6 @@ class DocumentUnitRepository:
     def _declarations(self, unit: DocumentUnit, reading: Reading) -> None:
         path, owner, role = unit.reading.path, unit.owner, unit.role
         value = unit.value
-        definitions = {
-            row.term: row for row in (reading.terminology or []) if row.href is None
-        }
         for record in value.get("defines", []):
             if not isinstance(record, dict) or not is_identity(record.get("id")):
                 continue
@@ -658,32 +697,7 @@ class DocumentUnitRepository:
             meaning = (
                 record.get("meaning") if isinstance(record.get("meaning"), str) else ""
             )
-            if kind == "concept":
-                row = definitions.get(title)
-                if not self._register(
-                    NodeRef(record["id"], "concept", owner, path, title)
-                ):
-                    continue
-                self.concept_nodes[record["id"]] = Concept(
-                    record["id"],
-                    title,
-                    owner,
-                    path,
-                    meaning,
-                    row.definition if row else None,
-                    record.get("retired")
-                    if isinstance(record.get("retired"), dict)
-                    else None,
-                    record.get("external_conflict"),
-                )
-                if role != "module":
-                    self._problem(
-                        "CHK.defines.role",
-                        unit.metadata.path,
-                        f"concept {record['id']} is defined in an implementation document",
-                        subject=record["id"],
-                    )
-            elif kind == "realization":
+            if kind == "realization":
                 entries = record.get("entries")
                 entries = (
                     tuple(x for x in entries if isinstance(x, str))
@@ -759,28 +773,24 @@ class DocumentUnitRepository:
                     )
         from .syntax import link_target
 
-        for row in reading.terminology or []:
-            if row.href is None:
+        # Every link whose fragment is a concept identity is a term link (``mentions``); whether
+        # it addresses the glossary is ``CHK.term.link``'s question, once the glossary is known.
+        for line, href in reading.links:
+            target = link_target(path, href)
+            if target is None or not target[1].startswith("concept."):
                 continue
-            target = link_target(path, row.href)
-            self.imports.append(
+            self.mentions.append(
                 {
                     "document": path,
                     "owner": owner,
-                    "line": row.line,
-                    "href": row.href,
-                    "path": target[0] if target else None,
-                    "concept": target[1] if target else None,
-                    "definition": row.definition,
+                    "line": line,
+                    "href": href,
+                    "path": target[0],
+                    "concept": target[1],
                 }
             )
         for record in value.get("relations", []):
-            if isinstance(record, dict) and record.get("type") in {
-                "narrows",
-                "supersedes",
-                "contrasts",
-                "relates",
-            }:
+            if isinstance(record, dict) and record.get("type") == "relates":
                 self.metadata_relations.append(
                     {**record, "document": path, "owner": owner}
                 )
@@ -876,6 +886,131 @@ class DocumentUnitRepository:
                 ),
                 module.entry,
             )
+
+    def _glossary(self) -> None:
+        """Load the glossary the root Module declares: its concepts and their relations."""
+        declarers = [module for module in self.declarations.values() if module.glossary]
+        if not declarers:
+            return
+        first = declarers[0]
+        for other in declarers[1:]:
+            self._problem(
+                "CHK.glossary.declared",
+                metadata_path(other.entry),
+                f"{other.id} declares a glossary ({other.glossary}) although "
+                f"{first.id} already declares {first.glossary}; a project has one glossary",
+                subject=other.id,
+            )
+        for module in declarers:
+            parent = (
+                self.modules[module.id].parent if module.id in self.modules else None
+            )
+            if parent is not None:
+                self._problem(
+                    "CHK.glossary.declared",
+                    metadata_path(module.entry),
+                    f"{module.id} declares the glossary but is contained by {parent}; only a "
+                    "Module without a parent declares it",
+                    subject=module.id,
+                )
+        path = first.glossary
+        try:
+            safe_path(path)
+        except ValueError:
+            return  # CHK.glossary.declared reports the malformed path from the module block
+        self.glossary_path = path
+        try:
+            raw = self._raw(path)
+        except (SpecError, OSError, ValueError) as error:
+            self._problem(
+                "CHK.glossary.declared",
+                metadata_path(first.entry),
+                f"the glossary {path} that {first.id} declares cannot be read: {error}",
+                subject=first.id,
+            )
+            return
+        self.glossary_bytes = raw
+        try:
+            value = decode(raw.decode("utf-8"))
+        except (ValueError, UnicodeError) as error:
+            self._problem(
+                "CHK.glossary.schema",
+                path,
+                f"the glossary is not UTF-8 JSON with unique keys: {error}",
+            )
+            return
+        self.glossary_value = value
+        for check, message, subject in glossary_problems(value):
+            self._problem(check, path, message, subject=subject)
+        items = value.get("concepts") if isinstance(value, dict) else None
+        for entry in items if isinstance(items, list) else ():
+            if not isinstance(entry, dict) or not is_identity(entry.get("id")):
+                continue
+            identity = entry["id"]
+            if identity in self.glossary_entries:
+                self._problem(
+                    "CHK.node.id",
+                    path,
+                    f"the glossary lists concept {identity} more than once",
+                    subject=identity,
+                )
+                continue
+            node = glossary_concept(entry, path)
+            if node.owner not in self.declarations:
+                self._problem(
+                    "CHK.node.owner",
+                    path,
+                    f"concept {identity} names owner {node.owner!r}, which is no registered "
+                    "Module",
+                    subject=identity,
+                )
+                continue
+            if not self._register(
+                NodeRef(identity, "concept", node.owner, node.document, node.title)
+            ):
+                continue
+            self.glossary_entries[identity] = entry
+            self.concept_nodes[identity] = node
+
+    def glossary_relations(self) -> list[dict]:
+        """Every relation a glossary entry declares, as records naming their declaring concept."""
+        result = []
+        for concept in self.concept_nodes.values():
+            base = {"document": concept.source, "owner": concept.owner}
+            for target in concept.narrows:
+                result.append(
+                    {"type": "narrows", "source": concept.id, "target": target, **base}
+                )
+            if concept.supersedes is not None:
+                result.append(
+                    {
+                        "type": "supersedes",
+                        "source": concept.id,
+                        "target": concept.supersedes,
+                        **base,
+                    }
+                )
+            for item in concept.contrasts:
+                result.append(
+                    {
+                        "type": "contrasts",
+                        "source": concept.id,
+                        "target": item["target"],
+                        "reason": item.get("reason"),
+                        **base,
+                    }
+                )
+            for item in concept.relates:
+                result.append(
+                    {
+                        "type": "relates",
+                        "source": concept.id,
+                        "target": item["target"],
+                        "verb": item.get("verb"),
+                        **base,
+                    }
+                )
+        return result
 
     # --- identities and documents --------------------------------------------------------
 
@@ -1174,8 +1309,84 @@ class DocumentUnitRepository:
         self._context_cache[key] = result
         return {path: list(reasons) for path, reasons in result.items()}
 
+    def terms(self, module: ModuleRef) -> dict[str, list[dict]]:
+        """``Terms(M)`` with every declaration that selected each concept (Protocol term selection).
+
+        The seeds are M's own concepts, the concepts the documents of ``Spec(M)`` mention or
+        relate to, and the concepts M's ``relies_on`` names; the closure follows the mentions,
+        narrows, supersedes and concept-targeted relates of every selected entry. The closure
+        stays inside the glossary and never adds a document.
+        """
+        target = self._resolve(module)
+        if target.id in self._terms_cache:
+            return {
+                key: list(value) for key, value in self._terms_cache[target.id].items()
+            }
+        concepts = self.concept_nodes
+        selected: dict[str, list[dict]] = {}
+        queue: list[str] = []
+
+        def add(identity: str, relation: str, source: str) -> None:
+            if identity not in concepts:
+                return
+            reasons = selected.setdefault(identity, [])
+            reason = {"relation": relation, "id": source}
+            if reason not in reasons:
+                reasons.append(reason)
+            if len(reasons) == 1:
+                queue.append(identity)
+
+        for concept in concepts.values():
+            if concept.owner == target.id:
+                add(concept.id, "owns", target.id)
+        paths = set(self._context_paths(target))
+        for item in self.mentions:
+            if item["document"] in paths:
+                add(
+                    item["concept"],
+                    "mentions",
+                    self.units[item["document"]].document_id,
+                )
+        for relation in self.metadata_relations:
+            if relation["document"] in paths and isinstance(
+                relation.get("target"), str
+            ):
+                add(relation["target"], "relates", relation["source"])
+        declaration = self.declarations[target.id]
+        for kind in ("contains", "uses"):
+            for item in declaration.relations(kind):
+                for identity in item.get("relies_on", ()):
+                    add(identity, "relies_on", item["target"])
+        while queue:
+            concept = concepts[queue.pop(0)]
+            for identity in concept.mentions:
+                add(identity, "mentions", concept.id)
+            for identity in concept.narrows:
+                add(identity, "narrows", concept.id)
+            if concept.supersedes is not None:
+                add(concept.supersedes, "supersedes", concept.id)
+            for item in concept.relates:
+                add(item["target"], "relates", concept.id)
+        result = {
+            identity: sorted(
+                selected[identity],
+                key=lambda reason: (reason["relation"], reason["id"]),
+            )
+            for identity in sorted(selected)
+        }
+        self._terms_cache[target.id] = result
+        return {key: list(value) for key, value in result.items()}
+
+    def term_records(self, module: ModuleRef) -> list[dict]:
+        """The selected glossary entries of a Module, whole, with their selecting declarations."""
+        return [
+            {"entry": self.glossary_entries[identity], "reasons": reasons}
+            for identity, reasons in self.terms(module).items()
+        ]
+
     def spec_context(self, query_id: str) -> SpecContext:
-        """``SpecContext`` of a Module, or of a scenario's owner, with its source records."""
+        """``SpecContext`` of a Module, or of a scenario's owner, with its source and term
+        records."""
         target, kind = self._query(query_id)
         sources = [
             record
@@ -1195,6 +1406,7 @@ class DocumentUnitRepository:
                     "references": descriptor["references"],
                     "registration": descriptor,
                     "sources": sorted(sources, key=lambda s: s["path"]),
+                    "terms": self.term_records(target),
                 }
             )
         )
@@ -1240,11 +1452,32 @@ class DocumentUnitRepository:
                     for path in before.keys() | after.keys()
                     if before.get(path) != after.get(path)
                 )
+                old_terms = {
+                    item["entry"]["id"]: item for item in value.get("terms", [])
+                }
+                new_terms = {
+                    item["entry"]["id"]: item for item in current.value["terms"]
+                }
+                terms = sorted(
+                    identity
+                    for identity in old_terms.keys() | new_terms.keys()
+                    if old_terms.get(identity) != new_terms.get(identity)
+                )
+                details = []
+                if changed:
+                    details.append(
+                        "changed, added or removed sources: " + ", ".join(changed)
+                    )
+                if terms:
+                    details.append(
+                        "changed, added or removed glossary entries: "
+                        + ", ".join(terms)
+                    )
                 raise SpecError(
                     f"the context of {value['query_id']} changed since it was computed: "
                     + (
-                        "changed, added or removed sources: " + ", ".join(changed)
-                        if changed
+                        "; ".join(details)
+                        if details
                         else "its declarations or member roles changed"
                     ),
                     "stale_context",
@@ -1343,14 +1576,17 @@ class DocumentUnitRepository:
     # --- write sets ------------------------------------------------------------------------
 
     def spec_scope(self, module: ModuleRef) -> tuple[str, ...]:
-        """SpecScope(M): both members of every document M owns, including the entry."""
-        return tuple(
-            sorted(
-                member
-                for path in self._resolve(module).documents
-                for member in (path, metadata_path(path))
-            )
-        )
+        """SpecScope(M) as files: both members of every document M owns, including the entry,
+        and the glossary, whose entries M owns or adds. Which entries of the glossary a task may
+        change is held by entry: see ``glossary.ownership_violations``."""
+        members = {
+            member
+            for path in self._resolve(module).documents
+            for member in (path, metadata_path(path))
+        }
+        if self.glossary_path is not None:
+            members.add(self.glossary_path)
+        return tuple(sorted(members))
 
     def implementation_scope(self, module: ModuleRef) -> tuple[str, ...]:
         """ImplementationScope(M): M's realization entries, pending entries included.
@@ -1444,6 +1680,18 @@ class DocumentUnitRepository:
             {**item, "owner": owner} for item in self.declarations[owner].participates
         )
 
+    def explanation_text(self, concept: Concept) -> str | None:
+        """The prose a concept's explanation reference resolves to, or None."""
+        owner = self.declarations.get(concept.owner)
+        if (
+            owner is None
+            or concept.document not in owner.owns
+            or concept.document not in self.readings
+        ):
+            return None
+        found = self.readings[concept.document].anchors.get(concept.anchor)
+        return found.text if found else None
+
     def meaning_text(self, module_id: str, meaning: str) -> str | None:
         """The prose a Module relation's ``meaning`` anchor resolves to, or None."""
         module = self.declarations[module_id]
@@ -1475,13 +1723,23 @@ class DocumentUnitRepository:
             )
         )
 
+    def term_selected_by(self, concept_id: str) -> tuple[str, ...]:
+        """``selected-by`` for a definition: the Modules whose ``Terms`` hold a concept."""
+        return tuple(
+            sorted(
+                module.id
+                for module in self.modules.values()
+                if concept_id in self.terms(module)
+            )
+        )
+
     def referenced_by(self, identity: str) -> tuple[dict, ...]:
         """``referenced-by``: declarations that depend on a concept, requirement, scenario or
         contract.
 
-        Inverts ``relies_on``, ``imports``, ``narrows``, ``supersedes``, ``relates`` and
+        Inverts ``relies_on``, ``mentions``, ``narrows``, ``supersedes``, ``relates`` and
         ``participates``. Each record names the relation, the declaring Module and the
-        declaring document.
+        declaring document (the glossary, for a relation a concept's entry declares).
         """
         result = []
         for module in self.declarations.values():
@@ -1504,16 +1762,25 @@ class DocumentUnitRepository:
                             "document": module.entry,
                         }
                     )
-        for item in self.imports:
+        for item in self.mentions:
             if item["concept"] == identity:
                 result.append(
                     {
-                        "relation": "imports",
+                        "relation": "mentions",
                         "module": item["owner"],
                         "document": item["document"],
                     }
                 )
-        for relation in self.metadata_relations:
+        for concept in self.concept_nodes.values():
+            if identity in concept.mentions:
+                result.append(
+                    {
+                        "relation": "mentions",
+                        "module": concept.owner,
+                        "document": concept.source,
+                    }
+                )
+        for relation in (*self.metadata_relations, *self.glossary_relations()):
             if (
                 relation["type"] in {"narrows", "supersedes", "relates"}
                 and relation.get("target") == identity
@@ -1601,6 +1868,8 @@ class DocumentUnitRepository:
             concerned.update(self.selected_by(document_id))
         for identity in nodes:
             concerned.update(item["module"] for item in self.referenced_by(identity))
+            if identity in self.concept_nodes:
+                concerned.update(self.term_selected_by(identity))
         for path in paths:
             concerned.update(self.implemented_by(path))
         return tuple(sorted(concerned))

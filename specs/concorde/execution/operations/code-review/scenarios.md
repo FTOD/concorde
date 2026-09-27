@@ -7,11 +7,11 @@ in the [contracts](contracts.md).
 
 ### scenario.code-review.clean — A change that keeps its promises
 
-- GIVEN a workspace whose changes to a bound Module's code keep every promise of its Spec
-- WHEN the main agent runs `code_review` for that Module
-- THEN the Operation computes the diff and runs the Module's configured checks before launching the reviewer
+- GIVEN a workspace whose changes to a bound [Module](../../../glossary.json#concept.module)'s code keep every promise of its [Spec](../../../glossary.json#concept.spec)
+- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `code_review` for that Module
+- THEN the [Operation](../../../glossary.json#concept.operation) computes the diff and runs the Module's [configured checks](../../../glossary.json#concept.configured-check) before launching the reviewer
 - AND the result has status `ok` and a report with verdict `clean`
-- AND the report records the base and the check results it examined, and the host evidence the context identity
+- AND the report records the base and the [check results](../../../glossary.json#concept.check-result) it examined, and the host evidence the [context identity](../../../glossary.json#concept.context-identity)
 
 ### scenario.code-review.all-blocking — Every blocking finding in one report
 
@@ -25,7 +25,7 @@ in the [contracts](contracts.md).
 
 - GIVEN a change whose behaviour the bound Module's Spec neither requires nor forbids
 - WHEN the reviewer cannot judge whether the behaviour is correct
-- THEN the report holds a finding of kind Spec gap naming the Spec passage that would have to settle it
+- THEN the report holds a finding of kind [Spec gap](../../../glossary.json#concept.spec-gap) naming the Spec passage that would have to settle it
 
 ### scenario.code-review.foreign-path — A changed file no Module binds is named only
 
@@ -47,6 +47,6 @@ in the [contracts](contracts.md).
 
 ### scenario.code-review.unknown-basis — A finding citing an unknown promise fails the run
 
-- GIVEN a reviewer whose finding cites a requirement identity the bound Modules' Spec context does not define
+- GIVEN a reviewer whose finding cites a requirement identity the bound Modules' [Spec context](../../../glossary.json#concept.spec-context) does not define
 - WHEN the Operation checks the findings
 - THEN the result has status `failed` with the unresolved identity as host evidence

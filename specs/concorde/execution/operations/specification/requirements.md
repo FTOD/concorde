@@ -1,6 +1,7 @@
 # Specification requirements
 
-The Module-wide obligations of [Specification](module.md). The Spec change's shape is in the
+The Module-wide obligations of [Specification](module.md). The
+[Spec change](../../../glossary.json#concept.spec-change)'s shape is in the
 [contracts](contracts.md); the [scenarios](scenarios.md) show the obligations in concrete
 situations.
 
@@ -18,26 +19,28 @@ implementation file.
 
 ### req.specification.declare-not-create — Declared files are not created
 
-The specify Operation SHALL leave every pending entry it declares absent from the workspace.
+The specify [Operation](../../../glossary.json#concept.operation) SHALL leave every pending entry it
+declares absent from the workspace.
 
 Creating a declared file is the work of an `implement` run, whose worker sequence pre-creates it.
 
 ### req.specification.audit — Writes outside the grant fail the run
 
-A specify run whose write audit finds a change outside the grant's writable paths SHALL end
-`failed` with the offending paths as host evidence.
+A specify run whose [write audit](../../../glossary.json#concept.write-audit) finds a change outside
+the grant's writable paths SHALL end `failed` with the offending paths as host evidence.
 
 ## Reconciliation and validation
 
 ### req.specification.registry-mirror — Only mirrored fields are regenerated
 
-The specify Operation SHALL reconcile the project registry only by regenerating the mirrored fields of
-Modules that already exist in it.
+The specify Operation SHALL reconcile the project registry only by regenerating the mirrored fields
+of Modules that already exist in it.
 
 ### req.specification.validate-after — Every change is validated
 
-The specify Operation SHALL run the structural checks on the workspace after every worker round that
-changed a document.
+The specify Operation SHALL run the
+[structural checks](../../../glossary.json#concept.structural-check) on the workspace after every
+worker round that changed a document.
 
 ### req.specification.stop-on-new-error — New structural errors stop the run
 
@@ -55,7 +58,7 @@ A worker that ends `blocked` or `failed`, or whose change introduced no new erro
 
 ### req.specification.created-documents — Needed documents are created, once
 
-The specify Operation SHALL create a document a `blocked` worker proposes only when it belongs to a bound Module, lies in the folder of that Module's entry and does not exist, and then launch a worker for it at most once per run.
+The specify Operation SHALL create a document a `blocked` worker proposes only when it belongs to a bound [Module](../../../glossary.json#concept.module), lies in the folder of that Module's entry and does not exist, and then launch a worker for it at most once per run.
 
 A document is created empty and registered in its Module's `owns`, so that the second worker's
 grant makes it writable; the Operation writes nothing else into it.

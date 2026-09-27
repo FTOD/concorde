@@ -20,36 +20,36 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.grant",
-          "concept.spec.context-identity"
+          "concept.grant",
+          "concept.context-identity"
         ]
       },
       {
         "target": "module.harness",
         "meaning": "#uses-harness",
         "relies_on": [
-          "concept.harness.harness",
-          "concept.harness.worker-settings",
-          "concept.harness.deny-rules",
-          "concept.harness.write-hook",
-          "concept.harness.permission-extension"
+          "concept.agent-harness",
+          "concept.worker-settings",
+          "concept.deny-rules",
+          "concept.write-hook",
+          "concept.permission-extension"
         ]
       },
       {
         "target": "module.checks",
         "meaning": "#uses-checks",
         "relies_on": [
-          "concept.checks.configured-check",
-          "concept.checks.check-result"
+          "concept.configured-check",
+          "concept.check-result"
         ]
       },
       {
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.run-store",
-          "concept.execution.progress-file",
-          "concept.execution.unbound-run",
+          "concept.run-store",
+          "concept.run-progress-file",
+          "concept.unbound-run",
           "req.execution.unbound-read-only"
         ]
       },
@@ -57,16 +57,11 @@
         "target": "module.operations",
         "meaning": "#uses-operations",
         "relies_on": [
-          "concept.operations.catalog"
+          "concept.operation-catalog"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -96,72 +91,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.workers.backend",
-      "type": "concept",
-      "title": "Worker backend",
-      "meaning": "#concept.workers.backend"
-    },
-    {
-      "id": "concept.workers.model-configuration",
-      "type": "concept",
-      "title": "Worker model configuration",
-      "meaning": "#concept.workers.model-configuration"
-    },
-    {
-      "id": "concept.workers.worker-id",
-      "type": "concept",
-      "title": "Worker id",
-      "meaning": "#concept.workers.worker-id"
-    },
-    {
-      "id": "concept.workers.progress-file",
-      "type": "concept",
-      "title": "Progress file",
-      "meaning": "#concept.workers.progress-file"
-    },
-    {
-      "id": "concept.workers.brief",
-      "type": "concept",
-      "title": "Brief",
-      "meaning": "#concept.workers.brief"
-    },
-    {
-      "id": "concept.workers.worker-result",
-      "type": "concept",
-      "title": "Worker result",
-      "meaning": "#concept.workers.worker-result"
-    },
-    {
-      "id": "concept.workers.audit",
-      "type": "concept",
-      "title": "Write audit",
-      "meaning": "#concept.workers.audit"
-    },
-    {
-      "id": "concept.workers.resume-round",
-      "type": "concept",
-      "title": "Resume round",
-      "meaning": "#concept.workers.resume-round"
-    },
-    {
-      "id": "concept.workers.run-record",
-      "type": "concept",
-      "title": "Run record",
-      "meaning": "#concept.workers.run-record"
-    },
-    {
-      "id": "concept.workers.run-directory",
-      "type": "concept",
-      "title": "Run directory",
-      "meaning": "#concept.workers.run-directory"
-    },
-    {
-      "id": "concept.workers.configure-workers",
-      "type": "concept",
-      "title": "configure-workers",
-      "meaning": "#concept.workers.configure-workers"
-    },
     {
       "id": "realization.workers.runtime",
       "type": "realization",
@@ -225,69 +154,21 @@
   "relations": [
     {
       "type": "relates",
-      "source": "concept.workers.run-directory",
-      "verb": "holds",
-      "target": "concept.harness.worker-settings"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workers.run-directory",
-      "verb": "holds",
-      "target": "concept.workers.run-record"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workers.run-record",
-      "verb": "records",
-      "target": "concept.workers.audit"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workers.run-record",
-      "verb": "records",
-      "target": "concept.workers.resume-round"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workers.run-record",
-      "verb": "keeps",
-      "target": "concept.workers.worker-result"
-    },
-    {
-      "type": "relates",
       "source": "realization.workers.runtime",
       "verb": "generates",
-      "target": "concept.workers.brief"
+      "target": "concept.brief"
     },
     {
       "type": "relates",
       "source": "realization.workers.runtime",
       "verb": "writes",
-      "target": "concept.workers.run-record"
+      "target": "concept.run-record"
     },
     {
       "type": "relates",
       "source": "realization.workers.runtime",
       "verb": "keeps",
-      "target": "concept.workers.progress-file"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workers.run-directory",
-      "verb": "holds",
-      "target": "concept.workers.progress-file"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workers.backend",
-      "verb": "pi applies",
-      "target": "concept.harness.permission-extension"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workers.backend",
-      "verb": "Claude Code applies",
-      "target": "concept.harness.worker-settings"
+      "target": "concept.progress-file"
     },
     {
       "type": "relates",
@@ -311,13 +192,7 @@
       "type": "relates",
       "source": "realization.workers.configure",
       "verb": "implements",
-      "target": "concept.workers.configure-workers"
-    },
-    {
-      "type": "contrasts",
-      "source": "concept.workers.progress-file",
-      "target": "concept.execution.progress-file",
-      "reason": "a worker run's progress file follows one worker; the run progress file follows the Operation or command run, which may launch several"
+      "target": "concept.configure-workers"
     }
   ],
   "extensions": {}

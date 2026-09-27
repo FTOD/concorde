@@ -16,6 +16,7 @@ from tests.concorde.support.spec_project import (
     read_json,
     source_pairs,
     sync_registry,
+    update_glossary_entry,
     update_module,
 )
 
@@ -57,6 +58,43 @@ class ContextSelectionTests(unittest.TestCase):
             uses=[uses("service.transfer", "#uses-transfer", **extra)],
         )
 
+    @verifies("scenario.spec.term-selection")
+    def test_terms_are_owned_linked_and_closed_over_definitions(self):
+        update_glossary_entry(
+            self.root,
+            "concept.ledger.account",
+            definition="The identity of exactly one stored balance, named in a "
+            "[transfer request](#concept.bank.request).",
+        )
+        repository = self.repository()
+        terms = {
+            item["entry"]["id"]: item["reasons"]
+            for item in repository.spec_context("service.transfer").value["terms"]
+        }
+        self.assertEqual(
+            {
+                "concept.ledger.account": [
+                    {"relation": "mentions", "id": "document.ledger.api"},
+                    {"relation": "mentions", "id": "document.transfer.feature"},
+                    {"relation": "relates", "id": "realization.ledger.store"},
+                ],
+                "concept.bank.request": [
+                    {"relation": "mentions", "id": "concept.ledger.account"}
+                ],
+            },
+            terms,
+        )
+        # The closure adds a definition, never the document that explains it.
+        paths = repository.spec_context("service.transfer").paths
+        self.assertNotIn("specs/bank/module.md", paths)
+        self.assertEqual(
+            ["concept.audit.record"],
+            [
+                item["entry"]["id"]
+                for item in repository.spec_context("scope.audit").value["terms"]
+            ],
+        )
+
     @verifies("scenario.spec.reference-resolution")
     def test_selection_is_one_level_and_every_document_keeps_its_owner_and_reasons(
         self,
@@ -92,7 +130,7 @@ class ContextSelectionTests(unittest.TestCase):
         )
         self.assertEqual([{"relation": "owns", "id": "scope.audit"}], entry["reasons"])
         # A context record carries only Protocol relations: sharing a file adds nothing.
-        self.assertEqual(3, resolved["schema_version"])
+        self.assertEqual(4, resolved["schema_version"])
         self.assertNotIn("shares", resolved)
         scenario = r.spec_context("scenario.transfer.debit").value
         self.assertEqual("service.transfer", scenario["module_id"])

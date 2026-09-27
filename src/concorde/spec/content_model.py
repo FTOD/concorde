@@ -1,4 +1,4 @@
-"""Protocol 14 document metadata (schema 3): closed shapes of every declaration record.
+"""Protocol 15 document metadata (schema 3): closed shapes of every declaration record.
 
 A registered reading document and its ``.md.json`` companion are one document. This module checks
 the companion's shape and returns every problem it finds, attributed to a check identity; the
@@ -15,6 +15,8 @@ from .typed_data import safe_path
 
 TOP_FIELDS = {"schema_version", "document", "defines", "relations"}
 MODULE_FIELDS = ("title", "owns", "contains", "uses", "includes", "participates")
+# Only a root Module's block declares the project glossary.
+MODULE_OPTIONAL = ("glossary",)
 RELATION_TYPES = (
     "owns",
     "defines",
@@ -22,7 +24,7 @@ RELATION_TYPES = (
     "uses",
     "includes",
     "binds",
-    "imports",
+    "mentions",
     "narrows",
     "supersedes",
     "contrasts",
@@ -30,10 +32,9 @@ RELATION_TYPES = (
     "participates",
     "verifies",
 )
+# A concept's own relations (narrows, supersedes, contrasts, relates) are in its glossary entry;
+# document metadata declares only the relates of a realization or of the owning Module.
 METADATA_RELATIONS = {
-    "narrows": {"type", "source", "target"},
-    "supersedes": {"type", "source", "target"},
-    "contrasts": {"type", "source", "target", "reason"},
     "relates": {"type", "source", "verb", "target"},
 }
 
@@ -213,22 +214,20 @@ def define_problems(record: Any) -> list[tuple[str, str]]:
     if not isinstance(record, dict):
         return [("CHK.document.schema", "a defines record must be an object")]
     kind = record.get("type")
-    if kind not in {"concept", "realization"}:
+    if kind != "realization":
         return [
             (
                 "CHK.node.type",
-                f"defines record type must be concept or realization: {kind!r}",
+                f"defines record type must be realization, not {kind!r}"
+                + (
+                    f": concept {record.get('id')} belongs in the project glossary"
+                    if kind == "concept"
+                    else ""
+                ),
             )
         ]
     problems = []
-    if kind == "concept":
-        shape = _shape(
-            record, {"id", "type", "title", "meaning"}, {"retired", "external_conflict"}
-        )
-    else:
-        shape = _shape(
-            record, {"id", "type", "title", "meaning", "entries"}, {"pending"}
-        )
+    shape = _shape(record, {"id", "type", "title", "meaning", "entries"}, {"pending"})
     if shape:
         problems.append(
             ("CHK.document.schema", f"{kind} {record.get('id')!r}: {shape}")
@@ -245,42 +244,23 @@ def define_problems(record: Any) -> list[tuple[str, str]]:
         problems.append(
             ("CHK.node.meaning", f"{kind} {record.get('id')} meaning must be an anchor")
         )
-    if kind == "concept":
-        if "retired" in record and (
-            _shape(record["retired"], {"reason"})
-            or not _is_text(record["retired"].get("reason"))
-        ):
-            problems.append(
-                (
-                    "CHK.concept.retired",
-                    f"concept {record.get('id')} retired requires a nonempty reason",
-                )
+    entries = _path_list(record.get("entries"), nonempty=True)
+    if entries:
+        problems.append(
+            (
+                "CHK.document.schema",
+                f"realization {record.get('id')} entries: {entries}",
             )
-        if "external_conflict" in record and not _is_text(record["external_conflict"]):
-            problems.append(
-                (
-                    "CHK.document.schema",
-                    f"concept {record.get('id')} external_conflict must be prose",
-                )
-            )
-    else:
-        entries = _path_list(record.get("entries"), nonempty=True)
-        if entries:
+        )
+    if "pending" in record:
+        pending = _path_list(record["pending"], nonempty=False)
+        if pending:
             problems.append(
                 (
                     "CHK.document.schema",
-                    f"realization {record.get('id')} entries: {entries}",
+                    f"realization {record.get('id')} pending: {pending}",
                 )
             )
-        if "pending" in record:
-            pending = _path_list(record["pending"], nonempty=False)
-            if pending:
-                problems.append(
-                    (
-                        "CHK.document.schema",
-                        f"realization {record.get('id')} pending: {pending}",
-                    )
-                )
     return problems
 
 
@@ -294,7 +274,12 @@ def relation_problems(record: Any) -> list[tuple[str, str]]:
         return [
             (
                 "CHK.relation.site",
-                f"a {kind} relation is not declared in document metadata",
+                f"a {kind} relation is not declared in document metadata"
+                + (
+                    "; a concept's relations are declared in its glossary entry"
+                    if kind in {"narrows", "supersedes", "contrasts"}
+                    else ""
+                ),
             )
         ]
     shape = _shape(record, METADATA_RELATIONS[kind])
@@ -306,18 +291,31 @@ def relation_problems(record: Any) -> list[tuple[str, str]]:
             problems.append(
                 ("CHK.relation.endpoints", f"{kind} {key} is not a stable identity")
             )
-    if kind == "relates" and not _is_text(record["verb"]):
+    if not _is_text(record["verb"]):
         problems.append(("CHK.relates.verb", "relates requires a nonempty verb"))
-    if kind == "contrasts" and not _is_text(record["reason"]):
-        problems.append(("CHK.contrasts.once", "contrasts requires a nonempty reason"))
     return problems
 
 
 def module_block_problems(block: Any) -> list[tuple[str, str]]:
-    shape = _shape(block, set(MODULE_FIELDS))
+    shape = _shape(block, set(MODULE_FIELDS), set(MODULE_OPTIONAL))
     if shape:
         return [("CHK.document.schema", f"module block: {shape}")]
     problems = []
+    if "glossary" in block:
+        glossary = block["glossary"]
+        valid = isinstance(glossary, str) and glossary.endswith(".json")
+        if valid:
+            try:
+                safe_path(glossary)
+            except ValueError:
+                valid = False
+        if not valid:
+            problems.append(
+                (
+                    "CHK.glossary.declared",
+                    f"glossary must be a canonical project-relative .json path: {glossary!r}",
+                )
+            )
     if not _is_text(block["title"]):
         problems.append(
             ("CHK.node.title", "the module block requires a nonempty title")
@@ -447,6 +445,7 @@ __all__ = [
     "IDENTITY",
     "METADATA_RELATIONS",
     "MODULE_FIELDS",
+    "MODULE_OPTIONAL",
     "RELATION_TYPES",
     "SourceMember",
     "metadata_path",

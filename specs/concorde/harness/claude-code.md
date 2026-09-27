@@ -1,10 +1,13 @@
 # Claude Code harness mechanics
 
-The exact files the Harness generates to apply a harness to a Claude Code agent: the worker
-settings with their deny rules, write hook and Bash sandbox, the tool sets per task type, and the
-task-session settings. The [entry](module.md) explains why a harness is applied this way; the
-[pi mechanics](pi.md) state what the pi backend generates instead, and
-[the run mechanics](../execution/workers/launch.md) of Workers where these files are placed in a run.
+The exact files the Harness generates to apply a harness to a Claude Code agent: the
+[worker settings](../glossary.json#concept.worker-settings) with their
+[deny rules](../glossary.json#concept.deny-rules), [write hook](../glossary.json#concept.write-hook)
+and Bash sandbox, the tool sets per [task type](../glossary.json#concept.task-type), and the
+[task-session](../glossary.json#concept.task-session) settings. The [entry](module.md) explains why
+a harness is applied this way; the [pi mechanics](pi.md) state what the pi backend generates
+instead, and [the run mechanics](../execution/workers/launch.md) of Workers where these files are
+placed in a run.
 
 ## Worker settings
 
@@ -60,15 +63,15 @@ covered by a directory rule or by the write hook.
 
 ### Write hook
 
-The hook receives Claude Code's PreToolUse JSON on standard input and resolves `tool_input.file_path`
-to an absolute path without following a final symbolic link.
+The hook receives Claude Code's PreToolUse JSON on standard input and resolves
+`tool_input.file_path` to an absolute path without following a final symbolic link.
 
 | Target | Decision | Reason given to the worker |
 | --- | --- | --- |
 | in the `rw` list | none (the hook exits 0 without output) | — |
 | a `ro` path | deny | the path is read-only for this task |
 | a `names` path | deny | only the path's name is visible to this task |
-| another path in the task worktree | deny | the file is undeclared; it must first be declared as a pending file of a Module through a `specify` task |
+| another path in the task worktree | deny | the file is undeclared; it must first be declared as a pending file of a [Module](../glossary.json#concept.module) through a `specify` task |
 | outside the task worktree | deny | the path is outside the task worktree |
 | unreadable input or any internal error | deny | the hook could not decide |
 
@@ -85,19 +88,22 @@ On the Claude Code backend:
 | `specify`, `code-to-spec` | `Read,Glob,Grep,Edit,Write` |
 | `implement` | `Read,Glob,Grep,Edit,Write,Bash` |
 
-A grant with no writable path, such as a survey's `code-to-spec` grant with the Spec side withheld,
-gets the read-only set of the first row whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing are never listed. A `test` worker runs no
-command itself: its Operation runs the configured checks and gives it their results.
+A grant with no writable path, such as a survey's `code-to-spec` grant with the
+[Spec](../glossary.json#concept.spec) side withheld, gets the read-only set of the first row
+whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing are never listed. A
+`test` worker runs no command itself: its [Operation](../glossary.json#concept.operation) runs the
+[configured checks](../glossary.json#concept.configured-check) and gives it their results.
 
 ## Task-session settings
 
 A Claude Code task session's settings, `.concorde/tasks/<task>.session/settings.json`, hold the
-write hook and the Bash sandbox of its [session boundary](module.md#concept.harness.session-boundary):
+write hook and the Bash sandbox of its
+[session boundary](../glossary.json#concept.session-boundary):
 
-- a PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit, `session_hook.py` copied beside
-  the settings with the task worktree and decision log embedded, which allows a path inside the
-  task worktree or the decision log and denies any other with a reason naming the task worktree;
-  any failure denies;
+- a PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit, `session_hook.py` copied beside the
+  settings with the task worktree and [decision log](../glossary.json#concept.decision-log)
+  embedded, which allows a path inside the task worktree or the decision log and denies any other
+  with a reason naming the task worktree; any failure denies;
 - the sandbox enabled, with sandboxed Bash commands approved without asking and unsandboxed
   commands disabled, `allowWrite` the task worktree, the
   repository's Git directory, the primary worktree's `.concorde/runs/` and `.concorde/tasks/`, and

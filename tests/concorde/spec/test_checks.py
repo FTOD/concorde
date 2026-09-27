@@ -1,7 +1,8 @@
-"""Every family of Protocol 14 structural checks, each on a small fixture project."""
+"""Every family of Protocol 15 structural checks, each on a small fixture project."""
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import tempfile
@@ -19,8 +20,11 @@ from tests.concorde.support.spec_project import (
     SpecProject,
     block,
     module_document,
+    read_glossary,
     read_json,
     sync_registry,
+    update_glossary_entry,
+    upsert_concepts,
     write_json,
 )
 
@@ -87,7 +91,7 @@ CONSUMER = module_document(
     uses=[
         {
             "target": "module.provider",
-            "explanation": "The provider keeps every [thing](../provider/module.md#concept.provider.thing); "
+            "explanation": "The provider keeps every [thing](@glossary#concept.provider.thing); "
             "a failed read is shown as unavailable.",
         }
     ],
@@ -99,7 +103,7 @@ CONSUMER = module_document(
             "target": "concept.provider.thing",
         }
     ],
-    imports=[("Thing", "../provider/module.md#concept.provider.thing")],
+    imports=[("Thing", "concept.provider.thing")],
 )
 ROOT = module_document(
     "document.app.module",
@@ -156,6 +160,9 @@ class CheckTests(unittest.TestCase):
     def relation(self, module, record):
         self.metadata(module, lambda value: value["relations"].append(record))
 
+    def glossary(self, identity, **changes):
+        update_glossary_entry(self.root, identity, **changes)
+
     @verifies(
         "scenario.spec.validate-success",
         "scenario.spec.reader-parts",
@@ -176,12 +183,17 @@ class CheckTests(unittest.TestCase):
                 {
                     "document": "specs/consumer/module.md",
                     "module": "module.consumer",
-                    "relation": "imports",
+                    "relation": "mentions",
                 },
                 {
                     "document": "specs/consumer/module.md",
                     "module": "module.consumer",
                     "relation": "relates",
+                },
+                {
+                    "document": "specs/provider/module.md",
+                    "module": "module.provider",
+                    "relation": "mentions",
                 },
                 {
                     "document": "specs/provider/module.md",
@@ -214,6 +226,9 @@ class CheckTests(unittest.TestCase):
             "usage only links": original.replace(
                 "Use the declared boundary for the cases below; rejected input has no implicit retry.",
                 "[Provider](../provider/module.md)",
+            ).replace(
+                "It uses the terms [Thing](../glossary.json#concept.provider.thing).",
+                "",
             ),
         }.items():
             with self.subTest(label):
@@ -232,12 +247,13 @@ class CheckTests(unittest.TestCase):
         (self.root / entry).write_text(reordered + "\n## Structure\n\nMore detail.\n")
         self.assertNotIn("CHK.document.sections", self.rules())
 
-    @verifies("scenario.spec.reader-parts")
-    def test_a_topic_that_defines_a_concept_starts_with_terminology(self):
+    @verifies("scenario.spec.term-unlinked", "scenario.spec.reader-parts")
+    def test_a_term_used_without_a_link_is_a_warning(self):
         topic = DocumentSource(
-            "# Rules\n\nHow things are named.\n\n## Naming\n\nNames are short.\n\n"
-            "## Terminology\n\n| Term | Definition |\n| --- | --- |\n| Name | The label of a thing. |\n\n"
-            '<a id="concept.provider.name"></a>\n\nA name labels one thing.\n',
+            "# Rules\n\nEvery Thing store is small, and a Provider fills it.\n\n## Keeping\n\n"
+            "Thing names start sentences without counting. A kept Thing stays.\n\n"
+            '<a id="concept.provider.thing-store"></a>\n\n'
+            "A [thing store](@glossary#concept.provider.thing-store) keeps things together.\n",
             {
                 "schema_version": 3,
                 "document": {
@@ -245,37 +261,42 @@ class CheckTests(unittest.TestCase):
                     "owner": "module.provider",
                     "role": "module",
                 },
-                "defines": [
-                    {
-                        "id": "concept.provider.name",
-                        "type": "concept",
-                        "title": "Name",
-                        "meaning": "#concept.provider.name",
-                    }
-                ],
+                "defines": [],
                 "relations": [],
             },
+            concepts=[
+                {
+                    "id": "concept.provider.thing-store",
+                    "title": "Thing store",
+                    "owner": "module.provider",
+                    "definition": "A place that keeps things together.",
+                    "anchor": "concept.provider.thing-store",
+                }
+            ],
         )
         self.project.write("specs/provider/rules.md", topic)
         self.metadata(
             "provider",
             lambda value: value["module"]["owns"].append("specs/provider/rules.md"),
         )
-        self.assertIn("CHK.document.topic-terminology", self.rules())
-        self.edit(
-            "specs/provider/rules.md",
-            "## Naming\n\nNames are short.\n\n## Terminology",
-            "## Terminology",
-        )
-        self.edit(
-            "specs/provider/rules.md",
-            "| Name | The label of a thing. |\n",
-            "| Name | The label of a thing. |\n\n## Naming\n\nNames are short.\n",
-        )
+        # "Thing store" is linked; "Thing" inside it, the Module title "Provider" and the word
+        # that opens a sentence are no uses; "A kept Thing" is.
+        findings = self.project.findings("CHK.term.unlinked")
         self.assertEqual(
-            set(),
-            self.rules() & {"CHK.document.topic-terminology", "CHK.concept.definition"},
+            [("warning", "specs/provider/rules.md", "concept.provider.thing", 7)],
+            [(f.severity, f.source, f.subject_id, f.line) for f in findings],
         )
+        self.assertIn(
+            "[Thing](../glossary.json#concept.provider.thing)", findings[0].message
+        )
+        self.assertEqual("success", self.project.validate().status)
+        # One link anywhere in the document settles every use.
+        self.edit(
+            "specs/provider/rules.md",
+            "A kept Thing stays.",
+            "A kept [Thing](../glossary.json#concept.provider.thing) stays.",
+        )
+        self.assertEqual([], self.project.findings("CHK.term.unlinked"))
 
     @verifies("scenario.spec.node-checks")
     def test_an_anchor_left_empty_by_the_next_group_is_named(self):
@@ -291,25 +312,41 @@ class CheckTests(unittest.TestCase):
 
     @verifies("scenario.spec.node-checks")
     def test_node_meaning_definition_contract_and_explanation(self):
-        self.edit(
-            self.entry("provider"),
-            "| Thing | One stored value with an identity. |\n",
-            "",
+        self.glossary("concept.provider.thing", definition=" ")
+        self.assertIn("CHK.concept.definition", self.rules())
+        self.glossary(
+            "concept.provider.thing", definition="One value. It has an identity."
         )
         self.assertIn("CHK.concept.definition", self.rules())
-        self.edit(
-            self.entry("provider"),
-            "| Term | Definition |\n| --- | --- |\n",
-            "| Term | Definition |\n| --- | --- |\n| Thing | One value. It has an identity. |\n",
+        # A term link in the definition is part of the one sentence.
+        self.glossary(
+            "concept.provider.thing",
+            definition="One stored value, a [thing](#concept.provider.thing) with an identity.",
         )
-        self.assertIn("CHK.concept.definition", self.rules())
+        self.assertNotIn("CHK.concept.definition", self.rules())
         self.edit(
             self.entry("provider"),
             '<a id="concept.provider.thing"></a>',
             '<a id="concept.provider.other"></a>',
         )
-        rules = self.rules()
-        self.assertIn("CHK.node.meaning", rules)
+        self.assertIn("CHK.node.meaning", self.rules())
+        self.edit(
+            self.entry("provider"),
+            '<a id="concept.provider.other"></a>',
+            '<a id="concept.provider.thing"></a>',
+        )
+        self.assertNotIn("CHK.node.meaning", self.rules())
+        # The explanation lies in a document of the concept's owner.
+        self.glossary(
+            "concept.provider.thing",
+            explanation="specs/consumer/module.md#realization.consumer.view",
+        )
+        (finding,) = self.project.findings("CHK.node.meaning")
+        self.assertIn("not a document module.provider owns", finding.message)
+        self.glossary(
+            "concept.provider.thing",
+            explanation="specs/provider/module.md#concept.provider.thing",
+        )
         contract = {
             "id": "contract.provider.read",
             "version": 1,
@@ -327,68 +364,85 @@ class CheckTests(unittest.TestCase):
         )
         self.assertIn("CHK.node.explained", self.rules("warning"))
 
-    @verifies("scenario.spec.terminology-imports")
-    def test_terminology_rows_and_imports(self):
-        report = self.project.validate()
-        self.assertEqual("success", report.status)
+    @verifies("scenario.spec.term-links", "scenario.spec.term-link-invalid")
+    def test_term_links_name_glossary_entries(self):
+        self.assertEqual("success", self.project.validate().status)
         entry = self.entry("consumer")
         original = (self.root / entry).read_text()
-        cases = {
-            "CHK.terminology.import-row": original.replace(
-                "| [Thing](../provider/module.md#concept.provider.thing) | |",
-                "| [Thing](../provider/module.md#concept.provider.thing) | A copied definition. |",
+        link = "[Thing](../glossary.json#concept.provider.thing)."
+        for label, text in {
+            "another document": original.replace(
+                link, "[Thing](../provider/module.md#concept.provider.thing)."
             ),
-            "CHK.terminology.rows": original.replace(
-                "| [Thing](../provider/module.md#concept.provider.thing) | |",
-                "| [Thing](../provider/module.md#concept.provider.thing) | |\n| Widget | Not declared. |",
+            "undeclared": original.replace(
+                link, "[Widget](../glossary.json#concept.provider.widget)."
             ),
-        }
-        for rule, text in cases.items():
-            with self.subTest(rule):
+        }.items():
+            with self.subTest(label):
                 (self.root / entry).write_text(text)
-                self.assertIn(rule, self.rules())
+                findings = self.project.findings("CHK.term.link")
+                self.assertEqual(
+                    [("error", entry)], [(f.severity, f.source) for f in findings]
+                )
         (self.root / entry).write_text(original)
-        self.edit(
-            self.entry("provider"),
-            "| Thing | One stored value with an identity. |",
-            "| Thing | One stored value with an identity. |\n| [Thing](module.md#concept.provider.thing) | |",
+        self.glossary(
+            "concept.provider.thing",
+            definition="One stored value with a [label](#concept.provider.label).",
         )
-        self.assertIn("CHK.terminology.import-row", self.rules())
+        (finding,) = self.project.findings("CHK.term.link")
+        self.assertEqual("specs/glossary.json", finding.source)
+        self.assertIn("concept.provider.label", finding.message)
 
-    @verifies("scenario.spec.terminology-imports", "scenario.spec.context-reconciled")
-    def test_imports_need_a_provider_in_context_and_an_owner_used_or_related(self):
-        # The provider stops being used: its concept is imported from an unrelated Module.
+    @verifies(
+        "scenario.spec.term-links",
+        "scenario.spec.context-reconciled",
+        "scenario.spec.term-selection",
+    )
+    def test_a_term_link_brings_the_definition_and_no_document(self):
+        # The provider stops being used; the consumer still links and relates to its concept.
         self.metadata("consumer", lambda value: value["module"].update(uses=[]))
-        self.edit(
-            self.entry("consumer"),
-            "consumer -> provider\n",
-            "",
+        self.edit(self.entry("consumer"), "consumer -> provider\n", "")
+        report = self.project.validate()
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        context = self.project.repository().spec_context("module.consumer").value
+        self.assertNotIn(
+            "specs/provider/module.md",
+            [source["path"] for source in context["sources"]],
         )
-        rules = self.rules()
-        self.assertIn("CHK.context.reconciled", rules)
-        self.assertIn("CHK.imports.owner", self.rules("warning"))
-        # An include with a reason repairs the context requirement.
+        (term,) = [
+            item
+            for item in context["terms"]
+            if item["entry"]["id"] == "concept.provider.thing"
+        ]
+        self.assertEqual(
+            [
+                {"relation": "mentions", "id": "document.consumer.module"},
+                {"relation": "relates", "id": "realization.consumer.view"},
+            ],
+            term["reasons"],
+        )
+        # A relates to another Module's realization needs the document defining it.
+        self.relation(
+            "consumer",
+            {
+                "type": "relates",
+                "source": "realization.consumer.view",
+                "verb": "reads",
+                "target": "realization.provider.store",
+            },
+        )
+        self.assertIn("CHK.context.reconciled", self.rules())
         self.metadata(
             "consumer",
             lambda value: value["module"]["includes"].append(
                 {
                     "kind": "document",
                     "target": "document.provider.module",
-                    "reason": "the Thing definition",
+                    "reason": "the store it reads",
                 }
             ),
         )
         self.assertNotIn("CHK.context.reconciled", self.rules())
-        # A parent importing its child's term is fine.
-        self.edit(
-            self.entry("app"),
-            "This Module defines no terms of its own.",
-            "| Term | Definition |\n| --- | --- |\n| [Thing](../provider/module.md#concept.provider.thing) | |",
-        )
-        self.assertNotIn(
-            "specs/app/module.md",
-            [f.source for f in self.project.findings("CHK.imports.owner")],
-        )
 
     @verifies("scenario.spec.composition-checks")
     def test_composition_and_dependency_rules(self):
@@ -471,12 +525,21 @@ class CheckTests(unittest.TestCase):
                 lambda value: value["module"]["uses"][0].update(relies_on=ids),
             )
 
+        self.edit(
+            self.entry("consumer"),
+            "a failed read is shown as unavailable.",
+            "a failed read is shown as unavailable, as "
+            "[the keeping rule](../provider/obligations.md#req.provider.keep) allows.",
+        )
         narrow(["concept.provider.thing", "req.provider.keep"])
         self.assertEqual(
             set(), self.rules() & {"CHK.relies-on.owned", "CHK.relies-on.linked"}
         )
-        narrow(["req.provider.keep"])
+        # The linked requirement must be listed; the term link names a word, not a promise.
+        narrow(["concept.provider.thing"])
         self.assertIn("CHK.relies-on.linked", self.rules())
+        narrow(["req.provider.keep"])
+        self.assertNotIn("CHK.relies-on.linked", self.rules())
         narrow(["concept.provider.thing", "realization.provider.store"])
         self.assertIn("CHK.relies-on.owned", self.rules())
         narrow(["concept.provider.thing", "scenario.consumer.show"])
@@ -526,43 +589,33 @@ class CheckTests(unittest.TestCase):
 
     @verifies("scenario.spec.meaning-relations")
     def test_relations_between_meanings(self):
-        self.relation(
-            "provider",
-            {
-                "type": "narrows",
-                "source": "concept.provider.thing",
-                "target": "concept.provider.thing",
-            },
-        )
+        thing = "concept.provider.thing"
+        self.glossary(thing, narrows=[thing])
         self.assertIn("CHK.narrows.acyclic", self.rules())
-        self.metadata(
-            "provider", lambda value: value.update(relations=value["relations"][:1])
+        self.glossary(thing, narrows=None, supersedes=thing)
+        self.assertIn("CHK.concept.retired", self.rules())
+        self.glossary(
+            thing,
+            supersedes=None,
+            contrasts=[{"target": "module.consumer", "reason": "different"}] * 2,
         )
+        self.assertIn("CHK.contrasts.once", self.rules())
+        self.glossary(
+            thing, contrasts=None, relates=[{"verb": " ", "target": "module.consumer"}]
+        )
+        self.assertIn("CHK.relates.verb", self.rules())
+        self.glossary(thing, relates=None)
+        # A concept's relation in document metadata is at the wrong site.
         self.relation(
-            "provider",
+            "consumer",
             {
-                "type": "supersedes",
-                "source": "concept.provider.thing",
-                "target": "concept.provider.thing",
+                "type": "contrasts",
+                "source": thing,
+                "target": "module.consumer",
+                "reason": "different",
             },
         )
-        self.assertIn("CHK.concept.retired", self.rules())
-        self.metadata(
-            "provider", lambda value: value.update(relations=value["relations"][:1])
-        )
-        for _ in range(2):
-            self.relation(
-                "consumer",
-                {
-                    "type": "contrasts",
-                    "source": "concept.provider.thing",
-                    "target": "module.consumer",
-                    "reason": "different",
-                },
-            )
-        rules = self.rules()
-        self.assertIn("CHK.contrasts.once", rules)
-        self.assertIn("CHK.relation.site", rules)
+        self.assertIn("CHK.relation.site", self.rules())
         self.metadata(
             "consumer", lambda value: value.update(relations=value["relations"][:1])
         )
@@ -626,62 +679,41 @@ class CheckTests(unittest.TestCase):
 
     @verifies("scenario.spec.name-collision", "scenario.spec.name-collision-contrasted")
     def test_same_named_nodes_of_different_owners_need_a_contrast(self):
-        def concept(title):
-            self.metadata(
-                "consumer",
-                lambda value: value["defines"].append(
-                    {
-                        "id": "concept.consumer.thing",
-                        "type": "concept",
-                        "title": title,
-                        "meaning": "#concept.consumer.thing",
-                    }
-                ),
-            )
-            self.edit(
-                self.entry("consumer"),
-                "| [Thing](../provider/module.md#concept.provider.thing) | |",
-                f"| {title} | A shown value. |\n| [Thing](../provider/module.md#concept.provider.thing) | |",
-            )
-            self.edit(
-                self.entry("consumer"),
-                "## Design\n\n",
-                '## Design\n\n<a id="concept.consumer.thing"></a>\n\nWhat a person sees.\n\n',
-            )
-
-        concept("THING")
+        thing = "concept.provider.thing"
+        # A concept titled like another Module needs a contrast.
+        self.glossary(thing, title="CONSUMER")
         self.assertIn("CHK.contrasts.required", self.rules())
-        self.relation(
-            "consumer",
-            {
-                "type": "contrasts",
-                "source": "concept.consumer.thing",
-                "target": "concept.provider.thing",
-                "reason": "a shown copy, not the stored value",
-            },
+        self.glossary(
+            thing,
+            contrasts=[
+                {
+                    "target": "module.consumer",
+                    "reason": "a stored value, not the Module that shows it",
+                }
+            ],
         )
         self.assertNotIn("CHK.contrasts.required", self.rules())
-        self.edit(
-            self.entry("consumer"),
-            "| THING | A shown value. |",
-            "| PROVIDER | A shown value. |",
-        )
-        self.metadata(
-            "consumer", lambda value: value["defines"][-1].update(title="PROVIDER")
-        )
-        self.assertIn("CHK.contrasts.required", self.rules())
-        self.edit(
-            self.entry("consumer"),
-            "| PROVIDER | A shown value. |",
-            "| consumer | A shown value. |",
-        )
-        self.metadata(
-            "consumer", lambda value: value["defines"][-1].update(title="consumer")
-        )
+        # A concept titled like its own Module is never compared with it.
+        self.glossary(thing, title="provider", contrasts=None)
         self.assertNotIn(
-            "concept.consumer.thing",
+            thing,
             [f.subject_id for f in self.project.findings("CHK.contrasts.required")],
         )
+        # Two concepts sharing a title are an error that no contrast settles.
+        upsert_concepts(
+            self.root,
+            self.entry("consumer"),
+            [
+                {
+                    "id": "concept.consumer.shown",
+                    "title": "PROVIDER",
+                    "owner": "module.consumer",
+                    "definition": "A shown value.",
+                    "anchor": "realization.consumer.view",
+                }
+            ],
+        )
+        self.assertIn("CHK.node.title", self.rules())
 
     @verifies("scenario.spec.participation")
     def test_contract_participation(self):
@@ -806,21 +838,18 @@ class CheckTests(unittest.TestCase):
         self.assertNotIn("CHK.view.marked", self.rules())
         obligations.write_text(obligations_original)
         # A label matching both a local node and a Module title is ambiguous.
-        self.edit(
+        upsert_concepts(
+            self.root,
             self.entry("provider"),
-            "| Thing | One stored value with an identity. |",
-            "| Consumer | Someone who reads. |\n| Thing | One stored value with an identity. |",
-        )
-        self.metadata(
-            "provider",
-            lambda value: value["defines"].append(
+            [
                 {
                     "id": "concept.provider.consumer",
-                    "type": "concept",
                     "title": "Consumer",
-                    "meaning": "#concept.provider.thing",
+                    "owner": "module.provider",
+                    "definition": "Someone who reads.",
+                    "anchor": "concept.provider.thing",
                 }
-            ),
+            ],
         )
         self.edit(
             self.entry("provider"),
@@ -976,82 +1005,55 @@ class CheckTests(unittest.TestCase):
         self.assertEqual("specs/consumer/module.md", findings[0].source)
         self.assertEqual("success", self.project.validate().status)
 
-    @verifies("scenario.spec.terminology-import-invalid")
-    def test_malformed_terminology_rows_are_errors(self):
-        entry = self.entry("consumer")
-        original = (self.root / entry).read_text()
-        cases = {
-            # An import row that carries a definition.
-            "CHK.terminology.import-row": original.replace(
-                "| [Thing](../provider/module.md#concept.provider.thing) | |",
-                "| [Thing](../provider/module.md#concept.provider.thing) | A copied definition. |",
-            ),
-            # A defining row with no matching concept.
-            "CHK.terminology.rows": original.replace(
-                "| [Thing](../provider/module.md#concept.provider.thing) | |",
-                "| [Thing](../provider/module.md#concept.provider.thing) | |\n| Widget | Not declared. |",
-            ),
-        }
-        for rule, text in cases.items():
-            with self.subTest(rule):
-                (self.root / entry).write_text(text)
-                self.assertIn(rule, self.rules())
-        (self.root / entry).write_text(original)
-        # A topic of the provider imports the provider's own concept.
-        topic = DocumentSource(
-            "# Rules\n\nHow things are kept.\n\n## Terminology\n\n"
-            "| Term | Definition |\n| --- | --- |\n"
-            "| [Thing](module.md#concept.provider.thing) | |\n\n"
-            "## Keeping\n\nThings are kept until removed.\n",
-            {
-                "schema_version": 3,
-                "document": {
-                    "id": "document.provider.rules",
-                    "owner": "module.provider",
-                    "role": "module",
-                },
-                "defines": [],
-                "relations": [],
-            },
-        )
-        self.project.write("specs/provider/rules.md", topic)
-        self.metadata(
-            "provider",
-            lambda value: value["module"]["owns"].append("specs/provider/rules.md"),
-        )
-        findings = self.project.findings("CHK.imports.foreign")
-        self.assertEqual(
-            [("error", "specs/provider/rules.md", "concept.provider.thing")],
-            [(f.severity, f.source, f.subject_id) for f in findings],
-        )
+    @verifies("scenario.spec.glossary-invalid")
+    def test_a_malformed_glossary_is_reported(self):
+        glossary = self.root / "specs/glossary.json"
+        original = glossary.read_text()
 
-    @verifies("scenario.spec.import-owner-warning")
-    def test_an_import_from_an_unrelated_module_in_context_is_a_warning(self):
+        def written(change):
+            value = read_glossary(self.root)
+            change(value)
+            glossary.write_text(json.dumps(value))
+
+        for label, change in {
+            "no owner": lambda value: value["concepts"][0].pop("owner"),
+            "unknown field": lambda value: value["concepts"][0].update(color="red"),
+            "unsorted": lambda value: value["concepts"].append(
+                dict(value["concepts"][0], id="concept.a.first", title="First")
+            ),
+        }.items():
+            with self.subTest(label):
+                written(change)
+                self.assertIn("CHK.glossary.schema", self.rules())
+        glossary.write_text(original)
+        self.assertEqual("success", self.project.validate().status)
+        # Two Modules declare the glossary, one of them contained by another. (Written without
+        # the fixture's registry sync, which would move the declaration back to the root.)
+        entry = self.entry("consumer")
+        metadata = self.project.metadata(entry)
+        metadata["module"]["glossary"] = "specs/glossary.json"
+        self.project.save_metadata(entry, metadata)
+        findings = self.project.findings("CHK.glossary.declared")
+        self.assertEqual(
+            [("specs/consumer/module.md.json", "module.consumer")] * 2,
+            [(f.source, f.subject_id) for f in findings],
+        )
+        del metadata["module"]["glossary"]
+        self.project.save_metadata(entry, metadata)
+        # A concept left in document metadata is refused.
         self.metadata(
             "consumer",
-            lambda value: value["module"].update(
-                uses=[],
-                includes=[
-                    {
-                        "kind": "document",
-                        "target": "document.provider.module",
-                        "reason": "the Thing definition",
-                    }
-                ],
+            lambda value: value["defines"].append(
+                {
+                    "id": "concept.consumer.old",
+                    "type": "concept",
+                    "title": "Old",
+                    "meaning": "#realization.consumer.view",
+                }
             ),
         )
-        self.edit(
-            self.entry("consumer"),
-            "consumer -> provider\n",
-            "",
-        )
-        self.assertNotIn("CHK.context.reconciled", self.rules())
-        findings = self.project.findings("CHK.imports.owner")
-        self.assertEqual(
-            [("warning", "specs/consumer/module.md", "concept.provider.thing")],
-            [(f.severity, f.source, f.subject_id) for f in findings],
-        )
-        self.assertIn("module.provider", findings[0].message)
+        (finding,) = self.project.findings("CHK.node.type")
+        self.assertIn("belongs in the project glossary", finding.message)
 
     @verifies("scenario.spec.mutual-uses")
     def test_two_modules_that_use_each_other_select_each_other_one_level(self):
@@ -1173,22 +1175,18 @@ class CheckTests(unittest.TestCase):
     @verifies("scenario.spec.checked-diagram")
     def test_a_modules_own_title_names_the_module_in_its_own_diagram(self):
         # The provider defines a concept with its own title, as a Module may.
-        self.edit(
+        upsert_concepts(
+            self.root,
             self.entry("provider"),
-            "| Thing | One stored value with an identity. |",
-            "| Provider | The service that keeps things. |\n"
-            "| Thing | One stored value with an identity. |",
-        )
-        self.metadata(
-            "provider",
-            lambda value: value["defines"].append(
+            [
                 {
                     "id": "concept.provider.provider",
-                    "type": "concept",
                     "title": "Provider",
-                    "meaning": "#concept.provider.thing",
+                    "owner": "module.provider",
+                    "definition": "The service that keeps things.",
+                    "anchor": "concept.provider.thing",
                 }
-            ),
+            ],
         )
         # The bare title names the Module, so it may hold the Module's nodes.
         self.edit(
@@ -1315,7 +1313,12 @@ class CheckTests(unittest.TestCase):
             "[an unknown one](#req.consumer.missing) under [Purpose](#purpose).",
         )
         findings = self.project.findings("CONCORDE-LINK-001")
-        self.assertEqual(2, len(findings), [f.message for f in findings])
+        self.assertEqual(1, len(findings), [f.message for f in findings])
+        # A concept fragment is a term link, which must address the glossary.
+        (finding,) = self.project.findings("CHK.term.link")
+        self.assertIn(
+            "../provider/obligations.md#concept.provider.thing", finding.message
+        )
 
 
 class SchemaKeywordListTests(unittest.TestCase):

@@ -19,22 +19,16 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.grant",
-          "concept.spec.context-identity",
-          "concept.spec.boundary-set",
-          "concept.spec.impact-index",
-          "concept.spec.structural-check",
-          "concept.spec.registry"
+          "concept.grant",
+          "concept.context-identity",
+          "concept.boundary-set",
+          "concept.impact-index",
+          "concept.structural-check",
+          "concept.registry"
         ]
       }
     ],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      }
-    ],
+    "includes": [],
     "participates": [
       {
         "contract": "contract.spec-mcp.boundary-result",
@@ -46,18 +40,6 @@
     ]
   },
   "defines": [
-    {
-      "id": "concept.spec-mcp.server",
-      "type": "concept",
-      "title": "Spec MCP server",
-      "meaning": "#concept.spec-mcp.server"
-    },
-    {
-      "id": "concept.spec-mcp.root",
-      "type": "concept",
-      "title": "Server root",
-      "meaning": "#concept.spec-mcp.root"
-    },
     {
       "id": "realization.spec-mcp.server",
       "type": "realization",
@@ -75,13 +57,13 @@
       "type": "relates",
       "source": "realization.spec-mcp.server",
       "verb": "implements",
-      "target": "concept.spec-mcp.server"
+      "target": "concept.spec-mcp-server"
     },
     {
       "type": "relates",
       "source": "realization.spec-mcp.server",
       "verb": "is rooted at",
-      "target": "concept.spec-mcp.root"
+      "target": "concept.server-root"
     },
     {
       "type": "relates",
@@ -93,13 +75,13 @@
       "type": "relates",
       "source": "realization.spec-mcp.server",
       "verb": "returns",
-      "target": "concept.spec.grant"
+      "target": "concept.grant"
     },
     {
       "type": "relates",
       "source": "realization.spec-mcp.server",
       "verb": "returns",
-      "target": "concept.spec.context-identity"
+      "target": "concept.context-identity"
     }
   ],
   "extensions": {}

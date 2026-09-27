@@ -18,38 +18,38 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.structural-check",
-          "concept.spec.registry",
-          "concept.spec.protocol-binding"
+          "concept.structural-check",
+          "concept.registry",
+          "concept.protocol-binding"
         ]
       },
       {
         "target": "module.views",
         "meaning": "#uses-views",
         "relies_on": [
-          "concept.views.scaffold-proposal"
+          "concept.scaffold-proposal"
         ]
       },
       {
         "target": "module.main-session",
         "meaning": "#uses-main-session",
         "relies_on": [
-          "concept.main-session.guidance"
+          "concept.main-session-guidance"
         ]
       },
       {
         "target": "module.dogfooding",
         "meaning": "#uses-dogfooding",
         "relies_on": [
-          "concept.dogfooding.develop-install"
+          "concept.develop-install"
         ]
       },
       {
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.run",
-          "concept.execution.progress-file"
+          "concept.run",
+          "concept.run-progress-file"
         ]
       },
       {
@@ -60,62 +60,14 @@
         "target": "module.commands",
         "meaning": "#uses-commands",
         "relies_on": [
-          "concept.commands.execution-command"
+          "concept.execution-command"
         ]
       }
     ],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      }
-    ],
+    "includes": [],
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.distribution.package",
-      "type": "concept",
-      "title": "Package",
-      "meaning": "#concept.distribution.package"
-    },
-    {
-      "id": "concept.distribution.build",
-      "type": "concept",
-      "title": "Build",
-      "meaning": "#concept.distribution.build"
-    },
-    {
-      "id": "concept.distribution.build-manifest",
-      "type": "concept",
-      "title": "Build manifest",
-      "meaning": "#concept.distribution.build-manifest"
-    },
-    {
-      "id": "concept.distribution.cli",
-      "type": "concept",
-      "title": "Command-line interface",
-      "meaning": "#concept.distribution.cli"
-    },
-    {
-      "id": "concept.distribution.distribution-command",
-      "type": "concept",
-      "title": "Distribution command",
-      "meaning": "#concept.distribution.distribution-command"
-    },
-    {
-      "id": "concept.distribution.protocol-copy",
-      "type": "concept",
-      "title": "Protocol copy",
-      "meaning": "#concept.distribution.protocol-copy"
-    },
-    {
-      "id": "concept.distribution.installer",
-      "type": "concept",
-      "title": "Installer",
-      "meaning": "#concept.distribution.installer"
-    },
     {
       "id": "realization.distribution.descriptor",
       "type": "realization",
@@ -191,7 +143,7 @@
       "type": "relates",
       "source": "realization.distribution.build",
       "verb": "records",
-      "target": "concept.distribution.build-manifest"
+      "target": "concept.build-manifest"
     },
     {
       "type": "relates",
@@ -203,7 +155,7 @@
       "type": "relates",
       "source": "realization.distribution.protocol-copy-writer",
       "verb": "writes",
-      "target": "concept.distribution.protocol-copy"
+      "target": "concept.protocol-copy"
     },
     {
       "type": "relates",

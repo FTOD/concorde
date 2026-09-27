@@ -27,8 +27,8 @@ from the one measured at its start.
 
 ### req.validation.workspace — The bound workspace is validated
 
-Validation SHALL validate the Specs and run the checks of the bound workspace the run works on, never
-of another worktree.
+Validation SHALL validate the Specs and run the checks of the bound workspace the run works on,
+never of another worktree.
 
 ### req.validation.bound-branch — Readiness is decided on the bound branch
 
@@ -39,9 +39,11 @@ names.
 
 ### req.validation.changed-modules — Checks cover every changed Module
 
-A `task-validation` run SHALL run the configured checks of every Module that binds a changed path or
-owns a changed Spec document, of every Module the run works on, and of every Module that uses one
-of those, directly or through further uses.
+A `task-validation` run SHALL run the
+[configured checks](../../../glossary.json#concept.configured-check) of every
+[Module](../../../glossary.json#concept.module) that binds a changed path or owns a changed
+[Spec](../../../glossary.json#concept.spec) document, of every Module the run works on, and of every
+Module that uses one of those, directly or through further uses.
 
 ### req.validation.unbound-paths — Every change is accounted for
 

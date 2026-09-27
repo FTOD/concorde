@@ -2,34 +2,18 @@
 
 ## Purpose
 
-Headless sessions drives a real Claude Code or pi main session in a test project without a person, so
-that End-to-end testing can watch what a main agent actually does with Concorde. It starts the
-session, grants it its tools, tells it the conditions of running headless, wakes it when a run
-it left behind ends, keeps every round's log and reads the logs back. It exists for
-the people developing Concorde and changes nothing a user gets: every difference between a
-headless session and an interactive one is handled here, never in the main-session guidance.
-
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Headless session | A `claude -p` or `pi -p` main session in a test project, run by the tool in one or more rounds and kept in a session directory. |
-| Round | One `claude -p` or `pi -p` process of a headless session, the first with the developer's prompt and each later one continuing the same session with a wake message. |
-| Headless note | The system prompt the tool appends to every round, telling the session that nobody answers, what happens to a run left behind when its turn ends, and that it will be woken. |
-| Wake message | The message a later round resumes the session with, naming each run the previous round left running or stopped, as the notification an interactive session receives. |
-| [Developer](../../vocabulary.md#concept.concorde.developer) | |
-| [Main agent](../../vocabulary.md#concept.concorde.main-agent) | |
-| [Run](../../execution/module.md#concept.execution.run) | |
-| [Run result](../../execution/module.md#concept.execution.run-result) | |
-| [Run progress file](../../execution/module.md#concept.execution.progress-file) | |
-| [Run store](../../execution/module.md#concept.execution.run-store) | |
-
-A headless session is made of rounds; the headless note is given to every round, and a wake
-message starts every round but the first.
+Headless sessions drives a real Claude Code or pi main session in a
+[test project](../../glossary.json#concept.test-project) without a person, so that End-to-end
+testing can watch what a [main agent](../../glossary.json#concept.main-agent) actually does with
+Concorde. It starts the session, grants it its tools, tells it the conditions of running headless,
+wakes it when a run it left behind ends, keeps every round's log and reads the logs back. It exists
+for the people developing Concorde and changes nothing a user gets: every difference between a
+[headless session](../../glossary.json#concept.headless-session) and an interactive one is handled
+here, never in the [main-session guidance](../../glossary.json#concept.main-session-guidance).
 
 ## Usage
 
-<a id="concept.headless-sessions.session"></a><a id="concept.headless-sessions.round"></a>
+<a id="concept.headless-session"></a><a id="concept.round"></a>
 
 **Running a session.** The developer, or another part of End-to-end testing, runs
 
@@ -40,50 +24,54 @@ python3 scripts/e2e/e2e.py session show <session directory>
 
 `session start` keeps the session under `<project>/.concorde/runs/e2e/sessions/<time>/`: one
 `round-<n>.jsonl` with the round's `stream-json` output and one `round-<n>.err` per round, and
-`session.json` with the client, the session identity, the prompt, each round's exit status, result, number of
-tool calls and the runs it woke for, how the session ended and its final answer and cost. It
-prints `session.json`. `session show` adds every round's tool calls and texts, read from the logs.
-A headless workflow run of End-to-end testing, `run --via claude`, is a headless session of one
-workflow prompt, kept under `.concorde/runs/e2e/<task>-claude/`, and a dogfood scenario runs its
-prompt as one.
+`session.json` with the client, the session identity, the prompt, each round's exit status, result,
+number of tool calls and the runs it woke for, how the session ended and its final answer and cost.
+It prints `session.json`. `session show` adds every round's tool calls and texts, read from the
+logs. A headless workflow run of End-to-end testing, `run --via claude`, is a headless session of
+one workflow prompt, kept under `.concorde/runs/e2e/<task>-claude/`, and a
+[dogfood scenario](../../glossary.json#concept.dogfood-scenario) runs its prompt as one.
 
-<a id="concept.headless-sessions.note"></a>
+<a id="concept.headless-note"></a>
 
-**What the session is told.** A Claude Code round is started with the main agent's tools granted
-on the command line (Bash, Read, Write, Edit, Glob, Grep, Skill, TodoWrite, EnterWorktree and
+**What the session is told.** A Claude Code round is started with the main agent's tools granted on
+the command line (Bash, Read, Write, Edit, Glob, Grep, Skill, TodoWrite, EnterWorktree and
 ExitWorktree, or a workflow's own list), since an untrusted project's allow rules are ignored, with
-the environment variable that keeps a background workflow alive, and with the **headless note**
-appended to its system prompt: nobody answers questions, a command left in the background is
-stopped when the turn ends and nothing wakes the session, so Concorde commands run in the
-foreground, and a run still running at the end of a round is followed by a wake-up
+the environment variable that keeps a background workflow alive, and with the
+**[headless note](../../glossary.json#concept.headless-note)** appended to its system prompt: nobody
+answers questions, a command left in the background is stopped when the turn ends and nothing wakes
+the session, so Concorde commands run in the foreground, and a run still running at the end of a
+round is followed by a wake-up
 ([requirements](requirements.md#req.headless-sessions.conditions-in-tool)).
 
-**A pi session.** With `--client pi` every round is `pi -p --mode json --approve`, which trusts
-the project's extension and skill for the run, with `--session-dir` under the session directory and
-a `--session-id` the tool chose before the first round, so every round continues the same session
-file; the prompt goes on standard input, and `--model` names the main session's model when given.
-pi asks for no permissions, so no tools are granted. pi's headless note differs from Claude Code's,
-because in pi the run view's `concorde_run` starts a run as a detached process: the process
-of the round ends with the turn but the run goes on, and the tool resumes the session with its
-result when it ends, the wake the run view would have given; so the session ends its turn where it
-would otherwise wait. The project must have been installed with `--pi`. pi reports each round's
-own cost, which the record adds up; Claude Code reports the session's total.
+**A pi session.** With `--client pi` every round is `pi -p --mode json --approve`, which trusts the
+project's extension and skill for the run, with `--session-dir` under the session directory and a
+`--session-id` the tool chose before the first round, so every round continues the same session
+file; the prompt goes on standard input, and `--model` names the main session's model when given. pi
+asks for no permissions, so no tools are granted. pi's headless note differs from Claude Code's,
+because in pi the [run view](../../glossary.json#concept.run-view)'s `concorde_run` starts a run as
+a detached process: the process of the round ends with the turn but the run goes on, and the tool
+resumes the session with its result when it ends, the wake the run view would have given; so the
+session ends its turn where it would otherwise wait. The project must have been installed with
+`--pi`. pi reports each round's own cost, which the record adds up; Claude Code reports the
+session's total.
 
-<a id="concept.headless-sessions.wake"></a>
+<a id="concept.wake-message"></a>
 
-**Waking the session.** When a round ends, the tool looks at the [runs](../../execution/module.md#concept.execution.run)
-of Operations and execution commands started since the session began that it has not reported yet
-([requirements](requirements.md#req.headless-sessions.wake)), in the
-[run store](../../execution/module.md#concept.execution.run-store) of the session's worktree: the
-one its workspace binding names when the session runs in a task worktree, otherwise the worktree's
-own `.concorde/runs/`. A run whose progress file is not finished and whose runner lives is still
-running; a run that ended `cancelled` with its result
-written within 30 seconds of the round's end was stopped by that end. If there is neither, the
-session is **idle** and ends. Otherwise the tool waits until every running run has finished or its
-runner has gone (at most an hour), then resumes the same session with a **wake message** naming each
-run, its kind, name and workspace, how it ended and its result file, saying of a stopped run that the
-turn's end stopped it. The session ends `idle`, `exited` when a round's process fails (with its
-standard error kept), `no_session` when the first round names no session, or `rounds_exhausted`
+**Waking the session.** When a round ends, the tool looks at the
+[runs](../../glossary.json#concept.run) of Operations and
+[execution commands](../../glossary.json#concept.execution-command) started since the session began
+that it has not reported yet ([requirements](requirements.md#req.headless-sessions.wake)), in the
+[run store](../../glossary.json#concept.run-store) of the session's worktree: the one its
+[workspace binding](../../glossary.json#concept.workspace-binding) names when the session runs in a
+task worktree, otherwise the worktree's own `.concorde/runs/`. A run whose
+[progress file](../../glossary.json#concept.progress-file) is not finished and whose runner lives is
+still running; a run that ended `cancelled` with its result written within 30 seconds of the round's
+end was stopped by that end. If there is neither, the session is **idle** and ends. Otherwise the
+tool waits until every running run has finished or its runner has gone (at most an hour), then
+resumes the same session with a **[wake message](../../glossary.json#concept.wake-message)** naming
+each run, its kind, name and workspace, how it ended and its result file, saying of a stopped run
+that the turn's end stopped it. The session ends `idle`, `exited` when a round's process fails (with
+its standard error kept), `no_session` when the first round names no session, or `rounds_exhausted`
 after the allowed rounds.
 
 **Reading the logs.** A resumed Claude Code round first replays the stopped background command as
@@ -104,10 +92,10 @@ one thing the interactive session has and the headless one lacks, being woken wh
 that what is tested is the main agent's own judgment under the guidance users get.
 
 **Resuming, not restarting.** A wake resumes the same session, so the main agent keeps its whole
-context, its decision log entries and its plan, exactly as an interactive session does when a
-notification arrives. Each run is reported once; a session that keeps leaving runs behind is
-bounded by the number of rounds, and a run that never ends by the wait limit, which fails with
-the run's progress file named.
+context, its [decision log](../../glossary.json#concept.decision-log) entries and its plan, exactly
+as an interactive session does when a notification arrives. Each run is reported once; a session
+that keeps leaving runs behind is bounded by the number of rounds, and a run that never ends by the
+wait limit, which fails with the run's progress file named.
 
 **Files, not the model's words.** Whether a round left a run behind is read from Concorde's own
 progress and result files, never from what the session said, because the session's text is the
@@ -132,8 +120,8 @@ woken once, verifying the [requirements](requirements.md) and [scenarios](scenar
 <a id="uses-execution"></a>
 
 **Execution** provides the [run progress
-file](../../execution/module.md#concept.execution.progress-file) and the [run
-result](../../execution/module.md#concept.execution.run-result) of every run a session starts, and
+file](../../glossary.json#concept.run-progress-file) and the [run
+result](../../glossary.json#concept.run-result) of every run a session starts, and
 the run store that holds them. The driver relies on the progress file naming the run's kind, name,
 workspace, phase, runner process and start time, on the result carrying the status, summary and
 error code, and on a workspace binding naming the records directory of its runs, to decide which

@@ -23,10 +23,10 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.runner",
-          "concept.execution.run-result",
-          "concept.execution.workspace",
-          "concept.execution.unbound-run"
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.workspace",
+          "concept.unbound-run"
         ]
       },
       {
@@ -41,11 +41,6 @@
     "includes": [
       {
         "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "document",
         "target": "document.concorde.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
       }
@@ -53,18 +48,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.understanding.assessment",
-      "type": "concept",
-      "title": "Assessment",
-      "meaning": "#concept.understanding.assessment"
-    },
-    {
-      "id": "concept.understanding.spec-gap",
-      "type": "concept",
-      "title": "Spec gap",
-      "meaning": "#concept.understanding.spec-gap"
-    },
     {
       "id": "realization.understanding.operation",
       "type": "realization",
@@ -82,13 +65,7 @@
       "type": "relates",
       "source": "realization.understanding.operation",
       "verb": "produces",
-      "target": "concept.understanding.assessment"
-    },
-    {
-      "type": "relates",
-      "source": "concept.understanding.assessment",
-      "verb": "reports",
-      "target": "concept.understanding.spec-gap"
+      "target": "concept.assessment"
     }
   ],
   "extensions": {}

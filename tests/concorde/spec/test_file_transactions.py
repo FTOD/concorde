@@ -67,13 +67,13 @@ class ChangedDefinitionTests(unittest.TestCase):
         documents = changed_documents(old, new)
         self.assertEqual(("specs/transfer/obligations.md",), documents)
         self.assertEqual(("req.transfer.pure",), changed_nodes(old, new, documents))
-        # Every node kind compares by its own definition: a concept's definition row, a
+        # Every node kind compares by its own definition: a concept's glossary entry, a
         # realization record and an entry's module block.
-        entry = self.new_root / "specs/ledger/module.md"
-        entry.write_text(
-            entry.read_text().replace(
-                "| Account | The identity of exactly one stored balance. |",
-                "| Account | The identity of one stored balance. |",
+        glossary = self.new_root / "specs/glossary.json"
+        glossary.write_text(
+            glossary.read_text().replace(
+                "The identity of exactly one stored balance.",
+                "The identity of one stored balance.",
             )
         )
         metadata = self.new_root / "specs/ledger/module.md.json"
@@ -86,12 +86,16 @@ class ChangedDefinitionTests(unittest.TestCase):
             ("specs/ledger/module.md", "specs/transfer/obligations.md"), documents
         )
         self.assertEqual(
+            ("realization.ledger.store", "req.transfer.pure"),
+            changed_nodes(old, new, documents),
+        )
+        self.assertEqual(
             (
                 "concept.ledger.account",
                 "realization.ledger.store",
                 "req.transfer.pure",
             ),
-            changed_nodes(old, new, documents),
+            changed_nodes(old, new, (*documents, "specs/glossary.json")),
         )
         # An entry's module block is the Module's own definition.
         entry_block = self.new_root / "specs/audit/module.md.json"

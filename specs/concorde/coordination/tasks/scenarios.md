@@ -8,13 +8,13 @@ records and error codes are defined in the [contracts](contracts.md).
 ### scenario.tasks.open — Open a task
 
 - GIVEN a primary worktree whose registry lists `module.issues` and no task named `severity`
-- WHEN the main agent runs `concorde task open severity --goal "let reports carry a severity" --modules module.issues`
+- WHEN the [main agent](../../glossary.json#concept.main-agent) runs `concorde task open severity --goal "let reports carry a severity" --modules module.issues`
 - THEN branch `concorde/severity` exists at the primary worktree's head commit
 - AND a worktree checked out on that branch exists at `.claude/worktrees/severity` of the primary worktree
 - AND the worktree's `.concorde/workspace.json` binds it as the workspace `severity`, with its real path as root, the branch, the base commit, the goal, `module.issues` and the primary worktree's `.concorde` as records directory, untracked by Git
 - AND `.concorde/tasks/severity.json` holds the record in state `open` with that base commit and no runs, deliveries or workflow
 - AND `.concorde/tasks/severity.decisions.md` holds the heading and the goal
-- AND the command prints the record and the decision log's absolute path
+- AND the command prints the record and the [decision log](../../glossary.json#concept.decision-log)'s absolute path
 
 ### scenario.tasks.open-inherits-worker-models — A new task keeps its own copy of the worker models
 
@@ -58,7 +58,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN an open task `quiet` whose workspace has no run and an open task `severity` whose workspace ran `concorde task-validation`
 - WHEN the main agent runs `concorde task list --state active` and `concorde task show severity`
 - THEN the list holds exactly the record of `severity`, whose derived state is `active`, while its stored state stays `open`
-- AND show prints the record of `severity` with its derived state, the workspace's runs from the run store with their kind, name, Modules and status, its delivery commits, who holds its workspace lock (null when nobody does) and the absolute path of its decision log
+- AND show prints the record of `severity` with its derived state, the workspace's runs from the [run store](../../glossary.json#concept.run-store) with their kind, name, Modules and status, its [delivery commits](../../glossary.json#concept.delivery-commit), who holds its [workspace lock](../../glossary.json#concept.workspace-lock) (null when nobody does) and the absolute path of its decision log
 - AND show of `quiet` prints no runs, no deliveries and no holder
 
 ## State and runs
@@ -66,7 +66,7 @@ records and error codes are defined in the [contracts](contracts.md).
 ### scenario.tasks.first-run — A run of the task's workspace activates the task
 
 - GIVEN an open task `severity` with no change and no run
-- WHEN a run of another workspace and an unbound run are recorded in the run store
+- WHEN a run of another workspace and an [unbound run](../../glossary.json#concept.unbound-run) are recorded in the run store
 - THEN `severity` is still `open`
 - BUT once a run of the workspace `severity` is recorded, running or finished, `concorde task show severity` derives `active` and lists the run
 - AND the stored state stays `open`
@@ -79,7 +79,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - GIVEN an open task bound to `module.issues`
 - WHEN a run in its worktree names `module.issues` and `module.spec` with `--modules`
 - THEN the run's result and its entry in `concorde task show` name both Modules
-- BUT the task record, which nothing below the task level writes, still names only `module.issues`
+- BUT the [task record](../../glossary.json#concept.task-record), which nothing below the task level writes, still names only `module.issues`
 
 ### scenario.tasks.busy — Show who holds a busy workspace
 
@@ -91,7 +91,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.interrupted — A run whose runner died shows as lost
 
-- GIVEN a task whose workspace has a run with a progress file and no result, whose runner process no longer exists
+- GIVEN a task whose workspace has a run with a [progress file](../../glossary.json#concept.progress-file) and no result, whose runner process no longer exists
 - WHEN the main agent shows the task
 - THEN the run is listed with the status `lost`
 - AND `busy` is null, since the kernel released the dead runner's workspace lock
@@ -101,7 +101,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a record that another process changes between Tasks' read and its write
 - WHEN Tasks applies an update
-- THEN the write is refused by the file transaction
+- THEN the write is refused by the [file transaction](../../glossary.json#concept.file-transaction)
 - AND Tasks rereads the record and reapplies the update if its preconditions still hold
 - BUT after three conflicting attempts the update fails with `record_conflict` and the other process's change stays
 
@@ -109,7 +109,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a task whose branch head is its first delivery commit, with a clean worktree
 - WHEN the main agent shows it
-- THEN it is `delivered`, and its deliveries list that commit with its evidence bundle `.concorde/evidence/<task-id>/1.json`
+- THEN it is `delivered`, and its deliveries list that commit with its [evidence bundle](../../glossary.json#concept.evidence-bundle) `.concorde/evidence/<task-id>/1.json`
 - AND a later run that changes nothing leaves it `delivered`
 - BUT an uncommitted change, or a commit after the delivery commit, makes it `active`
 - AND a second delivery commit makes it `delivered` again, with both deliveries listed in order
@@ -149,19 +149,19 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.close-failed — Close a failed task with its reason and error chains
 
-- GIVEN a task whose workspace has an Operation run that ended with an error the task cannot get past
+- GIVEN a task whose workspace has an [Operation](../../glossary.json#concept.operation) run that ended with an error the task cannot get past
 - WHEN the main agent closes it with `--failed` and a reason but names neither an error source nor `--no-error`, or names both
 - THEN the command fails with `invalid_input`
-- BUT with the reason and `--run <run-id>` the state is `failed`, the note is the reason and the errors hold the run's error chain unchanged, also appended to the decision log
+- BUT with the reason and `--run <run-id>` the state is `failed`, the note is the reason and the errors hold the run's [error chain](../../glossary.json#concept.error-chain) unchanged, also appended to the decision log
 - AND a task that failed for no error, such as a wrong direction, closes as `failed` with `--no-error` and no errors
 
 ### scenario.tasks.closed-inert — A closed task stays closed
 
 - GIVEN a task closed as completed
 - WHEN the main agent lists the tasks
-- THEN the task's worktree, and with it its workspace binding, is gone, so no run of its workspace can start there
+- THEN the task's worktree, and with it its [workspace binding](../../glossary.json#concept.workspace-binding), is gone, so no run of its workspace can start there
 - AND a run of its workspace recorded anyway leaves the task `closed`
-- BUT starting or recording a task session for it fails with `task_closed`
+- BUT starting or recording a [task session](../../glossary.json#concept.task-session) for it fails with `task_closed`
 
 ## Merging
 
@@ -192,7 +192,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.merge-waits — A second merge waits for the first
 
-- GIVEN one process holding the merge lock for task `a`
+- GIVEN one process holding the [merge lock](../../glossary.json#concept.merge-lock) for task `a`
 - WHEN another main session runs `concorde task merge b` and the first process releases the lock within the wait
 - THEN the merge of `b` starts only after the release and reports how long it waited
 - BUT when the lock stays held for the whole `--wait`, the merge of `b` fails with `merge_busy` naming the holder's command `merge`, task `a`, process and start time, and nothing changes

@@ -54,9 +54,10 @@ Work through every document the reviewed Module owns, dimension by dimension.
   whether a diagram faithfully explains that prose without inventing promises, and whether its
   labels use the Spec's terminology. A load-bearing collaboration is never described only in an
   illustrative diagram. Leave syntax and declaration matching to the deterministic checks.
-- `terminology`: every defined term has one clear one-sentence definition, is used with that
-  meaning throughout, and does not collide with an imported term or a common meaning without
-  saying so. Words a reader needs are defined or imported before Usage and Design rely on them.
+- `terminology`: every glossary entry the Module owns has one clear one-sentence definition and
+  an explanation, is used with that meaning throughout, and does not collide with another term or a
+  common meaning without saying so. Words a reader needs are linked to the glossary where a
+  document first uses them, before Usage and Design rely on them.
 - `context`: you cannot judge something without a document you were not given. Name the document
   or promise you needed and why; do not guess its content.
 

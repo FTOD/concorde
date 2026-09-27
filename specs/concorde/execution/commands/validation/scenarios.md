@@ -10,12 +10,12 @@ readiness is defined in the [contracts](contracts.md).
 - GIVEN a task worktree bound to the workspace `severity`, whose changes are bound by `module.issues`, whose Specs have no structural error and whose checks pass
 - WHEN the task level runs `concorde task-validation` there
 - THEN the result has kind `command`, the workspace `severity`, no worker and status `ok`, and its output is a readiness with `ready` true
-- AND the readiness records the input measurement and one passed check result per configured check of `module.issues`
+- AND the readiness records the input measurement and one passed [check result](../../../glossary.json#concept.check-result) per [configured check](../../../glossary.json#concept.configured-check) of `module.issues`
 - AND nothing in the workspace changed
 
 ### scenario.validation.not-ready — Every blocker is reported in one run
 
-- GIVEN a workspace with a broken Spec link, a new file bound by no Module and a failing check of a changed Module
+- GIVEN a workspace with a broken [Spec](../../../glossary.json#concept.spec) link, a new file bound by no [Module](../../../glossary.json#concept.module) and a failing check of a changed Module
 - WHEN `task-validation` runs
 - THEN the result has status `blocked` and the readiness has `ready` false
 - AND `blocking` holds a structural finding, an unbound finding and a check finding
@@ -81,14 +81,14 @@ readiness is defined in the [contracts](contracts.md).
 
 ### scenario.validation.unbound — Readiness needs a bound workspace
 
-- GIVEN a worktree without a workspace binding, such as the primary worktree
+- GIVEN a worktree without a [workspace binding](../../../glossary.json#concept.workspace-binding), such as the primary worktree
 - WHEN `concorde task-validation` is run there
 - THEN no step runs and the result is `failed`, with `workspace` and `output` null and a `refused` link whose cause is `binding_required`, reason `scope`
-- AND the result is saved in that worktree's own run store
+- AND the result is saved in that worktree's own [run store](../../../glossary.json#concept.run-store)
 
 ### scenario.validation.sandbox-unavailable — Checks cannot be bounded
 
-- GIVEN a host where the read-only check boundary cannot be established
+- GIVEN a host where the [read-only check boundary](../../../glossary.json#concept.read-only-check-boundary) cannot be established
 - WHEN `task-validation` reaches its checks
 - THEN the result has status `failed`
 - AND no check runs outside the boundary
@@ -99,7 +99,7 @@ readiness is defined in the [contracts](contracts.md).
 
 - GIVEN a ready readiness with one confirmation whose declaring document is unchanged
 - WHEN Delivery asks Validation to apply the confirmations
-- THEN the pending marker of exactly that entry is cleared in one file transaction
+- THEN the pending marker of exactly that entry is cleared in one [file transaction](../../../glossary.json#concept.file-transaction)
 - AND the Specs validate without a structural error
 
 ### scenario.validation.confirm-refused — A changed document stops confirmation

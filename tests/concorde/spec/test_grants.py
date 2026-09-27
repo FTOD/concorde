@@ -18,6 +18,8 @@ from tests.concorde.support.spec_project import (
     SpecProject,
     module_document,
     sync_registry,
+    update_glossary_entry,
+    upsert_concepts,
     uses,
 )
 
@@ -350,6 +352,62 @@ class GrantTests(unittest.TestCase):
         )
         redundant = identity()
         self.assertNotEqual(changed, redundant)
+
+    @verifies(
+        "scenario.spec.grant-understand",
+        "scenario.spec.grant-specify",
+        "scenario.spec.context-identity",
+    )
+    def test_a_grant_carries_its_terms_and_writes_the_glossary_only_to_write_specs(
+        self,
+    ):
+        for module in ("b", "d"):
+            upsert_concepts(
+                self.root,
+                f"specs/{module}/module.md",
+                [
+                    {
+                        "id": f"concept.{module}.answer",
+                        "title": f"{module.upper()} answer",
+                        "owner": f"module.{module}",
+                        "definition": f"What {module.upper()} returns.",
+                        "anchor": f"realization.{module}.code",
+                    }
+                ],
+            )
+        path = self.root / "specs/b/module.md"
+        path.write_text(
+            path.read_text()
+            + "\nB returns a [B answer](../glossary.json#concept.b.answer).\n"
+        )
+        understand = self.grant(["module.a"], "understand")
+        self.assertEqual(
+            [
+                {
+                    "id": "concept.b.answer",
+                    "title": "B answer",
+                    "owner": "module.b",
+                    "definition": "What B returns.",
+                    "explanation": "specs/b/module.md#realization.b.code",
+                }
+            ],
+            understand["terms"],
+        )
+        self.assertEqual("specs/glossary.json", understand["glossary"])
+        self.assertNotIn("specs/glossary.json", self.levels(understand))
+        self.assertEqual(
+            "rw",
+            self.levels(self.grant(["module.a"], "specify"))["specs/glossary.json"],
+        )
+
+        def identity():
+            return context_identity(self.project.repository(), ["module.a"])
+
+        first = identity()
+        update_glossary_entry(self.root, "concept.d.answer", definition="What D gives.")
+        self.assertEqual(first, identity())
+        update_glossary_entry(self.root, "concept.b.answer", definition="What B gives.")
+        self.assertNotEqual(first, identity())
 
     @verifies("scenario.spec.grant-invalid")
     def test_the_grant_command_prints_the_envelope(self):

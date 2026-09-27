@@ -1,9 +1,9 @@
 # Spec MCP server contracts
 
 The exact tools and results of the [Spec MCP server](module.md). Every path in an argument or a
-result is a canonical project-relative POSIX path unless stated otherwise; an absolute path
-argument is accepted only when it lies inside the server root and is answered in its
-project-relative form.
+result is a canonical project-relative POSIX path unless stated otherwise; an absolute path argument
+is accepted only when it lies inside the [server root](../../glossary.json#concept.server-root) and
+is answered in its project-relative form.
 
 ## Session
 
@@ -31,11 +31,11 @@ argument as `field`, the path or identity concerned), the reason, the remediatio
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
-| `boundary` | `modules`: nonempty array of Module identities; `task_type`: one of the seven task types | the boundary result below |
+| `boundary` | `modules`: nonempty array of [Module](../../glossary.json#concept.module) identities; `task_type`: one of the seven [task types](../../glossary.json#concept.task-type) | the boundary result below |
 | `modules` | none | `{"modules": [{"id", "title", "entry", "parent"}]}` in registry order; `parent` is `null` for a root |
-| `module` | `id`: a Module identity | `{"id", "title", "entry", "documents", "contains", "uses", "includes", "participates", "realizations", "checks"}`, where `realizations` lists `{"id", "title", "entries", "pending"}` and `checks` the configured check identities |
-| `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources"}`, with Spec core's source records for the Module, or for the scenario's owner |
-| `impact` | `paths`: nonempty array of paths | `{"paths": [{"path", "modules"}], "modules"}`: for a document member the Modules whose Spec context contains it, for any other path the Modules that bind it, and their union |
+| `module` | `id`: a Module identity | `{"id", "title", "entry", "documents", "contains", "uses", "includes", "participates", "realizations", "checks"}`, where `realizations` lists `{"id", "title", "entries", "pending"}` and `checks` the [configured check](../../glossary.json#concept.configured-check) identities |
+| `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources", "terms"}`, with Spec core's source and term records for the Module, or for the scenario's owner |
+| `impact` | `paths`: nonempty array of paths | `{"paths": [{"path", "modules"}], "modules"}`: for a document member the Modules whose [Spec context](../../glossary.json#concept.spec-context) contains it, for the glossary the Modules that have terms, for any other path the Modules that bind it, and their union |
 | `validate` | optional `target`: a Module identity | the envelope of the `spec-validation` command, with `tool` `spec-validation` |
 
 `boundary` returns exactly the `context_identity` and `entries` of Spec core's grant for the

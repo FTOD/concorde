@@ -51,7 +51,8 @@
     ],
     "uses": [],
     "includes": [],
-    "participates": []
+    "participates": [],
+    "glossary": "specs/concorde/glossary.json"
   },
   "defines": [
     {

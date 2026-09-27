@@ -12,7 +12,7 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.dogfood-scenarios.client — A scenario runs on either client
 
-- GIVEN a scenario without a `client`, whose fault changes both worker backends' write checks
+- GIVEN a scenario without a `client`, whose fault changes both [worker backends](../../glossary.json#concept.worker-backend)' write checks
 - WHEN it is read and prepared
 - THEN its client is Claude Code
 - AND preparing it for pi installs Concorde with `--pi`, and for Claude Code without
@@ -26,7 +26,7 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.dogfood-scenarios.classified — A report is classified by type and basis
 
-- GIVEN defect reports and a scenario expecting a type and basis phrases
+- GIVEN [defect reports](../../glossary.json#concept.defect-report) and a scenario expecting a type and basis phrases
 - WHEN the evaluation classifies them
 - THEN a report of an expected type whose basis contains every phrase, in any case, matches
 - BUT a report of another type, one whose basis lacks a phrase and a file that is not JSON do not

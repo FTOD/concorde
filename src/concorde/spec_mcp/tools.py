@@ -63,8 +63,9 @@ TOOLS: dict[str, dict] = {
     },
     "context": {
         "description": (
-            "The Spec context of a Module, or of a scenario's owner: its context identity and "
-            "one source record per selected document member."
+            "The Spec context of a Module, or of a scenario's owner: its context identity, "
+            "one source record per selected document member and one term record per selected "
+            "glossary entry, the definition of a word its documents link."
         ),
         "inputSchema": {
             "type": "object",
@@ -75,7 +76,7 @@ TOOLS: dict[str, dict] = {
     "impact": {
         "description": (
             "Which Modules writing the given paths concerns: readers of a document member, "
-            "binders of any other file."
+            "Modules whose terms come from the glossary, binders of any other file."
         ),
         "inputSchema": {
             "type": "object",
@@ -226,6 +227,7 @@ def context(root: Path, arguments: dict) -> dict:
         "module": value["module_id"],
         "context_identity": context_identity(repository, [value["module_id"]]),
         "sources": value["sources"],
+        "terms": value["terms"],
     }
 
 
@@ -243,6 +245,12 @@ def impact(root: Path, arguments: dict) -> dict:
         ):
             concerned = sorted(
                 identity for identity, members in contexts.items() if path in members
+            )
+        elif path == repository.glossary_path:
+            concerned = sorted(
+                identity
+                for identity in repository.modules
+                if repository.terms(identity)
             )
         else:
             concerned = sorted(repository.implemented_by(path))

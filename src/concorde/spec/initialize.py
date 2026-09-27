@@ -1,4 +1,5 @@
-"""Initialize a project with a Protocol 14 registry and an honest root Module stub."""
+"""Initialize a project with a Protocol 15 registry, an honest root Module stub and the empty
+glossary the root declares."""
 
 from __future__ import annotations
 
@@ -72,6 +73,14 @@ def installed_protocol_binding(root: Path) -> dict:
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
 
+def glossary_path(entry: str) -> str:
+    """Where the root Module's entry declares the project glossary: beside the entry."""
+    return str(Path(entry).with_name("glossary.json"))
+
+
+EMPTY_GLOSSARY = {"schema_version": 1, "concepts": []}
+
+
 def initial_module_metadata(
     target_id: str,
     name: str,
@@ -119,6 +128,7 @@ def initial_module_metadata(
             "uses": [],
             "includes": [],
             "participates": [],
+            "glossary": glossary_path(path),
         },
         "defines": defines,
         "relations": [],
@@ -204,7 +214,14 @@ def initial_registry(target_id: str, name: str, path: str) -> dict:
                 "entry": path,
                 **{
                     key: block[key]
-                    for key in ("owns", "contains", "uses", "includes", "participates")
+                    for key in (
+                        "owns",
+                        "contains",
+                        "uses",
+                        "includes",
+                        "participates",
+                        "glossary",
+                    )
                 },
             }
         ],
@@ -236,11 +253,11 @@ def initial_module_text(
         f"# {name}\n\n## Purpose\n\n"
         f"This Module is the root of the {name} project. The project's purpose, its users and the\n"
         "limits of its promises have not been specified yet.\n\n"
-        "## Terminology\n\n"
-        "No terms have been defined yet.\n\n"
         "## Usage\n\n"
         "How the project is used is not specified yet: its entry points, inputs, results, effects,\n"
         "errors and repeat behaviour are unknown. Do not infer them from existing code.\n\n"
+        "This Module declares the project's glossary, where every term of the project will be\n"
+        "defined once; no term has been defined yet.\n\n"
         "## Design\n\n"
         "The project's decomposition, state, control flow and design reasons are not specified yet.\n\n"
         "The project's parts and their collaborations are not specified yet. This Module contains,\n"
@@ -322,6 +339,9 @@ def project_proposal(
                 indent=2,
             )
             + "\n",
+        ),
+        file_change(
+            root, glossary_path(path), json.dumps(EMPTY_GLOSSARY, indent=2) + "\n"
         ),
     ]
     # Initialization creates only what the user's project generates through Concorde. Everything
@@ -412,10 +432,15 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
                 for p in record["owns"]
                 for member in (p, p + ".json")
             ),
+            *(
+                record["glossary"]
+                for record in registry["modules"]
+                if isinstance(record.get("glossary"), str)
+            ),
         }
     except (KeyError, TypeError) as error:
         raise SpecError(
-            f"the proposed registry is not a Protocol 14 registry: missing or malformed "
+            f"the proposed registry is not a Protocol 15 registry: missing or malformed "
             f"{error}",
             "invalid_proposal",
             "/proposal/files",

@@ -8,28 +8,13 @@ would, runs a workflow in it with real workers, and lets the developer watch eve
 for the people developing Concorde: nothing of it is installed into a project, and a Concorde user
 never meets it. Its second job is to keep apart the problems that only testing conditions cause,
 such as a headless main session or an untrusted scratch project, from the problems a user would
-meet, so that the first are solved here rather than in what users get. Three children carry parts
-of it: [Headless sessions](sessions/module.md) drives any real headless main session,
+meet, so that the first are solved here rather than in what users get. Three children carry parts of
+it: [Headless sessions](sessions/module.md) drives any real headless main session,
 [SWE-bench cases](cases/module.md) repairs and grades cases worked on real issues, and
-[Dogfood scenarios](dogfood/module.md) tests a develop install's main agent against a known
-Concorde defect.
-
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Test project | A codebase from SWE-bench's repositories, cloned at a pinned revision into the end-to-end root, with Concorde installed, initialized and a task open. |
-| End-to-end root | The directory holding the test projects, `CONCORDE_E2E_ROOT` or `concorde-e2e` in the system's temporary directory, `/tmp/concorde-e2e` on Linux. |
-| Headless run | A workflow run by a non-interactive `claude -p` main session started by the tool, waiting without limit for the workflow and granted its tools on the command line. |
-| Driver run | A workflow run by the deterministic driver, which plays the pi runtime and has the pi script's step agents execute the real `concorde workflow` commands, with real workers. |
-| [Developer](../vocabulary.md#concept.concorde.developer) | |
-| [Workflow](../execution/workflows/module.md#concept.workflows.workflow) | |
-| [Workflow result](../execution/workflows/module.md#concept.workflows.result) | |
-| [Workflow record](../execution/workflows/module.md#concept.workflows.record) | |
-| [Workspace binding](../execution/module.md#concept.execution.workspace-binding) | |
-
-A test project is where a headless run or a driver run happens; the end-to-end root is where test
-projects live.
+[Dogfood scenarios](dogfood/module.md) tests a
+[develop install](../glossary.json#concept.develop-install)'s
+[main agent](../glossary.json#concept.main-agent) against a known
+[Concorde defect](../glossary.json#concept.concorde-defect).
 
 ## Usage
 
@@ -47,53 +32,57 @@ python3 scripts/e2e/e2e.py watch <project>
 Its children add `session` ([Headless sessions](sessions/module.md)), `repair-specs` and `grade`
 ([SWE-bench cases](cases/module.md)) and `dogfood` ([Dogfood scenarios](dogfood/module.md)).
 
-<a id="concept.e2e.test-project"></a><a id="concept.e2e.root"></a>
+<a id="concept.test-project"></a><a id="concept.end-to-end-root"></a>
 
-**Preparing a test project.** `repos` lists the repositories SWE-bench's harness names, read from
-the vendored `references/swe-bench/`. `prepare psf/requests --rev v2.31.0` fetches that revision, a tag,
-a branch or a commit, without earlier history into the **end-to-end root**, under `--name` or the
-repository's name, checks it out as a `main` branch, installs Concorde from this checkout without
-`d2`, initializes it, commits and opens a task bound to the root Module, which makes a **test
-project**. It refuses a repository SWE-bench does not name unless `--any` is given, and a project
-directory that already exists. The end-to-end root defaults to the system's temporary
-directory, never the developer's home: test projects are throwaway, and the home directory itself
-is also where Claude Code keeps no trust.
+**Preparing a [test project](../glossary.json#concept.test-project).** `repos` lists the
+repositories SWE-bench's harness names, read from the vendored `references/swe-bench/`.
+`prepare psf/requests --rev v2.31.0` fetches that revision, a tag, a branch or a commit, without
+earlier history into the **[end-to-end root](../glossary.json#concept.end-to-end-root)**, under
+`--name` or the repository's name, checks it out as a `main` branch, installs Concorde from this
+checkout without `d2`, initializes it, commits and opens a task bound to the root
+[Module](../glossary.json#concept.module), which makes a **test project**. It refuses a repository
+SWE-bench does not name unless `--any` is given, and a project directory that already exists. The
+end-to-end root defaults to the system's temporary directory, never the developer's home: test
+projects are throwaway, and the home directory itself is also where Claude Code keeps no trust.
 
 **Trusting test projects.** Claude Code applies a project's `.claude/settings.json` allow rules,
 which the installer writes for its workflows, only once that exact repository is trusted: trust is
-keyed on the git repository root, a parent folder's trust does not count, and a headless session
-never shows the trust dialog. `trust` marks each named project's repository root trusted in
-Claude Code's configuration, `~/.claude.json` (or under `CLAUDE_CONFIG_DIR`), after backing the
-file up once. It changes the developer's own configuration, so the developer runs it; a headless
-run does not need it.
+keyed on the git repository root, a parent folder's trust does not count, and a
+[headless session](../glossary.json#concept.headless-session) never shows the trust dialog. `trust`
+marks each named project's repository root trusted in Claude Code's configuration, `~/.claude.json`
+(or under `CLAUDE_CONFIG_DIR`), after backing the file up once. It changes the developer's own
+configuration, so the developer runs it; a headless run does not need it.
 
-<a id="concept.e2e.headless-run"></a><a id="concept.e2e.driver-run"></a>
+<a id="concept.headless-run"></a><a id="concept.driver-run"></a>
 
 **Running a workflow.** `run` runs a workflow to its end in the worktree of the test project's
 task `--task` (default `adopt`), whose
-[workspace binding](../execution/module.md#concept.execution.workspace-binding) the workflow and
+[workspace binding](../glossary.json#concept.workspace-binding) the workflow and
 every run it starts work on, so neither the workflow's arguments nor any command names the task. It
-prints the [workflow result](../execution/workflows/module.md#concept.workflows.result) the
-workflow saved last in its [workflow record](../execution/workflows/module.md#concept.workflows.record),
+prints the [workflow result](../glossary.json#concept.workflow-result) the
+workflow saved last in its [workflow record](../glossary.json#concept.workflow-record),
 under `.concorde/runs/workflows/<task>/` of the project, and logs the session under
 `.concorde/runs/e2e/`:
 
-- A **headless run** (`--via claude`) runs, as a [headless
-  session](sessions/module.md#concept.headless-sessions.session) kept under
+- A **[headless run](../glossary.json#concept.headless-run)** (`--via claude`) runs, as a
+  [headless session](../glossary.json#concept.headless-session) kept under
   `.concorde/runs/e2e/<task>-claude/`, a main session started in the task's worktree and asked to
-  run the installed workflow there and report with `concorde workflow report`. Two testing conditions are handled for it: `claude -p` otherwise stops a background
-  workflow after ten idle minutes, so the session keeps `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`;
-  and an untrusted project ignores its allow rules, so the workflow and its step commands are
-  granted with `--allowedTools`.
-- A **driver run** (`--via driver`) runs the project's rendered pi script under the stand-in
-  runtime of the Workflows tests, whose step agents execute the real `concorde workflow step
-  --stdin` and `report --stdin` in the task's worktree. It has no model between steps, so it tests Concorde's side alone.
+  run the installed workflow there and report with `concorde workflow report`. Two testing
+  conditions are handled for it: `claude -p` otherwise stops a background workflow after ten idle
+  minutes, so the session keeps `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`; and an untrusted project
+  ignores its allow rules, so the workflow and its step commands are granted with `--allowedTools`.
+- A **[driver run](../glossary.json#concept.driver-run)** (`--via driver`) runs the project's
+  rendered pi script under the stand-in runtime of the Workflows tests, whose
+  [step agents](../glossary.json#concept.step-agent) execute the real
+  `concorde [workflow step](../glossary.json#concept.workflow-step) --stdin` and `report --stdin` in
+  the task's worktree. It has no model between steps, so it tests Concorde's side alone.
 
 `--retry` and `--restart` pass the workflow's own arguments, for a run that continues a task.
 
-**Watching.** `watch` lists every run of the project's run store with its workspace, phase, step
-and outcome, and, from each workspace's workflow record, its workflow steps with their runs and
-whether they were superseded.
+**Watching.** `watch` lists every run of the project's
+[run store](../glossary.json#concept.run-store) with its workspace, phase, step and outcome, and,
+from each workspace's workflow record, its [workflow steps](../glossary.json#concept.workflow-step)
+with their runs and whether they were superseded.
 
 ## Design
 
@@ -129,9 +118,9 @@ repositories only, without the network or agents, verifying the
 ### The children
 
 Three children carry parts of End-to-end testing. Each reaches a different part of Concorde: a
-headless session wakes on the runs of Execution, a case is set up through Distribution, and a dogfood
-scenario drives headless sessions against a develop install that Dogfooding describes. The parent
-itself runs the workflows a test project executes.
+headless session wakes on the runs of Execution, a case is set up through Distribution, and a
+dogfood scenario drives headless sessions against a develop install that Dogfooding describes. The
+parent itself runs the workflows a test project executes.
 
 ```d2
 e2e: End-to-end testing {
@@ -157,7 +146,7 @@ e2e.dogfood -> dogfooding
 **Headless sessions** drives a real headless Claude Code main session: it grants the session its
 tools, tells it the conditions of running headless, wakes it when a run it left behind ends and
 keeps every round's log. The headless runs of workflows are headless sessions, and so are
-the dogfood scenarios' sessions.
+the [dogfood scenarios](../glossary.json#concept.dogfood-scenario)' sessions.
 
 <a id="contains-cases"></a>
 
@@ -181,18 +170,20 @@ End-to-end testing relies on three providers to set a test project up, run it an
 
 **Workflows** provides the workflows a test project runs, their rendered scripts and the stand-in
 runtime of its tests that a driver run reuses, the
-[workflow result](../execution/workflows/module.md#concept.workflows.result) a run ends with, and
-the [workflow record](../execution/workflows/module.md#concept.workflows.record) of each workspace,
+[workflow result](../glossary.json#concept.workflow-result) a run ends with, and
+the [workflow record](../glossary.json#concept.workflow-record) of each workspace,
 where `run` finds the latest saved result and `watch` the steps. End-to-end testing relies on the
 record listing the saved results in order and each step with its run.
 
 <a id="uses-execution"></a>
 
-**Execution** runs every workflow step, Operation and execution command of a test project in the
-workspace its task worktree is bound as: Tasks writes that
-[workspace binding](../execution/module.md#concept.execution.workspace-binding) when `prepare`
-opens the task, and End-to-end testing never writes it. `watch` reads the run store's progress
-files for each run's workspace, phase, step and status, relying on them to name those fields.
+**Execution** runs every workflow step, [Operation](../glossary.json#concept.operation) and
+[execution command](../glossary.json#concept.execution-command) of a test project in the workspace
+its task worktree is bound as: Tasks writes that
+[workspace binding](../glossary.json#concept.workspace-binding) when `prepare` opens the task, and
+End-to-end testing never writes it. `watch` reads the run store's
+[progress files](../glossary.json#concept.progress-file) for each run's workspace, phase, step and
+status, relying on them to name those fields.
 
 <a id="uses-distribution"></a>
 

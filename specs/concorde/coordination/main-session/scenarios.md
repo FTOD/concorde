@@ -1,14 +1,16 @@
 # Main session scenarios
 
-Situations the [main-session guidance](module.md) prepares the main agent for, and what the pi
-run view and model picker do in them.
+Situations the [main-session guidance](module.md) prepares the
+[main agent](../../glossary.json#concept.main-agent) for, and what the pi
+[run view](../../glossary.json#concept.run-view) and
+[model picker](../../glossary.json#concept.model-picker) do in them.
 
 ## Working method
 
 ### scenario.main-session.pi-task-worktree — pi runs a task's work with its worktree's copy
 
 - GIVEN a pi main session in the primary worktree and a task whose record names an existing worktree
-- WHEN the main agent starts an Operation or an execution command of that task with the `concorde_run` tool
+- WHEN the main agent starts an [Operation](../../glossary.json#concept.operation) or an [execution command](../../glossary.json#concept.execution-command) of that task with the `concorde_run` tool
 - THEN the run view starts the task worktree's own `concorde`, with the task worktree as working directory, as `concorde run <operation>` or `concorde <command>` without naming the task
 - AND the run works on the workspace the worktree's binding names
 - BUT for a task whose record names no existing worktree the tool is refused before anything starts, naming the task
@@ -16,17 +18,17 @@ run view and model picker do in them.
 ### scenario.main-session.pi-run-view — pi shows every run and its worker's progress
 
 - GIVEN a pi main session with the run view and an Operation run whose worker is in its second round
-- WHEN the run view reads the progress files of the run store
+- WHEN the run view reads the [progress files](../../glossary.json#concept.progress-file) of the [run store](../../glossary.json#concept.run-store)
 - THEN it shows the run with its workspace, Operation, step, the worker's round and latest tool call
 - AND a worker of another runner process or an earlier run is not attributed to it
-- AND an execution command's run is shown the same way without a worker, and an unbound run with `unbound` in place of the workspace
+- AND an execution command's run is shown the same way without a worker, and an [unbound run](../../glossary.json#concept.unbound-run) with `unbound` in place of the workspace
 - AND a finished run shows `completed`, `stopped` or `failed` for `ok`, `blocked` or `failed` with the result's summary
 - AND a run whose runner process ended without finishing shows `failed`
-- AND the message the main agent is given for a finished run names the run, its workspace and name, its status and summary, and its run result's file
+- AND the message the main agent is given for a finished run names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file
 
 ### scenario.main-session.change-through-task — The guidance routes an agreed change through a task
 
-- GIVEN the rendered main-session guidance
+- GIVEN the rendered [main-session guidance](../../glossary.json#concept.main-session-guidance)
 - WHEN a main agent reads how to carry out a change agreed with the developer
 - THEN it is told to open a task with its own branch and worktree for the Modules involved
 - AND to enter that worktree and make the change there, directly or with Operations and the execution commands `task-validation` and `delivery` run in background Bash
@@ -39,13 +41,13 @@ run view and model picker do in them.
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to plan several changes
 - THEN it is told to run tasks in parallel only in separate worktrees whose Modules and shared files do not overlap
-- BUT to run tasks that write the same Module or shared file one after another
+- BUT to run tasks that write the same [Module](../../glossary.json#concept.module) or shared file one after another
 
 ### scenario.main-session.split-into-sessions — The guidance hands split work to task sessions
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to carry out work it split into several tasks
-- THEN it is told to start one task session per task on its own program: in Claude Code with `concorde task session` naming its own session, in pi with the `concorde_task_session` tool, answering a round with its `answer`
+- THEN it is told to start one [task session](../../glossary.json#concept.task-session) per task on its own program: in Claude Code with `concorde task session` naming its own session, in pi with the `concorde_task_session` tool, answering a round with its `answer`
 - AND to stay in the primary worktree while they run, being inside at most one task at a time itself
 - AND to answer a task session's escalation or pass it to the developer with its own link on top
 
@@ -63,7 +65,7 @@ run view and model picker do in them.
 - GIVEN the rendered pi task-session guidance
 - WHEN a pi task session reads how to report
 - THEN it is told to run Operations with the worktree's own `concorde` in the foreground
-- AND to end every round by calling `concorde_report`, always supplying `status`, `summary`, `commit`, `escalations`, `decisions` and `open`, with the delivery commit and an empty escalation array when delivered, or after `concorde task escalate --by task-session` with a null commit and the unique escalation numbers
+- AND to end every round by calling `concorde_report`, always supplying `status`, `summary`, `commit`, `escalations`, `decisions` and `open`, with the [delivery commit](../../glossary.json#concept.delivery-commit) and an empty escalation array when delivered, or after `concorde task escalate --by task-session` with a null commit and the unique escalation numbers
 - AND that the main agent's answer arrives as the prompt of the next round
 - BUT never to merge the task branch or close the task
 
@@ -72,7 +74,7 @@ run view and model picker do in them.
 - GIVEN a pi main session that started a task session with `concorde_task_session`
 - WHEN the round's progress file changes and the round ends
 - THEN the run view shows the task, the round and the session's latest tool call
-- AND the main agent is woken with the recorded outcome: the report's summary, decisions and open points with the delivery commit or the escalation numbers, or the failed round's error chain
+- AND the main agent is woken with the recorded outcome: the report's summary, decisions and open points with the delivery commit or the escalation numbers, or the failed round's [error chain](../../glossary.json#concept.error-chain)
 - AND a pi main session that starts again follows the rounds still running
 
 ### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
@@ -98,7 +100,7 @@ run view and model picker do in them.
 
 - GIVEN the rendered main-session guidance
 - WHEN a developer asks the main agent to change the models workers use
-- THEN it is told that workers run on pi unless the worktree's configuration chooses Claude Code for them, and take their models from that configuration by worker id, which new tasks inherit
+- THEN it is told that workers run on pi unless the worktree's configuration chooses Claude Code for them, and take their models from that configuration by [worker id](../../glossary.json#concept.worker-id), which new tasks inherit
 - AND that the human-facing `concorde configure-workers` editor keeps drafts until Save and changes only the current worktree, launching no worker and recording no run
 - AND to edit JSON directly for AI-driven changes, preserve unrelated overrides and validate with `--check`, inspecting sources with `--show --json`
 - AND that separate `scripts/available_models.py` discovery supplies advisory configured candidates without inference API probes, while custom/offline names require no discovery
@@ -109,18 +111,18 @@ run view and model picker do in them.
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent needs to understand or review a Module without changing it
-- THEN it is told that `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` also run unbound, in a worktree without a workspace binding such as the primary worktree, with `workspace` null in their result
-- AND that such a run changes no Spec or code, since it launches only reading workers
+- THEN it is told that `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` also run unbound, in a worktree without a [workspace binding](../../glossary.json#concept.workspace-binding) such as the primary worktree, with `workspace` null in their result
+- AND that such a run changes no [Spec](../../glossary.json#concept.spec) or code, since it launches only reading workers
 - BUT every change still runs in a task, and an `--input` of an unbound run must be unbound too
 
 ### scenario.main-session.brownfield — The guidance adopts existing code through the brownfield workflow
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent has just initialized a project whose code came before its Specs
-- THEN it is told to open a task bound to the root Module and start the brownfield workflow inside its worktree, which never names the task
+- THEN it is told to open a task bound to the root Module and start the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) inside its worktree, which never names the task
 - AND to ask the developer for interactive or no-ask mode unless the developer already said
-- AND to put every pending decision point to the developer when the workflow ends `awaiting_decision`, then start the workflow again with the answers keyed by step key
-- AND to read the workflow result saved beside the workspace's workflow record like a run result, copy its decisions and problems into the task's decision log itself, and merge the delivered task
+- AND to put every pending [decision point](../../glossary.json#concept.decision-point) to the developer when the workflow ends `awaiting_decision`, then start the workflow again with the answers keyed by [step key](../../glossary.json#concept.step-key)
+- AND to read the [workflow result](../../glossary.json#concept.workflow-result) saved beside the workspace's [workflow record](../../glossary.json#concept.workflow-record) like a run result, copy its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log) itself, and merge the delivered task
 
 ## Escalation
 
@@ -151,7 +153,7 @@ run view and model picker do in them.
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to retain a worker finding or Operation error that the current task will not fix
 - THEN it is told to inspect `issues list` and `show` for existing open or closed matches before recording
-- AND to decide whether to create an Issue, append to an open one at its current revision, or reopen a closed one
+- AND to decide whether to create an [Issue](../../glossary.json#concept.issue), append to an open one at its current revision, or reopen a closed one
 - AND to run the writing command in a task worktree, with `--task` on `report`, and keep the receipt
 - BUT it is told that neither the worker nor the Operation records the Issue automatically
 

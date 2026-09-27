@@ -1,7 +1,7 @@
 # Spec review requirements
 
 The Module-wide obligations of [Spec review](module.md). The headings group them by subject; each
-requirement belongs to the Module as a whole.
+requirement belongs to the [Module](../../glossary.json#concept.module) as a whole.
 
 ## Scope
 
@@ -11,7 +11,7 @@ Spec review SHALL NOT create, change or delete any file of the worktree it revie
 
 ### req.spec-review.memory — A repeated review builds on the memory
 
-A Spec review in a bound workspace SHALL merge its findings into each reviewed Module's review memory, keeping every earlier finding it does not update or resolve open.
+A Spec review in a bound workspace SHALL merge its findings into each reviewed Module's [review memory](../../glossary.json#concept.review-memory), keeping every earlier finding it does not update or resolve open.
 
 ### req.spec-review.review-spec-grant — Reviewers read under a review-spec grant
 
@@ -31,17 +31,18 @@ one run rather than stopping at the first.
 
 ### req.spec-review.unchanged-not-reviewed — Unchanged Specs are not reviewed again
 
-A Spec review SHALL NOT launch a reviewer for a Module whose context identity is the one its review memory records as last reviewed, unless forced.
+A Spec review SHALL NOT launch a reviewer for a Module whose [context identity](../../glossary.json#concept.context-identity) is the one its review memory records as last reviewed, unless forced.
 
 ### req.spec-review.host-verdict — The Operation derives the verdict
 
-The verdict of a Spec review or a Spec panel SHALL be derived by the Operation by the rule of that
-Operation's payload contract, never taken from a worker's statement.
+The verdict of a Spec review or a [Spec panel](../../glossary.json#concept.spec-panel) SHALL be
+derived by the [Operation](../../glossary.json#concept.operation) by the rule of that Operation's
+payload contract, never taken from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
 
-The Operation SHALL NOT launch a reviewer for a Module whose Specs Spec core reports a structural error
-for.
+The Operation SHALL NOT launch a reviewer for a Module whose Specs Spec core reports a structural
+error for.
 
 ### req.spec-review.bound-verdict — The verdict names what was read
 
@@ -50,15 +51,15 @@ under.
 
 ### req.spec-review.claims-stay-claims — Worker claims stay claims
 
-The run result SHALL keep reviewer findings and checker statuses apart from the evidence the
-Operation produced itself.
+The [run result](../../glossary.json#concept.run-result) SHALL keep reviewer findings and checker
+statuses apart from the evidence the Operation produced itself.
 
 ## Panel
 
 ### req.spec-review.panel-accounted — A panel report accounts for every reviewer finding
 
-A Spec panel SHALL NOT complete a Module whose panel report leaves a reviewer finding unaccounted
-for.
+A Spec panel SHALL NOT complete a Module whose
+[panel report](../../glossary.json#concept.panel-report) leaves a reviewer finding unaccounted for.
 
 ### req.spec-review.panel-independent — Panel reviewers review independently
 

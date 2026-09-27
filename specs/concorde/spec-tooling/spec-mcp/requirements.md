@@ -1,14 +1,14 @@
 # Spec MCP server requirements
 
 The Module-wide obligations of the [Spec MCP server](module.md). The headings group them by
-subject; each requirement belongs to the Module as a whole.
+subject; each requirement belongs to the [Module](../../glossary.json#concept.module) as a whole.
 
 ## Root
 
 ### req.spec-mcp.one-root — One root per session
 
-The server SHALL answer every query of a session from the Specs of the one server root it resolved
-when the session started.
+The server SHALL answer every query of a session from the Specs of the one
+[server root](../../glossary.json#concept.server-root) it resolved when the session started.
 
 ### req.spec-mcp.no-root-no-answer — No root, no answer
 
@@ -29,8 +29,9 @@ link whose target lies elsewhere.
 Every successful tool result SHALL equal what Spec core computes for the server root and the same
 arguments.
 
-In particular, `boundary` returns the context identity and entries of Spec core's grant, so the
-server adds no rule about what a task may read or write.
+In particular, `boundary` returns the
+[context identity](../../glossary.json#concept.context-identity) and entries of Spec core's grant,
+so the server adds no rule about what a task may read or write.
 
 ### req.spec-mcp.current-sources — Answers reflect the current Specs
 

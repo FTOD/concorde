@@ -1,7 +1,7 @@
 # Adoption contracts
 
 The exact shapes [Adoption](module.md) returns and accepts. Each output is the `output` of a
-[run result](../../module.md#concept.execution.run-result); the worker proposes the parts it
+[run result](../../../glossary.json#concept.run-result); the worker proposes the parts it
 claims, and the host steps check them before passing them on.
 
 ## Decomposition proposal
@@ -822,8 +822,8 @@ claims, checked for consistency only.
 
 ## Answers
 
-The file `--answers` names. Every answer names a decision (`d.`) or open question (`q.`) of an
-admitted earlier run.
+The file `--answers` names. Every answer names a decision (`d.`) or
+[open question](../../../glossary.json#concept.open-question) (`q.`) of an admitted earlier run.
 
 ```concorde-contract
 {
@@ -890,7 +890,7 @@ and Spec core links below it keep their own codes.
 
 | Code | Run | Status | Reason | Raised when |
 | --- | --- | --- | --- | --- |
-| `invalid_request` | survey | `failed` | `input` | a survey is bound to other than one Module |
+| `invalid_request` | survey | `failed` | `input` | a survey is bound to other than one [Module](../../../glossary.json#concept.module) |
 | `invalid_answers` | survey, code_to_spec | `failed` | `input` | the answers file cannot be read, breaks `contract.adoption.answers` or answers one identity twice |
 | `specs_unloadable` | both | `failed` | `scope` | the worktree's Specs cannot be loaded; the cause is Spec core's error |
 | `grant_unavailable` | survey, code_to_spec | `failed` | `scope` | Spec core cannot compute the `code-to-spec` grant; the cause is its error |
