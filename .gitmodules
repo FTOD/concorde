@@ -18,3 +18,11 @@
 	path = references/swe-bench
 	url = https://github.com/SWE-bench/SWE-bench.git
 	concorde-sparse = /LICENSE /README.md /docs/ /swebench/ !*.png !*.jpg !*.gif !*.webp !*.mp4 !*.svg
+[submodule "references/langgraph"]
+	path = references/langgraph
+	url = https://github.com/langchain-ai/langgraph.git
+	concorde-sparse = /LICENSE /README.md /docs/llms.txt /libs/langgraph/README.md /libs/langgraph/langgraph/ !*.png !*.jpg !*.gif !*.webp !*.mp4 !*.svg
+[submodule "references/langgraph-docs"]
+	path = references/langgraph-docs
+	url = https://github.com/langchain-ai/docs.git
+	concorde-sparse = /LICENSE /README.md /src/oss/langgraph/ !*.png !*.jpg !*.gif !*.webp !*.mp4 !*.svg

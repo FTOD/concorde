@@ -26,10 +26,13 @@ queueing and execution times apart and never presents summed parallel test time 
 
 The third-party documentation and source that Modules include as `external` live under
 `references/`. The Claude Code documentation is tracked as plain files, refreshed by
-`scripts/development/fetch-claude-code-docs.py`. The pi, pi-subagents, sandbox-runtime and
-pi-packages references are Git submodules pinned in `.gitmodules` to the versions Concorde was
-built against, each with a sparse-checkout pattern (`concorde-sparse`) that keeps only the
-documentation and source a reader needs. `scripts/development/init-references.py` checks them out,
+`scripts/development/fetch-claude-code-docs.py`. The pi, pi-subagents, sandbox-runtime,
+pi-packages, swe-bench, langgraph and langgraph-docs references are Git submodules pinned in
+`.gitmodules` to the versions Concorde was built against, each with a sparse-checkout pattern
+(`concorde-sparse`) that keeps only the documentation and source a reader needs. `langgraph` is
+the LangGraph release `uv.lock` locks, and `langgraph-docs` the LangChain documentation
+repository, whose LangGraph pages match that release; when the lock moves to another LangGraph
+release, both move with it. `scripts/development/init-references.py` checks them out,
 without their media, at exactly the recorded commits.
 
 ## Docsite type check

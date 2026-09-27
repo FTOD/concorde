@@ -210,6 +210,16 @@
           "kind": "document",
           "target": "document.concorde.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "external",
+          "target": "references/langgraph/",
+          "reason": "LangGraph's source at the locked version, whose Graph API (StateGraph, conditional edges, Send, the recursion limit) the spec_panel graph is built on"
+        },
+        {
+          "kind": "external",
+          "target": "references/langgraph-docs/",
+          "reason": "LangGraph's documentation for the Graph API, streaming, persistence and its errors, which the spec_panel graph follows"
         }
       ],
       "participates": []
