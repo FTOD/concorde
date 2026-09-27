@@ -1,0 +1,117 @@
+{
+  "workspace": "langgraph-reference",
+  "goal": "Vendor LangGraph (the locked version) as an external reference under references/langgraph and declare it as an external include of the Modules that use LangGraph",
+  "modules": [
+    "module.concorde",
+    "module.spec-review"
+  ],
+  "sequence": 1,
+  "base_commit": "92288e9b626dec81014f53f0ece0f236e11a66e3",
+  "parent_commit": "b8c8144998ee8ce59179d1db96244132c30fb65c",
+  "readiness": {
+    "run_id": "r-20260927T192532-delivery-68c629ef",
+    "input_digest": "sha256:414cda5ecd9f98349822223f5482cbd2b8daebf6fc1d26238b2d89f24594db25",
+    "modules": [
+      "module.concorde",
+      "module.spec-review"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:66d03a2acbaa2d7b90a4bbdf3a783db370285ca90de4147c11bdb1fb5b8fbd12"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:adf95f9662aaa14cbc55f4ce6d82efbc3a8947cdabc5548ce203cda983349fec"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:797b0cbbebedcbddb14dac8ec81bfd6fb1d1cc0fb773a97b620268b658f7fb99"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:7359413a7c326b837bc19d441bd50b3d741384bffe54e75aa1b60b51096266c7"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:acc1125b02a87303a047f0fc1667b3181581adff6f8587c61731a71ed2a9671f"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:57840331a3b3b852e5b695fabaf305e4fb84e775f986767e88698b6372d88dbc"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:8b36d613917eacabcfa0ca9bac4a9648d2bb5404b4935da596875b3720bb591a"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:4f16f9cf41769de5b323982b1badb11f9455b61f58da493a8a6158451dd31991"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:73dff9de5a04f8200292f9371f2400716f95ddcac77d6f81933adfea2168a97e"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:1b8452d771be588e1c40aef9bd34709ebc3bc19d821ee2aedf68b09a12c54591"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:4858396ed4bd452ee04c17ba5a1012f2195d26306663de8db4f34f515912e196"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:8e22251314be54d46f697c8c834e961ae6f46e017ed4406f6443f319d845062a"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:725e179c9775643fc7064fd5c825abe2ca8e7717f6d3b627dbba5c26bc9d70b8"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260927T192419-task_validation-cab1e8ee",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.concorde",
+        "module.spec-review"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:3f54934e6c7f3a498dec3b6292a522cf0bb90f0f869028802938b671aa8cfc46"
+    }
+  ],
+  "created_at": "2026-09-27T19:26:42Z"
+}
