@@ -1,0 +1,130 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.operations.module",
+    "owner": "module.operations",
+    "role": "module"
+  },
+  "module": {
+    "title": "Operations",
+    "owns": [
+      "specs/concorde/execution/operations/module.md",
+      "specs/concorde/execution/operations/workers.md",
+      "specs/concorde/execution/operations/requirements.md",
+      "specs/concorde/execution/operations/scenarios.md"
+    ],
+    "contains": [
+      {
+        "target": "module.understanding",
+        "meaning": "#contains-understanding"
+      },
+      {
+        "target": "module.specification",
+        "meaning": "#contains-specification"
+      },
+      {
+        "target": "module.implementation",
+        "meaning": "#contains-implementation"
+      },
+      {
+        "target": "module.code-review",
+        "meaning": "#contains-code-review"
+      },
+      {
+        "target": "module.adoption",
+        "meaning": "#contains-adoption"
+      }
+    ],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers"
+      },
+      {
+        "target": "module.checks",
+        "meaning": "#uses-checks"
+      },
+      {
+        "target": "module.spec-review",
+        "meaning": "#uses-spec-review"
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.runner",
+          "concept.execution.run-result",
+          "concept.execution.workspace"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.operations.operation",
+      "type": "concept",
+      "title": "Operation",
+      "meaning": "#concept.operations.operation"
+    },
+    {
+      "id": "concept.operations.catalog",
+      "type": "concept",
+      "title": "Operation catalog",
+      "meaning": "#concept.operations.catalog"
+    },
+    {
+      "id": "concept.operations.standard-worker-sequence",
+      "type": "concept",
+      "title": "Standard worker sequence",
+      "meaning": "#concept.operations.standard-worker-sequence"
+    },
+    {
+      "id": "realization.operations.catalog",
+      "type": "realization",
+      "title": "Catalog and worker steps",
+      "meaning": "#realization.operations.catalog",
+      "entries": [
+        "src/concorde/operations/"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "concept.operations.catalog",
+      "verb": "lists",
+      "target": "concept.operations.operation"
+    },
+    {
+      "type": "relates",
+      "source": "concept.operations.operation",
+      "verb": "launches workers through",
+      "target": "module.workers"
+    },
+    {
+      "type": "relates",
+      "source": "concept.operations.operation",
+      "verb": "runs checks through",
+      "target": "module.checks"
+    }
+  ],
+  "extensions": {}
+}

@@ -1,12 +1,13 @@
 /**
  * Concorde's extension for a pi main session.
  *
- * It lets the main agent run Operations the way Concorde expects in pi: `concorde_run` starts
- * `concorde run` as a detached process and returns at once; every run of the project is followed
- * through its progress files and shown in pi-subagents' FleetView as an external job, counted by
- * `bg_wait`, and reported back with a message that wakes the main agent when it finishes.
- * `/concorde` lists the runs. The extension only launches and observes: the Operation host, not
- * this extension, runs and records every Operation. Without pi-subagents it still launches, wakes
+ * It lets the main agent run Operations and recorded commands the way Concorde expects in pi:
+ * `concorde_run` starts `concorde run <operation>` or `concorde <command>` as a detached process in
+ * the task's worktree, whose workspace binding the run reads, and returns at once; every run of the
+ * project is followed through its progress files and shown in pi-subagents' FleetView as an
+ * external job, counted by `bg_wait`, and reported back with a message that wakes the main agent
+ * when it finishes. `/concorde` lists the runs. The extension only launches and observes: the
+ * Execution runner, not this extension, runs and records every run. Without pi-subagents it still launches, wakes
  * and lists; only the FleetView entries and `bg_wait` are missing.
  *
  * `concorde_task_session` starts, answers or stops a pi task session through `concorde task
@@ -29,13 +30,13 @@ import {
 import {
   alive,
   concordeCommand,
-  operationRuns,
-  type OperationStatus,
   primaryRoot,
+  recordedRuns,
   resultText,
   roundId,
   roundOutcome,
   runsDirectory,
+  type RunStatus,
   type RunView,
   sessionRounds,
   type SessionStatus,
@@ -104,8 +105,11 @@ async function loadSubagents(): Promise<Subagents> {
   return found;
 }
 
+// The recorded commands, which run as `concorde <command>`; every other name is an Operation.
+const COMMANDS = ["task-validation", "delivery", "scaffold"];
+
 interface Tracked {
-  operation: OperationStatus;
+  operation: RunStatus;
   shown: RunView | null;
   registered: boolean;
   reported: boolean;
@@ -146,9 +150,10 @@ function concorde(cwd: string, args: string[]): Promise<CommandOutcome> {
 }
 
 /**
- * The worker model picker: choose, per scope (every task type, or one), a pi model and a
- * reasoning level from what `concorde workers models` lists, and apply each choice with
- * `concorde workers set` or `unset`. Returns what it changed, or throws the command's refusal.
+ * The worker model picker: choose, per scope (every worker, one Operation's or one worker), a pi
+ * model and a reasoning level from what `concorde configure-workers` lists in the chosen worktree
+ * (a task's, or this one), and apply each choice with `concorde configure-workers` there. Returns
+ * what it changed, or throws the command's refusal.
  */
 async function pickWorkerModels(
   ctx: ExtensionContext,
@@ -159,11 +164,11 @@ async function pickWorkerModels(
     : ctx.cwd;
   const changes: string[] = [];
   for (;;) {
-    const listed = await concorde(cwd, listingCommand(task));
+    const listed = await concorde(cwd, listingCommand());
     const output = listed.value?.output;
     if (listed.code !== 0 || !output)
       throw new Error(
-        `concorde ${listingCommand(task).join(" ")} failed:\n${refusalText(listed)}`,
+        `concorde ${listingCommand().join(" ")} failed:\n${refusalText(listed)}`,
       );
     const listing = output as unknown as Listing;
     const scopes = scopeRows(listing);
@@ -194,15 +199,15 @@ async function pickWorkerModels(
         )) ?? null;
       if (level === null) continue;
     }
-    const args = commandFor(scope, picked.action, picked.model, level, task);
+    const args = commandFor(scope, picked.action, picked.model, level);
     if (!args) continue;
     const applied = await concorde(cwd, args);
     if (applied.code !== 0)
       throw new Error(
         `concorde ${args.join(" ")} failed:\n${refusalText(applied)}`,
       );
-    changes.push(args.slice(2).join(" "));
-    ctx.ui.notify(`Worker models: ${args.slice(2).join(" ")}`, "info");
+    changes.push(args.slice(1).join(" "));
+    ctx.ui.notify(`Worker models: ${args.slice(1).join(" ")}`, "info");
   }
 }
 
@@ -299,7 +304,7 @@ export default function (pi: ExtensionAPI) {
 
   function refresh(ctx?: ExtensionContext): void {
     const operations = new Map(
-      operationRuns(root).map((item) => [item.run_id, item]),
+      recordedRuns(root).map((item) => [item.run_id, item]),
     );
     for (const [id, entry] of tracked) {
       const operation = operations.get(id) ?? entry.operation;
@@ -353,7 +358,7 @@ export default function (pi: ExtensionAPI) {
     });
   }
 
-  function track(operation: OperationStatus, reported = false): void {
+  function track(operation: RunStatus, reported = false): void {
     if (!tracked.has(operation.run_id)) {
       tracked.set(operation.run_id, {
         operation,
@@ -371,7 +376,7 @@ export default function (pi: ExtensionAPI) {
     sessionId =
       ctx.sessionManager.getSessionFile() ?? ctx.sessionManager.getSessionId();
     subagents = await loadSubagents();
-    for (const operation of operationRuns(root)) {
+    for (const operation of recordedRuns(root)) {
       if (operation.phase !== "finished" && alive(operation.host_pid))
         track(operation);
     }
@@ -399,24 +404,27 @@ export default function (pi: ExtensionAPI) {
     name: "concorde_run",
     label: "Concorde run",
     description:
-      "Start a Concorde Operation in the background: `concorde run <operation> [--task <task>] [arguments]`. " +
-      "Without a task, an Operation that allows it (understand, spec_review, code_review, " +
-      "configure_workers) runs on the primary worktree and changes no Spec or code. " +
+      "Start a Concorde Operation (`concorde run <operation> [arguments]`) or recorded command " +
+      "(`concorde task-validation|delivery|scaffold [arguments]`) in the background, in the " +
+      "worktree of the named task, whose workspace binding the run works on. Without a task, " +
+      "an Operation that allows it (understand, survey, spec_review, spec_panel, code_review) " +
+      "runs unbound on this worktree and changes no Spec or code. " +
       "It returns at once with the run identity, or with the result when the run has already " +
       "finished; the run appears in the run view, and you are woken with its result when it " +
       "finishes, within your current turn if you are still in one. Do not poll it. To block " +
       "until every running Concorde run ends, call bg_wait without an id; bg_wait with an id " +
       "sees only subagent runs.",
     promptSnippet:
-      "Start a Concorde Operation in the background and be woken when it finishes",
+      "Start a Concorde Operation or recorded command in the background and be woken when it finishes",
     parameters: Type.Object({
       operation: Type.String({
-        description: "The Operation, such as implement or validate",
+        description:
+          "The Operation, such as implement, or the recorded command task-validation, delivery or scaffold",
       }),
       task: Type.Optional(
         Type.String({
           description:
-            "The task identity; omit it only for an Operation that runs without a task",
+            "The task whose worktree the run works in; omit it only for an unbound Operation",
         }),
       ),
       arguments: Type.Optional(
@@ -427,10 +435,13 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_id, params, signal, _onUpdate, ctx) {
       root = primaryRoot(ctx.cwd);
-      // The task worktree's own copy knows the task's Specs and checks; an unknown task is
-      // refused by the command of the session's own worktree.
-      const worktree =
-        (params.task ? taskWorktree(root, params.task) : null) ?? ctx.cwd;
+      // The task worktree's own copy knows the task's Specs and checks, and its workspace binding
+      // tells the run what it works on.
+      const worktree = params.task ? taskWorktree(root, params.task) : ctx.cwd;
+      if (worktree === null)
+        throw new Error(
+          `task ${params.task} has no worktree in ${root}; run concorde task list to see the tasks`,
+        );
       const [command, ...prefix] = concordeCommand(worktree);
       mkdirSync(runsDirectory(root), { recursive: true });
       const log = join(runsDirectory(root), `launch-${Date.now()}.log`);
@@ -439,9 +450,8 @@ export default function (pi: ExtensionAPI) {
         command,
         [
           ...prefix,
-          "run",
+          ...(COMMANDS.includes(params.operation) ? [] : ["run"]),
           params.operation,
-          ...(params.task ? ["--task", params.task] : []),
           ...(params.arguments ?? []),
         ],
         {
@@ -456,7 +466,7 @@ export default function (pi: ExtensionAPI) {
       child.unref();
       const deadline = Date.now() + START_WAIT_MS;
       while (Date.now() < deadline && !signal?.aborted) {
-        const operation = operationRuns(root).find(
+        const operation = recordedRuns(root).find(
           (item) => item.host_pid === child.pid,
         );
         if (operation) {
@@ -470,7 +480,7 @@ export default function (pi: ExtensionAPI) {
           );
           track(operation, shown.finished);
           refresh(ctx);
-          const started = `Started ${params.operation} ${params.task ? `for task ${params.task}` : "without a task"} as run ${operation.run_id} (host process ${child.pid}).`;
+          const started = `Started ${params.operation} ${params.task ? `in the worktree of task ${params.task}` : "unbound"} as run ${operation.run_id} (runner process ${child.pid}).`;
           return {
             content: [
               {
@@ -496,8 +506,8 @@ export default function (pi: ExtensionAPI) {
         : "";
       throw new Error(
         exited !== null
-          ? `concorde run exited with status ${exited} before its run began: ${text || "(no output)"}`
-          : `concorde run (process ${child.pid}) wrote no progress file within ${START_WAIT_MS / 1000}s; see ${log}`,
+          ? `concorde ${params.operation} exited with status ${exited} before its run began: ${text || "(no output)"}`
+          : `concorde ${params.operation} (process ${child.pid}) wrote no progress file within ${START_WAIT_MS / 1000}s; see ${log}`,
       );
     },
   });
@@ -615,7 +625,8 @@ export default function (pi: ExtensionAPI) {
       "the models pi " +
       "lists. Use it when the developer asks to choose or change worker models. Without a task " +
       "it changes this worktree's configuration, which new tasks inherit; with a task it " +
-      "changes only that task's copy. The developer makes every choice in the dialog.",
+      "changes only the copy in that task's worktree. The developer makes every choice in the " +
+      "dialog.",
     promptSnippet:
       "Let the developer choose the models of Concorde's pi workers",
     parameters: Type.Object({
@@ -629,8 +640,8 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, params, _signal, _onUpdate, ctx) {
       if (!ctx.hasUI)
         throw new Error(
-          "the worker model picker needs pi's interactive interface; run concorde workers " +
-            "models and concorde workers set instead",
+          "the worker model picker needs pi's interactive interface; run concorde " +
+            "configure-workers instead",
         );
       const changes = await pickWorkerModels(ctx, params.task ?? null);
       return {
@@ -638,7 +649,7 @@ export default function (pi: ExtensionAPI) {
           {
             type: "text",
             text: changes.length
-              ? `The developer changed the worker models: ${changes.join("; ")}. Run concorde workers show for the result.`
+              ? `The developer changed the worker models: ${changes.join("; ")}. Run concorde configure-workers for the result.`
               : "The developer changed nothing.",
           },
         ],
@@ -667,7 +678,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerCommand("concorde", {
     description:
-      "List Concorde Operation runs and task-session rounds of this project",
+      "List Concorde runs (Operations and recorded commands) and task-session rounds of this project",
     handler: async (_args, ctx) => {
       const sessions = sessionRounds(root).map((status) => {
         const shown = sessionView(
@@ -677,7 +688,7 @@ export default function (pi: ExtensionAPI) {
         );
         return `${shown.state.padEnd(9)} ${shown.label} — ${shown.finished ? (shown.preview ?? "") : shown.currentAction}`;
       });
-      const lines = operationRuns(root)
+      const lines = recordedRuns(root)
         .slice(-20)
         .map((operation) => {
           const shown = view(

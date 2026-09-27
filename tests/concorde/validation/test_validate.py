@@ -1,4 +1,5 @@
-"""The ``validate`` Operation end to end on a fixture task, and the confirmation service."""
+"""The ``concorde task-validation`` recorded command end to end on a fixture task, and the
+confirmation service."""
 
 from __future__ import annotations
 
@@ -8,13 +9,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.errors import codes
 from concorde.harness import checks as check_service
 from concorde.harness.check_executor import CheckSandboxError
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from concorde.validation import confirmations
+from concorde.validation.command import READINESS_SCHEMA, TASK_VALIDATION
 from concorde.validation.measurement import measure
-from concorde.validation.operation import READINESS_SCHEMA, VALIDATE
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.validation.project import (
     ValidationProject,
@@ -73,7 +75,17 @@ class ValidateTests(unittest.TestCase):
         )
         self.assertEqual(json.loads(saved.read_text()), readiness)
         self.assertEqual(snapshot(self.worktree), before)
-        # A deterministic Operation launches no worker (scenario.operations.deterministic).
+        # A recorded command of the bound workspace launches no worker.
+        self.assertEqual(
+            ("command", "task-validation", "t1", ["module.a"]),
+            (
+                envelope["kind"],
+                envelope["name"],
+                envelope["workspace"],
+                envelope["modules"],
+            ),
+        )
+        self.assertEqual(readiness["workspace"], "t1")
         self.assertIsNone(envelope["worker"])
         self.assertEqual(envelope["worker_runs"], [])
         # Validating the unchanged worktree again gives the same readiness.
@@ -94,8 +106,12 @@ class ValidateTests(unittest.TestCase):
         # Every blocking reason is named, with its location, as a cause of the error.
         error = envelope["error"]
         self.assertEqual(
-            ("not_deliverable", "decision"),
-            (error["code"], error["unhandled"]["reason"]),
+            ("command", "not_deliverable", "decision"),
+            (error["level"], error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertEqual(
+            f"Command task-validation {envelope['run_id']} (workspace t1)",
+            error["actor"],
         )
         self.assertEqual(len(readiness["blocking"]), len(error["causes"]))
         for item, cause in zip(readiness["blocking"], error["causes"]):
@@ -258,7 +274,7 @@ class ValidateTests(unittest.TestCase):
             (self.worktree / "src/a/calc.py").write_text("changed = True\n")
             return original(*arguments, **options)
 
-        with patch("concorde.validation.operation.run_checks", changing):
+        with patch("concorde.validation.command.run_checks", changing):
             status, envelope = self.project.validate()
         self.assertEqual((status, envelope["status"]), (1, "failed"))
         self.assertIsNone(envelope["output"])
@@ -298,6 +314,36 @@ class ValidateTests(unittest.TestCase):
             (error["code"], error["unhandled"]["reason"]),
         )
         self.assertIn("no namespaces here", error["causes"][0]["detail"])
+
+
+class BindingTests(unittest.TestCase):
+    @verifies("scenario.validation.unbound")
+    def test_task_validation_needs_a_bound_workspace(self):
+        project = ValidationProject(self)
+        project.task()
+        status, envelope = project.run("task-validation", cwd=project.root)
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        self.assertEqual((None, None), (envelope["workspace"], envelope["output"]))
+        self.assertEqual(["refused", "binding_required"], codes(envelope["error"]))
+        self.assertEqual("scope", envelope["error"]["unhandled"]["reason"])
+        self.assertTrue(
+            (
+                project.root / ".concorde/runs" / envelope["run_id"] / "result.json"
+            ).is_file()
+        )
+
+    def test_a_broken_binding_is_refused(self):
+        project = ValidationProject(self)
+        worktree = project.task()
+        path = worktree / ".concorde/workspace.json"
+        value = json.loads(path.read_text())
+        path.write_text(json.dumps({**value, "root": str(project.root)}))
+        status, envelope = project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        self.assertEqual(["refused", "binding_misplaced"], codes(envelope["error"]))
+        path.write_text(json.dumps({**value, "modules": []}))
+        status, envelope = project.validate()
+        self.assertEqual(["refused", "binding_invalid"], codes(envelope["error"]))
 
 
 class SharedFileTests(unittest.TestCase):
@@ -380,9 +426,19 @@ class ContractTests(unittest.TestCase):
             "contract.validation.readiness"
         ]
         self.assertEqual(contract["schema"], READINESS_SCHEMA)
-        self.assertIs(VALIDATE.output_schema, READINESS_SCHEMA)
-        self.assertIsNone(VALIDATE.task_type)
-        self.assertFalse(VALIDATE.writes)
+
+    def test_task_validation_is_a_recorded_command_of_a_bound_workspace(self):
+        self.assertIs(TASK_VALIDATION.output_schema, READINESS_SCHEMA)
+        self.assertEqual(
+            ("command", "required", None, ()),
+            (
+                TASK_VALIDATION.kind,
+                TASK_VALIDATION.binding,
+                TASK_VALIDATION.task_type,
+                TASK_VALIDATION.workers,
+            ),
+        )
+        self.assertFalse(TASK_VALIDATION.writes)
 
 
 if __name__ == "__main__":

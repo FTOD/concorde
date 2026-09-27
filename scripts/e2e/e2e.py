@@ -212,11 +212,9 @@ def trust(paths: list[Path], config: Path | None = None) -> dict:
     }
 
 
-def workflow_args(
-    task: str, module: str, mode: str, restart: dict, retry: list
-) -> dict:
+def workflow_args(module: str, mode: str, restart: dict, retry: list) -> dict:
+    """The workflow's args; the workflow names no task, it runs in the worktree it starts in."""
     return {
-        "task": task,
         "module": module,
         "mode": mode,
         "retry": retry,
@@ -224,24 +222,25 @@ def workflow_args(
     }
 
 
-def claude_command(workflow: str, args: dict) -> tuple[list[str], dict]:
-    """The headless main session that runs a workflow to its end, and its environment."""
+def claude_command(workflow: str, args: dict, task: str) -> tuple[list[str], dict]:
+    """The headless main session that runs a workflow to its end in the task's worktree, where
+    it is started, and its environment."""
     prompt = (
-        "You are Concorde's main agent in this project (see CLAUDE.md). The task "
-        f"`{args['task']}` is open. Call the Workflow tool with the saved workflow named "
-        f"concorde-{workflow} and args {json.dumps(args)}. Stay in this primary worktree, edit "
-        "no file yourself and wait for the workflow to end. Then read "
-        f".concorde/tasks/{args['task']}.workflow.json and report its status, every problem "
-        "with the top of its error chain, the decisions, the open questions, the review verdict "
-        "and the proposed checks. Do not merge the task."
+        "You are Concorde's main agent in this project (see CLAUDE.md), working inside the "
+        f"worktree of the open task `{task}`, whose workspace binding the workflow runs on. Call "
+        f"the Workflow tool with the saved workflow named concorde-{workflow} and args "
+        f"{json.dumps(args)}. Stay in this worktree, edit no file yourself and wait for the "
+        "workflow to end. Then run .concorde/bin/concorde workflow report and report its "
+        "status, every problem with the top of its error chain, the decisions, the open "
+        "questions, the review verdict and the proposed checks. Do not merge the task."
     )
     tools = [tool.format(workflow=workflow) for tool in WORKFLOW_TOOLS]
     return sessions.command(prompt, tools), sessions.environment()
 
 
-def driver_input(project: Path, workflow: str, args: dict) -> dict:
+def driver_input(project: Path, worktree: Path, workflow: str, args: dict) -> dict:
     """The request of the deterministic driver: the project's rendered pi script, run with its
-    agents executing the real ``concorde workflow`` commands."""
+    agents executing the real ``concorde workflow`` commands in the task's worktree."""
     script = project / f".concorde/framework/generated/workflows/pi/{workflow}.js"
     if not script.is_file():
         raise E2EError("script_missing", f"{script} does not exist; reinstall Concorde")
@@ -252,20 +251,38 @@ def driver_input(project: Path, workflow: str, args: dict) -> dict:
         "outcomes": {},
         "report": None,
         "execute": {
-            "command": str(project / ".concorde/bin/concorde"),
-            "cwd": str(project),
+            "command": str(worktree / ".concorde/bin/concorde"),
+            "cwd": str(worktree),
         },
     }
 
 
-def run_workflow(project: Path, via: str, workflow: str, args: dict, log: Path) -> dict:
-    """Run a workflow in ``project`` to its end; the saved workflow result. A headless run's
-    session is kept in the directory ``log``, a driver run's output in the file ``log``."""
+def task_worktree(project: Path, task: str) -> Path:
+    record = json.loads((project / f".concorde/tasks/{task}.json").read_text())
+    return Path(record["worktree"])
+
+
+def latest_report(project: Path, task: str) -> Path | None:
+    """The newest saved workflow result of the task's workspace, if any."""
+    record = project / f".concorde/runs/workflows/{task}/record.json"
+    if not record.is_file():
+        return None
+    reports = json.loads(record.read_text()).get("reports") or []
+    return Path(reports[-1]["path"]) if reports else None
+
+
+def run_workflow(
+    project: Path, via: str, workflow: str, args: dict, log: Path, task: str
+) -> dict:
+    """Run a workflow in the worktree of ``task`` to its end; the saved workflow result. A
+    headless run's session is kept in the directory ``log``, a driver run's output in the file
+    ``log``."""
     log.parent.mkdir(parents=True, exist_ok=True)
+    worktree = task_worktree(project, task)
     if via == "claude":
-        command, _ = claude_command(workflow, args)
+        command, _ = claude_command(workflow, args, task)
         session = sessions.start(
-            project,
+            worktree,
             command[2],
             log,
             tools=command[command.index("--allowedTools") + 1 :],
@@ -285,9 +302,9 @@ def run_workflow(project: Path, via: str, workflow: str, args: dict, log: Path) 
         with log.open("w") as stream:
             completed = subprocess.run(
                 ["node", str(HARNESS)],
-                cwd=project,
+                cwd=worktree,
                 env=environment,
-                input=json.dumps(driver_input(project, workflow, args)),
+                input=json.dumps(driver_input(project, worktree, workflow, args)),
                 stdout=stream,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -300,8 +317,8 @@ def run_workflow(project: Path, via: str, workflow: str, args: dict, log: Path) 
             stderr=completed.stderr[-3000:],
             log=str(log),
         )
-    result = project / f".concorde/tasks/{args['task']}.workflow.json"
-    if not result.is_file():
+    result = latest_report(project, task)
+    if result is None or not result.is_file():
         raise E2EError(
             "no_result",
             f"the {via} run ended without a workflow result at {result}",
@@ -312,7 +329,8 @@ def run_workflow(project: Path, via: str, workflow: str, args: dict, log: Path) 
 
 
 def watch(project: Path) -> dict:
-    """Every run of the project with its phase and outcome, and each task's workflow steps."""
+    """Every run of the project with its phase and outcome, and each workspace's workflow
+    steps."""
     runs = []
     for directory in sorted((project / ".concorde/runs").glob("r-*")):
         status = directory / "status.json"
@@ -322,7 +340,7 @@ def watch(project: Path) -> dict:
         runs.append(
             {
                 "run": directory.name,
-                "task": state.get("task"),
+                "workspace": state.get("workspace"),
                 "phase": state.get("phase"),
                 "step": state.get("step"),
                 "status": state.get("status"),
@@ -330,14 +348,12 @@ def watch(project: Path) -> dict:
             }
         )
     workflows = {}
-    for record in sorted((project / ".concorde/tasks").glob("*.json")):
+    for record in sorted((project / ".concorde/runs/workflows").glob("*/record.json")):
         value = json.loads(record.read_text())
-        # Only task records: the workflow result beside one names its workflow as a string.
-        if isinstance(value, dict) and isinstance(value.get("workflow"), dict):
-            workflows[value["id"]] = [
-                {"key": s["key"], "run": s["run_id"], "superseded": s["superseded"]}
-                for s in value["workflow"]["steps"]
-            ]
+        workflows[value["workspace"]] = [
+            {"key": s["key"], "run": s["run_id"], "superseded": s["superseded"]}
+            for s in value["steps"]
+        ]
     return {"runs": runs, "workflows": workflows}
 
 
@@ -460,7 +476,6 @@ def main(argv) -> int:
             project = arguments.project.resolve()
             restart = dict(item.split("=", 1) for item in arguments.restart)
             args = workflow_args(
-                arguments.task,
                 arguments.module,
                 arguments.mode,
                 restart,
@@ -475,7 +490,9 @@ def main(argv) -> int:
                     else f"{arguments.task}-driver.jsonl"
                 )
             )
-            value = run_workflow(project, arguments.via, arguments.workflow, args, log)
+            value = run_workflow(
+                project, arguments.via, arguments.workflow, args, log, arguments.task
+            )
         elif arguments.command == "repair-specs":
             value = cases.repair_specs(
                 arguments.project.resolve(),

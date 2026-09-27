@@ -30,9 +30,10 @@ nothing: you have no tool that writes, and any change to the task worktree fails
 - `plan`: `null` unless a plan was requested **and** the Specs are sufficient. When both hold, give
   a plan: a `summary`, the `modules` to change, the files to declare as `pending` entries (each with
   its `module`, the `realization` it belongs to, the project-relative `path` and a `reason`), the
-  ordered `steps` (each an Operation among `understand`, `specify`, `implement`, `test`,
-  `spec_review`, `code_review`, `validate` and `delivery`, with its `modules` and `purpose`) and the
-  open `decisions` the main agent has to take.
+  ordered `steps` (each names in `run` an Operation among `understand`, `specify`, `implement`,
+  `test`, `spec_review` and `code_review`, or one of the commands `task-validation` and
+  `delivery`, with its `modules` and `purpose`) and the open `decisions` the main agent has to
+  take.
 
 Name only Module identities that exist in the Specs you read. The host fails the run if the
 assessment names an unknown Module or breaks the rules above.

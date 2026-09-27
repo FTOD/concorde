@@ -4,7 +4,7 @@ The exact extensions the Harness generates to apply a harness to a pi agent: the
 permission extension with its read and write tables, sandbox, limits and tool sets, and the
 task session's boundary extension. The [entry](module.md) explains why a harness is applied this
 way; the [Claude Code mechanics](claude-code.md) state what the Claude Code backend generates, and
-[the pi run mechanics](../agents/workers/pi.md) of Workers how a pi worker is launched with it.
+[the pi run mechanics](../execution/workers/pi.md) of Workers how a pi worker is launched with it.
 
 ## Permission extension
 
@@ -96,6 +96,6 @@ developer's own extensions keep theirs:
 | --- | --- |
 | `write`, `edit` | Blocked, with a reason naming the task worktree, unless the path, resolved as pi resolves it, is inside the task worktree or is the decision log |
 | `bash` | Rewritten to run inside sandbox-runtime, writing only the policy's writable paths and the temporary directory, with every network host allowed |
-| `concorde_report` | Takes the [session report](../agents/task-session/contracts.md#contract.task-session.report) and ends the round |
+| `concorde_report` | Takes the [session report](../coordination/task-session/contracts.md#contract.task-session.report) and ends the round |
 
 Every other tool is left as the developer's configuration gives it.

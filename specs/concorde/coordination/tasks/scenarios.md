@@ -1,0 +1,244 @@
+# Tasks scenarios
+
+Concrete situations that show the [requirements](requirements.md) of [Tasks](module.md). Commands,
+records and error codes are defined in the [contracts](contracts.md).
+
+## Opening and listing
+
+### scenario.tasks.open — Open a task
+
+- GIVEN a primary worktree whose registry lists `module.issues` and no task named `severity`
+- WHEN the main agent runs `concorde task open severity --goal "let reports carry a severity" --modules module.issues`
+- THEN branch `concorde/severity` exists at the primary worktree's head commit
+- AND a worktree checked out on that branch exists at `.claude/worktrees/severity` of the primary worktree
+- AND the worktree's `.concorde/workspace.json` binds it as the workspace `severity`, with its real path as root, the branch, the base commit, the goal, `module.issues` and the primary worktree's `.concorde` as records directory, untracked by Git
+- AND `.concorde/tasks/severity.json` holds the record in state `open` with that base commit and no runs, deliveries or workflow
+- AND `.concorde/tasks/severity.decisions.md` holds the heading and the goal
+- AND the command prints the record
+
+### scenario.tasks.open-inherits-worker-models — A new task keeps its own copy of the worker models
+
+- GIVEN a primary worktree whose `.concorde/worker-models.json` chooses a default model
+- WHEN the main agent opens a task and then changes the primary worktree's default model
+- THEN the task worktree holds the configuration as it was when the task opened, untracked by Git
+- AND it changes only when `concorde configure-workers` runs in the task worktree, which leaves the primary worktree's file as it is
+- BUT a task opened from a primary worktree without the file gets none, and its workers use the program's default
+
+### scenario.tasks.open-taken — Refuse a taken identity
+
+- GIVEN a task `severity` exists in any state, or the branch `concorde/severity` or the worktree path exists
+- WHEN the main agent opens a task named `severity`
+- THEN the command fails with `task_exists`, `branch_exists` or `path_exists`
+- AND no record, branch or worktree is created or changed
+
+### scenario.tasks.open-not-ignored — Refuse a worktree the primary would track
+
+- GIVEN a primary worktree whose `.gitignore` does not ignore `.claude/worktrees/`
+- WHEN the main agent opens a task at the default path
+- THEN the command fails with `worktree_not_ignored`, naming the path and how to ignore it
+- AND no record, branch or worktree is created
+
+### scenario.tasks.open-unknown-module — Refuse an unknown Module
+
+- GIVEN a registry without `module.billing`
+- WHEN the main agent opens a task naming `module.billing`
+- THEN the command fails with `unknown_module`
+- AND nothing is created
+
+### scenario.tasks.not-primary — Refuse to open, close, merge or start sessions from a linked worktree
+
+- GIVEN a shell whose working directory is inside a task worktree
+- WHEN `concorde task open`, `concorde task close`, `concorde task merge` or `concorde task session` is run there
+- THEN the command fails with `not_primary`
+- AND nothing changes
+
+### scenario.tasks.list-show — List and show tasks
+
+- GIVEN an open task `quiet` whose workspace has no run and an open task `severity` whose workspace ran `concorde task-validation`
+- WHEN the main agent runs `concorde task list --state active` and `concorde task show severity`
+- THEN the list holds exactly the record of `severity`, whose derived state is `active`, while its stored state stays `open`
+- AND show prints the record of `severity` with its derived state, the workspace's runs from the run store with their kind, name, Modules and status, its delivery commits, who holds its workspace lock (null when nobody does) and the absolute path of its decision log
+- AND show of `quiet` prints no runs, no deliveries and no holder
+
+## State and runs
+
+### scenario.tasks.first-run — A run of the task's workspace activates the task
+
+- GIVEN an open task `severity` with no change and no run
+- WHEN a run of another workspace and an unbound run are recorded in the run store
+- THEN `severity` is still `open`
+- BUT once a run of the workspace `severity` is recorded, running or finished, `concorde task show severity` derives `active` and lists the run
+- AND the stored state stays `open`
+
+A commit on the task branch past its base, or an uncommitted change in its worktree, makes the task
+`active` the same way.
+
+### scenario.tasks.modules-fixed — A run's extra Modules stay the run's
+
+- GIVEN an open task bound to `module.issues`
+- WHEN a run in its worktree names `module.issues` and `module.spec` with `--modules`
+- THEN the run's result and its entry in `concorde task show` name both Modules
+- BUT the task record, which nothing below the task level writes, still names only `module.issues`
+
+### scenario.tasks.busy — Show who holds a busy workspace
+
+- GIVEN an open task whose workspace lock a run holds
+- WHEN the main agent shows the task
+- THEN `busy` names the run holding the lock
+- AND a second run started in the task worktree meanwhile is refused by Execution with `workspace_busy`, naming the same holder
+- BUT once the holder ends, `busy` is null and the next run starts
+
+### scenario.tasks.interrupted — A run whose runner died shows as lost
+
+- GIVEN a task whose workspace has a run with a progress file and no result, whose runner process no longer exists
+- WHEN the main agent shows the task
+- THEN the run is listed with the status `lost`
+- AND `busy` is null, since the kernel released the dead runner's workspace lock
+- AND the task is `active`
+
+### scenario.tasks.concurrent-update — Detect a concurrent change
+
+- GIVEN a record that another process changes between Tasks' read and its write
+- WHEN Tasks applies an update
+- THEN the write is refused by the file transaction
+- AND Tasks rereads the record and reapplies the update if its preconditions still hold
+- BUT after three conflicting attempts the update fails with `record_conflict` and the other process's change stays
+
+### scenario.tasks.delivered-reopened — A change after a delivery makes the task active again
+
+- GIVEN a task whose branch head is its first delivery commit, with a clean worktree
+- WHEN the main agent shows it
+- THEN it is `delivered`, and its deliveries list that commit with its evidence bundle `.concorde/evidence/<task-id>/1.json`
+- AND a later run that changes nothing leaves it `delivered`
+- BUT an uncommitted change, or a commit after the delivery commit, makes it `active`
+- AND a second delivery commit makes it `delivered` again, with both deliveries listed in order
+
+## Closing
+
+### scenario.tasks.close-merged — Close a merged task
+
+- GIVEN a delivered task whose latest delivery commit is the head of its branch
+- AND the main agent merged that branch into the primary branch
+- WHEN the main agent runs `concorde task close <task-id> --merged`
+- THEN the worktree is removed
+- AND the record's state is `closed` with outcome `merged` and the primary branch's head recorded
+- AND the branch, the record and the decision log remain
+
+### scenario.tasks.close-submodules — Close a task whose worktree has submodules
+
+- GIVEN a merged task whose worktree has a checked-out submodule
+- WHEN the main agent closes it with `--merged` while the submodule has a local change
+- THEN the command fails with `dirty_worktree` and the worktree stays
+- BUT once the change is undone, closing removes the worktree and records the task as `closed` with outcome `merged`
+
+### scenario.tasks.close-not-merged — Refuse to close an unmerged task as merged
+
+- GIVEN a task that is not delivered, or whose delivered head is not contained in the primary branch, or whose branch moved past its latest delivery commit
+- WHEN the main agent closes it with `--merged`
+- THEN the command fails with `not_merged`
+- AND the worktree and the record are unchanged
+
+### scenario.tasks.close-completed — Close a task that reached its goal without merging
+
+- GIVEN an open task that tried something out, whose worktree has uncommitted changes
+- WHEN the main agent closes it with `--completed` and no `--note`
+- THEN the command fails with `invalid_input`
+- AND with a note but without `--force` it fails with `dirty_worktree` and nothing changes
+- BUT with a note and `--force` the worktree is removed, the state is `closed` with outcome `completed` and the note, the branch is kept, and the decision log records the outcome and the note
+
+### scenario.tasks.close-failed — Close a failed task with its reason and error chains
+
+- GIVEN a task whose workspace has an Operation run that ended with an error the task cannot get past
+- WHEN the main agent closes it with `--failed` and a reason but names neither an error source nor `--no-error`, or names both
+- THEN the command fails with `invalid_input`
+- BUT with the reason and `--run <run-id>` the state is `failed`, the note is the reason and the errors hold the run's error chain unchanged, also appended to the decision log
+- AND a task that failed for no error, such as a wrong direction, closes as `failed` with `--no-error` and no errors
+
+### scenario.tasks.closed-inert — A closed task stays closed
+
+- GIVEN a task closed as completed
+- WHEN the main agent lists the tasks
+- THEN the task's worktree, and with it its workspace binding, is gone, so no run of its workspace can start there
+- AND a run of its workspace recorded anyway leaves the task `closed`
+- BUT starting or recording a task session for it fails with `task_closed`
+
+## Merging
+
+### scenario.tasks.merge — Merge a delivered task
+
+- GIVEN a delivered task whose latest delivery commit is the head of its branch and whose worktree is clean
+- AND a clean primary worktree on its branch
+- WHEN the main agent runs `concorde task merge <task-id>` in the primary worktree
+- THEN the task branch is merged into the primary branch
+- AND `concorde spec-validation` ran in the primary worktree after the merge and passed, its output in `.concorde/tasks/<task-id>.merge.log`
+- AND the task is closed as merged with its worktree removed
+- AND the output names the commits before and after the merge, each check with its exit status, and how long the command waited for the lock
+
+### scenario.tasks.merge-checks — Run the named checks instead of the default
+
+- GIVEN a delivered task
+- WHEN the main agent runs `concorde task merge <task-id> --check "python3 scripts/concorde.py build" --check "python3 scripts/concorde.py spec-validation"`
+- THEN exactly those two commands run, in that order, in the primary worktree after the merge
+- AND the default check does not run
+
+### scenario.tasks.merge-waits — A second merge waits for the first
+
+- GIVEN one process holding the merge lock for task `a`
+- WHEN another main session runs `concorde task merge b` and the first process releases the lock within the wait
+- THEN the merge of `b` starts only after the release and reports how long it waited
+- BUT when the lock stays held for the whole `--wait`, the merge of `b` fails with `merge_busy` naming the holder's command `merge`, task `a`, process and start time, and nothing changes
+
+### scenario.tasks.merge-lock-dies — A dead holder releases the lock
+
+- GIVEN a process that took the merge lock and was killed before finishing
+- WHEN a main session runs `concorde task merge`, `open` or `close`
+- THEN it takes the lock at once, without waiting for any timeout or any other session
+
+### scenario.tasks.merge-open-close-wait — Opening and closing wait for a merge
+
+- GIVEN a process holding the merge lock
+- WHEN a main session runs `concorde task open` or `concorde task close` with the lock held for longer than the wait
+- THEN the command fails with `merge_busy` naming the holder
+- AND no record, branch or worktree is created or changed
+
+### scenario.tasks.merge-conflict — A conflict is aborted
+
+- GIVEN a delivered task whose branch conflicts with the primary branch
+- WHEN the main agent merges it with `concorde task merge`
+- THEN the command fails with `merge_conflict` naming the conflicting paths
+- AND the primary worktree is clean at the commit it had before, and the task is still delivered with its worktree
+- AND the refusal's options say to merge the primary branch into the task branch in the task worktree, validate and deliver again
+
+### scenario.tasks.merge-check-failed — A failed check undoes the merge
+
+- GIVEN a delivered task
+- WHEN the main agent merges it with a `--check` that exits with status 1
+- THEN the command fails with `check_failed` naming the check, its exit status, the log and the end of its output
+- AND the primary branch is back at the commit it had before the merge, clean
+- AND the task is still delivered with its worktree
+
+### scenario.tasks.merge-refused-early — Refuse a merge that cannot close
+
+- GIVEN a task that is not delivered, or whose branch moved past its latest delivery commit, or whose worktree has uncommitted changes, or a primary worktree with an uncommitted or untracked path or a detached `HEAD`
+- WHEN the main agent runs `concorde task merge` for it
+- THEN the command fails with `not_merged`, `dirty_worktree` or `primary_dirty` before merging
+- AND the primary branch, the task record and the worktree are unchanged
+
+## Escalation
+
+### scenario.tasks.escalate — The main agent adds its link when it escalates
+
+- GIVEN a task whose workspace has an Operation run that ended with an error the main agent cannot decide
+- WHEN the main agent runs `concorde task escalate` naming that run with its own code, detail, reason and options
+- THEN the printed chain's top link has the level `main-agent` and the run's error, unchanged, as its cause
+- AND the chain is appended to the task record's escalations and to the decision log, rendered and as JSON
+- BUT an escalation that names no run and no file is refused with `nothing_to_escalate`, and one naming a run of another workspace or an unbound run with `unknown_run`, and neither records anything
+
+### scenario.tasks.session-escalates — A task session escalates to the main agent
+
+- GIVEN a task whose task session met an error it may not decide
+- WHEN the task session runs `concorde task escalate --by task-session` naming the failed run
+- THEN the recorded link has the level `task-session` and the run's error as its cause
+- AND the decision log names the main agent as the receiver
+- AND when the main agent then escalates with `--escalation 1`, its `main-agent` link has the task session's link, unchanged, as its cause
+

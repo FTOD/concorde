@@ -30,7 +30,7 @@ manifest.
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run`, `workflow` and `issues` SHALL print exactly one JSON result envelope on standard output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `configure-workers` and `issues` SHALL print exactly one JSON result envelope on standard output, except `--help`.
 
 The exit status follows the envelope's status, so a caller that only checks the status and a caller
 that reads the envelope reach the same conclusion.
@@ -54,8 +54,9 @@ The installed `concorde` command SHALL run Concorde only with the interpreter of
 
 ### req.distribution.idle-install — Concorde is never replaced while it runs
 
-The installer SHALL refuse, before writing anything, to install into a project in which an
-Operation run's host process or a pi task-session round's supervisor is still running, naming each.
+The installer SHALL refuse, before writing anything, to install into a project in which the
+runner process of an Operation or recorded command run or a pi task-session round's supervisor is
+still running, naming each.
 
 The update runs the installer, so the same holds for `concorde update`.
 

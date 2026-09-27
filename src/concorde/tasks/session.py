@@ -11,8 +11,9 @@ Its boundary is generated here, next to the task record in
 
 - a PreToolUse hook lets Edit and Write change only the task worktree and its decision log;
 - the Bash sandbox lets commands write only the task worktree, the repository's Git directory
-  (commits on the task branch), ``.concorde/runs/`` and ``.concorde/tasks/`` (Operation runs and
-  task records) and the user's package caches; reads and the network stay open, since the
+  (commits on the task branch), the run store of the records directory the task's workspace
+  binding names (``.concorde/runs/``: its runs and workflow record), ``.concorde/tasks/`` (task
+  records, for escalations) and the user's package caches; reads and the network stay open, since the
   boundary guards against mistakes, not exfiltration (``allowedDomains`` is ``*``, so no command
   has to name the hosts it reaches);
 - nobody answers permission prompts in a background session, so it runs in Claude Code's

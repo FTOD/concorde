@@ -17,19 +17,22 @@ exactly what an AI task is given as context and may read and write, and runs hea
 or pi workers inside that boundary.
 
 **You, the developer**, decide the direction and answer the questions that have a major impact.
-Below you, the work passes down five levels. Agents sit at both ends, and programs run between
-them:
+Below you, the work passes down five levels in two halves. The first two, **coordination**, are
+where work is decided and split into tasks. The last three, **execution**, do the work inside one
+task's worktree, which Concorde binds to the task as a **workspace**; execution never sees the task
+itself, only that binding. Agents sit at both ends, and programs run between them:
 
-| Level              | Kind            | What it is                                                                                                                                                                                |
-| ------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Main session    | agent           | Your own Claude Code or pi session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                  |
-| 2. Task            | agent           | One task's branch and worktree, worked by the main agent itself or by a **task session** it starts when several tasks run at once.                                                        |
-| 3. Workflow        | program         | A procedure for tasks that follow a known path, such as `brownfield`; it orders the task's Operations and stops where you must decide.                                                    |
-| 4. Operation       | program         | One bounded job with one result. Its deterministic **Operation host** computes the grant, launches workers, runs your checks itself and writes a result you can trust.                    |
-| 5. Worker and Tool | agent / program | A **worker** is a headless `claude -p` or `pi -p` process for one bounded job, under a **grant** computed from the Specs; a **Tool** is a programmed action, such as running your checks. |
+| Level              | Kind            | What it is                                                                                                                                                                                                                              |
+| ------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Main session    | agent           | Your own Claude Code or pi session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                                                                |
+| 2. Task            | agent           | One task's branch and worktree, worked by the main agent itself or by a **task session** it starts when several tasks run at once.                                                                                                      |
+| 3. Workflow        | program         | A procedure for tasks that follow a known path, such as `brownfield`; it orders the runs in the task's worktree and stops where you must decide.                                                                                        |
+| 4. Run             | program         | One bounded job with one result: an **Operation**, which computes the grant, launches AI workers and runs your checks itself, or a **recorded command** such as `task-validation` or `delivery`, a deterministic step without a worker. |
+| 5. Worker and Tool | agent / program | A **worker** is a headless `claude -p` or `pi -p` process for one bounded job, under a **grant** computed from the Specs; a **Tool** is a programmed action, such as running your checks.                                               |
 
-Calls only go down: a worker never touches Git, runs an Operation or starts an agent, and an
-Operation never starts another Operation. Results and errors come back up the same levels.
+Calls only go down: a worker never touches Git, runs an Operation or starts an agent, a run never
+starts another run, and nothing in the execution half reads or writes a task record. Results and
+errors come back up the same levels.
 
 ### Three kinds of documents
 
@@ -108,10 +111,10 @@ project (`--from <checkout>` if the checkout moved). It installs the new version
 install did, binds the new Protocol copy in `.concorde/config.json` (read what changed in
 `.concorde/protocol/`), and lists your open tasks: merge your primary branch into each, since
 their worktrees keep the previous Protocol copy. Your project is then **Concorde unvalidated**:
-`concorde validate` reports it as an error, and nothing merges, until you have repaired what the
+`concorde spec-validation` reports it as an error, and nothing merges, until you have repaired what the
 new version finds and a validation passes. That mark comes only from an update; your own changes
-never set it. An update also waits for Concorde to be idle: while an Operation or a pi task
-session is still running in your project, it refuses and names what runs.
+never set it. An update also waits for Concorde to be idle: while an Operation, a recorded command
+or a pi task session is still running in your project, it refuses and names what runs.
 
 ### Use Concorde while developing it
 
@@ -141,7 +144,7 @@ cd /absolute/path/to/project
 .concorde/bin/concorde init --propose --name "My project" > /tmp/proposal.json
 jq .result /tmp/proposal.json > /tmp/accepted.json   # read it first
 .concorde/bin/concorde init --apply --proposal /tmp/accepted.json
-.concorde/bin/concorde validate
+.concorde/bin/concorde spec-validation
 ```
 
 Keep the proposal file outside the project. Applying it writes:
@@ -171,7 +174,7 @@ propose Modules for your project and let `specify` tasks write them (see below).
 them, two commands keep Specs consistent:
 
 ```bash
-concorde validate            # every structural rule of the Protocol
+concorde spec-validation     # every structural rule of the Protocol
 concorde registry --write    # refresh the registry after a Module's `module` block changed
 ```
 
@@ -180,17 +183,18 @@ concorde registry --write    # refresh the registry after a Module's `module` bl
 Concorde normally works Spec first: a promise is written, then realized. When you adopt Concorde
 for a project that already has code, the **brownfield workflow** describes that code in Specs
 once, so that from then on you can work Spec first. After initialization, ask the main agent to
-run it. It opens a task bound to the root Module and runs, one after another:
+run it. It opens a task bound to the root Module, starts the workflow inside that task's worktree
+and runs, one after another:
 
 1. `survey`: a worker reads the code and proposes child Modules, which paths each binds, and the
    test and lint commands it found;
-2. `scaffold`: the host creates those Modules as honest stubs and moves their paths out of the
-   root;
+2. `scaffold`: a recorded command, without any worker, creates those Modules as honest stubs
+   and moves their paths out of the root;
 3. `code_to_spec` for each Module: a worker reads its code and writes its Spec, and names the
    existing tests each scenario comes from; Concorde then marks those tests with a small
    `verifies` decorator (defined in the test file itself, so your tests never import Concorde),
    the only change it makes outside your Specs;
-4. `spec_review`, `validate` and `delivery`.
+4. `spec_review`, `task-validation` and `delivery`.
 
 The workers describe behaviour as it is. When they cannot tell whether something is intended,
 such as an error that is silently ignored, they write no promise about it and report an **open
@@ -207,7 +211,7 @@ the ones you trust to your checks yourself (see below).
 ## Configure your checks
 
 **Checks** are your project's own commands, such as a test suite or a linter, each assigned to one
-Module. The Operation host runs them itself, never the worker, and records each result as evidence.
+Module. Concorde runs them itself, never the worker, and records each result as evidence.
 Declare them in `.concorde/config.json` under `checks`:
 
 ```json
@@ -321,16 +325,17 @@ worker id. The most specific entry wins, field by field:
 
 A task copies the primary worktree's file when it is opened and keeps it: a change you make later
 applies to tasks opened after it, and changes an existing task only if you ask for that task.
-Behind both is the `configure_workers` Operation, which needs no task and works by hand too:
+Behind both is the `concorde configure-workers` command, which changes the file of the worktree it
+runs in and works by hand too:
 
 ```bash
-concorde run configure_workers                       # pi's candidates and every worker's choice
-concorde run configure_workers --model anthropic/claude-sonnet-5 --reasoning medium
-concorde run configure_workers --operation spec_panel --worker reviewer2 --model local-openai/gpt-6 --reasoning high
-concorde run configure_workers --operation spec_panel --worker chair --backend claude --model opus
-concorde run configure_workers --operation spec_panel --worker reviewer2 --unset
-concorde run configure_workers --candidates claude   # Claude Code's candidates
-concorde run configure_workers --task retry          # one task's own copy
+concorde configure-workers                       # pi's candidates and every worker's choice
+concorde configure-workers --model anthropic/claude-sonnet-5 --reasoning medium
+concorde configure-workers --operation spec_panel --worker reviewer2 --model local-openai/gpt-6 --reasoning high
+concorde configure-workers --operation spec_panel --worker chair --backend claude --model opus
+concorde configure-workers --operation spec_panel --worker reviewer2 --unset
+concorde configure-workers --candidates claude   # Claude Code's candidates
+(cd .claude/worktrees/retry && concorde configure-workers --model …)   # one task's own copy
 ```
 
 An entry that puts a worker on Claude Code starts that program afresh, so a pi model set more
@@ -342,12 +347,12 @@ pass `--allow-unlisted` for another. A worker whose program is not installed fai
 The reasoning level is passed as `--effort` to Claude Code and as `--thinking` to pi. A pi worker
 uses copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.
 
-### Operations without a task
+### Operations outside a task
 
-`understand`, `spec_review`, `code_review` (with `--base`) and `configure_workers` also run without
-`--task`, from the primary worktree only; inside a task's worktree they need `--task`. Such a run changes no Spec or code, so the main agent
-uses it to answer a question or review a Module before you agree on a change, without opening a
-task:
+`understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`) also run
+**unbound**, in a worktree that is no task's workspace, such as your primary checkout. Such a run
+changes no Spec or code, so the main agent uses it to answer a question or review a Module before
+you agree on a change, without opening a task:
 
 ```bash
 concorde run understand --modules module.payments --goal "how are retries limited today?"
@@ -360,7 +365,9 @@ Suppose you and the main agent agreed to limit payment retries in `module.paymen
 ### 1. Open a task
 
 Every change of Spec meaning or code behavior runs as a **task**: a branch `concorde/<task>` with
-its own worktree, a record and a decision log.
+its own worktree, a record and a decision log. Opening the task also binds its worktree as the
+task's workspace (`.concorde/workspace.json`, ignored by Git), naming its goal, Modules, branch and
+base commit, so every command run inside that worktree works on the task without naming it.
 
 ```bash
 concorde task open retry --goal "limit payment retries" --modules module.payments
@@ -379,40 +386,42 @@ Operations for bounded steps. Every `concorde` command for the task runs from th
 with that worktree's own command, never your primary checkout's, because only the task branch
 knows the Specs and checks the task changes.
 
-Each Operation is one `concorde run` command. It prints one JSON result, also saved as
-`.concorde/runs/<run-id>/result.json` of your primary checkout. The main agent runs them in the
-background (background Bash in Claude Code, the `concorde_run` tool in pi) so it can keep talking
-with you meanwhile.
+Each Operation is one `concorde run` command and each deterministic step one recorded command, all
+run inside the task worktree. Each prints one JSON result, also saved as
+`.concorde/runs/<run-id>/result.json` of your primary checkout, and one task's worktree runs one of
+them at a time. The main agent runs them in the background (background Bash in Claude Code, the
+`concorde_run` tool in pi) so it can keep talking with you meanwhile.
 
 ```bash
-concorde run understand  --task retry --goal "how should retries be limited?" --plan
-concorde run specify     --task retry --intent "state the retry limit" --input <plan-run-id>
-concorde run implement   --task retry --goal "implement the retry limit"
-concorde run test        --task retry
-concorde run code_review --task retry
-concorde run validate    --task retry
-concorde run delivery    --task retry
+concorde run understand  --goal "how should retries be limited?" --plan
+concorde run specify     --intent "state the retry limit" --input <plan-run-id>
+concorde run implement   --goal "implement the retry limit"
+concorde run test
+concorde run code_review
+concorde task-validation
+concorde delivery
 ```
 
-| Operation     | Worker       | What it does                                                                                                                                                         |
-| ------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `understand`  | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                       |
-| `specify`     | writes Specs | Changes the bound Modules' own Spec documents, including declaring files that do not exist yet.                                                                      |
-| `implement`   | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                        |
-| `test`        | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                 |
-| `spec_review` | reads only   | Reviews the bound Modules' Specs against their review memory: reports new findings, updates and resolves earlier ones (`--check-findings` has each finding checked). |
-| `code_review` | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                                                             |
-| `validate`    | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                       |
-| `delivery`    | none         | Deterministic: validates the whole task again, then commits its evidence bundle on the task branch.                                                                  |
+| Operation                   | Worker       | What it does                                                                                                                                                            |
+| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                          |
+| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents, including declaring files that do not exist yet.                                                                         |
+| `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                           |
+| `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                    |
+| `spec_review`               | reads only   | Reviews the bound Modules' Specs against their review memory: reports new findings, updates and resolves earlier ones (`--check-findings` has each finding checked).    |
+| `code_review`               | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                                                                |
+| `task-validation` (command) | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                          |
+| `delivery` (command)        | none         | Deterministic: validates the whole workspace again, then commits its evidence bundle on the task branch; the delivery commit is the record that the task was delivered. |
 
 Spec reviews keep a **review memory** per Module in `.concorde/reviews/spec/`, committed with the
 task. A repeated review reports only what is new, what changed and what was fixed, and a Module
 stays `changes_required` while any earlier blocking finding is still open.
 
 A typical task runs `understand`, `specify` when the Spec must change first, `implement` and `test`,
-the reviews when the change deserves them, and then `validate` and `delivery`. Steps are repeated
-or skipped as the results tell. `--input <run-id>` passes the output of an earlier successful run of
-the same task, such as a plan, to the next worker; `--modules` binds more Modules to the task.
+the reviews when the change deserves them, and then `task-validation` and `delivery`. Steps are
+repeated or skipped as the results tell. `--input <run-id>` passes the output of an earlier
+successful run in the same worktree, such as a plan, to the next worker; `--modules` names the
+Modules one run works on, instead of the task's.
 
 Concorde never lets a worker infer a missing promise from the code. When the Spec does not say what
 a change needs, the Operation stops with a **Spec gap**, and the Spec is changed first through
@@ -427,7 +436,7 @@ committed, the main agent leaves the task worktree and, in your primary checkout
 concorde task merge retry
 ```
 
-This merges the task branch, runs `concorde validate` on the result (or the commands you name with
+This merges the task branch, runs `concorde spec-validation` on the result (or the commands you name with
 `--check`, for example a build before validating), and closes the task. Closing removes the
 worktree and keeps the record. If a check fails, the merge is undone and the primary branch is left
 as it was; the output of the checks is in `.concorde/tasks/retry.merge.log`. A merge conflict is
@@ -570,7 +579,7 @@ so the closure is merged together with the fix.
 
 The Spec tooling answers questions from the Specs without calling a model:
 
-- `concorde validate` checks every structural rule of the Protocol.
+- `concorde spec-validation` checks every structural rule of the Protocol.
 - `concorde grant --modules <ids> --type <task type>` prints a grant.
 - `concorde spec-mcp` is a local stdio MCP server that answers which Modules exist, what a Module's
   context is, which Modules some paths concern and what grant a task would receive.

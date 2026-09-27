@@ -1,11 +1,11 @@
 /**
- * The pure part of Concorde's pi run view: read the progress files of Operation runs and their
- * workers, pair them, and describe each run for pi-subagents' FleetView; and the same for the
- * rounds of pi task sessions.
+ * The pure part of Concorde's pi run view: read the progress files of the runs recorded in the
+ * project's run store (Operations and recorded commands) and their workers, pair them, and
+ * describe each run for pi-subagents' FleetView; and the same for the rounds of pi task sessions.
  *
- * An Operation run's `status.json` is written by the Operation host; each worker run it launches
+ * A run's `status.json` is written by the Execution runner; each worker run an Operation launches
  * writes its own `status.json` with the same `host_pid`, which is how a worker is found for its
- * Operation. A task session's round is described by the `status.json` its supervisor keeps under
+ * run. A task session's round is described by the `status.json` its supervisor keeps under
  * `.concorde/tasks/<task>.session/`, and its outcome by the task record. This module imports only
  * Node's own modules so the host's tests can run it under Node.
  */
@@ -14,11 +14,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-export interface OperationStatus {
-  kind: "operation";
+export interface RunStatus {
+  kind: "operation" | "command";
   run_id: string;
-  operation: string;
-  task: string | null;
+  name: string;
+  workspace: string | null;
   modules: string[];
   phase: "running" | "finished";
   step: string | null;
@@ -68,7 +68,8 @@ function readJson(path: string): Record<string, unknown> | null {
   }
 }
 
-/** The primary worktree of the repository `cwd` belongs to, where every run is recorded. */
+/** The primary worktree of the repository `cwd` belongs to, whose records directory holds the
+ * runs of every task's workspace. */
 export function primaryRoot(cwd: string): string {
   try {
     const common = execFileSync(
@@ -101,24 +102,21 @@ function statuses(root: string): Record<string, unknown>[] {
   return found;
 }
 
-/** Every Operation run with a progress file, oldest first. */
-export function operationRuns(root: string): OperationStatus[] {
-  return (
-    statuses(root).filter(
-      (value) => value.kind === "operation",
-    ) as unknown as OperationStatus[]
-  ).sort((a, b) => a.started_at.localeCompare(b.started_at));
+function isRun(value: Record<string, unknown>): boolean {
+  return value.kind === "operation" || value.kind === "command";
 }
 
-/** The worker runs an Operation run launched: same host process, started after it; oldest first. */
-export function workersOf(
-  root: string,
-  operation: OperationStatus,
-): WorkerStatus[] {
+/** Every run of an Operation or recorded command with a progress file, oldest first. */
+export function recordedRuns(root: string): RunStatus[] {
+  return (statuses(root).filter(isRun) as unknown as RunStatus[]).sort((a, b) =>
+    a.started_at.localeCompare(b.started_at),
+  );
+}
+
+/** The worker runs a run launched: same runner process, started after it; oldest first. */
+export function workersOf(root: string, operation: RunStatus): WorkerStatus[] {
   return (
-    statuses(root).filter(
-      (value) => value.kind !== "operation",
-    ) as unknown as WorkerStatus[]
+    statuses(root).filter((value) => !isRun(value)) as unknown as WorkerStatus[]
   )
     .filter(
       (worker) =>
@@ -145,7 +143,7 @@ function clip(text: string, limit = TEXT): string {
 /** One run as FleetView shows it. `hostAlive` is whether the host process still runs. */
 export function view(
   root: string,
-  operation: OperationStatus,
+  operation: RunStatus,
   workers: WorkerStatus[],
   hostAlive: boolean,
 ): RunView {
@@ -165,7 +163,7 @@ export function view(
   } else if (!hostAlive) {
     state = "failed";
     status = "failed";
-    preview = `failed: the Operation host (process ${operation.host_pid}) ended without finishing the run`;
+    preview = `failed: the runner (process ${operation.host_pid}) ended without finishing the run`;
   }
   let action = operation.step ?? (finished ? "finished" : "starting");
   if (!finished && worker && worker.phase !== "finished") {
@@ -177,7 +175,7 @@ export function view(
   }
   return {
     id: operation.run_id,
-    label: clip(`${operation.task ?? "no task"} · ${operation.operation}`),
+    label: clip(`${operation.workspace ?? "unbound"} · ${operation.name}`),
     state,
     finished: finished || !hostAlive,
     status,
@@ -198,7 +196,7 @@ export function view(
 export function resultText(shown: RunView): string {
   return (
     `Concorde run ${shown.id} (${shown.label}) finished ${shown.status}. ` +
-    `${shown.preview ?? ""}\nRead the Operation result: ${shown.reportPath}`
+    `${shown.preview ?? ""}\nRead the run result: ${shown.reportPath}`
   );
 }
 

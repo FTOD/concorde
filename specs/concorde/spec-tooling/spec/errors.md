@@ -145,16 +145,16 @@ Where the record appears:
 
 | Where | What it holds |
 | --- | --- |
-| `error` of a command's envelope (`validate`, `grant`, `registry`, `docsite`, `init`, `build`, `protocol-manifest`) | the command's own failure; `null` when the command did its work, whatever its findings |
+| `error` of a command's envelope (`spec-validation`, `grant`, `registry`, `docsite`, `init`, `build`, `protocol-manifest`) | the command's own failure; `null` when the command did its work, whatever its findings |
 | `{"error": …}` of a Spec MCP tool result with `isError` true | the tool's failure |
-| `result.load_error` of `validate` | why the configuration, registry or Protocol binding could not be loaded; the `CONCORDE-SOURCE-008` finding repeats its message, reason and remediation |
+| `result.load_error` of `spec-validation` | why the configuration, registry or Protocol binding could not be loaded; the `CONCORDE-SOURCE-008` finding repeats its message, reason and remediation |
 | the exception a caller of the Python interface catches | the same fields as attributes, `record()` and `describe()`, a one-paragraph rendering |
 
 A failure the Spec tooling does not anticipate still becomes a record, with the code
 `unexpected_error`, the exception's type and message, and the source location where it was raised.
 An operating-system error becomes a `system_error` cause with the path concerned.
 
-Findings are not errors. A finding is a diagnostic of the Specs that `validate` reports while it
+Findings are not errors. A finding is a diagnostic of the Specs that `spec-validation` reports while it
 succeeds in diagnosing; an error is a call or command that could not do its work. A refused load
 turns the fatal findings into causes, each with its check's statement as its reason.
 
@@ -177,7 +177,7 @@ the defaults; a call site gives more specific ones when it knows more.
 | `invalid_input` | the arguments of the call do not have the required form | correct the named argument and call again |
 | `invalid_task_type` | a grant exists only for the seven task types the Protocol defines | use understand, specify, implement, test, review-spec, review-code or code-to-spec |
 | `unknown_module` | a grant, boundary or query names only Modules the registry registers | name registered Modules, or register the Module first |
-| `unknown_target` | the named Module or node is not declared in the loaded Specs | name a declared Module or node; `concorde validate` lists what exists |
+| `unknown_target` | the named Module or node is not declared in the loaded Specs | name a declared Module or node; `concorde spec-validation` lists what exists |
 | `invalid_target` | the identity does not name a document, scenario or context of the requested kind | name an identity of the requested kind |
 | `invalid_focus` | a scenario focus must belong to the Module it narrows | focus on a scenario of the selected Module |
 | `shared_file` | a task may write a file only when every Module that binds it is bound by the task, so no other Module's promise changes behind its back | bind every Module that binds the shared file, or leave the file unchanged |

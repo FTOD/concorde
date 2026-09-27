@@ -1,0 +1,55 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.coordination.module",
+    "owner": "module.coordination",
+    "role": "module"
+  },
+  "module": {
+    "title": "Coordination",
+    "owns": [
+      "specs/concorde/coordination/module.md"
+    ],
+    "contains": [
+      {
+        "target": "module.main-session",
+        "meaning": "#contains-main-session"
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#contains-tasks"
+      },
+      {
+        "target": "module.task-session",
+        "meaning": "#contains-task-session"
+      }
+    ],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.workspace-binding",
+          "concept.execution.run-store"
+        ]
+      },
+      {
+        "target": "module.harness",
+        "meaning": "#uses-harness",
+        "relies_on": [
+          "concept.harness.harness"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [],
+  "relations": []
+}

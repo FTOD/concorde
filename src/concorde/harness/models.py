@@ -16,7 +16,7 @@ that chooses a backend starts that program afresh: the model and level come only
 a more specific one, since a model named for one program means nothing to the other. A chosen
 program must be installed, and a worker never falls back to the other one.
 
-This module knows no Operation or worker names; the ``configure_workers`` Operation checks them
+This module knows no Operation or worker names; the ``concorde configure-workers`` command checks them
 against the catalog and changes the file through ``set_choice`` and ``unset_choice``.
 """
 
@@ -158,7 +158,7 @@ def load(worktree: Path) -> dict:
             f"{path} has schema_version {value.get('schema_version')!r}, but the worker model "
             f"configuration is version {SCHEMA_VERSION}, keyed by worker id; earlier versions, "
             "keyed by backend and worker role, are not read. Delete the file and configure the "
-            "workers again with configure_workers",
+            "workers again with concorde configure-workers",
         )
     try:
         validate(value, SCHEMA)
@@ -246,7 +246,7 @@ def worker_choice(config: dict, operation: str, worker: str, environ=None) -> di
             f"but the {backend} command is not installed: it is not on PATH and {variable} does "
             "not name an executable. A worker runs only on the program its configuration chooses "
             f"and never falls back to the other one; install {backend}, or choose {other} for it "
-            f"with configure_workers --operation {operation} --worker {worker} --backend {other}",
+            f"with concorde configure-workers --operation {operation} --worker {worker} --backend {other}",
         )
     return chosen
 
@@ -474,7 +474,7 @@ HANDLING = {
         "agent programs are not installed by Concorde; the machine must provide the command",
         [
             "install the agent program, or set CONCORDE_CLAUDE or CONCORDE_PI",
-            "choose the other program for the worker with configure_workers --backend",
+            "choose the other program for the worker with concorde configure-workers --backend",
         ],
     ),
     "discovery_failed": (
@@ -486,14 +486,14 @@ HANDLING = {
         "input",
         "a configuration file that cannot be read is never repaired or ignored",
         [
-            "fix the file by hand, or delete it and configure again with configure_workers"
+            "fix the file by hand, or delete it and configure again with concorde configure-workers"
         ],
     ),
     "unknown_model": (
         "input",
         "only a model the installed program lists is admitted without --allow-unlisted",
         [
-            "choose a model from the candidates configure_workers lists",
+            "choose a model from the candidates concorde configure-workers lists",
             "pass --allow-unlisted for a model the listing cannot show",
         ],
     ),

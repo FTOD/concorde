@@ -70,7 +70,7 @@ class CodeReviewTests(unittest.TestCase):
         )
 
     def worker(self, envelope) -> tuple[dict, str, int]:
-        record = read_record(self.root, envelope["worker_runs"][-1])
+        record = read_record(self.root / ".concorde", envelope["worker_runs"][-1])
         work = Path(record["run_directory"]) / "work"
         rounds = sorted(work.glob("fake-round-*.json"))
         return record, json.loads(rounds[0].read_text())["prompt"], len(rounds)

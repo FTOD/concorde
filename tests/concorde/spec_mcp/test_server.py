@@ -238,7 +238,9 @@ class SpecMcpTests(unittest.TestCase):
         before = self.snapshot()
         value, error = self.client(root=self.root).call("validate")
         self.assertFalse(error)
-        self.assertEqual(("validate", "invalid"), (value["tool"], value["status"]))
+        self.assertEqual(
+            ("spec-validation", "invalid"), (value["tool"], value["status"])
+        )
         self.assertTrue(any(f["severity"] == "error" for f in value["findings"]))
         self.assertEqual(before, self.snapshot())
 

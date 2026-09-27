@@ -269,7 +269,7 @@ class DocumentUnitRepository:
                 path=first.source or None,
                 reason="a registry, entry or document structure that breaks these checks "
                 "cannot support a trustworthy boundary, so the repository is refused",
-                remediation="repair every cause, then run `concorde validate`",
+                remediation="repair every cause, then run `concorde spec-validation`",
                 causes=[
                     from_finding(item, _error_code(item.rule_id)) for item in fatal
                 ],

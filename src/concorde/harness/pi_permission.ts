@@ -1,7 +1,7 @@
 /**
  * The Concorde permission extension for pi workers.
  *
- * The Operation host copies this file into a run's `control/` directory, embeds the run's policy
+ * The worker launch copies this file into a run's `control/` directory, embeds the run's policy
  * in `POLICY` and the sandbox-runtime entry point in the import below, and loads it as the only
  * extension of `pi -p`. It replaces pi's file tools with checked versions (`read`, `write`, `edit`),
  * runs every command and search (`bash`, `grep`, `find`, `ls`) inside the sandbox-runtime sandbox

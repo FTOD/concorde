@@ -12,13 +12,18 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.errors import ERROR_SCHEMA, codes
-from concorde.harness import models
+from concorde.execution import binding
+from concorde.execution.runs import workspace_lock
+from concorde.harness import configure, models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
 from tests.concorde.support.agent_fakes import fake_agents
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.tasks.deliveries import deliver, write_run
+
+TASK_CONTRACTS = "specs/concorde/coordination/tasks/contracts.md"
 
 
 def git(root, *arguments):
@@ -40,6 +45,9 @@ class TaskStoreTests(unittest.TestCase):
 
     def record(self, task_id="t1"):
         return store.load_task(self.root, task_id)
+
+    def state(self, task_id="t1"):
+        return store.show_task(self.root, task_id)["record"]["state"]
 
     @verifies("scenario.tasks.open")
     def test_open_a_task(self):
@@ -67,6 +75,33 @@ class TaskStoreTests(unittest.TestCase):
             "# Decision log: severity\n\nGoal: let reports carry a severity\n",
             (self.root / ".concorde/tasks/severity.decisions.md").read_text(),
         )
+        self.assertNotIn("runs", value)
+        self.assertNotIn("deliveries", value)
+        self.assertNotIn("workflow", value)
+
+    @verifies("scenario.tasks.open")
+    def test_open_binds_the_worktree_as_the_tasks_workspace(self):
+        head = git(self.root, "rev-parse", "HEAD")
+        record = self.project.open_task("t1", modules=("module.a", "module.b"))
+        worktree = self.project.worktree("t1")
+        self.assertEqual(
+            {
+                "schema_version": 1,
+                "workspace": "t1",
+                "root": str(worktree),
+                "branch": "concorde/t1",
+                "base_commit": head,
+                "goal": "Fix A.",
+                "modules": ["module.a", "module.b"],
+                "records": str(self.root / ".concorde"),
+            },
+            binding.load(worktree),
+        )
+        self.assertEqual(record["worktree"], str(worktree))
+        # The binding is the worktree's own state, never a change on the task branch.
+        self.assertEqual("", git(worktree, "status", "--porcelain"))
+        self.assertIsNone(binding.load(self.root))
+        self.assertEqual("open", self.state())
 
     @verifies("scenario.tasks.open-inherits-worker-models")
     def test_a_new_task_keeps_its_own_worker_models(self):
@@ -83,17 +118,24 @@ class TaskStoreTests(unittest.TestCase):
             json.dumps({"schema_version": 3, "default": {"model": "anthropic/b"}})
         )
         self.assertEqual(inherited, task_config.read_text())
-        status, value = self.project.run(
-            "configure_workers",
-            "--task",
-            "t1",
-            "--model",
-            "anthropic/c",
-            "--allow-unlisted",
-            client="pi",
-            environ=fake_agents(self.project.base / "bin", self.project.home),
-        )
-        self.assertEqual((0, "t1"), (status, value["task"]), value)
+        # configure-workers changes the configuration of the worktree it runs in.
+        output = io.StringIO()
+        environ = {
+            **fake_agents(self.project.base / "bin", self.project.home),
+            "CONCORDE_CLIENT": "pi",
+        }
+        with (
+            patch.dict(os.environ, environ),
+            patch("pathlib.Path.home", return_value=self.project.home),
+            contextlib.redirect_stdout(output),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            status = configure.main(
+                ["--model", "anthropic/c", "--allow-unlisted"], cwd=worktree
+            )
+        value = json.loads(output.getvalue())
+        self.assertEqual((0, "ok"), (status, value["status"]), value)
+        self.assertEqual(str(task_config), value["output"]["config"])
         self.assertEqual(
             "anthropic/c", json.loads(task_config.read_text())["default"]["model"]
         )
@@ -196,11 +238,6 @@ class TaskStoreTests(unittest.TestCase):
             ["grant_decision", "audit_violation", "audit_violation"], codes(link)[:3]
         )
         self.assertEqual(link, self.record()["escalations"][-1]["error"])
-        text = (REPOSITORY_ROOT / "specs/concorde/tasks/contracts.md").read_text()
-        contract = json.loads(
-            text.split("```concorde-contract\n", 1)[1].split("```")[0]
-        )
-        validate(self.record(), contract["schema"])
         log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
         self.assertIn("Escalated to the developer", log)
         self.assertIn("Not handled here (decision)", log)
@@ -219,6 +256,35 @@ class TaskStoreTests(unittest.TestCase):
             "x",
         )
         self.assertEqual((1, "nothing_to_escalate"), (status, value["error"]["code"]))
+        self.assert_contract(self.record())
+
+    @verifies("scenario.tasks.escalate")
+    def test_only_a_run_of_the_tasks_workspace_is_escalated(self):
+        self.project.open_task("t1")
+        for run_id, workspace in (
+            ("r-20260927T000000-understand-00000001", "t2"),
+            ("r-20260927T000000-understand-00000002", None),
+        ):
+            write_run(self.root, run_id, workspace, status="failed")
+            status, value = self.command(
+                "escalate",
+                "t1",
+                "--run",
+                run_id,
+                "--code",
+                "x",
+                "--detail",
+                "x",
+                "--reason",
+                "decision",
+                "--explanation",
+                "x",
+            )
+            self.assertEqual((1, "unknown_run"), (status, value["error"]["code"]))
+            self.assertIn(
+                f"a run of {workspace or 'no workspace'}", value["error"]["detail"]
+            )
+        self.assertEqual([], self.record()["escalations"])
 
     @verifies("scenario.tasks.session-escalates")
     def test_a_task_session_escalates_to_the_main_agent(self):
@@ -306,20 +372,6 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
         self.assertFalse((self.root / ".claude/worktrees/t1").exists())
 
-    @verifies("scenario.tasks.removed-module")
-    def test_removed_modules_are_told_from_current_ones(self):
-        self.project.open_task("t1")
-        worktree = self.project.worktree("t1")
-        modules = ["module.renamed", "module.a"]
-        self.assertEqual(
-            (["module.a"], ["module.renamed"]),
-            store.current_modules(worktree, modules),
-        )
-        (worktree / ".concorde/specs.json").write_text("not json")
-        with self.assertRaises(store.TaskError) as raised:
-            store.current_modules(worktree, modules)
-        self.assertEqual("specs_unloadable", raised.exception.code)
-
     @verifies("scenario.tasks.not-primary")
     def test_linked_worktrees_cannot_open_or_close(self):
         self.project.open_task("t1")
@@ -346,78 +398,116 @@ class TaskStoreTests(unittest.TestCase):
     def test_list_and_show(self):
         self.project.open_task("t1")
         self.project.open_task("t2")
-        store.begin_run(
-            self.root, "t2", "r-1", "understand", ["module.a"], False, os.getpid()
-        )
+        status, value = self.project.run("task-validation", "--task", "t2")
+        self.assertEqual("t2", value["workspace"], value)
         status, active = self.command("list", "--state", "active")
         self.assertEqual((0, ["t2"]), (status, [item["id"] for item in active]))
         _, everything = self.command("list")
         self.assertEqual(["t1", "t2"], [item["id"] for item in everything])
+        self.assertEqual(["open", "active"], [item["state"] for item in everything])
+        # The stored state stays open: active is derived from the run store.
+        self.assertEqual("open", self.record("t2")["state"])
         _, shown = self.command("show", "t1")
         self.assertEqual("t1", shown["record"]["id"])
         self.assertEqual(
+            ([], [], None), (shown["runs"], shown["deliveries"], shown["busy"])
+        )
+        self.assertEqual(
             str(self.root / ".concorde/tasks/t1.decisions.md"), shown["decision_log"]
+        )
+        _, shown = self.command("show", "t2")
+        self.assertEqual(
+            [(value["run_id"], "command", "task-validation", value["status"])],
+            [
+                (run["run_id"], run["kind"], run["name"], run["status"])
+                for run in shown["runs"]
+            ],
         )
         self.assertEqual(2, cli.main(["frobnicate"], cwd=self.root))
 
     @verifies("scenario.tasks.first-run")
     def test_the_first_run_activates_a_task(self):
         self.project.open_task("t1")
-        record = store.begin_run(
-            self.root, "t1", "r-1", "implement", ["module.a"], True, os.getpid()
-        )
-        self.assertEqual("active", record["state"])
-        self.assertEqual(
-            ("r-1", "running", os.getpid()),
-            (
-                record["runs"][0]["run_id"],
-                record["runs"][0]["status"],
-                record["runs"][0]["host_pid"],
-            ),
-        )
-
-    @verifies("scenario.tasks.run-adds-modules")
-    def test_a_run_records_extra_modules(self):
-        self.project.open_task("t1")
-        record = store.begin_run(
+        self.assertEqual("open", self.state())
+        # A run of another workspace or an unbound run leaves the task open.
+        write_run(self.root, "r-20260927T000000-understand-00000001", "t2")
+        write_run(self.root, "r-20260927T000000-understand-00000002", None)
+        self.assertEqual("open", self.state())
+        write_run(
             self.root,
+            "r-20260927T000001-implement-00000003",
             "t1",
-            "r-1",
-            "understand",
-            ["module.a", "module.b"],
-            False,
-            os.getpid(),
+            name="implement",
+            status=None,
+            host_pid=os.getpid(),
         )
-        self.assertEqual(["module.a", "module.b"], record["modules"])
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual("active", shown["record"]["state"])
+        self.assertEqual(
+            [("r-20260927T000001-implement-00000003", "running")],
+            [(run["run_id"], run["status"]) for run in shown["runs"]],
+        )
+        self.assertEqual("open", self.record()["state"])
+
+    @verifies("scenario.tasks.first-run")
+    def test_a_commit_or_a_change_activates_a_task(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        (worktree / "src/a/calc.py").write_text("changed = True\n")
+        self.assertEqual("active", self.state())
+        commit(worktree, "a verified step")
+        self.assertEqual("active", self.state())
+
+    @verifies("scenario.tasks.modules-fixed")
+    def test_a_run_records_extra_modules(self):
+        # A run may work on more Modules than the task names; the run store keeps them with the
+        # run, and the task record, which nothing below the task level writes, keeps its own.
+        self.project.open_task("t1")
+        _, value = self.project.run(
+            "task-validation", "--task", "t1", "--modules", "module.a,module.b"
+        )
+        self.assertEqual(["module.a", "module.b"], value["modules"], value)
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual(["module.a", "module.b"], shown["runs"][0]["modules"])
+        self.assertEqual(["module.a"], shown["record"]["modules"])
 
     @verifies("scenario.tasks.busy")
     def test_a_second_concurrent_run_is_refused(self):
         self.project.open_task("t1")
-        store.begin_run(
-            self.root, "t1", "r-1", "implement", ["module.a"], True, os.getpid()
-        )
-        before = self.record()
-        with self.assertRaises(store.TaskError) as raised:
-            store.begin_run(
-                self.root, "t1", "r-2", "test", ["module.a"], False, os.getpid()
+        records = self.root / ".concorde"
+        with workspace_lock(records, "t1", "implement run r-held"):
+            self.assertIn(
+                "implement run r-held", store.show_task(self.root, "t1")["busy"]
             )
-        self.assertEqual("task_busy", raised.exception.code)
-        self.assertEqual(before, self.record())
+            status, value = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual(
+            (1, "failed", "refused"),
+            (status, value["status"], value["error"]["code"]),
+        )
+        self.assertEqual(["refused", "workspace_busy"], codes(value["error"]))
+        self.assertIn("implement run r-held", value["error"]["detail"])
+        self.assertEqual("decision", value["error"]["unhandled"]["reason"])
+        self.assertIsNone(store.show_task(self.root, "t1")["busy"])
+        status, value = self.project.run("task-validation", "--task", "t1")
+        self.assertNotEqual("refused", (value["error"] or {}).get("code"), value)
 
     @verifies("scenario.tasks.interrupted")
     def test_a_dead_host_leaves_an_interrupted_run(self):
         self.project.open_task("t1")
         dead = subprocess.Popen(["true"])
         dead.wait()
-        store.begin_run(
-            self.root, "t1", "r-1", "implement", ["module.a"], True, dead.pid
+        write_run(
+            self.root,
+            "r-20260927T000000-implement-00000001",
+            "t1",
+            name="implement",
+            status=None,
+            host_pid=dead.pid,
         )
-        record = store.begin_run(
-            self.root, "t1", "r-2", "test", ["module.a"], False, os.getpid()
-        )
-        self.assertEqual(
-            ["interrupted", "running"], [run["status"] for run in record["runs"]]
-        )
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual(["lost"], [run["status"] for run in shown["runs"]])
+        self.assertIsNone(shown["busy"])
+        self.assertEqual("active", shown["record"]["state"])
 
     @verifies("scenario.tasks.concurrent-update")
     def test_a_concurrent_change_is_detected(self):
@@ -425,6 +515,10 @@ class TaskStoreTests(unittest.TestCase):
         path = self.root / ".concorde/tasks/t1.json"
         real = store._locked
         calls = {"n": 0}
+
+        def escalated(record):
+            record["escalations"].append({"at": store.now(), "error": {}})
+            return record
 
         @contextlib.contextmanager
         def meddling(primary):
@@ -435,14 +529,15 @@ class TaskStoreTests(unittest.TestCase):
             with real(primary):
                 yield
 
-        with patch.object(store, "_locked", meddling):
-            with self.assertRaises(store.TaskError) as raised:
-                store.begin_run(
-                    self.root, "t1", "r-1", "test", ["module.a"], False, os.getpid()
-                )
+        with (
+            patch.object(store, "_locked", meddling),
+            self.assertRaises(store.TaskError) as raised,
+        ):
+            store.update(self.root, "t1", escalated)
         self.assertEqual("record_conflict", raised.exception.code)
         self.assertEqual(3, calls["n"])
         self.assertEqual("changed by another process 3", self.record()["goal"])
+        self.assertEqual([], self.record()["escalations"])
         calls["n"] = 0
         once = {"done": False}
 
@@ -457,39 +552,39 @@ class TaskStoreTests(unittest.TestCase):
                 yield
 
         with patch.object(store, "_locked", once_meddling):
-            record = store.begin_run(
-                self.root, "t1", "r-1", "test", ["module.a"], False, os.getpid()
-            )
+            record = store.update(self.root, "t1", escalated)
         self.assertEqual("changed once", record["goal"])
-        self.assertEqual("running", record["runs"][0]["status"])
+        self.assertEqual(1, len(record["escalations"]))
 
     def deliver(self, task_id="t1"):
-        worktree = self.project.worktree(task_id)
-        (worktree / "src/a/calc.py").write_text("def add(a, b):\n    return a + b\n")
-        head = commit(worktree, "deliver")
-        store.begin_run(
-            self.root, task_id, "r-d", "delivery", ["module.a"], False, os.getpid()
-        )
-        store.record_delivery(
-            self.root, task_id, "r-d", head, ".concorde/evidence/t1/1.json", "r-v"
-        )
-        store.finish_run(self.root, task_id, "r-d", "ok")
-        return head
+        return deliver(self.project.worktree(task_id))
 
     @verifies("scenario.tasks.delivered-reopened")
     def test_a_writing_run_reopens_a_delivered_task(self):
         self.project.open_task("t1")
-        self.deliver()
-        self.assertEqual("delivered", self.record()["state"])
-        record = store.begin_run(
-            self.root, "t1", "r-2", "test", ["module.a"], False, os.getpid()
+        head = self.deliver()
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual("delivered", shown["record"]["state"])
+        self.assertEqual([head], [item["commit"] for item in shown["deliveries"]])
+        self.assertEqual(
+            ".concorde/evidence/t1/1.json", shown["deliveries"][0]["bundle"]
         )
-        self.assertEqual("delivered", record["state"])
-        store.finish_run(self.root, "t1", "r-2", "ok")
-        record = store.begin_run(
-            self.root, "t1", "r-3", "implement", ["module.a"], True, os.getpid()
+        # A run that changes nothing leaves the task delivered.
+        write_run(self.root, "r-20260927T000000-test-00000001", "t1", name="test")
+        self.assertEqual("delivered", self.state())
+        # A change after the delivery commit makes it active again, committed or not.
+        worktree = self.project.worktree("t1")
+        (worktree / "src/a/calc.py").write_text("changed = True\n")
+        self.assertEqual("active", self.state())
+        commit(worktree, "after the delivery")
+        self.assertEqual("active", self.state())
+        second = self.deliver()
+        self.assertEqual("delivered", self.state())
+        self.assertEqual(
+            [".concorde/evidence/t1/1.json", ".concorde/evidence/t1/2.json"],
+            [item["bundle"] for item in store.show_task(self.root, "t1")["deliveries"]],
         )
-        self.assertEqual("active", record["state"])
+        self.assertEqual(second, git(self.root, "rev-parse", "concorde/t1"))
 
     @verifies("scenario.tasks.close-merged")
     def test_close_a_merged_task(self):
@@ -592,7 +687,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assert_contract(self.record())
 
     def assert_contract(self, record):
-        text = (REPOSITORY_ROOT / "specs/concorde/tasks/contracts.md").read_text()
+        text = (REPOSITORY_ROOT / TASK_CONTRACTS).read_text()
         contract = json.loads(
             text.split("```concorde-contract\n", 1)[1].split("```")[0]
         )
@@ -637,7 +732,6 @@ class TaskStoreTests(unittest.TestCase):
         log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
         self.assertIn("## Closed: failed", log)
         self.assertIn(failed["error"]["code"], log)
-        self.assert_contract(self.record())
         self.project.open_task("t2")
         status, value = self.command(
             "close",
@@ -649,15 +743,22 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual(0, status, value)
         self.assertEqual([], value["closed"]["errors"])
+        self.assert_contract(self.record())
 
     @verifies("scenario.tasks.closed-inert")
     def test_a_closed_task_accepts_no_run(self):
         self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
         self.command("close", "t1", "--completed", "--note", "done")
+        # Closing removes the worktree and with it the workspace binding, so no run of the
+        # task's workspace can start; a run recorded anyway leaves the task closed.
+        self.assertFalse(binding.path_of(worktree).exists())
+        write_run(self.root, "r-20260927T000000-test-00000001", "t1", name="test")
+        self.assertEqual("closed", self.state())
+        _, closed = self.command("list", "--state", "closed")
+        self.assertEqual(["t1"], [item["id"] for item in closed])
         with self.assertRaises(store.TaskError) as raised:
-            store.begin_run(
-                self.root, "t1", "r-1", "test", ["module.a"], False, os.getpid()
-            )
+            store.record_session(self.root, "t1", {"program": "claude"})
         self.assertEqual("task_closed", raised.exception.code)
 
 

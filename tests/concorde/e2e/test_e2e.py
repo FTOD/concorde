@@ -72,40 +72,75 @@ class E2ETests(unittest.TestCase):
 
     @verifies("scenario.e2e.headless")
     def test_a_headless_session_waits_for_the_workflow_and_needs_no_trust(self):
-        args = e2e.workflow_args(
-            "adopt", "module.project", "no-ask", {"scaffold": "2"}, []
-        )
-        command, environment = e2e.claude_command("brownfield", args)
+        args = e2e.workflow_args("module.project", "no-ask", {"scaffold": "2"}, [])
+        self.assertNotIn("task", args)
+        command, environment = e2e.claude_command("brownfield", args, "adopt")
         self.assertEqual("0", environment["CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"])
         tools = command[command.index("--allowedTools") + 1 :]
         self.assertIn("Workflow(concorde-brownfield)", tools)
         self.assertIn("Bash(.concorde/bin/concorde workflow step:*)", tools)
         self.assertIn('"restart": {"scaffold": "2"}', command[2])
+        # The session works in the task's worktree and reads the report the workflow saved.
+        self.assertIn("`adopt`", command[2])
+        self.assertIn("concorde workflow report", command[2])
+        self.assertNotIn(".workflow.json", command[2])
 
-    def test_watch_reads_task_records_and_skips_workflow_results(self):
+    def test_watch_reads_run_progress_and_workflow_records(self):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory)
-            tasks = project / ".concorde/tasks"
-            tasks.mkdir(parents=True)
-            step = {"key": "survey", "run_id": "r-1", "superseded": False}
-            (tasks / "adopt.json").write_text(
+            run = project / ".concorde/runs/r-20260927T100000-survey-00000000"
+            run.mkdir(parents=True)
+            (run / "status.json").write_text(
                 json.dumps(
-                    {"id": "adopt", "workflow": {"name": "brownfield", "steps": [step]}}
+                    {"kind": "operation", "name": "survey", "workspace": "adopt"}
+                    | {"phase": "worker", "step": "survey", "status": "running"}
                 )
             )
-            (tasks / "adopt.workflow.json").write_text(
-                json.dumps({"workflow": "brownfield", "status": "ok"})
+            record = project / ".concorde/runs/workflows/adopt/record.json"
+            record.parent.mkdir(parents=True)
+            step = {"key": "survey", "run_id": run.name, "superseded": False}
+            record.write_text(
+                json.dumps(
+                    {
+                        "workspace": "adopt",
+                        "workflow": "brownfield",
+                        "steps": [step],
+                        "reports": [],
+                    }
+                )
             )
             value = e2e.watch(project)
             self.assertEqual(
-                {"adopt": [{"key": "survey", "run": "r-1", "superseded": False}]},
+                {"adopt": [{"key": "survey", "run": run.name, "superseded": False}]},
                 value["workflows"],
+            )
+            [listed] = value["runs"]
+            self.assertEqual(
+                (run.name, "adopt", "worker"),
+                (listed["run"], listed["workspace"], listed["phase"]),
+            )
+
+    def test_a_workflow_result_is_the_workspaces_latest_saved_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            self.assertIsNone(e2e.latest_report(project, "adopt"))
+            folder = project / ".concorde/runs/workflows/adopt"
+            (folder / "reports").mkdir(parents=True)
+            reports = [
+                {"status": status, "path": str(folder / f"reports/{n}.json")}
+                for n, status in ((1, "running"), (2, "ok"))
+            ]
+            (folder / "record.json").write_text(
+                json.dumps({"workspace": "adopt", "steps": [], "reports": reports})
+            )
+            self.assertEqual(
+                folder / "reports/2.json", e2e.latest_report(project, "adopt")
             )
 
     def test_the_driver_needs_the_projects_rendered_script(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(e2e.E2EError) as raised:
-                e2e.driver_input(Path(directory), "brownfield", {})
+                e2e.driver_input(Path(directory), Path(directory), "brownfield", {})
             self.assertEqual("script_missing", raised.exception.code)
 
 

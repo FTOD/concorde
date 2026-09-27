@@ -13,12 +13,8 @@ CATALOG: dict[str, str] = {
     "spec_review": "concorde.spec_review.operation:SPEC_REVIEW",
     "spec_panel": "concorde.spec_review.panel:SPEC_PANEL",
     "code_review": "concorde.code_review.operation:CODE_REVIEW",
-    "validate": "concorde.validation.operation:VALIDATE",
-    "delivery": "concorde.delivery.operation:DELIVERY",
     "survey": "concorde.adoption.survey:SURVEY",
-    "scaffold": "concorde.adoption.scaffold:SCAFFOLD",
     "code_to_spec": "concorde.adoption.code_to_spec:CODE_TO_SPEC",
-    "configure_workers": "concorde.operations.configure:CONFIGURE_WORKERS",
 }
 
 

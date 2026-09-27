@@ -14,13 +14,15 @@ import subprocess
 from pathlib import Path
 
 from ..harness.checks import checked_modules, run_checks
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
     Provider,
     RunContext,
     Stop,
     component,
     evidence,
+)
+from ..operations.provider import (
     load_prompt,
 )
 from ..spec.grants import Grant, grant
@@ -130,20 +132,21 @@ def review_grant(ctx: RunContext) -> Grant | Stop:
 
 
 def resolve_base(ctx: RunContext) -> str | Stop:
-    reference = ctx.arguments.base or ctx.task.get("base_commit")
+    reference = ctx.arguments.base or ctx.base_commit
     if not reference:
         return ctx.fail(
             "failed",
             "no_base",
             "No base commit is known and no --base was given.",
             (
-                f"the run without a task in {ctx.worktree} was given no --base"
-                if ctx.project_scope
-                else f"task {ctx.task.get('id')} records no base commit and --base was not given"
+                f"the unbound run in {ctx.worktree} was given no --base"
+                if ctx.unbound
+                else f"workspace {ctx.workspace_name} binds no base commit and --base was not "
+                "given"
             )
             + ", so there is no diff to review",
             reason="input",
-            explanation="the diff base comes from the task record or the caller",
+            explanation="the diff base comes from the workspace binding or the caller",
             evidence=[evidence("base", "", "no base")],
             options=["pass --base with the commit the reviewed changes start from"],
         )
@@ -158,7 +161,7 @@ def resolve_base(ctx: RunContext) -> str | Stop:
             f"The base {reference} cannot be resolved.",
             f"the diff base {reference} does not name a commit in {ctx.worktree}: {stderr}",
             reason="input",
-            explanation="the diff base comes from the task record or the caller",
+            explanation="the diff base comes from the workspace binding or the caller",
             evidence=[evidence("base", reference, stderr)],
             causes=[
                 component(
@@ -416,7 +419,7 @@ def review_step(ctx: RunContext):
             "focus": ctx.arguments.focus or None,
             "reviewed_paths": reviewed,
             "named_only_paths": named,
-            "checks": check_results(ctx.primary, results),
+            "checks": check_results(ctx.records.parent, results),
             "summary": (ctx.worker or {}).get("summary") or "reviewed",
             "findings": findings,
             "verdict": "changes_required" if blocking else "clean",
@@ -437,7 +440,7 @@ CODE_REVIEW = Provider(
     (review_step,),
     REVIEW_SCHEMA,
     review_arguments,
-    task_scope="optional",
+    binding="optional",
 )
 
 

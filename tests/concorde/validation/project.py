@@ -1,4 +1,5 @@
-"""A task fixture whose committed Specs validate without errors, for validate and delivery tests.
+"""A task fixture whose committed Specs validate without errors, for task-validation and delivery
+tests.
 
 It extends ``OperationProject``: ``checks/`` and ``.gitignore`` are bound to Module A so that the
 base commit has no unbound file, the repository has an author identity for delivery commits, and
@@ -65,11 +66,21 @@ class ValidationProject(OperationProject):
     def record(self, task_id: str = "t1") -> dict:
         return store.load_task(self.root, task_id)
 
-    def validate(self, task_id: str = "t1", *extra: str):
-        return self.run("validate", "--task", task_id, *extra)
+    def state(self, task_id: str = "t1") -> str:
+        """The task's derived state."""
+        return store.show_task(self.root, task_id)["record"]["state"]
 
-    def deliver(self, task_id: str = "t1"):
-        return self.run("delivery", "--task", task_id)
+    def deliveries(self, task_id: str = "t1") -> list[dict]:
+        """The delivery commits of the task's workspace on its branch, read from Git."""
+        return store.deliveries(self.root, self.record(task_id))
+
+    def validate(self, task_id: str = "t1", *extra: str):
+        """``concorde task-validation`` in the task's worktree."""
+        return self.run("task-validation", "--task", task_id, *extra)
+
+    def deliver(self, task_id: str = "t1", *extra: str):
+        """``concorde delivery`` in the task's worktree."""
+        return self.run("delivery", "--task", task_id, *extra)
 
 
 def evidence_of(envelope: dict, kind: str) -> list[dict]:

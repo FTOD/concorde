@@ -53,7 +53,7 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 - GIVEN a root whose Specs have one structural error
 - WHEN the client calls `validate`
-- THEN the result is the `validate` command's envelope with status `invalid` and that finding
+- THEN the result is the `spec-validation` command's envelope with status `invalid` and that finding
 - BUT no file is written
 
 ### scenario.spec-mcp.current-specs — A Spec change is seen at once

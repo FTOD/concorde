@@ -62,7 +62,7 @@ jobs:
         run: python3 scripts/concorde.py build --check
 
       - name: Validate the Spec and package
-        run: python3 scripts/concorde.py validate
+        run: python3 scripts/concorde.py spec-validation
 
       - name: Run the full Python test suite
         env:

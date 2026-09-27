@@ -44,7 +44,7 @@ problems by reading `list` and `show`.
 The bookkeeping command is the main agent's interface. In an installed project it is
 `concorde issues` (`concorde` stands for `.concorde/bin/concorde`); in Concorde's source checkout it
 is `python3 scripts/concorde.py issues`, which routes to `python3 scripts/issues.py`. These reach
-the same store. The [main-session guidance](../agents/main-session/module.md#issues) puts every
+the same store. The [main-session guidance](../coordination/main-session/module.md#issues) puts every
 Issue write in a task worktree, with `--task <task-id>` on `report`; `close` and `reopen` take no
 `--task`. Read-only inspection may use either worktree, and always describes that worktree's copy.
 This is guidance to the main agent: the command still accepts an optional task on a report and
@@ -167,7 +167,7 @@ main -> primary: merge B, including fix and closure
 A task that ends without merging has not published its Issue changes to the primary branch. Closing a
 task removes its worktree but retains its branch, task record and decision log, so committed Issue
 records remain on that branch. Forced removal can discard uncommitted records and evidence. The
-[main-session guidance](../agents/main-session/module.md#issues) tells the main agent to preserve
+[main-session guidance](../coordination/main-session/module.md#issues) tells the main agent to preserve
 follow-up information before closing such a task, including how to find the report and evidence;
 a decision-log entry alone does not make an Issue appear in `list` on the primary branch.
 
@@ -209,7 +209,7 @@ session -> issues
 
 Nothing outside the store writes a record; the bookkeeping command is how the main agent adds
 reports and dispositions, usually closing an Issue on the task branch that fixed it. Main session
-declares `session -> issues` above; its [guidance](../agents/main-session/module.md) says when to
+declares `session -> issues` above; its [guidance](../coordination/main-session/module.md) says when to
 record, solve and close Issues. Issues relies on nobody but Spec core.
 
 <a id="uses-spec"></a>

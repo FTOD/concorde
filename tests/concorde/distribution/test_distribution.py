@@ -297,7 +297,7 @@ class CommandLineTests(unittest.TestCase):
     @verifies("scenario.distribution.refused-command-line")
     def test_a_refused_command_line_answers_with_one_envelope(self):
         for argv in (
-            ("validate", "--bogus"),
+            ("spec-validation", "--bogus"),
             ("grant", "--type", "test"),
             ("frobnicate",),
         ):
@@ -313,7 +313,7 @@ class RoutingTests(unittest.TestCase):
         listed = command("issues", "list")
         self.assertEqual(0, listed.returncode, listed.stdout)
         self.assertIn("issues", json.loads(listed.stdout))
-        self.assertEqual(2, command("run", "frobnicate", "--task", "t").returncode)
+        self.assertEqual(2, command("run", "frobnicate").returncode)
         self.assertEqual(2, command("task", "frobnicate").returncode)
 
 
@@ -349,6 +349,7 @@ class InstallTests(unittest.TestCase):
         self.assertIn("Keep this.", claude)
         self.assertEqual(1, claude.count("<!-- concorde:start -->"))
         self.assertIn(".concorde/runs/", (project / ".gitignore").read_text())
+        self.assertIn(".concorde/workspace.json", (project / ".gitignore").read_text())
         self.assertIn(".claude/worktrees/", (project / ".gitignore").read_text())
         self.assertIn(
             ".concorde/worker-models.json", (project / ".gitignore").read_text()
@@ -400,7 +401,7 @@ class InstallTests(unittest.TestCase):
         )
         self.assertEqual(0, applied.returncode, applied.stdout)
         valid = subprocess.run(
-            [str(project / ".concorde/bin/concorde"), "validate"],
+            [str(project / ".concorde/bin/concorde"), "spec-validation"],
             cwd=project,
             capture_output=True,
             text=True,
@@ -425,8 +426,8 @@ class InstallTests(unittest.TestCase):
                 {
                     "kind": "operation",
                     "run_id": "r-1",
-                    "operation": "implement",
-                    "task": "t1",
+                    "name": "implement",
+                    "workspace": "t1",
                     "phase": "running",
                     "host_pid": live.pid,
                 }
@@ -468,9 +469,10 @@ class InstallTests(unittest.TestCase):
             self.assertEqual("concorde_busy", raised.exception.code)
             message = str(raised.exception)
             for fragment in (
-                "Operation run r-1",
+                "operation run r-1",
                 "implement",
-                f"host process {live.pid}",
+                "workspace t1",
+                f"runner process {live.pid}",
                 ".concorde/runs/r-1/status.json",
                 "round 3 of the pi task session of task t2",
             ):
@@ -478,7 +480,7 @@ class InstallTests(unittest.TestCase):
             self.assertNotIn("r-0", message)
             self.assertNotIn("r-dead", message)
             self.assertNotIn("w-1", message)
-            self.assertEqual(1, message.count("Operation run"))
+            self.assertEqual(1, message.count("operation run"))
             self.assertEqual(receipt, (project / ".concorde/install.json").read_bytes())
             self.assertFalse((project / ".concorde/update.json").exists())
         live.kill()
@@ -578,14 +580,14 @@ class InstallTests(unittest.TestCase):
         entry = project / "specs/project/module.md"
         text = entry.read_text()
         entry.write_text(text.replace("## Design", "## Drawing"))
-        failing = json.loads(run("validate").stdout)
+        failing = json.loads(run("spec-validation").stdout)
         self.assertEqual("invalid", failing["status"])
         self.assertIn(
             "CONCORDE-UPDATE-001", [f["rule_id"] for f in failing["findings"]]
         )
         self.assertTrue((project / ".concorde/update.json").is_file())
         entry.write_text(text)
-        passing = json.loads(run("validate").stdout)
+        passing = json.loads(run("spec-validation").stdout)
         self.assertEqual("success", passing["status"], passing)
         self.assertIn(
             "CONCORDE-UPDATE-002", [f["rule_id"] for f in passing["findings"]]

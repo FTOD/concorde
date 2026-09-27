@@ -138,15 +138,17 @@ class CaseTests(unittest.TestCase):
                 result("review", verdict="changes_required"),
                 result("specify"),
                 result("review2", verdict="changes_required"),
-                result("validate"),
+                result("task-validation"),
                 result("delivery"),
             ]
         )
         self.assertIsNone(value["stopped_at"])
         self.assertEqual(
-            ["spec_review", "specify", "spec_review", "validate", "delivery"],
+            ["spec_review", "specify", "spec_review", "task-validation", "delivery"],
             [argv[0] for argv in operations],
         )
+        # The runs work on the task worktree's binding: none of them names the task.
+        self.assertFalse(any("--task" in argv for argv in operations))
         specify = operations[1]
         self.assertEqual("r-review", specify[specify.index("--input") + 1])
         self.assertIn("never the code", specify[specify.index("--intent") + 1])
@@ -156,12 +158,12 @@ class CaseTests(unittest.TestCase):
         value, _, operations = repair(
             [
                 result("review", verdict="accepted"),
-                result("validate"),
+                result("task-validation"),
                 result("delivery"),
             ]
         )
         self.assertEqual(
-            ["spec_review", "validate", "delivery"], [a[0] for a in operations]
+            ["spec_review", "task-validation", "delivery"], [a[0] for a in operations]
         )
         # A step that does not end ok stops the repair, and the task is not merged.
         value, commands, _ = repair(
@@ -170,6 +172,27 @@ class CaseTests(unittest.TestCase):
         self.assertEqual("specify", value["stopped_at"])
         self.assertEqual("blocked", value["steps"][-1]["status"])
         self.assertEqual([["task", "open"]], commands)
+
+    def test_a_recorded_command_runs_as_its_own_concorde_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory) / "concorde"
+            fake.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "print(json.dumps({'argv': sys.argv[1:], 'cwd': os.getcwd()}))\n"
+            )
+            fake.chmod(0o755)
+            where = Path(directory).resolve()
+            for argv, expected in (
+                (["task-validation"], ["task-validation"]),
+                (["delivery", "--adoption"], ["delivery", "--adoption"]),
+                (["scaffold", "--input", "r-x"], ["scaffold", "--input", "r-x"]),
+                (["spec_review", "--modules", "module.a"], ["run", "spec_review"]),
+            ):
+                with self.subTest(command=argv[0]):
+                    value = cases.concorde_run(str(fake), where, argv)
+                    self.assertEqual(expected, value["argv"][: len(expected)])
+                    self.assertEqual(str(where), value["cwd"])
 
 
 if __name__ == "__main__":

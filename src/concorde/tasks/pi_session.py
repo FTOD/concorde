@@ -11,8 +11,8 @@ The supervisor (``main``, run as its own process) runs ``pi -p --mode json --app
 worktree with the developer's own pi configuration and the boundary loaded with ``-e``, keeps the
 round's progress file ``status.json`` current, writes pi's event stream and standard error beside
 it, and records the round's outcome in the task record: ``delivered`` or ``escalated`` only when the
-record holds the delivery commit or the escalations the session report names, ``failed`` with an
-error link otherwise, ``stopped`` after ``stop``. A round whose supervisor ended without recording
+task's branch holds the delivery commit or its record the escalations the session report names,
+``failed`` with an error link otherwise, ``stopped`` after ``stop``. A round whose supervisor ended without recording
 it is settled as ``failed`` the next time Tasks looks at the session.
 """
 
@@ -611,7 +611,10 @@ def _signal_group(pid: int, signum: int) -> None:
 
 
 def verify(report: dict, record: dict) -> list[str]:
-    """What the task record contradicts in a session report; empty when it holds everything."""
+    """What the task contradicts in a session report; empty when it holds everything.
+
+    ``record`` is the task record with its ``deliveries``, the delivery commits read from the
+    task's branch (``store.deliveries``), since no record holds them."""
     if report["status"] == "delivered":
         commits = [item["commit"] for item in record.get("deliveries") or []]
         if report["commit"] not in commits:
@@ -633,6 +636,13 @@ def verify(report: dict, record: dict) -> list[str]:
                 f"{held[number - 1]['error'].get('level')}, not by the task session"
             )
     return mismatches
+
+
+def delivered_record(primary: Path, task_id: str) -> dict:
+    """The task record with the delivery commits its branch holds, for ``verify``."""
+    record = store.load_task(primary, task_id)
+    record["deliveries"] = store.deliveries(primary, record)
+    return record
 
 
 def outcome(
@@ -807,7 +817,7 @@ def supervise(primary: Path, task_id: str, session_id: str, number: int) -> int:
             stream,
             exit_code,
             state["stopped"],
-            store.load_task(primary, task_id),
+            delivered_record(primary, task_id),
         )
     except Exception as error:  # noqa: BLE001 -- every failure is recorded with its detail
         fields = {

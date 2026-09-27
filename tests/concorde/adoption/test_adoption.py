@@ -110,7 +110,9 @@ class AdoptionTests(unittest.TestCase):
         )
 
     def fake_round(self, envelope) -> dict:
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         work = Path(record["run_directory"]) / "work"
         return json.loads((work / "fake-round-1.json").read_text())
 
@@ -137,7 +139,7 @@ class AdoptionTests(unittest.TestCase):
         )
 
     def test_the_schemas_are_the_contracts(self):
-        path = "specs/concorde/operations/adoption/contracts.md"
+        path = "specs/concorde/execution/operations/adoption/contracts.md"
         for identity, schema in (
             ("contract.adoption.decomposition", DECOMPOSITION_SCHEMA),
             ("contract.adoption.scaffold-record", SCAFFOLD_RECORD_SCHEMA),
@@ -168,7 +170,9 @@ class AdoptionTests(unittest.TestCase):
                 for entry in output["remaining_entries"]
             )
         )
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         self.assertEqual("code-to-spec", record["task_type"])
         frozen = json.loads(
             (Path(record["run_directory"]) / "control/grant.json").read_text()
@@ -216,7 +220,7 @@ class AdoptionTests(unittest.TestCase):
     def test_a_survey_runs_without_a_task(self):
         status, envelope = self.survey(task=False)
         self.assertEqual(0, status, envelope)
-        self.assertIsNone(envelope["task"])
+        self.assertIsNone(envelope["workspace"])
         self.assertEqual(
             [], list((self.project.root / ".concorde/tasks").glob("*.json"))
         )
@@ -700,7 +704,7 @@ class AdoptionTests(unittest.TestCase):
         worktree = self.open()
         _, survey = self.survey()
         _, second = self.survey()
-        _, validate = self.project.run("validate", "--task", "adopt")
+        _, validate = self.project.run("task-validation", "--task", "adopt")
         self.assertEqual("ok", validate["status"], validate)
         for inputs in ([], [survey["run_id"], second["run_id"]], [validate["run_id"]]):
             with self.subTest(inputs=inputs):
@@ -716,6 +720,44 @@ class AdoptionTests(unittest.TestCase):
         )
         self.assertEqual("failed", envelope["status"])
         self.assertEqual("input_not_admissible", envelope["host_evidence"][0]["ref"])
+
+    @verifies("scenario.adoption.scaffold-unbound")
+    def test_the_scaffold_is_a_recorded_command_of_a_bound_workspace(self):
+        _, survey = self.survey(task=False)
+        status, envelope = self.project.run("scaffold", "--input", survey["run_id"])
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual(("command", "scaffold"), (envelope["kind"], envelope["name"]))
+        self.assertIsNone(envelope["workspace"])
+        error = envelope["error"]
+        self.assertEqual(("command", "refused"), (error["level"], error["code"]))
+        self.assertIn("Command scaffold", error["actor"])
+        self.assertEqual("binding_required", error["causes"][0]["code"])
+        self.assertFalse((self.project.root / "specs/project/checkout").exists())
+        self.open()
+        _, survey = self.survey()
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertEqual(
+            ("command", "scaffold", "adopt", None, []),
+            (
+                envelope["kind"],
+                envelope["name"],
+                envelope["workspace"],
+                envelope["worker"],
+                envelope["worker_runs"],
+            ),
+        )
+        # Its run is recorded in the primary's run store, where a later run may admit it.
+        self.assertTrue(
+            (
+                self.project.root
+                / ".concorde/runs"
+                / envelope["run_id"]
+                / "result.json"
+            ).is_file()
+        )
 
     # --- code_to_spec ----------------------------------------------------------------------
 
@@ -785,7 +827,9 @@ class AdoptionTests(unittest.TestCase):
             (self.worktree / "specs/project/checkout/contracts.md").exists()
         )
         self.assertEqual([RETRY_QUESTION], output["open_questions"])
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         self.assertEqual("code-to-spec", record["task_type"])
         fake = self.fake_round(envelope)
         tools = fake["argv"][fake["argv"].index("--tools") + 1]
@@ -938,7 +982,9 @@ class AdoptionTests(unittest.TestCase):
             all(cause["code"] == "spec_finding" for cause in error["causes"])
         )
         # The worker was given the host's validation twice and left the error in place.
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         self.assertEqual(
             ["initial", "validation_failures", "validation_failures"],
             [item["prompt"] for item in record["rounds"]],
@@ -970,7 +1016,9 @@ class AdoptionTests(unittest.TestCase):
         )
         self.assertEqual(0, status, envelope)
         self.assertEqual([], envelope["output"]["validation"]["new_errors"])
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         self.assertEqual(
             ["initial", "validation_failures"],
             [item["prompt"] for item in record["rounds"]],

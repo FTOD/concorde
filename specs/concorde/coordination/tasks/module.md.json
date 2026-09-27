@@ -1,0 +1,183 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.tasks.module",
+    "owner": "module.tasks",
+    "role": "module"
+  },
+  "module": {
+    "title": "Tasks",
+    "owns": [
+      "specs/concorde/coordination/tasks/module.md",
+      "specs/concorde/coordination/tasks/contracts.md",
+      "specs/concorde/coordination/tasks/requirements.md",
+      "specs/concorde/coordination/tasks/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.workspace",
+          "concept.execution.workspace-binding",
+          "contract.execution.workspace-binding",
+          "concept.execution.run",
+          "concept.execution.run-result",
+          "concept.execution.run-store",
+          "concept.execution.workspace-lock"
+        ]
+      },
+      {
+        "target": "module.delivery",
+        "meaning": "#uses-delivery",
+        "relies_on": [
+          "concept.delivery.delivery-commit"
+        ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers",
+        "relies_on": [
+          "concept.workers.model-configuration"
+        ]
+      },
+      {
+        "target": "module.task-session",
+        "meaning": "#uses-task-session",
+        "relies_on": [
+          "concept.task-session.round"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.tasks.task",
+      "type": "concept",
+      "title": "Task",
+      "meaning": "#concept.tasks.task"
+    },
+    {
+      "id": "concept.tasks.task-record",
+      "type": "concept",
+      "title": "Task record",
+      "meaning": "#concept.tasks.task-record"
+    },
+    {
+      "id": "concept.tasks.decision-log",
+      "type": "concept",
+      "title": "Decision log",
+      "meaning": "#concept.tasks.decision-log"
+    },
+    {
+      "id": "concept.tasks.task-state",
+      "type": "concept",
+      "title": "Task state",
+      "meaning": "#concept.tasks.task-state"
+    },
+    {
+      "id": "concept.tasks.merge-lock",
+      "type": "concept",
+      "title": "Merge lock",
+      "meaning": "#concept.tasks.merge-lock"
+    },
+    {
+      "id": "realization.tasks.store",
+      "type": "realization",
+      "title": "Task store",
+      "meaning": "#realization.tasks.store",
+      "entries": [
+        "src/concorde/tasks/__init__.py",
+        "src/concorde/tasks/cli.py",
+        "src/concorde/tasks/store.py",
+        "src/concorde/tasks/merge.py",
+        "tests/concorde/tasks/__init__.py",
+        "tests/concorde/tasks/deliveries.py",
+        "tests/concorde/tasks/test_store.py",
+        "tests/concorde/tasks/test_merge.py"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "writes",
+      "target": "concept.tasks.task-record"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "holds while merging, opening or closing",
+      "target": "concept.tasks.merge-lock"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "creates",
+      "target": "concept.tasks.decision-log"
+    },
+    {
+      "type": "relates",
+      "source": "concept.tasks.task-record",
+      "verb": "describes",
+      "target": "concept.tasks.task"
+    },
+    {
+      "type": "relates",
+      "source": "concept.tasks.task-record",
+      "verb": "holds",
+      "target": "concept.tasks.task-state"
+    },
+    {
+      "type": "relates",
+      "source": "concept.tasks.decision-log",
+      "verb": "explains the choices of",
+      "target": "concept.tasks.task"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "writes when a task opens",
+      "target": "concept.execution.workspace-binding"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "reads the workspace's runs from",
+      "target": "concept.execution.run-store"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "shows the holder of",
+      "target": "concept.execution.workspace-lock"
+    },
+    {
+      "type": "relates",
+      "source": "realization.tasks.store",
+      "verb": "reads from the task branch",
+      "target": "concept.delivery.delivery-commit"
+    }
+  ],
+  "extensions": {}
+}

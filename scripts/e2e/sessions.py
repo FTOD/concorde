@@ -263,14 +263,27 @@ def _alive(pid: int) -> bool:
     return state.rsplit(")", 1)[-1].split()[0] != "Z"
 
 
+def runs_of(project: Path) -> Path:
+    """Where the runs started in ``project`` are recorded: the run store of the records directory
+    its workspace binding names, or its own ``.concorde/runs`` when it is unbound."""
+    try:
+        binding = json.loads(
+            (project / ".concorde/workspace.json").read_text(encoding="utf-8")
+        )
+        return Path(binding["records"]) / "runs"
+    except (OSError, ValueError, KeyError, TypeError):
+        return project / ".concorde/runs"
+
+
 def _state(directory: Path) -> dict | None:
+    """The progress file of an Operation or recorded command run; None for a worker's."""
     try:
         value = json.loads((directory / "status.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    return (
-        value if isinstance(value, dict) and value.get("kind") == "operation" else None
-    )
+    if isinstance(value, dict) and value.get("kind") in ("operation", "command"):
+        return value
+    return None
 
 
 def _result(directory: Path) -> dict | None:
@@ -283,10 +296,10 @@ def _result(directory: Path) -> dict | None:
 def unsettled_runs(
     project: Path, since: str, round_end: float, known: set[str] = frozenset()
 ) -> list[dict]:
-    """The Operation runs started since ``since`` that the round left unsettled: still running,
-    or cancelled by the end of the round. ``known`` runs were reported already."""
+    """The runs started since ``since`` that the round left unsettled: still running, or
+    cancelled by the end of the round. ``known`` runs were reported already."""
     found = []
-    for directory in sorted((project / ".concorde/runs").glob("r-*")):
+    for directory in sorted(runs_of(project).glob("r-*")):
         state = _state(directory)
         if state is None or directory.name in known:
             continue
@@ -310,7 +323,7 @@ def wait_for(
     """Wait until every running run has finished or its host has gone."""
     deadline = time.monotonic() + limit
     for item in runs:
-        directory = project / ".concorde/runs" / item["run"]
+        directory = runs_of(project) / item["run"]
         while item["why"] == "running":
             state = _state(directory) or {}
             if state.get("phase") == "finished" or not _alive(
@@ -333,7 +346,7 @@ def wake_message(project: Path, runs: list[dict]) -> str:
         "session receives:"
     ]
     for item in runs:
-        directory = project / ".concorde/runs" / item["run"]
+        directory = runs_of(project) / item["run"]
         result = _result(directory) or {}
         state = _state(directory) or {}
         ended = (
@@ -347,8 +360,9 @@ def wake_message(project: Path, runs: list[dict]) -> str:
             else ""
         )
         lines.append(
-            f"- Operation run {item['run']} ({state.get('operation')}, task "
-            f"{state.get('task')}) {ended} Result: {directory / 'result.json'}.{cause}"
+            f"- {state.get('kind') or 'Operation'} run {item['run']} ({state.get('name')}, "
+            f"workspace {state.get('workspace') or 'none'}) {ended} Result: "
+            f"{directory / 'result.json'}.{cause}"
         )
     return "\n".join(lines)
 

@@ -16,13 +16,15 @@ import argparse
 import json
 from pathlib import Path
 
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
     Provider,
     RunContext,
     evidence,
-    load_prompt,
     spec_cause,
+)
+from ..operations.provider import (
+    load_prompt,
 )
 from .records import (
     DECOMPOSITION_SCHEMA,
@@ -102,7 +104,7 @@ def inventory(ctx: RunContext):
             "declare; repairing the Specs is outside a survey",
             evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
             causes=[spec_cause(error)],
-            options=["run validate to see why the Specs do not load"],
+            options=["run concorde spec-validation to see why the Specs do not load"],
         )
     ctx.state["files"] = [(path, lines_of(ctx.worktree / path)) for path in files]
     return Continue(
@@ -271,7 +273,7 @@ SURVEY = Provider(
     steps=(inventory, propose, check),
     output_schema=DECOMPOSITION_SCHEMA,
     add_arguments=add_arguments,
-    task_scope="optional",
+    binding="optional",
 )
 
 __all__ = ["SURVEY"]

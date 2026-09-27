@@ -1,8 +1,8 @@
 """The pure part of the pi model picker, ``pi_models.ts``, run by Node against a listing.
 
 The dialogs around it live in ``pi_extension.ts`` and need a pi session; these tests cover what the
-picker offers for the output of a ``configure_workers`` run, which command each choice becomes,
-and how a refusal is shown.
+picker offers for the output of ``concorde configure-workers``, which command each choice
+becomes, and how a refusal is shown.
 """
 
 from __future__ import annotations
@@ -77,14 +77,14 @@ LISTING = {
 }
 REFUSAL = {
     "error": {
-        "actor": "Operation configure_workers r-1 (no task, /p)",
+        "actor": "concorde configure-workers (/p)",
         "code": "configuration_refused",
         "detail": "'x' is not a pi model this machine lists",
         "unhandled": {
             "reason": "input",
             "explanation": "only listed models are admitted",
         },
-        "options": ["choose a model from the candidates configure_workers lists"],
+        "options": ["choose a model from the candidates configure-workers lists"],
         "causes": [
             {
                 "actor": "Workers (worker model configuration)",
@@ -110,11 +110,11 @@ console.log(JSON.stringify({
   understandModels: picker.modelRows(listing, understand),
   levelsPlain: picker.levelRows(listing, "local/plain-7"),
   levelsCurrent: picker.levelRows(listing, picker.currentModel(listing, understand)),
-  listing: picker.listingCommand(null),
-  setDefault: picker.commandFor({ operation: null, worker: null }, "set", "local/plain-7", "off", null),
-  setChecker: picker.commandFor(checker, "keep", null, "high", "t1"),
-  unsetChecker: picker.commandFor(checker, "unset", null, null, null),
-  nothing: picker.commandFor(understand, "keep", null, picker.KEEP, null),
+  listing: picker.listingCommand(),
+  setDefault: picker.commandFor({ operation: null, worker: null }, "set", "local/plain-7", "off"),
+  setChecker: picker.commandFor(checker, "keep", null, "high"),
+  unsetChecker: picker.commandFor(checker, "unset", null, null),
+  nothing: picker.commandFor(understand, "keep", null, picker.KEEP),
   refusal: picker.refusalText({ code: 1, value: %(refusal)s, text: "" }),
   bare: picker.refusalText({ code: 1, value: null, text: "Traceback: boom" }),
 }));
@@ -179,14 +179,14 @@ class ModelPickerTests(unittest.TestCase):
         self.assertEqual(
             ["Keep the current value", "off", "low", "high"], out["levelsCurrent"]
         )
-        base = ["run", "configure_workers"]
+        base = ["configure-workers"]
         self.assertEqual(base + ["--candidates", "pi"], out["listing"])
         self.assertEqual(
             base + ["--model", "local/plain-7", "--reasoning", "off"], out["setDefault"]
         )
         self.assertEqual(
             base
-            + ["--task", "t1", "--operation", "spec_review", "--worker", "checker"]
+            + ["--operation", "spec_review", "--worker", "checker"]
             + ["--reasoning", "high"],
             out["setChecker"],
         )
@@ -196,7 +196,7 @@ class ModelPickerTests(unittest.TestCase):
         )
         self.assertIsNone(out["nothing"])
         self.assertIn(
-            "configure_workers r-1 (no task, /p): configuration_refused", out["refusal"]
+            "concorde configure-workers (/p): configuration_refused", out["refusal"]
         )
         self.assertIn("not handled: only listed models are admitted", out["refusal"])
         self.assertIn(

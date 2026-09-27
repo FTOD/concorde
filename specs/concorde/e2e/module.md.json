@@ -29,11 +29,26 @@
     "uses": [
       {
         "target": "module.workflows",
-        "meaning": "#uses-workflows"
+        "meaning": "#uses-workflows",
+        "relies_on": [
+          "concept.workflows.workflow",
+          "concept.workflows.result",
+          "concept.workflows.record",
+          "concept.workflows.script"
+        ]
       },
       {
         "target": "module.distribution",
         "meaning": "#uses-distribution"
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.workspace-binding",
+          "concept.execution.run-store",
+          "concept.execution.progress-file"
+        ]
       }
     ],
     "includes": [

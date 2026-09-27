@@ -52,7 +52,7 @@ in step.
 - **Tasks that can run side by side.** Each task is a branch with its own worktree, a record and a
   decision log. Tasks whose Modules and shared files do not overlap run at once in task sessions;
   `concorde task merge` merges them one at a time and validates the result again.
-- **Spec tooling that stands alone.** `concorde validate`, `concorde grant` and the stdio MCP
+- **Spec tooling that stands alone.** `concorde spec-validation`, `concorde grant` and the stdio MCP
   server `concorde spec-mcp` answer from the Specs of one worktree without calling a model, so any
   agent can ask what a task may touch.
 
@@ -95,31 +95,33 @@ cd /absolute/path/to/project
 
 ## Commands
 
-In an installed project the command is `.concorde/bin/concorde`; Operations print one JSON result.
+In an installed project the command is `.concorde/bin/concorde`; Operations and recorded commands
+print one JSON result. Run them inside a task's worktree, whose workspace binding names the task.
 
 | Command                                                 | Use                                                                          |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `concorde validate`                                     | Check every structural rule of the Specs.                                    |
+| `concorde spec-validation`                              | Check every structural rule of the Specs.                                    |
 | `concorde grant --modules <ids> --type <task type>`     | Print the grant of a task type for some Modules.                             |
 | `concorde spec-mcp`                                     | Run the local stdio MCP server rooted at the project.                        |
 | `concorde task open\|list\|show\|session\|merge\|close` | Manage tasks: branch, worktree, record, decision log, task sessions, merges. |
 | `concorde task escalate`                                | Add the main agent's link on top of an error chain and record it.            |
-| `concorde run <operation> [--task <task>]`              | Run one Operation and print its result.                                      |
+| `concorde run <operation>`                              | Run one Operation in the current workspace and print its result.             |
+| `concorde task-validation\|delivery\|scaffold`          | Run one recorded command in the current workspace and print its result.      |
+| `concorde configure-workers`                            | List and change the worker models of the current worktree.                   |
 | `concorde issues report\|list\|show\|close`             | Record problems a task will not fix, so they survive it.                     |
 | `concorde init --propose\|--apply`                      | Propose and apply a project's first Spec.                                    |
 | `concorde docsite --propose\|--apply`                   | Scaffold a documentation site for the project's Specs.                       |
 
-| Operation           | Result and boundary                                                                           |
-| ------------------- | --------------------------------------------------------------------------------------------- |
-| `understand`        | An assessment of the Modules and, when asked, a plan; reads Specs and only the names of code. |
-| `specify`           | A change of the bound Modules' own Spec documents; structural validation afterwards.          |
-| `implement`         | A code change within the bound Modules' realization; configured checks with resume rounds.    |
-| `test`              | The host's check results interpreted by a read-only worker.                                   |
-| `spec_review`       | Review findings and a verdict on the bound Modules' Specs.                                    |
-| `code_review`       | Review findings and a verdict on the task's code changes.                                     |
-| `validate`          | Readiness: structural validation and the configured checks of the changed Modules.            |
-| `delivery`          | A commit of the task's change with its evidence bundle on the task branch.                    |
-| `configure_workers` | The models and reasoning levels the workers use, for all workers or one Operation's.          |
+| Operation         | Result and boundary                                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| `understand`      | An assessment of the Modules and, when asked, a plan; reads Specs and only the names of code. |
+| `specify`         | A change of the bound Modules' own Spec documents; structural validation afterwards.          |
+| `implement`       | A code change within the bound Modules' realization; configured checks with resume rounds.    |
+| `test`            | The host's check results interpreted by a read-only worker.                                   |
+| `spec_review`     | Review findings and a verdict on the bound Modules' Specs.                                    |
+| `code_review`     | Review findings and a verdict on the task's code changes.                                     |
+| `task-validation` | (command) Readiness: structural validation and the configured checks of the changed Modules.  |
+| `delivery`        | (command) A commit of the task's change with its evidence bundle on the task branch.          |
 
 ## Explore
 

@@ -4,19 +4,20 @@
 
 Concorde makes a project's Specs the harness of the AI agents that change it. The Specs describe
 the architecture and divide the responsibility among Modules; from that division Concorde computes,
-for each task, what a worker is given as context and what it may read and write, runs the worker
-inside that boundary and verifies its result instead of trusting it.
+for each piece of work, what a worker is given as context and what it may read and write, runs the
+worker inside that boundary and verifies its result instead of trusting it.
 
-The developer and the main agent rely on it. Its work is organized in five levels, from the
-developer down: the main session, in which the main agent works with the developer on the whole
-project; the task level, where one task's changes are made by the main agent itself or by a task
-session it delegates the task to; workflows, which order one task's Operations for a known
-procedure; Operations, each of which completes one bounded job and returns one checked result; and
-at the bottom workers, headless AI processes that each do one job under a Spec-derived grant, beside
-Tools, which perform specific actions with programmed logic. The sessions at the top and the
-workers at the bottom form the agent layer, where a model reasons; the workflow and Operation
-levels between them are programs, which follow declared rules and check what the models did
-instead of reasoning themselves. Spec tooling checks, serves and publishes the Specs on its own. Concorde never chooses the
+The developer and the main agent rely on it. Its work is organized in two halves. The upper half,
+[Coordination](coordination/module.md), is project management and task-level parallelism: the main
+session, in which the main agent works with the developer on the whole project, and the task level,
+where each task gets its own branch and worktree and is worked by the main agent itself or by a
+task session it delegates the task to. The lower half, [Execution](execution/module.md), is the
+execution core: in one bound workspace, workflows order runs for a known procedure; Operations
+complete bounded jobs with AI workers under Spec-derived grants and return checked results;
+recorded commands such as `task-validation` and `delivery` do the deterministic work; workers and
+Tools act at the bottom. The upper half hands a task to the lower half only through the task
+worktree's workspace binding and learns what happened only from what the lower half recorded.
+Spec tooling checks, serves and publishes the Specs on its own. Concorde never chooses the
 developer's direction or repairs a Spec on its own. The main agent and the workers run on Claude
 Code or on pi.
 
@@ -25,23 +26,24 @@ Code or on pi.
 The [shared vocabulary](vocabulary.md) defines the words used across Modules, including the four
 kinds of context and the task types, for reference as needed. This Module owns those definitions;
 this entry defines no terms of its own. Each child Module defines the words of its own interface,
-such as a [Task](tasks/module.md), an [Operation](operations/module.md) or a
-[Grant](spec-tooling/spec/module.md).
+such as a [Task](coordination/tasks/module.md), a
+[Workspace binding](execution/module.md#concept.execution.workspace-binding), an
+[Operation](execution/operations/module.md) or a [Grant](spec-tooling/spec/module.md).
 
 ## Usage
 
-### The five levels
+### The levels of work
 
-Every piece of work on a Concorde project passes down the same five levels, and every result and
-error travels back up them:
+Every piece of work on a Concorde project passes down the same levels, and every result and error
+travels back up them. The first two are Coordination's, the rest Execution's:
 
-| Level | Layer | Who or what works there | Where | What it does | Module |
+| Level | Half | Who or what works there | Where | What it does | Module |
 | --- | --- | --- | --- | --- | --- |
-| 1. Main session | agent | the main agent, an interactive Claude Code or pi session | the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks, decides ordinary questions and escalates major ones | [Main session](agents/main-session/module.md) |
-| 2. Task | agent | the main agent inside the task, or a task session it delegated the task to | one task worktree | changes Specs and code directly or through workflows and Operations, keeps the decision log, validates and delivers | [Task sessions](agents/task-session/module.md), with the workspace from [Tasks](tasks/module.md) |
-| 3. Workflow | orchestration | a procedure rendered for Claude Code and pi | one task | orders the task's Operations for a known procedure and stops where the developer must decide | [Workflows](workflows/module.md) |
-| 4. Operation | orchestration | the Operation host | one task worktree | completes one bounded job by combining worker runs, Tool calls and host logic, and returns one result with evidence | [Operations](operations/module.md) |
-| 5. Worker or Tool | agent (worker), program (Tool) | a headless `claude -p` or `pi -p` process, or a programmed action | a run over the task worktree | a worker reasons within its grant; a Tool performs one action, such as running the configured checks | [Workers](agents/workers/module.md), [Tools](tools/module.md) |
+| 1. Main session | Coordination | the main agent, an interactive Claude Code or pi session | the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks, decides ordinary questions and escalates major ones | [Main session](coordination/main-session/module.md) |
+| 2. Task | Coordination | the main agent inside the task, or a task session it delegated the task to | one task worktree | changes Specs and code directly or through runs of Execution, keeps the decision log, validates and delivers | [Task sessions](coordination/task-session/module.md), with the workspace from [Tasks](coordination/tasks/module.md) |
+| 3. Workflow | Execution | a procedure rendered for Claude Code and pi | one bound workspace | orders the workspace's runs for a known procedure and stops where the developer must decide | [Workflows](execution/workflows/module.md) |
+| 4. Run | Execution | the Execution runner, running an Operation or a recorded command | one bound workspace | completes one bounded job and returns one run result with evidence: an Operation with AI workers, a recorded command without | [Execution](execution/module.md), [Operations](execution/operations/module.md), [Validation](execution/validation/module.md), [Delivery](execution/delivery/module.md) |
+| 5. Worker or Tool | Execution | a headless `claude -p` or `pi -p` process, or a programmed action | a run over the workspace | a worker reasons within its grant; a Tool performs one action, such as running the configured checks | [Workers](execution/workers/module.md), [Tools](execution/tools/module.md) |
 
 ```d2 illustrative
 classes: {
@@ -50,105 +52,139 @@ classes: {
   layer: {style: {fill: transparent; stroke: "#9aa3b2"; stroke-dash: 4; border-radius: 10; font-size: 16; bold: true}}
 }
 developer: Developer {shape: person}
-sessions: "Agent layer: sessions" {
+coordination: "Coordination: project management" {
   class: layer
   main: "1  Main session\nthe main agent, primary worktree,\nthe whole project" {class: agent}
   task: "2  Task level\nthe main agent or a task session,\none task worktree" {class: agent}
   main -> task: "opens a task, enters it\nor delegates it"
 }
-orchestration: "Orchestration: programs" {
+execution: "Execution: the core, in one bound workspace" {
   class: layer
-  workflow: "3  Workflow\norders one task's Operations\nfor a known procedure" {class: program}
-  operation: "4  Operation\none bounded job,\none checked result" {class: program}
-  workflow -> operation: "runs, one at a time"
-}
-execution: "Agent layer: workers, beside Tools" {
-  class: layer
+  workflow: "3  Workflow\norders one workspace's runs\nfor a known procedure" {class: program}
+  run: "4  Run\nan Operation (with workers)\nor a recorded command" {class: program}
   worker: "5  Worker\nheadless AI, one job\nunder a grant" {class: agent}
   tool: "5  Tool\nprogrammed action,\nsuch as running checks" {class: program}
+  workflow -> run: "runs, one at a time"
+  run -> worker: launches
+  run -> tool: calls
 }
-developer -> sessions.main: "discusses, decides"
-sessions.task -> orchestration.workflow: starts
-sessions.task -> orchestration.operation: "or runs directly"
-orchestration.operation -> execution.worker: launches
-orchestration.operation -> execution.tool: calls
+developer -> coordination.main: "discusses, decides"
+coordination.task -> execution.workflow: "starts, in the task worktree"
+coordination.task -> execution.run: "or runs directly"
 ```
 
-Calls go only downward, and a level may be skipped: the task level runs an Operation directly
-whenever no workflow fits, and some Operations, such as `validate` and `delivery`, use no worker at
-all. Nothing calls upward. A worker never touches Git, runs an Operation or starts an agent; an
-Operation never starts another Operation; a workflow never opens, merges or closes a task; and only
-the main agent merges. The [Workers](agents/workers/module.md) host code may also call a Tool
-between a worker's rounds, so that failing checks can drive a repair loop inside one Operation.
+Calls go only downward, and a level may be skipped: the task level runs an Operation or a command
+directly whenever no workflow fits, and the recorded commands use no worker at all. Nothing calls
+upward. A worker never touches Git, runs an Operation or starts an agent; a run never starts
+another run; a workflow never opens, merges or closes a task; nothing in Execution reads or writes
+a task record; and only the main agent merges. The [Workers](execution/workers/module.md) code may
+also call a Tool between a worker's rounds, so that failing checks can drive a repair loop inside
+one Operation.
 
-The levels are levels of work, not of Modules. [Agents](agents/module.md) groups the three agent
-roles, the main session, task sessions and workers, and explains how the agent levels differ;
-[Tools](tools/module.md) groups the deterministic execution services; and several Modules serve
-every level without being one, described under [Design](#design).
+The levels are levels of work, not of Modules. [Coordination](coordination/module.md) groups the
+sessions and the task workspace; [Execution](execution/module.md) groups everything that works in a
+bound workspace; and several Modules serve both halves without being a level, described under
+[Design](#design).
 
 ### A normal path
 
 The installer places the Protocol copy under `.concorde/protocol/`, the `concorde` command and the
 main-session guidance, but never writes the Specs; initialization proposes and applies an honest
 first Spec. The developer then works with the main agent in the primary worktree. For each piece of
-work it opens a task (a branch and a worktree under `.claude/worktrees/`), enters that worktree and
-works there with the worktree's own `concorde`: changing Specs and code directly or running
-Operations with `concorde run <operation> --task <task>` (`understand`, `specify`,
-`implement`/`test`, `spec_review`/`code_review`, `validate` and `delivery`), until `delivery`
-commits the result and its evidence on the task branch. It then returns to the primary worktree and
-merges. For work split into several tasks, it starts a
-[task session](vocabulary.md#concept.concorde.task-session) per task with
-`concorde task session`, which does the same inside its task and reports back, so several tasks run
-at once.
+work it opens a task (a branch and a worktree under `.claude/worktrees/`, which `concorde task open`
+binds as the task's workspace), enters that worktree and works there with the worktree's own
+`concorde`: changing Specs and code directly, running Operations with
+`concorde run <operation>` (`understand`, `specify`, `implement`/`test`,
+`spec_review`/`code_review`), then the recorded commands `concorde task-validation` and
+`concorde delivery`, until `delivery` commits the result and its evidence on the task branch. None
+of these names the task: each reads the worktree's binding. The main agent then returns to the
+primary worktree and merges. For work split into several tasks, it starts a
+[task session](vocabulary.md#concept.concorde.task-session) per task with `concorde task session`,
+which does the same inside its task and reports back, so several tasks run at once.
 
-Some tasks follow a known procedure. A [workflow](workflows/module.md) records that procedure: the
-main agent opens a task as usual and starts the workflow, which orders the task's Operations one
-at a time and returns one workflow result. In **interactive** mode it ends at each point that needs
-the developer's decision, so the main agent can ask right away and start it again with the
-answers; in **no-ask** mode it follows its declared continuation rules and reports every decision
-and problem at the end. The first workflow is `brownfield`: after installation and initialization
-of a project whose code came before any Spec, it surveys the code, scaffolds child Modules,
-describes each Module's code in its Spec with `code_to_spec`, reviews and validates the result and
-delivers it.
+Some tasks follow a known procedure. A [workflow](execution/workflows/module.md) records that
+procedure: the main agent opens a task as usual and starts the workflow inside its worktree, which
+orders the workspace's runs one at a time and returns one workflow result. In **interactive** mode
+it ends at each point that needs the developer's decision, so the main agent can ask right away and
+start it again with the answers; in **no-ask** mode it follows its declared continuation rules and
+reports every decision and problem at the end. The first workflow is `brownfield`: after
+installation and initialization of a project whose code came before any Spec, it surveys the code,
+scaffolds child Modules, describes each Module's code with `code_to_spec`, reviews and validates the
+result and delivers it.
 
 | Command | Use it to | Provided by |
 | --- | --- | --- |
-| `concorde validate` | check the structure of the Specs | [Spec core](spec-tooling/spec/module.md) |
+| `concorde spec-validation` | check the structure of the Specs | [Spec core](spec-tooling/spec/module.md) |
 | `concorde grant` | compute a task type's grant for some Modules | [Spec core](spec-tooling/spec/module.md) |
 | `concorde spec-mcp` | let an agent query Modules, context and grants over MCP | [Spec MCP server](spec-tooling/spec-mcp/module.md) |
-| `concorde task` | open, list and close tasks, start task sessions, escalate | [Tasks](tasks/module.md) |
-| `concorde run` | run one Operation in a task worktree | [Operations](operations/module.md) |
-| `concorde workflow` | run the steps of a workflow in a task and report its result | [Workflows](workflows/module.md) |
+| `concorde task` | open, list, show and close tasks, start task sessions, escalate, merge | [Tasks](coordination/tasks/module.md) |
+| `concorde run` | run one Operation in the workspace of the current worktree | [Execution](execution/module.md) with [Operations](execution/operations/module.md) |
+| `concorde task-validation`, `concorde delivery`, `concorde scaffold` | decide readiness, deliver, create surveyed Modules, in the current workspace | [Validation](execution/validation/module.md), [Delivery](execution/delivery/module.md), [Adoption](execution/operations/adoption/module.md) |
+| `concorde workflow` | run the steps of a workflow in the current workspace and report its result | [Workflows](execution/workflows/module.md) |
+| `concorde configure-workers` | list and change the worker model configuration of the current worktree | [Workers](execution/workers/module.md) |
 
 ### Errors
 
-Every Operation returns a structured result; a failure carries an
-[error chain](vocabulary.md#concept.concorde.error-chain): the Operation's own detailed link saying
-why it cannot handle the error, with each error it received nested as a cause with its own reason,
-and every `concorde` command refuses in the same shape. The chain climbs the five levels: a worker
-reports its link to the host, the Operation adds its own, a workflow keeps each Operation's chain
-whole in its result, a task session escalates to the main agent with its link on top, and the main
-agent adds its link above that when the developer must decide. The main agent reads the chain,
-decides what it can, logs the decision, escalates only a major-impact one, and adds its own link
-rather than summarizing. A step needing an unstated promise stops with a Spec gap instead of
-inferring it from code; only the developer, the main agent and a task session within its task's
-goal change Specs outside a `specify` task.
+Every run returns a structured result; a failure carries an
+[error chain](vocabulary.md#concept.concorde.error-chain): the run's own detailed link saying why it
+cannot handle the error, with each error it received nested as a cause with its own reason, and
+every `concorde` command refuses in the same shape. The chain climbs the levels: a worker reports
+its link to Workers, the Operation adds its own, a workflow keeps each run's chain whole in its
+result, a task session escalates to the main agent with its link on top, and the main agent adds its
+link above that when the developer must decide. The main agent reads the chain, decides what it
+can, logs the decision, escalates only a major-impact one, and adds its own link rather than
+summarizing. A step needing an unstated promise stops with a Spec gap instead of inferring it from
+code; only the developer, the main agent and a task session within its task's goal change Specs
+outside a `specify` run.
 
 ## Design
 
 The Spec, not the code, is the shared source of truth between the developer and the agents, and
 the responsibility it assigns to each Module is also the boundary of every worker bound to that
 Module. Every other choice follows from making that safe: what a worker may read and write is
-computed from the Specs, a worker's answer is checked by the host rather than trusted, and a
+computed from the Specs, a worker's answer is checked by a program rather than trusted, and a
 missing promise stops work instead of being inferred from code.
 
 Concorde's normal flow is therefore Spec first: a promise is written, then realized. Only a project
 whose code came before its Specs is described the other way round, and only through one explicit
 route, the Protocol's `code-to-spec` task type, which the
-[Adoption](operations/adoption/module.md) Operations use. It writes down the behaviour it reads as
-it is, never changes code, and turns every behaviour whose intent the code does not settle into an
-open question for the developer rather than a promise. Once a Module is described, work on it is
-Spec first again.
+[Adoption](execution/operations/adoption/module.md) Operations use. It writes down the behaviour it
+reads as it is, never changes code, and turns every behaviour whose intent the code does not settle
+into an open question for the developer rather than a promise. Once a Module is described, work on
+it is Spec first again.
+
+### Two halves, one seam
+
+Project management and the execution core change for different reasons. How tasks are opened,
+parallelized, delegated and merged follows how the developer wants to work; how a worker is bounded
+by the Specs, launched, audited and checked follows the Protocol and is Concorde's core. So they are
+two halves with one narrow seam. The upper half writes a
+[workspace binding](execution/module.md#concept.execution.workspace-binding) into each task worktree
+and reads what the lower half recorded: its runs in the
+[run store](execution/module.md#concept.execution.run-store) and its delivery commits on the task
+branch. The lower half reads the binding and never learns that tasks exist. No record is written by
+both, so whether a task is active or delivered is derived each time from what happened, never kept
+as a second copy that could disagree; and the execution core can serve any workspace someone
+prepares, not only a task.
+
+```d2 illustrative
+coordination: Coordination {
+  main: Main session
+  task: Task sessions
+  tasks: Tasks
+}
+execution: Execution {
+  binding: Workspace binding
+  runs: "Runs: Operations and\nrecorded commands"
+  store: Run store and delivery commits
+}
+coordination.tasks -> execution.binding: writes
+coordination.main -> execution.runs: starts in the task worktree
+coordination.task -> execution.runs: starts in its worktree
+execution.runs -> execution.binding: read
+execution.runs -> execution.store: record
+coordination.tasks -> execution.store: reads
+```
 
 ### Agents at both ends, programs between
 
@@ -156,16 +192,18 @@ A model is needed in two places, for opposite reasons. At the top, someone must 
 developer, see the whole project and judge what to do next; the main agent has the global view and
 the developer's trust, so Concorde does not restrict it, but it changes the project only inside a
 task worktree. At the bottom, someone must read and write code and Specs; a worker has one bounded
-task, no human to ask, and a boundary derived from the Specs. Keeping the two apart lets a large
+job, no human to ask, and a boundary derived from the Specs. Keeping the two apart lets a large
 change be split into small, checkable steps without the developer supervising each one.
 
-The two levels between them are programs on purpose. What happens to a worker's answer decides
-what the next level sees, so it must be reproducible and checkable rather than another model's
-opinion: the Operation host computes the grant, launches and audits the worker, runs the checks and
-turns the outcome into a trustworthy result, and a workflow's order and continuation rules are
-declared in its procedure. A judgment therefore never passes from one model to another without a
-program having checked it, and the levels that can be wrong in a model's way stay at the two ends,
-where the grant and the developer bound them.
+The levels between them are programs on purpose. What happens to a worker's answer decides what
+the next level sees, so it must be reproducible and checkable rather than another model's opinion:
+an Operation computes the grant, launches and audits the worker, runs the checks and turns the
+outcome into a trustworthy result, and a workflow's order and continuation rules are declared in
+its procedure. A judgment therefore never passes from one model to another without a program having
+checked it, and the levels that can be wrong in a model's way stay at the two ends, where the grant
+and the developer bound them. An Operation exists only where a model works: deterministic steps,
+such as deciding readiness and delivering, are recorded commands, which the same runner records
+without any worker machinery.
 
 The task level between the main session and the programs is stable, but who plays it is not: the
 main agent works a task itself unless it wants several tasks to run at once, and then delegates
@@ -176,7 +214,7 @@ so the loss is prevented structurally: a task session escalates with
 unchanged as causes, and the main agent adds its own link on top. A task session's writes are
 confined to its task, while the main agent stays unrestricted and alone merges. Because a task's
 commands run with the branch's own copy, their success is self-validation, which is why a merge
-runs the build and `validate` once more on the primary branch.
+runs the build and `spec-validation` once more on the primary branch.
 
 One task through the Modules; each arrow is declared by the calling Module's own `uses`:
 
@@ -184,51 +222,40 @@ One task through the Modules; each arrow is declared by the calling Module's own
 shape: sequence_diagram
 m: Main agent
 t: Tasks
-o: Operation host
+r: Execution runner
 s: Spec core
 w: Worker
 c: Check execution
-m -> t: open a task (branch and worktree)
-m -> o: concorde run implement --task
-o -> s: grant for the task type and Modules
-o -> w: launch with settings, brief and grant
-w -> o: worker result {style.stroke-dash: 3}
-o -> o: audit writes against the grant
-o -> c: run configured checks
-o -> m: Operation result with evidence {style.stroke-dash: 3}
-m -> o: concorde run validate, then delivery
-m -> t: merge the task branch
+m -> t: open a task (branch, worktree, workspace binding)
+m -> r: concorde run implement (in the task worktree)
+r -> s: grant for the task type and Modules
+r -> w: launch with settings, brief and grant
+w -> r: worker result {style.stroke-dash: 3}
+r -> r: audit writes against the grant
+r -> c: run configured checks
+r -> m: run result with evidence {style.stroke-dash: 3}
+m -> r: concorde task-validation, then concorde delivery
+m -> t: merge the task branch (delivered: read from the delivery commit)
 ```
 
-### Modules that serve every level
+### Modules that serve both halves
 
-The five levels are realized by the agent roles, Workflows, Operations and Tools; three Modules
-serve the levels without being one. Every agent level gets its harness from one Harness and the task
-level its workspace from Tasks:
+Two Modules serve both halves without being a level. Every agent gets its harness from one
+Harness:
 
-```d2
-main: Main session
-task: Task sessions
-workflows: Workflows
-operations: Operations
-workers: Workers
-tasks: Tasks
+```d2 illustrative
+coordination: Coordination
+execution: Execution
 harness: Harness
-main -> tasks
-task -> tasks
-workflows -> tasks
-operations -> tasks
-task -> harness
-workers -> harness
+coordination -> harness
+execution -> harness
 ```
 
 What an agent may know and touch is its harness, and the [Harness](harness/module.md) generates it
 for every level from the same code: a worker's from its grant — on Claude Code settings with deny
 rules, a write hook and the Bash sandbox, on pi a permission extension with the same sandbox engine
 — and a task session's from its task. It guards against scope drift and mistakes, not a malicious
-actor; the Harness explains why these layers were chosen and what they leave out. A task is the
-same workspace whoever works it, so [Tasks](tasks/module.md) keeps its branch, worktree, record and
-decision log for the main agent, a task session, a workflow and the Operations alike.
+actor; the Harness explains why these layers were chosen and what they leave out.
 
 [Spec tooling](spec-tooling/module.md) is not drawn because nearly every Module relies on it: its
 Spec core loads and checks the Specs and computes the grants, and a Module refuses to act on a
@@ -263,7 +290,7 @@ e2e -> workflows
 ### Errors as a chain
 
 Errors travel as a chain because every level handles some errors and must pass the others up:
-Workers resumes a worker for a failing check but not for a Spec gap, an Operation reruns nothing,
+Workers resumes a worker for a failing check but not for a Spec gap, a run reruns nothing,
 and the main agent decides ordinary questions but not the project's direction. An error passed up
 as a bare code or a one-line summary loses exactly what the next level needs to decide, and an
 error each level re-describes in its own words drifts from what happened. So a level that cannot
@@ -271,7 +298,7 @@ handle an error adds one link and keeps the rest: its detailed account, the spec
 cannot handle the error, taken from a small fixed set such as a missing permission, a decision
 reserved to a higher level or used-up rounds, the options it sees, and the errors it received as
 causes, unchanged. The chain is structured data with one [contract](contracts.md#contract.concorde.error),
-checked by the host against its schema and extended by the main agent with a command rather than
+checked by the runner against its schema and extended by the main agent with a command rather than
 paraphrased, so the developer receives the whole path from the failing check up to the question
 they are asked.
 
@@ -281,52 +308,33 @@ they are asked.
 [error chain](vocabulary.md#concept.concorde.error-chain) in the shape of the Framework's
 [error contract](contracts.md#contract.concorde.error): the schema, the reasons a level cannot
 handle an error, helpers turning an exception or finding into a link, and the human rendering.
-Workers and Check execution report their failures with it, and so do the Operation host, Tasks,
+Workers and Check execution report their failures with it, and so do the Execution runner, Tasks,
 Task sessions and the Issues command, so every level's link has the same shape whoever wrote it. The
 root binds it because the contract is the root's and every Module promises it. Spec tooling keeps
 its own error types and does not use it.
 
 ### The children
 
-The root is the composition of eleven child Modules, listed here by the part they play.
+The root is the composition of eight child Modules, listed here by the part they play.
 
-<a id="contains-agents"></a>
+<a id="contains-coordination"></a>
 
-**Agents** is the agent layer: the Main session at level 1, the task level played by the main agent
-or delegated through Task sessions at level 2, and Workers at level 5, whose answers stay proposals
-until the host has checked them. It explains how the agent levels differ in boundary, escalation
-and lifecycle.
+**Coordination** is the upper half: the Main session at level 1 and the task level at level 2,
+played by the main agent or delegated through Task sessions, with each task's workspace from Tasks.
+It hands work to Execution only by binding a task worktree and derives each task's state from what
+Execution recorded.
 
-<a id="contains-workflows"></a>
+<a id="contains-execution"></a>
 
-**Workflows** is level 3. It orders Operations for tasks that follow a known procedure; the same
-procedure is rendered for Claude Code and pi, preserving its steps and decision points. It runs one
-Operation at a time in one task, in interactive or no-ask mode, and reports one result with every
-decision and problem, keeping each Operation's error chain whole.
-
-<a id="contains-operations"></a>
-
-**Operations** is level 4. It holds the Operation catalog, the `concorde run` command, the host step
-runner and the Operation providers. Each Operation combines Workers and Tools for one job; no
-provider starts another Operation. The main agent or its Workflow chooses the next Operation.
-
-<a id="contains-tools"></a>
-
-**Tools** groups the deterministic execution services at level 5 that Operations and the Workers
-host code call. Its Check execution child runs configured checks and records input-bound results.
-Each Tool keeps its own interface and boundary; the group grants no combined access to its children.
+**Execution** is the lower half, levels 3 to 5 in one bound workspace: Workflows, the runner that
+runs Operations and recorded commands, the Operation catalog and its providers, Validation and
+Delivery, Workers and Tools. It knows no task and records every run in its run store.
 
 <a id="contains-harness"></a>
 
 The **Harness** derives each agent's harness — what it may know, what it may touch and the
 environment it runs in — and applies it through Claude Code's or pi's own configuration, the same
 code for every level.
-
-<a id="contains-tasks"></a>
-
-**Tasks** manages the task level's workspace — each task's branch, worktree, record and decision
-log — the same for the main agent and a task session, so several tasks can run side by side without
-their changes mixing.
 
 <a id="contains-spec-tooling"></a>
 

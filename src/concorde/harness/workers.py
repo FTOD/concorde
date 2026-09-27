@@ -100,6 +100,9 @@ class WorkerRequest:
     started: Callable[[str], None] | None = None
     # The project's own interpreter, which the worker finds first on its PATH.
     project_python: str | None = None
+    # Where the worker's run directory is created: the records directory of the run that asked
+    # for the worker (its workspace binding's), or the worktree's own ``.concorde``.
+    records: Path | None = None
 
 
 def _digest(path: Path) -> str:
@@ -351,7 +354,7 @@ def run_worker(request: WorkerRequest) -> dict:
     from .checks import check_error
 
     worktree = Path(os.path.realpath(request.worktree))
-    run_id, paths = create_run(worktree)
+    run_id, paths = create_run(Path(request.records or worktree / ".concorde"))
     if request.started is not None:
         request.started(run_id)
     actor = f"Workers run {run_id} ({request.task_type} worker)"
@@ -436,7 +439,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 f"the worker request names the backend {request.backend!r}; Workers knows "
                 + ", ".join(sorted(BACKENDS)),
                 "input",
-                "the backend is the main session's agent program, which the Operation host "
+                "the backend is the main session's agent program, which the Execution runner "
                 "names and Workers does not choose",
             )
         if (

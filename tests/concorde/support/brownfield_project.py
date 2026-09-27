@@ -17,7 +17,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.distribution.project_defaults import install_project_defaults
-from concorde.operations.host import execute
+from tests.concorde.support import runs
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.tasks import store
 from tests.concorde.support.operation_project import claude_workers
@@ -29,7 +29,7 @@ FILES = {
     "README.md": "# Shop\n\nA small shop.\n",
     "pyproject.toml": '[project]\nname = "shop"\n\n[tool.pytest.ini_options]\ntestpaths = ["tests"]\n',
     ".gitignore": (
-        ".concorde/runs/\n.concorde/tasks/\n.concorde/worker-models.json\n"
+        ".concorde/runs/\n.concorde/tasks/\n.concorde/workspace.json\n.concorde/worker-models.json\n"
         ".claude/worktrees/\n__pycache__/\n"
     ),
     "src/checkout/api.py": (
@@ -112,7 +112,7 @@ class BrownfieldProject:
             patch.dict(os.environ, values),
             patch("pathlib.Path.home", return_value=self.home),
         ):
-            return execute(list(argv), cwd=cwd or self.root)
+            return runs.run(argv, self.root, cwd)
 
     def answers(self, *items: dict) -> str:
         path = self.base / f"answers-{len(list(self.base.glob('answers-*')))}.json"

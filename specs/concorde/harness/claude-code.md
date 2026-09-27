@@ -4,7 +4,7 @@ The exact files the Harness generates to apply a harness to a Claude Code agent:
 settings with their deny rules, write hook and Bash sandbox, the tool sets per task type, and the
 task-session settings. The [entry](module.md) explains why a harness is applied this way; the
 [pi mechanics](pi.md) state what the pi backend generates instead, and
-[the run mechanics](../agents/workers/launch.md) of Workers where these files are placed in a run.
+[the run mechanics](../execution/workers/launch.md) of Workers where these files are placed in a run.
 
 ## Worker settings
 
@@ -87,7 +87,7 @@ On the Claude Code backend:
 
 A grant with no writable path, such as a survey's `code-to-spec` grant with the Spec side withheld,
 gets the read-only set of the first row whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing are never listed. A `test` worker runs no
-command itself: the host runs the configured checks and gives it their results.
+command itself: its Operation runs the configured checks and gives it their results.
 
 ## Task-session settings
 

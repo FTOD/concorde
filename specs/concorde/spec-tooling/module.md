@@ -31,14 +31,14 @@ A developer or the main agent meets Spec tooling through one entry point per chi
 
 | Entry point | Child | Answers |
 | --- | --- | --- |
-| `concorde validate` | Spec core | every structural finding, in one run |
-| `spec_review` Operation | Spec review | workers' findings and a verdict on the named Modules' Specs |
+| `concorde spec-validation` | Spec core | every structural finding, in one run |
+| `spec_review` and `spec_panel` Operations | Spec review | workers' findings and a verdict on the named Modules' Specs |
 | Spec MCP server (stdio) | Spec MCP server | which Modules exist, what one selects, whom a change concerns, what grant a task type gives |
 | Published site | Views | the Specs as pages for people |
 
-The Operation host is the one consumer that calls Spec core as a library, to compute and freeze a
-worker's grant. Every answer is computed from the Specs of one worktree, so a Spec change on a task
-branch governs only that task.
+The Execution runner, through the Operations it runs, is the one consumer that calls Spec core as
+a library, to compute and freeze a worker's grant. Every answer is computed from the Specs of one
+worktree, so a Spec change on a task branch governs only that task.
 
 ## Design
 
@@ -76,7 +76,7 @@ tooling: Spec tooling {
   stay free of other Modules' code and of model calls.
 - <a id="contains-spec-mcp"></a>**Spec MCP server** serves Spec core's answers to agents over local
   stdio, read-only and rooted at its worktree, adding no rule and refusing paths outside the root.
-  Workers do not use it in this version; their grants come from the Operation host.
+  Workers do not use it in this version; their grants come from the Operation that launches them.
 - <a id="contains-spec-review"></a>**Spec review** is the `spec_review` Operation: `review-spec`
   workers judge the named Modules' Specs against one checklist and return every blocking finding
   with a verdict. It never edits a Spec and never presents structural validity as quality.
@@ -88,5 +88,5 @@ tooling: Spec tooling {
 
 Spec core stays inside Spec tooling and uses no other Module, but Spec review reaches outside it,
 because judging a Spec needs a model: it is launched through Workers and returns its findings inside
-an Operation result.
+a run result.
 

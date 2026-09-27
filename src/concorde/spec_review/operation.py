@@ -21,15 +21,17 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
     Provider,
     RunContext,
     Stop,
     evidence,
-    load_prompt,
     spec_cause,
     spec_finding,
+)
+from ..operations.provider import (
+    load_prompt,
 )
 from ..spec.grants import grant
 from ..spec.repository import SpecRepository
@@ -409,7 +411,10 @@ def validate_modules(ctx: RunContext):
                 )
                 for item in errors
             ],
-            options=["repair the Specs with specify", "run validate for details"],
+            options=[
+                "repair the Specs with specify",
+                "run concorde spec-validation for details",
+            ],
             recommendation="repair the structural errors, then run spec_review again",
         )
     return Continue(evidence=found)
@@ -433,7 +438,7 @@ def _task_section(ctx: RunContext, review: ModuleReview, role: str) -> str:
         f"- {(ctx.worktree / path).as_posix()} (`{path}`)\n"
         for path in review.documents
     )
-    goal = str(ctx.task.get("goal") or "").strip()
+    goal = ctx.goal.strip()
     return (
         f"## This review\n\n"
         f"Your role: {role}.\n\n"
@@ -613,12 +618,12 @@ def _review(ctx: RunContext, review: ModuleReview, prompt: str) -> list[dict]:
     review.summary["unchanged_since"] = None
     if identity is not None:
         review.merged["reviewed"] = {"context_identity": identity, "run": ctx.run_id}
-    if ctx.project_scope:
+    if ctx.unbound:
         found.append(
             evidence(
                 "review-memory",
                 review_memory.memory_path(review.module),
-                "read only: a review without a task records nothing",
+                "read only: an unbound review records nothing",
             )
         )
     else:
@@ -743,7 +748,7 @@ SPEC_REVIEW = Provider(
     (validate_modules, review_modules, derive_verdict),
     PAYLOAD_SCHEMA,
     add_arguments,
-    task_scope="optional",
+    binding="optional",
     workers=("reviewer", "checker"),
 )
 

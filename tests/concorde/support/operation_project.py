@@ -2,8 +2,9 @@
 
 The project has Module A (``src/a/``, pending ``src/new.py``, a configured check that passes while
 ``src/a/flag`` is absent or says ``ok``) and Module B (``src/bmod/``). ``open_task`` creates a task
-through the Task store; ``run`` runs ``concorde run`` in-process with the fake ``claude`` of the
-worker tests, whose plan is taken from ``FAKE-PLAN: <json>`` in the brief.
+through the Task store; ``run`` runs an Operation or recorded command in-process, in the worktree
+of the task a ``--task`` names, with the fake ``claude`` of the worker tests, whose plan is taken
+from ``FAKE-PLAN: <json>`` in the brief.
 """
 
 from __future__ import annotations
@@ -14,8 +15,8 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.operations.host import execute
 from concorde.tasks import store
+from tests.concorde.support import runs
 from tests.concorde.harness.workers.test_workers import WorkerProject
 
 
@@ -102,9 +103,9 @@ class OperationProject(WorkerProject):
         client: str | None = "claude",
         environ: dict | None = None,
     ) -> tuple[int, dict | None]:
-        """Run ``concorde run <argv>`` with the fake claude and this project's home, as if
-        started from a main session of ``client``, or from no main session when it is None;
-        ``environ`` adds or replaces variables."""
+        """Run ``<name> [--task <task>] [arguments]`` with the fake claude and this project's
+        home, in the task's worktree, as if started from a main session of ``client``, or from no
+        main session when it is None; ``environ`` adds or replaces variables."""
         values = {"CONCORDE_CLAUDE": str(self.fake), **(environ or {})}
         if client:
             values["CONCORDE_CLIENT"] = client
@@ -120,7 +121,7 @@ class OperationProject(WorkerProject):
                     "PI_CODING_AGENT",
                 ):
                     os.environ.pop(name, None)
-            return execute(list(argv), cwd=cwd or self.root)
+            return runs.run(argv, self.root, cwd)
 
     @staticmethod
     def plan(steps) -> str:

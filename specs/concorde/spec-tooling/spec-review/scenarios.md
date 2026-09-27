@@ -1,6 +1,6 @@
 # Spec review scenarios
 
-Concrete situations of [Spec review](module.md). The host sequence and the payload are in the
+Concrete situations of [Spec review](module.md). The step sequence and the payload are in the
 [Operation definition](operation.md), and those of the Spec panel in its
 [definition](panel.md).
 
@@ -8,12 +8,12 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 
 ### scenario.spec-review.accepted — A clear Spec is accepted
 
-- GIVEN a task worktree whose Module A validates without errors
+- GIVEN a workspace whose Module A validates without errors
 - AND a reviewer that finds only advisory problems in A's documents
 - WHEN the main agent runs `spec_review` for Module A
 - THEN the verdict is `accepted` and A's outcome carries the context identity of its `review-spec` grant
 - AND the advisory findings are returned
-- BUT no file of the task worktree changes
+- BUT no file of the workspace changes
 
 ### scenario.spec-review.changes-required — All blocking findings in one result
 
@@ -51,13 +51,13 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 ### scenario.spec-review.worker-blocked — A reviewer that cannot finish
 
 - GIVEN a reviewer that ends `blocked` because it needs a document outside its grant
-- WHEN the host collects its result
+- WHEN the Operation collects its result
 - THEN A's outcome is `incomplete` and the verdict is `incomplete`
 - AND the result's error is the Operation's `review_incomplete` link whose cause for A ends in the reviewer's own link with its detail, attempts and options unchanged
 
 ### scenario.spec-review.memory — A repeated review builds on the memory
 
-- GIVEN a task whose review memory of `module.a` holds the open blocking findings `f.1` and `f.2` and the open advisory `f.3`
+- GIVEN a workspace whose review memory of `module.a` holds the open blocking findings `f.1` and `f.2` and the open advisory `f.3`
 - WHEN a reviewer, given those earlier findings, reports `f.2` changed, one new advisory finding, and `f.3` and an unknown `f.9` resolved
 - THEN the memory keeps `f.2` with its new content, adds the new finding as `f.4`, marks `f.3` resolved with the reason and keeps `f.1` open
 - AND the result lists `f.4` as new, `f.2` as updated, `f.3` as resolved, `f.1` as carried in full and `f.9` as ignored
@@ -75,7 +75,7 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 ### scenario.spec-review.audit-change — A reviewer that changed a file
 
 - GIVEN a reviewer after which the worktree has a changed file
-- WHEN the host audits the worktree
+- WHEN the Operation audits the worktree
 - THEN the Module's outcome is `incomplete`
 - AND the audit violation is returned as host evidence
 
@@ -89,7 +89,7 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 - THEN the panel report has one blocking finding whose sources are `r1.1` and `r2.1`, reported by 2 reviewers, and the rejection of `r2.2`
 - AND each reviewer's own findings are in the result, labelled
 - AND A's outcome and the verdict are `changes_required`
-- BUT no file of the task worktree changes
+- BUT no file of the workspace changes
 
 ### scenario.spec-review.panel-worker-models — Each reviewer runs on the model of its worker id
 
@@ -102,7 +102,7 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 
 - GIVEN a panel whose reviewers report `r1.1` and `r2.1`
 - AND a chair whose first report accounts only for `r1.1`
-- WHEN the host checks the report
+- WHEN the Operation checks the report
 - THEN the chair runs a second time with its previous report and the problem "r2.1 is not accounted for"
 - AND the second report, which accounts for both, is the panel report
 

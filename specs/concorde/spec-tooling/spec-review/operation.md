@@ -1,42 +1,46 @@
 # Spec review Operation
 
-The exact host sequence, arguments and result of the `spec_review` Operation of
+The exact step sequence, arguments and result of the `spec_review` Operation of
 [Spec review](module.md).
 
 ## Invocation
 
 ```text
-concorde run spec_review [--task <task-id>] --modules <id>[,<id>...] [--check-findings]
+concorde run spec_review [--modules <id>[,<id>...]] [--check-findings] [--force]
 ```
 
-`--modules` names one or more registered Modules of the task worktree. `--check-findings` adds the
-checker. Without `--task` the review runs [without a task](../../operations/module.md#concept.operations.no-task) on the primary worktree and
-judges the Specs as merged there. The reviewer and the checker
+The review works on the worktree it starts in. With a workspace binding there, it reviews that
+[workspace](../../execution/module.md#concept.execution.workspace), and `--modules` defaults to the
+binding's Modules. Without one it is an
+[unbound run](../../execution/module.md#concept.execution.unbound-run), for instance on the primary
+worktree, and judges the Specs as merged there. `--modules` names one or more registered Modules of
+that worktree. `--check-findings` adds the checker, and `--force` reviews a Module again although
+its review memory already judged its current context identity. The reviewer and the checker
 are the Operation's two workers, with the [worker
-ids](../../agents/workers/module.md#concept.workers.worker-id) `reviewer` and `checker`, so the
+ids](../../execution/workers/module.md#concept.workers.worker-id) `reviewer` and `checker`, so the
 worker model configuration may give each its own backend, model and level. The Operation takes no other argument and needs no user consent.
 
-## Host sequence {#host-sequence}
+## Step sequence {#host-sequence}
 
-The host runs these steps for each named Module. Modules are independent and none of their
+The Operation runs these steps for each named Module. Modules are independent and none of their
 reviewers writes, so their reviews could run at the same time; this version runs them one after
-another. Step 1 validates the task worktree once for all Modules.
+another. Step 1 validates the worktree once for all Modules.
 
 | # | Step | Actor | On failure |
 | --- | --- | --- | --- |
-| 1 | Load the task worktree's Specs and validate the Module | host (Spec core) | loading error: the Operation fails; structural error in the Module's own documents or about the Module or a node it defines: the Module is `incomplete`, with the findings as host evidence |
-| 2 | Compute the `review-spec` grant for the Module with the task worktree as root and freeze it with its context identity | host (Spec core) | the Module is `incomplete` |
-| 3 | Read the Module's review memory; generate the reviewer's settings, tool list and brief from the grant, the Reviewer brief and the memory's open findings | host (Workers) | an unusable memory: the Module is `incomplete` (`review_memory_unusable`); otherwise the Operation fails |
-| 4 | Launch the reviewer and wait for its worker result with findings; there is one round and no resume | host (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
-| 5 | Audit that the worktree has no change | host (Workers) | any change: the Module is `incomplete`, with the audit violations as host evidence |
-| 6 | With `--check-findings` and at least one finding, launch the checker under the same grant with the reviewer's numbered findings as task material, then audit again | host (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
-| 7 | Normalize the findings, merge them and the resolutions into the review memory (written only inside a task), and derive the Module's outcome from the memory's open findings | host | a finding whose path is not in the task worktree: the Module is `incomplete`, with `invalid-output` evidence |
-| 8 | Write a run record per worker | host (Workers) | the Operation fails |
+| 1 | Load the workspace's Specs and validate the Module | Operation (Spec core) | loading error: the Operation fails; structural error in the Module's own documents or about the Module or a node it defines: the Module is `incomplete`, with the findings as host evidence |
+| 2 | Compute the `review-spec` grant for the Module with the workspace as root and freeze it with its context identity | Operation (Spec core) | the Module is `incomplete` |
+| 3 | Read the Module's review memory; generate the reviewer's settings, tool list and brief from the grant, the Reviewer brief and the memory's open findings | Operation (Workers) | an unusable memory: the Module is `incomplete` (`review_memory_unusable`); otherwise the Operation fails |
+| 4 | Launch the reviewer and wait for its worker result with findings; there is one round and no resume | Operation (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
+| 5 | Audit that the worktree has no change | Operation (Workers) | any change: the Module is `incomplete`, with the audit violations as host evidence |
+| 6 | With `--check-findings` and at least one finding, launch the checker under the same grant with the reviewer's numbered findings as task material, then audit again | Operation (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
+| 7 | Normalize the findings, merge them and the resolutions into the review memory (written only by a bound run), and derive the Module's outcome from the memory's open findings | Operation | a finding whose path is not in the workspace: the Module is `incomplete`, with `invalid-output` evidence |
+| 8 | Write a run record per worker | Operation (Workers) | the Operation fails |
 
-After every Module is done, the host derives the verdict and returns the Operation result. No step
+After every Module is done, the Operation derives the verdict and returns the run's output. No step
 runs configured checks and no step resumes a worker, because a review changes no file.
 
-Normalizing a finding means: an absolute path inside the task worktree becomes relative to it;
+Normalizing a finding means: an absolute path inside the workspace becomes relative to it;
 `module` becomes the Module that owns the cited document when the path is a registered document or
 its metadata file; and a `blocking` finding whose path is not one of the reviewed Module's own
 documents or their metadata files becomes `advisory`, with `finding-scope` host evidence naming it.
@@ -78,7 +82,7 @@ A finding is `{module, path, anchor, line, dimension, severity, problem, evidenc
 
 ## Review payload
 
-The Operation result carries this payload:
+The run result carries this payload as its `output`:
 
 ```concorde-contract
 {
@@ -558,7 +562,7 @@ The Operation result carries this payload:
       }
     }
   },
-  "semantics": "The review memory of one Module, .concorde/reviews/spec/<module>.json, tracked with the project: every finding the Spec reviews of the Module kept, each with a stable id f.<n> never reused, its content as last reported, status open or resolved, the runs that first and last reported or resolved it, and the resolution reason once resolved. Only a spec_review inside a task writes it, merging its review into it; a review without a task reads it. reviewed records the context identity of the Specs the last completed review judged and its run: while the Module's context identity is the same, a review is not run again unless forced. A behaviour or field change increments the version.",
+  "semantics": "The review memory of one Module, .concorde/reviews/spec/<module>.json, tracked with the project: every finding the Spec reviews of the Module kept, each with a stable id f.<n> never reused, its content as last reported, status open or resolved, the runs that first and last reported or resolved it, and the resolution reason once resolved. Only a spec_review in a bound workspace writes it, merging its review into it; an unbound review reads it. reviewed records the context identity of the Specs the last completed review judged and its run: while the Module's context identity is the same, a review is not run again unless forced. A behaviour or field change increments the version.",
   "example": {
     "schema_version": 1,
     "module": "module.checkout",
@@ -599,7 +603,7 @@ The Operation result carries this payload:
 }
 ```
 
-The host adds the Operation result's own evidence, each item naming the Module and worker it
+The Operation adds the run result's own evidence, each item naming the Module and worker it
 concerns: the grant and context identity of every worker, the audits, the transcript paths, the
 structural findings of step 1 (kind `structural`), the scope corrections of step 7 (kind
 `finding-scope`) and any unusable finding (kind `invalid-output`). The worker run identities are in

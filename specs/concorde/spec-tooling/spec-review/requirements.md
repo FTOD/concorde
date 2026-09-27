@@ -7,16 +7,16 @@ requirement belongs to the Module as a whole.
 
 ### req.spec-review.never-edits — Review changes no file but its memory
 
-Spec review SHALL NOT create, change or delete any file of the task worktree other than the reviewed Modules' review memories.
+Spec review SHALL NOT create, change or delete any file of the worktree it reviews other than the reviewed Modules' review memories.
 
 ### req.spec-review.memory — A repeated review builds on the memory
 
-A Spec review inside a task SHALL merge its findings into each reviewed Module's review memory, keeping every earlier finding it does not update or resolve open.
+A Spec review in a bound workspace SHALL merge its findings into each reviewed Module's review memory, keeping every earlier finding it does not update or resolve open.
 
 ### req.spec-review.review-spec-grant — Reviewers read under a review-spec grant
 
 Every reviewer, checker and chair SHALL run under the `review-spec` grant of exactly one
-reviewed Module, computed from the task worktree's Specs.
+reviewed Module, computed from the Specs of the worktree the run works on.
 
 ### req.spec-review.own-documents — Only the Module's own documents can block
 
@@ -33,14 +33,14 @@ one run rather than stopping at the first.
 
 A Spec review SHALL NOT launch a reviewer for a Module whose context identity is the one its review memory records as last reviewed, unless forced.
 
-### req.spec-review.host-verdict — The host derives the verdict
+### req.spec-review.host-verdict — The Operation derives the verdict
 
-The verdict of a Spec review or a Spec panel SHALL be derived by the host by the rule of that
+The verdict of a Spec review or a Spec panel SHALL be derived by the Operation by the rule of that
 Operation's payload contract, never taken from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
 
-The host SHALL NOT launch a reviewer for a Module whose Specs Spec core reports a structural error
+The Operation SHALL NOT launch a reviewer for a Module whose Specs Spec core reports a structural error
 for.
 
 ### req.spec-review.bound-verdict — The verdict names what was read
@@ -50,8 +50,8 @@ under.
 
 ### req.spec-review.claims-stay-claims — Worker claims stay claims
 
-The Operation result SHALL keep reviewer findings and checker statuses apart from the evidence the
-host produced itself.
+The run result SHALL keep reviewer findings and checker statuses apart from the evidence the
+Operation produced itself.
 
 ## Panel
 

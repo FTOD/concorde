@@ -22,16 +22,18 @@ from __future__ import annotations
 import argparse
 import json
 
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
     Provider,
     RunContext,
     Stop,
     evidence,
-    load_prompt,
-    protocol_guide,
     spec_cause,
     spec_finding,
+)
+from ..operations.provider import (
+    load_prompt,
+    protocol_guide,
     spec_repair_prompt,
 )
 from ..spec.repository_base import SpecError
@@ -99,7 +101,9 @@ def baseline(ctx: RunContext):
             explanation="a code_to_spec worker edits Spec documents under a grant computed from "
             "loadable Specs; repairing the configuration or registry is outside it",
             evidence=[evidence("spec-load", ctx.worktree.as_posix(), message)],
-            options=["run validate for the task to see why the Specs do not load"],
+            options=[
+                "run concorde task-validation in the workspace to see why the Specs do not load"
+            ],
         )
     ctx.state["baseline"] = {key(f) for f in result.findings if f.severity == "error"}
     ctx.state["baseline_errors"] = [f for f in result.findings if f.severity == "error"]
@@ -132,7 +136,9 @@ def prepare(ctx: RunContext):
             reason="scope",
             explanation="the host prepares documents only in loadable Specs",
             causes=[spec_cause(error)],
-            options=["run validate for the task to see why the Specs do not load"],
+            options=[
+                "run concorde task-validation in the workspace to see why the Specs do not load"
+            ],
         )
     unknown = [module for module in ctx.modules if module not in repository.modules]
     if unknown:
@@ -302,7 +308,7 @@ def describe(ctx: RunContext):
         # No worker ran (the grant or the model could not be settled): nothing to observe.
         ctx.state["unobserved"] = True
         return Continue(evidence=outcome.evidence)
-    record = read_record(ctx.primary, ctx.worker_runs[-1])
+    record = read_record(ctx.records, ctx.worker_runs[-1])
     ctx.state["record"] = record
     ctx.state["unobserved"] = any(
         (item.get("audit") or {}).get("verdict") == "violation"

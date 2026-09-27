@@ -87,7 +87,7 @@ class WorkerProject:
                 "flag = pathlib.Path('src/a/flag')\n"
                 "sys.exit(0 if not flag.exists() or flag.read_text() == 'ok' else 1)\n"
             ),
-            ".gitignore": ".concorde/runs/\n.concorde/worker-models.json\n.claude/worktrees/\n__pycache__/\n",
+            ".gitignore": ".concorde/runs/\n.concorde/workspace.json\n.concorde/worker-models.json\n.claude/worktrees/\n__pycache__/\n",
         }.items():
             (self.root / path).parent.mkdir(parents=True, exist_ok=True)
             (self.root / path).write_text(content)
@@ -597,7 +597,7 @@ class WorkerRunTests(unittest.TestCase):
 
     def test_the_result_schema_is_the_contract(self):
         text = (
-            REPOSITORY_ROOT / "specs/concorde/agents/workers/contracts.md"
+            REPOSITORY_ROOT / "specs/concorde/execution/workers/contracts.md"
         ).read_text()
         fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
         self.assertEqual(json.loads(fence)["schema"], WORKER_RESULT_SCHEMA)

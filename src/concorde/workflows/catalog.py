@@ -25,8 +25,8 @@ WORKFLOWS: dict[str, dict] = {
             "code_to_spec per Module, spec review, validation and delivery, in one task"
         ),
         "when": (
-            "After installing and initializing Concorde in an existing codebase, in a task bound "
-            "to the Module to describe, usually the root"
+            "After installing and initializing Concorde in an existing codebase, in the worktree "
+            "of a task bound to the Module to describe, usually the root"
         ),
         "phases": ["Survey", "Scaffold", "Describe", "Review", "Deliver"],
     },

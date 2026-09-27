@@ -1,8 +1,8 @@
 """The pure part of the pi run view, ``pi_runs.ts``, run by Node against progress files.
 
 The extension around it (``pi_extension.ts``) needs a pi session and is exercised by hand in pi;
-these tests cover what it shows: which worker belongs to which Operation run, the FleetView state
-of each run, and which ``concorde`` command it starts.
+these tests cover what it shows: which worker belongs to which run of an Operation or recorded
+command, the FleetView state of each run, and which ``concorde`` command it starts.
 """
 
 from __future__ import annotations
@@ -21,14 +21,14 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 SOURCE = REPOSITORY_ROOT / "src/concorde/main_session/pi_runs.ts"
 PROBE = """
 import {
-  operationRuns, workersOf, view, concordeCommand, alive, taskWorktree, resultText,
+  recordedRuns, workersOf, view, concordeCommand, alive, taskWorktree, resultText,
 } from %(source)s;
 const root = %(root)s;
 const out = {};
-for (const operation of operationRuns(root)) {
-  const workers = workersOf(root, operation);
-  const shown = view(root, operation, workers, %(alive)s[operation.run_id] ?? true);
-  out[operation.run_id] = {
+for (const run of recordedRuns(root)) {
+  const workers = workersOf(root, run);
+  const shown = view(root, run, workers, %(alive)s[run.run_id] ?? true);
+  out[run.run_id] = {
     workers: workers.map((worker) => worker.run_id),
     view: shown,
     result: resultText(shown),
@@ -46,8 +46,8 @@ def operation(run_id, **fields):
     value = {
         "kind": "operation",
         "run_id": run_id,
-        "operation": "implement",
-        "task": "t1",
+        "name": "implement",
+        "workspace": "t1",
         "modules": ["module.a"],
         "phase": "running",
         "step": "run_implementer",
@@ -108,6 +108,7 @@ class RunViewTests(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
         return json.loads(completed.stdout)
@@ -133,6 +134,44 @@ class RunViewTests(unittest.TestCase):
         self.assertEqual(
             (self.runs / "r-1/result.json").as_posix(), shown["reportPath"]
         )
+
+    @verifies("scenario.main-session.pi-run-view")
+    def test_recorded_commands_and_unbound_runs_are_shown(self):
+        self.status(
+            operation(
+                "r-command",
+                kind="command",
+                name="task-validation",
+                step="run_checks",
+                host_pid=300,
+            )
+        )
+        self.status(
+            operation(
+                "r-unbound",
+                name="understand",
+                workspace=None,
+                phase="finished",
+                status="ok",
+                summary="Answered.",
+                host_pid=301,
+            )
+        )
+        self.status(worker("w-1"))
+        out = self.probe()
+        command = out["r-command"]
+        self.assertEqual([], command["workers"])
+        self.assertEqual(
+            ("running", "t1 · task-validation", "run_checks"),
+            (
+                command["view"]["state"],
+                command["view"]["label"],
+                command["view"]["currentAction"],
+            ),
+        )
+        self.assertEqual("unbound · understand", out["r-unbound"]["view"]["label"])
+        self.assertEqual("completed", out["r-unbound"]["view"]["state"])
+        self.assertNotIn("w-1", out)
 
     @verifies("scenario.main-session.pi-run-view")
     def test_finished_and_abandoned_runs(self):
@@ -176,12 +215,13 @@ class RunViewTests(unittest.TestCase):
         result_file = (self.runs / "r-blocked/result.json").as_posix()
         self.assertEqual(
             "Concorde run r-blocked (t1 · implement) finished blocked. blocked: Spec gap.\n"
-            + "Read the Operation result: "
+            + "Read the run result: "
             + result_file,
             out["r-blocked"]["result"],
         )
         self.assertIn(
-            "finished failed. failed: the Operation host", out["r-dead"]["result"]
+            "finished failed. failed: the runner (process 103) ended without finishing",
+            out["r-dead"]["result"],
         )
         self.assertTrue(out["r-dead"]["view"]["finished"])
         self.assertIn("process 103", out["r-dead"]["view"]["preview"])
@@ -295,6 +335,7 @@ class TaskSessionViewTests(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
         return json.loads(completed.stdout)

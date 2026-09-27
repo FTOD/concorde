@@ -21,28 +21,16 @@
         "meaning": "#contains-spec-tooling"
       },
       {
-        "target": "module.agents",
-        "meaning": "#contains-agents"
+        "target": "module.coordination",
+        "meaning": "#contains-coordination"
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#contains-execution"
       },
       {
         "target": "module.harness",
         "meaning": "#contains-harness"
-      },
-      {
-        "target": "module.tools",
-        "meaning": "#contains-tools"
-      },
-      {
-        "target": "module.tasks",
-        "meaning": "#contains-tasks"
-      },
-      {
-        "target": "module.workflows",
-        "meaning": "#contains-workflows"
-      },
-      {
-        "target": "module.operations",
-        "meaning": "#contains-operations"
       },
       {
         "target": "module.issues",
@@ -89,7 +77,9 @@
       "type": "realization",
       "title": "User documents",
       "meaning": "#realization.concorde.user-documents",
-      "entries": ["docs/"],
+      "entries": [
+        "docs/"
+      ],
       "pending": []
     },
     {
@@ -124,7 +114,9 @@
       "type": "realization",
       "title": "Acceptance tests",
       "meaning": "#realization.concorde.acceptance-tests",
-      "entries": ["tests/concorde/acceptance/"],
+      "entries": [
+        "tests/concorde/acceptance/"
+      ],
       "pending": []
     },
     {
@@ -132,7 +124,10 @@
       "type": "realization",
       "title": "Error chain code",
       "meaning": "#realization.concorde.error-chain",
-      "entries": ["src/concorde/errors.py", "tests/concorde/test_errors.py"],
+      "entries": [
+        "src/concorde/errors.py",
+        "tests/concorde/test_errors.py"
+      ],
       "pending": []
     }
   ],

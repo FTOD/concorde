@@ -316,8 +316,8 @@ validate_repository(root, target_id=None, package_root=None, *, registry_bytes=N
                     document_overrides=None) -> ToolResult
 ```
 
-`python3 scripts/concorde.py validate [target]` prints the same result as JSON. The result has
-`tool: "validate"`, `target` (the requested Module or `.`), `status` (`success` or `invalid`),
+`python3 scripts/concorde.py spec-validation [target]` prints the same result as JSON. The result has
+`tool: "spec-validation"`, `target` (the requested Module or `.`), `status` (`success` or `invalid`),
 `artifacts` (the assessed Spec member paths), `findings` and `result`.
 
 A finding has `rule_id`, `severity` (`error` or `warning`), `source` (a project-relative path),

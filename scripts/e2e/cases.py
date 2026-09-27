@@ -31,10 +31,16 @@ REPAIR_INTENT = (
 )
 
 
+# The recorded commands, which run as ``concorde <command>``; every other name is an Operation.
+COMMANDS = ("task-validation", "delivery", "scaffold")
+
+
 def concorde_run(concorde: str, worktree: Path, argv: list[str]) -> dict:
-    """One Operation run in ``worktree``; its result, whatever its exit status."""
+    """One Operation or recorded command run in ``worktree``, whose workspace binding it works
+    on; its result, whatever its exit status."""
+    prefix = [] if argv[0] in COMMANDS else ["run"]
     done = subprocess.run(
-        [concorde, "run", *argv],
+        [concorde, *prefix, *argv],
         cwd=worktree,
         capture_output=True,
         text=True,
@@ -45,7 +51,7 @@ def concorde_run(concorde: str, worktree: Path, argv: list[str]) -> dict:
     except ValueError as error:
         raise E2EError(
             "unreadable_result",
-            f"`concorde run {' '.join(argv)}` in {worktree} printed no JSON result "
+            f"`concorde {' '.join(prefix + argv)}` in {worktree} printed no JSON result "
             f"(exit {done.returncode})",
             stdout=done.stdout[-3000:],
             stderr=done.stderr[-3000:],
@@ -103,7 +109,7 @@ def repair_specs(
     def stopped(name: str) -> dict:
         return {"task": task, "modules": modules, "steps": steps, "stopped_at": name}
 
-    review = step("spec_review", ["spec_review", "--task", task, "--modules", bound])
+    review = step("spec_review", ["spec_review", "--modules", bound])
     if review is None:
         return stopped("spec_review")
     if (review.get("output") or {}).get("verdict") != "accepted":
@@ -112,8 +118,6 @@ def repair_specs(
                 "specify",
                 [
                     "specify",
-                    "--task",
-                    task,
                     "--modules",
                     bound,
                     "--input",
@@ -125,15 +129,10 @@ def repair_specs(
             is None
         ):
             return stopped("specify")
-        if (
-            step(
-                "spec_review_again", ["spec_review", "--task", task, "--modules", bound]
-            )
-            is None
-        ):
+        if step("spec_review_again", ["spec_review", "--modules", bound]) is None:
             return stopped("spec_review_again")
-    for name in ("validate", "delivery"):
-        if step(name, [name, "--task", task]) is None:
+    for name in ("task-validation", "delivery"):
+        if step(name, [name]) is None:
             return stopped(name)
     run([concorde, "task", "merge", task], cwd=project)
     return {"task": task, "modules": modules, "steps": steps, "stopped_at": None}

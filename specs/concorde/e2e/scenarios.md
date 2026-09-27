@@ -25,3 +25,5 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN the `claude -p` session has `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` set to `0`
 - AND its command line grants the workflow and its step and report commands
 - AND the workflow's arguments, restart labels included, reach the session's prompt
+- AND the prompt places the session in the task's worktree and has it report with `concorde workflow report`
+- BUT the workflow's arguments name no task

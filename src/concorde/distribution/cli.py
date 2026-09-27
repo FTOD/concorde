@@ -31,7 +31,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--project-root", default=".")
     subparsers = parser.add_subparsers(dest="tool", required=True, parser_class=_Parser)
 
-    validate = subparsers.add_parser("validate")
+    validate = subparsers.add_parser("spec-validation")
     validate.add_argument("target", nargs="?")
     validate.add_argument("--format", choices=["json"], default="json")
 
@@ -295,7 +295,7 @@ def with_update_state(root: Path, result):
                 UPDATE_STATE,
                 f"Concorde was updated {versions} and the project has not validated since: "
                 "it is Concorde unvalidated until the other findings are repaired",
-                "Repair the other findings and run `concorde validate` again.",
+                "Repair the other findings and run `concorde spec-validation` again.",
             ),
         ),
     )
@@ -440,7 +440,7 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
 
 TOOLS = frozenset(
     {
-        "validate",
+        "spec-validation",
         "registry",
         "docsite",
         "grant",
@@ -462,7 +462,8 @@ def _failed(tool: str, error: BaseException) -> dict:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
     words = list(sys.argv[1:] if argv is None else argv)
-    # Tasks and Operations own their command lines and output; they print no envelope.
+    # Tasks, Execution and the Workers configuration own their command lines and output; they
+    # print no Spec tooling envelope.
     if words and words[0] == "task":
         from ..tasks.cli import main as task_main
 
@@ -477,12 +478,20 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         return workflow_main(words[1:])
     if words and words[0] == "run":
-        from ..operations.host import main as run_main
+        from ..execution.runner import run_main
 
-        return run_main(words[1:])
+        return run_main("operation", None, words[1:])
+    if words and words[0] in ("task-validation", "delivery", "scaffold"):
+        from ..execution.runner import run_main
+
+        return run_main("command", words[0], words[1:])
+    if words and words[0] == "configure-workers":
+        from ..harness.configure import main as configure_main
+
+        return configure_main(words[1:])
     if words and words[0] == "update":
         return update_main(words[1:])
-    requested = next((word for word in words if word in TOOLS), "validate")
+    requested = next((word for word in words if word in TOOLS), "spec-validation")
     arguments: argparse.Namespace | None = None
     try:
         try:
@@ -510,6 +519,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         payload = tool_envelope(result)
     except Exception as error:  # noqa: BLE001 -- command boundary always returns the normative envelope
         tool = arguments.tool if arguments is not None else requested
-        payload = _failed(tool if tool in TOOLS else "validate", error)
+        payload = _failed(tool if tool in TOOLS else "spec-validation", error)
     sys.stdout.write(canonical_json(payload))
     return exit_code(payload["status"])

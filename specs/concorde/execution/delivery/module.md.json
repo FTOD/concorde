@@ -1,0 +1,95 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.delivery.module",
+    "owner": "module.delivery",
+    "role": "module"
+  },
+  "module": {
+    "title": "Delivery",
+    "owns": [
+      "specs/concorde/execution/delivery/module.md",
+      "specs/concorde/execution/delivery/contracts.md",
+      "specs/concorde/execution/delivery/requirements.md",
+      "specs/concorde/execution/delivery/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.recorded-command",
+          "concept.execution.run-result",
+          "concept.execution.run-store",
+          "concept.execution.workspace-binding",
+          "concept.execution.workspace-lock",
+          "req.execution.workspace-lock",
+          "contract.execution.run-result",
+          "contract.execution.workspace-binding"
+        ]
+      },
+      {
+        "target": "module.validation",
+        "meaning": "#uses-validation"
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.delivery.delivery-commit",
+      "type": "concept",
+      "title": "Delivery commit",
+      "meaning": "#concept.delivery.delivery-commit"
+    },
+    {
+      "id": "concept.delivery.evidence-bundle",
+      "type": "concept",
+      "title": "Evidence bundle",
+      "meaning": "#concept.delivery.evidence-bundle"
+    },
+    {
+      "id": "realization.delivery.command",
+      "type": "realization",
+      "title": "Delivery command",
+      "meaning": "#realization.delivery.command",
+      "entries": [
+        "src/concorde/delivery/",
+        "tests/concorde/delivery/"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.delivery.command",
+      "verb": "creates",
+      "target": "concept.delivery.delivery-commit"
+    },
+    {
+      "type": "relates",
+      "source": "concept.delivery.delivery-commit",
+      "verb": "carries",
+      "target": "concept.delivery.evidence-bundle"
+    }
+  ],
+  "extensions": {}
+}

@@ -18,7 +18,7 @@ are in, which the installer placed (in Concorde's own source checkout it is
 
 Talk with the developer about the state of the project and answer questions from the Specs under
 `specs/` (start at the root Module's `module.md` and the shared vocabulary). Agree the direction
-and the large plan before changing anything. `concorde validate` checks the Specs' structure;
+and the large plan before changing anything. `concorde spec-validation` checks the Specs' structure;
 `concorde grant --modules <ids> --type <task type>` shows what a worker of a task type could read
 and write.
 
@@ -51,64 +51,76 @@ Never change Specs or code in the primary worktree.
 
 @prompts/main-session/common/in-task.md
 
-Start each Operation in the background; you are woken when it ends:
+`concorde task open` binds the task worktree as the task's **workspace**: it writes
+`.concorde/workspace.json` there, naming the goal, the Modules, the branch and the base commit.
+Everything that works on a task's files, Operations, commands and workflows, reads that binding
+from the worktree it starts in and never names the task, so run it inside the task worktree. Two
+kinds of run work on a workspace: an **Operation** (`concorde run <operation>`) launches AI
+workers under a grant; a **recorded command** (`concorde task-validation`, `concorde delivery`,
+`concorde scaffold`) is deterministic and launches none. Both are recorded the same way, and one
+workspace runs one of them at a time: a second is refused with `workspace_busy`.
 
-- In Claude Code, run `concorde run` from the task worktree in background Bash
-  (`run_in_background`).
-- In pi, call the `concorde_run` tool with the Operation, the task and the further arguments. It
-  runs the task worktree's own `concorde` there, returns at once with the run identity, shows the
-  run and its worker's progress in the run view (pi-subagents' FleetView, and `/concorde`), and
-  wakes you with the result; do not poll it.
+Start each run in the background; you are woken when it ends:
 
-Each run prints or reports one JSON Operation result and saves it as
+- In Claude Code, run it from the task worktree in background Bash (`run_in_background`).
+- In pi, call the `concorde_run` tool with the Operation or command, the task and the further
+  arguments. It runs the task worktree's own `concorde` there, returns at once with the run
+  identity, shows the run and its worker's progress in the run view (pi-subagents' FleetView, and
+  `/concorde`), and wakes you with the result; do not poll it.
+
+Each run prints or reports one JSON run result and saves it as
 `.concorde/runs/<run-id>/result.json` of the primary worktree.
 
-Some Operations also run without a task: `understand`, `survey`, `spec_review`, `code_review`
-(with `--base`) and `configure_workers`. Without `--task` they run only from the primary worktree and
-work on it, with the Modules you name in `--modules`; their result has `task`
-null, and they change no Spec or code, since a run without a task launches only reading workers.
-Use them for a question or a review that does not justify a task, such as understanding a Module
-before you agree a change with the developer. An `--input` of such a run must be a run without a
-task too. Inside a task's worktree, always pass `--task`: a run without it is refused there
-(`task_worktree_without_task`), because it would bypass the task's one-run-at-a-time lock.
-
 ```bash
-concorde run understand --task <task> --goal "<question>" [--plan]
-concorde run specify    --task <task> --intent "<what the Spec should say>"
-concorde run implement  --task <task> --goal "<what to build>" [--input <run-id>]
-concorde run test       --task <task>
-concorde run spec_review --task <task>
-concorde run code_review --task <task>
-concorde run validate   --task <task>
-concorde run delivery   --task <task>
+concorde run understand  --goal "<question>" [--plan]
+concorde run specify     --intent "<what the Spec should say>"
+concorde run implement   --goal "<what to build>" [--input <run-id>]
+concorde run test
+concorde run spec_review
+concorde run code_review
+concorde task-validation
+concorde delivery
 ```
 
 A typical order is `understand` to assess and plan, `specify` when the Spec must change first,
-`implement` and `test`, the reviews when the change deserves them, then `validate` and `delivery`.
-Verified steps may already be committed on the task branch; `delivery` validates the whole task
-again itself, so `validate` before it is a preview of what would block.
-`--input <run-id>` passes the output of an earlier `ok` run of the same task, such as a plan, to
-the next worker. In the primary worktree you may do housekeeping that changes no Spec meaning and
+`implement` and `test`, the reviews when the change deserves them, then `task-validation` and
+`delivery`. Verified steps may already be committed on the task branch; `delivery` validates the
+whole workspace again itself, so `task-validation` before it is a preview of what would block.
+`--input <run-id>` passes the output of an earlier `ok` run of the same workspace, such as a plan,
+to the next run.
+
+Some Operations also run **unbound**, in a worktree without a binding such as the primary
+worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`).
+They work on that worktree with the Modules you name in `--modules`; their result has `workspace`
+null, and they change no Spec or code, since an unbound run launches only reading workers. Use
+them for a question or a review that does not justify a task, such as understanding a Module before
+you agree a change with the developer. An `--input` of such a run must be unbound too. In the primary worktree you may do housekeeping that changes no Spec meaning and
 no code behaviour directly, such as `concorde registry --write`.
 
 ## Workflows
 
 A task that follows a known procedure runs as a **workflow**: a preset task whose Operations run
-in a fixed order, one at a time, ending with one workflow result. Open the task as usual, then
-start the workflow from the primary worktree and stay there while it runs: in Claude Code the
-installed workflow `/concorde-<name>` (the Workflow tool with that name), in pi the `subagent` tool
-with `workflowScriptPath: ".concorde/workflows/pi/<name>.js"`. Both take `args`:
+in a fixed order, one at a time, ending with one workflow result. Like every run it works on the
+workspace of the worktree it starts in and never names the task. Open the task as usual, then start
+the workflow inside the task worktree: in Claude Code enter the worktree (EnterWorktree) and run the
+installed workflow `/concorde-<name>` (the Workflow tool with that name); in pi call the `subagent`
+tool with `workflowScriptPath` set to the primary worktree's `.concorde/workflows/pi/<name>.js`
+(an absolute path) and `cwd` set to the task worktree. Both take `args`:
 
 ```json
-{"task": "<task>", "module": "<module>", "mode": "interactive", "answers": {}, "retry": [], "restart": {}}
+{"module": "<module>", "mode": "interactive", "answers": {}, "retry": [], "restart": {}}
 ```
 
 Ask the developer which **mode** to use unless they already said: `interactive` when they are
 present (the workflow ends at every point that needs them), `no-ask` when they want the result
 later (the workflow decides those points itself and reports every decision at the end).
 
-The workflow ends with `concorde workflow report`, saved as `.concorde/tasks/<task>.workflow.json`
-and appended to the decision log; read that file rather than what the workflow's agents relayed.
+The workflow ends with `concorde workflow report`, which prints the workflow result and saves it
+beside the workspace's workflow record, `.concorde/runs/workflows/<task>/reports/<n>.json` of the
+primary worktree, with a Markdown rendering `<n>.md`; read that result rather than what the
+workflow's agents relayed. The workflow keeps its record apart from the task: copy the rendering's
+decisions and problems into the task's decision log yourself, since in `no-ask` mode they are
+decisions taken without the developer.
 Treat it like an Operation result: read every problem's chain, and merge the task when `delivery`
 ended `ok`. When its status is `awaiting_decision`, put every point in `pending` to the developer
 at once, with its options and recommendation (AskUserQuestion in Claude Code), and start the same
@@ -118,8 +130,8 @@ workflow again with `answers` mapping each step's base key (such as `survey` or
 finished are not run again. When a step failed, repair the cause and start it again with its base
 key in `retry`; everything after it runs again. To run a step that ended `ok` once more, for
 example after resetting the task worktree by hand, give `restart` a new label for its base key,
-such as `{"scaffold": "2"}`, and keep that label on later relaunches. `concorde workflow report --task <task>` rebuilds
-the result at any time.
+such as `{"scaffold": "2"}`, and keep that label on later relaunches. `concorde workflow report`,
+run in the task worktree, rebuilds the result at any time.
 
 **Brownfield.** Concorde works Spec first. Only when Concorde was just installed and initialized in
 a project whose code came before its Specs, describe that code with the `brownfield` workflow: open
@@ -236,12 +248,12 @@ When `delivery` has committed a task's change with its evidence on the task bran
 task worktree if you are in it and run `concorde task merge <task>` from the primary worktree
 without asking the developer for authorization. Never merge a task with `git merge` yourself:
 other main sessions may be merging into the same primary worktree, and `concorde task merge` takes
-the merge lock that lets only one merge run at a time. It merges the branch, runs `concorde validate`
-there (or exactly the `--check` commands you name, for a project that must build first), undoes the
+the merge lock that lets only one merge run at a time. It merges the branch, runs
+`concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first), undoes the
 merge if a check fails, and closes the task as merged. When it fails with `merge_busy`, another
 session is merging: run it again; the lock is free the moment that session's command ends. When it
 fails with `merge_conflict`, go back into the task worktree, merge the primary branch into the task
-branch, resolve the conflicts, run `validate` and `delivery` again, and merge again. A check that
+branch, resolve the conflicts, run `task-validation` and `delivery` again, and merge again. A check that
 fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to
 discard someone's change.
 
@@ -296,7 +308,7 @@ Resolve Git conflicts in Issue records in the task worktree while merging the pr
 it. Preserve accepted reports unchanged and document the decision about competing dispositions,
 retaining their evidence. Never concatenate incompatible closes or invent reopenings to make the
 history alternate; escalate decisions beyond the task's scope. Run `concorde issues check`
-explicitly on the resolved records before `validate` and `delivery`. Structural Spec validation
+explicitly on the resolved records before `task-validation` and `delivery`. Structural Spec validation
 alone does not run the store check, and a passing store check does not prove the closure is
 justified.
 
@@ -313,29 +325,30 @@ not inherited. Git ignores the file. `concorde task open` copies the primary wor
 the new task worktree, so a task keeps the configuration it started with, and a later change in the
 primary worktree never reaches it. Without a file, every worker runs on pi with pi's default model.
 
-The `configure_workers` Operation lists and changes it. It needs no task:
+The `concorde configure-workers` command lists and changes the file of the worktree it runs in.
+It launches no worker and records no run:
 
 ```bash
-concorde run configure_workers [--task <task>] [--candidates claude|pi]   # candidates and every worker's choice
-concorde run configure_workers [--task <task>] [--operation <op> [--worker <id>]] \
+concorde configure-workers [--candidates claude|pi]   # candidates and every worker's choice
+concorde configure-workers [--operation <op> [--worker <id>]] \
   [--backend claude|pi] [--model <model>] [--reasoning <level>] [--allow-unlisted]
-concorde run configure_workers [--task <task>] [--operation <op> [--worker <id>]] --unset
+concorde configure-workers [--operation <op> [--worker <id>]] --unset
 ```
 
-Change worker models only when the developer asks. Without `--task` it runs in the primary
-worktree and changes its file, which the tasks you open from now on inherit; pass `--task <task>` only
-when the developer asks to change a task that already exists, and only that task's copy changes.
+Change worker models only when the developer asks. Run it in the primary worktree to change the
+file the tasks you open from now on inherit; run it in a task worktree only when the developer asks
+to change a task that already exists, and only that worktree's copy changes.
 Let the developer make the choice:
 
 - In pi, call the `concorde_configure_workers` tool (the developer can also type
   `/concorde-models`). It opens a picker in which the developer chooses, for every worker or one
   worker by its id, a model from those pi lists and a reasoning level, and it tells you what
   changed.
-- In Claude Code, run `concorde run configure_workers` and ask with the AskUserQuestion tool: first
+- In Claude Code, run `concorde configure-workers` and ask with the AskUserQuestion tool: first
   the scope (every worker, or an Operation's worker id from the output's `effective`), then the
   model, then the reasoning level from the model's `levels`. Offer the listed models as options,
   and mention that a full model name can be given as a free-text answer. A model pi's listing does
-  not show needs `--allow-unlisted`. Apply each answer with `configure_workers` and show the
+  not show needs `--allow-unlisted`. Apply each answer with `configure-workers` and show the
   developer the resulting `effective` table.
 
 When the developer asks to run some workers on Claude Code, set it with `--backend claude` on the

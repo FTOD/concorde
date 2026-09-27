@@ -96,15 +96,16 @@ Rooting at one worktree keeps answers honest across concurrent tasks: a branch m
 pending file or a `uses` the primary lacks, and only its own server sees it. The running Concorde
 package must still carry the Protocol the root binds, or calls fail with `protocol_mismatch`.
 
-Grants are frozen by the Operation host, never the server or a worker: the host calls Spec core
-with the task worktree as root and writes the result into the worker's launch configuration, so
+Grants are frozen by the Operation that launches a worker, never the server or the worker: the
+Operation calls Spec core with its workspace as root and writes the result into the worker's launch
+configuration, so
 `boundary` is planning information only, never an authorization. Workers launch with an empty MCP
 configuration, so no worker can reach the server, request a different grant, or learn more than its
 brief tells it — querying it from review workers is future work.
 
 The server is read-only by construction — no tool writes, regenerates the registry, confirms
-pending entries, or opens a network listener — and `validate` success is evidence about structure
-only.
+pending entries, or opens a network listener — and success of its `validate` tool is evidence
+about structure only.
 
 ### Around it
 

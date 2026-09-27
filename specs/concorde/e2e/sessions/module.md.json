@@ -15,11 +15,14 @@
     "contains": [],
     "uses": [
       {
-        "target": "module.operations",
-        "meaning": "#uses-operations",
+        "target": "module.execution",
+        "meaning": "#uses-execution",
         "relies_on": [
-          "concept.operations.progress-file",
-          "concept.operations.result"
+          "concept.execution.run",
+          "concept.execution.progress-file",
+          "concept.execution.run-result",
+          "concept.execution.run-store",
+          "concept.execution.workspace-binding"
         ]
       }
     ],

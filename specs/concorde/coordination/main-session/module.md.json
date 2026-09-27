@@ -1,0 +1,215 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.main-session.module",
+    "owner": "module.main-session",
+    "role": "module"
+  },
+  "module": {
+    "title": "Main session",
+    "owns": [
+      "specs/concorde/coordination/main-session/module.md",
+      "specs/concorde/coordination/main-session/requirements.md",
+      "specs/concorde/coordination/main-session/scenarios.md"
+    ],
+    "contains": [],
+    "uses": [
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.workspace-binding",
+          "concept.execution.recorded-command",
+          "concept.execution.run-result",
+          "concept.execution.unbound-run",
+          "concept.execution.progress-file",
+          "concept.execution.runner"
+        ]
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#uses-operations",
+        "relies_on": [
+          "concept.operations.operation"
+        ]
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#uses-workers",
+        "relies_on": [
+          "concept.workers.progress-file",
+          "concept.workers.model-configuration"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.tasks.task",
+          "concept.tasks.decision-log"
+        ]
+      },
+      {
+        "target": "module.task-session",
+        "meaning": "#uses-task-session",
+        "relies_on": [
+          "concept.task-session.round"
+        ]
+      },
+      {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows"
+      },
+      {
+        "target": "module.issues",
+        "meaning": "#uses-issues",
+        "relies_on": [
+          "concept.issues.issue",
+          "concept.issues.status",
+          "concept.issues.revision",
+          "contract.issues.report",
+          "contract.issues.receipt"
+        ]
+      },
+      {
+        "target": "module.spec-mcp",
+        "meaning": "#uses-spec-mcp",
+        "relies_on": [
+          "concept.spec-mcp.server"
+        ]
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi/",
+        "reason": "pi's extension API (tools, commands, session events, messages that start a turn), which the run view relies on"
+      },
+      {
+        "kind": "external",
+        "target": "references/pi-subagents/",
+        "reason": "pi-subagents' external-runs and background-work APIs, through which the run view shows runs in FleetView and in bg_wait"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.main-session.guidance",
+      "type": "concept",
+      "title": "Main-session guidance",
+      "meaning": "#concept.main-session.guidance"
+    },
+    {
+      "id": "concept.main-session.run-view",
+      "type": "concept",
+      "title": "Run view",
+      "meaning": "#concept.main-session.run-view"
+    },
+    {
+      "id": "concept.main-session.model-picker",
+      "type": "concept",
+      "title": "Model picker",
+      "meaning": "#concept.main-session.model-picker"
+    },
+    {
+      "id": "concept.main-session.no-task-operations",
+      "type": "concept",
+      "title": "Questions without a task",
+      "meaning": "#concept.main-session.no-task-operations"
+    },
+    {
+      "id": "concept.main-session.escalation-policy",
+      "type": "concept",
+      "title": "Escalation policy",
+      "meaning": "#concept.main-session.escalation-policy"
+    },
+    {
+      "id": "realization.main-session.guidance",
+      "type": "realization",
+      "title": "Guidance sources",
+      "meaning": "#realization.main-session.guidance",
+      "entries": [
+        "prompts/main-session/",
+        "tests/concorde/main_session/"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.main-session.pi-run-view",
+      "type": "realization",
+      "title": "pi run view",
+      "meaning": "#realization.main-session.pi-run-view",
+      "entries": [
+        "src/concorde/main_session/pi_extension.ts",
+        "src/concorde/main_session/pi_runs.ts"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.main-session.pi-model-picker",
+      "type": "realization",
+      "title": "pi model picker",
+      "meaning": "#realization.main-session.pi-model-picker",
+      "entries": [
+        "src/concorde/main_session/pi_models.ts"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "concept.main-session.guidance",
+      "verb": "includes",
+      "target": "concept.main-session.escalation-policy"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.guidance",
+      "verb": "authors",
+      "target": "concept.main-session.guidance"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-run-view",
+      "verb": "draws the dialogs of",
+      "target": "realization.main-session.pi-model-picker"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-run-view",
+      "verb": "follows",
+      "target": "concept.task-session.round"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-run-view",
+      "verb": "reads",
+      "target": "concept.workers.progress-file"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-run-view",
+      "verb": "reads",
+      "target": "concept.execution.progress-file"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.pi-model-picker",
+      "verb": "applies choices to",
+      "target": "concept.workers.model-configuration"
+    }
+  ],
+  "extensions": {}
+}

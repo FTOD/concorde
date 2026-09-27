@@ -76,7 +76,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the project has the Protocol copy under `.concorde/protocol/`, the `concorde` command and the main-session guidance as a project skill and a `CLAUDE.md` block
 - AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
 - AND installing again with the same pin downloads nothing
-- AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go
+- AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go, and `.concorde/workspace.json`, their workspace binding
 - AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
 - AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
@@ -94,12 +94,12 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN an initialized project with an open task, installed from a checkout whose Protocol has since changed
 - WHEN the developer runs `concorde update`
 - THEN the configuration binds the new Protocol copy, the result names the bindings, versions and installed commits before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
-- AND while a Spec is broken, `concorde validate` also reports `CONCORDE-UPDATE-001` and the mark stays
+- AND while a Spec is broken, `concorde spec-validation` also reports `CONCORDE-UPDATE-001` and the mark stays
 - AND the first validation that passes reports `CONCORDE-UPDATE-002` and removes the mark
 
 ### scenario.distribution.install-busy — Concorde is not replaced while it runs
 
-- GIVEN an installed project in which an Operation run's host process or a pi task-session round's supervisor is still running
+- GIVEN an installed project in which the runner process of an Operation or recorded command run, or a pi task-session round's supervisor, is still running
 - WHEN the developer installs Concorde again or runs `concorde update`
 - THEN the install is refused with `concorde_busy`, naming each running run or round with its process and progress file
 - BUT the progress file of the running Operation's worker is not named as a run of its own

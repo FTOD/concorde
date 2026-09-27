@@ -71,7 +71,7 @@ CODES: dict[str, tuple[str, str]] = {
     ),
     "unknown_target": (
         "the named Module or node is not declared in the loaded Specs",
-        "name a declared Module or node; `concorde validate` lists what exists",
+        "name a declared Module or node; `concorde spec-validation` lists what exists",
     ),
     "invalid_target": (
         "the identity does not name a document, scenario or context of the requested kind",

@@ -20,17 +20,17 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.headless-sessions.unsettled — Which runs a round left behind
 
-- GIVEN runs started before and since the session began: one running, one whose host is gone, one cancelled at the round's end, one failed otherwise, and a worker's progress file
+- GIVEN runs of Operations and recorded commands started before and since the session began: one running, one whose runner is gone, one cancelled at the round's end, one failed otherwise, and a worker's progress file
 - WHEN a round ends
 - THEN the running run and the run cancelled at the round's end are unsettled
-- BUT a run started before the session, a run whose host is gone, a run that failed otherwise, a run cancelled long before the round ended, a worker's progress file and a run already reported are not
+- BUT a run started before the session, a run whose runner is gone, a run that failed otherwise, a run cancelled long before the round ended, a worker's progress file and a run already reported are not
 
 ### scenario.headless-sessions.pi — A pi session continues one session file and is woken alike
 
 - GIVEN a project installed for pi and a prompt
 - WHEN the developer starts a headless session with `--client pi`
 - THEN every round runs `pi -p --mode json --approve` with pi's headless note, the session directory and the same session identity, the prompt on standard input
-- AND a round that leaves an Operation run running is followed, once the run ends, by a round of the same session whose prompt names the run and its result
+- AND a round that leaves a run running is followed, once the run ends, by a round of the same session whose prompt names the run and its result
 - AND the record names the client, adds up the rounds' costs and shows each round's tool calls and turns
 - BUT a client other than Claude Code or pi is refused with `unknown_client`
 
@@ -38,5 +38,5 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN a session whose first round ends while an Operation run it started is still running
 - WHEN the run ends
-- THEN the driver resumes the same session with a message naming the run, its Operation and task, how it ended and its result file
+- THEN the driver resumes the same session with a message naming the run, its kind, name and workspace, how it ended and its result file
 - AND the session ends idle after the second round, with both rounds, the run it woke for and the final answer and cost in `session.json`

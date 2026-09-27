@@ -21,16 +21,18 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
     Provider,
     RunContext,
     Stop,
     evidence,
-    load_prompt,
-    protocol_guide,
     spec_cause,
     spec_finding,
+)
+from ..operations.provider import (
+    load_prompt,
+    protocol_guide,
 )
 
 MODULE_ID = {"type": "string", "pattern": "^module\\."}
@@ -271,7 +273,7 @@ def instructions(ctx: RunContext) -> str:
         "\n\n## This run\n\n",
         f"Bound Modules: {', '.join(ctx.modules)}\n\n",
         f"Intent: {ctx.arguments.intent}\n\n",
-        f"The task's own goal: {ctx.task.get('goal', '(none)')}\n",
+        f"The task's own goal: {ctx.goal or '(none)'}\n",
     ]
     if ctx.inputs:
         parts.append(
@@ -316,7 +318,7 @@ def change(ctx: RunContext):
     )
     if not ctx.worker_runs:
         return outcome  # the grant could not be computed; no worker ran
-    record = read_record(ctx.primary, ctx.worker_runs[-1])
+    record = read_record(ctx.records, ctx.worker_runs[-1])
     current.record = record
     if isinstance(outcome, Continue):
         return Continue(evidence=outcome.evidence)

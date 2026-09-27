@@ -28,11 +28,11 @@ install, for a developer who only uses Concorde, has none of this.
 | [Main agent](../vocabulary.md#concept.concorde.main-agent) | |
 | [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
 | [Installer](../distribution/module.md#concept.distribution.installer) | |
-| [Main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) | |
+| [Main-session guidance](../coordination/main-session/module.md#concept.main-session.guidance) | |
 | [Issue](../issues/module.md#concept.issues.issue) | |
 | [Issue report](../issues/module.md#concept.issues.report) | |
-| [Task](../tasks/module.md#concept.tasks.task) | |
-| [Decision log](../tasks/module.md#concept.tasks.decision-log) | |
+| [Task](../coordination/tasks/module.md#concept.tasks.task) | |
+| [Decision log](../coordination/tasks/module.md#concept.tasks.decision-log) | |
 | [Grant](../spec-tooling/spec/module.md#concept.spec.grant) | |
 
 Two repositories take part: the project, where Concorde is used and defects are seen, and the
@@ -62,7 +62,8 @@ own task worktrees therefore work exactly as in a normal install; only the main 
 differs.
 
 **What the project's main agent does.** Besides its work on the project, it watches Concorde. It
-observes every Operation, workflow and worker run closely, the result, error chain, host evidence,
+observes every run of an Operation or recorded command, every workflow and every worker run
+closely, the result, error chain, host evidence,
 run record and the changes it made, rather than trusting its status, and treats a run that ended
 `ok` but did something wrong like a failure. It never changes the Concorde repository, the
 framework copy or any file the installer placed
@@ -107,7 +108,7 @@ agent check the report with `concorde issues report --check --file <path>`, whic
 the Concorde repository will run when it records the report, so an incomplete report is repaired
 where it was written rather than refused after the hand-off. The main agent records the report in
 the task's
-[decision log](../tasks/module.md#concept.tasks.decision-log), tells the developer where it is,
+[decision log](../coordination/tasks/module.md#concept.tasks.decision-log), tells the developer where it is,
 keeps the runs it names, leaves the blocked work open and turns to other work. For example:
 
 ```json
@@ -148,10 +149,11 @@ the project's own problem or overreaching work is closed `not-actionable` with t
 **Taking the fix.** Once the fix is merged, which the project's main agent learns from the
 developer or by listing the Concorde repository's Issues with `concorde issues list --root
 <source>`, it runs `concorde update` from the project's primary worktree. The update refuses while
-an Operation run or a pi task-session round is still running in the project, re-checks that the
+a run of an Operation or recorded command or a pi task-session round is still running in the
+project, re-checks that the
 Concorde repository's primary worktree is clean, installs from it again in develop mode
 ([requirements](requirements.md#req.dogfooding.develop-kept)) and, like every update, leaves the
-project unvalidated until `concorde validate` passes. The main agent then merges the primary branch
+project unvalidated until `concorde spec-validation` passes. The main agent then merges the primary branch
 into the open tasks when the update asks for it and takes up the blocked work.
 
 A develop install is refused, writing nothing, when the checkout is not a Git worktree's root
@@ -176,7 +178,7 @@ guidance.
 <a id="uses-main-session"></a>
 
 **Main session** owns the [main-session
-guidance](../agents/main-session/module.md#concept.main-session.guidance) Dogfooding's section is
+guidance](../coordination/main-session/module.md#concept.main-session.guidance) Dogfooding's section is
 added to. Dogfooding relies on that guidance's method, tasks, decision logs, escalations and
 Issues, and adds only what a develop install needs on top; it never changes what a normal install's
 main agent is told.
@@ -191,8 +193,8 @@ reaches the Concorde repository incomplete is refused with the field that is wro
 
 <a id="uses-tasks"></a>
 
-**Tasks** provides the [task](../tasks/module.md#concept.tasks.task) in which a defect is seen and
-its [decision log](../tasks/module.md#concept.tasks.decision-log), and `concorde task escalate`,
+**Tasks** provides the [task](../coordination/tasks/module.md#concept.tasks.task) in which a defect is seen and
+its [decision log](../coordination/tasks/module.md#concept.tasks.decision-log), and `concorde task escalate`,
 which builds the main agent's link on top of a run's error chain for the report.
 
 <a id="uses-spec"></a>

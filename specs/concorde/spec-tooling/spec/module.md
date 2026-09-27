@@ -89,7 +89,7 @@ immutable snapshot. Loading refuses a binding that disagrees with the installed 
 
 <a id="concept.spec.structural-check"></a><a id="concept.spec.verification-declaration"></a>
 
-**Validation.** `python3 scripts/concorde.py validate` reports every structural finding in one run,
+**Validation.** `python3 scripts/concorde.py spec-validation` reports every structural finding in one run,
 each with its rule, severity, file and remediation; errors make the result `invalid`. Coverage comes
 from verification declarations in the tests' own source, parsed and never run
 ([syntax](contracts.md#verification-declarations)). A task may change its own `module` block but
@@ -113,8 +113,8 @@ later whether anything the worker could read has changed. It refuses to make wri
 an unbound Module also binds, and it never makes writable an installed file, one the installation
 record `.concorde/install.json` lists as the installer's own: such a file is bound only by its exact
 path (`CHK.binds.installed`) and granted at most `ro`, because the installer replaces it on every
-update and the agents working on the project are configured by it. The Operation host freezes the grant into a worker at launch and the
-Spec MCP server returns the same computation; Spec core neither stores nor enforces it.
+update and the agents working on the project are configured by it. The Operation that launches a
+worker freezes the grant into it at launch and the Spec MCP server returns the same computation; Spec core neither stores nor enforces it.
 
 <a id="concept.spec.typed-value"></a><a id="concept.spec.file-transaction"></a><a id="concept.spec.initial-proposal"></a>
 
@@ -217,21 +217,21 @@ depends on nothing built above it.
 **Boundaries and grants.** Selection is one level deep and never reads an implementation file,
 so a boundary is a function of declarations. Spec core holds no policy of the Operations built on
 the impact indexes, such as which Modules a change may edit or must re-review. The grant
-computation sits next to the boundary sets so that the Operation host and the Spec MCP server give
-the same task the same boundary. A grant is computed from the Specs of the one worktree its caller
-names, which the host sets to the task worktree, so a Spec change on the task branch governs that
-task's workers and nothing else. A write to a file an unbound Module also binds is refused rather
+computation sits next to the boundary sets so that an Operation and the Spec MCP server give the
+same task the same boundary. A grant is computed from the Specs of the one worktree its caller
+names, which an Operation sets to the workspace it runs in, so a Spec change on the task branch
+governs that task's workers and nothing else. A write to a file an unbound Module also binds is refused rather
 than silently narrowed: narrowing would leave a worker unable to write a file its own Module binds,
 with nothing to tell it why, while the refusal names the file and the Module so the caller can bind
 the task to it too or split the work. The context identity covers no implementation contents, so a
 worker's own writes never make its context stale. The grant does not yet mark which of its entries
-are pending, so the host learns which files to create by checking what exists; whether it should
+are pending, so the Operation learns which files to create by checking what exists; whether it should
 is not settled.
 
 **Validation.** The validator runs nothing: it parses verification declarations and reads
 configured checks only to confirm their inputs exist and are safe. Concerns other Modules own, such
 as Issue records or Concorde's own package, are their configured checks, run by Check execution
-outside `validate`, which keeps `validate` a pure function of the Specs and the files they bind.
+outside `spec-validation`, which keeps it a pure function of the Specs and the files they bind.
 
 **Shared services.** Registration inverts a dependency that would otherwise point upward: a
 record's owner decides its schema, and Spec core stays below every owner. A reference to another

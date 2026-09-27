@@ -30,24 +30,26 @@ task's Modules define.
 
 ## The idea
 
-Concorde organizes the AI work on a project in five levels. Agents sit at both ends: your main
-session and the task level at the top, where work is judged and decided, and workers at the bottom,
-where it is done. Between them run programs, not models: a workflow orders a task's Operations, and
-an Operation launches workers and calls Tools, then checks what they did. Calls only go down;
-results and errors come back up. The project's Specs shape every level.
+Concorde organizes the AI work on a project in two halves and five levels. The upper half,
+coordination, is where work is judged and decided: your main session and the task level, where
+each task has its own branch and worktree. The lower half, execution, does the work in one task's
+worktree, bound to it as a workspace, and knows nothing about tasks: a workflow orders runs, an
+Operation launches AI workers and calls Tools and then checks what they did, and recorded commands
+such as `task-validation` and `delivery` do the deterministic steps. Calls only go down; results and
+errors come back up. The project's Specs shape every level.
 
 ```mermaid
 flowchart TB
   you(["You"])
-  subgraph top["Agent layer: sessions"]
+  subgraph top["Coordination: sessions and tasks"]
     main["1 · Main session<br/>your Claude Code or pi, primary checkout"]
     task["2 · Task level<br/>the main agent or a task session,<br/>branch + worktree"]
   end
-  subgraph mid["Programs"]
-    wf["3 · Workflow<br/>orders a task's Operations"]
-    op["4 · Operation<br/>one bounded job, one checked result"]
+  subgraph mid["Execution, in the bound workspace: programs"]
+    wf["3 · Workflow<br/>orders the workspace's runs"]
+    op["4 · Run<br/>an Operation or a recorded command,<br/>one checked result"]
   end
-  subgraph bottom["Agent layer: workers, beside Tools"]
+  subgraph bottom["Execution: workers, beside Tools"]
     w["5 · Worker<br/>headless claude -p or pi -p"]
     tool["5 · Tool<br/>programmed action, e.g. checks"]
   end
@@ -78,20 +80,24 @@ task's goal and Modules, and `concorde task merge` takes a lock, merges the bran
 result, undoes the merge if validation fails, and removes the worktree. For work split into several
 tasks, the main agent starts one task session per task, on its own program and configuration, and
 tasks whose Modules and shared files do not overlap run at once. A task session may write only its
-own task: it changes Specs and code in the worktree, commits verified steps, runs `validate` and
-`delivery`, and reports back when it has delivered or needs a decision beyond its task. A single
-task the main agent can also carry out itself inside the worktree.
+own task: it changes Specs and code in the worktree, commits verified steps, runs `task-validation`
+and `delivery`, and reports back when it has delivered or needs a decision beyond its task. A single
+task the main agent can also carry out itself inside the worktree. `concorde task open` binds the
+worktree as the task's workspace, so every command run there works on the task without naming it,
+and whether a task is active or delivered is read from what those runs recorded.
 
 **Workflows and Operations: the programs between.** A task either runs Operations one by one or
 starts a **workflow**, a procedure written once for tasks that follow a known path, such as
-`brownfield`, which describes an existing codebase in Specs; the workflow orders the task's
-Operations and stops wherever you must decide. An **Operation** completes one bounded job and
-returns one result: it launches workers, calls deterministic **Tools** such as the check runner,
-and checks the outcome itself. Neither decides the project's direction; they follow declared rules,
-so no model's answer reaches the next level unchecked.
+`brownfield`, which describes an existing codebase in Specs; the workflow orders the workspace's
+runs and stops wherever you must decide. An **Operation** completes one bounded AI job and returns
+one result: it launches workers, calls deterministic **Tools** such as the check runner, and checks
+the outcome itself. A **recorded command** does a deterministic step, such as deciding readiness or
+delivering, and returns the same kind of result without any worker. None of them decides the
+project's direction; they follow declared rules, so no model's answer reaches the next level
+unchecked.
 
 **Workers: one bounded step, inside a harness.** For a bounded step, a task runs an Operation: the
-deterministic Operation host launches a headless `claude -p` or `pi -p` worker for one task type
+Operation's deterministic steps launch a headless `claude -p` or `pi -p` worker for one task type
 (`understand`, `specify`, `implement`, `test`, `review-spec`, `review-code` or `code-to-spec`). Its
 **harness** comes from the Specs. From the task's Modules and the task type alone, Concorde
 computes the worker's **context**, the Specs, implementation files and tools it needs, and its
@@ -103,9 +109,9 @@ first.
 What travels back up is just as structured:
 
 - **Evidence, not claims.** When a worker stops, the host audits what it wrote against the grant
-  and runs the project's checks itself. The Operation's JSON result keeps this `host_evidence`
-  apart from `worker`, which is only the worker's claim. `validate` and `delivery` run no worker at
-  all, and `delivery` validates the whole task again before it may be merged.
+  and runs the project's checks itself. The run's JSON result keeps this `host_evidence` apart from
+  `worker`, which is only the worker's claim. `task-validation` and `delivery` run no worker at all,
+  and `delivery` validates the whole workspace again before it commits what may be merged.
 - **Error chains, not bare failures.** A level that cannot handle an error, whether the worker, the
   Operation, the task session or the main agent, adds a link saying what failed, its evidence and
   why this level cannot handle it (a missing permission, a decision that is not its own, work
@@ -120,11 +126,13 @@ agent merges it.
 
 ```bash
 concorde task open retry --goal "limit payment retries" --modules module.payments
-concorde run understand --task retry --goal "how should retries be limited?" --plan
-concorde run specify    --task retry --intent "state the retry limit"
-concorde run implement  --task retry --goal "implement the retry limit"
-concorde run validate   --task retry
-concorde run delivery   --task retry
+cd .claude/worktrees/retry            # the task's worktree, bound as its workspace
+concorde run understand --goal "how should retries be limited?" --plan
+concorde run specify    --intent "state the retry limit"
+concorde run implement  --goal "implement the retry limit"
+concorde task-validation
+concorde delivery
+cd -                                  # back in the primary checkout
 concorde task merge retry
 ```
 
@@ -136,7 +144,7 @@ concorde task merge retry
   so both work from one description. The docsite publishes them.
 - **Just the context a task needs.** A worker sees what its Modules declare, one level deep, and no
   more.
-- **Spec tooling that stands alone.** `concorde validate`, `concorde grant` and the local stdio MCP
+- **Spec tooling that stands alone.** `concorde spec-validation`, `concorde grant` and the local stdio MCP
   server `concorde spec-mcp` answer from the Specs of one worktree without calling a model, so any
   agent can ask which Modules exist, what a Module's context is and what a task may touch.
 - **Claude Code and pi.** One grant is compiled into each backend: Claude Code deny rules, a write
@@ -158,7 +166,7 @@ cd /path/to/project
 .concorde/bin/concorde init --propose --name "My project" > /tmp/proposal.json
 jq .result /tmp/proposal.json > /tmp/accepted.json   # inspect it first
 .concorde/bin/concorde init --apply --proposal /tmp/accepted.json
-.concorde/bin/concorde validate
+.concorde/bin/concorde spec-validation
 ```
 
 The installer places the runtime under `.concorde/framework/`, the `.concorde/bin/concorde`
@@ -205,7 +213,7 @@ set. A project needs neither Concorde nor a particular agent runtime to use it.
 uv sync --locked --group dev
 python3 scripts/concorde.py build
 python3 scripts/concorde.py build --check
-python3 scripts/concorde.py validate
+python3 scripts/concorde.py spec-validation
 .venv/bin/python -m pytest                          # parallel by default; -n 0 runs in-process
 CONCORDE_LIVE_CLAUDE=1 .venv/bin/python -m pytest tests/concorde/harness/workers/test_live.py
 CONCORDE_LIVE_PI=1 .venv/bin/python -m pytest tests/concorde/harness/workers/test_pi_live.py

@@ -43,10 +43,10 @@ run = Path(".concorde/runs/r-1")
 run.mkdir(parents=True)
 stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 (run / "status.json").write_text(json.dumps({
-    "kind": "operation", "run_id": "r-1", "operation": "implement", "task": "t1",
+    "kind": "operation", "run_id": "r-1", "name": "implement", "workspace": "t1",
     "phase": "running", "host_pid": host.pid, "started_at": stamp}))
 say({"type": "assistant", "message": {"content": [
-    {"type": "tool_use", "name": "Bash", "input": {"command": "concorde run implement --task t1"}}]}})
+    {"type": "tool_use", "name": "Bash", "input": {"command": "concorde run implement"}}]}})
 say({"type": "result", "subtype": "success", "num_turns": 2, "total_cost_usd": 0.1,
      "result": "waiting for the run"})
 """
@@ -82,7 +82,7 @@ run = Path(".concorde/runs/r-1")
 run.mkdir(parents=True)
 stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 (run / "status.json").write_text(json.dumps({
-    "kind": "operation", "run_id": "r-1", "operation": "implement", "task": "t1",
+    "kind": "operation", "run_id": "r-1", "name": "implement", "workspace": "t1",
     "phase": "running", "host_pid": host.pid, "started_at": stamp}))
 say({"type": "tool_execution_start", "toolName": "concorde_run",
      "args": {"operation": "implement", "task": "t1"}})
@@ -238,7 +238,7 @@ class HeadlessSessionTests(unittest.TestCase):
         self.assertNotIn("--resume", calls[0])
         self.assertEqual("s-1", calls[1][calls[1].index("--resume") + 1])
         woken = calls[1][calls[1].index("-p") + 1]
-        self.assertIn("Operation run r-1 (implement, task t1)", woken)
+        self.assertIn("operation run r-1 (implement, workspace t1)", woken)
         self.assertIn("result.json", woken)
         self.assertTrue(record["final"].startswith("done after: Notification"))
         self.assertEqual(0.2, record["cost_usd"])
@@ -246,7 +246,7 @@ class HeadlessSessionTests(unittest.TestCase):
         self.assertEqual(record, saved)
         shown = sessions.show(self.base / "session")
         self.assertEqual(
-            "concorde run implement --task t1",
+            "concorde run implement",
             shown["rounds"][0]["actions"][0]["target"],
         )
 
@@ -281,7 +281,7 @@ class HeadlessSessionTests(unittest.TestCase):
         ids = {call["argv"][call["argv"].index("--session-id") + 1] for call in calls}
         self.assertEqual({record["session_id"]}, ids)
         self.assertEqual("add a property", calls[0]["prompt"])
-        self.assertIn("Operation run r-1 (implement, task t1)", calls[1]["prompt"])
+        self.assertIn("operation run r-1 (implement, workspace t1)", calls[1]["prompt"])
         self.assertTrue(record["final"].startswith("done after: Notification"))
         # pi reports each round's own spending, which the session adds up.
         self.assertEqual(0.3, record["cost_usd"])

@@ -45,6 +45,15 @@
         ]
       },
       {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.execution.run",
+          "concept.execution.recorded-command",
+          "concept.execution.progress-file"
+        ]
+      },
+      {
         "target": "module.workflows",
         "meaning": "#uses-workflows"
       }

@@ -19,12 +19,14 @@ from pathlib import Path
 
 from ..harness.checks import checked_modules, run_checks
 from ..harness.runs import read_record
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
     Provider,
     RunContext,
     Stop,
     evidence,
+)
+from ..operations.provider import (
     load_prompt,
 )
 from ..spec.grants import grant
@@ -294,7 +296,7 @@ def code_change(
         "refused_deletions": list(record.get("deletions_refused") or []),
         "pending_cleared": cleared,
         "rounds": max(len(rounds), 1),
-        "checks": check_results(ctx.primary, _latest_checks(record)),
+        "checks": check_results(ctx.records.parent, _latest_checks(record)),
         "addresses": list(output.get("addresses") or []),
     }
 
@@ -329,7 +331,7 @@ def implement_step(ctx: RunContext):
     )
     if len(ctx.worker_runs) == launched:
         return outcome  # no worker run: nothing was pre-created or changed
-    record = read_record(ctx.primary, ctx.worker_runs[-1])
+    record = read_record(ctx.records, ctx.worker_runs[-1])
     extra: list[dict] = []
     removed = remove_unused(ctx.worktree, record)
     if removed:
@@ -412,7 +414,7 @@ def testing_step(ctx: RunContext):
         output={
             "focus": focus or None,
             "passed": all(item["status"] == "passed" for item in results),
-            "checks": check_results(ctx.primary, results),
+            "checks": check_results(ctx.records.parent, results),
             "summary": (ctx.worker or {}).get("summary") or "tested",
             "failures": list(output.get("failures") or []),
             "notes": list(output.get("notes") or []),

@@ -1,0 +1,153 @@
+# Adoption requirements
+
+The Module-wide obligations of [Adoption](module.md). The shapes are in the
+[contracts](contracts.md); the [scenarios](scenarios.md) show the obligations in concrete situations.
+
+## Reading and writing
+
+### req.adoption.task-type — Adoption workers run under code-to-spec
+
+The survey and code_to_spec hosts SHALL compute their workers' grants for task type `code-to-spec` from the Specs of the worktree the run works on.
+
+### req.adoption.survey-read-only — A survey writes nothing
+
+The survey host SHALL give its worker no writable path and end the run `failed` when the audit finds any change.
+
+The survey withholds the Spec side of the `code-to-spec` grant, which the Protocol permits, so the
+survey may also run unbound.
+
+### req.adoption.vendored-external — Vendored code is never a Module
+
+The scaffold SHALL make every path the survey proposes as vendored third-party code an external inclusion of the Module that uses it, bound by no Module, so that no worker describes or reviews it as the project's code.
+
+### req.adoption.no-code-change — Adoption never changes code
+
+No Adoption Operation SHALL create, change or delete a file of the workspace other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
+
+### req.adoption.self-repair — The worker repairs the Specs it breaks
+
+The code_to_spec host SHALL resume its worker, at most twice, with every structural error its validation finds after a round in the documents the run describes or new since the baseline.
+
+### req.adoption.own-errors-briefed — The worker is told the errors it must repair
+
+The code_to_spec host SHALL list, in its worker's brief, every structural error already in the documents of the Modules it describes.
+
+### req.adoption.tests-linked-by-host — The host alone marks tests
+
+The code_to_spec host SHALL add a `verifies` decorator, and never any other change, to each existing Python test that a scenario promise names in its `tests`, reporting every link it cannot make.
+
+### req.adoption.no-bash — Adoption workers cannot run code
+
+The survey and code_to_spec workers SHALL NOT be given a tool that runs commands.
+
+What the code does is established by reading it. Running it would make the description depend on
+the environment of one run and would let a worker change files through a command.
+
+### req.adoption.modules-by-host — Only the scaffold adds Modules
+
+A survey or code_to_spec worker SHALL NOT be able to add or remove a Module; only the scaffold command does, from an admitted survey.
+
+## Honest description
+
+### req.adoption.open-questions — Doubtful intent is never a promise
+
+A code_to_spec worker SHALL report every behaviour whose intent the code does not settle as an open question instead of writing it as a requirement, scenario or contract.
+
+The Spec may name such a behaviour as an honest unknown so that a reader is warned; it states no
+promise about it until an answer does.
+
+### req.adoption.decisions-listed — Every open choice is listed
+
+A survey or code_to_spec worker SHALL list every choice it took between options the code left open as a decision with its options, choice and reason.
+
+### req.adoption.answers-followed — Answers are followed
+
+A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a decision answer as a decision `decided_by` developer with the answered choice, a question answer in a survey by no longer listing the question, and in a code_to_spec run as a promise with source `answer` or as a deviation.
+
+### req.adoption.deviation-reported — Intent that the code misses is reported
+
+A code_to_spec run SHALL report as a deviation every answer whose stated intent differs from the behaviour the worker observed in the code.
+
+## Survey
+
+### req.adoption.proposal-checked — A proposal fits the worktree
+
+The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, two children whose documents would share a folder, an entry that the surveyed Module's realizations do not cover or that does not exist, a `uses` target that is neither another child nor a registered Module, or a check for a Module that is neither the surveyed Module nor a child.
+
+### req.adoption.inventory — The survey worker gets an inventory
+
+The survey host SHALL give its worker, as task material, every file the surveyed Module binds with its size in lines, apart from its Concorde installation.
+
+### req.adoption.installation-stays — Concorde's own files stay where they are
+
+The survey host SHALL end the run `failed` with `inconsistent_proposal` when a child entry covers a file of the surveyed Module's Concorde installation realization.
+
+The skill, workflows and agents Concorde installed configure the agents, not the project, and the
+installer replaces them on every update.
+
+### req.adoption.one-module-surveyed — One Module per survey
+
+A survey SHALL be bound to exactly one Module.
+
+## Scaffold
+
+### req.adoption.scaffold-input — The scaffold applies one survey of its workspace
+
+The scaffold host SHALL apply exactly one proposal, from an `ok` survey run admitted with `--input`, refusing no input, several inputs or an input that is not a survey with `invalid_request`.
+
+A run of another workspace, or an unbound one, never reaches the scaffold: the runner refuses it
+before the run begins with `input_not_admissible`, as for every run.
+
+### req.adoption.checks-proposed-only — Proposed checks are never configured
+
+The scaffold host SHALL NOT change the project configuration.
+
+A proposed check is a command a model chose after reading code; the developer configures the ones
+they accept.
+
+### req.adoption.scaffold-rechecked — The proposal is checked again before writing
+
+The scaffold host SHALL check the proposal against the workspace again before writing, ending the run `blocked` with `stale_proposal` and every mismatch listed when it no longer fits or a file it would create exists.
+
+### req.adoption.scaffold-atomic — A scaffold is kept whole or not at all
+
+The scaffold host SHALL write all its changes in one file transaction that is kept only when it adds no structural error.
+
+### req.adoption.parent-narrowed — A child's paths leave the parent
+
+After a scaffold, every file the parent's realizations bound SHALL be bound by exactly one of the parent and the created children, unless the proposal gave it to several children.
+
+A child's directory entry binds only what the exclusion rule admits, so a dot file below it that
+the parent bound exactly stays with the parent.
+
+A parent directory entry that contains a child's entry is replaced by the entries below it that no
+child took, a directory staying one entry when no child took anything inside it.
+
+### req.adoption.stub-honest — A scaffolded entry states what is unknown
+
+Every entry the scaffold creates SHALL state the survey's purpose and say in its Usage and Design sections that the Module's behaviour and design are not yet specified.
+
+## Code to spec
+
+### req.adoption.stubs-prepared — Implementation documents are prepared and tidied
+
+The code_to_spec host SHALL create the `requirements.md`, `scenarios.md` and `contracts.md` stubs that a bound Module lacks before freezing the grant and remove every stub the worker left unchanged or had deleted, with its place among the Module's documents, before the run ends, whichever step stops it.
+
+### req.adoption.answers-first — Answers are checked before anything happens
+
+The survey and code_to_spec hosts SHALL end a run whose answers file is unreadable or breaks its contract `failed` with `invalid_answers` before writing a file or launching a worker.
+
+### req.adoption.own-errors-count — Errors in the described documents always count
+
+The code_to_spec host SHALL count every structural error located in a document a described Module owns as introduced by the run, whether or not the baseline had it.
+
+The worker rewrites those documents. A retry after a failed attempt would otherwise take that
+attempt's errors as the project's and let the same errors pass.
+
+### req.adoption.no-resume-on-spec — A Spec error stops the run
+
+The code_to_spec host SHALL end the run `blocked` with every new structural error as a cause, without a resume round, when the change adds a structural error.
+
+### req.adoption.mirror-reconciled — The registry mirror follows the entries
+
+The code_to_spec host SHALL regenerate the registry's mirrored fields of existing Modules after the worker's change, without adding or removing a Module record.

@@ -24,8 +24,11 @@ configuration — the installer never writes Specs.
 | [Registry](../spec-tooling/spec/module.md#concept.spec.registry) | |
 | [Structural check](../spec-tooling/spec/module.md#concept.spec.structural-check) | |
 | [Scaffold proposal](../spec-tooling/views/module.md#concept.views.scaffold-proposal) | |
-| [Main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) | |
+| [Main-session guidance](../coordination/main-session/module.md#concept.main-session.guidance) | |
 | [Develop install](../dogfooding/module.md#concept.dogfooding.develop-install) | |
+| [Run](../execution/module.md#concept.execution.run) | |
+| [Recorded command](../execution/module.md#concept.execution.recorded-command) | |
+| [Run progress file](../execution/module.md#concept.execution.progress-file) | |
 
 ## Usage
 
@@ -41,7 +44,7 @@ too, so a changed descriptor makes every render stale.
 **Building.** `python3 scripts/concorde.py build` expands every prompt root into `generated/`
 ([requirements](requirements.md#req.distribution.build-reachable)), `{{name}}` becoming the literal
 text `{name}` so that a prompt can show a placeholder such as a check's `{python}`, and wraps every
-[workflow script](../workflows/module.md#concept.workflows.script) of the workflow catalog for each
+[workflow script](../execution/workflows/module.md#concept.workflows.script) of the workflow catalog for each
 client: `generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step
 adapter, `generated/workflows/pi/<name>.js` with the pi step adapter, and the pi command-runner agents
 `generated/workflows/pi/agents/concorde-step.md` and `concorde-report.md`, and writes
@@ -62,33 +65,37 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 
 | Command | Does | Owned by |
 | --- | --- | --- |
-| `validate [target]` | runs the structural checks | [Spec core](../spec-tooling/spec/module.md) |
+| `spec-validation [target]` | runs the structural checks | [Spec core](../spec-tooling/spec/module.md) |
 | `registry --write` or `--check` | regenerates or checks the registry mirror | [Spec core](../spec-tooling/spec/module.md) |
 | `docsite --propose` or `--apply` | proposes or applies the docsite scaffold | [Views](../spec-tooling/views/module.md) |
 | `grant --modules <ids> --type <task type> [--root <worktree>]` | prints a task type's grant | [Spec core](../spec-tooling/spec/module.md) |
 | `spec-mcp` | runs the stdio MCP server rooted at `CLAUDE_PROJECT_DIR` or the client's root; it prints no envelope | [Spec MCP server](../spec-tooling/spec-mcp/module.md) |
 | `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first Spec | [Spec core](../spec-tooling/spec/module.md) |
-| `task open`, `list`, `show` or `close` | opens, lists, shows or closes tasks; prints the task command's own JSON | [Tasks](../tasks/module.md) |
-| `run <operation> [--task <task>]` | runs one Operation, for a task or, when the Operation allows it, for none; prints the Operation result | [Operations](../operations/module.md) |
-| `workflow step` or `report` | runs one workflow step, or reports a workflow's result; prints its own JSON | [Workflows](../workflows/module.md) |
+| `task open`, `list`, `show` or `close` | opens, lists, shows or closes tasks; prints the task command's own JSON | [Tasks](../coordination/tasks/module.md) |
+| `run <operation>` | runs one Operation in the workspace of the current worktree or, when the Operation allows it, unbound; prints the run result | [Execution](../execution/module.md), with the catalog of [Operations](../execution/operations/module.md) |
+| `task-validation`, `delivery` or `scaffold` | runs one recorded command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with [Validation](../execution/validation/module.md), [Delivery](../execution/delivery/module.md) and [Adoption](../execution/operations/adoption/module.md) |
+| `workflow step` or `report` | runs one workflow step, or reports a workflow's result; prints its own JSON | [Workflows](../execution/workflows/module.md) |
+| `configure-workers` | lists or changes the worker model configuration of the current worktree; prints its own JSON | [Workers](../execution/workers/module.md) |
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 
-Every command but `spec-mcp`, `task`, `run`, `workflow` and `issues` prints exactly one JSON
-envelope and exits with its status, even when refused
-([requirements](requirements.md#req.distribution.one-envelope)); those five route to their owners,
-which define their own JSON and exit codes.
+Every command but `spec-mcp`, `task`, `run`, the recorded commands, `workflow`,
+`configure-workers` and `issues` prints exactly one JSON envelope and exits with its status, even
+when refused ([requirements](requirements.md#req.distribution.one-envelope)); those route to their
+owners, which define their own JSON and exit codes.
 
 <a id="concept.distribution.protocol-copy"></a><a id="concept.distribution.installer"></a>
 
 **Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale
-build and a project in which Concorde is still running — an Operation run whose host process
-lives, or a pi task-session round whose supervisor lives, each named in the refusal
+build and a project in which Concorde is still running — a [run](../execution/module.md#concept.execution.run)
+of an Operation or of a [recorded command](../execution/module.md#concept.execution.recorded-command)
+whose runner process lives, as its [run progress file](../execution/module.md#concept.execution.progress-file)
+says, or a pi task-session round whose supervisor lives, each named in the refusal
 `concorde_busy` ([requirements](requirements.md#req.distribution.idle-install)), since replacing
 the framework copy under them would change their code halfway; the progress file of an
-Operation's worker, which lies beside the Operation's and names the same host, is not a run of its
-own — then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy,
+Operation's worker, which lies beside the Operation's and names the same runner, is not a run of
+its own — then places the Framework runtime under `.concorde/framework/` (replacing an earlier copy,
 and leaving out `scripts/e2e/`, which only [End-to-end testing](../e2e/module.md) uses),
 Concorde's own Python environment, a venv at `.concorde/framework/python/` made from the
 installer's interpreter or `--python` (Python 3.11 or newer, else nothing more is written),
@@ -101,14 +108,15 @@ Operations that need them then refuse) — the `concorde` command as `.concorde/
 runs Concorde only in that environment, with the caller's `PYTHONPATH`, `PYTHONHOME` and user
 site-packages left out, so an activated project venv never becomes Concorde's interpreter,
 the Protocol copy under `.concorde/protocol/` and Concorde-owned defaults only where absent, the
-[main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) as the project
+[main-session guidance](../coordination/main-session/module.md#concept.main-session.guidance) as the project
 skill `.claude/skills/concorde/SKILL.md` and a block between `<!-- concorde:start -->` and
 `<!-- concorde:end -->` in the project's `CLAUDE.md` — replaced in place on a later install,
 leaving the rest of the file untouched — and the `d2` release `concorde.json` pins, placed at
 `.concorde/tools/d2`, checked against its SHA-256 before anything else is written and kept on a
 later install with the same pin
 ([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
-plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, `.concorde/worker-models.json`,
+plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, the workspace binding
+`.concorde/workspace.json` that each task worktree gets, `.concorde/worker-models.json`,
 `.concorde/framework/`, `.concorde/tools/` and `.claude/worktrees/`, where task worktrees go, and a receipt
 `.concorde/install.json`. The receipt names the installed dependencies under `dependencies`
 (the requirements file, the digest of the `uv.lock` they came from and the number of packages, or
@@ -138,7 +146,7 @@ configuration itself, the one write of the project configuration an installer ma
 the project **Concorde unvalidated** by writing `.concorde/update.json`, which Git ignores, with
 the versions, installed commits and Protocol bindings before and after; the findings below name
 the commits too, since between two commits of a Concorde repository the version seldom changes. While that state is there, `concorde
-validate` in the primary worktree reports `CONCORDE-UPDATE-001` as an error, which also stops a
+spec-validation` in the primary worktree reports `CONCORDE-UPDATE-001` as an error, which also stops a
 `task merge`; the first validation that passes removes it and says so (`CONCORDE-UPDATE-002`).
 Only an update sets the state, so a project that stops validating because of its own changes is
 never marked by it. The result lists the open tasks and, when the Protocol copy changed, asks for
@@ -150,7 +158,7 @@ their commands in — under `.concorde/tools/pi-runtime/` by copying the package
 `src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
 `npm ci --ignore-scripts`, which installs exactly the locked versions after checking each
 package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime));
-the [run view](../agents/main-session/module.md#concept.main-session.run-view), with its model picker, as
+the [run view](../coordination/main-session/module.md#concept.main-session.run-view), with its model picker, as
 `.pi/extensions/concorde/`; the skill a second time as `.pi/skills/concorde/SKILL.md`; every
 rendered pi workflow script under `.concorde/workflows/pi/`; and the command-runner agents
 `concorde-step` and `concorde-report` under `.pi/agents/`, where pi-subagents finds the project's
@@ -181,7 +189,7 @@ outside the project; the developer accepts a new Protocol copy later by updating
 
 <a id="uses-spec"></a>
 
-**Spec core** owns `validate` and `registry`, the
+**Spec core** owns `spec-validation` and `registry`, the
 [structural checks](../spec-tooling/spec/module.md#concept.spec.structural-check) and
 [registry](../spec-tooling/spec/module.md#concept.spec.registry) they work on, and the
 [Protocol binding](../spec-tooling/spec/module.md#concept.spec.protocol-binding) that
@@ -198,7 +206,7 @@ it writes are Views' responsibility, and an `--apply` without `--proposal` is re
 
 **Main session** owns the guidance the main agent receives. Distribution renders it as a prompt
 root and the installer places the rendered
-[main-session guidance](../agents/main-session/module.md#concept.main-session.guidance) unchanged, and
+[main-session guidance](../coordination/main-session/module.md#concept.main-session.guidance) unchanged, and
 refuses to install it missing or stale rather than fall back to an old copy.
 
 <a id="uses-dogfooding"></a>
@@ -209,6 +217,19 @@ installed from in develop mode, and the guidance a develop install adds. With `-
 every update of a develop install, the installer calls its source check before writing anything
 and refuses with its code and message when the check refuses, then adds its rendered guidance to
 the skill and the `CLAUDE.md` block and records the mode and the checked commit in the receipt.
+
+<a id="uses-execution"></a>
+
+**Execution** owns what `run` and the recorded commands `task-validation`, `delivery` and
+`scaffold` do: the entry point hands each the rest of its command line and the Execution runner
+parses it, reads the workspace binding, runs the steps and prints the run result, with its own
+exit codes. Distribution names no Operation or command's meaning and passes no task; a new
+recorded command is one more name to route. The installer also reads the run store's
+[run progress files](../execution/module.md#concept.execution.progress-file) to refuse while a run
+of either kind lives, relying on each naming its kind, its runner's process and its phase.
+
+The same entry point hands `configure-workers` to [Workers](../execution/workers/module.md), which
+owns the worker model configuration and prints the command's own result.
 
 <a id="uses-workflows"></a>
 

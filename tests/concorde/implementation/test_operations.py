@@ -13,7 +13,7 @@ from pathlib import Path
 from concorde.harness.runs import read_record
 from concorde.harness.settings import denied
 from concorde.implementation.operation import CODE_CHANGE_SCHEMA, TEST_REPORT_SCHEMA
-from concorde.operations.provider import interpreter_roots
+from concorde.execution.context import interpreter_roots
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from tests.concorde.support.operation_project import (
@@ -66,7 +66,7 @@ class ImplementTests(unittest.TestCase):
         )
 
     def record(self, envelope) -> dict:
-        return read_record(self.root, envelope["worker_runs"][-1])
+        return read_record(self.root / ".concorde", envelope["worker_runs"][-1])
 
     def kinds(self, envelope) -> list[str]:
         return [item["kind"] for item in envelope["host_evidence"]]
@@ -358,7 +358,7 @@ class TestOperationTests(unittest.TestCase):
         )
 
     def worker_round(self, envelope) -> dict:
-        record = read_record(self.root, envelope["worker_runs"][-1])
+        record = read_record(self.root / ".concorde", envelope["worker_runs"][-1])
         work = Path(record["run_directory"]) / "work"
         return record, json.loads((work / "fake-round-1.json").read_text())
 

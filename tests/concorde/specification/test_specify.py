@@ -92,7 +92,9 @@ class SpecifyTests(unittest.TestCase):
         self.assertEqual("Stated a second answer.", output["summary"])
         self.assertIn("FAKE-PLAN", output["intent"])
         self.assertTrue({"baseline", "registry", "validation"} <= self.kinds(envelope))
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         self.assertEqual("specify", record["task_type"])
         self.assertEqual(1, len(record["rounds"]))
         self.assertIsNone(record["rounds"][0].get("checks"))
@@ -213,7 +215,9 @@ class SpecifyTests(unittest.TestCase):
         self.assertIn("new-error", self.kinds(envelope))
         self.assertEqual(broken, path.read_text())
         self.assertEqual("CHK.node.meaning", new[0]["rule_id"])
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         # Two resume rounds with the host's validation, which the worker did not use.
         self.assertEqual(3, len(record["rounds"]))
         self.assertIn("CHK.node.meaning", record["rounds"][0]["validation"])
@@ -296,7 +300,9 @@ class SpecifyTests(unittest.TestCase):
             [{"result": {"output": CLAIMS}}], "--input", first["run_id"]
         )
         self.assertEqual(0, status, envelope)
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         brief = (Path(record["run_directory"]) / "control/brief.md").read_text()
         self.assertIn(first["run_id"], brief)
         self.assertIn("A answers one question.", brief)
@@ -325,7 +331,8 @@ class SpecifyTests(unittest.TestCase):
 class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_spec_change_contract(self):
         text = (
-            REPOSITORY_ROOT / "specs/concorde/operations/specification/contracts.md"
+            REPOSITORY_ROOT
+            / "specs/concorde/execution/operations/specification/contracts.md"
         ).read_text()
         fence = re.search(r"```concorde-contract\n(.*?)\n```", text, re.S).group(1)
         schema = json.loads(fence)["schema"]

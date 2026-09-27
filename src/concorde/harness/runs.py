@@ -1,4 +1,4 @@
-"""Run directories and run records under the primary worktree's ``.concorde/runs/``."""
+"""Worker run directories and run records under a records directory's ``runs/``."""
 
 from __future__ import annotations
 
@@ -35,9 +35,9 @@ def new_run_id(prefix: str = "w") -> str:
     return f"{prefix}-{stamp}-{secrets.token_hex(3)}"
 
 
-def create_run(worktree: Path, prefix: str = "w") -> tuple[str, RunPaths]:
-    """A fresh run directory with its layout, in the primary worktree."""
-    runs = primary_root(worktree) / ".concorde/runs"
+def create_run(records: Path, prefix: str = "w") -> tuple[str, RunPaths]:
+    """A fresh run directory with its layout, under ``records/runs``."""
+    runs = records / "runs"
     while True:
         run_id = new_run_id(prefix)
         root = runs / run_id
@@ -75,8 +75,8 @@ def write_record(paths: RunPaths, record: dict) -> Path:
     return target
 
 
-def read_record(root: Path, run_id: str) -> dict:
-    return json.loads((root / ".concorde/runs" / run_id / "record.json").read_text())
+def read_record(records: Path, run_id: str) -> dict:
+    return json.loads((records / "runs" / run_id / "record.json").read_text())
 
 
 __all__ = [

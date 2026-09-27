@@ -48,6 +48,23 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("with that worktree's own copy", self.block)
+        # Runs read the task worktree's workspace binding and never name the task.
+        self.assertIn("`concorde task open` binds the task worktree", self.skill)
+        self.assertIn(
+            "reads that binding from the worktree it starts in and never names the task",
+            self.skill,
+        )
+        self.assertIn("a second is refused with `workspace_busy`", self.skill)
+        self.assertIn(
+            "`concorde task-validation` shows what would block; `concorde delivery`",
+            self.skill,
+        )
+        self.assertIn(
+            "`concorde spec-validation` checks the Specs' structure", self.skill
+        )
+        self.assertNotIn("--task <task>", self.skill.split("## Issues", 1)[0])
+        self.assertNotIn("concorde run validate", self.skill)
+        self.assertNotIn("concorde run delivery", self.skill)
 
     @verifies("scenario.main-session.split-into-sessions")
     def test_split_work_goes_to_task_sessions(self):
@@ -127,9 +144,8 @@ class GuidanceTests(unittest.TestCase):
             "the `brownfield` workflow: open a task bound to the root Module",
             self.skill,
         )
-        self.assertIn(
-            "start the workflow from the primary worktree and stay there", self.skill
-        )
+        self.assertIn("start the workflow inside the task worktree", self.skill)
+        self.assertIn("never names the task", self.skill)
         self.assertIn(
             "Ask the developer which **mode** to use unless they already said",
             self.skill,
@@ -138,7 +154,12 @@ class GuidanceTests(unittest.TestCase):
             "put every point in `pending` to the developer at once", self.skill
         )
         self.assertIn("start the same workflow again with `answers`", self.skill)
-        self.assertIn(".concorde/tasks/<task>.workflow.json", self.skill)
+        self.assertIn(".concorde/runs/workflows/<task>/reports/<n>.json", self.skill)
+        self.assertIn(
+            "copy the rendering's decisions and problems into the task's decision log "
+            "yourself",
+            self.skill,
+        )
         self.assertIn("Treat it like an Operation result", self.skill)
         self.assertIn("never configured automatically", self.skill)
         self.assertIn("`survey`", self.skill)
@@ -225,7 +246,10 @@ class GuidanceTests(unittest.TestCase):
             "Preserve accepted reports unchanged",
             "document the decision about competing dispositions, retaining their evidence",
             "Never concatenate incompatible closes or invent reopenings",
-            "Run `concorde issues check` explicitly on the resolved records before `validate` and `delivery`",
+            (
+                "Run `concorde issues check` explicitly on the resolved records before "
+                "`task-validation` and `delivery`"
+            ),
             "a passing store check does not prove the closure is justified",
         ):
             with self.subTest(instruction=instruction):
@@ -241,14 +265,21 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("Change worker models only when the developer asks.", self.skill)
         self.assertIn("call the `concorde_configure_workers` tool", self.skill)
         self.assertIn(
-            "run `concorde run configure_workers` and ask with the AskUserQuestion tool",
+            "run `concorde configure-workers` and ask with the AskUserQuestion tool",
             self.skill,
         )
         self.assertIn(
-            "pass `--task <task>` only when the developer asks to change a task that "
+            "The `concorde configure-workers` command lists and changes the file of the "
+            "worktree it runs in",
+            self.skill,
+        )
+        self.assertIn(
+            "run it in a task worktree only when the developer asks to change a task that "
             "already exists",
             self.skill,
         )
+        self.assertIn("`concorde configure-workers` command", self.block)
+        self.assertNotIn("concorde run configure_workers", self.skill)
         self.assertIn("keyed by **worker id**", self.skill)
         self.assertIn("`reviewer1` to `reviewer5` and `chair`", self.skill)
         self.assertIn(
@@ -262,16 +293,19 @@ class GuidanceTests(unittest.TestCase):
 
     @verifies("scenario.main-session.no-task-operations")
     def test_questions_and_reviews_may_run_without_a_task(self):
-        self.assertIn("Some Operations also run without a task", self.skill)
         self.assertIn(
-            "they change no Spec or code, since a run without a task launches only reading "
-            "workers",
+            "Some Operations also run **unbound**, in a worktree without a binding such as "
+            "the primary worktree",
             self.skill,
         )
+        self.assertIn(
+            "they change no Spec or code, since an unbound run launches only reading workers",
+            self.skill,
+        )
+        self.assertIn("their result has `workspace` null", self.skill)
         self.assertIn("a question or a review that does not justify a task", self.skill)
-        self.assertIn("they run only from the primary worktree", self.skill)
-        self.assertIn("Inside a task's worktree, always pass `--task`", self.skill)
-        self.assertIn("as an Operation without `--task`", self.block)
+        self.assertIn("An `--input` of such a run must be unbound too", self.skill)
+        self.assertIn("as an unbound Operation in the primary worktree", self.block)
 
 
 if __name__ == "__main__":

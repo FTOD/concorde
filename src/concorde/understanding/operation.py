@@ -15,28 +15,31 @@ from __future__ import annotations
 import argparse
 import json
 
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
     Provider,
     RunContext,
     spec_cause,
     evidence,
+)
+from ..operations.provider import (
     load_prompt,
 )
 
 MODULE_ID = {"type": "string", "pattern": "^module\\."}
-OPERATIONS = [
+# What a plan step may run: an Operation, or one of the commands that end a task's work.
+RUNS = [
     "understand",
     "specify",
     "implement",
     "test",
     "spec_review",
     "code_review",
-    "validate",
+    "task-validation",
     "delivery",
 ]
 
-# contract.understanding.assessment, version 1 (specs/concorde/operations/understanding/contracts.md)
+# contract.understanding.assessment, version 2 (specs/concorde/operations/understanding/contracts.md)
 ASSESSMENT_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -111,9 +114,9 @@ ASSESSMENT_SCHEMA: dict = {
                             "items": {
                                 "type": "object",
                                 "additionalProperties": False,
-                                "required": ["operation", "modules", "purpose"],
+                                "required": ["run", "modules", "purpose"],
                                 "properties": {
-                                    "operation": {"enum": OPERATIONS},
+                                    "run": {"enum": RUNS},
                                     "modules": {"type": "array", "items": MODULE_ID},
                                     "purpose": {"type": "string", "minLength": 1},
                                 },
@@ -138,7 +141,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 def task_material(ctx: RunContext) -> str:
     """The task's goal and the admitted inputs, as brief text."""
-    parts = [f"The task's own goal: {ctx.task.get('goal', '(none)')}\n"]
+    parts = [f"The task's own goal: {ctx.goal or '(none)'}\n"]
     if ctx.inputs:
         parts.append(
             "\nAdmitted inputs (outputs of earlier ok runs of this task):\n\n```json\n"
@@ -240,7 +243,10 @@ def check_assessment(ctx: RunContext):
             explanation="understand reads Specs and never repairs them",
             evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
             causes=[spec_cause(error)],
-            options=["run validate for the task", "repair the Specs"],
+            options=[
+                "run concorde task-validation in the workspace",
+                "repair the Specs",
+            ],
         )
     unknown = sorted(named_modules(assessment) - known)
     if unknown:
@@ -300,7 +306,7 @@ UNDERSTAND = Provider(
     steps=(assess, check_assessment),
     output_schema=ASSESSMENT_SCHEMA,
     add_arguments=add_arguments,
-    task_scope="optional",
+    binding="optional",
 )
 
 __all__ = ["ASSESSMENT_SCHEMA", "UNDERSTAND"]

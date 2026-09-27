@@ -15,10 +15,11 @@ from typing import ClassVar
 from unittest.mock import patch
 
 from concorde import errors
+from concorde.execution.commands import COMMANDS
+from concorde.execution.runs import workspace_lock, workspace_runs
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.tasks import store
-from concorde.workflows import catalog
+from concorde.workflows import catalog, store
 from concorde.workflows import step as steps
 from concorde.workflows.report import RESULT_SCHEMA, report
 from concorde.workflows.step import (
@@ -44,28 +45,26 @@ def contract(path: str, identity: str) -> dict:
     raise AssertionError(f"{identity} not in {path}")
 
 
-def operation_link(
-    operation: str, run_id: str, code: str, reason: str = "decision"
-) -> dict:
+def run_link(name: str, run_id: str, code: str, reason: str = "decision") -> dict:
     return errors.link(
         "operation",
-        f"Operation {operation} {run_id} (task adopt)",
+        f"Operation {name} {run_id} (workspace adopt)",
         code,
-        f"{operation} stopped with {code}",
+        f"{name} stopped with {code}",
         reason=reason,
         explanation="a test stand-in",
     )
 
 
 class Runs:
-    """Saved Operation results written by hand, standing in for finished or dying hosts."""
+    """Saved run results written by hand, standing in for finished or dying runners."""
 
-    def __init__(self, primary: Path):
-        self.primary = primary
+    def __init__(self, records: Path):
+        self.records = records
 
     def make(
         self,
-        operation: str,
+        name: str,
         status: str | None = "ok",
         output: dict | None = None,
         error: dict | None = None,
@@ -73,22 +72,23 @@ class Runs:
         pid: int = DEAD_PID,
     ) -> str:
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
-        run_id = f"r-{stamp}-{operation}-{secrets.token_hex(4)}"
-        directory = self.primary / ".concorde/runs" / run_id
+        run_id = f"r-{stamp}-{name.replace('-', '_')}-{secrets.token_hex(4)}"
+        directory = self.records / "runs" / run_id
         directory.mkdir(parents=True)
         (directory / "status.json").write_text(json.dumps({"host_pid": pid}))
         if status is not None:
             if status != "ok" and error is None:
-                error = operation_link(operation, run_id, f"{operation}_{status}")
+                error = run_link(name, run_id, f"{name.replace('-', '_')}_{status}")
             (directory / "result.json").write_text(
                 json.dumps(
                     {
-                        "operation": operation,
-                        "task": "adopt",
+                        "kind": "command" if name in COMMANDS else "operation",
+                        "name": name,
+                        "workspace": "adopt",
                         "modules": list(modules),
                         "run_id": run_id,
                         "status": status,
-                        "summary": f"{operation} ended {status}.",
+                        "summary": f"{name} ended {status}.",
                         "output": output,
                         "worker": None,
                         "worker_runs": [],
@@ -177,14 +177,15 @@ class StepTests(unittest.TestCase):
         self.project = BrownfieldProject(self)
         self.project.open_task()
         self.primary = self.project.root
-        self.runs = Runs(self.primary)
+        self.space = store.workspace(self.project.worktree())
+        self.records = self.space.records
+        self.runs = Runs(self.records)
         self.started: list[list[str]] = []
 
     def request(
         self, key="survey", argv=("survey", "--modules", "module.shop"), **changes
     ):
         value = {
-            "task": "adopt",
             "workflow": "brownfield",
             "mode": "no-ask",
             "key": key,
@@ -197,14 +198,14 @@ class StepTests(unittest.TestCase):
         return value
 
     def starter(self, status="ok", output=None, pid=DEAD_PID):
-        def start(workflow, record, argv):
+        def start(workflow, space, argv):
             self.started.append(list(argv))
             return {"run_id": self.runs.make(argv[0], status, output, pid=pid)}
 
         return patch.object(steps, "start_run", side_effect=start)
 
     def test_the_schemas_are_the_contracts(self):
-        path = "specs/concorde/workflows/contracts.md"
+        path = "specs/concorde/execution/workflows/contracts.md"
         for identity, schema in (
             ("contract.workflows.step", STEP_SCHEMA),
             ("contract.workflows.step-request", REQUEST_SCHEMA),
@@ -213,60 +214,77 @@ class StepTests(unittest.TestCase):
             with self.subTest(identity=identity):
                 self.assertEqual(contract(path, identity), schema)
 
+    def test_the_workspace_is_the_task_worktree_and_its_records_the_primarys(self):
+        self.assertEqual("adopt", self.space.name)
+        self.assertEqual(self.project.worktree(), self.space.root)
+        self.assertEqual(self.primary / ".concorde", self.records)
+        self.assertEqual(
+            self.primary / ".concorde/runs/workflows/adopt", self.space.directory
+        )
+
     @verifies("scenario.workflows.step-starts")
     def test_a_step_starts_and_records_a_run(self):
         with self.starter(output=SURVEY_OUTPUT):
-            status, outcome = run_step(self.primary, self.request())
+            status, outcome = run_step(self.space, self.request())
         self.assertEqual(0, status)
+        self.assertEqual([["survey", "--modules", "module.shop"]], self.started)
         self.assertEqual(
-            [["survey", "--task", "adopt", "--modules", "module.shop"]], self.started
+            ("finished", "ok", 1, "adopt", "survey"),
+            (
+                outcome["state"],
+                outcome["status"],
+                outcome["decision_points"],
+                outcome["workspace"],
+                outcome["name"],
+            ),
         )
+        record = store.load(self.space)
         self.assertEqual(
-            ("finished", "ok", 1),
-            (outcome["state"], outcome["status"], outcome["decision_points"]),
+            ("brownfield", "adopt"), (record["workflow"], record["workspace"])
         )
-        workflow = store.load_task(self.primary, "adopt")["workflow"]
-        self.assertEqual("brownfield", workflow["name"])
-        self.assertEqual(["survey"], [s["key"] for s in workflow["steps"]])
-        self.assertEqual(outcome["run_id"], workflow["steps"][0]["run_id"])
+        self.assertEqual(["survey"], [s["key"] for s in record["steps"]])
+        self.assertEqual(outcome["run_id"], record["steps"][0]["run_id"])
         validate(outcome, STEP_SCHEMA)
 
     @verifies("scenario.workflows.step-starts")
     def test_a_real_step_runs_detached_with_the_worktrees_concorde(self):
         _status, outcome = run_step(
-            self.primary, self.request("validate", ("validate",)), wait=120
+            self.space, self.request("validate", ("task-validation",)), wait=120
         )
         self.assertIn(outcome["state"], ("finished",), outcome)
-        self.assertEqual("validate", outcome["operation"])
+        self.assertEqual("task-validation", outcome["name"])
         self.assertIsNotNone(outcome["status"])
-        runs = {run["run_id"] for run in store.load_task(self.primary, "adopt")["runs"]}
+        self.assertIsNotNone(outcome["ready"])
+        runs = {run["run_id"]: run for run in workspace_runs(self.records, "adopt")}
         self.assertIn(outcome["run_id"], runs)
+        self.assertEqual("command", runs[outcome["run_id"]]["kind"])
 
     @verifies("scenario.workflows.step-waits")
     def test_a_long_run_is_awaited_by_repeated_calls(self):
         with self.starter(status=None, pid=os.getpid()):
             before = time.monotonic()
-            status, outcome = run_step(self.primary, self.request(), wait=0.3)
+            status, outcome = run_step(self.space, self.request(), wait=0.3)
             self.assertLess(time.monotonic() - before, 5)
             self.assertEqual((3, "running"), (status, outcome["state"]))
-            status, again = run_step(self.primary, self.request(), wait=0.1)
+            status, again = run_step(self.space, self.request(), wait=0.1)
         self.assertEqual(1, len(self.started))
         self.assertEqual(outcome["run_id"], again["run_id"])
 
     @verifies("scenario.workflows.step-cached")
     def test_a_finished_step_returns_at_once_and_retry_restarts_a_failed_one(self):
+        validation = ("validate", ("task-validation",))
         with self.starter(output=SURVEY_OUTPUT):
-            run_step(self.primary, self.request())
-            run_step(self.primary, self.request())
+            run_step(self.space, self.request())
+            run_step(self.space, self.request())
         self.assertEqual(1, len(self.started))
         with self.starter(status="failed"):
-            run_step(self.primary, self.request("validate", ("validate",)))
-            _, failed = run_step(self.primary, self.request("validate", ("validate",)))
+            run_step(self.space, self.request(*validation))
+            _, failed = run_step(self.space, self.request(*validation))
         self.assertEqual("failed", failed["status"])
         self.assertEqual(2, len(self.started))
         with self.starter(status="ok"):
             _status, retried = run_step(
-                self.primary, self.request("validate", ("validate",), retry=True)
+                self.space, self.request(*validation, retry=True)
             )
         self.assertEqual(3, len(self.started))
         self.assertNotEqual(failed["run_id"], retried["run_id"])
@@ -274,23 +292,23 @@ class StepTests(unittest.TestCase):
     @verifies("scenario.workflows.restarted")
     def test_a_restart_generation_reruns_an_ok_step_once(self):
         with self.starter(output=SURVEY_OUTPUT):
-            run_step(self.primary, self.request())
+            run_step(self.space, self.request())
         with self.starter(output={"created": []}):
-            _, first = run_step(self.primary, self.request("scaffold", ("scaffold",)))
-            run_step(self.primary, self.request("validate", ("validate",)))
+            _, first = run_step(self.space, self.request("scaffold", ("scaffold",)))
+            run_step(self.space, self.request("validate", ("task-validation",)))
             _, again = run_step(
-                self.primary, self.request("scaffold", ("scaffold",), restart="2")
+                self.space, self.request("scaffold", ("scaffold",), restart="2")
             )
         self.assertEqual("scaffold#2", again["key"])
         self.assertNotEqual(first["run_id"], again["run_id"])
-        record = store.load_task(self.primary, "adopt")
+        record = store.load(self.space)
         self.assertEqual(
             ["survey", "scaffold#2"], [s["key"] for s in store.current_steps(record)]
         )
         started = len(self.started)
         with self.starter(output={"created": []}):
             _, same = run_step(
-                self.primary, self.request("scaffold", ("scaffold",), restart="2")
+                self.space, self.request("scaffold", ("scaffold",), restart="2")
             )
         self.assertEqual(
             (again["run_id"], started), (same["run_id"], len(self.started))
@@ -299,13 +317,13 @@ class StepTests(unittest.TestCase):
     @verifies("scenario.workflows.step-refused")
     def test_a_step_that_does_not_belong_is_rejected(self):
         with self.starter(output=SURVEY_OUTPUT):
-            run_step(self.primary, self.request())
+            run_step(self.space, self.request())
             for request, code in (
                 (self.request(workflow="other"), "workflow_conflict"),
-                (self.request(argv=("validate",)), "step_conflict"),
+                (self.request(argv=("task-validation",)), "step_conflict"),
             ):
                 with self.subTest(code=code):
-                    status, value = run_step(self.primary, request)
+                    status, value = run_step(self.space, request)
                     self.assertEqual((1, "refused"), (status, value["state"]))
                     self.assertIsNone(value["run_id"])
                     link = value["error"]
@@ -314,23 +332,21 @@ class StepTests(unittest.TestCase):
                     )
                     self.assertEqual(code, link["causes"][0]["code"])
         self.assertEqual(1, len(self.started))
-        self.assertEqual(
-            1, len(store.load_task(self.primary, "adopt")["workflow"]["steps"])
-        )
+        self.assertEqual(1, len(store.load(self.space)["steps"]))
 
     @verifies("scenario.workflows.refused-step")
     def test_a_step_whose_run_cannot_start_is_recorded_without_a_run(self):
         status, outcome = run_step(
-            self.primary, self.request("validate", ("validate", "--bogus"))
+            self.space, self.request("validate", ("task-validation", "--bogus"))
         )
         self.assertEqual((1, "refused"), (status, outcome["state"]))
         self.assertIsNone(outcome["run_id"])
         self.assertEqual("step_refused", outcome["error"]["code"])
         self.assertIn("--bogus", json.dumps(outcome["error"]))
-        [recorded] = store.load_task(self.primary, "adopt")["workflow"]["steps"]
+        [recorded] = store.load(self.space)["steps"]
         self.assertIsNone(recorded["run_id"])
         self.assertEqual("step_refused", recorded["error"]["code"])
-        result = report(self.primary, "adopt")
+        result = report(self.space)
         self.assertEqual("failed", result["status"])
         self.assertEqual("step_refused", result["problems"][0]["error"]["code"])
 
@@ -338,17 +354,17 @@ class StepTests(unittest.TestCase):
     def test_a_step_whose_host_died_is_lost(self):
         with self.starter(status=None, pid=DEAD_PID):
             status, outcome = run_step(
-                self.primary, self.request("describe:module.shop", ("code_to_spec",))
+                self.space, self.request("describe:module.shop", ("code_to_spec",))
             )
         self.assertEqual((1, "lost"), (status, outcome["state"]))
         self.assertEqual("step_lost", outcome["error"]["code"])
-        result = report(self.primary, "adopt", ["describe:module.shop"])
+        result = report(self.space, ["describe:module.shop"])
         self.assertEqual("failed", result["status"])
         self.assertEqual("lost", result["problems"][0]["status"])
         # A key reported lost that has a finished run keeps that run's outcome.
         with self.starter(output=SURVEY_OUTPUT):
-            run_step(self.primary, self.request())
-        result = report(self.primary, "adopt", ["survey"])
+            run_step(self.space, self.request())
+        result = report(self.space, ["survey"])
         self.assertEqual(
             "ok", {s["key"]: s["status"] for s in result["steps"]}["survey"]
         )
@@ -356,28 +372,28 @@ class StepTests(unittest.TestCase):
     @verifies("scenario.workflows.superseded")
     def test_a_retried_step_supersedes_later_steps(self):
         with self.starter(output=SURVEY_OUTPUT):
-            run_step(self.primary, self.request())
+            run_step(self.space, self.request())
         with self.starter(status="failed"):
             run_step(
-                self.primary,
+                self.space,
                 self.request("describe:module.checkout", ("code_to_spec",)),
             )
         with self.starter(status="ok", output={"ready": True}):
-            run_step(self.primary, self.request("validate", ("validate",)))
-            run_step(self.primary, self.request("delivery", ("delivery",)))
+            run_step(self.space, self.request("validate", ("task-validation",)))
+            run_step(self.space, self.request("delivery", ("delivery",)))
         with self.starter(status="ok", output=describe_output("module.checkout")):
             run_step(
-                self.primary,
+                self.space,
                 self.request("describe:module.checkout", ("code_to_spec",), retry=True),
             )
-        record = store.load_task(self.primary, "adopt")
+        record = store.load(self.space)
         current = [s["key"] for s in store.current_steps(record)]
         self.assertEqual(["survey", "describe:module.checkout"], current)
         before = len(self.started)
         with self.starter(status="ok", output={"ready": True}):
-            run_step(self.primary, self.request("validate", ("validate",)))
+            run_step(self.space, self.request("validate", ("task-validation",)))
         self.assertEqual(before + 1, len(self.started))
-        result = report(self.primary, "adopt")
+        result = report(self.space)
         self.assertEqual(
             ["describe:module.checkout", "validate", "delivery"],
             [s["key"] for s in result["superseded"]],
@@ -386,46 +402,38 @@ class StepTests(unittest.TestCase):
     @verifies("scenario.workflows.interactive-resume")
     def test_answers_make_a_new_step_that_admits_the_asking_run(self):
         with self.starter(output=SURVEY_OUTPUT):
-            _, first = run_step(self.primary, self.request(mode="interactive"))
+            _, first = run_step(self.space, self.request(mode="interactive"))
         answers = [{"id": "d.db-helper", "question": "own Module?", "answer": "yes"}]
         followed = json.loads(json.dumps(SURVEY_OUTPUT))
         followed["decisions"][0].update(chosen="yes", decided_by="developer")
         with self.starter(output=followed):
             _, second = run_step(
-                self.primary, self.request(mode="interactive", answers=answers)
+                self.space, self.request(mode="interactive", answers=answers)
             )
         self.assertEqual(step_key("survey", answers), second["key"])
         argv = self.started[-1]
         self.assertEqual(first["run_id"], argv[argv.index("--input") + 1])
         answers_file = Path(argv[argv.index("--answers") + 1])
+        self.assertEqual(self.space.directory / "answers", answers_file.parent)
         self.assertEqual({"answers": answers}, json.loads(answers_file.read_text()))
         self.assertEqual(0, second["decision_points"])
         # The same answers find the same step again.
         with self.starter(output=followed):
             _, again = run_step(
-                self.primary, self.request(mode="interactive", answers=answers)
+                self.space, self.request(mode="interactive", answers=answers)
             )
         self.assertEqual(second["run_id"], again["run_id"])
 
     @verifies("scenario.workflows.step-waits")
-    def test_a_step_waits_while_another_run_of_the_task_runs(self):
-        store.begin_run(
-            self.primary,
-            "adopt",
-            "r-other",
-            "implement",
-            ["module.shop"],
-            True,
-            os.getpid(),
-        )
+    def test_a_step_waits_while_another_run_of_the_workspace_runs(self):
         with self.starter(output=SURVEY_OUTPUT):
-            status, value = run_step(self.primary, self.request(), wait=0.3)
-            self.assertEqual(
-                (3, "running", None), (status, value["state"], value["run_id"])
-            )
-            self.assertEqual([], self.started)
-            store.finish_run(self.primary, "adopt", "r-other", "ok")
-            status, value = run_step(self.primary, self.request())
+            with workspace_lock(self.records, "adopt", "Operation implement r-other"):
+                status, value = run_step(self.space, self.request(), wait=0.3)
+                self.assertEqual(
+                    (3, "running", None), (status, value["state"], value["run_id"])
+                )
+                self.assertEqual([], self.started)
+            status, value = run_step(self.space, self.request())
         self.assertEqual((0, "finished"), (status, value["state"]))
         self.assertEqual(1, len(self.started))
 
@@ -433,7 +441,7 @@ class StepTests(unittest.TestCase):
         answers = [{"id": "q.retry", "question": "retries", "answer": "keep"}]
         with self.starter(output=describe_output("module.checkout", [QUESTION])):
             _, value = run_step(
-                self.primary,
+                self.space,
                 self.request(
                     "describe:module.checkout",
                     ("code_to_spec",),
@@ -442,18 +450,18 @@ class StepTests(unittest.TestCase):
                 ),
             )
         self.assertEqual(0, value["decision_points"])
-        self.assertEqual([], report(self.primary, "adopt")["pending"])
+        self.assertEqual([], report(self.space)["pending"])
 
     @verifies("scenario.workflows.interactive-resume")
     def test_a_retried_answered_step_still_admits_the_asking_run(self):
         with self.starter(output=SURVEY_OUTPUT):
-            _, first = run_step(self.primary, self.request(mode="interactive"))
+            _, first = run_step(self.space, self.request(mode="interactive"))
         answers = [{"id": "d.db-helper", "question": "own Module?", "answer": "yes"}]
         with self.starter(status="failed"):
-            run_step(self.primary, self.request(mode="interactive", answers=answers))
+            run_step(self.space, self.request(mode="interactive", answers=answers))
         with self.starter(output=SURVEY_OUTPUT):
             run_step(
-                self.primary,
+                self.space,
                 self.request(mode="interactive", answers=answers, retry=True),
             )
         argv = self.started[-1]
@@ -461,22 +469,19 @@ class StepTests(unittest.TestCase):
 
     @verifies("scenario.workflows.lost")
     def test_a_lost_step_carries_its_host_output(self):
+        validation = ("validate", ("task-validation",))
         with self.starter(status=None, pid=DEAD_PID):
-            _, value = run_step(
-                self.primary, self.request("validate", ("validate",)), wait=0
-            )
-        (self.primary / ".concorde/runs" / value["run_id"] / "host.out").write_text(
+            _, value = run_step(self.space, self.request(*validation), wait=0)
+        (self.records / "runs" / value["run_id"] / "host.out").write_text(
             "Traceback: KeyError: 'modules'\n"
         )
-        _, value = run_step(self.primary, self.request("validate", ("validate",)))
+        _, value = run_step(self.space, self.request(*validation))
         self.assertEqual("lost", value["state"])
         self.assertIn("KeyError", json.dumps(value["error"]["evidence"]))
         self.assertEqual("host_ended", value["error"]["causes"][0]["code"])
         self.assertIn(
             "KeyError",
-            report(self.primary, "adopt")["problems"][0]["error"]["causes"][0][
-                "detail"
-            ],
+            report(self.space)["problems"][0]["error"]["causes"][0]["detail"],
         )
 
     def test_a_started_run_that_cannot_be_recorded_is_named(self):
@@ -484,11 +489,11 @@ class StepTests(unittest.TestCase):
             self.starter(output=SURVEY_OUTPUT),
             patch.object(
                 store,
-                "record_workflow_step",
-                side_effect=store.TaskError("record_conflict", "busy"),
+                "record_step",
+                side_effect=store.WorkflowError("record_conflict", "busy"),
             ),
         ):
-            status, value = run_step(self.primary, self.request())
+            status, value = run_step(self.space, self.request())
         self.assertEqual((1, "refused"), (status, value["state"]))
         self.assertEqual("step_unrecorded", value["error"]["code"])
         self.assertIsNotNone(value["run_id"])
@@ -496,20 +501,55 @@ class StepTests(unittest.TestCase):
         self.assertEqual("record_conflict", value["error"]["causes"][0]["code"])
 
 
+class CliTests(unittest.TestCase):
+    """``concorde workflow step|report`` work only in a bound workspace."""
+
+    def setUp(self):
+        self.project = BrownfieldProject(self)
+
+    def main(self, argv, cwd: Path) -> tuple[int, dict]:
+        import contextlib
+        import io
+
+        from concorde.workflows import cli as workflow_cli
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = workflow_cli.main(argv, cwd)
+        return status, json.loads(output.getvalue())
+
+    @verifies("scenario.workflows.unbound-refused")
+    def test_an_unbound_worktree_runs_no_workflow(self):
+        step = ["step", "--workflow", "brownfield", "--mode", "no-ask"]
+        for argv in ([*step, "--key", "survey", "--", "survey"], ["report"]):
+            with self.subTest(command=argv[0]):
+                status, value = self.main(argv, self.project.root)
+                self.assertEqual(1, status)
+                link = value["error"]
+                self.assertEqual(
+                    ("component", "binding_required"), (link["level"], link["code"])
+                )
+                self.assertIn(str(self.project.root), link["detail"])
+
+    def test_a_report_before_any_step_says_there_is_nothing_to_report(self):
+        self.project.open_task()
+        status, value = self.main(["report"], self.project.worktree())
+        self.assertEqual(1, status)
+        self.assertEqual("no_workflow", value["error"]["code"])
+        self.assertIn("adopt", value["error"]["detail"])
+
+
 class ReportTests(unittest.TestCase):
     def setUp(self):
         self.project = BrownfieldProject(self)
         self.project.open_task()
         self.primary = self.project.root
-        self.runs = Runs(self.primary)
+        self.space = store.workspace(self.project.worktree())
+        self.runs = Runs(self.space.records)
 
-    def record(
-        self, key, operation, status="ok", output=None, mode="no-ask", error=None
-    ):
-        run_id = self.runs.make(operation, status, output, error=error)
-        store.record_workflow_step(
-            self.primary, "adopt", "brownfield", key, operation, run_id, mode, None
-        )
+    def record(self, key, name, status="ok", output=None, mode="no-ask", error=None):
+        run_id = self.runs.make(name, status, output, error=error)
+        store.record_step(self.space, "brownfield", key, name, run_id, mode, None)
         return run_id
 
     def complete(self, describe_status="ok"):
@@ -534,7 +574,7 @@ class ReportTests(unittest.TestCase):
                 "modules": [{"module": "module.checkout", "findings": [1, 2]}],
             },
         )
-        self.record("validate", "validate", output={"ready": True})
+        self.record("validate", "task-validation", output={"ready": True})
         self.record("delivery", "delivery", output={})
 
     @verifies("scenario.workflows.no-ask-complete")
@@ -542,9 +582,9 @@ class ReportTests(unittest.TestCase):
     @verifies("scenario.workflows.report-ignores-relay")
     def test_a_no_ask_run_reports_everything(self):
         self.complete(describe_status="blocked")
-        result = report(self.primary, "adopt")
+        result = report(self.space)
         validate(result, RESULT_SCHEMA)
-        self.assertEqual("ok", result["status"])
+        self.assertEqual(("ok", "adopt"), (result["status"], result["workspace"]))
         self.assertIsNone(result["error"])
         self.assertEqual(["d.db-helper"], [d["id"] for d in result["decisions"]])
         self.assertEqual("small", result["decisions"][0]["reason"])
@@ -555,29 +595,39 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(
             ["check.checkout.tests"], [c["id"] for c in result["proposed_checks"]]
         )
+        self.assertEqual(
+            "task-validation",
+            {s["key"]: s["name"] for s in result["steps"]}["validate"],
+        )
         [problem] = result["problems"]
         self.assertEqual(
             ("describe:module.inventory", "blocked"),
             (problem["step"], problem["status"]),
         )
         self.assertEqual("code_to_spec_blocked", problem["error"]["code"])
-        log = store.decision_log_path(self.primary, "adopt").read_text()
-        self.assertIn("Workflow brownfield report: ok", log)
-        self.assertIn("q.retry", log)
-        self.assertIn("check.checkout.tests", log)
-        saved = json.loads(
-            (self.primary / ".concorde/tasks/adopt.workflow.json").read_text()
-        )
+        # The report is saved with its rendering beside the workflow record, not logged.
+        [entry] = store.load(self.space)["reports"]
+        self.assertEqual("ok", entry["status"])
+        self.assertEqual(self.space.directory / "reports/1.json", Path(entry["path"]))
+        saved = json.loads(Path(entry["path"]).read_text())
         self.assertEqual(result["summary"], saved["summary"])
+        rendering = Path(entry["rendered"]).read_text()
+        self.assertIn("Workflow brownfield report: ok", rendering)
+        self.assertIn("q.retry", rendering)
+        self.assertIn("check.checkout.tests", rendering)
+        log = self.primary / ".concorde/tasks/adopt.decisions.md"
+        if log.exists():
+            self.assertNotIn("Workflow brownfield report", log.read_text())
+        report(self.space)
         self.assertEqual(
-            "ok",
-            store.load_task(self.primary, "adopt")["workflow"]["reports"][-1]["status"],
+            ["1.json", "1.md", "2.json", "2.md"],
+            sorted(p.name for p in (self.space.directory / "reports").iterdir()),
         )
 
     @verifies("scenario.workflows.interactive-pause")
     def test_an_interactive_run_ends_at_survey_decisions(self):
         self.record("survey", "survey", output=SURVEY_OUTPUT, mode="interactive")
-        result = report(self.primary, "adopt")
+        result = report(self.space)
         self.assertEqual("awaiting_decision", result["status"])
         self.assertEqual(["d.db-helper"], [p["id"] for p in result["pending"]])
         self.assertEqual(["yes", "no"], result["pending"][0]["options"])
@@ -593,7 +643,7 @@ class ReportTests(unittest.TestCase):
     @verifies("scenario.workflows.failed-chain")
     def test_a_stopping_step_keeps_its_chain_under_the_workflow_link(self):
         self.record("survey", "survey", output=SURVEY_OUTPUT)
-        cause = operation_link("scaffold", "r-x", "stale_proposal")
+        cause = run_link("scaffold", "r-x", "stale_proposal")
         cause["causes"] = [
             errors.link(
                 "component",
@@ -605,7 +655,7 @@ class ReportTests(unittest.TestCase):
             )
         ]
         self.record("scaffold", "scaffold", "blocked", error=cause)
-        result = report(self.primary, "adopt")
+        result = report(self.space)
         self.assertEqual("blocked", result["status"])
         error = result["error"]
         self.assertEqual(("workflow", "step_blocked"), (error["level"], error["code"]))
@@ -613,17 +663,10 @@ class ReportTests(unittest.TestCase):
 
     def test_a_report_during_a_running_step(self):
         run_id = self.runs.make("survey", None, pid=os.getpid())
-        store.record_workflow_step(
-            self.primary,
-            "adopt",
-            "brownfield",
-            "survey",
-            "survey",
-            run_id,
-            "no-ask",
-            None,
+        store.record_step(
+            self.space, "brownfield", "survey", "survey", run_id, "no-ask", None
         )
-        result = report(self.primary, "adopt")
+        result = report(self.space)
         self.assertEqual("running", result["status"])
         self.assertEqual("step_running", result["error"]["code"])
 
@@ -636,14 +679,14 @@ class ReportTests(unittest.TestCase):
         output = io.StringIO()
         with (
             patch.object(workflow_cli, "report", side_effect=RuntimeError("boom")),
-            patch.object(workflow_cli.store, "primary_of", return_value=self.primary),
             contextlib.redirect_stdout(output),
         ):
-            status = workflow_cli.main(["report", "--task", "adopt"])
+            status = workflow_cli.main(["report"], self.project.worktree())
         self.assertEqual(1, status)
         link = json.loads(output.getvalue())["error"]
         self.assertEqual("report_failed", link["code"])
         self.assertIn("boom", link["detail"])
+        self.assertIn("adopt", link["detail"])
 
 
 class ScriptTests(unittest.TestCase):
@@ -675,12 +718,12 @@ class ScriptTests(unittest.TestCase):
             )
         return json.loads(completed.stdout)
 
-    def outcome(self, key, operation, status="ok", points=0, created=(), ready=None):
+    def outcome(self, key, name, status="ok", points=0, created=(), ready=None):
         return {
             "workflow": "brownfield",
-            "task": "adopt",
+            "workspace": "adopt",
             "key": key,
-            "operation": operation,
+            "name": name,
             "run_id": "r-20260925T100000-x-00000000",
             "state": "finished",
             "status": status,
@@ -710,11 +753,11 @@ class ScriptTests(unittest.TestCase):
                 "describe:module.shop", "code_to_spec"
             ),
             "spec_review": self.outcome("spec_review", "spec_review"),
-            "validate": self.outcome("validate", "validate", ready=True),
+            "validate": self.outcome("validate", "task-validation", ready=True),
             "delivery": self.outcome("delivery", "delivery"),
         }
 
-    ARGS: ClassVar[dict] = {"task": "adopt", "module": "module.shop", "mode": "no-ask"}
+    ARGS: ClassVar[dict] = {"module": "module.shop", "mode": "no-ask"}
 
     @verifies("scenario.workflows.no-ask-complete")
     def test_both_clients_run_the_whole_procedure_providers_first(self):
@@ -893,7 +936,7 @@ class ScriptTests(unittest.TestCase):
         self.assertNotIn("relayed", run["result"])
         # Requests carry no optional field that holds its default.
         self.assertEqual(
-            {"task", "workflow", "mode", "key", "argv"},
+            {"workflow", "mode", "key", "argv"},
             set(run["calls"][-2]["request"]),
         )
         outcomes["delivery"] = [refusal]
@@ -908,7 +951,6 @@ class ScriptTests(unittest.TestCase):
     def test_a_request_without_optional_fields_gets_their_defaults(self):
         value = check_request(
             {
-                "task": "adopt",
                 "workflow": "brownfield",
                 "mode": "no-ask",
                 "key": "delivery",
@@ -922,7 +964,7 @@ class ScriptTests(unittest.TestCase):
     def test_an_unready_validation_ends_the_run_before_delivery(self):
         outcomes = self.full()
         outcomes["validate"] = self.outcome(
-            "validate", "validate", "blocked", ready=False
+            "validate", "task-validation", "blocked", ready=False
         )
         run = self.run_script("claude", self.ARGS, outcomes)
         self.assertNotIn("delivery", [c["key"] for c in run["calls"]])

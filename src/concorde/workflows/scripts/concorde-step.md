@@ -13,5 +13,5 @@ inheritGlobalContext: false
 inheritSkills: false
 ---
 
-Concorde runs one workflow step: it starts or awaits the Operation run named by the JSON step
-request in the prompt and prints the step outcome.
+Concorde runs one workflow step in the workspace it runs in: it starts or awaits the Operation or
+command run named by the JSON step request in the prompt and prints the step outcome.

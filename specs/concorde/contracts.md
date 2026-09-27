@@ -7,7 +7,7 @@ The one contract every Module of the [Concorde Framework](module.md) shares: the
 ## Error link
 
 An error chain is a tree of links read from the top. The top link is written by the actor that
-reports to the reader, such as the Operation in an Operation result or the main agent in an
+reports to the reader, such as the Operation in its run result or the main agent in an
 escalation; each link's `causes` are the errors of its children that it could not handle. The
 order of reading is therefore the order of responsibility: the reader first learns what the level
 directly below it could not do and why, then what that level received, down to where the error
@@ -16,7 +16,7 @@ started.
 ```concorde-contract
 {
   "id": "contract.concorde.error",
-  "version": 4,
+  "version": 5,
   "schema": {
     "$ref": "#/$defs/error",
     "$defs": {
@@ -42,6 +42,7 @@ started.
               "task-session",
               "workflow",
               "operation",
+              "command",
               "workers",
               "worker",
               "check",
@@ -142,10 +143,10 @@ started.
       }
     }
   },
-  "semantics": "One error link and, through causes, the chain below it. level names the kind of actor that wrote the link: main-agent, task-session (a session working inside one task worktree for the main agent), workflow (a workflow run in one task, reporting the Operations it ran), operation (an Operation host and its provider steps), workers (Workers running one worker), worker (the worker's own report, a claim), check (one configured check) or component (a deterministic component the host called, such as Git, Tasks, Spec core or the Claude Code process). actor identifies it exactly, with the run, task, check or command concerned. code is a stable snake_case name chosen by the actor. detail describes the error completely: what failed, where, and the exact message or output; it is never only the code. evidence names the paths, commands and outputs that show it, each with a kind, a reference and a detail. attempts lists what the actor tried, in order. unhandled states why the actor could not handle the error itself; its reason is one of the reasons in the table below and explanation names the specifics. options and recommendation are what the actor offers its parent. causes are the errors the actor received from its children and could not handle, each exactly as its child wrote it; independent errors are siblings, and a link without causes is where an error started. A parent never edits or drops a cause. A behaviour or field change increments the version.",
+  "semantics": "One error link and, through causes, the chain below it. level names the kind of actor that wrote the link: main-agent, task-session (a session working inside one task worktree for the main agent), workflow (a workflow in one workspace, reporting the runs it started), operation (an Operation run: the Execution runner and the Operation's provider steps), command (a deterministic concorde command: a recorded command run, that is the Execution runner and the command's steps, or the plain command configure-workers), workers (Workers running one worker), worker (the worker's own report, a claim), check (one configured check) or component (a deterministic component a run or command called, such as Git, Tasks, the workspace binding, the run store, Spec core or the Claude Code process). actor identifies it exactly, with the run, workspace, task, check or command concerned. code is a stable snake_case name chosen by the actor. detail describes the error completely: what failed, where, and the exact message or output; it is never only the code. evidence names the paths, commands and outputs that show it, each with a kind, a reference and a detail. attempts lists what the actor tried, in order. unhandled states why the actor could not handle the error itself; its reason is one of the reasons in the table below and explanation names the specifics. options and recommendation are what the actor offers its parent. causes are the errors the actor received from its children and could not handle, each exactly as its child wrote it; independent errors are siblings, and a link without causes is where an error started. A parent never edits or drops a cause. A behaviour or field change increments the version.",
   "example": {
     "level": "operation",
-    "actor": "Operation implement r-20260924T093000-implement-5c1e0a77 (task severity)",
+    "actor": "Operation implement r-20260924T093000-implement-5c1e0a77 (workspace severity)",
     "code": "checks_failed",
     "detail": "the implement worker run w-20260924T093001-implement-0f3b2a91 ended failed: checks_failed: 1 configured check(s) still fail after 4 round(s) (3 resume round(s) allowed): check.issues.tests",
     "evidence": [],
@@ -216,10 +217,11 @@ started.
 | Where | The top link is written by |
 | --- | --- |
 | `error` of a workflow result | the workflow (`workflow`) |
-| `error` of an Operation result | the Operation (`operation`) |
+| `error` of a run result | the Operation (`operation`) or the recorded command (`command`) |
 | `error` of a worker run record | Workers (`workers`) |
 | `error` of a worker result | the worker, without `level`, `actor` and `causes`, which Workers adds |
 | `{"error": …}` printed by a refused `concorde task` or `concorde issues` command | the refusing component (`component`) |
+| `error` of the result of `concorde configure-workers` | the command (`command`) |
 | an escalation recorded with `concorde task escalate` | the main agent (`main-agent`) |
 
 Spec tooling is the exception: it depends on no other Module and reports with its
@@ -232,7 +234,7 @@ cannot handle it translates it into a `component` link and keeps its causes as n
 | --- | --- |
 | `permission` | the fix needs a read, write or tool it is not granted |
 | `decision` | the fix needs a decision reserved to a higher level |
-| `scope` | the fix lies outside its task or bound Modules |
+| `scope` | the fix lies outside its task, its workspace or its bound Modules |
 | `capability` | it has no means to repair this kind of error |
 | `exhausted` | it used up its allowed rounds, turns, time or budget |
 | `environment` | the environment failed and it cannot change it |

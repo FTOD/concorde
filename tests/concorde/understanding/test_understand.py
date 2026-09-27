@@ -44,8 +44,8 @@ PLAN = {
         }
     ],
     "steps": [
-        {"operation": "specify", "modules": ["module.a"], "purpose": "state it"},
-        {"operation": "implement", "modules": ["module.a"], "purpose": "build it"},
+        {"run": "specify", "modules": ["module.a"], "purpose": "state it"},
+        {"run": "implement", "modules": ["module.a"], "purpose": "build it"},
     ],
     "decisions": ["whether the second answer is optional"],
 }
@@ -75,7 +75,9 @@ class UnderstandTests(unittest.TestCase):
         )
 
     def fake_round(self, envelope) -> dict:
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         work = Path(record["run_directory"]) / "work"
         return json.loads((work / "fake-round-1.json").read_text())
 
@@ -104,7 +106,9 @@ class UnderstandTests(unittest.TestCase):
         self.assertNotIn("src/a/", readable)
         self.assertIn("(none)", writable)
         self.assertIn("Plan requested: no", brief)
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         self.assertEqual(1, len(record["rounds"]))
         self.assertIsNone(record["rounds"][0].get("checks"))
 
@@ -118,7 +122,7 @@ class UnderstandTests(unittest.TestCase):
         self.assertEqual(["module.a"], plan["modules"])
         self.assertEqual("realization.a.code", plan["pending"][0]["realization"])
         self.assertEqual(
-            ["specify", "implement"], [step["operation"] for step in plan["steps"]]
+            ["specify", "implement"], [step["run"] for step in plan["steps"]]
         )
         self.assertIn("Plan requested: yes", self.fake_round(envelope)["prompt"])
 
@@ -217,14 +221,17 @@ class UnderstandTests(unittest.TestCase):
         self.assertEqual("audit_violation", error["code"])
         self.assertEqual("permission", error["unhandled"]["reason"])
         self.assertIn("specs/a/module.md", error["detail"])
-        record = read_record(self.project.root, envelope["worker_runs"][-1])
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
         self.assertEqual(1, len(record["rounds"]))
 
 
 class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_assessment_contract(self):
         text = (
-            REPOSITORY_ROOT / "specs/concorde/operations/understanding/contracts.md"
+            REPOSITORY_ROOT
+            / "specs/concorde/execution/operations/understanding/contracts.md"
         ).read_text()
         fence = re.search(r"```concorde-contract\n(.*?)\n```", text, re.S).group(1)
         self.assertEqual(json.loads(fence)["schema"], ASSESSMENT_SCHEMA)

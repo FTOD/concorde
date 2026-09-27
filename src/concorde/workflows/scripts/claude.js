@@ -8,8 +8,10 @@
 // built by `concorde workflow report`, and a step left without an answer carries what its agents
 // relayed last.
 
-if (!args || !args.task || !args.module || !args.mode) {
-  throw new Error("concorde workflow needs args { task, module, mode } and optionally answers, retry and restart")
+// The workflow runs in the bound workspace it is started in: every command runs from the current
+// working directory, whose workspace binding names the workspace.
+if (!args || !args.module || !args.mode) {
+  throw new Error("concorde workflow needs args { module, mode } and optionally answers, retry and restart")
 }
 const CONCORDE = args.concorde || ".concorde/bin/concorde"
 const WAIT_SECONDS = 100
@@ -64,7 +66,7 @@ function checked(outcome, key) {
 
 function step(key, argv) {
   // Optional fields are left out when they hold their default, so there is less to copy.
-  const request = { task: args.task, workflow: WORKFLOW, mode: args.mode, key: key, argv: argv }
+  const request = { workflow: WORKFLOW, mode: args.mode, key: key, argv: argv }
   if (args.answers && args.answers[key]) request.answers = args.answers[key]
   if (args.retry && args.retry.indexOf(key) >= 0) request.retry = true
   if (args.restart && args.restart[key]) request.restart = args.restart[key]
@@ -103,7 +105,7 @@ function step(key, argv) {
 
 function report(lost) {
   const command =
-    CONCORDE + " workflow report --task " + quote(args.task) + (lost ? " --lost " + quote(lost) : "")
+    CONCORDE + " workflow report" + (lost ? " --lost " + quote(lost) : "")
   return relay(
     command,
     [
@@ -117,12 +119,9 @@ function report(lost) {
       properties: { status: { type: "string" }, summary: { type: "string" } },
     }
   ).then(function (value) {
-    const result = {
-      workflow: WORKFLOW,
-      task: args.task,
-      reported: value,
-      result: ".concorde/tasks/" + args.task + ".workflow.json",
-    }
+    // The whole result is saved beside the workspace's workflow record; `concorde workflow
+    // report` prints it again at any time.
+    const result = { workflow: WORKFLOW, reported: value }
     // Unverified: what a step agent said, not what a host recorded, kept so that a refusal of
     // the step command (such as a mistyped request) is not lost from the error chain.
     if (lost && relayed[lost]) result.relayed = { key: lost, attempts: RELAYS, outcome: relayed[lost] }

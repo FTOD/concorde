@@ -19,28 +19,16 @@
           "meaning": "#contains-spec-tooling"
         },
         {
-          "target": "module.agents",
-          "meaning": "#contains-agents"
+          "target": "module.coordination",
+          "meaning": "#contains-coordination"
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#contains-execution"
         },
         {
           "target": "module.harness",
           "meaning": "#contains-harness"
-        },
-        {
-          "target": "module.tools",
-          "meaning": "#contains-tools"
-        },
-        {
-          "target": "module.tasks",
-          "meaning": "#contains-tasks"
-        },
-        {
-          "target": "module.workflows",
-          "meaning": "#contains-workflows"
-        },
-        {
-          "target": "module.operations",
-          "meaning": "#contains-operations"
         },
         {
           "target": "module.issues",
@@ -66,9 +54,9 @@
     {
       "id": "module.tools",
       "title": "Tools",
-      "entry": "specs/concorde/tools/module.md",
+      "entry": "specs/concorde/execution/tools/module.md",
       "owns": [
-        "specs/concorde/tools/module.md"
+        "specs/concorde/execution/tools/module.md"
       ],
       "contains": [
         {
@@ -221,9 +209,17 @@
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [
-            "concept.operations.operation",
-            "concept.operations.host",
-            "concept.operations.result"
+            "concept.operations.operation"
+          ]
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.run-result",
+            "concept.execution.workspace",
+            "concept.execution.unbound-run"
           ]
         }
       ],
@@ -317,13 +313,13 @@
     {
       "id": "module.workers",
       "title": "Workers",
-      "entry": "specs/concorde/agents/workers/module.md",
+      "entry": "specs/concorde/execution/workers/module.md",
       "owns": [
-        "specs/concorde/agents/workers/module.md",
-        "specs/concorde/agents/workers/launch.md",
-        "specs/concorde/agents/workers/pi.md",
-        "specs/concorde/agents/workers/contracts.md",
-        "specs/concorde/agents/workers/scenarios.md"
+        "specs/concorde/execution/workers/module.md",
+        "specs/concorde/execution/workers/launch.md",
+        "specs/concorde/execution/workers/pi.md",
+        "specs/concorde/execution/workers/contracts.md",
+        "specs/concorde/execution/workers/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -352,6 +348,23 @@
           "relies_on": [
             "concept.checks.configured-check",
             "concept.checks.check-result"
+          ]
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.run-store",
+            "concept.execution.progress-file",
+            "concept.execution.unbound-run",
+            "req.execution.unbound-read-only"
+          ]
+        },
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations",
+          "relies_on": [
+            "concept.operations.catalog"
           ]
         }
       ],
@@ -392,12 +405,12 @@
     {
       "id": "module.checks",
       "title": "Check execution",
-      "entry": "specs/concorde/checks/module.md",
+      "entry": "specs/concorde/execution/tools/checks/module.md",
       "owns": [
-        "specs/concorde/checks/module.md",
-        "specs/concorde/checks/boundary.md",
-        "specs/concorde/checks/service.md",
-        "specs/concorde/checks/timing.md"
+        "specs/concorde/execution/tools/checks/module.md",
+        "specs/concorde/execution/tools/checks/boundary.md",
+        "specs/concorde/execution/tools/checks/service.md",
+        "specs/concorde/execution/tools/checks/timing.md"
       ],
       "contains": [],
       "uses": [
@@ -427,15 +440,35 @@
     {
       "id": "module.tasks",
       "title": "Tasks",
-      "entry": "specs/concorde/tasks/module.md",
+      "entry": "specs/concorde/coordination/tasks/module.md",
       "owns": [
-        "specs/concorde/tasks/module.md",
-        "specs/concorde/tasks/contracts.md",
-        "specs/concorde/tasks/requirements.md",
-        "specs/concorde/tasks/scenarios.md"
+        "specs/concorde/coordination/tasks/module.md",
+        "specs/concorde/coordination/tasks/contracts.md",
+        "specs/concorde/coordination/tasks/requirements.md",
+        "specs/concorde/coordination/tasks/scenarios.md"
       ],
       "contains": [],
       "uses": [
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.workspace",
+            "concept.execution.workspace-binding",
+            "contract.execution.workspace-binding",
+            "concept.execution.run",
+            "concept.execution.run-result",
+            "concept.execution.run-store",
+            "concept.execution.workspace-lock"
+          ]
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#uses-delivery",
+          "relies_on": [
+            "concept.delivery.delivery-commit"
+          ]
+        },
         {
           "target": "module.spec",
           "meaning": "#uses-spec"
@@ -472,13 +505,12 @@
     {
       "id": "module.operations",
       "title": "Operations",
-      "entry": "specs/concorde/operations/module.md",
+      "entry": "specs/concorde/execution/operations/module.md",
       "owns": [
-        "specs/concorde/operations/module.md",
-        "specs/concorde/operations/host.md",
-        "specs/concorde/operations/contracts.md",
-        "specs/concorde/operations/requirements.md",
-        "specs/concorde/operations/scenarios.md"
+        "specs/concorde/execution/operations/module.md",
+        "specs/concorde/execution/operations/workers.md",
+        "specs/concorde/execution/operations/requirements.md",
+        "specs/concorde/execution/operations/scenarios.md"
       ],
       "contains": [
         {
@@ -496,14 +528,6 @@
         {
           "target": "module.code-review",
           "meaning": "#contains-code-review"
-        },
-        {
-          "target": "module.validation",
-          "meaning": "#contains-validation"
-        },
-        {
-          "target": "module.delivery",
-          "meaning": "#contains-delivery"
         },
         {
           "target": "module.adoption",
@@ -524,12 +548,17 @@
           "meaning": "#uses-checks"
         },
         {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks"
-        },
-        {
           "target": "module.spec-review",
           "meaning": "#uses-spec-review"
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.run-result",
+            "concept.execution.workspace"
+          ]
         }
       ],
       "includes": [
@@ -549,18 +578,28 @@
     {
       "id": "module.understanding",
       "title": "Understanding",
-      "entry": "specs/concorde/operations/understanding/module.md",
+      "entry": "specs/concorde/execution/operations/understanding/module.md",
       "owns": [
-        "specs/concorde/operations/understanding/module.md",
-        "specs/concorde/operations/understanding/requirements.md",
-        "specs/concorde/operations/understanding/scenarios.md",
-        "specs/concorde/operations/understanding/contracts.md"
+        "specs/concorde/execution/operations/understanding/module.md",
+        "specs/concorde/execution/operations/understanding/requirements.md",
+        "specs/concorde/execution/operations/understanding/scenarios.md",
+        "specs/concorde/execution/operations/understanding/contracts.md"
       ],
       "contains": [],
       "uses": [
         {
           "target": "module.operations",
           "meaning": "#uses-operations"
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.run-result",
+            "concept.execution.workspace",
+            "concept.execution.unbound-run"
+          ]
         },
         {
           "target": "module.workers",
@@ -588,18 +627,27 @@
     {
       "id": "module.specification",
       "title": "Specification",
-      "entry": "specs/concorde/operations/specification/module.md",
+      "entry": "specs/concorde/execution/operations/specification/module.md",
       "owns": [
-        "specs/concorde/operations/specification/module.md",
-        "specs/concorde/operations/specification/requirements.md",
-        "specs/concorde/operations/specification/scenarios.md",
-        "specs/concorde/operations/specification/contracts.md"
+        "specs/concorde/execution/operations/specification/module.md",
+        "specs/concorde/execution/operations/specification/requirements.md",
+        "specs/concorde/execution/operations/specification/scenarios.md",
+        "specs/concorde/execution/operations/specification/contracts.md"
       ],
       "contains": [],
       "uses": [
         {
           "target": "module.operations",
           "meaning": "#uses-operations"
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.run-result",
+            "concept.execution.workspace"
+          ]
         },
         {
           "target": "module.workers",
@@ -627,18 +675,27 @@
     {
       "id": "module.implementation",
       "title": "Implementation",
-      "entry": "specs/concorde/operations/implementation/module.md",
+      "entry": "specs/concorde/execution/operations/implementation/module.md",
       "owns": [
-        "specs/concorde/operations/implementation/module.md",
-        "specs/concorde/operations/implementation/requirements.md",
-        "specs/concorde/operations/implementation/scenarios.md",
-        "specs/concorde/operations/implementation/contracts.md"
+        "specs/concorde/execution/operations/implementation/module.md",
+        "specs/concorde/execution/operations/implementation/requirements.md",
+        "specs/concorde/execution/operations/implementation/scenarios.md",
+        "specs/concorde/execution/operations/implementation/contracts.md"
       ],
       "contains": [],
       "uses": [
         {
           "target": "module.operations",
           "meaning": "#uses-operations"
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.run-result",
+            "concept.execution.workspace"
+          ]
         },
         {
           "target": "module.workers",
@@ -670,18 +727,28 @@
     {
       "id": "module.code-review",
       "title": "Code review",
-      "entry": "specs/concorde/operations/code-review/module.md",
+      "entry": "specs/concorde/execution/operations/code-review/module.md",
       "owns": [
-        "specs/concorde/operations/code-review/module.md",
-        "specs/concorde/operations/code-review/requirements.md",
-        "specs/concorde/operations/code-review/scenarios.md",
-        "specs/concorde/operations/code-review/contracts.md"
+        "specs/concorde/execution/operations/code-review/module.md",
+        "specs/concorde/execution/operations/code-review/requirements.md",
+        "specs/concorde/execution/operations/code-review/scenarios.md",
+        "specs/concorde/execution/operations/code-review/contracts.md"
       ],
       "contains": [],
       "uses": [
         {
           "target": "module.operations",
           "meaning": "#uses-operations"
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.run-result",
+            "concept.execution.workspace",
+            "concept.execution.unbound-run"
+          ]
         },
         {
           "target": "module.workers",
@@ -713,15 +780,29 @@
     {
       "id": "module.validation",
       "title": "Validation",
-      "entry": "specs/concorde/operations/validation/module.md",
+      "entry": "specs/concorde/execution/validation/module.md",
       "owns": [
-        "specs/concorde/operations/validation/module.md",
-        "specs/concorde/operations/validation/contracts.md",
-        "specs/concorde/operations/validation/requirements.md",
-        "specs/concorde/operations/validation/scenarios.md"
+        "specs/concorde/execution/validation/module.md",
+        "specs/concorde/execution/validation/contracts.md",
+        "specs/concorde/execution/validation/requirements.md",
+        "specs/concorde/execution/validation/scenarios.md"
       ],
       "contains": [],
       "uses": [
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.recorded-command",
+            "concept.execution.run-result",
+            "concept.execution.workspace-binding",
+            "concept.execution.workspace-lock",
+            "req.execution.binding-trusted",
+            "req.execution.workspace-lock",
+            "contract.execution.run-result",
+            "contract.execution.workspace-binding"
+          ]
+        },
         {
           "target": "module.spec",
           "meaning": "#uses-spec"
@@ -729,14 +810,6 @@
         {
           "target": "module.checks",
           "meaning": "#uses-checks"
-        },
-        {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks"
-        },
-        {
-          "target": "module.operations",
-          "meaning": "#uses-operations"
         }
       ],
       "includes": [
@@ -756,26 +829,32 @@
     {
       "id": "module.delivery",
       "title": "Delivery",
-      "entry": "specs/concorde/operations/delivery/module.md",
+      "entry": "specs/concorde/execution/delivery/module.md",
       "owns": [
-        "specs/concorde/operations/delivery/module.md",
-        "specs/concorde/operations/delivery/contracts.md",
-        "specs/concorde/operations/delivery/requirements.md",
-        "specs/concorde/operations/delivery/scenarios.md"
+        "specs/concorde/execution/delivery/module.md",
+        "specs/concorde/execution/delivery/contracts.md",
+        "specs/concorde/execution/delivery/requirements.md",
+        "specs/concorde/execution/delivery/scenarios.md"
       ],
       "contains": [],
       "uses": [
         {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks"
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.recorded-command",
+            "concept.execution.run-result",
+            "concept.execution.run-store",
+            "concept.execution.workspace-binding",
+            "concept.execution.workspace-lock",
+            "req.execution.workspace-lock",
+            "contract.execution.run-result",
+            "contract.execution.workspace-binding"
+          ]
         },
         {
           "target": "module.validation",
           "meaning": "#uses-validation"
-        },
-        {
-          "target": "module.operations",
-          "meaning": "#uses-operations"
         },
         {
           "target": "module.workers",
@@ -840,23 +919,31 @@
     {
       "id": "module.main-session",
       "title": "Main session",
-      "entry": "specs/concorde/agents/main-session/module.md",
+      "entry": "specs/concorde/coordination/main-session/module.md",
       "owns": [
-        "specs/concorde/agents/main-session/module.md",
-        "specs/concorde/agents/main-session/requirements.md",
-        "specs/concorde/agents/main-session/scenarios.md"
+        "specs/concorde/coordination/main-session/module.md",
+        "specs/concorde/coordination/main-session/requirements.md",
+        "specs/concorde/coordination/main-session/scenarios.md"
       ],
       "contains": [],
       "uses": [
         {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.workspace-binding",
+            "concept.execution.recorded-command",
+            "concept.execution.run-result",
+            "concept.execution.unbound-run",
+            "concept.execution.progress-file",
+            "concept.execution.runner"
+          ]
+        },
+        {
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [
-            "concept.operations.operation",
-            "concept.operations.result",
-            "concept.operations.progress-file",
-            "concept.operations.no-task",
-            "concept.operations.configure-workers"
+            "concept.operations.operation"
           ]
         },
         {
@@ -971,6 +1058,15 @@
           ]
         },
         {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.run",
+            "concept.execution.recorded-command",
+            "concept.execution.progress-file"
+          ]
+        },
+        {
           "target": "module.workflows",
           "meaning": "#uses-workflows"
         }
@@ -987,22 +1083,46 @@
     {
       "id": "module.workflows",
       "title": "Workflows",
-      "entry": "specs/concorde/workflows/module.md",
+      "entry": "specs/concorde/execution/workflows/module.md",
       "owns": [
-        "specs/concorde/workflows/module.md",
-        "specs/concorde/workflows/requirements.md",
-        "specs/concorde/workflows/scenarios.md",
-        "specs/concorde/workflows/contracts.md"
+        "specs/concorde/execution/workflows/module.md",
+        "specs/concorde/execution/workflows/requirements.md",
+        "specs/concorde/execution/workflows/scenarios.md",
+        "specs/concorde/execution/workflows/contracts.md"
       ],
       "contains": [],
       "uses": [
         {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks"
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.run",
+            "concept.execution.recorded-command",
+            "concept.execution.run-result",
+            "concept.execution.workspace-binding",
+            "concept.execution.workspace-lock",
+            "concept.execution.detached-run",
+            "concept.execution.run-store",
+            "req.execution.workspace-lock",
+            "req.execution.no-chaining",
+            "contract.execution.run-result"
+          ]
         },
         {
           "target": "module.operations",
           "meaning": "#uses-operations"
+        },
+        {
+          "target": "module.validation",
+          "meaning": "#uses-validation",
+          "relies_on": [
+            "contract.validation.readiness"
+          ]
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#uses-delivery"
         },
         {
           "target": "module.adoption",
@@ -1026,15 +1146,28 @@
     {
       "id": "module.adoption",
       "title": "Adoption",
-      "entry": "specs/concorde/operations/adoption/module.md",
+      "entry": "specs/concorde/execution/operations/adoption/module.md",
       "owns": [
-        "specs/concorde/operations/adoption/module.md",
-        "specs/concorde/operations/adoption/requirements.md",
-        "specs/concorde/operations/adoption/scenarios.md",
-        "specs/concorde/operations/adoption/contracts.md"
+        "specs/concorde/execution/operations/adoption/module.md",
+        "specs/concorde/execution/operations/adoption/requirements.md",
+        "specs/concorde/execution/operations/adoption/scenarios.md",
+        "specs/concorde/execution/operations/adoption/contracts.md"
       ],
       "contains": [],
       "uses": [
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.runner",
+            "concept.execution.workspace",
+            "concept.execution.recorded-command",
+            "concept.execution.run-result",
+            "concept.execution.unbound-run",
+            "req.execution.inputs-same-workspace",
+            "contract.execution.run-result"
+          ]
+        },
         {
           "target": "module.operations",
           "meaning": "#uses-operations"
@@ -1092,11 +1225,26 @@
       "uses": [
         {
           "target": "module.workflows",
-          "meaning": "#uses-workflows"
+          "meaning": "#uses-workflows",
+          "relies_on": [
+            "concept.workflows.workflow",
+            "concept.workflows.result",
+            "concept.workflows.record",
+            "concept.workflows.script"
+          ]
         },
         {
           "target": "module.distribution",
           "meaning": "#uses-distribution"
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.workspace-binding",
+            "concept.execution.run-store",
+            "concept.execution.progress-file"
+          ]
         }
       ],
       "includes": [
@@ -1125,11 +1273,14 @@
       "contains": [],
       "uses": [
         {
-          "target": "module.operations",
-          "meaning": "#uses-operations",
+          "target": "module.execution",
+          "meaning": "#uses-execution",
           "relies_on": [
-            "concept.operations.progress-file",
-            "concept.operations.result"
+            "concept.execution.run",
+            "concept.execution.progress-file",
+            "concept.execution.run-result",
+            "concept.execution.run-store",
+            "concept.execution.workspace-binding"
           ]
         }
       ],
@@ -1285,11 +1436,11 @@
       "participates": []
     },
     {
-      "id": "module.agents",
-      "title": "Agents",
-      "entry": "specs/concorde/agents/module.md",
+      "id": "module.coordination",
+      "title": "Coordination",
+      "entry": "specs/concorde/coordination/module.md",
       "owns": [
-        "specs/concorde/agents/module.md"
+        "specs/concorde/coordination/module.md"
       ],
       "contains": [
         {
@@ -1297,27 +1448,28 @@
           "meaning": "#contains-main-session"
         },
         {
-          "target": "module.task-session",
-          "meaning": "#contains-task-session"
+          "target": "module.tasks",
+          "meaning": "#contains-tasks"
         },
         {
-          "target": "module.workers",
-          "meaning": "#contains-workers"
+          "target": "module.task-session",
+          "meaning": "#contains-task-session"
         }
       ],
       "uses": [
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.workspace-binding",
+            "concept.execution.run-store"
+          ]
+        },
         {
           "target": "module.harness",
           "meaning": "#uses-harness",
           "relies_on": [
             "concept.harness.harness"
-          ]
-        },
-        {
-          "target": "module.tasks",
-          "meaning": "#uses-tasks",
-          "relies_on": [
-            "concept.tasks.task"
           ]
         }
       ],
@@ -1333,12 +1485,12 @@
     {
       "id": "module.task-session",
       "title": "Task sessions",
-      "entry": "specs/concorde/agents/task-session/module.md",
+      "entry": "specs/concorde/coordination/task-session/module.md",
       "owns": [
-        "specs/concorde/agents/task-session/module.md",
-        "specs/concorde/agents/task-session/contracts.md",
-        "specs/concorde/agents/task-session/requirements.md",
-        "specs/concorde/agents/task-session/scenarios.md"
+        "specs/concorde/coordination/task-session/module.md",
+        "specs/concorde/coordination/task-session/contracts.md",
+        "specs/concorde/coordination/task-session/requirements.md",
+        "specs/concorde/coordination/task-session/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -1381,11 +1533,25 @@
           ]
         },
         {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution.workspace-binding",
+            "concept.execution.run-result"
+          ]
+        },
+        {
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [
-            "concept.operations.operation",
-            "concept.operations.result"
+            "concept.operations.operation"
+          ]
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#uses-delivery",
+          "relies_on": [
+            "concept.delivery.delivery-commit"
           ]
         }
       ],
@@ -1404,6 +1570,63 @@
           "kind": "external",
           "target": "references/pi/",
           "reason": "pi's command line, JSON event stream and extension API (tools that end a run, project trust), which the pi task session relies on"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.execution",
+      "title": "Execution",
+      "entry": "specs/concorde/execution/module.md",
+      "owns": [
+        "specs/concorde/execution/module.md",
+        "specs/concorde/execution/runner.md",
+        "specs/concorde/execution/contracts.md",
+        "specs/concorde/execution/requirements.md",
+        "specs/concorde/execution/scenarios.md"
+      ],
+      "contains": [
+        {
+          "target": "module.workflows",
+          "meaning": "#contains-workflows"
+        },
+        {
+          "target": "module.operations",
+          "meaning": "#contains-operations"
+        },
+        {
+          "target": "module.validation",
+          "meaning": "#contains-validation"
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#contains-delivery"
+        },
+        {
+          "target": "module.workers",
+          "meaning": "#contains-workers"
+        },
+        {
+          "target": "module.tools",
+          "meaning": "#contains-tools"
+        }
+      ],
+      "uses": [
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec"
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.concorde.vocabulary",
+          "reason": "shared Framework vocabulary"
+        },
+        {
+          "kind": "document",
+          "target": "document.concorde.contracts",
+          "reason": "the Framework's error contract, which every run's errors follow"
         }
       ],
       "participates": []

@@ -57,6 +57,21 @@ class ErrorChainTests(unittest.TestCase):
             1, len(chain["causes"][0]["causes"]), "None causes are dropped"
         )
 
+    def test_a_recorded_command_is_a_level_of_its_own(self):
+        chain = errors.link(
+            "command",
+            "Command delivery r-1 (workspace t1)",
+            "not_ready",
+            "the workspace is not ready to deliver",
+            reason="decision",
+            explanation="repairing the workspace is the caller's decision",
+            causes=[check_link()],
+        )
+        validate(chain, errors.ERROR_SCHEMA)
+        self.assertIn("command", errors.LEVELS)
+        self.assertLess(errors.LEVELS.index("workflow"), errors.LEVELS.index("command"))
+        self.assertIn("**command** Command delivery r-1", errors.render(chain))
+
     def test_the_schemas_are_admitted_by_the_contract_subset(self):
         admit(errors.ERROR_SCHEMA)
         admit(errors.WORKER_ERROR_SCHEMA)

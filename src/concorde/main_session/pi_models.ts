@@ -1,11 +1,11 @@
 /**
  * The pure part of the worker model picker of Concorde's pi extension.
  *
- * The `configure_workers` Operation lists the models pi offers workers and what the worktree
- * configures for every worker of every Operation, by worker id; these functions turn its output
- * into the choices the picker shows and a chosen row back into a `concorde run configure_workers`
- * command line. The extension owns the dialogs and runs the Operation; the Operation validates and
- * writes the configuration. A worker whose configuration puts it on Claude Code is not the pi
+ * The `concorde configure-workers` command lists the models pi offers workers and what the
+ * worktree it runs in configures for every worker of every Operation, by worker id; these
+ * functions turn its output into the choices the picker shows and a chosen row back into a
+ * `concorde configure-workers` command line. The extension owns the dialogs and runs the command
+ * in the chosen worktree; the command validates and writes the configuration. A worker whose configuration puts it on Claude Code is not the pi
  * picker's to choose, so it offers only the workers that run on pi.
  */
 
@@ -32,7 +32,7 @@ interface Choice {
   reasoning?: string;
 }
 
-/** The `output` of a `configure_workers` result. */
+/** The `output` of a `configure-workers` result. */
 export interface Listing {
   backend: string;
   config: string;
@@ -172,32 +172,21 @@ export function refusalText(outcome: CommandOutcome): string {
   return lines.join("\n");
 }
 
-/** The `concorde` arguments of the listing run of pi's models, for a worktree or one task's copy. */
-export function listingCommand(task: string | null): string[] {
-  return [
-    "run",
-    "configure_workers",
-    "--candidates",
-    "pi",
-    ...(task ? ["--task", task] : []),
-  ];
+/** The `concorde` arguments that list pi's models for the worktree the command runs in. */
+export function listingCommand(): string[] {
+  return ["configure-workers", "--candidates", "pi"];
 }
 
-/** The `concorde` arguments that name a worktree or one task's copy, and nothing to list. */
-function targetCommand(task: string | null): string[] {
-  return ["run", "configure_workers", ...(task ? ["--task", task] : [])];
-}
-
-/** The `concorde` arguments that apply a choice, or null when nothing changes. */
+/** The `concorde` arguments that apply a choice in the worktree the command runs in, or null
+ * when nothing changes. */
 export function commandFor(
   scope: Scope,
   action: "keep" | "unset" | "set",
   model: string | null,
   level: string | null,
-  task: string | null,
 ): string[] | null {
   const target = [
-    ...targetCommand(task),
+    "configure-workers",
     ...(scope.operation ? ["--operation", scope.operation] : []),
     ...(scope.worker ? ["--worker", scope.worker] : []),
   ];

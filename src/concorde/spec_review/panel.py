@@ -22,12 +22,14 @@ import json
 import operator
 from typing import Annotated, TypedDict
 
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
     Provider,
     RunContext,
     Stop,
     evidence,
+)
+from ..operations.provider import (
     load_prompt,
 )
 from ..spec.schema import validate
@@ -470,7 +472,7 @@ def panel_modules(ctx: RunContext):
             "failed",
             "langgraph_unavailable",
             "spec_panel needs LangGraph, which this Python cannot import.",
-            f"the interpreter running the Operation host cannot import langgraph ({error}); "
+            f"the interpreter running the Execution runner cannot import langgraph ({error}); "
             "spec_panel runs its panel as a LangGraph graph",
             reason="environment",
             explanation="LangGraph is one of Concorde's runtime dependencies, which the "
@@ -614,7 +616,7 @@ SPEC_PANEL = Provider(
     (review.validate_modules, panel_modules, derive_verdict),
     PAYLOAD_SCHEMA,
     add_arguments,
-    task_scope="optional",
+    binding="optional",
     workers=WORKERS,
 )
 

@@ -1,0 +1,961 @@
+"""The Execution runner: ``concorde run`` and the recorded commands, with test definitions
+standing in for real ones, the workspace binding it reads and the run store it writes."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import signal
+import sys
+import threading
+import time
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from concorde.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
+from concorde.execution import binding as binding_file
+from concorde.execution import commands, runs
+from concorde.execution.context import Continue, Provider, command, evidence
+from concorde.execution.runner import UsageError, detach, execute, run_main
+from concorde.execution.runs import RESULT_SCHEMA
+from concorde.harness import models, pi_backend
+from concorde.operations import catalog
+from concorde.spec.schema import validate
+from concorde.spec.verification import verifies
+from concorde.tasks import store
+from tests.concorde.harness.workers.test_pi import FAKE as FAKE_PI
+from tests.concorde.harness.workers.test_pi import fake_which
+from tests.concorde.support.operation_project import OperationProject
+from tests.concorde.support.paths import REPOSITORY_ROOT
+
+
+def spec_contract(identity: str) -> dict:
+    """The ``concorde-contract`` block with ``identity`` in the repository's Specs."""
+    for path in sorted((REPOSITORY_ROOT / "specs").rglob("*.md")):
+        for block in re.findall(
+            r"```concorde-contract\n(.*?)\n```", path.read_text(), re.DOTALL
+        ):
+            value = json.loads(block)
+            if value.get("id") == identity:
+                return value
+    raise AssertionError(f"no Spec states {identity}")
+
+
+def worker_step(ctx):
+    return ctx.run_worker(
+        ctx.arguments.goal,
+        task_type="implement",
+        checks=True,
+        rounds=ctx.arguments.rounds,
+    )
+
+
+def goal_arguments(parser):
+    parser.add_argument("--goal", default="Do it.")
+    parser.add_argument("--rounds", type=int, default=1)
+
+
+def deterministic_step(ctx):
+    return Continue(
+        output={"ready": True}, evidence=[evidence("readiness", "", "ready")]
+    )
+
+
+def raising_step(ctx):
+    raise RuntimeError("boom")
+
+
+def admitted_step(ctx):
+    return Continue(
+        output={
+            "inputs": sorted(ctx.inputs),
+            "names": [ctx.inputs[key]["name"] for key in sorted(ctx.inputs)],
+        }
+    )
+
+
+def refusing_step(ctx):
+    return ctx.fail(
+        "blocked",
+        "nothing_to_do",
+        "Nothing to do.",
+        "the command found nothing to do in the workspace",
+        reason="decision",
+        explanation="whether to change the workspace first is the caller's decision",
+        options=["change the workspace, then run it again"],
+    )
+
+
+WORKER = Provider("implement", "implement", True, (worker_step,), None, goal_arguments)
+RAISING = Provider("test", None, False, (raising_step,))
+ADMITTED = Provider("understand", None, False, (admitted_step,))
+# Recorded commands: deterministic, no worker.
+DETERMINISTIC = command("task-validation", (deterministic_step,), writes=False)
+REFUSING = command("delivery", (refusing_step,), writes=True)
+
+
+def reading_step(ctx):
+    return ctx.run_worker(ctx.arguments.goal, task_type="understand", rounds=0)
+
+
+def writing_step(ctx):
+    return ctx.run_worker(ctx.arguments.goal, task_type="implement", rounds=0)
+
+
+READER = Provider(
+    "spec_review",
+    "review-spec",
+    False,
+    (reading_step,),
+    None,
+    goal_arguments,
+    binding="optional",
+)
+WRITER = Provider(
+    "code_review",
+    "review-code",
+    False,
+    (writing_step,),
+    None,
+    goal_arguments,
+    binding="optional",
+)
+
+
+class RunnerTests(unittest.TestCase):
+    def setUp(self):
+        self.project = OperationProject(self)
+        self.root = self.project.root
+        self.records = self.root / ".concorde"
+        self.project.open_task("t1")
+        self.worktree = self.project.worktree("t1")
+        for table, entries in (
+            (
+                catalog.CATALOG,
+                {
+                    "implement": f"{__name__}:WORKER",
+                    "test": f"{__name__}:RAISING",
+                    "understand": f"{__name__}:ADMITTED",
+                    "spec_review": f"{__name__}:READER",
+                    "code_review": f"{__name__}:WRITER",
+                },
+            ),
+            (
+                commands.COMMANDS,
+                {
+                    "task-validation": f"{__name__}:DETERMINISTIC",
+                    "delivery": f"{__name__}:REFUSING",
+                },
+            ),
+        ):
+            patcher = patch.dict(table, entries)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def implement(self, steps, *extra, client="claude"):
+        return self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan(steps),
+            *extra,
+            client=client,
+        )
+
+    def worker_record(self, envelope) -> dict:
+        [worker] = envelope["worker_runs"]
+        return json.loads((self.records / "runs" / worker / "record.json").read_text())
+
+    def launched(self, envelope) -> list[str]:
+        """The argument list the fake claude received in the first round."""
+        work = Path(self.worker_record(envelope)["run_directory"]) / "work"
+        return json.loads((work / "fake-round-1.json").read_text())["argv"]
+
+    def saved(self, envelope, records: Path | None = None):
+        return json.loads(
+            (
+                (records or self.records) / "runs" / envelope["run_id"] / "result.json"
+            ).read_text()
+        )
+
+    def run_status(self, envelope, workspace: str | None = "t1"):
+        """The status the run store lists for the run among the workspace's runs."""
+        return {
+            run["run_id"]: run["status"]
+            for run in runs.workspace_runs(self.records, workspace)
+        }.get(envelope["run_id"])
+
+    def binding(self) -> dict:
+        return json.loads((self.worktree / binding_file.BINDING).read_text())
+
+    @verifies("scenario.operations.worker-model")
+    def test_a_worker_runs_with_the_task_worktrees_model(self):
+        (self.worktree / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "default": {
+                        "backend": "claude",
+                        "model": "sonnet",
+                        "reasoning": "medium",
+                    },
+                    "operations": {
+                        "implement": {"workers": {"worker": {"model": "opus"}}}
+                    },
+                }
+            )
+        )
+        status, envelope = self.implement([{}])
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        argv = self.launched(envelope)
+        self.assertEqual("opus", argv[argv.index("--model") + 1])
+        self.assertEqual("medium", argv[argv.index("--effort") + 1])
+        record = self.worker_record(envelope)
+        self.assertEqual(
+            ("claude", "worker", "opus", "medium"),
+            (record["backend"], record["worker"], record["model"], record["reasoning"]),
+        )
+        [shown] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "worker-model"
+        ]
+        self.assertEqual("claude", shown["ref"])
+        self.assertIn("model opus, reasoning medium", shown["detail"])
+        (self.root / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "default": {"backend": "claude", "model": "haiku"},
+                }
+            )
+        )
+        status, envelope = self.implement([{}])
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        argv = self.launched(envelope)
+        self.assertEqual("opus", argv[argv.index("--model") + 1])
+
+    def fake_pi(self) -> dict:
+        """A fake ``pi``, sandbox-runtime and pi configuration, as the variables naming them."""
+        base = self.project.base
+        pi = base / "pi"
+        pi.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FAKE_PI}" "$@"\n')
+        pi.chmod(0o755)
+        runtime = base / "sandbox-runtime"
+        (runtime / "dist").mkdir(parents=True)
+        (runtime / "dist/index.js").write_text("export {};\n")
+        agent = base / "pi-agent"
+        agent.mkdir()
+        (agent / "auth.json").write_text('{"local": {"key": "k"}}')
+        (agent / "models.json").write_text('{"providers": {}}')
+        which = patch.object(pi_backend, "which", side_effect=fake_which)
+        which.start()
+        self.addCleanup(which.stop)
+        return {
+            "CONCORDE_PI": str(pi),
+            "CONCORDE_SANDBOX_RUNTIME": str(runtime),
+            "PI_CODING_AGENT_DIR": str(agent),
+        }
+
+    @verifies("scenario.operations.worker-backend-configured")
+    def test_a_claude_code_main_session_runs_its_workers_on_pi(self):
+        environ = self.fake_pi()
+        (self.worktree / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "operations": {
+                        "implement": {"workers": {"worker": {"model": "local/fast"}}},
+                        "spec_review": {"workers": {"worker": {"backend": "claude"}}},
+                    },
+                }
+            )
+        )
+        status, envelope = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan([{}]),
+            client="claude",
+            environ=environ,
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        record = self.worker_record(envelope)
+        self.assertEqual(
+            ("pi", "Concorde's default worker backend", "local/fast"),
+            (record["backend"], record["backend_source"], record["model"]),
+        )
+        argv = self.launched(envelope)
+        self.assertEqual("local/fast", argv[argv.index("--model") + 1])
+        self.assertIn("--no-extensions", argv)
+        [shown] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "worker-model"
+        ]
+        self.assertEqual("pi", shown["ref"])
+        self.assertIn("Concorde's default worker backend", shown["detail"])
+        status, envelope = self.project.run(
+            "spec_review",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan([{}]),
+            client="claude",
+            environ=environ,
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        record = self.worker_record(envelope)
+        self.assertEqual(
+            ("claude", "operations.spec_review.workers.worker"),
+            (record["backend"], record["backend_source"]),
+        )
+
+    @verifies("scenario.execution.unbound-run")
+    def test_an_unbound_run_works_on_its_own_worktree(self):
+        before = store.load_task(self.root, "t1")
+        status, envelope = self.project.run(
+            "spec_review",
+            "--modules",
+            "module.a",
+            "--goal",
+            OperationProject.plan([{}]),
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(
+            ("operation", "spec_review"), (envelope["kind"], envelope["name"])
+        )
+        self.assertIsNone(envelope["workspace"])
+        self.assertEqual(["module.a"], envelope["modules"])
+        record = self.worker_record(envelope)
+        self.assertEqual(str(self.root), record["worktree"])
+        self.assertEqual(before, store.load_task(self.root, "t1"))
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertEqual("ok", self.run_status(envelope, None))
+        self.assertIsNone(self.run_status(envelope, "t1"))
+        validate(envelope, RESULT_SCHEMA)
+        status, envelope = self.project.run(
+            "spec_review", "--modules", "module.a", "--input", envelope["run_id"]
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        # An Operation that needs a binding is refused in an unbound worktree.
+        status, envelope = self.project.run("implement", "--goal", "x")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual(["refused", "binding_required"], codes(envelope["error"]))
+        self.assertEqual("scope", envelope["error"]["unhandled"]["reason"])
+        self.assertIn(binding_file.BINDING, envelope["error"]["causes"][0]["detail"])
+        self.assertEqual(envelope, self.saved(envelope))
+
+    @verifies("scenario.execution.bound-run")
+    def test_a_run_in_a_bound_worktree_works_on_its_workspace(self):
+        # The binding of the worktree the run starts in decides its workspace: no argument
+        # names it, and a run there is never unbound.
+        status, envelope = self.project.run(
+            "spec_review",
+            "--goal",
+            OperationProject.plan([{}]),
+            cwd=self.worktree / "src",
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual("t1", envelope["workspace"])
+        self.assertEqual(self.binding()["modules"], envelope["modules"])
+        self.assertEqual(str(self.worktree), self.worker_record(envelope)["worktree"])
+        # The run is recorded where the binding says, the primary worktree's .concorde.
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertFalse((self.worktree / ".concorde/runs").exists())
+        self.assertEqual("ok", self.run_status(envelope))
+
+    @verifies("scenario.execution.unbound-read-only")
+    def test_an_unbound_run_launches_no_writing_worker(self):
+        status, envelope = self.project.run(
+            "code_review",
+            "--modules",
+            "module.a",
+            "--goal",
+            OperationProject.plan([{}]),
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual("unbound_write", envelope["error"]["code"])
+        self.assertIn("(unbound, ", envelope["error"]["actor"])
+        status, bound_run = self.implement([{}])
+        self.assertEqual(0, status, bound_run)
+        status, envelope = self.project.run(
+            "spec_review", "--modules", "module.a", "--input", bound_run["run_id"]
+        )
+        self.assertEqual(
+            (1, "input_not_admissible"), (status, envelope["host_evidence"][-1]["ref"])
+        )
+        self.assertIn("a run of t1, not of no workspace", envelope["error"]["detail"])
+
+    @verifies("scenario.operations.worker-model-unavailable")
+    def test_a_worker_whose_backend_or_model_cannot_be_settled_fails_before_launch(
+        self,
+    ):
+        (self.worktree / models.CONFIG).write_text("{broken")
+        status, envelope = self.implement([{}])
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("config_invalid", cause["code"])
+        self.assertIn(str(self.worktree / models.CONFIG), cause["detail"])
+        (self.worktree / models.CONFIG).write_text(json.dumps({"schema_version": 3}))
+        status, envelope = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan([{}]),
+            environ={"CONCORDE_PI": str(self.project.base / "nowhere")},
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual("worker_model_unavailable", envelope["error"]["code"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("backend_missing", cause["code"])
+        self.assertEqual("environment", cause["unhandled"]["reason"])
+        self.assertIn("Concorde's default worker backend", cause["detail"])
+        self.assertIn("CONCORDE_PI", cause["detail"])
+        self.assertIn("--backend claude", cause["detail"])
+        validate(envelope["error"], ERROR_SCHEMA)
+
+    @verifies("scenario.operations.worker-ok")
+    def test_a_worker_backed_run_succeeds(self):
+        status, envelope = self.implement(
+            [
+                {
+                    "writes": {
+                        f"{self.worktree}/src/a/calc.py": "def add(a, b):\n    return a + b\n"
+                    }
+                }
+            ]
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(
+            ("operation", "implement", "t1"),
+            (envelope["kind"], envelope["name"], envelope["workspace"]),
+        )
+        kinds = {item["kind"] for item in envelope["host_evidence"]}
+        self.assertTrue(
+            {"grant", "context-identity", "audit", "check", "rounds"} <= kinds
+        )
+        self.assertEqual("done", envelope["worker"]["summary"])
+        self.assertEqual(1, len(envelope["worker_runs"]))
+        self.assertIsNone(envelope["error"])
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertEqual("ok", self.run_status(envelope))
+        # The run released the workspace lock.
+        self.assertIsNone(runs.lock_holder(self.records, "t1"))
+
+    @verifies("scenario.execution.progress-file")
+    def test_the_progress_file_follows_the_run(self):
+        status, envelope = self.implement([{}])
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        run = self.records / "runs" / envelope["run_id"]
+        progress = json.loads((run / "status.json").read_text())
+        self.assertEqual(
+            (
+                "operation",
+                "implement",
+                "t1",
+                str(self.worktree),
+                "finished",
+                "ok",
+                envelope["summary"],
+            ),
+            (
+                progress["kind"],
+                progress["name"],
+                progress["workspace"],
+                progress["worktree"],
+                progress["phase"],
+                progress["status"],
+                progress["summary"],
+            ),
+        )
+        self.assertEqual(os.getpid(), progress["host_pid"])
+        [worker] = envelope["worker_runs"]
+        worker_progress = json.loads(
+            (self.records / "runs" / worker / "status.json").read_text()
+        )
+        self.assertEqual(progress["host_pid"], worker_progress["host_pid"])
+
+    @verifies("scenario.operations.worker-blocked")
+    def test_a_blocked_worker_escalates(self):
+        status, envelope = self.implement(
+            [
+                {
+                    "result": {
+                        "status": "blocked",
+                        "error": {
+                            "code": "spec_gap",
+                            "detail": "the Spec does not state the rounding rule",
+                            "evidence": [],
+                            "attempts": ["read specs/a/module.md"],
+                            "unhandled": {
+                                "reason": "decision",
+                                "explanation": "the rounding rule is the Spec's to state",
+                            },
+                            "options": ["round per line", "round per order"],
+                            "recommendation": "round per order",
+                        },
+                    }
+                }
+            ]
+        )
+        self.assertEqual((1, "blocked"), (status, envelope["status"]))
+        error = envelope["error"]
+        self.assertEqual(["worker_blocked", "worker_blocked", "spec_gap"], codes(error))
+        self.assertEqual(
+            ["operation", "workers", "worker"],
+            [
+                error["level"],
+                error["causes"][0]["level"],
+                error["causes"][0]["causes"][0]["level"],
+            ],
+        )
+        self.assertEqual(
+            f"Operation implement {envelope['run_id']} (workspace t1)", error["actor"]
+        )
+        worker = error["causes"][0]["causes"][0]
+        self.assertEqual("the Spec does not state the rounding rule", worker["detail"])
+        self.assertEqual("round per order", worker["recommendation"])
+        self.assertEqual("decision", worker["unhandled"]["reason"])
+        self.assertEqual("decision", error["unhandled"]["reason"])
+        self.assertIn("round per line", error["options"])
+        host_text = json.dumps(envelope["host_evidence"]) + envelope["summary"]
+        self.assertNotIn("rounding rule", host_text)
+
+    @verifies("scenario.operations.spec-error")
+    def test_a_spec_tooling_error_keeps_its_reason_and_causes(self):
+        from concorde.spec.errors import SpecError, system_cause
+
+        refused = SpecError(
+            "the implement grant would make src/shared.py writable, which module.b binds",
+            "shared_file",
+            "modules",
+            causes=[system_cause(PermissionError(13, "denied", "src/shared.py"))],
+        )
+        with patch("concorde.spec.grants.grant", side_effect=refused):
+            status, envelope = self.implement([{}])
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        error = envelope["error"]
+        self.assertEqual("grant_unavailable", error["code"])
+        [spec] = error["causes"]
+        self.assertEqual(("component", "shared_file"), (spec["level"], spec["code"]))
+        self.assertIn("src/shared.py", spec["detail"])
+        self.assertEqual(refused.reason, spec["unhandled"]["explanation"])
+        self.assertEqual([refused.remediation], spec["options"])
+        [system] = spec["causes"]
+        self.assertEqual(
+            ("system_error", "environment"),
+            (system["code"], system["unhandled"]["reason"]),
+        )
+        self.assertIn("src/shared.py", system["detail"])
+
+    @verifies("scenario.operations.checks-exhausted")
+    def test_checks_still_failing_after_the_last_round(self):
+        status, envelope = self.implement(
+            [{"writes": {f"{self.worktree}/src/a/flag": "broken"}}], "--rounds", "1"
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual("ok", envelope["worker"]["status"])
+        checks = [item for item in envelope["host_evidence"] if item["kind"] == "check"]
+        self.assertTrue(
+            checks
+            and "exit 1" in checks[-1]["detail"]
+            and "log" in checks[-1]["detail"]
+        )
+        self.assertIn("2 round(s)", json.dumps(envelope["host_evidence"]))
+        error = envelope["error"]
+        self.assertEqual(
+            ["checks_failed", "checks_failed", "check_failed"], codes(error)
+        )
+        self.assertEqual("decision", error["unhandled"]["reason"])
+        self.assertEqual("exhausted", error["causes"][0]["unhandled"]["reason"])
+        check = error["causes"][0]["causes"][0]
+        self.assertEqual(("check", "check.a"), (check["level"], check["actor"]))
+        self.assertIn("exit code 1", check["detail"])
+
+    @verifies("scenario.operations.audit-violation")
+    def test_a_write_outside_the_grant_fails_the_run(self):
+        _, envelope = self.implement(
+            [{"writes": {f"{self.worktree}/src/bmod/secret.py": "SECRET = 2\n"}}]
+        )
+        self.assertEqual("failed", envelope["status"])
+        audits = [item for item in envelope["host_evidence"] if item["kind"] == "audit"]
+        self.assertIn("src/bmod/secret.py", audits[0]["detail"])
+        self.assertFalse(
+            any(item["kind"] == "check" for item in envelope["host_evidence"])
+        )
+
+    @verifies("scenario.execution.recorded-command")
+    def test_a_recorded_command_launches_no_worker(self):
+        status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(
+            ("command", "task-validation", "t1"),
+            (envelope["kind"], envelope["name"], envelope["workspace"]),
+        )
+        self.assertIsNone(envelope["worker"])
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual({"ready": True}, envelope["output"])
+        # The run identity carries the name with underscores only.
+        self.assertRegex(
+            envelope["run_id"], r"^r-\d{8}T\d{6}-task_validation-[0-9a-f]{8}$"
+        )
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertEqual("ok", self.run_status(envelope))
+        validate(envelope, RESULT_SCHEMA)
+
+    def test_a_recorded_commands_error_is_a_command_link(self):
+        status, envelope = self.project.run("delivery", "--task", "t1")
+        self.assertEqual((1, "blocked"), (status, envelope["status"]))
+        error = envelope["error"]
+        self.assertEqual(("command", "nothing_to_do"), (error["level"], error["code"]))
+        self.assertEqual(
+            f"Command delivery {envelope['run_id']} (workspace t1)", error["actor"]
+        )
+        validate(error, ERROR_SCHEMA)
+        self.assertEqual("blocked", self.run_status(envelope))
+        # A command is not an Operation: `concorde run` refuses it before any run exists.
+        before = sorted((self.records / "runs").iterdir())
+        with self.assertRaisesRegex(UsageError, "is a command, not an Operation"):
+            execute("operation", "delivery", [], cwd=self.worktree)
+        self.assertEqual(before, sorted((self.records / "runs").iterdir()))
+
+    @verifies("scenario.execution.workspace-busy")
+    def test_a_busy_workspace_refuses_a_second_run(self):
+        with runs.workspace_lock(self.records, "t1", "implement run r-other"):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual("workspace_busy", envelope["host_evidence"][0]["ref"])
+        error = envelope["error"]
+        self.assertEqual(["refused", "workspace_busy"], codes(error))
+        self.assertEqual("decision", error["unhandled"]["reason"])
+        self.assertIn("r-other", error["detail"])
+        self.assertIsNone(envelope["output"])
+        # The refusal is recorded like any run, and the lock is free again afterwards.
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertIsNone(runs.lock_holder(self.records, "t1"))
+        status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+
+    @verifies("scenario.execution.binding-refused")
+    def test_a_broken_binding_refuses_the_run(self):
+        path = self.worktree / binding_file.BINDING
+        good = path.read_text()
+        other = self.project.base / "elsewhere"
+        for text, code in (
+            ("{not json", "binding_unreadable"),
+            (json.dumps({**json.loads(good), "modules": []}), "binding_invalid"),
+            (json.dumps({**json.loads(good), "root": str(other)}), "binding_misplaced"),
+        ):
+            with self.subTest(code=code):
+                path.write_text(text)
+                status, envelope = self.project.run(
+                    "task-validation", cwd=self.worktree
+                )
+                self.assertEqual((1, "failed"), (status, envelope["status"]))
+                self.assertEqual(["refused", code], codes(envelope["error"]))
+                [cause] = envelope["error"]["causes"]
+                self.assertEqual("Execution (workspace binding)", cause["actor"])
+                self.assertIn(str(path), cause["detail"])
+                # A binding that cannot be trusted leaves the run unbound, recorded in the
+                # worktree it started in.
+                self.assertIsNone(envelope["workspace"])
+                self.assertEqual(
+                    envelope, self.saved(envelope, self.worktree / ".concorde")
+                )
+        path.write_text(good)
+        self.assertEqual(json.loads(good), binding_file.load(self.worktree))
+
+    @verifies("scenario.execution.binding-required")
+    def test_a_command_needing_a_binding_is_refused_when_unbound(self):
+        status, envelope = self.project.run("task-validation")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual(["refused", "binding_required"], codes(envelope["error"]))
+        self.assertIn(f"(unbound, {self.root})", envelope["error"]["actor"])
+        self.assertEqual("refused", envelope["error"]["code"])
+        self.assertEqual("failed", self.run_status(envelope, None))
+
+    @verifies("scenario.execution.removed-module")
+    def test_a_module_the_workspace_removed_is_left_out(self):
+        def bind(modules):
+            binding_file.write(self.worktree, {**self.binding(), "modules": modules})
+
+        # module.gone stands for a Module the workspace removed or renamed.
+        bind(["module.a", "module.gone"])
+        status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((0, "ok"), (status, envelope["status"]))
+        self.assertEqual(["module.a"], envelope["modules"])
+        [removed] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "removed-module"
+        ]
+        self.assertEqual("module.gone", removed["ref"])
+        self.assertIn("no longer registers", removed["detail"])
+        # The runner never rewrites the binding; the run store lists what the run used.
+        self.assertEqual(["module.a", "module.gone"], self.binding()["modules"])
+        [listed] = [
+            run
+            for run in runs.workspace_runs(self.records, "t1")
+            if run["run_id"] == envelope["run_id"]
+        ]
+        self.assertEqual(["module.a"], listed["modules"])
+
+        bind(["module.gone"])
+        status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual(["refused", "modules_removed"], codes(envelope["error"]))
+        self.assertIn("module.gone", envelope["error"]["causes"][0]["detail"])
+        self.assertIn("--modules", envelope["error"]["causes"][0]["detail"])
+        status, envelope = self.project.run(
+            "task-validation", "--task", "t1", "--modules", "module.a"
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]))
+
+    def wait_for(self, path: Path) -> dict:
+        deadline = time.monotonic() + 120
+        while not path.is_file() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        return json.loads(path.read_text())
+
+    @verifies("scenario.execution.detached")
+    def test_a_detached_run_is_announced_and_finishes_on_its_own(self):
+        # The detached runner is a process of its own, so it runs the real task-validation.
+        status, announced = detach(
+            "command", "task-validation", ["--detach"], cwd=self.worktree
+        )
+        self.assertEqual(0, status, announced)
+        self.assertEqual(
+            ("command", "task-validation"), (announced["kind"], announced["name"])
+        )
+        self.assertTrue(Path(announced["progress"]).is_file())
+        self.assertEqual(
+            self.records / "runs" / announced["run_id"] / "result.json",
+            Path(announced["result"]),
+        )
+        envelope = self.wait_for(Path(announced["result"]))
+        validate(envelope, RESULT_SCHEMA)
+        self.assertEqual(announced["run_id"], envelope["run_id"])
+        self.assertEqual("t1", envelope["workspace"])
+        self.assertEqual(envelope["status"], self.run_status(envelope))
+        # A workspace already running something still gets its refusal as the result.
+        with runs.workspace_lock(self.records, "t1", "implement run r-other"):
+            status, announced = detach(
+                "command", "task-validation", [], cwd=self.worktree
+            )
+            self.assertEqual(0, status, announced)
+            refused = self.wait_for(Path(announced["result"]))
+        self.assertEqual("failed", refused["status"])
+        self.assertEqual("workspace_busy", refused["host_evidence"][0]["ref"])
+        with self.assertRaises(UsageError):
+            detach("operation", "frobnicate", ["--detach"], cwd=self.worktree)
+
+    @verifies("scenario.execution.bad-command")
+    def test_a_malformed_command_line_writes_nothing(self):
+        directory = self.records / "runs"
+        before = sorted(directory.iterdir()) if directory.exists() else []
+        with self.assertRaisesRegex(UsageError, "unknown operation 'frobnicate'"):
+            self.project.run("frobnicate", "--task", "t1")
+        with self.assertRaisesRegex(UsageError, "unrecognized arguments: --bogus"):
+            self.project.run("task-validation", "--task", "t1", "--bogus")
+        with self.assertRaisesRegex(UsageError, "not inside a"):
+            outside = self.project.base / "outside"
+            outside.mkdir()
+            execute("command", "task-validation", [], cwd=outside)
+        after = sorted(directory.iterdir()) if directory.exists() else []
+        self.assertEqual(before, after)
+        with patch("sys.stderr") as stderr:
+            self.assertEqual(2, run_main("operation", None, []))
+            self.assertEqual(2, run_main("operation", "frobnicate", []))
+        self.assertIn("unknown operation", str(stderr.write.call_args_list))
+
+    @verifies("scenario.execution.host-error")
+    def test_a_raising_step_is_a_failed_result(self):
+        status, envelope = self.project.run("test", "--task", "t1")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        [error] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "host-error"
+        ]
+        self.assertEqual("step raising_step", error["ref"])
+        self.assertIn("RuntimeError: boom", error["detail"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual(
+            ("component", "RuntimeError: boom"), (cause["level"], cause["detail"])
+        )
+        trace = [item for item in cause["evidence"] if item["kind"] == "traceback"]
+        self.assertTrue(Path(trace[0]["ref"]).is_file())
+        self.assertIn("raising_step", Path(trace[0]["ref"]).read_text())
+        self.assertEqual("failed", self.run_status(envelope))
+
+    @verifies("scenario.execution.cancelled")
+    def test_a_cancelled_run_ends_its_worker(self):
+        pid_file = self.project.base / "child.pid"
+
+        def cancel():
+            deadline = time.monotonic() + 20
+            while not pid_file.exists() and time.monotonic() < deadline:
+                time.sleep(0.05)
+            time.sleep(0.2)
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        threading.Thread(target=cancel, daemon=True).start()
+        _, envelope = self.implement([{"spawn": str(pid_file), "sleep": 60}])
+        self.assertEqual("failed", envelope["status"])
+        self.assertIn("cancelled", {item["kind"] for item in envelope["host_evidence"]})
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertIsNone(runs.lock_holder(self.records, "t1"))
+        # The result names the worker run it started, and that run ended too.
+        [worker] = envelope["worker_runs"]
+        self.assertIn(worker, envelope["error"]["detail"])
+        [named] = [
+            item
+            for item in envelope["error"]["evidence"]
+            if item["kind"] == "worker-run"
+        ]
+        self.assertTrue(named["ref"].endswith(f"{worker}/record.json"))
+        directory = Path(named["ref"]).parent
+        progress = json.loads((directory / "status.json").read_text())
+        self.assertEqual(
+            ("finished", "failed"), (progress["phase"], progress["status"])
+        )
+        record = json.loads((directory / "record.json").read_text())
+        self.assertEqual("interrupted", record["error"]["code"])
+        child = int(pid_file.read_text())
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and Path(f"/proc/{child}").exists():
+            state = Path(f"/proc/{child}/stat")
+            if state.exists() and state.read_text().split()[2] == "Z":
+                break
+            time.sleep(0.05)
+        state = Path(f"/proc/{child}/stat")
+        self.assertTrue(not state.exists() or state.read_text().split()[2] == "Z")
+
+    @verifies("scenario.execution.inputs")
+    def test_earlier_results_are_admitted_as_task_material(self):
+        _, first = self.project.run("task-validation", "--task", "t1")
+        status, envelope = self.project.run(
+            "understand", "--task", "t1", "--input", first["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertEqual(
+            {"inputs": [first["run_id"]], "names": ["task-validation"]},
+            envelope["output"],
+        )
+        _, failed = self.project.run("test", "--task", "t1")
+        _, refused = self.project.run(
+            "understand", "--task", "t1", "--input", failed["run_id"]
+        )
+        self.assertEqual("failed", refused["status"])
+        self.assertEqual("input_not_admissible", refused["host_evidence"][0]["ref"])
+        self.assertIn("ended failed", refused["error"]["detail"])
+        # A run of another workspace is not admitted either.
+        self.project.open_task("t2")
+        _, other = self.project.run(
+            "understand", "--task", "t2", "--input", first["run_id"]
+        )
+        self.assertEqual(["refused", "input_not_admissible"], codes(other["error"]))
+        self.assertIn("a run of t1, not of t2", other["error"]["detail"])
+
+    def test_the_run_store_lists_a_workspaces_runs(self):
+        _, first = self.project.run("task-validation", "--task", "t1")
+        _, second = self.project.run("test", "--task", "t1")
+        _, unbound = self.project.run(
+            "spec_review",
+            "--modules",
+            "module.a",
+            "--goal",
+            OperationProject.plan([{}]),
+        )
+        listed = runs.workspace_runs(self.records, "t1")
+        self.assertEqual(
+            [
+                (first["run_id"], "command", "task-validation", "ok"),
+                (second["run_id"], "operation", "test", "failed"),
+            ],
+            [
+                (run["run_id"], run["kind"], run["name"], run["status"])
+                for run in listed
+            ],
+        )
+        self.assertEqual(
+            [unbound["run_id"]],
+            [run["run_id"] for run in runs.workspace_runs(self.records, None)],
+        )
+        self.assertEqual("finished", runs.run_state(self.records, first["run_id"]))
+        self.assertEqual("refused", runs.run_state(self.records, None))
+
+    def test_the_result_schema_is_the_contract(self):
+        fence = spec_contract("contract.execution.run-result")
+        self.assertEqual(RESULT_SCHEMA, fence["schema"])
+
+    def test_the_binding_schema_is_the_contract(self):
+        fence = spec_contract("contract.execution.workspace-binding")
+        self.assertEqual(binding_file.BINDING_SCHEMA, fence["schema"])
+
+    def test_the_error_link_is_the_framework_contract(self):
+        text = (REPOSITORY_ROOT / "specs/concorde/contracts.md").read_text()
+        fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
+        self.assertEqual(json.loads(fence)["schema"], ERROR_SCHEMA)
+        self.assertEqual(RESULT_SCHEMA["$defs"]["error"], LINK_SCHEMA)
+
+
+class BindingTests(unittest.TestCase):
+    """The workspace binding Tasks writes into a task worktree and the runner reads."""
+
+    def setUp(self):
+        self.project = OperationProject(self)
+        self.root = self.project.root
+
+    def test_opening_a_task_binds_its_worktree(self):
+        self.project.open_task("t1", goal="Fix A.")
+        worktree = self.project.worktree("t1")
+        record = store.load_task(self.root, "t1")
+        value = binding_file.load(worktree)
+        self.assertEqual(
+            {
+                "schema_version": 1,
+                "workspace": "t1",
+                "root": os.path.realpath(worktree),
+                "branch": record["branch"],
+                "base_commit": record["base_commit"],
+                "goal": "Fix A.",
+                "modules": ["module.a"],
+                "records": os.path.realpath(self.root / ".concorde"),
+            },
+            {
+                **value,
+                "root": os.path.realpath(value["root"]),
+                "records": os.path.realpath(value["records"]),
+            },
+        )
+        self.assertIsNone(binding_file.load(self.root))
+        self.assertEqual(
+            Path(value["records"]), binding_file.records_of(worktree, value)
+        )
+        self.assertEqual(
+            self.root / ".concorde", binding_file.records_of(self.root, None)
+        )
+        # The binding is ignored by Git: opening a task changes nothing a commit would carry.
+        self.assertTrue(
+            ".concorde/workspace.json" in (worktree / ".gitignore").read_text()
+        )
+
+    def test_a_binding_that_breaks_its_contract_is_never_written(self):
+        from concorde.spec.schema import ContractError
+
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        before = (worktree / binding_file.BINDING).read_text()
+        with self.assertRaises(ContractError):
+            binding_file.write(
+                worktree, {**binding_file.load(worktree), "workspace": "Not A Name"}
+            )
+        self.assertEqual(before, (worktree / binding_file.BINDING).read_text())
+
+
+if __name__ == "__main__":
+    unittest.main()

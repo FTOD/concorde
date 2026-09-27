@@ -1,10 +1,13 @@
 """The Task store: task records and decision logs in the primary worktree, and the task commands.
 
-A task is a branch ``concorde/<id>``, a worktree checked out on it, a record
-``.concorde/tasks/<id>.json`` and a decision log ``.concorde/tasks/<id>.decisions.md``, all owned
-by the primary worktree. Only this module writes records. Every change is one read, a check of
-its preconditions and one atomic write bound to the bytes read; a concurrent change is retried
-and reported as ``record_conflict`` after three attempts.
+A task is a branch ``concorde/<id>``, a worktree checked out on it and bound as the workspace
+``<id>``, a record ``.concorde/tasks/<id>.json`` and a decision log
+``.concorde/tasks/<id>.decisions.md``, all owned by the primary worktree. Only this module writes
+records, and nothing below the task level writes them: whether a task is active or delivered is
+derived each time from what the execution core recorded, its runs in the run store and its
+delivery commits on the branch. Every change is one read, a check of its preconditions and one
+atomic write bound to the bytes read; a concurrent change is retried and reported as
+``record_conflict`` after three attempts.
 """
 
 from __future__ import annotations
@@ -17,12 +20,17 @@ import subprocess
 import tempfile
 import time
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
+from ..delivery.bundle import delivery_commits
+from ..execution import binding as workspace_binding
+from ..execution.runs import lock_holder, workspace_runs
 from ..harness.models import CONFIG, inherit
 
 TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
+# The stages of a task's life. Only open, closed and failed are stored; active and delivered are
+# derived from the workspace's runs and delivery commits whenever a task is read.
 STATES = ("open", "active", "delivered", "closed", "failed")
 # How a task ended: closed when its goal was reached, merged or not; failed when it was not.
 OUTCOMES = ("merged", "completed", "failed")
@@ -42,7 +50,7 @@ class TaskError(Exception):
 
 
 def now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _git(cwd: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -263,7 +271,7 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
     """Append a started task session to the record of an open, active or delivered task."""
 
     def change(record):
-        if record["state"] not in ("open", "active", "delivered"):
+        if record["state"] in ENDED:
             raise TaskError(
                 "task_closed",
                 f"task {task_id} is {record['state']}; a session works only in an open task",
@@ -333,19 +341,6 @@ def _registry(root: Path) -> set[str]:
         raise TaskError(
             "specs_unloadable", f"the Specs of {root} cannot be loaded: {detail}"
         ) from error
-
-
-def current_modules(root: Path, modules: list[str]) -> tuple[list[str], list[str]]:
-    """Split a task's Modules into those its worktree still registers and those it does not.
-
-    Every Module of a task record was registered when it was added, so one the task worktree no
-    longer registers was removed or renamed on the task branch.
-    """
-    known = _registry(root)
-    return (
-        [item for item in modules if item in known],
-        [item for item in modules if item not in known],
-    )
 
 
 def registered(root: Path, modules: list[str]) -> None:
@@ -463,6 +458,28 @@ def _open_task(
             f"task was recorded; remove them with git worktree remove {worktree} and git branch "
             f"-D {branch} before opening the task again",
         ) from error
+    try:
+        workspace_binding.write(
+            worktree,
+            {
+                "schema_version": 1,
+                "workspace": task_id,
+                "root": os.path.realpath(worktree),
+                "branch": branch,
+                "base_commit": base_commit,
+                "goal": goal,
+                "modules": list(modules),
+                "records": os.path.realpath(primary / ".concorde"),
+            },
+        )
+    except (OSError, ValueError) as error:
+        raise TaskError(
+            "binding_failed",
+            f"the workspace binding {workspace_binding.BINDING} of the new worktree {worktree} "
+            f"could not be written: {error}. The worktree and branch {branch} exist but no task "
+            f"was recorded; remove them with git worktree remove {worktree} and git branch -D "
+            f"{branch} before opening the task again",
+        ) from error
     stamp = now()
     record = {
         "id": task_id,
@@ -474,11 +491,8 @@ def _open_task(
         "state": "open",
         "created_at": stamp,
         "updated_at": stamp,
-        "runs": [],
-        "deliveries": [],
         "escalations": [],
         "sessions": [],
-        "workflow": None,
         "closed": None,
     }
     with _locked(primary):
@@ -489,7 +503,38 @@ def _open_task(
     return record
 
 
+def deliveries(primary: Path, record: dict) -> list[dict]:
+    """The delivery commits of the task's workspace on its branch, oldest first."""
+    head = _git(
+        primary, "rev-parse", "--verify", "--quiet", record["branch"], check=False
+    ).stdout.strip()
+    if not head:
+        return []
+    return delivery_commits(primary, record["base_commit"], head, record["id"])
+
+
+def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -> str:
+    """The task's state: closed or failed as stored; otherwise delivered when its branch head is
+    a delivery commit of its workspace and its worktree is clean, active when its workspace has
+    runs or its branch moved past the base, and open before either."""
+    if record["state"] in ENDED:
+        return record["state"]
+    head = _git(
+        primary, "rev-parse", "--verify", "--quiet", record["branch"], check=False
+    ).stdout.strip()
+    delivered = deliveries(primary, record)
+    worktree = Path(record["worktree"])
+    if delivered and delivered[-1]["commit"] == head and not _dirty(worktree):
+        return "delivered"
+    if runs is None:
+        runs = workspace_runs(primary / ".concorde", record["id"])
+    if runs or (head and head != record["base_commit"]) or _dirty(worktree):
+        return "active"
+    return "open"
+
+
 def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
+    """Every task record with its derived state, oldest first; ``state`` filters on it."""
     directory = tasks_directory(primary)
     records = []
     for path in sorted(directory.glob("*.json")) if directory.is_dir() else []:
@@ -500,121 +545,24 @@ def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
                 "record_unreadable", f"the task record {path} cannot be read: {error}"
             ) from error
     records.sort(key=lambda item: (item["created_at"], item["id"]))
+    for record in records:
+        record["state"] = derived_state(primary, record)
     return [item for item in records if state is None or item["state"] == state]
 
 
 def show_task(primary: Path, task_id: str) -> dict:
+    """The record with its derived state, the workspace's runs and delivery commits, who holds
+    the workspace lock, and the decision log's path."""
     record = load_task(primary, task_id)
+    runs = workspace_runs(primary / ".concorde", task_id)
+    record["state"] = derived_state(primary, record, runs)
     return {
         "record": record,
+        "runs": runs,
+        "deliveries": deliveries(primary, record),
+        "busy": lock_holder(primary / ".concorde", task_id),
         "decision_log": decision_log_path(primary, task_id).as_posix(),
     }
-
-
-def _alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
-
-
-def begin_run(
-    primary: Path,
-    task_id: str,
-    run_id: str,
-    operation: str,
-    modules: list[str],
-    writes: bool,
-    host_pid: int,
-    *,
-    check_modules: bool = True,
-) -> dict:
-    """Begin a run; ``check_modules=False`` leaves the Module check to the Operation itself."""
-    record = load_task(primary, task_id)
-    if record["state"] in ENDED:
-        raise TaskError("task_closed", f"task {task_id} is {record['state']}")
-    if check_modules:
-        registered(Path(record["worktree"]), modules)
-
-    def change(record):
-        if record["state"] in ENDED:
-            raise TaskError("task_closed", f"task {task_id} is {record['state']}")
-        for run in record["runs"]:
-            if run["status"] == "running":
-                if _alive(run["host_pid"]):
-                    raise TaskError(
-                        "task_busy", f"run {run['run_id']} of task {task_id} is running"
-                    )
-                run["status"], run["finished_at"] = "interrupted", now()
-        record["runs"].append(
-            {
-                "run_id": run_id,
-                "operation": operation,
-                "modules": list(modules),
-                "writes": bool(writes),
-                "status": "running",
-                "host_pid": host_pid,
-                "started_at": now(),
-                "finished_at": None,
-            }
-        )
-        for module in modules:
-            if module not in record["modules"]:
-                record["modules"].append(module)
-        if record["state"] == "open" or (record["state"] == "delivered" and writes):
-            record["state"] = "active"
-        return record
-
-    return update(primary, task_id, change)
-
-
-def _running(record: dict, run_id: str) -> dict:
-    for run in record["runs"]:
-        if run["run_id"] == run_id and run["status"] == "running":
-            return run
-    raise TaskError("invalid_transition", f"run {run_id} is not running")
-
-
-def finish_run(primary: Path, task_id: str, run_id: str, status: str) -> dict:
-    def change(record):
-        run = _running(record, run_id)
-        run["status"], run["finished_at"] = status, now()
-        return record
-
-    return update(primary, task_id, change)
-
-
-def record_delivery(
-    primary: Path,
-    task_id: str,
-    run_id: str,
-    commit: str,
-    bundle: str,
-    readiness_run: str,
-) -> dict:
-    def change(record):
-        _running(record, run_id)
-        if record["state"] not in ("active", "delivered"):
-            raise TaskError(
-                "invalid_transition",
-                f"a task in state {record['state']} cannot be delivered",
-            )
-        record["deliveries"].append(
-            {
-                "run_id": run_id,
-                "commit": commit,
-                "bundle": bundle,
-                "readiness_run": readiness_run,
-                "at": now(),
-            }
-        )
-        record["state"] = "delivered"
-        return record
-
-    return update(primary, task_id, change)
 
 
 def _dirty(worktree: Path) -> bool:
@@ -654,123 +602,6 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
     return record
 
 
-def base_key(key: str) -> str:
-    """A step key without its restart generation and answers digest."""
-    return key.split("@", 1)[0].split("#", 1)[0]
-
-
-def current_steps(record: dict) -> list[dict]:
-    """The workflow steps of a task record that no later rerun superseded, in record order."""
-    workflow = record.get("workflow") or {}
-    return [step for step in workflow.get("steps", []) if not step.get("superseded")]
-
-
-def check_workflow_step(record: dict, workflow: str, key: str, operation: str) -> None:
-    """Refuse a workflow step the task cannot take, before anything is started for it.
-
-    ``task_closed`` for an ended task, ``workflow_conflict`` when the record names another
-    workflow and ``step_conflict`` when the key is recorded for another Operation.
-    """
-    task_id = record["id"]
-    if record["state"] in ENDED:
-        raise TaskError(
-            "task_closed",
-            f"task {task_id} is {record['state']}; no workflow step is recorded for it",
-        )
-    current = record.get("workflow")
-    if current is not None and current["name"] != workflow:
-        raise TaskError(
-            "workflow_conflict",
-            f"task {task_id} runs the workflow {current['name']}; a step of {workflow} is "
-            "refused, since a task runs at most one workflow",
-        )
-    for step in (current or {}).get("steps", []):
-        if step["key"] == key and step["operation"] != operation:
-            raise TaskError(
-                "step_conflict",
-                f"step key {key} of task {task_id} is recorded for {step['operation']} "
-                f"(run {step['run_id']}), not {operation}",
-            )
-
-
-def record_workflow_step(
-    primary: Path,
-    task_id: str,
-    workflow: str,
-    key: str,
-    operation: str,
-    run_id: str | None,
-    mode: str,
-    answers: str | None,
-    error: dict | None = None,
-) -> dict:
-    """Record one workflow step: name the workflow on the first step, supersede, append.
-
-    When a current step has the same base key, it and every step recorded after it are marked
-    superseded, so a retried or answered step makes the procedure's later steps run again.
-    Refused as ``check_workflow_step`` refuses.
-    """
-    stamp = now()
-
-    def change(record):
-        check_workflow_step(record, workflow, key, operation)
-        current = record.get("workflow") or {
-            "name": workflow,
-            "steps": [],
-            "reports": [],
-        }
-        steps = current["steps"]
-        earlier = next(
-            (
-                index
-                for index, step in enumerate(steps)
-                if not step.get("superseded") and base_key(step["key"]) == base_key(key)
-            ),
-            None,
-        )
-        if earlier is not None:
-            for step in steps[earlier:]:
-                step["superseded"] = True
-        steps.append(
-            {
-                "key": key,
-                "operation": operation,
-                "run_id": run_id,
-                "mode": mode,
-                "answers": answers,
-                "error": error,
-                "superseded": False,
-                "at": stamp,
-            }
-        )
-        record["workflow"] = current
-        return record
-
-    return update(primary, task_id, change)
-
-
-def record_workflow_report(
-    primary: Path, task_id: str, status: str, path: str, log_text: str
-) -> dict:
-    """Append a workflow report to the task record and its text to the decision log."""
-    stamp = now()
-
-    def change(record):
-        current = record.get("workflow")
-        if current is None:
-            raise TaskError(
-                "no_workflow",
-                f"task {task_id} names no workflow, so there is no workflow report to record",
-            )
-        current["reports"].append({"status": status, "path": path, "at": stamp})
-        return record
-
-    record = update(primary, task_id, change)
-    with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
-        stream.write(log_text)
-    return record
-
-
 def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
     """The record and branch head of a task ``close --merged`` accepts once the head is merged."""
     record = load_task(primary, task_id)
@@ -778,19 +609,19 @@ def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
         raise TaskError(
             "invalid_transition", f"task {task_id} is already {record['state']}"
         )
-    if record["state"] != "delivered" or not record["deliveries"]:
+    delivered = deliveries(primary, record)
+    if not delivered:
         raise TaskError(
             "not_merged",
-            f"task {task_id} is {record['state']} with {len(record['deliveries'])} "
-            "delivery(ies); only a delivered task can be closed as merged",
+            f"branch {record['branch']} of task {task_id} holds no delivery commit of its "
+            "workspace since the base; only a delivered task can be closed as merged",
         )
     head = _git(primary, "rev-parse", record["branch"]).stdout.strip()
-    if head != record["deliveries"][-1]["commit"]:
+    if head != delivered[-1]["commit"]:
         raise TaskError(
             "not_merged",
             f"{record['branch']} is at {head}, not at its last delivery commit "
-            f"{record['deliveries'][-1]['commit']}; deliver again, or close it completed "
-            "or failed",
+            f"{delivered[-1]['commit']}; deliver again, or close it completed or failed",
         )
     worktree = Path(record["worktree"])
     if _dirty(worktree):
@@ -935,13 +766,14 @@ __all__ = [
     "ENDED",
     "MERGE_WAIT",
     "OUTCOMES",
+    "STATES",
     "TaskError",
-    "begin_run",
     "close_locked",
     "close_task",
     "decision_log_path",
+    "deliveries",
+    "derived_state",
     "escalate",
-    "finish_run",
     "list_tasks",
     "load_task",
     "merge_lock",
@@ -949,13 +781,7 @@ __all__ = [
     "mergeable",
     "open_task",
     "primary_of",
-    "record_delivery",
     "record_session",
-    "record_workflow_report",
-    "base_key",
-    "check_workflow_step",
-    "current_steps",
-    "record_workflow_step",
     "require_primary",
     "show_task",
 ]

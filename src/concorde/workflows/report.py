@@ -1,8 +1,9 @@
-"""``concorde workflow report``: the workflow result, built only from what the hosts recorded.
+"""``concorde workflow report``: the workflow result, built only from what the runs recorded.
 
-The steps come from the task record; each step's status, output and error come from its saved
-Operation result. A value a step agent relayed is never read, so the chains the developer finally
-reads are the hosts' own, with the workflow's link on top.
+The steps come from the workspace's workflow record; each step's status, output and error come
+from its saved run result. A value a step agent relayed is never read, so the chains the developer
+finally reads are the runs' own, with the workflow's link on top. The report is saved next to the
+workflow record with a Markdown rendering, which the task level may copy into its decision log.
 """
 
 from __future__ import annotations
@@ -10,20 +11,20 @@ from __future__ import annotations
 import copy
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 
 from .. import errors
+from ..execution.runs import load_result, run_state
 from ..spec.schema import validate
-from ..tasks import store
+from . import store
 from .step import (
+    NAME,
     STEP_SCHEMA,
     answered,
     decision_points,
-    load_result,
     lost_link,
-    run_state,
     workflow_link,
 )
+from .store import WorkflowError, Workspace
 
 RUN = STEP_SCHEMA["properties"]["run_id"]["anyOf"][0]
 KEY = STEP_SCHEMA["properties"]["key"]
@@ -46,20 +47,20 @@ def obj(properties: dict, required=None) -> dict:
 STEP_ROW = obj(
     {
         "key": KEY,
-        "operation": {"type": "string", "pattern": "^[a-z][a-z_]*$"},
+        "name": NAME,
         "modules": {"type": "array", "items": MODULE_ID},
         "run_id": {"anyOf": [RUN, {"type": "null"}]},
         "status": {"enum": ["ok", "blocked", "failed", "running", "lost", "refused"]},
         "summary": {"anyOf": [S, {"type": "null"}]},
     }
 )
-# contract.workflows.result, version 5
+# contract.workflows.result, version 6
 RESULT_SCHEMA: dict = {
     "$defs": copy.deepcopy(errors.DEFS),
     **obj(
         {
             "workflow": S,
-            "task": S,
+            "workspace": S,
             "mode": {"enum": ["interactive", "no-ask"]},
             "status": {
                 "enum": ["ok", "awaiting_decision", "blocked", "failed", "running"]
@@ -203,30 +204,30 @@ def now() -> str:
 class Row:
     """One recorded step with what its saved result says."""
 
-    def __init__(self, primary: Path, step: dict, workflow: str, task: str):
+    def __init__(self, space: Workspace, step: dict, workflow: str):
         self.step = step
         self.key = step["key"]
-        self.operation = step["operation"]
+        self.name = step["name"]
         self.run_id = step["run_id"]
         self.settled = answered(step.get("answers"))
-        state = run_state(primary, self.run_id)
+        state = run_state(space.records, self.run_id)
         # One read decides: a result that appears after run_state is read on the next report.
-        self.result = load_result(primary, self.run_id) if state == "finished" else None
+        self.result = (
+            load_result(space.records, self.run_id) if state == "finished" else None
+        )
         if state == "finished" and self.result is None:
             state = "running"
         self.status = self.result["status"] if self.result is not None else state
         self.output = (self.result or {}).get("output") or {}
         self.error = (self.result or {}).get("error") or step.get("error")
         if self.status == "lost":
-            self.error = lost_link(
-                primary, workflow, task, self.key, self.operation, self.run_id
-            )
+            self.error = lost_link(space, workflow, self.key, self.name, self.run_id)
         elif self.status == "running":
             self.error = workflow_link(
                 workflow,
-                task,
+                space.name,
                 "step_running",
-                f"the {self.operation} run {self.run_id} of step {self.key} is still running",
+                f"the {self.name} run {self.run_id} of step {self.key} is still running",
                 reason="exhausted",
                 explanation="the report was taken before the step finished",
                 options=["report again once the run has finished"],
@@ -235,7 +236,7 @@ class Row:
     def value(self) -> dict:
         return {
             "key": self.key,
-            "operation": self.operation,
+            "name": self.name,
             "modules": list((self.result or {}).get("modules") or []),
             "run_id": self.run_id,
             "status": self.status,
@@ -243,20 +244,20 @@ class Row:
         }
 
 
-def lost_row(workflow: str, task: str, key: str) -> dict:
+def lost_row(workflow: str, workspace: str, key: str) -> dict:
     return {
         "key": key,
-        "operation": "unknown",
+        "name": "unknown",
         "modules": [],
         "run_id": None,
         "status": "lost",
         "summary": None,
         "error": workflow_link(
             workflow,
-            task,
+            workspace,
             "step_lost",
             f"the script reported step {key} without a recorded run: its step agent returned "
-            "nothing, or Tasks refused to record the step, in which case the script's own "
+            "nothing, or the workflow record refused the step, in which case the script's own "
             "result carries that refusal",
             reason="environment",
             explanation="nothing was recorded for the step, so the workflow cannot tell what "
@@ -286,7 +287,7 @@ def pending_points(workflow: str, row: Row) -> list[dict]:
                 "recommendation": item["recommendation"],
             }
         )
-    if row.operation == "survey":
+    if row.name == "survey":
         for item in row.output.get("decisions") or []:
             if item["decided_by"] == "worker" and item["id"] not in row.settled:
                 points.append(
@@ -305,31 +306,24 @@ def pending_points(workflow: str, row: Row) -> list[dict]:
     return points
 
 
-def build(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
-    """The workflow result of a task, from its record and its runs' saved results."""
-    record = store.load_task(primary, task_id)
-    workflow_record = record.get("workflow")
-    if not workflow_record:
-        raise store.TaskError(
+def build(space: Workspace, lost: list[str] = ()) -> dict:
+    """The workflow result of a workspace, from its workflow record and its runs' results."""
+    record = store.load(space)
+    if record is None:
+        raise WorkflowError(
             "no_workflow",
-            f"task {task_id} names no workflow; there is nothing to report",
+            f"workspace {space.name} ran no workflow step; there is nothing to report",
         )
-    workflow = workflow_record["name"]
-    steps = workflow_record["steps"]
+    workflow = record["workflow"]
+    steps = record["steps"]
     mode = steps[-1]["mode"] if steps else "no-ask"
-    rows = [
-        Row(primary, step, workflow, task_id)
-        for step in steps
-        if not step["superseded"]
-    ]
+    rows = [Row(space, step, workflow) for step in steps if not step["superseded"]]
     superseded = [
-        Row(primary, step, workflow, task_id).value()
-        for step in steps
-        if step["superseded"]
+        Row(space, step, workflow).value() for step in steps if step["superseded"]
     ]
     keys = {row.key for row in rows}
     extra = [
-        lost_row(workflow, task_id, key)
+        lost_row(workflow, space.name, key)
         for key in lost
         if key not in keys
         and store.base_key(key) not in {store.base_key(k) for k in keys}
@@ -347,7 +341,7 @@ def build(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
             deviations += [
                 {**where, **item} for item in row.output.get("deviations") or []
             ]
-            if row.operation == "spec_review" and row.output.get("verdict"):
+            if row.name == "spec_review" and row.output.get("verdict"):
                 reviews.append(
                     {
                         **where,
@@ -355,7 +349,7 @@ def build(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
                         "modules": row.output.get("modules") or [],
                     }
                 )
-            if row.operation == "survey":
+            if row.name == "survey":
                 checks += [{**where, **item} for item in row.output.get("checks") or []]
         if row.status != "ok":
             problems.append(
@@ -400,16 +394,16 @@ def build(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
         status, code, reason = "blocked", "step_blocked", "decision"
         stop = [last]
     elif mode == "interactive" and decision_points(
-        last.operation, last.output, last.settled
+        last.name, last.output, last.settled
     ):
         status, code, reason = "awaiting_decision", "awaiting_decision", "decision"
         pending = pending_points(workflow, last)
-    elif last.operation == LAST_STEP.get(workflow, "delivery"):
+    elif last.name == LAST_STEP.get(workflow, "delivery"):
         status, code, reason = "ok", None, None
     else:
         status, code, reason = "failed", "incomplete", "capability"
     summary = summarize(
-        workflow, task_id, status, rows, decisions, questions, problems, checks
+        workflow, space.name, status, rows, decisions, questions, problems, checks
     )
     error = None
     if status != "ok":
@@ -426,17 +420,17 @@ def build(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
         if code == "incomplete":
             detail = (
                 "the workflow's steps end after "
-                + (f"step {last.key} ({last.operation})" if last else "no step")
+                + (f"step {last.key} ({last.name})" if last else "no step")
                 + f" without reaching its last step, {LAST_STEP.get(workflow, 'delivery')}"
             )
         error = workflow_link(
             workflow,
-            task_id,
+            space.name,
             code,
             f"{detail}: {summary}",
             reason=reason,
             explanation={
-                "decision": "whether to answer, repair, retry or give up is the main agent's "
+                "decision": "whether to answer, repair, retry or give up is the task level's "
                 "or the developer's decision",
                 "environment": "a step ended without a result the workflow could read",
                 "capability": "the workflow's record does not show the procedure reaching its "
@@ -471,7 +465,7 @@ def build(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
         )
     return {
         "workflow": workflow,
-        "task": task_id,
+        "workspace": space.name,
         "mode": mode,
         "status": status,
         "summary": summary,
@@ -491,18 +485,18 @@ def build(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
 
 
 def summarize(
-    workflow, task, status, rows, decisions, questions, problems, checks
+    workflow, workspace, status, rows, decisions, questions, problems, checks
 ) -> str:
     ran = ", ".join(f"{row.key} {row.status}" for row in rows) or "no step"
     return (
-        f"workflow {workflow} of task {task} is {status} after {ran}; "
+        f"workflow {workflow} of workspace {workspace} is {status} after {ran}; "
         f"{len(problems)} problem(s), {len(decisions)} decision(s), "
         f"{len(questions)} open question(s), {len(checks)} proposed check(s)"
     )
 
 
 def rendered(result: dict) -> str:
-    """The result as a decision log section."""
+    """The result as a Markdown section, for the task level's decision log."""
     lines = [
         (
             f"\n## Workflow {result['workflow']} report: {result['status']}, "
@@ -550,15 +544,11 @@ def rendered(result: dict) -> str:
     return "".join(lines)
 
 
-def report(primary: Path, task_id: str, lost: list[str] = ()) -> dict:
-    """Build, check, save and log the workflow result of a task."""
-    result = build(primary, task_id, lost)
+def report(space: Workspace, lost: list[str] = ()) -> dict:
+    """Build, check and save the workflow result of a workspace with its rendering."""
+    result = build(space, lost)
     validate(result, RESULT_SCHEMA)
-    path = store.tasks_directory(primary) / f"{task_id}.workflow.json"
-    path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
-    store.record_workflow_report(
-        primary, task_id, result["status"], path.as_posix(), rendered(result)
-    )
+    store.record_report(space, result, rendered(result))
     return result
 
 

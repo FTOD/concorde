@@ -68,8 +68,8 @@ file or directory reached without symbolic links; a missing or unsafe input is a
 `CONCORDE-CHECK-001` error naming the check. Validation reads no input's content and runs no check.
 
 **Pending entries.** A pending entry whose file now exists fails `CHK.binds.pending-subset`. A caller
-that is allowed to change the Specs, such as the validation Operation when it validates a task
-worktree, first confirms such entries through a file transaction, so a task that created a
+that is allowed to change the Specs, such as the recorded command `task-validation` when it
+validates a workspace, first confirms such entries through a file transaction, so a task that created a
 declared file is not blocked by its own progress.
 
 ## What validation leaves to configured checks
@@ -78,7 +78,7 @@ Some questions about a project are not questions about its Spec declarations, an
 not answer them. Whether every Issue record is readable, whether Concorde's own package is
 consistent and whether tests pass are each answered by a configured check owned by the Module
 concerned and run by Check execution. Their results enter a task's evidence next to the
-validation result, not inside it, so `validate`
+validation result, not inside it, so `spec-validation`
 stays a pure function of the Specs and the files they bind.
 
 ## What success means

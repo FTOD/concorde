@@ -34,7 +34,7 @@ from pathlib import Path
 
 from ..dogfooding.develop import DevelopError, develop_source, guidance
 from ..errors import link
-from ..workflows.step import pid_alive
+from ..execution.runs import pid_alive
 from .build import BuildError, verify_fresh
 from .project_defaults import install_project_defaults, project_default_files
 from .tools import TOOLS, ToolError, install_d2, install_pi_runtime
@@ -76,6 +76,7 @@ IGNORED = (
     UPDATE_STATE,
     ".concorde/runs/",
     ".concorde/tasks/",
+    ".concorde/workspace.json",
     ".concorde/worker-models.json",
     ".concorde/framework/",
     f"{TOOLS}/",
@@ -164,7 +165,8 @@ def _source_commit(package: Path) -> str | None:
 
 def active_runs(project: Path) -> list[str]:
     """Every Concorde run in ``project`` whose process still lives, described for a refusal:
-    Operation runs from their progress files and pi task-session rounds from theirs."""
+    Operation and recorded command runs from their progress files and pi task-session rounds
+    from theirs."""
     found = []
     for path in sorted((project / ".concorde/runs").glob("*/status.json")):
         try:
@@ -172,15 +174,15 @@ def active_runs(project: Path) -> list[str]:
             pid = int(state.get("host_pid") or 0)
         except (OSError, ValueError, TypeError, AttributeError):
             continue
-        # A worker's own progress file lies beside its Operation's and names the same host; only
-        # the Operation's is a run.
-        if state.get("kind") != "operation":
+        # A worker's own progress file lies beside its Operation's and names the same runner;
+        # only the Operation's is a run.
+        if state.get("kind") not in ("operation", "command"):
             continue
         if state.get("phase") != "finished" and pid_alive(pid):
             found.append(
-                f"Operation run {state.get('run_id') or path.parent.name} "
-                f"({state.get('operation')}, task {state.get('task')}, host process {pid}, "
-                f"progress {path.relative_to(project).as_posix()})"
+                f"{state.get('kind')} run {state.get('run_id') or path.parent.name} "
+                f"({state.get('name')}, workspace {state.get('workspace') or 'none'}, runner "
+                f"process {pid}, progress {path.relative_to(project).as_posix()})"
             )
     for path in sorted((project / ".concorde/tasks").glob("*.session/status.json")):
         try:
@@ -493,7 +495,7 @@ def open_tasks(project: Path) -> list[dict]:
         if (
             isinstance(record, dict)
             and isinstance(record.get("id"), str)
-            and record.get("state") in ("open", "active", "delivered")
+            and record.get("state") not in ("closed", "failed")
         ):
             found.append(
                 {
@@ -576,7 +578,7 @@ def update(
         "next": [
             "commit the updated files",
             (
-                "run `concorde validate` and repair what it reports; the first validation "
+                "run `concorde spec-validation` and repair what it reports; the first validation "
                 "that passes marks the update validated"
             ),
         ]

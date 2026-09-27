@@ -12,10 +12,15 @@ branch and its worktree each), carries a single task out inside its worktree or 
 sessions for work split into several tasks, keeps each task's decision log and merges delivered
 task branches. It never edits the primary worktree's sources.
 
-Workers are headless `claude -p` or `pi -p` processes launched by an Operation host for one bounded task of
-one task type (understand, specify, implement, test, review-spec, review-code) under a grant
-computed from the task worktree's Specs. Workers never touch Git, never run Operations and never
-start agents; their settings deny everything outside the grant.
+The work splits into two halves. Coordination (the main agent, tasks and task sessions) decides
+what to work on and in which worktree; Execution does the bounded work in one bound workspace and
+knows nothing of tasks. `task open` binds each task worktree as a workspace
+(`.concorde/workspace.json`), and every run started in that worktree reads the binding instead of
+naming the task. Workers are headless `claude -p` or `pi -p` processes launched by an Operation for
+one bounded job of one task type (understand, specify, implement, test, review-spec, review-code,
+code-to-spec) under a grant computed from the workspace's Specs. Workers never touch Git, never run
+Operations and never start agents; their settings deny everything outside the grant. Deterministic
+steps (`task-validation`, `delivery`, `scaffold`) are recorded commands, not Operations.
 
 Developing this checkout itself is direct developer-authorized maintenance, done in a task:
 
@@ -28,16 +33,17 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    `python3 scripts/concorde.py build` and, for the reference submodules,
    `python3 scripts/development/init-references.py`.
 4. Change the sources, verify, and commit each verified step on the task branch. Run every
-   `scripts/concorde.py` command (`build`, `validate`, `registry`, `run <operation>`) from the task
-   worktree, never the primary worktree's copy: only the branch's copy knows the branch's
-   Protocol, checks and prompts.
-5. Run `python3 scripts/concorde.py run validate --task <task>` and `run delivery --task <task>`
+   `scripts/concorde.py` command (`build`, `spec-validation`, `registry`, `run <operation>`,
+   `task-validation`, `delivery`) from the task worktree, never the primary worktree's copy: only
+   the branch's copy knows the branch's Protocol, checks and prompts, and only the task worktree
+   holds the workspace binding the runs read.
+5. Run `python3 scripts/concorde.py task-validation` and `python3 scripts/concorde.py delivery`
    there.
 6. After delivery, the main agent returns to or remains in the primary worktree, according to
    its host workflow, and runs
    `python3 scripts/concorde.py task merge <task> --check "python3 scripts/concorde.py build"
---check "python3 scripts/concorde.py validate"`. It takes the merge lock, merges the task branch
-   into main, runs the build and `validate` on main as a cross-check of the branch's
+--check "python3 scripts/concorde.py spec-validation"`. It takes the merge lock, merges the task
+   branch into main, runs the build and `spec-validation` on main as a cross-check of the branch's
    self-validation, undoes the merge if either fails, and closes the task. Never merge with
    `git merge` directly: other main sessions may be merging at the same time. On `merge_busy`, run
    it again; on `merge_conflict`, the main agent arranges resolution in the task worktree by
@@ -102,7 +108,7 @@ sources, and after Protocol changes also run
 
 Format changed sources explicitly (`uvx ruff format` for Python, Prettier for TypeScript,
 JavaScript and Markdown under `docs/`) and confirm a second pass changes nothing. Before
-committing, inspect the diff and run `build --check`, `validate` and the relevant tests; run the
+committing, inspect the diff and run `build --check`, `spec-validation` and the relevant tests; run the
 full suite (`.venv/bin/python -m pytest`) once on the final input of a milestone. Deterministic
 checks are not model-based integration tests, and self-tests are never independent.
 

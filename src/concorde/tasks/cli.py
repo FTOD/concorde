@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from .. import errors
+from ..execution.runs import load_result, run_directory
 from ..spec.schema import ContractError, validate
 from . import merge, pi_session, session, store
 
@@ -44,6 +45,11 @@ HANDLING = {
     "config_copy_failed": (
         "environment",
         "the file system refused the copy, and Tasks does not remove a worktree it just created",
+    ),
+    "binding_failed": (
+        "environment",
+        "the file system refused the workspace binding, and Tasks does not remove a worktree it "
+        "just created",
     ),
     "session_failed": (
         "environment",
@@ -226,20 +232,20 @@ def _checked(value, source: str) -> dict:
 
 
 def _run_error(primary: Path, task: dict, run_id: str) -> dict:
-    runs = {run["run_id"]: run for run in task["runs"]}
-    if run_id not in runs:
+    records = primary / ".concorde"
+    result = load_result(records, run_id)
+    if result is None:
         raise store.TaskError(
             "unknown_run",
-            f"{run_id} is not a run of task {task['id']} (its runs: "
-            f"{', '.join(runs) or 'none'})",
+            f"{run_id} has no readable result at "
+            f"{run_directory(records, run_id) / 'result.json'}",
         )
-    path = primary / ".concorde/runs" / run_id / "result.json"
-    try:
-        result = json.loads(path.read_text())
-    except (OSError, ValueError) as error:
+    if result.get("workspace") != task["id"]:
         raise store.TaskError(
-            "unknown_run", f"the result of {run_id} cannot be read at {path}: {error}"
-        ) from error
+            "unknown_run",
+            f"{run_id} is a run of {result.get('workspace') or 'no workspace'}, not of the "
+            f"workspace of task {task['id']}",
+        )
     if result.get("error") is None:
         raise store.TaskError(
             "nothing_to_escalate",

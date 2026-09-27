@@ -27,8 +27,8 @@ LISTED = 20
 
 
 def default_checks() -> list[list[str]]:
-    """``concorde validate`` of the primary worktree, by this Python and this package."""
-    return [[sys.executable, "-m", "concorde", "validate"]]
+    """``concorde spec-validation`` of the primary worktree, by this Python and this package."""
+    return [[sys.executable, "-m", "concorde", "spec-validation"]]
 
 
 def parse_checks(texts: list[str]) -> list[list[str]]:

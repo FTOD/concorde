@@ -1,0 +1,176 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.execution.module",
+    "owner": "module.execution",
+    "role": "module"
+  },
+  "module": {
+    "title": "Execution",
+    "owns": [
+      "specs/concorde/execution/module.md",
+      "specs/concorde/execution/runner.md",
+      "specs/concorde/execution/contracts.md",
+      "specs/concorde/execution/requirements.md",
+      "specs/concorde/execution/scenarios.md"
+    ],
+    "contains": [
+      {
+        "target": "module.workflows",
+        "meaning": "#contains-workflows"
+      },
+      {
+        "target": "module.operations",
+        "meaning": "#contains-operations"
+      },
+      {
+        "target": "module.validation",
+        "meaning": "#contains-validation"
+      },
+      {
+        "target": "module.delivery",
+        "meaning": "#contains-delivery"
+      },
+      {
+        "target": "module.workers",
+        "meaning": "#contains-workers"
+      },
+      {
+        "target": "module.tools",
+        "meaning": "#contains-tools"
+      }
+    ],
+    "uses": [
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
+      }
+    ],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.concorde.vocabulary",
+        "reason": "shared Framework vocabulary"
+      },
+      {
+        "kind": "document",
+        "target": "document.concorde.contracts",
+        "reason": "the Framework's error contract, which every run's errors follow"
+      }
+    ],
+    "participates": []
+  },
+  "defines": [
+    {
+      "id": "concept.execution.workspace",
+      "type": "concept",
+      "title": "Workspace",
+      "meaning": "#concept.execution.workspace"
+    },
+    {
+      "id": "concept.execution.workspace-binding",
+      "type": "concept",
+      "title": "Workspace binding",
+      "meaning": "#concept.execution.workspace-binding"
+    },
+    {
+      "id": "concept.execution.unbound-run",
+      "type": "concept",
+      "title": "Unbound run",
+      "meaning": "#concept.execution.unbound-run"
+    },
+    {
+      "id": "concept.execution.run",
+      "type": "concept",
+      "title": "Run",
+      "meaning": "#concept.execution.run"
+    },
+    {
+      "id": "concept.execution.recorded-command",
+      "type": "concept",
+      "title": "Recorded command",
+      "meaning": "#concept.execution.recorded-command"
+    },
+    {
+      "id": "concept.execution.run-result",
+      "type": "concept",
+      "title": "Run result",
+      "meaning": "#concept.execution.run-result"
+    },
+    {
+      "id": "concept.execution.run-store",
+      "type": "concept",
+      "title": "Run store",
+      "meaning": "#concept.execution.run-store"
+    },
+    {
+      "id": "concept.execution.workspace-lock",
+      "type": "concept",
+      "title": "Workspace lock",
+      "meaning": "#concept.execution.workspace-lock"
+    },
+    {
+      "id": "concept.execution.detached-run",
+      "type": "concept",
+      "title": "Detached run",
+      "meaning": "#concept.execution.detached-run"
+    },
+    {
+      "id": "concept.execution.progress-file",
+      "type": "concept",
+      "title": "Run progress file",
+      "meaning": "#concept.execution.progress-file"
+    },
+    {
+      "id": "concept.execution.runner",
+      "type": "concept",
+      "title": "Execution runner",
+      "meaning": "#concept.execution.runner"
+    },
+    {
+      "id": "realization.execution.runner",
+      "type": "realization",
+      "title": "Runner and run store",
+      "meaning": "#realization.execution.runner",
+      "entries": [
+        "src/concorde/execution/",
+        "tests/concorde/execution/",
+        "tests/concorde/support/runs.py"
+      ],
+      "pending": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "relates",
+      "source": "realization.execution.runner",
+      "verb": "reads",
+      "target": "concept.execution.workspace-binding"
+    },
+    {
+      "type": "relates",
+      "source": "realization.execution.runner",
+      "verb": "holds for each bound run",
+      "target": "concept.execution.workspace-lock"
+    },
+    {
+      "type": "relates",
+      "source": "realization.execution.runner",
+      "verb": "writes",
+      "target": "concept.execution.run-result"
+    },
+    {
+      "type": "relates",
+      "source": "concept.execution.run-store",
+      "verb": "keeps",
+      "target": "concept.execution.run-result"
+    },
+    {
+      "type": "relates",
+      "source": "realization.execution.runner",
+      "verb": "implements",
+      "target": "concept.execution.runner"
+    }
+  ],
+  "extensions": {}
+}

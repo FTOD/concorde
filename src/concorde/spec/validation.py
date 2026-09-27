@@ -1434,7 +1434,7 @@ def validate_repository(
         inputs.append(("protocol", repository.config["protocol"]["digest"]))
     counts = Counter(f.severity for f in findings)
     return ToolResult(
-        "validate",
+        "spec-validation",
         target_id or ".",
         "invalid" if counts["error"] else "success",
         tuple(sorted(set(artifacts))),

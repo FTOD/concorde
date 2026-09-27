@@ -25,6 +25,7 @@ from concorde.spec.verification import verifies
 from concorde.tasks import cli, pi_session, store
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.tasks import deliveries
 
 FAKE = Path(__file__).with_name("fake_pi_session.py")
 COMMIT = "a" * 40
@@ -44,8 +45,8 @@ def plan(value: dict) -> str:
     return "FAKE-PLAN: " + json.dumps(value)
 
 
-TASK_CONTRACTS = "specs/concorde/tasks/contracts.md"
-SESSION_CONTRACTS = "specs/concorde/agents/task-session/contracts.md"
+TASK_CONTRACTS = "specs/concorde/coordination/tasks/contracts.md"
+SESSION_CONTRACTS = "specs/concorde/coordination/task-session/contracts.md"
 
 
 def contract(heading: str, document: str = TASK_CONTRACTS) -> dict:
@@ -202,27 +203,16 @@ class PiSessionTests(unittest.TestCase):
             ),
         )
 
-    def deliver(self, task: str, commit: str = COMMIT) -> None:
-        def change(record):
-            record.setdefault("deliveries", []).append(
-                {
-                    "run_id": "r-20260926T000000-delivery-00000000",
-                    "commit": commit,
-                    "bundle": f".concorde/evidence/{task}/1.json",
-                    "readiness_run": "r-20260926T000000-delivery-00000000",
-                    "at": store.now(),
-                }
-            )
-            return record
-
-        store.update(self.root, task, change)
+    def deliver(self, task: str) -> str:
+        """A delivery commit on the task's branch, the only record of a delivery."""
+        return deliveries.deliver(self.project.worktree(task))
 
     @verifies("scenario.task-session.pi-start")
     def test_start_a_pi_task_session(self):
         worktree = self.open(
             "t1",
             {
-                "actions": [["bash", {"command": "concorde run implement --task t1"}]],
+                "actions": [["bash", {"command": "concorde run implement"}]],
                 "report": {
                     "status": "escalated",
                     "summary": "Implemented the levels; one question is open.",
@@ -298,7 +288,7 @@ class PiSessionTests(unittest.TestCase):
         )
         self.assertEqual("concorde_report", progress["last_action"]["tool"])
         events = Path(ended["events"]).read_text()
-        self.assertIn("concorde run implement --task t1", events)
+        self.assertIn("concorde run implement", events)
         record = store.load_task(self.root, "t1")
         validate(record, contract("")["schema"])
 
@@ -338,7 +328,7 @@ class PiSessionTests(unittest.TestCase):
         self.escalate("t1")
         started = self.start("t1")
         self.wait("t1", 1)
-        self.deliver("t1")
+        delivered = self.deliver("t1")
         answered = pi_session.answer(
             self.root,
             "t1",
@@ -348,7 +338,7 @@ class PiSessionTests(unittest.TestCase):
                     "report": {
                         "status": "delivered",
                         "summary": "Delivered.",
-                        "commit": COMMIT,
+                        "commit": delivered,
                         "escalations": [],
                         "decisions": [],
                         "open": [],
@@ -359,7 +349,9 @@ class PiSessionTests(unittest.TestCase):
         self.assertEqual(2, len(answered["rounds"]))
         second = self.wait("t1", 2)
         self.assertEqual(
-            ("delivered", COMMIT), (second["status"], second["report"]["commit"])
+            ("delivered", delivered, None),
+            (second["status"], second["report"]["commit"], second["error"]),
+            second,
         )
         self.assertEqual("answer", second["prompt"])
         first, again = self.calls()
@@ -447,13 +439,24 @@ class PiSessionTests(unittest.TestCase):
         self.assertIn("deliveries are none", ended["error"]["detail"])
         self.assertEqual(COMMIT, ended["report"]["commit"])
         self.escalate("t1", level="main-agent")
-        record = store.load_task(self.root, "t1")
+        record = pi_session.delivered_record(self.root, "t1")
         mismatches = pi_session.verify(
             {"status": "escalated", "escalations": [1, 3]}, record
         )
         self.assertEqual(2, len(mismatches))
         self.assertIn("level main-agent", mismatches[0])
         self.assertIn("escalation 3 does not exist", mismatches[1])
+        # The deliveries a report is checked against are the delivery commits on the branch.
+        delivered = self.deliver("t1")
+        record = pi_session.delivered_record(self.root, "t1")
+        self.assertEqual([delivered], [item["commit"] for item in record["deliveries"]])
+        self.assertEqual(
+            [], pi_session.verify({"status": "delivered", "commit": delivered}, record)
+        )
+        self.assertEqual(
+            1,
+            len(pi_session.verify({"status": "delivered", "commit": COMMIT}, record)),
+        )
 
     @verifies("scenario.task-session.pi-failed")
     def test_a_round_without_a_report_fails_with_its_evidence(self):

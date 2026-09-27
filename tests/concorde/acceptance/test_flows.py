@@ -72,7 +72,7 @@ class AdoptionTests(unittest.TestCase):
             config["protocol"]["digest"],
         )
         valid = subprocess.run(
-            [concorde, "validate"], cwd=project, capture_output=True, text=True
+            [concorde, "spec-validation"], cwd=project, capture_output=True, text=True
         )
         self.assertEqual("success", json.loads(valid.stdout)["status"], valid.stdout)
         entry = (project / "specs/project/module.md").read_text()
@@ -133,6 +133,11 @@ class BrownfieldFlowTests(unittest.TestCase):
             "module.project",
         )
         self.assertEqual(0, opened.returncode, opened.stdout)
+        # The workflow runs in the task worktree, whose workspace binding names the task.
+        worktree = Path(
+            json.loads((project / ".concorde/tasks/adopt.json").read_text())["worktree"]
+        )
+        self.assertTrue((worktree / ".concorde/workspace.json").is_file())
 
         children = [
             {
@@ -244,14 +249,10 @@ class BrownfieldFlowTests(unittest.TestCase):
                 {
                     "script": str(script),
                     "client": "pi",
-                    "args": {
-                        "task": "adopt",
-                        "module": "module.project",
-                        "mode": "no-ask",
-                    },
+                    "args": {"module": "module.project", "mode": "no-ask"},
                     "outcomes": {},
                     "report": None,
-                    "execute": {"command": concorde, "cwd": str(project)},
+                    "execute": {"command": concorde, "cwd": str(worktree)},
                 }
             ),
             capture_output=True,
@@ -281,10 +282,19 @@ class BrownfieldFlowTests(unittest.TestCase):
             ],
             [call["key"] for call in run_value["calls"]],
         )
-        result = json.loads(
-            (project / ".concorde/tasks/adopt.workflow.json").read_text()
+        record = json.loads(
+            (project / ".concorde/runs/workflows/adopt/record.json").read_text()
         )
+        self.assertEqual(
+            ("brownfield", "adopt"), (record["workflow"], record["workspace"])
+        )
+        self.assertEqual(
+            "task-validation",
+            {step["key"]: step["name"] for step in record["steps"]}["validate"],
+        )
+        result = json.loads(Path(record["reports"][-1]["path"]).read_text())
         self.assertEqual("ok", result["status"], json.dumps(result, indent=2)[:4000])
+        self.assertEqual("adopt", result["workspace"])
         self.assertEqual(["d.db-helper"], [item["id"] for item in result["decisions"]])
         self.assertEqual(
             ["q.payment-retry"], [item["id"] for item in result["open_questions"]]
@@ -327,9 +337,9 @@ class TaskFlowTests(unittest.TestCase):
         status, delivered = self.project.deliver()
         self.assertEqual((0, "ok"), (status, delivered["status"]), delivered)
         head = git(self.root, "rev-parse", "concorde/t1")
-        self.assertIn(
-            "Concorde-Task: t1", git(self.root, "log", "-1", "--format=%B", head)
-        )
+        message = git(self.root, "log", "-1", "--format=%B", head)
+        self.assertTrue(message.startswith("concorde: deliver t1"), message)
+        self.assertIn("Concorde-Workspace: t1", message)
         changed = git(
             self.root, "diff", "--name-only", f"{self.project.base_commit}..{head}"
         )
@@ -451,18 +461,19 @@ class TaskFlowTests(unittest.TestCase):
             "HOME": str(self.project.home),
             "CONCORDE_CLIENT": "claude",
         }
+        # Each run starts in its task's worktree, whose workspace binding it works on.
         runs = [
             subprocess.Popen(
-                [*COMMAND, "run", "implement", "--task", task, "--goal", goal],
-                cwd=self.root,
+                [*COMMAND, "run", "implement", "--goal", goal],
+                cwd=worktree,
                 env=environment,
                 stdout=subprocess.PIPE,
                 text=True,
             )
-            for task, goal in (
-                ("t1", fixed(first)),
+            for worktree, goal in (
+                (first, fixed(first)),
                 (
-                    "t2",
+                    second,
                     implement_plan({f"{second}/src/bmod/secret.py": "SECRET = 3\n"}),
                 ),
             )

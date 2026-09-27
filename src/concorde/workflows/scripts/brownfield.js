@@ -1,6 +1,7 @@
-// The brownfield workflow: describe a project whose code came before its Specs, in one task.
+// The brownfield workflow: describe a project whose code came before its Specs, in one bound
+// workspace (a task worktree).
 //
-// args: { task, module, mode: "interactive" | "no-ask", answers: { <base key>: [answer, ...] },
+// args: { module, mode: "interactive" | "no-ask", answers: { <base key>: [answer, ...] },
 //         retry: [<base key>, ...] }
 // The adapter defines step(key, argv), report(lost) and note(text). A step outcome is the
 // contract.workflows.step value, or null when the step agent returned nothing. Every stop ends
@@ -12,7 +13,8 @@ function ok(outcome) {
   return Boolean(outcome) && outcome.state === "finished" && outcome.status === "ok"
 }
 
-// A step Tasks refused to record: the report cannot see it, so its refusal travels with the result.
+// A step its workflow record refused: the report cannot see it, so its refusal travels with the
+// result.
 function unrecorded(outcome) {
   return Boolean(outcome && outcome.error) &&
     (outcome.error.code === "step_rejected" || outcome.error.code === "step_unrecorded")
@@ -81,12 +83,13 @@ note("Reviewing the Specs")
 const reviewed = await step("spec_review", ["spec_review", "--modules", described.join(",")])
 if (broken(reviewed) || (INTERACTIVE && !ok(reviewed))) return await finish(reviewed, "spec_review")
 
-note("Validating the task")
-const validation = await step("validate", ["validate"])
+note("Validating the workspace")
+const validation = await step("validate", ["task-validation"])
 if (broken(validation) || !ok(validation) || validation.ready !== true) {
   return await finish(validation, "validate")
 }
 
-note("Delivering the task")
-const delivery = await step("delivery", ["delivery"])
+note("Delivering the workspace")
+// An adoption describes existing code, so scenarios need no new verifying test to be delivered.
+const delivery = await step("delivery", ["delivery", "--adoption"])
 return await finish(delivery, "delivery")

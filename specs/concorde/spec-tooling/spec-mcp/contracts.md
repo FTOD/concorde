@@ -36,7 +36,7 @@ argument as `field`, the path or identity concerned), the reason, the remediatio
 | `module` | `id`: a Module identity | `{"id", "title", "entry", "documents", "contains", "uses", "includes", "participates", "realizations", "checks"}`, where `realizations` lists `{"id", "title", "entries", "pending"}` and `checks` the configured check identities |
 | `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources"}`, with Spec core's source records for the Module, or for the scenario's owner |
 | `impact` | `paths`: nonempty array of paths | `{"paths": [{"path", "modules"}], "modules"}`: for a document member the Modules whose Spec context contains it, for any other path the Modules that bind it, and their union |
-| `validate` | optional `target`: a Module identity | the envelope of the `validate` command |
+| `validate` | optional `target`: a Module identity | the envelope of the `spec-validation` command, with `tool` `spec-validation` |
 
 `boundary` returns exactly the `context_identity` and `entries` of Spec core's grant for the
 server root, the given Modules and the task type. `context` computes its `context_identity` the

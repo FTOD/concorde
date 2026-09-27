@@ -1,15 +1,17 @@
-"""The evidence bundle committed with a delivery, and the delivery commit message.
+"""The evidence bundle committed with a delivery, the delivery commit message, and reading the
+earlier delivery commits back from Git.
 
-The bundle records the task, the readiness the delivery consumed and every Operation run of the
-task since the previous delivery, by identity and digest; the results, run records and
-transcripts themselves stay in the primary worktree's ``.concorde/runs/``.
+The bundle records the workspace, the readiness the delivery consumed and every run of the
+workspace since the previous delivery, by identity and digest; the results, run records and
+transcripts themselves stay in the run store of the workspace's records directory.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 
 SHA256 = {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
@@ -21,7 +23,7 @@ BUNDLE_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "task",
+        "workspace",
         "goal",
         "modules",
         "sequence",
@@ -33,7 +35,7 @@ BUNDLE_SCHEMA: dict = {
         "created_at",
     ],
     "properties": {
-        "task": TEXT,
+        "workspace": TEXT,
         "goal": TEXT,
         "modules": TEXTS,
         "sequence": {"type": "integer", "minimum": 1},
@@ -84,7 +86,8 @@ BUNDLE_SCHEMA: dict = {
                 "additionalProperties": False,
                 "required": [
                     "run_id",
-                    "operation",
+                    "kind",
+                    "name",
                     "modules",
                     "status",
                     "summary",
@@ -93,7 +96,8 @@ BUNDLE_SCHEMA: dict = {
                 ],
                 "properties": {
                     "run_id": TEXT,
-                    "operation": TEXT,
+                    "kind": {"enum": ["operation", "command"]},
+                    "name": TEXT,
                     "modules": TEXTS,
                     "status": {"enum": ["ok", "blocked", "failed", "interrupted"]},
                     "summary": {"type": "string"},
@@ -120,12 +124,12 @@ OUTPUT_SCHEMA: dict = {
     },
 }
 
-SUBJECT = "concorde: deliver {task}"
-TRAILERS = ("Concorde-Task", "Concorde-Evidence", "Concorde-Readiness")
+SUBJECT = "concorde: deliver {workspace}"
+TRAILERS = ("Concorde-Workspace", "Concorde-Evidence", "Concorde-Readiness")
 
 
-def bundle_path(task_id: str, sequence: int) -> str:
-    return f".concorde/evidence/{task_id}/{sequence}.json"
+def bundle_path(workspace: str, sequence: int) -> str:
+    return f".concorde/evidence/{workspace}/{sequence}.json"
 
 
 def sequence_of(bundle: str) -> int | None:
@@ -133,34 +137,76 @@ def sequence_of(bundle: str) -> int | None:
     return int(name[:-5]) if name.endswith(".json") and name[:-5].isdigit() else None
 
 
-def commit_message(task: dict, bundle: str, readiness_run: str) -> str:
+def commit_message(workspace: dict, bundle: str, readiness_run: str) -> str:
     return (
-        f"{SUBJECT.format(task=task['id'])}\n\n{task['goal'].strip()}\n\n"
-        f"Concorde-Task: {task['id']}\n"
+        f"{SUBJECT.format(workspace=workspace['workspace'])}\n\n{workspace['goal'].strip()}\n\n"
+        f"Concorde-Workspace: {workspace['workspace']}\n"
         f"Concorde-Evidence: {bundle}\n"
         f"Concorde-Readiness: {readiness_run}\n"
     )
 
 
-def _run_entry(primary: Path, run: dict) -> dict:
-    path = primary / ".concorde/runs" / run["run_id"] / "result.json"
+def delivery_commits(
+    worktree: Path, base: str | None, head: str, workspace: str | None
+) -> list[dict]:
+    """The delivery commits of ``workspace`` between ``base`` and ``head``, oldest first.
+
+    A delivery commit has the delivery subject and names the workspace, its evidence bundle and
+    the run that decided its readiness in its trailers; it is the only record of a delivery.
+    """
+    if not workspace:
+        return []
+    separator = "\x1f"
+    fields = separator.join(
+        [
+            "%H",
+            "%s",
+            *(f"%(trailers:key={key},valueonly,separator=%x20)" for key in TRAILERS),
+        ]
+    )
+    span = f"{base}..{head}" if base else head
+    result = subprocess.run(
+        ["git", "log", "--first-parent", "--reverse", f"--format={fields}%x1e", span],
+        cwd=worktree,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    found = []
+    for entry in result.stdout.split("\x1e"):
+        parts = entry.strip("\n").split(separator)
+        if len(parts) != 2 + len(TRAILERS):
+            continue
+        commit, subject, named, bundle, readiness = (part.strip() for part in parts)
+        if subject != SUBJECT.format(workspace=workspace) or named != workspace:
+            continue
+        if not bundle or not readiness or sequence_of(bundle) is None:
+            continue
+        found.append({"commit": commit, "bundle": bundle, "readiness_run": readiness})
+    return found
+
+
+def _run_entry(records: Path, run: dict) -> dict:
+    path = records / "runs" / run["run_id"] / "result.json"
+    entry = {
+        "run_id": run["run_id"],
+        "kind": run.get("kind") or "operation",
+        "name": run.get("name") or "unknown",
+        "modules": list(run.get("modules") or []),
+    }
     try:
         data = path.read_bytes()
         result = json.loads(data)
     except (OSError, ValueError):
         return {
-            "run_id": run["run_id"],
-            "operation": run["operation"],
-            "modules": list(run["modules"]),
+            **entry,
             "status": "interrupted",
             "summary": "",
             "worker_runs": [],
             "result_digest": None,
         }
     return {
-        "run_id": run["run_id"],
-        "operation": run["operation"],
-        "modules": list(run["modules"]),
+        **entry,
         "status": result.get("status", "interrupted"),
         "summary": result.get("summary", ""),
         "worker_runs": list(result.get("worker_runs") or []),
@@ -168,14 +214,12 @@ def _run_entry(primary: Path, run: dict) -> dict:
     }
 
 
-def runs_since_last_delivery(task: dict, current_run: str) -> list[dict]:
-    """The task's runs after its previous delivery run and before ``current_run``."""
-    runs = task["runs"]
+def runs_since(runs: list[dict], since: str | None, current_run: str) -> list[dict]:
+    """The runs after ``since`` (the previous delivery's run) and before ``current_run``."""
     start = 0
-    if task["deliveries"]:
-        previous = task["deliveries"][-1]["run_id"]
+    if since:
         for index, run in enumerate(runs):
-            if run["run_id"] == previous:
+            if run["run_id"] == since:
                 start = index + 1
     selected = []
     for run in runs[start:]:
@@ -186,9 +230,11 @@ def runs_since_last_delivery(task: dict, current_run: str) -> list[dict]:
 
 
 def build_bundle(
-    primary: Path,
-    task: dict,
+    workspace: dict,
+    records: Path,
+    runs: list[dict],
     *,
+    since: str | None,
     run_id: str,
     sequence: int,
     parent: str,
@@ -197,11 +243,11 @@ def build_bundle(
     confirmations: list[dict],
 ) -> dict:
     return {
-        "task": task["id"],
-        "goal": task["goal"],
-        "modules": list(task["modules"]),
+        "workspace": workspace["workspace"],
+        "goal": workspace["goal"],
+        "modules": list(workspace["modules"]),
         "sequence": sequence,
-        "base_commit": task["base_commit"],
+        "base_commit": workspace["base_commit"],
         "parent_commit": parent,
         "readiness": {
             "run_id": readiness_run,
@@ -226,10 +272,8 @@ def build_bundle(
             }
             for item in confirmations
         ],
-        "runs": [
-            _run_entry(primary, run) for run in runs_since_last_delivery(task, run_id)
-        ],
-        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "runs": [_run_entry(records, run) for run in runs_since(runs, since, run_id)],
+        "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
 
@@ -241,6 +285,7 @@ __all__ = [
     "build_bundle",
     "bundle_path",
     "commit_message",
-    "runs_since_last_delivery",
+    "delivery_commits",
+    "runs_since",
     "sequence_of",
 ]

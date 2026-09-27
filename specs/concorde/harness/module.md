@@ -5,12 +5,12 @@
 The Harness is how Concorde derives an agent's harness and applies it to the agent: what the agent
 is given to know, what it may touch and the environment it runs in, turned into the agent
 program's own configuration on Claude Code or on pi. It is independent of which agent it serves.
-Each [agent](../agents/module.md) level asks for the harness it needs: Workers for a worker, from
+Each [agent](../coordination/module.md) level asks for the harness it needs: Workers for a worker, from
 the frozen grant of its task; Task sessions for a task session, from its task's worktree and
 decision log; the main session's harness is its installed guidance alone, since Concorde places no
 permission limits on the main agent. The Harness generates the configuration that applies a
 harness; it does not launch or resume agents, compute grants, audit what an agent changed or run
-checks, which the agent Modules and [Check execution](../checks/module.md) do. What it enforces
+checks, which the agent Modules and [Check execution](../execution/tools/checks/module.md) do. What it enforces
 guards against scope drift and mistakes, not a malicious agent.
 
 ## Terminology
@@ -42,7 +42,7 @@ each:
 
 | | Main session | Task session | Worker |
 | --- | --- | --- | --- |
-| Context | the installed [guidance](../agents/main-session/module.md#concept.main-session.guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its brief: the Operation's instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its Spec, implementation and task context; its tool set is its capability context |
+| Context | the installed [guidance](../coordination/main-session/module.md#concept.main-session.guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its brief: the Operation's instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its Spec, implementation and task context; its tool set is its capability context |
 | Permission | none | file tools and shell write only the task worktree, its decision log and what commits and runs need; reads and the network open | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
 | Environment | the developer's | the developer's configuration and program | its own configuration directory, a cleared environment, its own working directory and limits |
 | Applied by | Distribution, which installs the guidance | the session boundary, for Task sessions | worker settings or the permission extension, for Workers |
@@ -94,9 +94,10 @@ Exact tables: [pi mechanics](pi.md).
 **A task session.** The **session boundary** confines what a task session writes and nothing else.
 On Claude Code it is a settings file with a write hook that lets Edit and Write change only the
 task worktree and its decision log, and a Bash sandbox that writes only the task worktree, the
-repository's Git directory (for commits on the task branch), `.concorde/runs/` and
-`.concorde/tasks/` (for Operation runs and records) and the user's package caches, with every
-network host allowed. On pi it is the boundary extension, loaded on top of the developer's own
+repository's Git directory (for commits on the task branch), the primary worktree's
+`.concorde/runs/` (the run store that the task worktree's workspace binding names for every run
+started there) and `.concorde/tasks/` (where escalations are recorded) and the user's package
+caches, with every network host allowed. On pi it is the boundary extension, loaded on top of the developer's own
 configuration, which blocks a `write` or `edit` outside the same two places, naming the task
 worktree, rewrites every `bash` command to run inside sandbox-runtime with the same writable paths
 and open network plus a private temporary directory, and gives the session its `concorde_report`
@@ -105,8 +106,8 @@ tool. Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings
 
 ## Design
 
-The Harness serves every [agent level](../module.md#the-five-levels) of Concorde's five-level
-hierarchy without being a level itself: it sits in no call chain from the main session down to a
+The Harness serves every agent level of Concorde's [levels of work](../module.md#the-levels-of-work)
+without being a level itself: it sits in no call chain from the main session down to a
 worker, and no result or error chain passes through it. Workers asks it for a worker's harness
 from a frozen grant, Task sessions for a task session's harness from a task's paths, and
 Distribution installs the main session's guidance directly since Concorde places no permission
@@ -168,7 +169,7 @@ flags and environment listed here; the Harness generates everything the settings
 | Tool set | `--tools` per task type, never WebFetch/WebSearch, no agent tool | Web access via tools, workers starting other agents |
 | MCP | `--strict-mcp-config` with no servers | Any tool beyond the listed ones |
 | Claude state/instructions | Own `CLAUDE_CONFIG_DIR`, cleared env, `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` | User settings, memory, skills, plugins, transcripts, project instructions |
-| Git | No tool reads `.git`; diffs/commits belong to the host | A worker inspecting or rewriting history |
+| Git | No tool reads `.git`; diffs belong to Workers and commits to Delivery | A worker inspecting or rewriting history |
 | Changes | Workers audits `git diff`/untracked files against the grant each round | Any remaining write outside `rw` counting as a result |
 | Limits | Timeout, `--max-turns`, `--max-budget-usd`, kill of the process group at round end | Runaway runs and leftover processes |
 
@@ -184,7 +185,7 @@ flags and environment listed here; the Harness generates everything the settings
 - A single `rw` file granted to Bash is bind-mounted, so it can't be deleted or renamed from Bash,
   and a file created outside `rw` appears to succeed but lands on a throw-away filesystem, unseen by
   the audit — the brief warns of this.
-- Writes to Git-ignored paths are not audited; the host audit is the last line of defense for a
+- Writes to Git-ignored paths are not audited; Workers' audit is the last line of defense for a
   worker's write outside `rw`.
 - A task session's boundary does not cover tools other extensions or MCP servers add, such as a
   formatter that writes files.

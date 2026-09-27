@@ -13,5 +13,5 @@ inheritGlobalContext: false
 inheritSkills: false
 ---
 
-Concorde builds a workflow's result from the task record named by the JSON request in the prompt
-and prints it.
+Concorde builds a workflow's result from the workflow record of the workspace it runs in and the
+JSON request in the prompt, and prints it.

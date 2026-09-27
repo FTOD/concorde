@@ -1,8 +1,9 @@
-"""The ``scaffold`` Operation: the host creates the child Modules one accepted survey proposed.
+"""``concorde scaffold``: create the child Modules one accepted survey proposed.
 
-Steps (the Scaffold Operation step table of the Adoption Module Spec):
+A recorded command of the bound workspace; steps (the scaffold command's step table of the
+Adoption Module Spec):
 
-1. ``admit``: exactly one ``ok`` survey of the same task, admitted with ``--input``.
+1. ``admit``: exactly one ``ok`` survey of the same workspace, admitted with ``--input``.
 2. ``recheck``: validate the worktree as a baseline and check the proposal against it again.
 3. ``plan``: compute every file change: child entries, the parent's entry and realizations and
    the registry. The proposal's checks are never configured.
@@ -17,10 +18,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..operations.provider import (
+from ..execution.context import (
     Continue,
-    Provider,
     RunContext,
+    command,
     evidence,
     spec_cause,
     spec_finding,
@@ -55,16 +56,16 @@ def anchor(identity: str) -> str:
 
 
 def admit(ctx: RunContext):
-    """Step 1: exactly one ok survey of this task."""
+    """Step 1: exactly one ok survey of this workspace."""
     surveys = {
         identity: value
         for identity, value in ctx.inputs.items()
-        if value["operation"] == "survey"
+        if value["name"] == "survey"
     }
     if len(ctx.inputs) != 1 or len(surveys) != 1:
         given = (
             ", ".join(
-                f"{identity} ({value['operation']})"
+                f"{identity} ({value['name']})"
                 for identity, value in ctx.inputs.items()
             )
             or "no --input"
@@ -72,14 +73,14 @@ def admit(ctx: RunContext):
         return ctx.fail(
             "failed",
             "invalid_request",
-            "The scaffold needs exactly one survey of its task as --input.",
+            "The scaffold needs exactly one survey of its workspace as --input.",
             f"scaffold was given {given}; it applies exactly one proposal, from an ok survey run "
-            f"of task {ctx.task.get('id')}",
+            f"of workspace {ctx.workspace_name}",
             reason="input",
             explanation="the scaffold writes only what one survey proposed and never merges or "
             "guesses proposals",
             options=[
-                "run scaffold again with --input naming one ok survey run of the task"
+                "run scaffold again with --input naming one ok survey run of the workspace"
             ],
         )
     [(identity, value)] = surveys.items()
@@ -123,14 +124,14 @@ def recheck(ctx: RunContext):
         return ctx.fail(
             "failed",
             "specs_unloadable",
-            "The task worktree's Specs could not be loaded for the scaffold.",
+            "The workspace's Specs could not be loaded for the scaffold.",
             f"the Specs of {ctx.worktree} could not be loaded before scaffolding: "
             f"{getattr(error, 'code', type(error).__name__)}: {error}",
             reason="scope",
             explanation="the scaffold changes Specs only from a loadable, validated state",
             evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
             causes=[spec_cause(error)],
-            options=["run validate for the task to see why the Specs do not load"],
+            options=["run concorde spec-validation to see why the Specs do not load"],
         )
     problems = []
     if module not in repository.modules:
@@ -146,7 +147,7 @@ def recheck(ctx: RunContext):
         return ctx.fail(
             "blocked",
             "stale_proposal",
-            f"The survey's proposal no longer fits the task worktree ({len(problems)} "
+            f"The survey's proposal no longer fits the workspace ({len(problems)} "
             "mismatch(es)); nothing was written.",
             f"the proposal of survey {ctx.state['survey_run']} for {module} no longer fits "
             f"{ctx.worktree}: " + "; ".join(problems),
@@ -547,7 +548,7 @@ def apply(ctx: RunContext):
             reason="decision",
             explanation="the worktree changed under the scaffold; every file was restored",
             causes=[spec_cause(error)],
-            options=["run scaffold again once nothing else writes the task worktree"],
+            options=["run scaffold again once nothing else writes the workspace"],
         )
     return Continue(
         output=record,
@@ -561,11 +562,10 @@ def apply(ctx: RunContext):
     )
 
 
-SCAFFOLD = Provider(
-    name="scaffold",
-    task_type=None,
+SCAFFOLD = command(
+    "scaffold",
+    (admit, recheck, plan, apply),
     writes=True,
-    steps=(admit, recheck, plan, apply),
     output_schema=SCAFFOLD_RECORD_SCHEMA,
     requires_loaded_specs=True,
 )
