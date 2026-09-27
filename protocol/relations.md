@@ -11,7 +11,7 @@ its own, and tool data in a metadata `extensions` object never creates a relatio
 | --- | --- |
 | `source` / `target` | Permitted node or value types |
 | `cardinality` | How many may exist, and any uniqueness rule |
-| `declared_in` | The single site where it is declared: `entry` (the entry's `module` block), `metadata`, `reading` or `implementation-source` |
+| `declared_in` | The single site where it is declared: `entry` (the entry's `module` block), `metadata`, `reading`, `glossary` (a concept's entry) or `implementation-source` |
 | `mirrored_in` | Where a checked copy is kept, if anywhere: only `registry` |
 | `reified` | Attributes the relation itself carries |
 | `symmetric` | Whether one declaration holds in both directions |
@@ -20,11 +20,11 @@ its own, and tool data in a metadata `extensions` object never creates a relatio
 | `checks` | Decidable rules, by identity, defined in [Checks](checks.md) |
 
 **Where a relation is declared** follows one rule: a relation whose source is a Module is declared
-in the `module` block of that Module's entry; a relation whose source is a document or a node
-defined in a document is declared in that document, in its metadata or by reading syntax. Either
-way the declaration lies in the source Module's own `SpecScope`: a Module changes its own
-collaborations without writing into another Module, and a task bound to it sees all of its
-relations in its own documents.
+in the `module` block of that Module's entry; a relation whose source is a concept is declared in
+that concept's glossary entry; a relation whose source is a document or a node defined in a
+document is declared in that document, in its metadata or by reading syntax. Either way the
+declaration lies in the source Module's own `SpecScope`: a Module changes its own collaborations
+and meanings without writing into another Module.
 
 Module-level relations are also **mirrored** in the project registry, which gives a project-wide
 view without opening every entry. The mirror is not a second declaration site: it MUST equal the
@@ -58,18 +58,18 @@ other Module's write set. A Module always reads its own promises.
 
 ```yaml
 source: document
-target: [concept, realization, requirement, scenario, contract]
+target: [realization, requirement, scenario, contract]
 cardinality: "0..N; a node is defined exactly once"
-declared_in: metadata (concept, realization) | reading (requirement, scenario, contract)
+declared_in: metadata (realization) | reading (requirement, scenario, contract)
 context_grants: none
 context_requires: []
 ```
 
 This document is the defining site of this node, so its owner is the node's owner and its
-explanation lives here. The declaration site is fixed by the target's node type: concepts and
-realizations are metadata records, while requirements, scenarios and contracts are located by their
-reading syntax. A concept's one-sentence definition is its defining row in the document's
-Terminology table.
+explanation lives here. The declaration site is fixed by the target's node type: realizations are
+metadata records, while requirements, scenarios and contracts are located by their reading syntax.
+Concepts are not defined by documents: each is an entry of the glossary, which names its owner and
+the document explaining it; see [Node types](model.md#concept).
 
 **Checks.** `CHK.defines.once`, `CHK.defines.role` — requirements, scenarios and contracts are
 defined only in `implementation` documents.
@@ -122,7 +122,8 @@ arrow. The consumer receives the provider's Specs.
 
 `relies_on` optionally lists the provider's promises this Module depends on: requirements,
 scenarios, contracts and concepts, by identity. When present, the consumer receives only the
-provider's entry and the documents defining those nodes, instead of every document the provider
+provider's entry and the documents defining those nodes, a concept's being the document its entry
+names as its explanation, instead of every document the provider
 owns. The list is exact and checkable, it turns the prose "promises relied upon" into links a reader
 can follow, and it makes the impact of changing one promise precise.
 
@@ -188,28 +189,28 @@ channel: **names only**. On the write side the covered files form the Module's
 
 ## Meaning
 
-### `imports`
+### `mentions`
 
 ```yaml
-source: document
+source: [document, concept]
 target: concept
-cardinality: "0..N; unique per target"
-declared_in: reading (an import row of a module document's Terminology table)
-context_grants: none
-context_requires: spec(definer(target))
+cardinality: "0..N; one per (source, target), however often the term is linked"
+declared_in: reading (a term link) | glossary (a term link in the source's definition)
+context_grants: term(target)
+context_requires: []
 ```
 
-This document uses a term whose canonical definition another Module owns. The import row links to
-the definition and never copies it. The document that defines the concept MUST be in the
-importer's context.
+This document, or this concept's definition, uses a term. The **term link** is an ordinary Markdown
+link whose fragment is the concept's identity and whose path addresses the glossary; it navigates
+to the definition and never copies it, because copies drift. The link text is free, so renaming a
+term breaks nothing.
 
-The owner of a shared word is the Module entitled to change its meaning; see
-[Node types](model.md#concept). An import from a Module that is neither a provider the importer
-uses, nor one of its ancestors or descendants, usually means the word belongs higher in the
-composition tree, which `CHK.imports.owner` reports.
+The grant is the definition, not the owner's explanation: a reader that must understand how the
+concept works needs the owner's documents, through `uses`, `contains` or `includes`. A document
+SHOULD link a term where it first uses it; `CHK.term.unlinked` reports a document that uses a term
+and never links it.
 
-**Checks.** `CHK.imports.foreign`, `CHK.imports.owner`, `CHK.terminology.import-row`,
-`CHK.context.reconciled`.
+**Checks.** `CHK.term.link`, `CHK.term.unlinked`.
 
 ### `narrows`
 
@@ -217,15 +218,15 @@ composition tree, which `CHK.imports.owner` reports.
 source: concept
 target: concept
 cardinality: "0..N"
-declared_in: metadata
-context_grants: none
-context_requires: spec(definer(target))
+declared_in: glossary
+context_grants: term(target)
+context_requires: []
 ```
 
 The source concept is a strictly more specific case of the target concept, so the two cannot drift
 apart unnoticed.
 
-**Checks.** `CHK.narrows.acyclic`, `CHK.context.reconciled`.
+**Checks.** `CHK.narrows.acyclic`.
 
 ### `supersedes`
 
@@ -233,15 +234,15 @@ apart unnoticed.
 source: concept
 target: concept
 cardinality: "0..1 per source"
-declared_in: metadata
-context_grants: none
-context_requires: spec(definer(target))
+declared_in: glossary
+context_grants: term(target)
+context_requires: []
 ```
 
 The source concept is retired and the target replaces it. A retired concept without a replacement
 states why in its `retired.reason`.
 
-**Checks.** `CHK.concept.retired`, `CHK.context.reconciled`.
+**Checks.** `CHK.concept.retired`.
 
 ### `contrasts`
 
@@ -249,7 +250,7 @@ states why in its `retired.reason`.
 source: concept
 target: [concept, module]
 cardinality: "0..N; at most one per unordered pair"
-declared_in: metadata
+declared_in: glossary
 reified: [reason]
 symmetric: true
 context_grants: none
@@ -257,9 +258,9 @@ context_requires: []
 ```
 
 These two are easily confused and are **not** the same thing. The `reason` states the difference,
-so a reader who has met only one of them is warned. It requires no context: the warning is the
-point, and forcing each side to read the other would couple unrelated Modules by an accident of
-naming.
+so a reader who has met only one of them is warned. It grants and requires no context: the warning
+is the point, and forcing each side to read the other would couple unrelated Modules by an accident
+of naming.
 
 **Checks.** `CHK.contrasts.required`, `CHK.contrasts.once`.
 
@@ -269,16 +270,18 @@ naming.
 source: [concept, realization, module]
 target: [concept, realization, module]
 cardinality: "0..N; unique per (source, verb, target)"
-declared_in: metadata
+declared_in: glossary (concept source) | metadata (realization or module source)
 reified: [verb]
-context_grants: none
-context_requires: spec(definer(target))
+context_grants: term(target) for a concept target; otherwise none
+context_requires: spec(definer(target)) for a realization or module target; otherwise none
 ```
 
 A named architectural relationship: the realization *saves* the record, the actor *submits* the
-request, the Module *publishes* the event. `verb` is free text, recommended as a verb phrase. The
-source is a node this document's owner owns, or that Module itself; the target may belong to any
-Module, whose defining document then MUST be in context.
+request, the Module *publishes* the event. `verb` is free text, recommended as a verb phrase. A
+concept's relations are in its glossary entry; a realization's in the metadata of the document
+defining it; a Module's in the metadata of any document it owns. The target may belong to any
+Module. A concept target brings its definition; a realization or Module target requires its
+defining document, or a document of that Module, to be in context.
 
 `relates` states structure for readers and for checked diagrams. It is not a dependency: relying on
 another Module's promises is still a `uses`.
@@ -338,7 +341,7 @@ of obligations, and never widen a boundary.
 
 | Derived | Computed from | Used for |
 | --- | --- | --- |
-| `selected-by` | inverting context selection | which Modules read a document, and so are concerned when it changes |
-| `referenced-by` | inverting `relies_on`, `imports`, `narrows`, `supersedes`, `relates` and `participates` | which declarations depend on a concept, node or contract |
+| `selected-by` | inverting context and term selection | which Modules read a document or a definition, and so are concerned when it changes |
+| `referenced-by` | inverting `relies_on`, `mentions`, `narrows`, `supersedes`, `relates` and `participates` | which declarations depend on a concept, node or contract |
 | `implemented-by` | inverting `binds` | which Modules a file change concerns |
 | `covered-by` | aggregating `verifies` | per-scenario coverage reports |

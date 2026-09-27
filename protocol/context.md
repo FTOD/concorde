@@ -1,26 +1,29 @@
 # Context
 
 Context is the information explicitly made available to a reader of one Module. Knowing that a
-document exists does not make it available; neither does linking to it or naming a word it defines.
-Only declared relations grant context.
+document exists does not make it available; neither does linking to it or naming a word it
+explains. Only declared relations grant context, and a term link grants only the term's definition.
 
-This chapter defines the read side of the Protocol's boundary purpose: the three context
-channels, how a Module's context is selected, the reconciliation of what relations grant against
+This chapter defines the read side of the Protocol's boundary purpose: the four context
+channels, how a Module's context is selected, term selection, the reconciliation of what relations
+grant against
 what they require, and context identity. The write side is in [Boundaries](boundaries.md). Because
 the reconciliation guarantees that a Module's context holds every definition its own Spec relies
 on, the same selection is also what a human reader of the Module needs open beside it.
 
-## Three channels
+## Four channels
 
 | Channel | Granted by | Contains | Authority conveyed |
 | --- | --- | --- | --- |
 | `spec` | `owns`, `contains`, `uses`, `includes` of kind `module` or `document` | both members of each selected document | read only |
+| `term` | the concepts a Module owns, `mentions`, `narrows`, `supersedes`, concept-targeted `relates` and `relies_on` | the glossary entries of the selected concepts | read only |
 | `implementation` | `binds` | the **names** of bound paths | none |
 | `external` | `includes` of kind `external` | pinned third-party material | read only |
 
 The channels stay separate so that "may read this Module's promises" never implies "may read or
-change its code". Whether a task receives implementation contents, read-only or writable, is part
-of its task boundary; see [Boundaries](boundaries.md).
+change its code", and knowing what a word means never implies reading how its owner works. Whether a
+task receives implementation contents, read-only or writable, is part of its task boundary; see
+[Boundaries](boundaries.md).
 
 ## Expressions
 
@@ -33,6 +36,7 @@ spec(selection)          for a contains or uses with relies_on: the target's ent
                          target Module owns
 spec(definer(target))    the document that defines the target node; for a Module target,
                          that Module
+term(target)             the glossary entry of the target concept
 external(target)         the pinned material at the target path
 implementation(target)   the name of the target path
 none                     nothing
@@ -53,12 +57,14 @@ SpecContext(M) = ⋃ { members(U) : U ∈ Spec(M) }
 
 selection(r to Module N) = { entry(N) } ∪ { definer(x) : x ∈ r.relies_on }  if relies_on present
                          = D(N)                                               otherwise
+definer(concept c)       = the document c's entry names as its explanation
 selection(includes document U) = { U }
 ```
 
 Selection is one level. A selected Module contributes its owned documents, never the documents its
-own relations select. Parentage, dependency and inclusion of the target, term usage, participation,
-Markdown links, directory neighbourhood and implementation bindings add nothing further. Because
+own relations select. Parentage, dependency and inclusion of the target, term links,
+participation, other Markdown links, directory neighbourhood and implementation bindings add no
+document. Because
 expansion is not recursive, cycles among Modules are harmless, and every member of a read set is
 explained by the one declaration that selected it.
 
@@ -67,6 +73,34 @@ trims to the scenario, and never selects the consumer that happened to read it.
 
 Every selected document contributes **both** members whole. No excerpt, summary, rendered view or
 diagram export substitutes for a complete document.
+
+## Term selection
+
+A reader needs the meaning of every term the documents it reads use, and nothing more. Term
+selection gives it exactly those definitions:
+
+```text
+Seeds(M) = { c : owner(c) = M }
+         ∪ { c : a document in Spec(M) mentions c }
+         ∪ { c : c ∈ r.relies_on, r a contains or uses of M }
+         ∪ { c : a relates declared in a document in Spec(M) targets c }
+Terms(M) = the least set containing Seeds(M) and closed under
+           c ∈ Terms(M) mentions, narrows, supersedes or relates to concept d  ⇒  d ∈ Terms(M)
+TermContext(M) = { entry(c) : c ∈ Terms(M) }
+```
+
+Every selected document counts, including the provider documents a `uses` selects, because the
+reader reads them too. A Module always receives the definitions of its own concepts, since it is
+entitled to change them.
+
+The closure is the Protocol's only recursive selection. It runs inside the glossary, adds one
+sentence per concept and never adds a document, so a reader whose definitions use further terms
+understands them without widening what it reads. `contrasts` adds nothing: the warning is in the
+entry that declares it.
+
+Each selected entry is available whole: identity, title, owner, definition and explanation
+reference. The explanation it references stays a document of the owner, readable only when
+`Spec(M)` selects it.
 
 ## Reconciliation
 
@@ -77,10 +111,11 @@ Requires(M) = ⋃ { r.context_requires : r declared in the metadata or reading
 CONFORMANCE:  ∀ q ∈ Requires(M) :  satisfied(q, Spec(M))
 ```
 
-`imports`, `narrows`, `supersedes`, `relates` and `participates` each require the document that
-defines their target. A Module that declares one without having that document in its context fails
+A `relates` to a realization or a Module, and a `participates`, require the document that defines
+their target. A Module that declares one without having that document in its context fails
 `CHK.context.reconciled`. The repair is an explicit grant: a `uses` or `contains` that selects the
-document, or an `includes` that states a reason.
+document, or an `includes` that states a reason. Relations that target a concept require nothing,
+because they grant its definition themselves.
 
 The check is exact, because a node has exactly one defining document. A `uses` or `contains` that
 narrows its grant with `relies_on` selects the documents defining the listed promises, so the
@@ -118,15 +153,17 @@ material. External material supplies no promise absent from the Spec.
 
 ## Context identity
 
-A resolved context is identified by its selected sources and the declarations that selected them,
-so a harness can tell whether anything inside a boundary changed since a check.
+A resolved context is identified by its selected sources, its selected terms and the declarations
+that selected them, so a harness can tell whether anything inside a boundary changed since a check.
 Every source record carries document identity, owner, path, member role (`reading` or `metadata`),
-an exact-byte SHA-256 digest, and every relation that selected it. External entries carry one tree
+an exact-byte SHA-256 digest, and every relation that selected it. Every term record carries the
+concept's whole entry and every declaration that selected it. External entries carry one tree
 digest each.
 
 The identity changes, even when the set of paths is unchanged, on:
 
 - any byte change in either member of a selected document, including whitespace;
+- any change to a selected glossary entry, or a change of which entries are selected;
 - a change to the declarations that selected the context, including removing a redundant inclusion;
 - an ownership transfer;
 - a change to pinned external material.
@@ -135,11 +172,12 @@ What a tool does with evidence bound to a previous identity is the tool's policy
 
 ## Visibility
 
-The resolved context is the exact visibility scope of a bounded reader: every selected source is
-available whole and no unselected source is visible. How a tool makes it available is not part of
-the Protocol. A tool MAY also supply task material such as changes since a baseline; such material
-adds no source and replaces none. A reader that opened only some granted files still received the
-complete context: missing meaning is judged against the full granted scope.
+The resolved context is the exact visibility scope of a bounded reader: every selected source and
+every selected glossary entry is available whole, and no unselected source or entry is visible. The
+glossary file as a whole is not a source of any context. How a tool makes it available is not part
+of the Protocol. A tool MAY also supply task material such as changes since a baseline; such
+material adds no source and replaces none. A reader that opened only some granted files still
+received the complete context: missing meaning is judged against the full granted scope.
 
 ## Gaps
 

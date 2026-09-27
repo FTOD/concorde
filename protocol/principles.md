@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 14.0.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 15.0.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -42,7 +42,6 @@ direction: right
 parent: Module {
   m: Module {
     d: Document {
-      c: Concept
       rz: Realization {
         f: Implementation files {shape: cylinder}
       }
@@ -51,17 +50,21 @@ parent: Module {
     }
   }
 }
+glossary: Glossary {
+  c: Concept
+}
 provider: Module
-foreign: Concept of another Module
 t: Test file {shape: cylinder}
 parent.m -> provider: uses / includes
-parent.m.d -> foreign: imports
+parent.m.d -> glossary.c: mentions
+glossary.c -> parent.m: owned by
 parent.m -> parent.m.d.k: participates
 t -> parent.m.d.rs: verifies
 ```
 
 Nesting shows composition: a Module contains Modules, owns documents, a document defines nodes and
-a realization binds files.
+a realization binds files. The project's one glossary declares every concept, and each concept
+names the Module that owns it.
 
 **Nodes.** Seven types, defined in [Node types](model.md):
 
@@ -69,7 +72,7 @@ a realization binds files.
 | --- | --- |
 | Module | One responsibility. The unit of ownership, of context and of task boundaries |
 | Document | A Markdown reading file paired with its JSON metadata; the unit a Module owns |
-| Concept | A named meaning a reader must understand; its title is a term |
+| Concept | A named meaning a reader must understand; its title is a term, declared in the glossary |
 | Realization | A binding of implementation files to the Module |
 | Requirement | One Module-wide `SHALL` obligation |
 | Scenario | One concrete situation in `GIVEN`/`WHEN`/`THEN` steps |
@@ -77,13 +80,15 @@ a realization binds files.
 
 **Edges.** Thirteen typed, directed relation types, defined in [Relations](relations.md): `owns`,
 `defines`, `contains` and `uses` state who is responsible for what; `includes` selects extra
-reading; `binds` joins the specification to code; `imports`, `narrows`, `supersedes`, `contrasts`
+reading; `binds` joins the specification to code; `mentions`, `narrows`, `supersedes`, `contrasts`
 and `relates` connect meanings and architecture; `participates` and `verifies` tie contracts and
 tests to promises.
 
-**Where the graph is written.** Every node and edge is declared exactly once, in a document owned
-by the Module responsible for it: in its reading, by a fixed syntax, or in its metadata. A Module's
-own relations are in its entry's metadata; the project registry mirrors them for a global view.
+**Where the graph is written.** Every node and edge is declared exactly once. Concepts, and the
+relations whose source is a concept, are entries of the project's one **glossary**, each naming its
+owning Module. Everything else is declared in a document owned by the Module responsible for it: in
+its reading, by a fixed syntax, or in its metadata. A Module's own relations are in its entry's
+metadata; the project registry mirrors them for a global view.
 
 **What is computed from the graph.** Nothing below is declared; all of it is derived:
 
@@ -106,13 +111,14 @@ A few more words are used throughout:
 | Reading | The Markdown member of a document, written for humans |
 | Metadata | The JSON member of a document, holding identities and declarations |
 | Registry | The project-wide index of Modules, a checked mirror of their entries |
+| Glossary | The project's one file of concept entries, each with its owner and one-sentence definition |
 
 ## Axioms
 
 ### A1. Every node has one identity, one owner and one explanation
 
 Every declared node MUST have a stable project-wide identity, exactly one owning Module, and
-nonempty explanatory prose in the document that defines it. A declaration without an explanation is
+nonempty explanatory prose in a document its owner owns. A declaration without an explanation is
 invalid, not merely incomplete. Identity survives title and path changes.
 
 *Serves both:* a reader always finds the explanation, and a harness always knows whose write set a
@@ -123,8 +129,9 @@ node lies in.
 A relation MUST have a registered type, an explicit source and target, and one declaration site
 fixed by its type. The same fact MUST NOT be declarable in two places; the only permitted copy is
 a mirror the Protocol names, the project registry, whose equality with the declarations is
-checked. A filename, path, title, link, prose sentence, unchecked diagram or directory
-neighbourhood MUST NOT create a relation.
+checked. A filename, path, title, prose sentence, unchecked diagram, directory neighbourhood or
+link MUST NOT create a relation; the one exception is a **term link**, a link to a glossary entry,
+which is the declaration of `mentions`.
 
 *Serves both:* nothing is promised by accident, and boundaries depend only on declarations.
 
@@ -157,8 +164,8 @@ claimed from inside the write set of the Module whose promises it covers.
 
 ### A6. Views are derived or checked
 
-A published diagram, index or navigation tree is derived from declared relations. A diagram
-written in reading is either **checked**, asserting only declared relations, or **illustrative**, explicitly
+A published diagram, index or navigation tree is derived from declared relations. A diagram written
+in reading is either **checked**, asserting only declared relations, or **illustrative**, explicitly
 marked and excluded from the model. See [Views](views.md).
 
 *Serves understanding:* pictures a human relies on cannot silently diverge from the model.
@@ -167,7 +174,9 @@ marked and excluded from the model. See [Views](views.md).
 
 The model is assertional. Every check operates on declared relations only. No relation is
 transitive, symmetric or invertible unless its type says so; derived indexes are never a source of
-obligations. Context expansion is one level and never recursive.
+obligations. Document selection is one level and never recursive. The only closure is over the
+glossary: a selected definition brings the definitions it links, which adds sentences, never
+documents.
 
 *Serves boundaries:* every set is computable and every member is attributable to a declaration.
 
@@ -188,12 +197,12 @@ substitute for one another:
 Passing structural checks MUST NOT be reported as either of the other two. Missing meaning is an
 attributed gap; a reader MUST NOT read outside its boundary, or infer a promise from source code, to
 repair it. The one sanctioned route from code to specification is a `code-to-spec` task (see
-[Boundaries](boundaries.md#task-types)), which describes an existing realization under its own rules and
-leaves every doubtful intent as a reported gap.
+[Boundaries](boundaries.md#task-types)), which describes an existing realization under its own rules
+and leaves every doubtful intent as a reported gap.
 
 ## What the Protocol does not define
 
-Which task type a harness assigns to a piece of work, and how it enforces the resulting boundary. Docsite pages, navigation,
-themes and interaction. The serialization and location of the project registry, tool
-configuration, worker wire formats and context delivery. These are separate agreements; a change
-in any of them is not a Protocol version change.
+Which task type a harness assigns to a piece of work, and how it enforces the resulting boundary.
+Docsite pages, navigation, themes and interaction. The serialization and location of the project
+registry, tool configuration, worker wire formats and context delivery. These are separate
+agreements; a change in any of them is not a Protocol version change.

@@ -6,7 +6,8 @@ what each section must explain. Satisfying this shape establishes nothing about 
 
 Register the entry in the project registry and write its paired `.md.json` with
 `schema_version: 3`, `document.role: module`, the `module` block and explicit `defines` and
-`relations` arrays. The [required format](../format.md) applies.
+`relations` arrays. Declare the Module's concepts as entries of the project glossary. The
+[required format](../format.md) applies.
 
 ````markdown
 # [Module title]
@@ -15,15 +16,6 @@ Register the entry in the project registry and write its paired `.md.json` with
 
 [What this Module is for, who relies on it, where its promises stop, and the relevant non-goals.
 Short plain prose. Do not restate the directory or package name as a responsibility.]
-
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Example record | The durable record of one accepted request. |
-| [Thing](../provider/module.md#concept.provider.thing) | |
-
-[Optional prose orienting the reader among the terms.]
 
 ## Usage
 
@@ -43,9 +35,11 @@ finish: "[Result and effects]"
 start -> act -> finish
 ```
 
-<a id="concept.example.record"></a>
+<a id="concept.example-record"></a>
 
-[Explain the example record where understanding it matters.]
+[Explain the [example record](../glossary.json#concept.example-record) where understanding it
+matters. Link every term where the document first uses it, such as the provider's
+[thing](../glossary.json#concept.thing).]
 
 ## Design
 
@@ -93,8 +87,9 @@ the same terminology. There is no required count or set of diagrams; invent no p
 them.]
 ````
 
-The first Terminology row defines `concept.example.record`; the second is an import row, which
-links to the provider's concept by identity and leaves the definition empty.
+The two term links declare that this document mentions `concept.example-record`, which Example
+owns, and `concept.thing`, which the provider owns: a reader of Example receives both definitions.
+The anchor `concept.example-record` holds the extended explanation the glossary entry names.
 
 The Usage workflow is `d2 illustrative`: its steps and progression explain behaviour, not declared
 static relations. Sequence lifelines are useful when message ordering needs explanation, not a
@@ -127,18 +122,12 @@ is no separate Relationships section: the design holds both the inside and the o
     "contains": [],
     "uses": [
       {"target": "module.provider", "meaning": "#uses-example-provider",
-       "relies_on": ["concept.provider.thing"]}
+       "relies_on": ["concept.thing"]}
     ],
     "includes": [],
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.example.record",
-      "type": "concept",
-      "title": "Example record",
-      "meaning": "#concept.example.record"
-    },
     {
       "id": "realization.example.service",
       "type": "realization",
@@ -149,17 +138,31 @@ is no separate Relationships section: the design holds both the inside and the o
   ],
   "relations": [
     {"type": "relates", "source": "realization.example.service", "verb": "saves",
-     "target": "concept.example.record"},
+     "target": "concept.example-record"},
     {"type": "relates", "source": "realization.example.service",
      "verb": "reserves stock through", "target": "module.provider"}
   ]
 }
 ````
 
-The `uses` entry selects the provider's entry and the document defining `concept.provider.thing`,
-which satisfies the context requirements of importing that concept and of relating to
-`module.provider`. The `Provider` label in the diagram resolves because the provider Module's
-title is `Provider`.
+The `uses` entry selects the provider's entry and the document explaining `concept.thing`, which
+satisfies the context requirement of relating to `module.provider`. The `Provider` label in the
+diagram resolves because the provider Module's title is `Provider`.
+
+## Glossary entry
+
+Example's concept is an entry of the project glossary, which names Example as its owner and the
+anchor above as its explanation:
+
+````json
+{
+  "id": "concept.example-record",
+  "title": "Example record",
+  "owner": "module.example",
+  "definition": "The durable record of one accepted request.",
+  "explanation": "example/module.md#concept.example-record"
+}
+````
 
 ## Registry record
 
@@ -174,7 +177,7 @@ The project registry mirrors the `module` block and adds the entry path:
   "contains": [],
   "uses": [
     {"target": "module.provider", "meaning": "#uses-example-provider",
-     "relies_on": ["concept.provider.thing"]}
+     "relies_on": ["concept.thing"]}
   ],
   "includes": [],
   "participates": []

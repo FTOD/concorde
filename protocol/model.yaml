@@ -9,17 +9,20 @@
 #
 # The vocabulary is closed: projects do not add node or relation types.
 #
-# declared_in: entry means the module block of the Module's entry metadata.
+# declared_in: entry means the module block of the Module's entry metadata;
+# declared_in: glossary means a concept's entry in the project glossary.
 # mirrored_in: registry means the project registry keeps a copy that
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "14.0.0"
+protocol: "15.0.0"
 model_version: 1
 
 context_channels:
   - id: spec
     statement: Both members of each selected document, read only.
+  - id: term
+    statement: The glossary entries of the selected concepts, read only.
   - id: implementation
     statement: The names of bound implementation paths. Contents are not granted.
   - id: external
@@ -34,7 +37,9 @@ expressions:
     for an includes of kind document, that document
   spec(definer(target)): >
     the document defining the target node; for a Module target, that Module,
-    satisfied by any document it owns
+    satisfied by any document it owns; for a concept, the document its entry
+    names as its explanation
+  term(target): the glossary entry of the target concept
   external(target): the pinned material at the target path
   implementation(target): the name of the target path
 
@@ -68,10 +73,9 @@ node_types:
       - CHK.document.role
       - CHK.document.schema
       - CHK.document.sections
-      - CHK.document.topic-terminology
       - CHK.document.prose
-      - CHK.terminology.rows
-      - CHK.terminology.import-row
+      - CHK.term.link
+      - CHK.term.unlinked
       - CHK.registry.mirror
       - CHK.evidence.no-spec-coverage
       - CHK.view.marked
@@ -82,20 +86,20 @@ node_types:
 
   - id: concept
     title: Concept
-    declared_in: metadata
-    fields: [id, type, title, meaning]
+    declared_in: glossary
+    fields: [id, title, owner, definition, explanation]
     attributes:
-      - {id: definition, type: one sentence, declared_in: "reading (defining Terminology row)"}
+      - {id: definition, type: one sentence}
+      - {id: explanation, type: "anchor in a module document the owner owns"}
       - {id: retired, type: "object {reason}", optional: true}
       - {id: external_conflict, type: prose, optional: true}
-    explanation: definition row and meaning anchor
+    explanation: the explanation anchor
     owner_rule: >
       the Module entitled to change the meaning; a provider owns its interface
       words; a word shared with one meaning belongs to the nearest common
       ancestor of its users, or the root
     checks:
       - CHK.node.id
-      - CHK.node.type
       - CHK.node.owner
       - CHK.node.title
       - CHK.node.meaning
@@ -103,6 +107,8 @@ node_types:
       - CHK.concept.definition
       - CHK.concept.retired
       - CHK.contrasts.required
+      - CHK.glossary.declared
+      - CHK.glossary.schema
 
   - id: realization
     title: Realization
@@ -163,10 +169,9 @@ relation_types:
 
   - id: defines
     source: [document]
-    target: [concept, realization, requirement, scenario, contract]
+    target: [realization, requirement, scenario, contract]
     cardinality: "0..N; a node is defined exactly once"
     declared_in:
-      concept: metadata
       realization: metadata
       requirement: reading
       scenario: reading
@@ -251,47 +256,46 @@ relation_types:
       - CHK.binds.pending-subset
       - CHK.binds.unbound
 
-  - id: imports
-    source: [document]
+  - id: mentions
+    source: [document, concept]
     target: [concept]
-    cardinality: "0..N; unique per target"
-    declared_in: reading
+    cardinality: "0..N; one per (source, target)"
+    declared_in:
+      document: reading
+      concept: glossary
     reified: []
     symmetric: false
-    context_grants: none
-    context_requires: [spec(definer(target))]
-    checks:
-      - CHK.imports.foreign
-      - CHK.imports.owner
-      - CHK.terminology.import-row
+    context_grants: term(target)
+    context_requires: []
+    checks: [CHK.term.link, CHK.term.unlinked]
 
   - id: narrows
     source: [concept]
     target: [concept]
     cardinality: "0..N"
-    declared_in: metadata
+    declared_in: glossary
     reified: []
     symmetric: false
-    context_grants: none
-    context_requires: [spec(definer(target))]
+    context_grants: term(target)
+    context_requires: []
     checks: [CHK.narrows.acyclic]
 
   - id: supersedes
     source: [concept]
     target: [concept]
     cardinality: "0..1 per source"
-    declared_in: metadata
+    declared_in: glossary
     reified: []
     symmetric: false
-    context_grants: none
-    context_requires: [spec(definer(target))]
+    context_grants: term(target)
+    context_requires: []
     checks: [CHK.concept.retired]
 
   - id: contrasts
     source: [concept]
     target: [concept, module]
     cardinality: "0..N; at most one per unordered pair"
-    declared_in: metadata
+    declared_in: glossary
     reified: [reason]
     symmetric: true
     context_grants: none
@@ -302,11 +306,20 @@ relation_types:
     source: [concept, realization, module]
     target: [concept, realization, module]
     cardinality: "0..N; unique per (source, verb, target)"
-    declared_in: metadata
+    declared_in:
+      concept: glossary
+      realization: metadata
+      module: metadata
     reified: [verb]
     symmetric: false
-    context_grants: none
-    context_requires: [spec(definer(target))]
+    context_grants:
+      concept: term(target)
+      realization: none
+      module: none
+    context_requires:
+      concept: []
+      realization: [spec(definer(target))]
+      module: [spec(definer(target))]
     checks: [CHK.relates.source, CHK.relates.verb]
 
   - id: participates
@@ -338,10 +351,10 @@ relation_types:
 
 derived_indexes:
   - id: selected-by
-    computed_from: inverting context selection
-    used_for: which Modules read a document, and so are concerned when it changes
+    computed_from: inverting context and term selection
+    used_for: which Modules read a document or a definition, and so are concerned when it changes
   - id: referenced-by
-    computed_from: inverting relies_on, imports, narrows, supersedes, relates and participates
+    computed_from: inverting relies_on, mentions, narrows, supersedes, relates and participates
     used_for: which declarations depend on a concept, node or contract
   - id: implemented-by
     computed_from: inverting binds
@@ -354,8 +367,10 @@ derived_indexes:
 boundary_sets:
   - id: SpecContext
     side: read
-    derived_from: [owns, contains, uses, includes]
-    contents: both members of every document the Module owns or selects
+    derived_from: [owns, contains, uses, includes, mentions, narrows, supersedes, relates]
+    contents: >
+      both members of every document the Module owns or selects, and the
+      glossary entries term selection chooses
   - id: ExternalContext
     side: read
     derived_from: [includes]
@@ -370,8 +385,10 @@ boundary_sets:
     contents: every file any Module's realizations bind and all external material any Module includes
   - id: SpecScope
     side: write
-    derived_from: [owns]
-    contents: both members of every document the Module owns, including the entry and its module block
+    derived_from: [owns, glossary owner]
+    contents: >
+      both members of every document the Module owns, including the entry and
+      its module block, and the glossary entries the Module owns
   - id: ImplementationScope
     side: write
     derived_from: [binds]
@@ -401,7 +418,8 @@ task_types:
 reconciliation:
   statement: >
     For every Module M, every context requirement of a relation declared in a
-    document M owns, including its entry's module block, is satisfied by Spec(M).
+    document M owns, including its entry's module block, or in a glossary entry
+    M owns, is satisfied by Spec(M).
   check: CHK.context.reconciled
   limit: >
     Exact. What is not checked is that relies_on names every promise a Module

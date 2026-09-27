@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol **14.0.0** describes a project as a set of Modules, each explaining one
+Concorde Spec Protocol **15.0.0** describes a project as a set of Modules, each explaining one
 responsibility, connected by declared relations. It serves two purposes:
 
 1. **Understanding** — a human grasps the backbone of the project, its parts and main flows,
@@ -16,30 +16,35 @@ says how its rules serve the two purposes.
 
 - **Seven node types.** Module, document, concept, realization, requirement, scenario, contract.
 - **Thirteen relation types**, each declared at one site fixed by its type. A relation whose source
-  is a Module is declared in that Module's entry and mirrored in the project registry; any other
-  relation is declared in the document that defines its source.
+  is a Module is declared in that Module's entry and mirrored in the project registry; a relation
+  whose source is a concept is declared in the concept's glossary entry; any other relation is
+  declared in the document that defines its source.
+- **One glossary.** Every concept of the project is declared in one glossary file, each entry
+  naming the Module that owns it.
 - **One reconciliation rule.** Every relation declares what context it requires; a Module's own
   relations must grant it.
 
 A registered Markdown file and its `.md.json` companion form one document with one identity and one
 owner, and both enter context together. Dependencies and composition grant the Specs they depend
-on. Each term is defined once, in its owner's Terminology table, and imported elsewhere by link.
-Architecture diagrams either assert only declared relations or are marked illustrative.
+on. Every term is defined once, in the project glossary, owned by one Module, and linked wherever a
+document uses it; a reader receives the definitions its documents link. Architecture diagrams
+either assert only declared relations or are marked illustrative.
 
 ## Read the standard
 
 1. [Principles](principles.md) — the two purposes, the model at a glance, and seven axioms.
 2. [Node types](model.md) — every kind of thing a specification declares, and why each exists.
 3. [Relations](relations.md) — every relation, its attributes and its checks.
-4. [Context](context.md) — the read side: three channels, selection and the reconciliation.
+4. [Context](context.md) — the read side: four channels, selection and the reconciliation.
 5. [Boundaries](boundaries.md) — the write side, the impact of a write, and the task types that
    compose a task's boundary.
-6. [Spec writing guidelines](writing.md) — the authoring entry, with two separately maintained parts:
-   [Required format](format.md) for machine-checkable structure and syntax, and
-   [Writing guidance](module.md) for content requiring reader and editor judgment.
+6. [Spec writing guidelines](writing.md) — the authoring entry, with two separately maintained
+   parts: [Required format](format.md) for machine-checkable structure and syntax, and [Writing
+   guidance](module.md) for content requiring reader and editor judgment.
 7. [Checks](checks.md) — every decidable rule and its limits.
 8. [Views](views.md) — derived views, checked D2 diagrams and illustrative blocks.
-9. [Migration](migration.md) — what changed from version 10, in 11.1, in 13, 13.1, 13.2, 13.3 and 14.
+9. [Migration](migration.md) — what changed from version 10, in 11.1, in 13, 13.1, 13.2, 13.3, 14
+   and 15.
 10. [`model.yaml`](model.yaml) — the machine-readable vocabulary.
 11. Templates: [Module](templates/module.md) and [Scenario fragment](templates/scenario.md).
 

@@ -70,9 +70,9 @@ it needs a design reason, it links to the entry's Design section.
 
 ## The entry
 
-Every entry has the same four sections in the same order, so that every Module reads the same way
-and a newcomer meets them in the order they need: what it is for, the words it uses, how to use
-it, and how it is built and why, inside and in the Modules around it. How a Module fits with the
+Every entry has the same three sections in the same order, so that every Module reads the same way
+and a newcomer meets them in the order they need: what it is for, how to use it, and how it is
+built and why, inside and in the Modules around it. How a Module fits with the
 rest is part of its design, never a separate section: a separate list of relationships only
 repeats the design, or draws a picture for its own sake.
 
@@ -80,21 +80,6 @@ repeats the design, or draws a picture for its own sake.
 
 State what the Module is for, who relies on it, and where its promises stop, including relevant
 non-goals. Short plain prose. A directory or package name establishes no responsibility.
-
-### Terminology
-
-List the words a reader needs before Usage and Design make sense, in the table defined by
-[Required format](format.md#terminology): one row per concept this document defines, with its one-sentence
-definition, and one link-only row per concept it imports from another Module.
-
-Deciding which concepts exist is substantive. Declare a concept for a domain word, a record, a
-boundary actor or an external standard a reader must understand; not for a file, an identity or an
-internal class. Decide who owns each word by who is entitled to change its meaning; see
-[Node types](model.md#concept). When a word here could be confused with another Module's word or
-with a Module's name, declare `contrasts`; when it conflicts with common usage outside the project,
-state `external_conflict`.
-
-Prose after the table may orient the reader, such as how the terms relate or which to learn first.
 
 ### Usage
 
@@ -181,6 +166,26 @@ project configuration, development tooling or test suites, to prose. A small Mod
 diagram, while a Module with little static structure may still benefit from a workflow, sequence
 or state view. Use as many diagrams as help understanding, with none drawn only to have one.
 
+## Terms
+
+The words of the whole project live in one glossary, so a word means one thing everywhere and a
+reader looks it up in one place. Link a term where a document first uses it, with a
+[term link](format.md#term-links) to its glossary entry, and link it again wherever a reader
+arriving mid-document would need it. A reader receives the definition of every term its documents
+link, and only those, so an unlinked term is a word the reader may not know.
+
+Deciding which concepts exist is substantive. Declare a concept for a domain word, a record, a
+boundary actor or an external standard a reader must understand; not for a file, an identity or an
+internal class. Before adding one, look for an existing term with that meaning and link it
+instead. Decide who owns each word by who is entitled to change its meaning; see
+[Node types](model.md#concept). Write the definition as one sentence a newcomer understands
+without the owner's documents, and the extended explanation in the owner's document at the anchor
+the entry names. When a word could be confused with another term or with a Module's name, declare
+`contrasts`; when it conflicts with common usage outside the project, state `external_conflict`.
+
+Titles are unique in the project. Two meanings of one word are two terms with distinct titles, such
+as `Session round` and `Headless round`, not one title defined twice.
+
 ## Precise obligations
 
 Define these only in `implementation` documents owned by the Module. Group headings may organize
@@ -226,7 +231,7 @@ Its readable subset must supply the meaning the task needs.
 
 A schema, a heading, a rendered table, a checked diagram or a correctly registered file set is not
 proof of sufficient meaning. Honest drafts name their unknowns. Missing necessary meaning remains a
-gap until an explicit change to the specification repairs it: source code, another Module's own selections and
-publisher summaries cannot silently supply a missing contract. The one explicit route from code to
-specification is a `code-to-spec` task (see [Boundaries](boundaries.md#task-types)), whose changes
-are ordinary specification changes and leave every doubtful intent a reported gap.
+gap until an explicit change to the specification repairs it: source code, another Module's own
+selections and publisher summaries cannot silently supply a missing contract. The one explicit route
+from code to specification is a `code-to-spec` task (see [Boundaries](boundaries.md#task-types)),
+whose changes are ordinary specification changes and leave every doubtful intent a reported gap.
