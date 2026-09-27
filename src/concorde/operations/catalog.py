@@ -11,6 +11,7 @@ CATALOG: dict[str, str] = {
     "implement": "concorde.implementation.operation:IMPLEMENT",
     "test": "concorde.implementation.operation:TEST",
     "spec_review": "concorde.spec_review.operation:SPEC_REVIEW",
+    "spec_panel": "concorde.spec_review.panel:SPEC_PANEL",
     "code_review": "concorde.code_review.operation:CODE_REVIEW",
     "validate": "concorde.validation.operation:VALIDATE",
     "delivery": "concorde.delivery.operation:DELIVERY",

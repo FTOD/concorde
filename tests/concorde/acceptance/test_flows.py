@@ -44,7 +44,7 @@ class AdoptionTests(unittest.TestCase):
         git(project, "init", "-q")
         (project / "app.py").write_text("print('app')\n")
         # The pinned d2 comes from a local stand-in: a check must not depend on the network.
-        install(project, package, fetch=fake_d2(self, package))
+        install(project, package, fetch=fake_d2(self, package), dependencies=False)
         concorde = str(project / ".concorde/bin/concorde")
         proposed = subprocess.run(
             [concorde, "init", "--propose", "--name", "App"],
@@ -100,7 +100,7 @@ class BrownfieldFlowTests(unittest.TestCase):
         for path, content in FILES.items():
             (project / path).parent.mkdir(parents=True, exist_ok=True)
             (project / path).write_text(content)
-        install(project, package, fetch=fake_d2(self, package))
+        install(project, package, fetch=fake_d2(self, package), dependencies=False)
         concorde = str(project / ".concorde/bin/concorde")
 
         def run(*argv):

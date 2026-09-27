@@ -30,7 +30,15 @@ from concorde.spec.repository_base import SpecError
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
-COPIED = ("prompts", "protocol", "concorde.json", "src", "scripts")
+COPIED = (
+    "prompts",
+    "protocol",
+    "concorde.json",
+    "src",
+    "scripts",
+    "pyproject.toml",
+    "uv.lock",
+)
 
 
 def strict_frontmatter(test, text: str) -> dict:
@@ -318,7 +326,7 @@ class InstallTests(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(project)], check=True)
         (project / "CLAUDE.md").write_text("# My project\n\nKeep this.\n")
         fetch = fake_d2(self, package)
-        receipt = install(project, package, fetch=fetch)
+        receipt = install(project, package, fetch=fetch, dependencies=False)
         self.assertEqual(str(package), receipt["source"])
         self.assertEqual("normal", receipt["mode"])
         # The package copy is no Git checkout, so no commit names it.
@@ -355,7 +363,7 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(".concorde/tools/d2", receipt["tools"]["d2"]["path"])
         self.assertIn(".concorde/tools/", (project / ".gitignore").read_text())
         self.assertIn(f"-{platform_key()}.tar.gz", fetch.urls[0])
-        install(project, package, fetch=fetch)
+        install(project, package, fetch=fetch, dependencies=False)
         # The same pin is not downloaded again.
         self.assertEqual(1, len(fetch.urls))
         self.assertEqual(
@@ -405,7 +413,7 @@ class InstallTests(unittest.TestCase):
         project = package.parent / "project"
         project.mkdir()
         subprocess.run(["git", "init", "-q", str(project)], check=True)
-        install(project, package, d2=False)
+        install(project, package, d2=False, dependencies=False)
         receipt = (project / ".concorde/install.json").read_bytes()
         live = subprocess.Popen(["sleep", "60"])
         self.addCleanup(live.wait)
@@ -452,7 +460,7 @@ class InstallTests(unittest.TestCase):
                 json.dumps(state)
             )
         for attempt in (
-            lambda: install(project, package, d2=False),
+            lambda: install(project, package, d2=False, dependencies=False),
             lambda: update(project, package),
         ):
             with self.assertRaises(InstallError) as raised:
@@ -475,7 +483,7 @@ class InstallTests(unittest.TestCase):
             self.assertFalse((project / ".concorde/update.json").exists())
         live.kill()
         live.wait()
-        install(project, package, d2=False)
+        install(project, package, d2=False, dependencies=False)
 
     @verifies("scenario.distribution.own-python")
     def test_concorde_runs_in_its_own_python_whatever_the_caller_uses(self):
@@ -483,7 +491,7 @@ class InstallTests(unittest.TestCase):
         project = package.parent / "project"
         project.mkdir()
         subprocess.run(["git", "init", "-q", str(project)], check=True)
-        receipt = install(project, package, d2=False)
+        receipt = install(project, package, d2=False, dependencies=False)
         self.assertEqual(".concorde/framework/python", receipt["python"]["environment"])
         self.assertEqual(sys.executable, receipt["python"]["base"])
         self.assertTrue((project / ".concorde/framework/python/bin/python").exists())
@@ -511,7 +519,7 @@ class InstallTests(unittest.TestCase):
         old.write_text('#!/bin/sh\necho "3 9 1"\n')
         old.chmod(0o755)
         with self.assertRaises(InstallError) as raised:
-            install(project, package, d2=False, python=old)
+            install(project, package, d2=False, python=old, dependencies=False)
         self.assertEqual("python_too_old", raised.exception.code)
 
     @verifies("scenario.distribution.update")
@@ -520,7 +528,7 @@ class InstallTests(unittest.TestCase):
         project = package.parent / "project"
         project.mkdir()
         subprocess.run(["git", "init", "-q", str(project)], check=True)
-        install(project, package, d2=False)
+        install(project, package, d2=False, dependencies=False)
         concorde = str(project / ".concorde/bin/concorde")
 
         def run(*argv):
@@ -596,7 +604,7 @@ class InstallTests(unittest.TestCase):
         project = package.parent / "project"
         project.mkdir()
         subprocess.run(["git", "init", "-q", str(project)], check=True)
-        install(project, package, d2=False)
+        install(project, package, d2=False, dependencies=False)
 
         def git(*argv):
             subprocess.run(
@@ -622,6 +630,77 @@ class InstallTests(unittest.TestCase):
 
     @verifies("scenario.distribution.install")
     @verifies("scenario.distribution.install-pi")
+    @verifies("scenario.distribution.python-dependencies")
+    def test_install_places_the_locked_python_dependencies_in_its_own_environment(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        calls = []
+
+        def fake_uv(command, cwd, **options):
+            calls.append(command)
+            if command[1] == "export":
+                Path(command[command.index("--output-file") + 1]).write_text(
+                    "# locked\nlanggraph==1.2.12 \\\n    --hash=sha256:00\n"
+                )
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with patch(
+            "concorde.distribution.install.shutil.which", return_value="/usr/bin/uv"
+        ):
+            receipt = install(project, package, d2=False, run=fake_uv)
+        export, pip, probe = calls
+        self.assertEqual(
+            ["/usr/bin/uv", "export", "--frozen", "--no-dev", "--no-emit-project"],
+            export[:5],
+        )
+        self.assertIn(str(package), export)
+        interpreter = str(project / ".concorde/framework/python/bin/python")
+        self.assertEqual(
+            [
+                "/usr/bin/uv",
+                "pip",
+                "install",
+                "--python",
+                interpreter,
+                "--require-hashes",
+            ],
+            pip[:6],
+        )
+        self.assertEqual(
+            [interpreter, "-E", "-s", "-c", "import langgraph.graph"], probe
+        )
+        self.assertEqual(
+            {
+                "requirements": ".concorde/framework/requirements.txt",
+                "lock_sha256": hashlib.sha256(
+                    (package / "uv.lock").read_bytes()
+                ).hexdigest(),
+                "packages": 1,
+            },
+            receipt["dependencies"],
+        )
+
+        def failing(command, cwd, **options):
+            return subprocess.CompletedProcess(command, 1, "", "no network")
+
+        for which, run, code in (
+            (None, fake_uv, "uv_missing"),
+            ("/usr/bin/uv", failing, "python_dependencies_failed"),
+        ):
+            with (
+                self.subTest(code=code),
+                patch("concorde.distribution.install.shutil.which", return_value=which),
+                self.assertRaises(InstallError) as caught,
+            ):
+                install(project, package, d2=False, run=run)
+            self.assertEqual(code, caught.exception.code)
+        self.assertIn("no network", str(caught.exception))
+        self.assertIsNone(
+            install(project, package, d2=False, dependencies=False)["dependencies"]
+        )
+
     def test_install_with_pi_places_the_locked_runtime_extension_and_skill(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -641,8 +720,12 @@ class InstallTests(unittest.TestCase):
         with patch(
             "concorde.distribution.tools.shutil.which", return_value="/usr/bin/npm"
         ):
-            receipt = install(project, package, d2=False, pi=True, run=fake_npm)
-            install(project, package, d2=False, pi=True, run=fake_npm)
+            receipt = install(
+                project, package, d2=False, pi=True, run=fake_npm, dependencies=False
+            )
+            install(
+                project, package, d2=False, pi=True, run=fake_npm, dependencies=False
+            )
         [(command, cwd)] = calls
         self.assertEqual(["/usr/bin/npm", "ci", "--ignore-scripts"], command[:3])
         self.assertEqual(project / ".concorde/tools/pi-runtime", cwd)
@@ -681,7 +764,7 @@ class InstallTests(unittest.TestCase):
         settings.write_text(
             json.dumps({"model": "x", "permissions": {"allow": ["Bash(ls:*)", mine]}})
         )
-        receipt = install(project, package, d2=False)
+        receipt = install(project, package, d2=False, dependencies=False)
         workflow = project / ".claude/workflows/concorde-brownfield.js"
         self.assertTrue(workflow.read_text().startswith("export const meta = {"))
         self.assertIn(".claude/workflows/concorde-brownfield.js", receipt["files"])
@@ -701,7 +784,7 @@ class InstallTests(unittest.TestCase):
         (project / ".concorde/install.json").write_text(json.dumps(recorded))
         value["permissions"]["allow"].append("Workflow(concorde-retired)")
         settings.write_text(json.dumps(value))
-        install(project, package, d2=False)
+        install(project, package, d2=False, dependencies=False)
         # A later install still records the defaults the first one wrote, and the files it
         # only amends apart from the ones it owns.
         again = json.loads((project / ".concorde/install.json").read_text())
@@ -716,7 +799,7 @@ class InstallTests(unittest.TestCase):
         settings.write_text("[1, 2]")
         (project / ".claude/workflows/concorde-brownfield.js").unlink()
         with self.assertRaises(InstallError) as raised:
-            install(project, package, d2=False)
+            install(project, package, d2=False, dependencies=False)
         self.assertEqual("settings_invalid", raised.exception.code)
         self.assertFalse(
             (project / ".claude/workflows/concorde-brownfield.js").exists()
@@ -740,7 +823,9 @@ class InstallTests(unittest.TestCase):
         with patch(
             "concorde.distribution.tools.shutil.which", return_value="/usr/bin/npm"
         ):
-            receipt = install(project, package, d2=False, pi=True, run=fake_npm)
+            receipt = install(
+                project, package, d2=False, pi=True, run=fake_npm, dependencies=False
+            )
         self.assertIn(
             "runs.run", (project / ".concorde/workflows/pi/brownfield.js").read_text()
         )
@@ -755,7 +840,7 @@ class InstallTests(unittest.TestCase):
         project.mkdir()
         with patch("concorde.distribution.tools.shutil.which", return_value=None):
             with self.assertRaises(InstallError) as raised:
-                install(project, package, d2=False, pi=True)
+                install(project, package, d2=False, pi=True, dependencies=False)
         self.assertEqual("npm_missing", raised.exception.code)
         self.assertFalse((project / ".concorde/framework").exists())
 
@@ -808,7 +893,7 @@ class InstallTests(unittest.TestCase):
             (package / "prompts/main-session/skill.md").read_text() + "\nNew.\n"
         )
         with self.assertRaises(InstallError) as raised:
-            install(project, package)
+            install(project, package, dependencies=False)
         self.assertEqual("stale_build", raised.exception.code)
         self.assertFalse((project / ".claude").exists())
 
@@ -820,7 +905,12 @@ class D2InstallTests(unittest.TestCase):
         project = package.parent / "project"
         project.mkdir()
         with self.assertRaises(InstallError) as raised:
-            install(project, package, fetch=fake_d2(self, package, corrupt=True))
+            install(
+                project,
+                package,
+                fetch=fake_d2(self, package, corrupt=True),
+                dependencies=False,
+            )
         self.assertEqual("d2_digest_mismatch", raised.exception.code)
         self.assertIn("but concorde.json pins", str(raised.exception))
         self.assertEqual([], list(project.iterdir()))
@@ -835,7 +925,7 @@ class D2InstallTests(unittest.TestCase):
             raise OSError("network is unreachable")
 
         with self.assertRaises(InstallError) as raised:
-            install(project, package, fetch=offline)
+            install(project, package, fetch=offline, dependencies=False)
         self.assertEqual("d2_unavailable", raised.exception.code)
         self.assertIn(
             "github.com/d2lang/d2/releases/download/v0.9.0", str(raised.exception)
@@ -848,7 +938,7 @@ class D2InstallTests(unittest.TestCase):
         package = package_copy(self)
         project = package.parent / "project"
         project.mkdir()
-        receipt = install(project, package, d2=False)
+        receipt = install(project, package, d2=False, dependencies=False)
         self.assertEqual({}, receipt["tools"])
         self.assertFalse((project / ".concorde/tools").exists())
 

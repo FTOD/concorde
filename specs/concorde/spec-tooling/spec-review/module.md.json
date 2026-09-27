@@ -10,6 +10,7 @@
     "owns": [
       "specs/concorde/spec-tooling/spec-review/module.md",
       "specs/concorde/spec-tooling/spec-review/operation.md",
+      "specs/concorde/spec-tooling/spec-review/panel.md",
       "specs/concorde/spec-tooling/spec-review/requirements.md",
       "specs/concorde/spec-tooling/spec-review/scenarios.md"
     ],
@@ -83,6 +84,18 @@
       "meaning": "#concept.spec-review.memory"
     },
     {
+      "id": "concept.spec-review.panel",
+      "type": "concept",
+      "title": "Spec panel",
+      "meaning": "#concept.spec-review.panel"
+    },
+    {
+      "id": "concept.spec-review.panel-report",
+      "type": "concept",
+      "title": "Panel report",
+      "meaning": "#concept.spec-review.panel-report"
+    },
+    {
       "id": "realization.spec-review.operation",
       "type": "realization",
       "title": "Review host",
@@ -98,7 +111,17 @@
       "title": "Reviewer brief",
       "meaning": "#realization.spec-review.checklist",
       "entries": [
-        "prompts/workers/review-spec.md"
+        "prompts/workers/review-spec.md",
+        "prompts/workers/spec-review/"
+      ]
+    },
+    {
+      "id": "realization.spec-review.panel",
+      "type": "realization",
+      "title": "Panel brief",
+      "meaning": "#realization.spec-review.panel",
+      "entries": [
+        "prompts/workers/panel-spec.md"
       ]
     }
   ],
@@ -138,6 +161,24 @@
       "source": "concept.spec-review.verdict",
       "verb": "is derived from",
       "target": "concept.spec-review.finding"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "hands the panel",
+      "target": "realization.spec-review.panel"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.panel",
+      "verb": "shares the checklist of",
+      "target": "realization.spec-review.checklist"
+    },
+    {
+      "type": "relates",
+      "source": "realization.spec-review.operation",
+      "verb": "checks the accounting of",
+      "target": "concept.spec-review.panel-report"
     }
   ],
   "extensions": {}

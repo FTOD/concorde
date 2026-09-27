@@ -193,6 +193,7 @@
       "owns": [
         "specs/concorde/spec-tooling/spec-review/module.md",
         "specs/concorde/spec-tooling/spec-review/operation.md",
+        "specs/concorde/spec-tooling/spec-review/panel.md",
         "specs/concorde/spec-tooling/spec-review/requirements.md",
         "specs/concorde/spec-tooling/spec-review/scenarios.md"
       ],

@@ -1,7 +1,8 @@
 # Spec review scenarios
 
 Concrete situations of [Spec review](module.md). The host sequence and the payload are in the
-[Operation definition](operation.md).
+[Operation definition](operation.md), and those of the Spec panel in its
+[definition](panel.md).
 
 ## Reviewing
 
@@ -77,3 +78,30 @@ Concrete situations of [Spec review](module.md). The host sequence and the paylo
 - WHEN the host audits the worktree
 - THEN the Module's outcome is `incomplete`
 - AND the audit violation is returned as host evidence
+
+## Paneling
+
+### scenario.spec-review.panel-merged — The chair merges independent reviews into one report
+
+- GIVEN a panel of two reviewers for Module A
+- AND reviewer 1 reports that a requirement holds two obligations, and reviewer 2 reports the same problem in other words and an advisory wording problem
+- WHEN the chair merges the two reports of the requirement and rejects the wording problem with a reason
+- THEN the panel report has one blocking finding whose sources are `r1.1` and `r2.1`, reported by 2 reviewers, and the rejection of `r2.2`
+- AND each reviewer's own findings are in the result, labelled
+- AND A's outcome and the verdict are `changes_required`
+- BUT no file of the task worktree changes
+
+### scenario.spec-review.panel-accounting — A report that loses a finding goes back to the chair
+
+- GIVEN a panel whose reviewers report `r1.1` and `r2.1`
+- AND a chair whose first report accounts only for `r1.1`
+- WHEN the host checks the report
+- THEN the chair runs a second time with its previous report and the problem "r2.1 is not accounted for"
+- AND the second report, which accounts for both, is the panel report
+
+### scenario.spec-review.panel-short — A reviewer that cannot finish stops the panel
+
+- GIVEN a panel of two reviewers for Module A, of which reviewer 2 ends `blocked` because it needs a document outside its grant
+- WHEN the reviewers have ended
+- THEN the chair does not run, and A's outcome and the verdict are `incomplete`
+- AND the result's error is the Operation's `panel_incomplete` link whose cause for A is `panel_short`, with reviewer 2's link, naming its seat, and below it the reviewer's own link unchanged
