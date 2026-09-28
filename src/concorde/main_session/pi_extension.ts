@@ -6,8 +6,10 @@
  * the task's worktree, whose workspace binding the run reads, and returns at once; every run of the
  * project, whoever started it (this tool, a command run with bash, another session), is found in
  * the run store and followed through its progress files, shown in pi-subagents' FleetView as an
- * external job, counted by `bg_wait`, and reported back with a message that wakes the main agent
- * when it finishes. `/concorde` lists the runs. The extension only launches and observes: the
+ * external job, and reported back with a message that wakes the main agent when it finishes. Only
+ * the runs and rounds this session started with its own tools are its background work, which
+ * `bg_wait` and the drain of a `pi -p` session wait for. `/concorde` lists the runs. The extension
+ * only launches and observes: the
  * Execution runner, not this extension, runs and records every run. Without pi-subagents it still launches, wakes
  * and lists; only the FleetView entries and `bg_wait` are missing.
  *
@@ -33,6 +35,7 @@ import {
   concordeCommand,
   discoveredRuns,
   glossaryText,
+  ownedWork,
   primaryRoot,
   recordedRuns,
   resultText,
@@ -114,6 +117,8 @@ interface Tracked {
   shown: RunView | null;
   registered: boolean;
   reported: boolean;
+  // Started by this session's `concorde_run`, and so its background work.
+  owned: boolean;
 }
 
 interface TrackedRound {
@@ -121,6 +126,8 @@ interface TrackedRound {
   shown: RunView | null;
   registered: boolean;
   reported: boolean;
+  // Started or answered by this session's `concorde_task_session`, and so its background work.
+  owned: boolean;
 }
 
 /** Run a `concorde` command of the worktree and read the one JSON value it prints. */
@@ -250,6 +257,7 @@ export default function (pi: ExtensionAPI) {
           shown: null,
           registered: false,
           reported: false,
+          owned: false,
         });
     }
     for (const [id, entry] of rounds) {
@@ -347,15 +355,19 @@ export default function (pi: ExtensionAPI) {
     });
   }
 
-  function track(operation: RunStatus, reported = false): void {
-    if (!tracked.has(operation.run_id)) {
-      tracked.set(operation.run_id, {
-        operation,
-        shown: null,
-        registered: false,
-        reported,
-      });
+  function track(operation: RunStatus, reported = false, owned = false): void {
+    const known = tracked.get(operation.run_id);
+    if (known) {
+      if (owned) known.owned = true;
+      return;
     }
+    tracked.set(operation.run_id, {
+      operation,
+      shown: null,
+      registered: false,
+      reported,
+      owned,
+    });
   }
 
   pi.on("session_start", async (_event, ctx) => {
@@ -372,14 +384,24 @@ export default function (pi: ExtensionAPI) {
     }
     disposeProvider = subagents.registerBackgroundWorkProvider?.({
       name: SOURCE,
-      listActiveWork: () => [
-        ...[...tracked.values()]
-          .filter((entry) => !entry.shown?.finished)
-          .map((entry) => ({ id: entry.operation.run_id, sessionId })),
-        ...[...rounds.entries()]
-          .filter(([, entry]) => !entry.shown?.finished)
-          .map(([id]) => ({ id, sessionId })),
-      ],
+      // Only what this session started is its work: a `pi -p` session drains it before it exits,
+      // and must not wait for the runs of other sessions it merely shows.
+      listActiveWork: () =>
+        ownedWork(
+          [
+            ...[...tracked.values()].map((entry) => ({
+              id: entry.operation.run_id,
+              owned: entry.owned,
+              finished: entry.shown?.finished ?? false,
+            })),
+            ...[...rounds.entries()].map(([id, entry]) => ({
+              id,
+              owned: entry.owned,
+              finished: entry.shown?.finished ?? false,
+            })),
+          ],
+          sessionId,
+        ),
     });
     timer = setInterval(() => refresh(ctx), POLL_MS);
     refresh(ctx);
@@ -405,7 +427,8 @@ export default function (pi: ExtensionAPI) {
       "another run of the task still holds its workspace, add --wait <seconds> to the " +
       "arguments to queue this run behind it instead of being refused with workspace_busy. " +
       "To block " +
-      "until every running Concorde run ends, call bg_wait without an id; bg_wait with an id " +
+      "until every Concorde run you started with this tool ends, call bg_wait without an id; " +
+      "bg_wait with an id " +
       "sees only subagent runs.",
     promptSnippet:
       "Start a Concorde Operation or execution command in the background and be woken when it finishes",
@@ -474,7 +497,7 @@ export default function (pi: ExtensionAPI) {
               workersOf(root, operation),
               operation.phase === "finished" || alive(operation.host_pid),
             );
-            track(operation, shown.finished);
+            track(operation, shown.finished, true);
             refresh(ctx);
             const started = `Started ${params.operation} ${params.task ? `in the worktree of task ${params.task}` : "unbound"} as run ${operation.run_id} (runner process ${child.pid}).`;
             return {
@@ -592,12 +615,15 @@ export default function (pi: ExtensionAPI) {
           details: { session: value.id, round: last.round },
         };
       }
-      if (!rounds.has(id))
+      const known = rounds.get(id);
+      if (known) known.owned = true;
+      else
         rounds.set(id, {
           status,
           shown: null,
           registered: false,
           reported: false,
+          owned: true,
         });
       refresh(ctx);
       return {

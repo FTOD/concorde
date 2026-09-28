@@ -145,9 +145,14 @@ Operation launched, paired by the runner's process identifier; an execution comm
 It shows each run as an external job in pi-subagents' FleetView — its workspace (or `unbound`) and
 name, its step, the worker's round and latest tool call, and on its end `completed`, `stopped` or
 `failed` for a result of `ok`, `blocked` or `failed`, with the result's summary; a run whose runner
-process ended without finishing is shown `failed`. A `bg_wait` call without an id waits for the
-running ones (with an id it matches only subagent runs); runs are filed under the session's file, or
-its identity when it is not persisted, the name pi-subagents gives the session. When a run ends the
+process ended without finishing is shown `failed`. Runs are filed under the session's file, or
+its identity when it is not persisted, the name pi-subagents gives the session. Only the runs and
+task-session rounds the session started with its own `concorde_run` and `concorde_task_session`
+tools are its **background work**: a `bg_wait` call without an id waits for those still running
+(with an id it matches only subagent runs), and a main session run with `pi -p` waits for them
+before it exits, as pi-subagents drains the work of every `pi -p` session. A run or round it only
+follows, started with bash or by another session, is shown and reported but is never its work, so
+a `pi -p` session never waits for another session's runs. When a run ends the
 extension sends the main agent a message naming the run, its workspace and name, the result's status
 and summary and the run result's file, followed, for a result that carries an
 [error chain](../../glossary.json#concept.error-chain), by that whole chain as indented text: while the main agent is in a turn the message is steered into
