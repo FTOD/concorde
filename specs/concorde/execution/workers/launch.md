@@ -95,7 +95,8 @@ audit -> checks: ok, clean, checks given
 audit -> worker: no checks given, validation reports a repair, rounds left
 audit -> finished: no checks given, nothing to repair or no rounds left
 checks -> worker: a check fails or validation reports a repair, rounds left
-checks -> finished: checks pass, nothing to repair; no rounds left; checks unavailable
+checks -> finished: "checks pass, nothing to repair, or no rounds left for a repair: status ok"
+checks -> finished: "a check still fails with no rounds left, or checks unavailable: status failed"
 ```
 
 It is an observation aid only: the run record, not the progress file, is the run's evidence.

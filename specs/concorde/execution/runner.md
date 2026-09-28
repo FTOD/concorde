@@ -73,7 +73,8 @@ each worker launch's [run record](../glossary.json#concept.run-record) beside it
 ## Runner
 
 The runner's activity, with the hand-off of a [detached run](#detached-runs), whose command does
-the parsing and then starts the runner with the run identity it announces:
+the parsing and then starts the runner with the run identity it announces. A signal at any point
+from the binding check to the execution, like a refusal, goes straight to the composition:
 
 ```d2 illustrative
 direction: down
@@ -99,10 +100,10 @@ runner: "Execution runner" {
   binding -> composition: refused
   lock -> composition: refused
   admission -> composition: refused
-  execution -> composition: a step stops or raises, or a signal
+  execution -> composition: a step stops or raises
 }
 runner.parse -> exit2: malformed, unknown or outside Git
-launcher.check -> exit2: malformed
+launcher.check -> exit2: malformed, unknown or outside Git
 launcher.check -> runner.parse: start in a new session with the run identity and directory
 ```
 
