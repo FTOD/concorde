@@ -277,9 +277,19 @@ def _publish_text(root: Path, identifier: str, text: str, before: str | None) ->
     path = issue_path(identifier)
     if len(text.encode()) > MAX_RECORD_BYTES:
         raise IssueError("issue record exceeds the admitted size", "invalid_issue")
-    apply_files(
-        root, [{"path": path, "before_digest": before, "content": text}], {path}
-    )
+    try:
+        apply_files(
+            root, [{"path": path, "before_digest": before, "content": text}], {path}
+        )
+    except SpecError as error:
+        # Another program changed the record after this write read it.
+        if error.code != "stale_proposal":
+            raise
+        raise IssueError(
+            f"Issue {identifier} changed while it was being written, so nothing was "
+            f"written: {error}",
+            "stale_issue",
+        ) from error
     # apply_files fsyncs the staged contents; persist the rename before acknowledging the report.
     descriptor = os.open(checked_path(root, DIRECTORY), os.O_RDONLY | os.O_DIRECTORY)
     try:

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import errno
 import os
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.issues.store import (
     IssueError,
@@ -20,6 +23,39 @@ from concorde.spec.repository import SpecError
 from concorde.spec.typed_data import TypedDataError
 from concorde.spec.verification import verifies
 from tests.concorde.support.issue_reports import report, source
+
+
+@contextmanager
+def refused_record_writes():
+    """The operating system refuses to replace any Issue record, even for root."""
+    replace = os.replace
+
+    def refusing(source_path, target, *args, **kwargs):
+        if "/.concorde/issues/" in str(target):
+            raise OSError(errno.EROFS, "Read-only file system", str(target))
+        return replace(source_path, target, *args, **kwargs)
+
+    with patch("concorde.spec.changes.os.replace", side_effect=refusing):
+        yield
+
+
+@contextmanager
+def racing_writer():
+    """Another program changes the record after the store read it and before it publishes;
+    yields the list of bytes that program left."""
+    from concorde.issues import store
+
+    publish = store.apply_files
+    left = []
+
+    def racing(root, changes, allowed, **kwargs):
+        target = Path(root) / changes[0]["path"]
+        target.write_bytes(target.read_bytes() + b"\n")
+        left.append(target.read_bytes())
+        return publish(root, changes, allowed, **kwargs)
+
+    with patch("concorde.issues.store.apply_files", side_effect=racing):
+        yield left
 
 
 class IssueStoreTests(unittest.TestCase):
@@ -339,7 +375,17 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual(corrupted, path.read_bytes())
 
     @verifies("scenario.issues.store-failed-publication")
-    def test_a_failed_publication_returns_no_receipt(self):
+    def test_a_refused_record_write_returns_no_receipt(self):
+        receipt = report_issue(self.root, report(), source())
+        before = self.issue_files()
+        with refused_record_writes(), self.assertRaises(SpecError) as raised:
+            report_issue(self.root, report(report_key="new"), source())
+        self.assertEqual("system_error", raised.exception.code)
+        self.assertEqual(before, self.issue_files())
+        self.assertEqual(report(), resolve_report(self.root, receipt)["report"])
+
+    @verifies("scenario.issues.store-failed-publication")
+    def test_a_read_only_issue_directory_returns_no_receipt(self):
         if os.geteuid() == 0:
             self.skipTest("root writes into a read-only directory")
         receipt = report_issue(self.root, report(), source())
@@ -353,6 +399,36 @@ class IssueStoreTests(unittest.TestCase):
         directory.chmod(0o755)
         self.assertEqual(before, self.issue_files())
         self.assertEqual(report(), resolve_report(self.root, receipt)["report"])
+
+    @verifies("scenario.issues.store-publication-stale")
+    def test_a_record_changed_during_publication_is_refused_as_stale(self):
+        receipt = report_issue(self.root, report(), source())
+        identifier = receipt["issue_id"]
+        path = self.root / receipt["path"]
+        original = path.read_bytes()
+        for action in ("append", "dispose"):
+            path.write_bytes(original)
+            _, revision = read_issue(self.root, identifier)
+            with (
+                self.subTest(action=action),
+                racing_writer() as left,
+                self.assertRaisesRegex(IssueError, "changed while") as raised,
+            ):
+                if action == "append":
+                    report_issue(
+                        self.root,
+                        report(
+                            report_key="later",
+                            issue_id=identifier,
+                            expected_revision=revision,
+                        ),
+                        source(invocation_id="worker-2"),
+                    )
+                else:
+                    self.close(identifier, revision)
+            self.assertEqual("stale_issue", raised.exception.code)
+            self.assertIn(identifier, str(raised.exception))
+            self.assertEqual(left[-1], path.read_bytes())
 
     def test_a_receipt_whose_path_is_not_its_issues_is_refused(self):
         receipt = report_issue(self.root, report(), source())

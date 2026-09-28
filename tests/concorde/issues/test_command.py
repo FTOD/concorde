@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
+import importlib.util
+import io
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from functools import cache
 from pathlib import Path
 
 from concorde.errors import link
 from concorde.issues.store import list_issues, read_issue
 from concorde.spec.repository import digest
 from concorde.spec.verification import verifies
+from tests.concorde.issues.test_store import racing_writer, refused_record_writes
 from tests.concorde.support.issue_reports import report
 
 COMMAND = Path(__file__).resolve().parents[3] / "scripts/issues.py"
@@ -25,6 +30,15 @@ REGISTRY = {
     ],
 }
 DISPOSITION = ("--note", "n", "--evidence", "e")
+
+
+@cache
+def command():
+    """The command loaded into this process, so that a test's patches reach its store calls."""
+    spec = importlib.util.spec_from_file_location("issues_command", COMMAND)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class IssueCommandTests(unittest.TestCase):
@@ -51,6 +65,18 @@ class IssueCommandTests(unittest.TestCase):
         )
         return result.returncode, json.loads(result.stdout)
 
+    def run_in_process(self, *args):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            status = command().main([*args, "--root", str(self.root)])
+        return status, json.loads(output.getvalue())
+
+    def records(self):
+        return {
+            path.name: path.read_bytes()
+            for path in (self.root / ".concorde").rglob("I-*.md")
+        }
+
     def report_file(self, name="report.json", **changes):
         path = self.root / name
         path.write_text(
@@ -65,16 +91,15 @@ class IssueCommandTests(unittest.TestCase):
         self.assertEqual(0, status, value)
         return value
 
-    def assert_refused(self, status, code, fragments, *args):
-        before = sorted(p.name for p in (self.root / ".concorde").rglob("I-*.md"))
-        result, value = self.run_command(*args)
+    def assert_refused(self, status, code, fragments, *args, run=None):
+        before = self.records()
+        result, value = (run or self.run_command)(*args)
         self.assertEqual((status, code), (result, value["error"]["code"]), value)
         self.assertEqual("component", value["error"]["level"])
         self.assertTrue(value["error"]["unhandled"]["explanation"])
         for fragment in fragments:
             self.assertIn(fragment, value["error"]["detail"])
-        after = sorted(p.name for p in (self.root / ".concorde").rglob("I-*.md"))
-        self.assertEqual(before, after)
+        self.assertEqual(before, self.records())
         return value
 
     @verifies("scenario.issues.command-report")
@@ -447,8 +472,17 @@ class IssueCommandTests(unittest.TestCase):
 
     @verifies("scenario.issues.command-not-a-project")
     def test_a_directory_that_is_not_a_project_exits_2(self):
+        identifier = self.recorded()["receipt"]["issue_id"]
+        path = self.report_file("next.json", report_key="next")
         (self.root / ".concorde/config.json").unlink()
-        for args in (("list",), ("show", "I-" + "0" * 32), ("check",)):
+        for args in (
+            ("list",),
+            ("show", identifier),
+            ("check",),
+            ("report", "--file", path),
+            ("close", identifier, "--reason", "resolved", *DISPOSITION),
+            ("reopen", identifier, *DISPOSITION),
+        ):
             with self.subTest(args=args):
                 self.assert_refused(2, "not_a_project", [str(self.root)], *args)
 
@@ -496,12 +530,21 @@ class IssueCommandTests(unittest.TestCase):
     def test_naming_an_absent_issue_is_refused(self):
         identifier = self.recorded()["receipt"]["issue_id"]
         unknown = "I-" + "0" * 32
+        append = self.report_file(
+            "append.json",
+            report_key="append",
+            issue_id=unknown,
+            expected_revision="sha256:" + "0" * 64,
+        )
         for args in (
             ("show", unknown),
+            ("close", unknown, "--reason", "resolved", *DISPOSITION),
+            ("reopen", unknown, *DISPOSITION),
             ("close", identifier, "--reason", "duplicate", "--duplicate-of", unknown)
             + DISPOSITION,
+            ("report", "--file", append),
         ):
-            with self.subTest(action=args[0]):
+            with self.subTest(args=args):
                 self.assert_refused(1, "unknown_issue", [unknown], *args)
         self.assertEqual("open", read_issue(self.root, identifier)[0]["status"])
 
@@ -524,6 +567,23 @@ class IssueCommandTests(unittest.TestCase):
             *DISPOSITION,
         )
         self.assertEqual(1, len(read_issue(self.root, identifier)[0]["dispositions"]))
+
+    @verifies("scenario.issues.command-append-closed")
+    def test_appending_to_a_closed_issue_is_refused(self):
+        first = self.recorded()
+        identifier = first["receipt"]["issue_id"]
+        status, closed = self.run_command(
+            "close", identifier, "--reason", "resolved", *DISPOSITION
+        )
+        self.assertEqual(0, status, closed)
+        later = self.report_file(
+            "later.json",
+            report_key="later",
+            issue_id=identifier,
+            expected_revision=closed["revision"],
+        )
+        self.assert_refused(1, "closed_issue", [identifier], "report", "--file", later)
+        self.assertEqual(1, len(read_issue(self.root, identifier)[0]["reports"]))
 
     @verifies("scenario.issues.command-reopen-open")
     def test_reopening_an_open_issue_is_refused(self):
@@ -551,7 +611,39 @@ class IssueCommandTests(unittest.TestCase):
         self.assertEqual("open", read_issue(self.root, identifier)[0]["status"])
 
     @verifies("scenario.issues.command-write-failed")
-    def test_a_failed_write_is_an_environment_error(self):
+    def test_a_refused_record_write_is_an_environment_error(self):
+        self.recorded()
+        with refused_record_writes():
+            value = self.assert_refused(
+                1,
+                "io_error",
+                [".concorde/issues/I-"],
+                "report",
+                "--file",
+                self.report_file("next.json", report_key="next"),
+                run=self.run_in_process,
+            )
+        self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+        self.assertEqual(1, len(list_issues(self.root)))
+
+    @verifies("scenario.issues.command-write-raced")
+    def test_a_record_changed_during_the_write_is_stale(self):
+        first = self.recorded()
+        identifier = first["receipt"]["issue_id"]
+        later = self.report_file(
+            "later.json",
+            report_key="later",
+            issue_id=identifier,
+            expected_revision=first["revision"],
+        )
+        with racing_writer() as left:
+            status, value = self.run_in_process("report", "--file", later)
+        self.assertEqual((1, "stale_issue"), (status, value["error"]["code"]), value)
+        self.assertIn(identifier, value["error"]["detail"])
+        self.assertEqual(left[-1], (self.root / first["receipt"]["path"]).read_bytes())
+
+    @verifies("scenario.issues.command-write-failed")
+    def test_a_read_only_issue_directory_is_an_environment_error(self):
         if os.geteuid() == 0:
             self.skipTest("root writes into a read-only directory")
         self.recorded()

@@ -144,6 +144,7 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 - WHEN any action of the command runs on it
 - THEN the command prints the error code `not_a_project` and a message naming the directory
 - AND exits with status 2
+- BUT writes nothing
 
 ### scenario.issues.command-refused — A report file with an invalid field is refused
 
@@ -172,7 +173,7 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 ### scenario.issues.command-unknown-issue — Naming an absent Issue is refused
 
 - GIVEN a well-formed Issue identity that names no record
-- WHEN the main agent runs `show` with it, or `close` with it as `--duplicate-of`
+- WHEN the main agent runs `show`, `close` or `reopen` with it, `close` with it as `--duplicate-of`, or `report --file` with a file appending to it
 - THEN the command prints the error code `unknown_issue` and a message naming that identity
 - AND exits with status 1
 - BUT writes nothing
@@ -191,6 +192,14 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 - THEN the command prints the error code `closed_issue` and a message naming the Issue
 - AND exits with status 1
 - BUT the Issue keeps only the disposition it had
+
+### scenario.issues.command-append-closed — Appending to a closed Issue is refused
+
+- GIVEN a closed Issue and a report file naming it with its current revision
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `closed_issue` and a message naming the Issue
+- AND exits with status 1
+- BUT the Issue keeps only the reports it had
 
 ### scenario.issues.command-reopen-open — Reopening an open Issue is refused
 
@@ -215,6 +224,14 @@ This illustrates [specific refusals](requirements.md#req.issues.specific-refusal
 - THEN the command prints the error code `io_error` with the reason `environment` and a message naming the file it could not write
 - AND exits with status 1
 - BUT no Issue is recorded
+
+### scenario.issues.command-write-raced — A record changed during the write is refused as stale
+
+- GIVEN an open Issue, a report file appending to it at its current revision, and another program that changes the record after the command read it and before it publishes
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `stale_issue` and a message naming the Issue
+- AND exits with status 1
+- BUT the record keeps the other program's bytes
 
 ## Records
 
@@ -372,6 +389,15 @@ This illustrates [status derived from history](requirements.md#req.issues.status
 - BUT no other Issue is written
 
 This illustrates [durable receipts](requirements.md#req.issues.durable-receipt).
+
+### scenario.issues.store-publication-stale — A record changed during publication is refused
+
+- GIVEN an open Issue and another program that changes its record file after the store read it and before the store publishes
+- WHEN the store appends a report to it or disposes it at the revision it read
+- THEN the store refuses with `stale_issue`, naming the Issue, instead of the file transaction's `stale_proposal`
+- BUT the record keeps the other program's bytes
+
+This illustrates [revision-checked writes](requirements.md#req.issues.revision-checked).
 
 ## The store check
 
