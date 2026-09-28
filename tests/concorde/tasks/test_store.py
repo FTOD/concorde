@@ -571,6 +571,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             ".concorde/evidence/t1/1.json", shown["deliveries"][0]["bundle"]
         )
+        self.assertEqual([], shown["deliveries"][0]["mismatches"])
         # A run that changes nothing leaves the task delivered.
         write_run(self.root, "r-20260927T000000-test-00000001", "t1", name="test")
         self.assertEqual("delivered", self.state())
@@ -587,6 +588,47 @@ class TaskStoreTests(unittest.TestCase):
             [item["bundle"] for item in store.show_task(self.root, "t1")["deliveries"]],
         )
         self.assertEqual(second, git(self.root, "rev-parse", "concorde/t1"))
+
+    @verifies("scenario.tasks.delivery-unverified")
+    def test_a_delivery_commit_that_does_not_verify_is_not_delivered(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        # Only the subject and trailers of a delivery commit, and no bundle.
+        head = deliver(worktree, bundle_run=None)
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual("active", shown["record"]["state"])
+        self.assertEqual([head], [item["commit"] for item in shown["deliveries"]])
+        (mismatch,) = shown["deliveries"][0]["mismatches"]
+        self.assertIn(".concorde/evidence/t1/1.json", mismatch)
+        self.assertIn("not in the commit", mismatch)
+        self.assertEqual(
+            ["active"], [item["state"] for item in store.list_tasks(self.root)]
+        )
+        git(self.root, "merge", "--ff-only", "concorde/t1")
+        before = self.record()
+        status, value = self.command("close", "t1", "--merged")
+        self.assertEqual(1, status, value)
+        error = value["error"]
+        self.assertEqual(
+            ("delivery_unverified", "decision"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertIn(head, error["detail"])
+        self.assertIn(mismatch, error["detail"])
+        self.assertEqual(before, self.record())
+        self.assertTrue(worktree.exists())
+        # A bundle whose readiness run is not the trailer's does not verify either.
+        second = deliver(worktree, text="second = True\n", bundle_run="r-other")
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual("active", shown["record"]["state"])
+        self.assertEqual(second, shown["deliveries"][1]["commit"])
+        (mismatch,) = shown["deliveries"][1]["mismatches"]
+        self.assertIn("readiness run r-other", mismatch)
+        # The next delivery that verifies delivers the task.
+        deliver(worktree, text="third = True\n")
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual("delivered", shown["record"]["state"])
+        self.assertEqual([], shown["deliveries"][2]["mismatches"])
 
     @verifies("scenario.tasks.close-merged")
     def test_close_a_merged_task(self):

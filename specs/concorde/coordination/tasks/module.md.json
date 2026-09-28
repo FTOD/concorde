@@ -33,7 +33,10 @@
         "target": "module.delivery",
         "meaning": "#uses-delivery",
         "relies_on": [
-          "concept.delivery-commit"
+          "concept.delivery-commit",
+          "concept.evidence-bundle",
+          "contract.delivery.evidence-bundle",
+          "req.delivery.recovered-verified"
         ]
       },
       {
@@ -123,7 +126,7 @@
     {
       "type": "relates",
       "source": "realization.tasks.store",
-      "verb": "reads from the task branch",
+      "verb": "reads from the task branch and verifies",
       "target": "concept.delivery-commit"
     }
   ],
