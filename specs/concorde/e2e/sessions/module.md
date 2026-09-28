@@ -94,7 +94,38 @@ the tool writes `session.json` with the rounds so far, the end `wait_exceeded` a
 file and the session's `session.json`, so the kept session shows which run outlived the wait. The
 session ends `idle`, `exited` when a round's process fails (with its standard error kept),
 `no_session` when the first round names no session, `rounds_exhausted` after the allowed rounds
-([requirements](requirements.md#req.headless-sessions.rounds-bounded)), or `wait_exceeded`.
+([requirements](requirements.md#req.headless-sessions.rounds-bounded)), or `wait_exceeded`. One
+round and its wake, with every way the session ends:
+
+```d2 illustrative
+direction: down
+round: "Round n: claude -p or pi -p"
+failed: "Process failed?" {shape: diamond}
+named: "Session named?" {shape: diamond}
+unsettled: "Unsettled runs?" {shape: diamond}
+wait: "Wait until each has finished or its runner has gone"
+within: "Within the hour?" {shape: diamond}
+remaining: "A round left?" {shape: diamond}
+wake: "Resume with the wake message"
+exited: "exited" {shape: oval}
+no_session: "no_session" {shape: oval}
+idle: "idle" {shape: oval}
+exceeded: "wait_exceeded, session.json written first" {shape: oval}
+exhausted: "rounds_exhausted" {shape: oval}
+round -> failed
+failed -> exited: yes
+failed -> named: no
+named -> no_session: no
+named -> unsettled: yes
+unsettled -> idle: no
+unsettled -> wait: yes
+wait -> within
+within -> exceeded: no
+within -> remaining: yes
+remaining -> exhausted: no
+remaining -> wake: yes
+wake -> round: "round n + 1"
+```
 
 **Reading the logs.** A resumed Claude Code round first replays the stopped background command as
 a turn of its own with no model turn; its `result` event is not the round's answer. The round's

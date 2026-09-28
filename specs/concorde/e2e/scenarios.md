@@ -26,7 +26,13 @@ Concrete situations that show the [requirements](requirements.md) of
 - GIVEN a [test project](../glossary.json#concept.test-project) whose repository root Claude Code does not trust, and a configuration with other settings
 - WHEN the developer runs `trust` for a directory inside it
 - THEN the configuration marks that repository root trusted, keeps every other setting, and a backup of the file exists
-- AND running `trust` again changes nothing
+
+### scenario.e2e.trust-again — Trusting a trusted project changes nothing
+
+- GIVEN a test project whose repository root `trust` already marked trusted
+- WHEN the developer runs `trust` for it again
+- THEN the configuration file is unchanged
+- AND the result names no newly trusted root and names that root as already trusted
 
 ### scenario.e2e.headless — A headless run waits for its workflow without trust
 

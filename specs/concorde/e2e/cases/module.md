@@ -50,6 +50,31 @@ do not stop the round. A step that does not end `ok` stops the repair with its r
 task open. The command prints the task, the Modules, every step with its run, status, summary, the
 review's verdict and the error of a step that did not end `ok`, and the step the repair stopped at,
 or none. A task of the same name that already exists fails the command with `task open`'s error.
+The round, with its one branch and the exit every step shares:
+
+```d2 illustrative
+direction: down
+open: "task open, in the project"
+review: "spec_review"
+accepted: "Verdict accepted?" {shape: diamond}
+specify: "specify, with the review as input"
+again: "spec_review again, findings reported"
+validate: "task-validation"
+delivery: "delivery"
+merge: "task merge" {shape: oval}
+stop: "Stopped at that step, the task left open" {shape: oval}
+open -> review
+review -> accepted
+accepted -> validate: yes
+accepted -> specify: no
+specify -> again -> validate
+validate -> delivery -> merge
+review -> stop: "not ok" {style.stroke-dash: 3}
+specify -> stop: "not ok" {style.stroke-dash: 3}
+again -> stop: "not ok" {style.stroke-dash: 3}
+validate -> stop: "not ok" {style.stroke-dash: 3}
+delivery -> stop: "not ok" {style.stroke-dash: 3}
+```
 
 **Grading a case.** `grade` decides whether the merged change resolves the issue the way SWE-bench
 does: in a throwaway worktree of `--ref` it puts every file the case's test patch touches back as

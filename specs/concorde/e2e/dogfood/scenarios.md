@@ -7,22 +7,37 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN the scenarios under `scripts/e2e/scenarios/`
 - WHEN they are read
-- THEN each has its name, a prompt, expected types and a fault whose every old text occurs exactly once in this checkout
-- BUT an unknown scenario is refused with `unknown_scenario` naming the known ones
+- THEN each has its name, a prompt, expected types and a fault whose every old text occurs exactly once in this checkout's working tree
 
-### scenario.dogfood-scenarios.client — A scenario runs on either client
+### scenario.dogfood-scenarios.unknown-scenario — An unknown scenario is refused
 
-- GIVEN a scenario without a `client`, whose fault changes both [worker backends](../../glossary.json#concept.worker-backend)' write checks
-- WHEN it is read and prepared
+- GIVEN the scenarios under `scripts/e2e/scenarios/`
+- WHEN a scenario none of them names is read
+- THEN it is refused with `unknown_scenario` naming the known ones
+
+### scenario.dogfood-scenarios.client — A scenario without a client runs on Claude Code
+
+- GIVEN a scenario without a `client`
+- WHEN it is read
 - THEN its client is Claude Code
-- AND preparing it for pi installs Concorde with `--pi`, and for Claude Code without
+
+### scenario.dogfood-scenarios.client-install — The client decides the develop install
+
+- GIVEN a scenario being prepared for a client
+- WHEN the runner makes the [develop install](../../glossary.json#concept.develop-install)
+- THEN for pi it installs Concorde with `--pi`, and for Claude Code without
 
 ### scenario.dogfood-scenarios.fault — A fault is its own commit
 
 - GIVEN a clean clone and a fault
 - WHEN the runner injects it
 - THEN the edits are applied and committed alone as "Inject fault: <summary>", leaving the clone clean
-- BUT injecting it again is refused with `fault_not_applicable`, naming the file and how often the old text was found
+
+### scenario.dogfood-scenarios.fault-reinjected — A fault that no longer applies is refused
+
+- GIVEN a clone into which a fault was injected
+- WHEN the runner injects the same fault again
+- THEN it is refused with `fault_not_applicable`, naming the file and how often the old text was found
 
 ### scenario.dogfood-scenarios.classified — A report is classified by type and basis
 
