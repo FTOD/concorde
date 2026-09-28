@@ -130,10 +130,15 @@ title.
    - **page anchors**: the Module identity (on its entry) and the document identity are inserted
      as anchors after the level-1 title, unless the reading already carries them.
 3. When the root Module declares a glossary, it writes the Glossary page at the route of the
-   glossary's path without `.json` (`/specs/concorde/glossary` here): every concept sorted by title,
-   each a level-2 heading anchored by its identity, with its definition (term links inside it
-   pointing to anchors on the same page), its owning Module's entry and a link to its explanation,
-   and any retirement or external-conflict note.
+   glossary's path without `.json` (`/specs/concorde/glossary` here). An index comes first: every
+   term by initial letter, each linking to its entry. Level-2 group headings follow, anchored
+   `terms.<module id>`: "Core terms" for the concepts the root Module owns, then one group per
+   Module the root contains, in `contains` order, holding every concept whose owner is that Module
+   or lies below it (an owner outside the root's tree gets the group of its own topmost Module).
+   Within a group the concepts are sorted by title, letter case ignored, each a level-3 heading
+   anchored by its identity, with its definition (term links inside it pointing to anchors on the
+   same page), its owning Module's entry and a link to its explanation, and any retirement or
+   external-conflict note. The page's table of contents lists the groups only.
 4. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` and, when any page has the
    `implementation` collection, `implementationDocumentsSidebar`. The Glossary page is the last
    item of the declaring Module's category in `moduleDocumentsSidebar`.

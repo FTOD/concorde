@@ -111,7 +111,9 @@ anchor.
 
 - GIVEN a project whose root Module declares a glossary with several concepts
 - WHEN the site is built
-- THEN one Glossary page, listed under the root Module in the navigation, shows every concept sorted by title with its identity as anchor, its definition, its owning Module and a link to its explanation
+- THEN one Glossary page, listed under the root Module in the navigation, shows every concept with its identity as anchor, its definition, its owning Module and a link to its explanation
+- AND the page groups the concepts: first those the root Module owns, then one group per Module the root contains, in `contains` order, holding the concepts whose owner is that Module or lies below it, each group sorted by title
+- AND an index before the groups lists every term by initial letter, each linking to its entry
 - AND the entry page of a Module that owns concepts lists them, each linking to the glossary page
 - BUT no document's source changes
 

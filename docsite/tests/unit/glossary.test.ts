@@ -285,15 +285,61 @@ describe("term links", () => {
 
 describe("the glossary page", () => {
   // verifies: scenario.views.glossary-page
-  it("lists every concept sorted by title, with its owner and explanation", () => {
+  it("lists every concept with its owner and explanation", () => {
     const registry = load();
     const page = renderGlossaryPage(registry);
-    expect(page).toContain("## Hold {#concept.transfer.hold}");
+    expect(page).toContain("### Hold {#concept.transfer.hold}");
     expect(page).toContain("Money withheld until a transfer settles.");
     expect(page).toContain("Owned by [Transfer](/specs/transfer/module).");
     expect(page).toContain(
       "[Explained in Transfer](/specs/transfer/module#concept.transfer.hold).",
     );
+  });
+
+  // verifies: scenario.views.glossary-page
+  it("groups the root's terms first, then each contained Module's subtree, after an A-Z index", () => {
+    const registry = load();
+    const hold = registry.glossary!.concepts[0];
+    const concept = (id: string, title: string, owner: string) => ({
+      ...hold,
+      id,
+      title,
+      owner,
+    });
+    registry.glossary!.concepts = [
+      concept("concept.audit.trail", "Trail", "module.audit"),
+      concept("concept.bank.account", "account", "module.bank"),
+      concept("concept.ledger.entry", "Entry", "module.ledger"),
+      hold,
+      concept("concept.transfer.batch", "Batch", "module.transfer"),
+    ];
+    const page = renderGlossaryPage(registry);
+    const at = (text: string) => {
+      expect(page).toContain(text);
+      return page.indexOf(text);
+    };
+    const order = [
+      at("## Index {#terms.index}"),
+      at(
+        "**A** · [account](#concept.bank.account)\n\n**B** · [Batch](#concept.transfer.batch)",
+      ),
+      at("**E** · [Entry](#concept.ledger.entry)\n\n**H** · [Hold]"),
+      at("## Core terms {#terms.module.bank}"),
+      at("### account {#concept.bank.account}"),
+      at("## Transfer {#terms.module.transfer}"),
+      at(
+        "Terms owned by [Transfer](/specs/transfer/module) or a Module it contains.",
+      ),
+      at("### Batch {#concept.transfer.batch}"),
+      // Ledger sits under Transfer, so its term joins Transfer's group, sorted by title.
+      at("### Entry {#concept.ledger.entry}"),
+      at("### Hold {#concept.transfer.hold}"),
+      at("## Audit {#terms.module.audit}"),
+      at("### Trail {#concept.audit.trail}"),
+    ];
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(page).toContain("Owned by [Ledger](/specs/ledger/module).");
+    expect(page).not.toContain("## Ledger");
   });
 
   it("shows a retired concept's reason and an external conflict note", () => {
@@ -328,7 +374,8 @@ describe("the glossary page", () => {
       "docsite/.generated/content/specs/bank/glossary.md",
     );
     expect(staged).toContain("title: Glossary");
-    expect(staged).toContain("## Hold {#concept.transfer.hold}");
+    expect(staged).toContain("### Hold {#concept.transfer.hold}");
+    expect(staged).toContain("toc_max_heading_level: 2");
     const sidebar = scopedSidebar(registry);
     expect(sidebar[0].items).toEqual(
       expect.arrayContaining([
