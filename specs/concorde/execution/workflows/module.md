@@ -43,7 +43,48 @@ with the arguments `{"module": "module.shop", "mode": "no-ask"}`, or, in pi, the
 `.concorde/workflows/pi/brownfield.js` through pi-subagents with the task worktree as its working
 directory and the same arguments. The arguments name no workspace: every command the workflow runs
 starts in that worktree, whose [workspace binding](../../glossary.json#concept.workspace-binding)
-names it. Every workflow takes `mode`, `answers`, `retry` and `restart`, plus its own arguments such
+names it. A worktree without a binding runs no workflow: both workflow commands answer there with
+`binding_required`.
+
+On the normal path that workflow runs eight steps in the `adopt` task worktree, one run after
+another. The survey reads the code of `module.shop` and proposes two children, `module.checkout`
+and `module.inventory`, the first using the second, together with the checks it found and the
+decisions it took. The scaffold creates the two Modules with stub Specs. Three code_to_spec runs
+then describe `module.inventory`, `module.checkout` and last `module.shop`, providers first, so that
+the worker describing `module.checkout` reads the description of `module.inventory` rather than its
+stub. A spec_review run reviews the three Modules, a `task-validation` run decides whether the
+workspace is ready, and, since it is, `delivery --adoption` makes the
+[delivery commit](../../glossary.json#concept.delivery-commit) on the task branch. Each run is a
+step with its own key, `survey`, `scaffold`, `describe:module.inventory`, `describe:module.checkout`,
+`describe:module.shop`, `spec_review`, `validate` and `delivery`, listed in the workspace's workflow
+record. The workflow ends with its report, saved beside that record as `reports/1.json` with the
+Markdown rendering `reports/1.md`: status `ok`, every decision and open question the runs
+reported, the review's verdict and findings, the proposed checks and every step that
+did not end `ok` with its error chain. The task level copies the decisions into the task's decision
+log; merging the task stays its own step.
+
+Started with `"mode": "interactive"` instead, the same workflow pauses right after the survey when
+the survey took a decision the developer has not settled, such as `d.db-helper`, where the worker
+chose to keep the shared database helper with the root. The workflow result has status
+`awaiting_decision` and lists `d.db-helper` with its options and recommendation, and the record
+holds the one step `survey`. Whoever started the workflow puts the question to the developer and
+starts it again with the answer under the base key `survey`:
+
+```json
+{"module": "module.shop", "mode": "interactive",
+ "answers": {"survey": [{"id": "d.db-helper",
+   "question": "Does the shared database helper get a Module of its own?",
+   "answer": "a Module of its own"}]}}
+```
+
+The answered survey is a new step, `survey@<digest>`, whose digest is taken from those answers. It
+runs `survey --modules module.shop --answers <file> --input <first survey run>`, so the new survey
+follows the answer to the question the first one asked. It supersedes the step `survey` together
+with every step recorded after it. Here there is none, since the workflow paused right after the
+survey; had later steps been recorded, they would never be found again and would run anew. The workflow then goes on from the scaffold as on the normal path, and a
+relaunch with the same answers finds `survey@<digest>` again instead of running it once more.
+
+Every workflow takes `mode`, `answers`, `retry` and `restart`, plus its own arguments such
 as `module`. `answers` maps a step's base key, such as `survey` or `describe:module.checkout`, to
 the list of every answer the developer has given for that step so far, in the shape of
 answers; a relaunch passes all of them again, not only the
@@ -52,8 +93,7 @@ short generation label, such as `{"scaffold": "2"}`, to run that step again what
 for instance after the workspace was reset by hand: the label becomes part of the
 [step key](../../glossary.json#concept.step-key), so the step and every later step run once more,
 and relaunching with the same label finds the restarted runs instead of starting them again, as
-long as no rerun of an earlier step has superseded them. A worktree without a binding runs no
-workflow: both workflow commands answer there with `binding_required`.
+long as no rerun of an earlier step has superseded them.
 
 <a id="concept.workflow-mode"></a><a id="concept.decision-point"></a>
 
@@ -417,6 +457,31 @@ Brownfield's procedure, as a step table:
 | 5 | `validate` | execution command `task-validation` | always after 4 | not `ok`, or readiness not ready |
 | 6 | `delivery` | execution command `delivery --adoption` | validation ready | — |
 | 7 | — | `concorde workflow report` | always, last | — |
+
+The same procedure as a flow, each dashed arrow a stop that goes straight to the report:
+
+```d2 illustrative
+direction: down
+survey: "survey"
+scaffold: "scaffold"
+describe: "describe:<id>\nproviders first, then <module>"
+review: "spec_review"
+validate: "validate\n(task-validation)"
+delivery: "delivery --adoption"
+report: "workflow report"
+survey -> scaffold: "ok; no-ask, or every decision point answered"
+survey -> report: "not ok; interactive with decision points not answered" {style.stroke-dash: 3}
+scaffold -> describe: "ok"
+scaffold -> report: "not ok" {style.stroke-dash: 3}
+describe -> describe: "next Module; no-ask goes on even when not ok"
+describe -> report: "interactive: not ok, or open questions not answered" {style.stroke-dash: 3}
+describe -> review: "after <module>"
+review -> validate: "ok, or no-ask"
+review -> report: "interactive and not ok" {style.stroke-dash: 3}
+validate -> delivery: "ok and ready"
+validate -> report: "not ok, or not ready" {style.stroke-dash: 3}
+delivery -> report
+```
 
 Created Modules are described providers first, by the `uses` the survey proposed among them, and
 otherwise in the proposal's order, so that a worker describing a consumer reads its providers'
