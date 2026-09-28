@@ -196,7 +196,9 @@ class ValidateTests(unittest.TestCase):
         self.assertNotIn("vendor/lib", unbound)
         self.assertIn("vendor/other", unbound)
 
-    @verifies("scenario.validation.submodule-content")
+    @verifies(
+        "scenario.validation.submodule-content", "scenario.validation.submodule-commit"
+    )
     def test_only_a_submodules_commit_is_measured(self):
         from concorde.validation.measurement import changed_paths, has_uncommitted
 
@@ -491,7 +493,7 @@ class ConfirmationTests(unittest.TestCase):
         self.assertEqual(refused.exception.code, "stale_confirmation")
         self.assertEqual(self.metadata.read_bytes(), changed)
 
-    @verifies("scenario.validation.confirm-refused")
+    @verifies("scenario.validation.confirm-invalid")
     def test_a_structural_error_after_confirmation_rolls_back(self):
         other = self.worktree / "specs/b/module.md"
         other.write_text(other.read_text() + BROKEN_LINK)

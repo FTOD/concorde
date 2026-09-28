@@ -50,12 +50,17 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the included submodule's gitlink is no blocking finding
 - BUT the other submodule's gitlink is reported as `unbound`
 
-### scenario.validation.submodule-content — Only a submodule's commit is measured
+### scenario.validation.submodule-content — A file changed inside a submodule is not measured
 
 - GIVEN a workspace with a submodule
 - WHEN a file inside the submodule's own worktree changes
 - THEN the submodule is no changed path and the workspace has no uncommitted change
-- BUT when the submodule is moved to another commit, it is a changed path and an uncommitted change
+
+### scenario.validation.submodule-commit — Moving a submodule's commit is a change
+
+- GIVEN a workspace with a submodule
+- WHEN the submodule is moved to another commit
+- THEN the submodule is a changed path and an uncommitted change
 
 ### scenario.validation.mode-change — A changed file mode changes the input digest
 
@@ -121,7 +126,14 @@ readiness is defined in the [contracts](contracts.md).
 
 ### scenario.validation.confirm-refused — A changed document stops confirmation
 
-- GIVEN a confirmation whose declaring document no longer has the recorded digest, or whose clearing would leave a structural error
+- GIVEN a confirmation whose declaring document no longer has the recorded digest
+- WHEN Delivery asks Validation to apply the confirmations
+- THEN the application is refused
+- AND every Spec document is left as it was
+
+### scenario.validation.confirm-invalid — A confirmation that would break the Specs is refused
+
+- GIVEN a confirmation whose clearing would leave a structural error
 - WHEN Delivery asks Validation to apply the confirmations
 - THEN the application is refused
 - AND every Spec document is left as it was
