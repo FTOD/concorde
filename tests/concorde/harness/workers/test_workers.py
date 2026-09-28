@@ -16,6 +16,7 @@ from concorde.errors import ERROR_SCHEMA
 from concorde.harness import write_hook
 from concorde.harness.settings import (
     RunPaths,
+    SettingsError,
     deny_rules,
     worker_settings,
     write_hook_source,
@@ -238,8 +239,16 @@ class SettingsTests(unittest.TestCase):
         undeclared = write_hook.decide(
             {"tool_input": {"file_path": f"{root}/src/a/../notes.txt"}}, data
         )
+        self.assertIn("src/notes.txt is not in this task's grant", undeclared)
         self.assertIn("pending file", undeclared)
         self.assertIn("specify", undeclared)
+        self.assertIn("another Module declares", undeclared)
+        self.assertEqual(
+            "Git metadata is not available to workers",
+            write_hook.decide(
+                {"tool_input": {"file_path": f"{root}/.git/config"}}, data
+            ),
+        )
         self.assertIn(
             "outside the task worktree",
             write_hook.decide({"tool_input": {"file_path": "/etc/passwd"}}, data),
@@ -271,6 +280,32 @@ class SettingsTests(unittest.TestCase):
             "deny",
             json.loads(broken.stdout)["hookSpecificOutput"]["permissionDecision"],
         )
+
+    @verifies("scenario.workers.malformed-grant-refused")
+    def test_a_malformed_grant_raises_a_detailed_settings_error(self):
+        entries = self.project.grant["entries"]
+        for bad, expected in (
+            ("src/a/", "not a list"),
+            ([*entries, "src/x.py"], f'grant entry {len(entries)} ("src/x.py")'),
+            ([*entries, {"level": "rw"}], "path is missing"),
+            ([*entries, {"path": "/etc/passwd", "level": "ro"}], "is absolute"),
+            ([*entries, {"path": "src/../../x", "level": "ro"}], "'..'"),
+            ([*entries, {"path": "src/x.py", "level": "write"}], "level 'write'"),
+        ):
+            with self.subTest(expected=expected):
+                grant_value = {**self.project.grant, "entries": bad}
+                with self.assertRaises(SettingsError) as raised:
+                    worker_settings(
+                        self.project.root,
+                        grant_value,
+                        self.run,
+                        python=sys.executable,
+                        home=self.project.home,
+                    )
+                self.assertEqual("grant_malformed", raised.exception.code)
+                self.assertIn(expected, str(raised.exception))
+        with self.assertRaises(SettingsError):
+            write_hook_source(self.project.root, {"context_identity": "x"})
 
     @verifies("scenario.workers.bash-confined")
     def test_the_bash_sandbox_is_configured_closed(self):
@@ -423,6 +458,22 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("failed", record["status"])
         self.assertEqual("run_directory_denied", record["error"]["code"])
         self.assertTrue((Path(record["run_directory"]) / "record.json").exists())
+        self.assertEqual([], record["rounds"])
+
+    @verifies("scenario.workers.malformed-grant-refused")
+    def test_a_run_with_a_malformed_grant_is_refused(self):
+        self.project.grant["entries"].append({"path": "src/x.py", "level": "write"})
+        record = self.project.run([{}])
+        self.assertEqual("failed", record["status"])
+        error = record["error"]
+        self.assertEqual("grant_malformed", error["code"])
+        self.assertEqual("input", error["unhandled"]["reason"])
+        self.assertIn("level 'write'", error["detail"])
+        self.assertIn('"src/x.py"', error["detail"])
+        run = Path(record["run_directory"])
+        self.assertTrue((run / "record.json").exists())
+        self.assertFalse((run / "control/settings.json").exists())
+        self.assertFalse((run / "control/write_hook.py").exists())
         self.assertEqual([], record["rounds"])
 
     @verifies("scenario.workers.audit-violation")

@@ -42,7 +42,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a running worker
 - WHEN it uses Write on a path in the worktree that is in no grant list
-- THEN the [write hook](../../glossary.json#concept.write-hook) denies it with a reason saying the file must first be declared pending through a `specify` task
+- THEN the [write hook](../../glossary.json#concept.write-hook) denies it with a reason saying the path is not in this task's grant, that a file no Module declares must first be declared pending through a `specify` task and that a file another Module declares needs that Module bound
 - AND the file does not appear in the worktree
 
 ### scenario.workers.ro-edit-denied — A read-only file cannot be edited
@@ -78,6 +78,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a grant and a primary worktree whose generated [deny rules](../../glossary.json#concept.deny-rules) would cover the run's working, home or temporary directory
 - WHEN the host is asked to start the worker
 - THEN it refuses before launch with `run_directory_denied`
+- AND it still writes the run record
+
+### scenario.workers.malformed-grant-refused — A malformed grant is refused before launch
+
+- GIVEN a grant whose entries are not a list, or with an entry that is not an object, has no path, an absolute path or one leaving the task worktree through `..`, or a level other than `rw`, `ro` and `names`
+- WHEN the host is asked to start the worker, or generates its settings
+- THEN settings generation raises `grant_malformed` naming the entry and what is wrong with it
+- AND the host refuses before launch with `grant_malformed` and the reason `input`, generating no settings or write hook
 - AND it still writes the run record
 
 ## Audit and deletions

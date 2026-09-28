@@ -51,12 +51,13 @@ denials to Bash too, they never cover system directories or the **runtime paths*
 itself needs to read, such as the toolchain, `.venv` or `node_modules`, which Workers passes with
 the run as [one of its inputs](../execution/workers/launch.md#inputs) and the Harness only receives.
 The **[write hook](../glossary.json#concept.write-hook)** makes `rw` the exact write allowlist,
-denying any other Edit or Write with a reason naming the path's level (e.g. an undeclared file
-needing `specify` first); it says nothing about `rw` and never governs reads. The Bash sandbox
-denies reading the worktree and `$HOME` except `ro` and `rw` files and runtime paths, allows writing
-only the `rw` files and the run's `work/`, `home/` and temporary directory, allows no network, and
-ignores unsandboxed-command requests. `names` files are readable by no tool, only named in the
-brief. The tool set of each [task type](../glossary.json#concept.task-type) is chosen here too.
+denying any other Edit or Write with a reason naming the path's level; for a path outside the
+grant the reason says both that a file no Module declares needs a `specify` task first and that a
+file another Module declares needs that Module bound. It says nothing about `rw` and never governs
+reads. The Bash sandbox denies reading the worktree and `$HOME` except `ro` and `rw` files and
+runtime paths, allows writing only the `rw` files and the run's `work/`, `home/` and temporary
+directory, allows no network, and ignores unsandboxed-command requests. `names` files are readable
+by no tool, only named in the brief. The tool set of each [task type](../glossary.json#concept.task-type) is chosen here too.
 Exact shapes: [Claude Code mechanics](claude-code.md).
 
 <a id="concept.permission-extension"></a>
@@ -114,7 +115,11 @@ inputs, including a worker's run directory and runtime paths from Workers.
 **Spec core** computes the [grant](../glossary.json#concept.grant) a worker's
 harness is generated from. The Harness relies on the grant listing every path's level (`rw`, `ro`,
 `names`, ungranted omitted); it never computes or widens a grant, only receives it frozen from
-Workers, and generates nothing for a grant it cannot read.
+Workers. It generates nothing from a malformed grant: one that has no `entries` list, or an entry
+that is not an object with a non-empty path relative to the task worktree, never absolute and never
+leaving it through `..`, and a level of `rw`, `ro` or `names`. Settings generation then raises a
+`SettingsError` with the code `grant_malformed` naming the first such entry and what is wrong with
+it, which Workers reports as its [refusal to launch](../execution/workers/launch.md#errors).
 
 **pi**, whose pinned copy under `references/pi/` is the version the pi harness was written against,
 is relied on for its extension API: a tool an extension registers replaces pi's built-in of the
@@ -241,6 +246,34 @@ decisions of its read and write tables (`pi_policy.ts`), and the task session's 
 `pi_policy.ts` to resolve paths exactly as pi does. Workers and Task sessions embed the policy into
 these sources and copy them into place.
 
-The Harness has no tests of its own yet: its files are exercised by the Workers tests, which run
-fake and, on request, live workers and the pi path decisions under Node, and by the Task session
-tests, which run the task-session hook and boundary decisions.
+### Where its promises are required
+
+The Harness holds no requirements or scenarios of its own. What it generates is only observable
+once an agent Module applies it to an agent, so each decidable promise is a requirement of the
+Module that applies it, and the tests that verify those requirements exercise the Harness's files:
+
+- A worker's harness, in Workers: one frozen grant for the whole run and every round
+  ([req.workers.frozen-grant](../execution/workers/launch.md#req.workers.frozen-grant),
+  [req.workers.unchanged-across-rounds](../execution/workers/launch.md#req.workers.unchanged-across-rounds)),
+  no launch from a malformed grant
+  ([req.workers.malformed-grant](../execution/workers/launch.md#req.workers.malformed-grant)),
+  `rw` as the exact write allowlist
+  ([req.workers.write-allowlist](../execution/workers/launch.md#req.workers.write-allowlist)),
+  the deny rules
+  ([req.workers.read-denials](../execution/workers/launch.md#req.workers.read-denials)), the Bash
+  sandbox ([req.workers.bash-sandbox](../execution/workers/launch.md#req.workers.bash-sandbox)),
+  no Git ([req.workers.no-git](../execution/workers/launch.md#req.workers.no-git)), the same grant
+  on pi ([req.workers.pi-same-grant](../execution/workers/pi.md#req.workers.pi-same-grant)), the
+  permission extension's file tools, sandbox, configuration and limits
+  ([req.workers.pi-file-tools](../execution/workers/pi.md#req.workers.pi-file-tools),
+  [req.workers.pi-sandbox](../execution/workers/pi.md#req.workers.pi-sandbox),
+  [req.workers.pi-only-extension](../execution/workers/pi.md#req.workers.pi-only-extension),
+  [req.workers.pi-limits](../execution/workers/pi.md#req.workers.pi-limits)).
+- A task session's harness, in Task sessions: the session boundary's file tools and shell
+  ([req.task-session.boundary](../coordination/task-session/requirements.md#req.task-session.boundary),
+  [req.task-session.shell-boundary](../coordination/task-session/requirements.md#req.task-session.shell-boundary))
+  and the boundary written before the session starts
+  ([req.task-session.boundary-first](../coordination/task-session/requirements.md#req.task-session.boundary-first)).
+
+The Workers tests run fake and, on request, live workers and the pi path decisions under Node; the
+Task session tests run the task-session hook and boundary decisions.
