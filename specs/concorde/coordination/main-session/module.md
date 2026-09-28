@@ -68,9 +68,12 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   `git merge`: it holds the [merge lock](../../glossary.json#concept.merge-lock) so merges of
   several main sessions never interleave, runs `concorde spec-validation` on the primary branch, or
   exactly the `--check` commands given, undoes a merge whose checks fail and closes the task.
-  Retry a `merge_busy`; resolve a conflict in the task worktree by merging the primary branch into
-  the task branch and delivering again; handle a failed check as new work, never by discarding
-  someone's change.
+  Retry a `merge_busy`, and a `workspace_busy` once the task's run ended; resolve a conflict in the
+  task worktree by merging the primary branch into the task branch and delivering again; handle a
+  failed check as new work, never by discarding someone's change. Finish a merge that a
+  `merge_incomplete` refusal names before anything else, with `concorde task merge <task> --resume`,
+  or `--abort` when the merge commit is no longer the primary branch's head, and leave a
+  `merge_diverged` primary branch to the developer.
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
 - **Use the project's terms.** Every session of the project starts with all the terms of its
@@ -369,7 +372,12 @@ parallel tasks from mixing changes; opening, merging, closing tasks and writing 
 agent's responsibility, whether it works the task itself or through a task session. The guidance
 relies on `concorde task merge` holding the merge lock and undoing a merge whose checks fail, and
 tells the main agent to retry a `merge_busy`, to resolve a conflict in the task worktree, and to
-treat a failed check as new work rather than discard a change.
+treat a failed check as new work rather than discard a change. It also relies on Tasks refusing
+every task command with `merge_incomplete` after a merge was interrupted, and tells the main agent
+to finish that merge first with `--resume` or `--abort` rather than to work around the refusal:
+checking the merge again is the default, since the recorded checks decide as they would have, and
+only a primary branch changed by hand after the merge goes to the developer. A task session has no
+authority to finish a merge, so its guidance sends such a refusal to the main agent.
 
 <a id="uses-task-session"></a>
 

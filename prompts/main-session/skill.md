@@ -263,11 +263,25 @@ other main sessions may be merging into the same primary worktree, and `concorde
 the merge lock that lets only one merge run at a time. It merges the branch, runs
 `concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first), undoes the
 merge if a check fails, and closes the task as merged. When it fails with `merge_busy`, another
-session is merging: run it again; the lock is free the moment that session's command ends. When it
+session is merging: run it again; the lock is free the moment that session's command ends. When
+`merge` or `close` fails with `workspace_busy`, a run of that task is still going: wait until it
+ends (`concorde task show <task>` names it) and run the command again. When it
 fails with `merge_conflict`, go back into the task worktree, merge the primary branch into the task
 branch, resolve the conflicts, run `task-validation` and `delivery` again, and merge again. A check that
 fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to
 discard someone's change.
+
+When any `concorde task` command fails with `merge_incomplete`, a merge (yours or another main
+session's) ended before its checks decided whether it stays, and nothing may build on the primary
+branch until it is finished. Finish it before anything else, without asking the developer: run
+`concorde task merge <task> --resume` for the task the refusal names, which reruns the merge's
+checks on the merge commit and then closes the task or undoes the merge like any merge. Run
+`concorde task merge <task> --abort` instead when the refusal says the primary branch is not at the
+merge commit or `--resume` answers `not_resumable`: it resets the primary branch to the commit
+before the merge and returns the task to delivered, so merge it again. `merge_diverged` means the
+primary branch was changed by hand after the merge; show the developer the commits it names, since
+discarding them is the developer's decision. A task session that meets `merge_incomplete` reports it
+to you instead of escalating.
 
 Merging is not the only way a task ends. Close a task that reached its goal without a merge, such
 as one that tried something out or answered a question, with

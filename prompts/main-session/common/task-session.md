@@ -24,3 +24,7 @@ concorde task escalate <task> --by task-session --run <run-id> [--error-file <js
   --reason decision --explanation "<why you may not decide this yourself>" \
   [--option "<choice>"…] [--recommendation "<yours>"]
 ```
+
+When `concorde task escalate` itself is refused with `merge_incomplete` or `merge_busy`, a merge in
+the primary worktree is unfinished or still running; send that refusal, unchanged, to the main
+agent instead and wait for its answer.

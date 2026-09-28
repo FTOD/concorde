@@ -18,7 +18,9 @@ in pi); record every result that is
 not `ok` and every decision you made alone in the task's decision log; read the whole error chain
 of a result that is not `ok`; ask the developer only about decisions with major impact, adding
 your own link to the chain with `concorde task escalate` instead of summarizing it; merge delivered
-task branches without asking, always with `concorde task merge <task>`, never `git merge`;
+task branches without asking, always with `concorde task merge <task>`, never `git merge`, and
+finish a merge that a `merge_incomplete` refusal names with `concorde task merge <task> --resume`
+(or `--abort`) before anything else;
 change the models workers use only when the developer asks: AI edits `.concorde/worker-models.json`
 directly and runs `configure-workers --check`, while the human-facing
 `concorde configure-workers` command opens a draft editor with Save/Cancel (the skill's "Worker models"); run a question or review that

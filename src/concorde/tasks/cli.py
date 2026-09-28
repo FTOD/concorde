@@ -1,6 +1,10 @@
 """``concorde task open|list|show|session|close|merge|escalate``: print one JSON value; refusals
 exit 1, bad usage 2.
 
+While a merge is unfinished, every one of them that changes something is refused with
+``merge_incomplete`` apart from ``merge --resume`` and ``merge --abort`` of that task and
+``session --stop``; ``list`` and ``show`` still answer.
+
 A refusal prints ``{"error": <error link>}``: the Tasks component's account of what it refused,
 why it cannot handle it, and what the caller can do. ``session`` starts a task session in a task
 worktree on the main session's program, and in pi answers or stops its running round.
@@ -89,6 +93,26 @@ HANDLING = {
         "Git refused to restore the primary branch, so the primary worktree needs inspecting "
         "before anyone merges again",
     ),
+    "workspace_busy": (
+        "environment",
+        "a run of the task's workspace holds its workspace lock, and waiting for that run or "
+        "stopping it is the caller's choice",
+    ),
+    "merge_incomplete": (
+        "decision",
+        "a merge into the primary branch ended before its checks decided whether it stays, "
+        "and whether to check it again or undo it is the main agent's decision",
+    ),
+    "not_resumable": (
+        "decision",
+        "the primary branch's head is no longer the merge that could be checked again, and "
+        "Tasks does not merge again on its own",
+    ),
+    "merge_diverged": (
+        "decision",
+        "the primary branch moved in a way the interrupted merge did not, and Tasks never "
+        "resets commits it did not make",
+    ),
 }
 OPTIONS = {
     "unknown_task": ["run concorde task list to see the tasks"],
@@ -120,8 +144,27 @@ OPTIONS = {
         "fix the check itself in its own task if the check is what is wrong",
     ],
     "rollback_failed": [
-        "inspect git status in the primary worktree and restore the primary branch to the "
-        "commit named before merging again",
+        "inspect git status in the primary worktree, then run concorde task merge <task> "
+        "--abort to restore the primary branch to the commit named",
+    ],
+    "workspace_busy": [
+        "wait until the run named ends (concorde task show <task> shows it), then run the "
+        "command again",
+        "stop that run if it must not finish",
+    ],
+    "merge_incomplete": [
+        "run concorde task merge <task> --resume to rerun its checks on the merge commit and "
+        "close the task, or undo the merge when a check fails",
+        "run concorde task merge <task> --abort to reset the primary branch to the commit "
+        "before the merge and return the task to delivered",
+    ],
+    "not_resumable": [
+        "run concorde task merge <task> --abort, which returns the task to delivered, then "
+        "merge it again",
+    ],
+    "merge_diverged": [
+        "inspect the primary branch, restore it by hand to the commit before the merge or to "
+        "the merge commit named, and run --abort or --resume again",
     ],
     "worktree_not_ignored": [
         "add .claude/worktrees/ to .gitignore",
@@ -203,6 +246,9 @@ def parser() -> argparse.ArgumentParser:
     merging.add_argument("task_id")
     merging.add_argument("--check", action="append", default=[])
     merging.add_argument("--wait", type=float, default=store.MERGE_WAIT)
+    finishing = merging.add_mutually_exclusive_group()
+    finishing.add_argument("--resume", action="store_true")
+    finishing.add_argument("--abort", action="store_true")
     escalating = commands.add_parser("escalate")
     escalating.add_argument("task_id")
     escalating.add_argument("--code", required=True)
@@ -323,7 +369,11 @@ def start_session(here: Path, arguments) -> dict:
     """Start, answer or stop a task session on the main session's own program."""
     from ..harness.models import ModelConfigError, detect_client
 
-    store.require_primary(here)
+    primary = store.require_primary(here)
+    if not arguments.stop:
+        # Stopping a round never builds on the primary branch, so an unfinished merge does
+        # not keep a runaway round alive.
+        store.guard_merges(primary, arguments.task_id)
     try:
         program, _ = detect_client()
     except ModelConfigError as error:
@@ -376,6 +426,7 @@ def start_session(here: Path, arguments) -> dict:
 def escalate(here: Path, arguments) -> dict:
     primary = store.primary_of(here)
     task = store.load_task(primary, arguments.task_id)
+    store.guard_merges(primary, task["id"])
     causes = [_run_error(primary, task, run) for run in arguments.run]
     causes += [_file_error(path) for path in arguments.error_file]
     causes += [_escalated_error(task, number) for number in arguments.escalation]
@@ -449,7 +500,12 @@ def main(argv, cwd: Path | None = None) -> int:
             value = escalate(here, arguments)
         elif arguments.command == "merge":
             value = merge.merge_task(
-                here, arguments.task_id, arguments.check, arguments.wait
+                here,
+                arguments.task_id,
+                arguments.check,
+                arguments.wait,
+                resume=arguments.resume,
+                abort=arguments.abort,
             )
         else:
             value = close(here, arguments)

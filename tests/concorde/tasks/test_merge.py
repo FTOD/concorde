@@ -7,12 +7,16 @@ import io
 import json
 import os
 import shlex
+import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import unittest
+from pathlib import Path
 
 from concorde.errors import ERROR_SCHEMA
+from concorde.execution.runs import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
@@ -30,6 +34,19 @@ def git(root, *arguments):
 def python(code: str) -> str:
     """A ``--check`` running ``code`` with this Python."""
     return shlex.join([sys.executable, "-c", code])
+
+
+def killing(marker: Path, then: int = 0) -> str:
+    """A ``--check`` that, the first time, kills the merge running it and, once ``marker``
+    exists, exits with ``then``."""
+    return python(
+        "import os, pathlib, signal, sys\n"
+        f"marker = pathlib.Path({str(marker)!r})\n"
+        "if not marker.exists():\n"
+        "    marker.write_text('killed')\n"
+        "    os.kill(os.getppid(), signal.SIGKILL)\n"
+        f"sys.exit({then})\n"
+    )
 
 
 class MergeTests(unittest.TestCase):
@@ -68,6 +85,26 @@ class MergeTests(unittest.TestCase):
 
     def head(self):
         return git(self.root, "rev-parse", "HEAD")
+
+    def interrupted(self, then: int = 0):
+        """Merge task t1 in a process its check kills; the commits before and after."""
+        self.project.open_task("t1")
+        self.deliver()
+        before = self.head()
+        marker = Path(tempfile.mkdtemp()) / "killed"
+        self.addCleanup(marker.unlink, missing_ok=True)
+        environment = dict(os.environ, PYTHONPATH=str(REPOSITORY_ROOT / "src"))
+        merged = subprocess.run(
+            [sys.executable, "-m", "concorde", "task", "merge", "t1"]
+            + ["--check", killing(marker, then)],
+            cwd=self.root,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(-signal.SIGKILL, merged.returncode, merged.stdout)
+        return before, self.head()
 
     def assert_untouched(self, before, task_id="t1"):
         self.assertEqual(before, self.head())
@@ -305,6 +342,251 @@ class MergeTests(unittest.TestCase):
         git(self.root, "checkout", "-q", "-")
         self.assert_untouched(before)
         self.assertFalse((self.root / ".concorde/tasks/t1.merge.log").exists())
+
+    @verifies("scenario.tasks.merge-exact-commit")
+    def test_the_merge_merges_the_commit_it_checked(self):
+        self.project.open_task("t1")
+        checked = self.deliver()
+        worktree = self.project.worktree("t1")
+        mergeable = store.mergeable
+        moved = []
+
+        def moving(primary, task_id):
+            found = mergeable(primary, task_id)
+            if not moved:
+                (worktree / "src/a/late.py").write_text("late = 1\n")
+                moved.append(commit(worktree, "a commit after the checks"))
+            return found
+
+        store.mergeable = moving
+        self.addCleanup(setattr, store, "mergeable", mergeable)
+        error = self.refusal("merge", "t1", "--check", python("pass"))
+        # The merge took the checked commit, not the branch's new head, and closing refused.
+        self.assertEqual("not_merged", error["code"])
+        self.assertIn("stays merging", error["detail"])
+        self.assertIn("--resume", error["detail"])
+        head = self.head()
+        self.assertEqual(checked, head)
+        self.assertNotEqual(
+            0,
+            subprocess.run(
+                ["git", "merge-base", "--is-ancestor", moved[0], head], cwd=self.root
+            ).returncode,
+        )
+        self.assertEqual("merging", self.state())
+
+    @verifies("scenario.tasks.merge-workspace-busy")
+    def test_merge_and_close_refuse_a_busy_workspace(self):
+        self.project.open_task("t1")
+        self.deliver()
+        before, record = self.head(), store.load_task(self.root, "t1")
+        with workspace_lock(self.root / ".concorde", "t1", "run r-1 (delivery)"):
+            merged = self.refusal("merge", "t1", "--check", python("pass"))
+            closed = self.refusal("close", "t1", "--completed", "--note", "n")
+        for error in (merged, closed):
+            self.assertEqual(
+                ("workspace_busy", "environment"),
+                (error["code"], error["unhandled"]["reason"]),
+            )
+            self.assertIn("run r-1 (delivery)", error["detail"])
+        self.assertEqual(record, store.load_task(self.root, "t1"))
+        self.assert_untouched(before)
+        self.assertFalse(store.merge_lock_held(self.root))
+
+    @verifies("scenario.tasks.merge-interrupted")
+    def test_an_interrupted_merge_refuses_every_mutating_command(self):
+        before, after = self.interrupted()
+        self.assertNotEqual(before, after)
+        record = store.load_task(self.root, "t1")
+        self.assertEqual("merging", record["state"])
+        merging = record["merging"]
+        self.assertEqual(
+            (before, after, self.project.worktree("t1").exists()),
+            (merging["before"], merging["after"], True),
+        )
+        self.assertEqual(git(self.root, "rev-parse", "concorde/t1"), merging["checked"])
+        # Reading still works.
+        self.assertEqual("merging", self.state())
+        status, listed = self.command("list", "--state", "merging")
+        self.assertEqual((0, ["t1"]), (status, [item["id"] for item in listed]))
+        # Every mutating command is refused, naming the task, the commits and the recovery.
+        attempts = [
+            ("open", "t2", "--goal", "g", "--modules", "module.a"),
+            ("merge", "t1", "--check", python("pass")),
+            ("close", "t1", "--completed", "--note", "n"),
+            ("session", "t1", "--main", "main"),
+            ("escalate", "t1", "--code", "c", "--detail", "d", "--reason", "decision")
+            + ("--explanation", "e", "--error-file", "missing.json"),
+        ]
+        for argv in attempts:
+            error = self.refusal(*argv)
+            self.assertEqual(
+                ("merge_incomplete", "decision"),
+                (error["code"], error["unhandled"]["reason"]),
+                argv,
+            )
+            for part in ("task t1", before, after, "--resume", "--abort"):
+                self.assertIn(part, error["detail"])
+        self.assertNotIn(
+            "merge_incomplete", json.dumps(self.command("session", "t1", "--stop")[1])
+        )
+        self.assertFalse((self.root / ".concorde/tasks/t2.json").exists())
+        self.assertEqual(after, self.head())
+
+    @verifies("scenario.tasks.merge-resume")
+    def test_resume_checks_the_merge_again_and_closes(self):
+        before, after = self.interrupted()
+        # Without the recorded commit, the merge is recognized from its parents.
+        store.update(
+            self.root,
+            "t1",
+            lambda record: record["merging"].update(after=None) or record,
+        )
+        self.assertEqual(
+            after,
+            store.merge_commit(self.root, store.load_task(self.root, "t1")["merging"]),
+        )
+        self.assertEqual(
+            "invalid_input",
+            self.refusal("merge", "t1", "--resume", "--check", python("pass"))["code"],
+        )
+        status, value = self.command("merge", "t1", "--resume")
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            ("closed", "merged", None),
+            (
+                value["record"]["state"],
+                value["record"]["closed"]["outcome"],
+                value["record"]["merging"],
+            ),
+        )
+        self.assertEqual(
+            (before, after), (value["merge"]["before"], value["merge"]["after"])
+        )
+        self.assertEqual(after, self.head())
+        self.assertIn("resumed the merge", Path(value["merge"]["log"]).read_text())
+
+    @verifies("scenario.tasks.merge-resume")
+    def test_resume_undoes_a_merge_whose_check_fails(self):
+        before, _ = self.interrupted(then=1)
+        error = self.refusal("merge", "t1", "--resume")
+        self.assertEqual("check_failed", error["code"])
+        self.assertIn(f"back at {before}, clean", error["detail"])
+        self.assert_untouched(before)
+        self.assertIsNone(store.load_task(self.root, "t1")["merging"])
+
+    @verifies("scenario.tasks.merge-resume")
+    def test_resume_refuses_a_merge_that_is_not_the_head(self):
+        self.project.open_task("t1")
+        checked = self.deliver()
+        before = self.head()
+        self.assertEqual("not_merging", self.refusal("merge", "t1", "--resume")["code"])
+        store.begin_merge(
+            self.root,
+            "t1",
+            {
+                "before": before,
+                "checked": checked,
+                "branch": git(self.root, "symbolic-ref", "--short", "HEAD"),
+                "after": None,
+                "checks": [[sys.executable, "-c", "pass"]],
+                "since": store.now(),
+                "pid": 1,
+            },
+        )
+        error = self.refusal("merge", "t1", "--resume")
+        self.assertEqual("not_resumable", error["code"])
+        self.assertIn("the commit before the merge", error["detail"])
+        self.assertEqual("merging", self.state())
+        # Abort returns it to delivered without touching the branch.
+        status, value = self.command("merge", "t1", "--abort")
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            (before, None), (value["abort"]["before"], value["abort"]["undone"])
+        )
+        self.assert_untouched(before)
+
+    @verifies("scenario.tasks.merge-abort")
+    def test_abort_resets_the_primary_branch_and_returns_the_task(self):
+        before, after = self.interrupted()
+        status, value = self.command("merge", "t1", "--abort")
+        self.assertEqual(0, status, value)
+        self.assertEqual("delivered", value["record"]["state"])
+        self.assertEqual(
+            {"before": before, "undone": after, "left": []},
+            {key: value["abort"][key] for key in ("before", "undone", "left")},
+        )
+        self.assert_untouched(before)
+        # Nothing is refused any more: the task merges again.
+        status, value = self.command("merge", "t1", "--check", python("pass"))
+        self.assertEqual(0, status, value)
+        self.assertEqual("merged", value["record"]["closed"]["outcome"])
+
+    @verifies("scenario.tasks.merge-abort")
+    def test_abort_refuses_a_primary_branch_that_moved_on(self):
+        before, after = self.interrupted()
+        (self.root / "notes.txt").write_text("committed on top of the merge\n")
+        moved = commit(self.root, "a commit on top of the unchecked merge")
+        error = self.refusal("merge", "t1", "--abort")
+        self.assertEqual(
+            ("merge_diverged", "decision"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        for part in (moved, before, after):
+            self.assertIn(part, error["detail"])
+        self.assertEqual((moved, "merging"), (self.head(), self.state()))
+
+    @verifies("scenario.tasks.merge-live-busy")
+    def test_a_merge_still_running_answers_busy(self):
+        self.project.open_task("t1")
+        checked = self.deliver()
+        self.project.open_task("t2")
+        taken, release = threading.Event(), threading.Event()
+
+        def merging():
+            with store.merge_lock(self.root, "merge", "t1", 0):
+                store.begin_merge(
+                    self.root,
+                    "t1",
+                    {
+                        "before": self.head(),
+                        "checked": checked,
+                        "branch": git(self.root, "symbolic-ref", "--short", "HEAD"),
+                        "after": None,
+                        "checks": [[sys.executable, "-c", "pass"]],
+                        "since": store.now(),
+                        "pid": os.getpid(),
+                    },
+                )
+                taken.set()
+                release.wait(10)
+                store.end_merge(self.root, "t1")
+
+        holder = threading.Thread(target=merging)
+        holder.start()
+        try:
+            self.assertTrue(taken.wait(10))
+            with self.assertRaises(store.TaskError) as opened:
+                store.open_task(self.root, "t3", "g", ["module.a"], wait=0.2)
+            self.assertEqual("merge_busy", opened.exception.code)
+            escalation = ("--code", "c", "--detail", "d", "--reason", "decision")
+            escalation += ("--explanation", "e")
+            for argv in (
+                ("session", "t1", "--main", "m"),
+                ("escalate", "t1", *escalation),
+            ):
+                error = self.refusal(*argv)
+                self.assertEqual("merge_busy", error["code"], argv)
+                self.assertIn("`concorde task merge` of task t1", error["detail"])
+            # Another task's escalation passes the guard and is refused only for its own input.
+            self.assertEqual(
+                "nothing_to_escalate",
+                self.refusal("escalate", "t2", *escalation)["code"],
+            )
+        finally:
+            release.set()
+            holder.join()
+        self.assertEqual("delivered", self.state())
 
 
 if __name__ == "__main__":

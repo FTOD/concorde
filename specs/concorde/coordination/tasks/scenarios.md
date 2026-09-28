@@ -233,6 +233,53 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - THEN the command fails with `not_merged`, `dirty_worktree` or `primary_dirty` before merging
 - AND the primary branch, the task record and the worktree are unchanged
 
+### scenario.tasks.merge-exact-commit — A merge takes the commit it checked
+
+- GIVEN a delivered task
+- AND a commit added to its branch after the merge's checks accepted the branch head
+- WHEN `concorde task merge` merges the task
+- THEN the primary branch holds the checked delivery commit and not the later commit
+- AND closing the task fails with `not_merged`, leaving the task `merging` and saying that `--resume` finishes it once the cause is fixed
+
+### scenario.tasks.merge-workspace-busy — A running task is neither merged nor closed
+
+- GIVEN a delivered task whose [workspace lock](../../glossary.json#concept.workspace-lock) a run holds
+- WHEN the main agent runs `concorde task merge` or `concorde task close --completed` for it
+- THEN the command fails at once with `workspace_busy`, naming the run holding the lock
+- AND the primary branch, the task record and the worktree are unchanged, and the merge lock is free again
+
+### scenario.tasks.merge-interrupted — An interrupted merge stops the commands that would build on it
+
+- GIVEN a `concorde task merge` whose process was killed while its checks ran, leaving the task `merging` and its merge commit at the head of the primary branch
+- WHEN any main session runs `concorde task open`, `merge`, `close`, `session` or `escalate`, for that task or another
+- THEN the command fails with `merge_incomplete`, naming the task, the commit before the merge, the merge commit and the `--resume` and `--abort` recovery, and changes nothing
+- AND `concorde task list` and `concorde task show` still answer, showing the task as `merging` with the commits before and after the merge and the checked commit
+- BUT `concorde task session <task-id> --stop` is not refused for it
+
+### scenario.tasks.merge-resume — Resume checks the interrupted merge again
+
+- GIVEN a task left `merging` by an interrupted merge whose merge commit is still the primary branch's head
+- WHEN the main agent runs `concorde task merge <task-id> --resume`
+- THEN the checks the merge recorded run again on the merge commit
+- AND when they pass, the task is closed as merged and the output names the commits before and after
+- AND when one fails, the primary branch is reset to the commit before the merge, the task is delivered again and the command fails with `check_failed`
+- BUT when the primary branch's head is not the merge commit, the command fails with `not_resumable` and changes nothing; `--check` with `--resume` fails with `invalid_input`, and `--resume` of a task that is not merging fails with `not_merging`
+
+### scenario.tasks.merge-abort — Abort undoes the interrupted merge
+
+- GIVEN a task left `merging` by an interrupted merge
+- WHEN the main agent runs `concorde task merge <task-id> --abort`
+- THEN the primary branch is back at the commit before the merge, the task is delivered again, and the output names that commit and the merge commit it undid
+- AND the task can be merged again, and no command is refused any more
+- BUT when the primary branch has moved on past the merge commit, the command fails with `merge_diverged`, naming the commits, and changes nothing
+
+### scenario.tasks.merge-live-busy — A merge still running is busy, not incomplete
+
+- GIVEN a `concorde task merge` of task `a` that is still running and holds the merge lock, with `a` stored as `merging`
+- WHEN another main session runs `concorde task open`, or `session` or `escalate` for task `a`
+- THEN the command fails with `merge_busy` naming the holder, never with `merge_incomplete`
+- BUT a `session` or `escalate` for another task is not refused for the merge
+
 ## Escalation
 
 ### scenario.tasks.escalate — The main agent adds its link when it escalates
