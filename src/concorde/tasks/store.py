@@ -291,7 +291,11 @@ def _serialize(record: dict) -> bytes:
 
 
 def update(primary: Path, task_id: str, change) -> dict:
-    """Apply ``change(record) -> record`` bound to the bytes read; retry concurrent changes."""
+    """Apply ``change(record) -> record`` bound to the bytes read; retry concurrent changes.
+
+    A retry reads the record again and calls ``change`` again, so the preconditions it checks
+    hold for the record it writes.
+    """
     path = record_path(primary, task_id)
     for _ in range(ATTEMPTS):
         if not TASK_ID.match(task_id or "") or not path.is_file():
@@ -302,7 +306,13 @@ def update(primary: Path, task_id: str, change) -> dict:
         with _locked(primary):
             if path.read_bytes() != before:
                 continue
-            _write(path, _serialize(record))
+            try:
+                _write(path, _serialize(record))
+            except OSError as error:
+                raise TaskError(
+                    "record_unwritable",
+                    f"the task record {path} cannot be written: {error}",
+                ) from error
         return record
     raise TaskError(
         "record_conflict", f"task {task_id} changed concurrently {ATTEMPTS} times"
@@ -482,9 +492,20 @@ def _pi_session(record: dict, session_id: str) -> dict:
 
 
 def begin_round(primary: Path, task_id: str, session_id: str, entry: dict) -> dict:
-    """Append a running round to a pi task session whose rounds have all ended."""
+    """Append a running round to a pi task session of an unended task whose rounds have all
+    ended.
+
+    The task's state is checked inside the transaction, so a close stored between the caller's
+    own check and this write refuses the round.
+    """
 
     def change(record):
+        if record["state"] in ENDED:
+            raise TaskError(
+                "task_closed",
+                f"task {task_id} is {record['state']}; a round of a task session begins only "
+                "in an open task",
+            )
         found = _pi_session(record, session_id)
         running = [item for item in found["rounds"] if item["status"] == "running"]
         if running:
@@ -502,7 +523,7 @@ def begin_round(primary: Path, task_id: str, session_id: str, entry: dict) -> di
 def finish_round(
     primary: Path, task_id: str, session_id: str, number: int, fields: dict
 ) -> dict:
-    """Set the outcome of a running round of a pi task session."""
+    """Set the outcome of a running round of a pi task session, also of a closed task."""
 
     def change(record):
         found = _pi_session(record, session_id)
@@ -779,11 +800,24 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
         return record
 
     record = update(primary, task_id, change)
-    with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
-        stream.write(
-            f"\n## Escalated to the {receiver}, {stamp}\n\n{render(error)}\n\n"
-            f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
-        )
+    path = decision_log_path(primary, task_id)
+    try:
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(
+                f"\n## Escalated to the {receiver}, {stamp}\n\n{render(error)}\n\n"
+                f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
+            )
+    except OSError as failure:
+        number = len(record["escalations"])
+        raise TaskError(
+            "decision_log_failed",
+            f"the escalation was written to the record of task {task_id} as escalation "
+            f"{number} (`concorde task show {task_id}` prints it under record.escalations), "
+            f"but appending it to the decision log {path} failed afterwards: {failure}; "
+            "escalating again would record it twice, so once the log is writable append it "
+            f"there by hand under the heading `## Escalated to the {receiver}, {stamp}`; the "
+            f"escalated chain:\n{render(error)}",
+        ) from failure
     return record
 
 
@@ -865,12 +899,28 @@ def close_locked(
     note: str | None = None,
     errors: list[dict] | None = None,
     force: bool = False,
+    again: str | None = None,
 ) -> dict:
-    """``close_task`` for a caller already holding the merge lock and the workspace lock."""
+    """``close_task`` for a caller already holding the merge lock and the workspace lock.
+
+    Removing the worktree, writing the record and appending to the decision log cannot be one
+    transaction, so a refusal after one of them says what this close did and that ``again``
+    (by default the same close) finishes it; the same close of a task whose record is closed
+    but whose decision log lacks its closing appends it.
+    """
     errors = list(errors or [])
+    again = (
+        again or f"`concorde task close {task_id} --{outcome}` with the same options"
+    )
     record = load_task(primary, task_id)
     worktree = Path(record["worktree"])
     if record["state"] in ENDED:
+        ended = record.get("closed") or {}
+        if ended.get("outcome") == outcome and not _closing_logged(
+            primary, task_id, ended
+        ):
+            _log_closing(primary, task_id, ended)
+            return record
         raise TaskError(
             "invalid_transition", f"task {task_id} is already {record['state']}"
         )
@@ -899,7 +949,10 @@ def close_locked(
             raise TaskError(
                 "worktree_failed",
                 f"git {' '.join(arguments)} in {worktree} exited {result.returncode}: "
-                f"{result.stderr.strip()}",
+                f"{result.stderr.strip()}; Git may have deinitialized the submodules before "
+                f"the one it stopped at (`git submodule update --init` in {worktree} restores "
+                f"them), the worktree stays and the record of task {task_id} is unchanged; "
+                f"once the cause is fixed, {again} finishes the close",
             )
     if worktree.exists():
         arguments = ["worktree", "remove", str(worktree)]
@@ -907,10 +960,18 @@ def close_locked(
             arguments.insert(2, "--force")
         result = _git(primary, *arguments, check=False)
         if result.returncode != 0:
+            done = (
+                f"this close deinitialized the submodules of {worktree} "
+                f"(`git submodule update --init` there restores them)"
+                if submodules
+                else "this close changed nothing before it"
+            )
             raise TaskError(
                 "worktree_failed",
                 f"git {' '.join(arguments)} exited {result.returncode}: "
-                f"{result.stderr.strip()}",
+                f"{result.stderr.strip()}; {done}, the worktree is as Git left it and the "
+                f"record of task {task_id} is unchanged; once the cause is fixed, {again} "
+                "finishes the close",
             )
         removed = True
     primary_head = _git(primary, "rev-parse", "HEAD").stdout.strip()
@@ -932,16 +993,46 @@ def close_locked(
         }
         return record
 
-    closed = update(primary, task_id, change)
+    try:
+        closed = update(primary, task_id, change)
+    except TaskError as error:
+        if not removed:
+            raise
+        raise TaskError(
+            error.code,
+            f"{error}; this close had already removed the worktree {worktree}, so task "
+            f"{task_id} stays {record['state']} without it; once the cause is fixed, {again} "
+            "finishes the close",
+        ) from error
     _log_closing(primary, task_id, closed["closed"])
     return closed
+
+
+def _closing_heading(closed: dict) -> str:
+    return f"## Closed: {closed['outcome']}, {closed['at']}"
+
+
+def _closing_logged(primary: Path, task_id: str, closed: dict) -> bool:
+    """Whether the decision log holds the closing of the record's ``closed``."""
+    path = decision_log_path(primary, task_id)
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return False
+    except OSError as error:
+        raise TaskError(
+            "decision_log_failed",
+            f"task {task_id} is already {closed['state']}, and its decision log {path} cannot "
+            f"be read to see whether it holds that closing: {error}",
+        ) from error
+    return _closing_heading(closed) in lines
 
 
 def _log_closing(primary: Path, task_id: str, closed: dict) -> None:
     """Append how the task ended, with any error chains rendered and as JSON."""
     from ..errors import render
 
-    lines = [f"\n## Closed: {closed['outcome']}, {closed['at']}\n"]
+    lines = [f"\n{_closing_heading(closed)}\n"]
     if closed["note"]:
         lines.append(f"\n{closed['note']}\n")
     for error in closed["errors"]:
@@ -949,8 +1040,19 @@ def _log_closing(primary: Path, task_id: str, closed: dict) -> None:
             f"\n{render(error)}\n\n"
             f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
         )
-    with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
-        stream.write("".join(lines))
+    path = decision_log_path(primary, task_id)
+    try:
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write("".join(lines))
+    except OSError as error:
+        raise TaskError(
+            "decision_log_failed",
+            f"task {task_id} is {closed['state']} in its record, with outcome "
+            f"{closed['outcome']} at {closed['at']}, but appending its closing to the decision "
+            f"log {path} failed afterwards: {error}; once the log is writable, "
+            f"`concorde task close {task_id} --{closed['outcome']}` with the same options "
+            "appends it and changes nothing else",
+        ) from error
 
 
 __all__ = [

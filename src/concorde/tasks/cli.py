@@ -37,6 +37,15 @@ HANDLING = {
         "environment",
         "the task record on disk is not readable JSON",
     ),
+    "record_unwritable": (
+        "environment",
+        "the file system refused to write the task record",
+    ),
+    "decision_log_failed": (
+        "environment",
+        "the file system refused the decision log after the task record was written, and "
+        "Tasks does not undo a written record",
+    ),
     "dirty_worktree": (
         "decision",
         "discarding uncommitted changes of a task worktree is the caller's decision",
@@ -178,6 +187,12 @@ OPTIONS = {
     ],
     "client_unknown": [
         "run the command from the Claude Code or pi main session, or set CONCORDE_CLIENT",
+    ],
+    "decision_log_failed": [
+        "make the decision log writable, then run the same close again, which appends the "
+        "closing and changes nothing else",
+        "for an escalation, append the chain the message carries to the decision log by "
+        "hand; escalating again would record it twice",
     ],
     "session_busy": [
         "wait until the running round reports",
