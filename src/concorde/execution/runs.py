@@ -16,6 +16,8 @@ import json
 import os
 import re
 import secrets
+import time
+from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,6 +27,8 @@ from .. import errors
 KINDS = ("operation", "command")
 RUN_ID_PATTERN = "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
 RUN_ID = re.compile(RUN_ID_PATTERN)
+# How often a run waiting with ``--wait`` tries the workspace lock again, inside its own process.
+LOCK_POLL = 0.2
 
 # contract.execution.run-result, version 2
 RESULT_SCHEMA: dict = {
@@ -231,22 +235,44 @@ def lock_path(records: Path, workspace: str) -> Path:
 
 
 @contextmanager
-def workspace_lock(records: Path, workspace: str, holder: str):
-    """Hold the lock of ``workspace`` or raise ``workspace_busy`` naming its holder."""
+def workspace_lock(
+    records: Path,
+    workspace: str,
+    holder: str,
+    wait: float = 0.0,
+    waiting: Callable[[str], None] | None = None,
+):
+    """Hold the lock of ``workspace`` or raise ``workspace_busy`` naming its holder.
+
+    A busy lock is waited for up to ``wait`` seconds inside this process, so a caller that
+    wants to queue behind the running run asks once instead of polling; ``waiting`` is told
+    the holder when the wait begins.
+    """
     path = lock_path(records, workspace)
     path.parent.mkdir(parents=True, exist_ok=True)
     stream = path.open("a+")
     try:
-        try:
-            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            stream.seek(0)
-            current = stream.read().strip() or "an unnamed run"
-            raise RunError(
-                "workspace_busy",
-                f"the workspace {workspace} is busy: {current} holds its lock {path}; one "
-                "workspace runs one Operation or command at a time",
-            ) from None
+        started = time.monotonic()
+        told = False
+        while True:
+            try:
+                fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                stream.seek(0)
+                current = stream.read().strip() or "an unnamed run"
+                waited = time.monotonic() - started
+                if waited >= wait:
+                    after = f" after waiting {waited:.0f} s" if wait > 0 else ""
+                    raise RunError(
+                        "workspace_busy",
+                        f"the workspace {workspace} is busy{after}: {current} holds its "
+                        f"lock {path}; one workspace runs one Operation or command at a time",
+                    ) from None
+                if waiting is not None and not told:
+                    waiting(current)
+                    told = True
+                time.sleep(LOCK_POLL)
         stream.seek(0)
         stream.truncate()
         stream.write(f"{holder} (process {os.getpid()})\n")
