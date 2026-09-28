@@ -1,0 +1,65 @@
+{
+  "workspace": "panel-larger-issues",
+  "goal": "Finish the 2026-09-28 panel review's larger item for Issues: split its bundled scenarios (about 9 into about 25) with their tests' @verifies, adding tests where none checks a new scenario",
+  "modules": [
+    "module.issues"
+  ],
+  "sequence": 3,
+  "base_commit": "0b3008636dbdb04c40e3f233bc5aeb01eed56c76",
+  "parent_commit": "2d0fb2527894e491aea338f9518e9a8b3932f437",
+  "readiness": {
+    "run_id": "r-20260928T200642-delivery-c8eb36f8",
+    "input_digest": "sha256:1510cfb57f10c51fc0dcf339819a9cb9bf63f711019bfa6e3cc4df8a9b55484f",
+    "modules": [
+      "module.issues"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:3184f3eb30867b3953d2fd4feda42f714f68c5856b52511f280cf049b548f9fc"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:9994476523e1c7f3fa1e6049ad695a8f1f62424d1a75f5473b83fd34668a50ee"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:6cc52de04674bc05d7535b7e77f3d2b651367c881ade342da77d77569f988ddd"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:6cc52de04674bc05d7535b7e77f3d2b651367c881ade342da77d77569f988ddd"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:ce0ff034f8b2a34d91e595dc2d45964c867af07e666b727e5c53144acf15f7af"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:99d7e6b11e9c4c0af0f0c3c62626dce4dd6fcc21ea834b44f3771a584e1e0cd2"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:2827ad0b163cdd5fb4346947e51182216701ed7418c7e6f33520910a0be5d3ec"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [],
+  "created_at": "2026-09-28T20:07:33Z"
+}
