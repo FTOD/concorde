@@ -356,10 +356,13 @@ class PiPolicyTests(unittest.TestCase):
         self.assertIsNone(out["write:pending"])
         self.assertIn("read-only", out["write:ro"])
         self.assertIn("only the name", out["write:names"])
-        self.assertIn("src/notes.txt is undeclared", out["write:undeclared"])
+        self.assertIn(
+            "src/notes.txt is not in this task's grant", out["write:undeclared"]
+        )
         self.assertIn("specify task", out["write:undeclared"])
+        self.assertIn("another Module declares", out["write:undeclared"])
+        self.assertEqual("Git metadata is not available to workers", out["write:git"])
         self.assertIn("outside the task worktree", out["write:outside"])
-        self.assertIn("Git metadata", out["write:git"])
         self.assertIsNone(out["search:src"])
         self.assertIsNone(out["search:root"])
         self.assertIn("holds nothing this task may read", out["search:b-only"])

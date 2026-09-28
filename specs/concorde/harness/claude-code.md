@@ -69,15 +69,19 @@ such a file itself, since it writes only `rw` paths.
 The hook is `write_hook.py` copied into the run's `control/` with the task worktree and the grant's
 `rw`, `ro` and `names` lists embedded, generated from the same grant as the deny rules. It receives
 Claude Code's PreToolUse JSON on standard input and resolves `tool_input.file_path` to an absolute
-path without following a final symbolic link.
+path without following a final symbolic link. The rows are tried from the top and the first that
+matches decides. The hook sees only the grant, not which Module declares an ungranted path, so its
+reason for one covers both cases: an undeclared file and a file of a Module the task is not bound
+to.
 
 | Target | Decision | Reason given to the worker |
 | --- | --- | --- |
+| outside the task worktree | deny | the path is outside the task worktree |
+| the task worktree's `.git` or below it | deny | Git metadata is not available to workers |
 | in the `rw` list | none (the hook exits 0 without output) | — |
 | a `ro` path | deny | the path is read-only for this task |
 | a `names` path | deny | only the path's name is visible to this task |
-| another path in the task worktree | deny | the file is undeclared; it must first be declared as a pending file of a [Module](../glossary.json#concept.module) through a `specify` task |
-| outside the task worktree | deny | the path is outside the task worktree |
+| another path in the task worktree | deny | the path is not in this task's grant; a file no [Module](../glossary.json#concept.module) declares must first be declared as a pending file of a Module through a `specify` task, and a file another Module declares needs that Module bound to the task |
 | unreadable input or any internal error | deny | the hook could not decide |
 
 A denial is the PreToolUse output with `permissionDecision: "deny"` and the reason as
