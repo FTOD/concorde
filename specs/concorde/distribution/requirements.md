@@ -136,3 +136,17 @@ The docsite renders the Specs' diagrams with it.
 When it installs `d2`, the installer SHALL fetch and check the pinned archive before it writes anything else into the project.
 
 A failed or tampered download therefore leaves the project untouched.
+
+### req.distribution.installer-programs-first — Missing programs refuse before anything is written
+
+The installer SHALL refuse, before writing anything into the project, when `uv` is not on `PATH`, or when `npm` is not on `PATH` and the [pi runtime](../glossary.json#concept.pi-runtime) is to be installed and not already in place.
+
+The refusals are `uv_missing` and `npm_missing`. Only the steps that run those programs can then
+fail after the first write.
+
+### req.distribution.uv-owns-python — uv creates Concorde's own environment
+
+The installer SHALL create Concorde's own environment under `.concorde/framework/python/` only with `uv venv`, for the Python requirement `concorde.json` names under `runtime.python`.
+
+uv chooses an interpreter that satisfies the requirement, downloading a uv-managed CPython when the
+machine has none, so the interpreter that runs the installer never decides Concorde's.

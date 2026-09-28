@@ -77,9 +77,10 @@ A question that changes nothing, such as how a Module works today, needs no task
 
 ## Install into a Git project
 
-Use Python 3.11+ on Linux with bubblewrap, and a logged-in Claude Code or a configured
-[pi](https://github.com/earendil-works/pi). The installer places the runtime, the `concorde`
-command, the Protocol copy and the main agent's guidance; it never writes your Specs.
+Use Python 3.11+ and [uv](https://docs.astral.sh/uv/) on Linux with bubblewrap, and a logged-in
+Claude Code or a configured [pi](https://github.com/earendil-works/pi). The installer places the
+runtime, the `concorde` command, the Protocol copy and the main agent's guidance; it never writes
+your Specs.
 
 ```bash
 git clone https://github.com/FTOD/concorde.git

@@ -9,7 +9,7 @@
   "architecture_profile": 17,
   "runtime": {
     "python": ">=3.11",
-    "venv": ".concorde/.venv"
+    "venv": ".concorde/framework/python"
   },
   "package_roots": [
     "docsite",

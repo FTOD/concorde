@@ -8,7 +8,8 @@ The pi runtime is the sandbox engine pi workers run their commands in,
 ``@anthropic-ai/sandbox-runtime``. The package ships its ``package.json`` and ``package-lock.json``
 under ``src/concorde/distribution/pi_runtime/``; the installer copies both to
 ``.concorde/tools/pi-runtime/`` and runs ``npm ci``, which installs exactly the locked versions and
-checks each package's integrity hash, without running install scripts.
+checks each package's integrity hash, without running install scripts. Whether npm is needed, and
+present, is decided before the installer writes anything.
 
 A later install with the same pin or lockfile keeps what it already placed.
 """
@@ -140,13 +141,13 @@ def install_d2(
     return placed
 
 
-def install_pi_runtime(
-    project: Path,
-    package: Path,
-    *,
-    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
-) -> dict:
-    """Place the locked pi runtime under ``.concorde/tools/pi-runtime/``; return what was placed."""
+def plan_pi_runtime(project: Path, package: Path) -> dict:
+    """Decide, before anything is written, what placing the pi runtime needs.
+
+    Returns the record the runtime is placed with and ``npm``, the path of npm when the runtime
+    must still be installed or ``None`` when the same lockfile's runtime is already in place.
+    Refuses a lockfile that pins no runtime and, when npm is needed, a machine without it.
+    """
     source = package / PI_RUNTIME_SOURCE
     lock = source / "package-lock.json"
     try:
@@ -159,8 +160,6 @@ def install_pi_runtime(
             "invalid_descriptor",
             f"{lock} is missing or pins no @anthropic-ai/sandbox-runtime: {error}",
         ) from error
-    target = project / PI_RUNTIME
-    record_path = project / PI_RUNTIME_RECORD
     placed = {
         "package": "@anthropic-ai/sandbox-runtime",
         "version": version,
@@ -168,10 +167,10 @@ def install_pi_runtime(
         "path": PI_RUNTIME,
     }
     try:
-        if (target / PI_RUNTIME_ENTRY).is_file() and json.loads(
-            record_path.read_text()
+        if (project / PI_RUNTIME / PI_RUNTIME_ENTRY).is_file() and json.loads(
+            (project / PI_RUNTIME_RECORD).read_text()
         ) == placed:
-            return placed
+            return {"placed": placed, "npm": None}
     except (OSError, ValueError):
         pass
     npm = shutil.which("npm")
@@ -180,8 +179,29 @@ def install_pi_runtime(
             "npm_missing",
             "the pi runtime, which every pi worker runs in, is installed with npm, which is "
             "not on PATH; install Node.js and npm, or install with --without-pi-runtime and put "
-            "every worker on Claude Code",
+            "every worker on Claude Code; nothing was written",
         )
+    return {"placed": placed, "npm": npm}
+
+
+def install_pi_runtime(
+    project: Path,
+    package: Path,
+    *,
+    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+    plan: dict | None = None,
+) -> dict:
+    """Place the locked pi runtime under ``.concorde/tools/pi-runtime/``; return what was placed.
+
+    ``plan`` is what :func:`plan_pi_runtime` decided before the install wrote anything; it is
+    decided here when not given.
+    """
+    plan = plan or plan_pi_runtime(project, package)
+    placed, npm = plan["placed"], plan["npm"]
+    if npm is None:
+        return placed
+    source = package / PI_RUNTIME_SOURCE
+    target = project / PI_RUNTIME
     target.mkdir(parents=True, exist_ok=True)
     for name in ("package.json", "package-lock.json"):
         shutil.copy2(source / name, target / name)
@@ -201,7 +221,7 @@ def install_pi_runtime(
             f"`{' '.join(command)}` in {target} exited with {completed.returncode} and left no "
             f"{PI_RUNTIME_ENTRY}; its output ends with: {output.strip() or '(empty)'}",
         )
-    record_path.write_text(json.dumps(placed, indent=2) + "\n")
+    (project / PI_RUNTIME_RECORD).write_text(json.dumps(placed, indent=2) + "\n")
     return placed
 
 
@@ -213,5 +233,6 @@ __all__ = [
     "d2_path",
     "install_d2",
     "install_pi_runtime",
+    "plan_pi_runtime",
     "platform_key",
 ]

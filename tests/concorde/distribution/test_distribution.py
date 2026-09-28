@@ -60,6 +60,16 @@ def strict_frontmatter(test, text: str) -> dict:
     return fields
 
 
+# The real uv, which creates Concorde's own environment in every install these tests make.
+UV = shutil.which("uv")
+
+
+def which(**found):
+    """A stand-in for ``shutil.which`` that finds the real uv and the programs named here."""
+    programs = {"uv": UV, **found}
+    return patch("shutil.which", side_effect=lambda name: programs.get(name))
+
+
 def fake_npm(calls: list):
     """A stand-in for ``npm ci`` that places the runtime's entry and records each call."""
 
@@ -558,7 +568,16 @@ class InstallTests(unittest.TestCase):
             project, package, pi_runtime=False, d2=False, dependencies=False
         )
         self.assertEqual(".concorde/framework/python", receipt["python"]["environment"])
-        self.assertEqual(sys.executable, receipt["python"]["base"])
+        # uv made the environment for the package's own requirement, on an interpreter it chose.
+        self.assertEqual(">=3.11", receipt["python"]["requirement"])
+        self.assertGreaterEqual(
+            tuple(int(part) for part in receipt["python"]["version"].split(".")),
+            (3, 11),
+        )
+        self.assertTrue(Path(receipt["python"]["base"]).is_file())
+        self.assertIn(
+            "uv = ", (project / ".concorde/framework/python/pyvenv.cfg").read_text()
+        )
         self.assertTrue((project / ".concorde/framework/python/bin/python").exists())
         caller = package.parent / "caller"
         (caller / "bin").mkdir(parents=True)
@@ -580,19 +599,44 @@ class InstallTests(unittest.TestCase):
         )
         self.assertEqual(0, listed.returncode, listed.stdout + listed.stderr)
         self.assertEqual([], json.loads(listed.stdout))
-        old = caller / "old-python"
-        old.write_text('#!/bin/sh\necho "3 9 1"\n')
-        old.chmod(0o755)
-        with self.assertRaises(InstallError) as raised:
-            install(
-                project,
-                package,
-                pi_runtime=False,
-                d2=False,
-                python=old,
-                dependencies=False,
-            )
-        self.assertEqual("python_too_old", raised.exception.code)
+        # A requirement no interpreter satisfies, with downloads forbidden: uv's refusal.
+        descriptor = json.loads((package / "concorde.json").read_text())
+        descriptor["runtime"]["python"] = "==3.2.1"
+        (package / "concorde.json").write_text(json.dumps(descriptor, indent=2) + "\n")
+        write_build(package)
+        with (
+            patch.dict(os.environ, {"UV_PYTHON_DOWNLOADS": "never"}),
+            self.assertRaises(InstallError) as raised,
+        ):
+            install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        self.assertEqual("python_env_failed", raised.exception.code)
+        self.assertIn("==3.2.1", str(raised.exception))
+        self.assertIn("venv", str(raised.exception))
+
+    @verifies("scenario.distribution.own-python")
+    @verifies("scenario.distribution.install-pi")
+    def test_missing_programs_refuse_the_install_before_anything_is_written(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        fetch = fake_d2(self, package)
+        for found, pi_runtime, code in (
+            ({"uv": None, "npm": "/usr/bin/npm"}, False, "uv_missing"),
+            ({"uv": None, "npm": "/usr/bin/npm"}, True, "uv_missing"),
+            ({}, True, "npm_missing"),
+        ):
+            with (
+                self.subTest(code=code, pi_runtime=pi_runtime),
+                which(**found),
+                self.assertRaises(InstallError) as raised,
+            ):
+                install(project, package, pi_runtime=pi_runtime, fetch=fetch)
+            self.assertEqual(code, raised.exception.code)
+            self.assertIn("nothing was written", str(raised.exception))
+            self.assertEqual([".git"], [path.name for path in project.iterdir()])
+        # Not even the pinned d2 was fetched.
+        self.assertEqual([], fetch.urls)
 
     @verifies("scenario.distribution.update")
     def test_update_rebinds_the_protocol_and_waits_for_a_validation(self):
@@ -718,20 +762,17 @@ class InstallTests(unittest.TestCase):
                 )
             return subprocess.CompletedProcess(command, 0, "", "")
 
-        with patch(
-            "concorde.distribution.install.shutil.which", return_value="/usr/bin/uv"
-        ):
-            receipt = install(project, package, pi_runtime=False, d2=False, run=fake_uv)
+        receipt = install(project, package, pi_runtime=False, d2=False, run=fake_uv)
         export, pip, probe = calls
         self.assertEqual(
-            ["/usr/bin/uv", "export", "--frozen", "--no-dev", "--no-emit-project"],
+            [UV, "export", "--frozen", "--no-dev", "--no-emit-project"],
             export[:5],
         )
         self.assertIn(str(package), export)
         interpreter = str(project / ".concorde/framework/python/bin/python")
         self.assertEqual(
             [
-                "/usr/bin/uv",
+                UV,
                 "pip",
                 "install",
                 "--python",
@@ -757,17 +798,9 @@ class InstallTests(unittest.TestCase):
         def failing(command, cwd, **options):
             return subprocess.CompletedProcess(command, 1, "", "no network")
 
-        for which, run, code in (
-            (None, fake_uv, "uv_missing"),
-            ("/usr/bin/uv", failing, "python_dependencies_failed"),
-        ):
-            with (
-                self.subTest(code=code),
-                patch("concorde.distribution.install.shutil.which", return_value=which),
-                self.assertRaises(InstallError) as caught,
-            ):
-                install(project, package, pi_runtime=False, d2=False, run=run)
-            self.assertEqual(code, caught.exception.code)
+        with self.assertRaises(InstallError) as caught:
+            install(project, package, pi_runtime=False, d2=False, run=failing)
+        self.assertEqual("python_dependencies_failed", caught.exception.code)
         self.assertIn("no network", str(caught.exception))
         self.assertIsNone(
             install(project, package, pi_runtime=False, d2=False, dependencies=False)[
@@ -791,9 +824,7 @@ class InstallTests(unittest.TestCase):
             entry.write_text("export {};\n")
             return subprocess.CompletedProcess(command, 0, "", "")
 
-        with patch(
-            "concorde.distribution.tools.shutil.which", return_value="/usr/bin/npm"
-        ):
+        with which(npm="/usr/bin/npm"):
             receipt = install(
                 project, package, d2=False, pi=True, run=fake_npm, dependencies=False
             )
@@ -896,9 +927,7 @@ class InstallTests(unittest.TestCase):
             entry.write_text("export {};\n")
             return subprocess.CompletedProcess(command, 0, "", "")
 
-        with patch(
-            "concorde.distribution.tools.shutil.which", return_value="/usr/bin/npm"
-        ):
+        with which(npm="/usr/bin/npm"):
             receipt = install(
                 project, package, d2=False, pi=True, run=fake_npm, dependencies=False
             )
@@ -914,10 +943,7 @@ class InstallTests(unittest.TestCase):
         package = package_copy(self)
         project = package.parent / "project"
         project.mkdir()
-        with (
-            patch("concorde.distribution.tools.shutil.which", return_value=None),
-            self.assertRaises(InstallError) as raised,
-        ):
+        with which(), self.assertRaises(InstallError) as raised:
             install(project, package, d2=False, pi=True, dependencies=False)
         self.assertEqual("npm_missing", raised.exception.code)
         self.assertFalse((project / ".concorde/framework").exists())
@@ -928,9 +954,7 @@ class InstallTests(unittest.TestCase):
         project = package.parent / "project"
         subprocess.run(["git", "init", "-q", str(project)], check=True)
         calls = []
-        with patch(
-            "concorde.distribution.tools.shutil.which", return_value="/usr/bin/npm"
-        ):
+        with which(npm="/usr/bin/npm"):
             receipt = install(
                 project, package, d2=False, run=fake_npm(calls), dependencies=False
             )
@@ -940,7 +964,7 @@ class InstallTests(unittest.TestCase):
         # The pi main session's files come only with --pi.
         self.assertFalse((project / ".pi/skills/concorde/SKILL.md").exists())
         self.assertFalse((project / ".concorde/workflows/pi").exists())
-        with patch("concorde.distribution.tools.shutil.which", return_value=None):
+        with which():
             left_out = install(
                 project, package, d2=False, pi_runtime=False, dependencies=False
             )
@@ -959,9 +983,7 @@ class InstallTests(unittest.TestCase):
         del receipt["pi"], receipt["pi_runtime"]
         path.write_text(json.dumps(receipt))
         calls = []
-        with patch(
-            "concorde.distribution.tools.shutil.which", return_value="/usr/bin/npm"
-        ):
+        with which(npm="/usr/bin/npm"):
             updated = update(project, package, run=fake_npm(calls))["receipt"]
             self.assertIn("pi-runtime", updated["tools"])
             self.assertEqual((False, True), (updated["pi"], updated["pi_runtime"]))
@@ -982,7 +1004,7 @@ class InstallTests(unittest.TestCase):
         project = package.parent / "project"
         subprocess.run(["git", "init", "-q", str(project)], check=True)
         install(project, package, d2=False, pi_runtime=False, dependencies=False)
-        with patch("concorde.distribution.tools.shutil.which", return_value=None):
+        with which():
             updated = update(project, package)["receipt"]
         self.assertNotIn("pi-runtime", updated["tools"])
         self.assertFalse(updated["pi_runtime"])

@@ -126,8 +126,9 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND a caller whose `python3` on `PATH` fails and whose `PYTHONPATH` names a package called `concorde` that fails on import
 - WHEN the caller runs `.concorde/bin/concorde task list`
 - THEN it prints the project's empty task list `[]` and exits with status 0, run by the interpreter of `.concorde/framework/python/`
-- AND the receipt names that environment, the interpreter it was made from and its version
-- BUT an installer given an interpreter older than Python 3.11 is refused with `python_too_old`
+- AND uv created that environment for the Python requirement `concorde.json` names, and the receipt names the environment, the requirement, the interpreter uv chose and its version
+- BUT when uv finds no interpreter satisfying the requirement and may not download one, the install is refused with `python_env_failed` and uv's output
+- BUT without `uv` on `PATH` the install is refused with `uv_missing`, and nothing is written into the project, not even `d2`
 
 ### scenario.distribution.python-dependencies — Concorde's own environment gets its locked dependencies
 
@@ -136,7 +137,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN it exports the lock's runtime part, without the development group, to `.concorde/framework/requirements.txt`
 - AND installs exactly those hashed versions into `.concorde/framework/python/` and checks that the environment imports LangGraph
 - AND the receipt names the requirements file, the digest of the lock and the number of packages
-- BUT without `uv` it is refused with `uv_missing`, a failing step with `python_dependencies_failed` and the step's output, and with `--without-dependencies` the receipt's `dependencies` is `null`
+- BUT a failing step is refused with `python_dependencies_failed` and the step's output, and with `--without-dependencies` the receipt's `dependencies` is `null`
 
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
@@ -160,7 +161,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the [run view](../glossary.json#concept.run-view) is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
 - AND every rendered pi [workflow script](../glossary.json#concept.workflow-script) is under `.concorde/workflows/pi/` and the command-runner agents `concorde-step` and `concorde-report` under `.pi/agents/`
 - AND a second install with the same lockfile does not run npm again
-- BUT without npm the install is refused before anything else is written
+- BUT without npm the install is refused with `npm_missing` before anything is written into the project, not even `d2`
 
 ### scenario.distribution.pi-runtime-default — Every install places the runtime pi workers run in
 

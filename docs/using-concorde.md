@@ -49,7 +49,9 @@ A Concorde project has three kinds of documents, each for a different reader:
 You need:
 
 - a Git repository for your project, with at least one commit;
-- Python 3.11 or later;
+- Python 3.11 or later, to build Concorde and run its installer;
+- [uv](https://docs.astral.sh/uv/getting-started/installation/), which creates Concorde's own
+  Python environment and installs its dependencies;
 - [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and logged in, or
   [pi](https://github.com/earendil-works/pi) with a configured model; for pi also Node.js with npm,
   `rg` (ripgrep), `fd` and `socat`, and optionally
@@ -74,10 +76,10 @@ python3 scripts/install-concorde.py /absolute/path/to/project
 The installer places:
 
 - the Concorde runtime under `.concorde/framework/`, with its own Python environment (a venv
-  under `.concorde/framework/python/`, made from the interpreter that runs the installer or the
-  one you name with `--python`, Python 3.11 or newer), and the `concorde` command as
-  `.concorde/bin/concorde`, which always runs in that environment, never in your project's
-  Python environment, even when your project's venv is activated;
+  under `.concorde/framework/python/` that uv creates on a Python version Concorde supports: one
+  already on your machine, or a Python uv downloads for it when you have none), and the
+  `concorde` command as `.concorde/bin/concorde`, which always runs in that environment, never in
+  your project's Python environment, even when your project's venv is activated;
 - a copy of the Spec Protocol under `.concorde/protocol/`, so the rules your Specs follow travel
   with your project;
 - the main agent's guidance, as the Claude Code skill `.claude/skills/concorde/SKILL.md` and a short
@@ -92,6 +94,9 @@ The installer places:
   `--without-pi-runtime` skips it when every worker will run on Claude Code;
 - ignore rules for the directories Concorde writes at run time, and a receipt
   `.concorde/install.json`.
+
+The installer checks that uv, and npm when it installs the pi runtime, are on your `PATH` before it
+writes anything into your project; when one is missing it refuses and says which.
 
 To work with pi as your main session, add `--pi` (or `concorde update --pi` later). The installer
 then also places:

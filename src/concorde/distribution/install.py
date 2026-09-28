@@ -5,9 +5,11 @@ It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol``
 the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
 ``.claude/skills/concorde/SKILL.md`` and a delimited block in ``CLAUDE.md``, Concorde-owned
 defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
-state and task worktrees, and a receipt ``.concorde/install.json``. Concorde's own Python
-environment under ``.concorde/framework/python/`` receives the locked runtime dependencies of the
-package's ``uv.lock``, such as LangGraph, installed with ``uv``, and the locked pi runtime
+state and task worktrees, and a receipt ``.concorde/install.json``. ``uv`` owns Concorde's Python:
+it creates Concorde's own environment under ``.concorde/framework/python/`` on an interpreter that
+satisfies the package's ``runtime.python`` requirement, a uv-managed CPython when the machine has
+none, and installs the locked runtime dependencies of the package's ``uv.lock`` there, such as
+LangGraph. The installer also places the locked pi runtime
 under ``.concorde/tools/pi-runtime/``, which every pi worker runs in (workers run on pi unless the
 worker model configuration chooses Claude Code). With ``pi`` it also places, for a pi main
 session, Concorde's pi extension under ``.pi/extensions/concorde/`` and the guidance as the pi
@@ -18,9 +20,11 @@ permission rules its step agents need in ``.claude/settings.json``, and with ``p
 With ``develop`` it makes a develop install (see ``concorde.dogfooding.develop``): only from the
 clean primary worktree of a Concorde repository, with Dogfooding's guidance added to the skill and
 the ``CLAUDE.md`` block. It refuses a package whose build is stale and a project in which a
-Concorde run is still running, fetches
-and verifies ``d2`` before writing anything else, and never writes a Spec document, the registry or
-the project configuration.
+Concorde run is still running, and checks that ``uv`` and, when the pi runtime is still to be
+installed, ``npm`` are on ``PATH`` before it writes anything; it then fetches and verifies ``d2``
+before writing anything else, so only the installation of the pi runtime, the creation of the
+environment and the installation of its dependencies can fail after the first write. It never
+writes a Spec document, the registry or the project configuration.
 """
 
 from __future__ import annotations
@@ -39,13 +43,13 @@ from ..errors import link
 from ..execution.runs import pid_alive
 from .build import BuildError, verify_fresh
 from .project_defaults import install_project_defaults, project_default_files
-from .tools import TOOLS, ToolError, install_d2, install_pi_runtime
+from .tools import TOOLS, ToolError, install_d2, install_pi_runtime, plan_pi_runtime
 
 FRAMEWORK = ".concorde/framework"
-# Concorde's own Python environment, a venv inside the framework copy: installed Concorde never
-# runs on the project's interpreter or with its packages, and the project never sees Concorde's.
+# Concorde's own Python environment, a venv inside the framework copy that uv creates: installed
+# Concorde never runs on the project's interpreter or with its packages, and the project never
+# sees Concorde's.
 OWN_PYTHON = f"{FRAMEWORK}/python"
-MINIMUM_PYTHON = (3, 11)
 COMMAND = ".concorde/bin/concorde"
 SKILL = ".claude/skills/concorde/SKILL.md"
 PI_SKILL = ".pi/skills/concorde/SKILL.md"
@@ -111,8 +115,6 @@ INPUT_CODES = frozenset(
         "stale_build",
         "settings_invalid",
         "not_installed",
-        "python_unusable",
-        "python_too_old",
         "update_source_missing",
         "develop_source_not_repository",
         "develop_source_not_primary",
@@ -136,7 +138,7 @@ def refusal(
         reason = "environment"
         explanation = (
             "the installer cannot change what it runs among: running Concorde processes, the "
-            "network, npm, uv or the interpreter"
+            "network, npm or uv"
         )
     return link(
         "component", actor, code, message, reason=reason, explanation=explanation
@@ -374,7 +376,6 @@ def install(
     pi: bool = False,
     pi_runtime: bool = True,
     run: Callable | None = None,
-    python: str | Path | None = None,
     develop: bool = False,
     dependencies: bool = True,
 ) -> dict:
@@ -384,9 +385,10 @@ def install(
     the download of the pinned ``d2`` archive, for tests and offline mirrors. With
     ``pi_runtime`` (the default) the pi runtime every pi worker runs in is installed; without it
     workers can run only on Claude Code. With ``pi`` the pi main session's extension, skill and
-    workflows are installed too; ``run`` replaces the ``npm ci`` and ``uv`` calls. ``python`` is the interpreter Concorde's own environment is made from, the installer's
-    own by default. ``develop`` makes a develop install. With ``dependencies`` false Concorde's
-    Python dependencies are left out of its environment, and the Operations that need them refuse.
+    workflows are installed too; ``run`` replaces the ``npm ci`` call and the ``uv`` calls that
+    install the Python dependencies, never the creation of the environment. ``develop`` makes a
+    develop install. With ``dependencies`` false Concorde's Python dependencies are left out of
+    its environment, and the Operations that need them refuse.
     """
     project, package = Path(project).resolve(), Path(package).resolve()
     if not project.is_dir():
@@ -415,6 +417,7 @@ def install(
             "these end, or stop them, before installing or updating Concorde",
         )
     descriptor = json.loads((package / "concorde.json").read_text())
+    requirement = _python_requirement(descriptor, package)
     settings = _read_settings(project)
     previous = {}
     if (project / RECEIPT).is_file():
@@ -427,6 +430,21 @@ def install(
         for path, source in _rendered_workflows(package).items()
         if pi or not path.startswith((PI_WORKFLOWS, PI_AGENTS))
     }
+    # Every cheap precondition is checked before the first write: only the npm and uv steps
+    # below, which the installer cannot foresee, can still fail once something was written.
+    uv = shutil.which("uv")
+    if uv is None:
+        raise InstallError(
+            "uv_missing",
+            "Concorde's own Python environment is created, and its Python dependencies are "
+            "installed, with uv, which is not on PATH; install uv "
+            "(https://docs.astral.sh/uv/getting-started/installation/) and install again; "
+            "nothing was written",
+        )
+    try:
+        runtime_plan = plan_pi_runtime(project, package) if pi_runtime else None
+    except ToolError as error:
+        raise InstallError(error.code, str(error)) from error
     tools = {}
     if d2:
         try:
@@ -438,15 +456,15 @@ def install(
     if pi_runtime:
         try:
             tools["pi-runtime"] = install_pi_runtime(
-                project, package, **({"run": run} if run else {})
+                project, package, plan=runtime_plan, **({"run": run} if run else {})
             )
         except ToolError as error:
             raise InstallError(error.code, str(error)) from error
     written = install_project_defaults(project, package)
     _copy_runtime(package, project / FRAMEWORK)
-    own_python = _own_python(project, Path(python or sys.executable))
+    own_python = _own_python(project, uv, requirement)
     installed = (
-        _python_dependencies(project, package, run or subprocess.run)
+        _python_dependencies(project, package, uv, run or subprocess.run)
         if dependencies
         else None
     )
@@ -571,7 +589,6 @@ def update(
     project: str | Path,
     package: str | Path,
     *,
-    python: str | Path | None = None,
     fetch: Callable[[str], bytes] | None = None,
     run: Callable | None = None,
     pi: bool = False,
@@ -580,7 +597,8 @@ def update(
 
     It installs as the first install did (keeping d2, the pi main session's files and develop
     mode when they were installed, and adding them with ``pi``), always with the pi worker runtime
-    unless the first install left it out, binds the
+    unless the first install left it out and with Concorde's own environment created again by
+    uv for the new package's Python requirement, binds the
     new Protocol copy in the configuration, and marks the project Concorde unvalidated until a
     validation passes; open tasks keep the old Protocol copy until the primary branch is merged
     into them, so they are listed.
@@ -606,7 +624,6 @@ def update(
         pi=pi or had_pi,
         pi_runtime=previous.get("pi_runtime", True),
         run=run,
-        python=python or (previous.get("python") or {}).get("base"),
         develop=previous.get("mode") == "develop",
         dependencies=previous.get("dependencies", {}) is not None,
     )
@@ -661,53 +678,82 @@ def update(
     }
 
 
-def _own_python(project: Path, base: Path) -> dict:
-    """Create Concorde's own environment from ``base``, replacing an earlier one."""
-    probe = subprocess.run(
-        [str(base), "-E", "-s", "-c", "import sys; print(*sys.version_info[:3])"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if probe.returncode != 0:
+def _python_requirement(descriptor: dict, package: Path) -> str:
+    """The Python version requirement of the package, ``runtime.python`` of ``concorde.json``."""
+    requirement = (descriptor.get("runtime") or {}).get("python")
+    if not isinstance(requirement, str) or not requirement.strip():
         raise InstallError(
-            "python_unusable",
-            f"{base} cannot run ({probe.stderr.strip() or f'exit {probe.returncode}'}); "
-            "name another interpreter with --python",
+            "invalid_descriptor",
+            f"{package / 'concorde.json'} names no Python version requirement under "
+            "runtime.python, which Concorde's own environment is created for",
         )
-    version = tuple(int(part) for part in probe.stdout.split())
-    if version[:2] < MINIMUM_PYTHON:
-        raise InstallError(
-            "python_too_old",
-            f"{base} is Python {'.'.join(map(str, version))}, but Concorde needs "
-            f"{'.'.join(map(str, MINIMUM_PYTHON))} or newer; name another interpreter with "
-            "--python",
-        )
+    return requirement.strip()
+
+
+# Prints the version and the real path of the interpreter a venv was made on.
+_PROBE = "import os, sys; print(*sys.version_info[:3]); print(os.path.realpath(sys.executable))"
+
+
+def _own_python(project: Path, uv: str, requirement: str) -> dict:
+    """Create Concorde's own environment with ``uv`` for ``requirement``, replacing an earlier one.
+
+    uv chooses an interpreter that satisfies the requirement, a uv-managed one or one of the
+    machine's, and downloads a managed CPython when none is installed; ``--no-project`` keeps the
+    project's own Python requirement out of the choice. The environment has no pip of its own.
+    """
     target = project / OWN_PYTHON
     shutil.rmtree(target, ignore_errors=True)
-    made = subprocess.run(
-        [str(base), "-E", "-s", "-m", "venv", "--without-pip", str(target)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if made.returncode != 0:
+    command = [uv, "venv", "--no-project", "--python", requirement, str(target)]
+    try:
+        made = subprocess.run(
+            command,
+            cwd=project,
+            capture_output=True,
+            text=True,
+            timeout=900,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
         raise InstallError(
             "python_env_failed",
-            f"`{base} -m venv {target}` exited with {made.returncode}: "
-            f"{made.stderr.strip()[-1000:]}",
+            f"`{' '.join(command)}` failed while creating Concorde's own Python environment: "
+            f"{error}",
+        ) from error
+    interpreter = target / "bin/python"
+    probe = (
+        subprocess.run(
+            [str(interpreter), "-E", "-s", "-c", _PROBE],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
         )
+        if made.returncode == 0 and interpreter.exists()
+        else None
+    )
+    if probe is None or probe.returncode != 0:
+        output = ((made.stdout or "") + (made.stderr or ""))[-2000:]
+        if probe is not None:
+            output += f"; {interpreter} then failed: {probe.stderr.strip()[-1000:]}"
+        raise InstallError(
+            "python_env_failed",
+            f"`{' '.join(command)}` exited with {made.returncode} and left no interpreter "
+            f"satisfying Python {requirement} at {interpreter}; its output ends with: "
+            f"{output.strip() or '(empty)'}",
+        )
+    version, base = probe.stdout.splitlines()[:2]
     return {
         "environment": OWN_PYTHON,
-        "base": str(base),
-        "version": ".".join(map(str, version)),
+        "requirement": requirement,
+        "base": base,
+        "version": ".".join(version.split()),
     }
 
 
 REQUIREMENTS = f"{FRAMEWORK}/requirements.txt"
 
 
-def _python_dependencies(project: Path, package: Path, run: Callable) -> dict:
+def _python_dependencies(project: Path, package: Path, uv: str, run: Callable) -> dict:
     """Install the package's locked Python dependencies into Concorde's own environment.
 
     ``uv export`` writes the runtime part of the package's ``uv.lock`` (no development group, no
@@ -715,14 +761,6 @@ def _python_dependencies(project: Path, package: Path, run: Callable) -> dict:
     versions; the environment has no pip of its own. A check that the environment imports every
     top-level dependency closes the step.
     """
-    uv = shutil.which("uv")
-    if uv is None:
-        raise InstallError(
-            "uv_missing",
-            "Concorde's Python dependencies are installed with uv, which is not on PATH; install "
-            "uv (https://docs.astral.sh/uv/), or install with --without-dependencies and accept "
-            "that the Operations needing them (spec_panel) refuse",
-        )
     requirements = project / REQUIREMENTS
     interpreter = project / OWN_PYTHON / "bin/python"
     steps = [
@@ -802,10 +840,6 @@ def main(argv) -> int:
         "then all run on Claude Code",
     )
     parser.add_argument(
-        "--python",
-        help="the interpreter Concorde's own environment is made from (default: this one)",
-    )
-    parser.add_argument(
         "--without-dependencies",
         action="store_true",
         help="do not install Concorde's Python dependencies (with uv); the Operations that "
@@ -825,9 +859,7 @@ def main(argv) -> int:
     package = Path(__file__).resolve().parents[3]
     try:
         if arguments.update:
-            receipt = update(
-                arguments.project, package, python=arguments.python, pi=arguments.pi
-            )
+            receipt = update(arguments.project, package, pi=arguments.pi)
         else:
             receipt = install(
                 arguments.project,
@@ -835,7 +867,6 @@ def main(argv) -> int:
                 d2=not arguments.without_d2,
                 pi=arguments.pi,
                 pi_runtime=not arguments.without_pi_runtime,
-                python=arguments.python,
                 develop=arguments.develop,
                 dependencies=not arguments.without_dependencies,
             )

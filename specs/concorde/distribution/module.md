@@ -60,7 +60,7 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
-| `update [--from <checkout>] [--python <interpreter>] [--pi]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
+| `update [--from <checkout>] [--pi]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
 
 <a id="concept.distribution-command"></a>
 
@@ -88,8 +88,9 @@ candidates without probing inference API access. Configuration validation does n
 
 <a id="concept.protocol-copy"></a><a id="concept.installer"></a>
 
-**Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale build
-and a project in which Concorde is still running — a [run](../glossary.json#concept.run) of an
+**Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale build,
+a machine without `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python, and a project in
+which Concorde is still running — a [run](../glossary.json#concept.run) of an
 Operation or of an [execution command](../glossary.json#concept.execution-command) whose runner
 process lives, as its [run progress file](../glossary.json#concept.run-progress-file) says, or a pi
 [task-session](../glossary.json#concept.task-session) round whose supervisor lives, each named in
@@ -100,13 +101,16 @@ replacing the framework copy under them would change their code halfway; the
 the Operation's and names the same runner, is not a run of its own — then places the Framework
 runtime under `.concorde/framework/` (replacing an earlier copy, and leaving out `scripts/e2e/`,
 which only [End-to-end testing](../e2e/module.md) uses), Concorde's own Python environment, a venv
-at `.concorde/framework/python/` made from the installer's interpreter or `--python` (Python 3.11 or
-newer, else nothing more is written), Concorde's Python dependencies in that environment, such as
-LangGraph, which `spec_panel` runs on — exactly the runtime part of the checkout's `uv.lock`,
-exported with `uv export` to `.concorde/framework/requirements.txt` and installed with
-`uv pip install --require-hashes`, and refused with `uv_missing` when `uv` is not on `PATH` or
-`python_dependencies_failed` with the failing command's output when a step fails
-(`--without-dependencies` skips them, and the Operations that need them then refuse) — the
+at `.concorde/framework/python/` that `uv venv` creates for the Python requirement `concorde.json`
+names under `runtime.python`, on an interpreter uv chooses — one of the machine's or a uv-managed
+CPython, which uv downloads when none fits — whatever interpreter runs the installer
+([requirements](requirements.md#req.distribution.uv-owns-python)), refused with
+`python_env_failed` and uv's output when uv cannot create it, Concorde's Python dependencies in that
+environment, such as LangGraph, which `spec_panel` runs on — exactly the runtime part of the
+checkout's `uv.lock`, exported with `uv export` to `.concorde/framework/requirements.txt` and
+installed with `uv pip install --require-hashes`, and refused with `python_dependencies_failed` with
+the failing command's output when a step fails (`--without-dependencies` skips them, and the
+Operations that need them then refuse) — the
 `concorde` command as `.concorde/bin/concorde`, which runs Concorde only in that environment, with
 the caller's `PYTHONPATH`, `PYTHONHOME` and user site-packages left out, so an activated project
 venv never becomes Concorde's interpreter, the Protocol copy under `.concorde/protocol/` and
@@ -125,11 +129,12 @@ plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, the
 [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json` that each
 task worktree gets, `.concorde/worker-models.json`, `.concorde/framework/`, `.concorde/tools/` and
 `.claude/worktrees/`, where task worktrees go, and a receipt `.concorde/install.json`. The receipt
-names the installed dependencies under `dependencies` (the requirements file, the digest of the
-`uv.lock` they came from and the number of packages, or `null` without them), the checkout installed
-from as `source`, the commit it was at as `source_commit` (`null` outside a Git checkout) and the
-`mode`, `normal` or, for a [develop install](../glossary.json#concept.develop-install) made with
-`--develop`, `develop`. It lists under `files` every file Concorde owns in the project, including a
+names Concorde's own environment under `python` (its path, the requirement it was created for, the
+interpreter uv chose and that interpreter's version), the installed dependencies under
+`dependencies` (the requirements file, the digest of the `uv.lock` they came from and the number
+of packages, or `null` without them), the checkout installed from as `source`, the commit it was at
+as `source_commit` (`null` outside a Git checkout) and the `mode`, `normal` or, for a
+[develop install](../glossary.json#concept.develop-install) made with `--develop`, `develop`. It lists under `files` every file Concorde owns in the project, including a
 default an earlier install wrote and this one found in place, and under `amended` the project's own
 files it only amends: `.gitignore`, `CLAUDE.md` and, once written, `.claude/settings.json`. It also
 installs every rendered workflow for Claude Code as `.claude/workflows/concorde-<name>.js`, which
@@ -150,10 +155,10 @@ Concorde checkout the receipt names as its `source` (or `--from <checkout>`): it
 first install did, keeping `d2`, the pi main session's files and develop mode when they were
 installed (`--pi` adds the pi main session's files to an install that has none), always placing the
 pi runtime unless the first install left it out with `--without-pi-runtime` (so an update adds it to
-an install made before the runtime was placed by default), keeping Concorde's own environment's
-interpreter unless `--python` names another, and refusing like an install while Concorde runs in the
-project; binds the new Protocol copy in the configuration itself, the one write of the project
-configuration an installer makes; and marks the project
+an install made before the runtime was placed by default), creating Concorde's own environment
+again with uv for the new checkout's Python requirement, and refusing like an install while
+Concorde runs in the project; binds the new Protocol copy in the configuration itself, the one
+write of the project configuration an installer makes; and marks the project
 **[Concorde unvalidated](../glossary.json#concept.concorde-unvalidated)** by writing
 `.concorde/update.json`, which Git ignores, with the versions, installed commits and Protocol
 bindings before and after; the validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002`
@@ -176,11 +181,12 @@ Code for them, whatever program the main session is, so every install places the
 `npm ci --ignore-scripts`, which installs exactly the locked versions after checking each npm
 package's integrity hash
 ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime)). A later install
-with the same lockfile keeps the runtime it placed. Without npm the install refuses before writing
-anything else. `--without-pi-runtime` leaves the runtime out, for a machine where
-every worker runs on Claude Code; the receipt records that choice (`pi_runtime`) so that an update
-keeps it, and a pi worker then fails with `pi_runtime_missing`, naming the command that installs the
-runtime.
+with the same lockfile keeps the runtime it placed. When the runtime is still to be placed and npm
+is not on `PATH`, the install refuses with `npm_missing` before writing anything
+([requirements](requirements.md#req.distribution.installer-programs-first)).
+`--without-pi-runtime` leaves the runtime out, for a machine where every worker runs on Claude
+Code; the receipt records that choice (`pi_runtime`) so that an update keeps it, and a pi worker
+then fails with `pi_runtime_missing`, naming the command that installs the runtime.
 
 With `--pi` the installer also prepares the project for a pi main session: it places the
 [run view](../glossary.json#concept.run-view), with its
@@ -320,9 +326,13 @@ Protocol the manifest names.
 <a id="realization.distribution.installer"></a>
 
 The **installer program** reuses the writer and the build's freshness check, and installs the
-rendered main-session guidance. Everything that can refuse an install, the build's freshness,
-Dogfooding's develop source check, the running Concorde and the pinned downloads, is decided before
-the first write, so a refused install leaves the project as it was.
+rendered main-session guidance. Everything that can refuse an install before any program runs —
+the build's freshness, Dogfooding's develop source check, the running Concorde, the project's
+settings, the descriptor's Python requirement, `uv` on `PATH` and, when the pi runtime is still to be
+placed, `npm` — and then the pinned download are decided before the first write, so such a refusal
+leaves the project as it was. Only the steps that run those programs, `npm ci`, `uv venv` and the
+installation of the Python dependencies, can fail after something was written; an install run
+again repeats them.
 
 In update mode the installer takes the choices to keep from the previous receipt and installs as
 before. It then rewrites the configuration's Protocol binding itself, since the project would
