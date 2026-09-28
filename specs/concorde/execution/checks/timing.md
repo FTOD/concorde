@@ -21,7 +21,7 @@ A span is a JSON object with these fields; all are present:
 | `start_ns` | process-local monotonic start |
 | `duration_ns` | monotonic duration, or null when the work did not finish |
 | `status` | `ok`, `error`, `cancelled` or `incomplete` |
-| `metadata` | only the counts `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `prompt_bytes`, `context_bytes`, `items`, `returncode`, `probe_index`, and the labels `operation`, `stage`, `invocation_id`, `launch_invocation_id`, `target_id`, `change_id`, `context_id`; any other key is dropped |
+| `metadata` | only the counts `prompt_bytes`, `context_bytes`, `items`, `returncode`, `probe_index`, and the labels `stage`, `target_id`, `change_id`, `context_id`; any other key is dropped |
 
 A count must be a finite number below 10^18 and nonnegative, except `returncode`; otherwise it is
 null. A label is kept only when it is a host-issued identifier of at most 160 characters drawn from
@@ -44,8 +44,8 @@ with status `incomplete`, and `complete` is false whenever `omitted` is not zero
 | `interval_record(...)` | adapt an interval measured elsewhere to the span shape |
 | `summarize(spans)` | the timing summary of finished span records |
 
-The timing summary is `{complete, summed_span_seconds, covered_seconds_by_process, wall_seconds:
-null, server_thinking_seconds: null}`.
+The timing summary is `{complete, summed_span_seconds, covered_seconds_by_process}`: what the
+spans measured, and nothing they cannot, such as elapsed wall time.
 
 The directory conditions keep diagnostic files apart from the project and from the lifecycle
 records Concorde keeps under `.concorde/status` and `.concorde/runs`. A function marked with
@@ -150,5 +150,4 @@ timestamps are used only to correlate records.
 - WHEN they are summarized
 - THEN the summary reports the covered seconds of each process as the union of that process's intervals, and the summed span seconds separately
 - AND spans without a duration make the summary incomplete instead of counting as zero
-- AND wall time and model thinking time are reported as unknown
 - BUT no span name, trace identity or label appears in the summary

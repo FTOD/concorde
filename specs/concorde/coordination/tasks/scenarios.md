@@ -114,6 +114,16 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - BUT an uncommitted change, or a commit after the delivery commit, makes it `active`
 - AND a second delivery commit makes it `delivered` again, with both deliveries listed in order
 
+### scenario.tasks.delivery-unverified — A delivery commit that does not verify is not delivered
+
+- GIVEN a task whose branch head has the subject and trailers of a delivery commit of its workspace
+- AND the commit does not add the [evidence bundle](../../glossary.json#concept.evidence-bundle) its `Concorde-Evidence` trailer names, or that bundle's readiness run is not its `Concorde-Readiness` trailer
+- WHEN the main agent lists or shows it, merges it, or closes it with `--merged` after merging its branch by hand
+- THEN list and show give it as `active`, and show lists that commit among its deliveries with each mismatch
+- AND merge and close fail with `delivery_unverified` and the reason `decision`, naming the head, its bundle and each mismatch
+- AND the primary branch, the task record and the worktree are unchanged
+- AND a later delivery commit that verifies makes the task `delivered` again
+
 ## Closing
 
 ### scenario.tasks.close-merged — Close a merged task
@@ -155,6 +165,14 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - BUT with the reason and `--run <run-id>` the state is `failed`, the note is the reason and the errors hold the run's [error chain](../../glossary.json#concept.error-chain) unchanged, also appended to the decision log
 - AND a task that failed for no error, such as a wrong direction, closes as `failed` with `--no-error` and no errors
 
+### scenario.tasks.close-rerun — Running a close again finishes it
+
+- GIVEN a task whose close removed its worktree and then could not write the record, or wrote the record and then could not append its closing to the decision log
+- WHEN the main agent reads the refusal
+- THEN it names what the close did and says that running the same close again finishes it
+- AND running the same close again closes the task, or appends the missing closing once and leaves the record unchanged
+- BUT a close with another outcome of the task already closed fails with `invalid_transition`
+
 ### scenario.tasks.closed-inert — A closed task stays closed
 
 - GIVEN a task closed as completed
@@ -162,6 +180,14 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - THEN the task's worktree, and with it its [workspace binding](../../glossary.json#concept.workspace-binding), is gone, so no run of its workspace can start there
 - AND a run of its workspace recorded anyway leaves the task `closed`
 - BUT starting or recording a [task session](../../glossary.json#concept.task-session) for it fails with `task_closed`
+
+### scenario.tasks.round-closed — No round begins in a task closed meanwhile
+
+- GIVEN a pi task session of an open task whose rounds have all ended
+- AND the task is closed after the session checked it and before the new round is recorded
+- WHEN the round is begun
+- THEN the record update reads the record again, finds the task closed and fails with `task_closed`, leaving the session's rounds unchanged
+- BUT a round that was running when the task closed still records its outcome
 
 ## Merging
 
@@ -230,7 +256,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a task that is not delivered, or whose branch moved past its latest delivery commit, or whose worktree has uncommitted changes, or a primary worktree with an uncommitted or untracked path or a detached `HEAD`
 - WHEN the main agent runs `concorde task merge` for it
-- THEN the command fails with `not_merged`, `dirty_worktree` or `primary_dirty` before merging
+- THEN the command fails with `not_merged`, `delivery_unverified`, `dirty_worktree` or `primary_dirty` before merging
 - AND the primary branch, the task record and the worktree are unchanged
 
 ### scenario.tasks.merge-exact-commit — A merge takes the commit it checked
@@ -304,4 +330,11 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - THEN the recorded link has the level `task-session` and the run's error as its cause
 - AND the decision log names the main agent as the receiver
 - AND when the main agent then escalates with `--escalation 1`, its `main-agent` link has the task session's link, unchanged, as its cause
+
+### scenario.tasks.escalate-log-failed — An escalation the decision log refused is recorded once
+
+- GIVEN a task whose decision log cannot be appended to
+- WHEN the main agent escalates
+- THEN the command fails with `decision_log_failed`, naming the escalation's number and carrying the rendered chain
+- AND the record holds the escalation once, and the refusal says that escalating again would record it twice
 

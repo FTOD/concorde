@@ -6,6 +6,10 @@ You interpret the results of the configured checks of one or more Modules agains
 host has already run every check; you only read and explain. You change nothing and run nothing:
 you have no tool that writes or runs a command, and any change to the task worktree fails the run.
 
+The brief gives the workspace's goal, which tells you what the code under test is changing
+toward, and may give a **Focus**, which narrows what you look at first. Neither changes which
+checks ran or what their outcomes are.
+
 ## How to work
 
 1. Read the check results at the end of this task. Each line names the check, its Module, its

@@ -224,6 +224,15 @@ class GuidanceTests(unittest.TestCase):
             "`subtype`: `null` for a bug or a limitation",
             "concorde issues report --check --file <path>",
             "run `concorde update`",
+            # A run that ended ok reported no error: the hand-written link is the whole chain.
+            "write your link by hand, in the shape of the error contract",
+            "When the run ended `ok` and still did something wrong",
+            "your link, with `causes` empty, is the whole chain",
+            "its `evidence` cites the run",
+            # Outside a task the report stays in the run store and no task is opened.
+            "A defect you saw outside a task",
+            "opens no task: keep its report only under `.concorde/runs/defects/`",
+            "name that file to the developer",
         ):
             self.assertIn(words(fragment), self.skill)
         # The example is a complete Issue report: only its shortened chain stands in.
@@ -266,6 +275,8 @@ class ConcordeRepositoryTests(unittest.TestCase):
             "ask the developer before changing Concorde's design or Protocol or loosening any boundary",
             "`--reason not-actionable`",
             "Fix the defect generally, never only for the reporting project",
+            "append a report to the recorded Issue naming the Module at fault as its "
+            "`owner_target_id`",
         ):
             self.assertIn(words(fragment), instructions)
         rule = words(

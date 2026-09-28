@@ -19,9 +19,10 @@ makes outside Specs marks the project's existing tests with the scenarios taken 
 
 Adoption starts where initialization leaves a project: a root Module whose realization binds every
 existing file and whose entry says nothing is specified yet. The
-[main agent](../../../glossary.json#concept.main-agent) opens a task bound to that Module and, in
-its task worktree, usually through the [brownfield workflow](../../workflows/module.md), runs the
-three steps in order:
+[main agent](../../../glossary.json#concept.main-agent) opens a task bound to that Module. The main
+agent or a [task session](../../../glossary.json#concept.task-session) then runs the three steps in
+order in its task worktree, directly or through the
+[brownfield workflow](../../workflows/module.md):
 
 ```text
 concorde run survey --modules <module-id> [--answers <file>] [--input <run-id>]…
@@ -110,8 +111,8 @@ report each separately instead of hiding it in prose:
   it is uncertain, the options and a recommendation.
 
 Neither Operation asks the developer: they have no one to ask. What happens next is the task
-level's or the workflow's choice: go on with the worker's decisions, or put them and the open
-questions to the developer.
+level's or the workflow's choice: go on with the worker's decisions, or seek the developer's
+answers through the existing escalation path.
 
 <a id="concept.answers"></a><a id="concept.deviation"></a>
 
@@ -223,7 +224,11 @@ once per file a two-line no-op definition of `verifies` after the file's docstri
 so that the project's tests stay free of any import of Concorde and run the same in the project's
 own environment, while the coverage check sees which test verifies which scenario. It adds
 nothing else, adds nothing twice, and leaves a file untouched when the decorated file would not
-parse. Only Python tests are linked.
+parse. A file that already binds `verifies` at module level keeps that binding: the host adds only
+decorators when the binding is its own no-op helper, however formatted, or an import of Concorde's
+decorator from `concorde.spec.verification`, and otherwise leaves the file untouched and reports
+each of its links in `unlinked_tests`, because a decorator would call the project's own `verifies`,
+whatever it does. Only Python tests are linked.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
 run's, even one the baseline already had: the worker rewrites those documents, and a retry must not
@@ -266,8 +271,9 @@ that workspace's earlier proposal or description.
 
 **Operations** lists `survey` and `code_to_spec` in its catalog and dispatches to this Module;
 `survey` is the one Adoption Operation its catalog lets run unbound. Adoption never starts another
-run: the order of the survey, the scaffold and code_to_spec, and whether to ask the developer
-between them, is decided by the task level or a workflow.
+run: the order of the survey, the scaffold and code_to_spec, and whether to seek the developer's
+answers between them through the existing escalation path, is decided by the task level or a
+workflow.
 
 <a id="uses-workers"></a>
 

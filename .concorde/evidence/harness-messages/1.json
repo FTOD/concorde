@@ -1,0 +1,111 @@
+{
+  "workspace": "harness-messages",
+  "goal": "Developer-approved panel-review decisions for the Harness: (harness F18) reword the write-denial reason in write_hook.py and pi_policy.ts (and the tables in claude-code.md/pi.md and tests) so it covers both cases: the path is not in this task's grant; a file no Module declares must first be declared as a pending file through a specify task, and a file another Module declares needs that Module bound; also make pi's .git reason consistent with the hook's; (harness F12) keep the decidable SHALLs in Workers and Task sessions and link them from Harness module.md, define or drop 'a grant it cannot read', and make settings generation raise a SettingsError with a detailed reason for a malformed grant instead of a bare KeyError. Specs and tests.",
+  "modules": [
+    "module.harness",
+    "module.workers"
+  ],
+  "sequence": 1,
+  "base_commit": "1c901df3f11178ea5516eb0dc4f24d65f829f281",
+  "parent_commit": "99ae7848b538991858d5ab249b119bc1b3e89754",
+  "readiness": {
+    "run_id": "r-20260928T172814-delivery-118ac0d1",
+    "input_digest": "sha256:44411066b4f0b4fb02ea7f5839ee84191b8b66808261918320884d019592c128",
+    "modules": [
+      "module.harness",
+      "module.workers"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:ce1468c4b175653a3bc5097ffe071eca4dfe20296dbe78347e5900a4245ae540"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:04ced0822b3beef84185b84b16a7c3e13fef5dbf46458fb342be58b1ecbf8c0f"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:a159c33f3c09710235388c7918606ea1b8af485563a4e446c0d19446afbf2fd3"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:ce9ec69e6f15e56b870dd932bd148a7f53493aad4ce1ba435939aeb8b04f2b13"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:f5735c1dde9aa623dddf7e7d14faa5c0c53050e4f934cd7aef43acf5ffef8181"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:e02c36dfd3389f088885b41582426e7977d33bded58d9b0c75eec52116000b6f"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:8c610782d400e0e7c8f19bba449658f39a2cf341ce28342b6296757e784bac20"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:a4fbcc9b6b64623c428487564c4e7c5c236b1abe1573b421e87676c000cf627f"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:84994b5982f6f4ad3543feeca6906ac70d6917b0af8d3a6ae2c26f52898f3ba7"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:702cf33525d0b1d874e8287f1c18b7e824e13e5816f224afcffef23bae75c4a6"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:d8e461ff545248a8f94862f3fb88ab810d67a592cd1e2a6d49844cea48161727"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:4250fcafd255111b49c1bd3bcf930051c2ca033e9402477bb3c6539cfb589470"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T172654-task_validation-3142691b",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.harness",
+        "module.workers"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:2f5146d1345da95d7a28331b238a721541e340e89c0c9c7bd9131e346f67aa74"
+    }
+  ],
+  "created_at": "2026-09-28T17:29:42Z"
+}

@@ -31,6 +31,14 @@ the branch since the base commit, its subject is exactly `concorde: deliver <wor
 number. Delivery reads its earlier deliveries this way, and so may anyone who needs to know whether
 and how often a workspace was delivered.
 
+A delivery commit **verifies** when it holds what its bundle says was validated: it has exactly one
+parent, which is the bundle's `parent_commit`; it adds the bundle its `Concorde-Evidence` trailer
+names, which its parent does not hold; and that bundle's `readiness.run_id` is its
+`Concorde-Readiness` trailer. Delivery reports a delivery commit it finds at the branch head only
+when it verifies. A delivery commit Delivery creates verifies further when its tree is the tree
+`git write-tree` recorded from the index after staging, so that no commit hook changed what was
+committed.
+
 ## Evidence bundle
 
 ```concorde-contract
@@ -314,7 +322,7 @@ and how often a workspace was delivered.
 ```concorde-contract
 {
   "id": "contract.delivery.output",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -355,7 +363,7 @@ and how often a workspace was delivered.
       }
     }
   },
-  "semantics": "The output of a delivery run whose status is ok. commit is the delivery commit, now the head of branch, the workspace's bound branch; bundle is the project-relative path of its evidence bundle and sequence its number; confirmed lists the realization entries whose pending markers the delivery cleared. recovered is true when the run found that the branch head already is a delivery commit of the workspace and nothing waits to be delivered, such as after a delivery whose run ended after its commit, and reports that commit instead of committing; confirmed is then empty. A run whose status is not ok has no output. A behaviour or field change increments the version.",
+  "semantics": "The output of a delivery run whose status is ok. commit is the delivery commit, now the head of branch, the workspace's bound branch; bundle is the project-relative path of its evidence bundle and sequence its number; confirmed lists the realization entries whose pending markers the delivery cleared. recovered is true when the run found that the branch head already is a delivery commit of the workspace that verifies against its bundle, as the delivery commit section defines, and nothing waits to be delivered, such as after a delivery whose run ended after its commit, and reports that commit instead of committing; confirmed is then empty. A head that is a delivery commit but does not verify ends the run failed with commit_unverified. A run whose status is not ok has no output. A behaviour or field change increments the version.",
   "example": {
     "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
     "branch": "concorde/severity",

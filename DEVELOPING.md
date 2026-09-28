@@ -104,6 +104,9 @@ unless this primary worktree is clean and on its branch. When the developer hand
    worktree, record the report with `python3 scripts/issues.py report --file <report> --task
 <task>`. Its evidence is checked in the project its `origin` names, and its `concorde_commit`
    says which Concorde the defect was seen on: check first that it still happens at the head.
+   Then append a report to the recorded Issue naming the Module at fault as its
+   `owner_target_id`, with the Issue's `issue_id` and the `expected_revision` that
+   `python3 scripts/issues.py show <id>` prints, since the Issue's owner is its latest report's.
 2. Read its `error_chain` in full and check its `basis`. A blocked boundary is placed in one of
    Dogfooding's four boundary cases. Fix a Concorde implementation bug, where the grant or harness
    applied differs from what the Protocol derives from the Specs, directly. For a Concorde design

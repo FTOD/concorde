@@ -15,10 +15,11 @@ worktree (in Claude Code EnterWorktree, then ExitWorktree after delivery), runni
 (background Bash in Claude Code, the `concorde_run` tool in pi) and waiting to be woken, never
 polling with `sleep`, or start task sessions for work
 split into several tasks (`concorde task session` in Claude Code, the `concorde_task_session` tool
-in pi); record every result that is
+in pi); record every result of a task's runs that is
 not `ok` and every decision you made alone in the task's decision log; read the whole error chain
 of a result that is not `ok`; ask the developer only about decisions with major impact, adding
-your own link to the chain with `concorde task escalate` instead of summarizing it; merge delivered
+your own link to the chain with `concorde task escalate` instead of summarizing it, and show the
+developer the whole rendered chain of an unbound run that is not `ok`; merge delivered
 task branches without asking, always with `concorde task merge <task>`, never `git merge`, and
 finish a merge that a `merge_incomplete` refusal names with `concorde task merge <task> --resume`
 (or `--abort`) before anything else;

@@ -124,22 +124,51 @@ class E2ETests(unittest.TestCase):
                 (listed["run"], listed["workspace"], listed["phase"]),
             )
 
-    def test_a_workflow_result_is_the_workspaces_latest_saved_report(self):
+    @verifies("scenario.e2e.stale-result")
+    def test_a_run_returns_only_a_workflow_result_it_saved(self):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory)
-            self.assertIsNone(e2e.latest_report(project, "adopt"))
+            (project / ".concorde/tasks").mkdir(parents=True)
+            (project / ".concorde/tasks/adopt.json").write_text(
+                json.dumps({"worktree": str(project)})
+            )
             folder = project / ".concorde/runs/workflows/adopt"
             (folder / "reports").mkdir(parents=True)
-            reports = [
-                {"status": status, "path": str(folder / f"reports/{n}.json")}
-                for n, status in ((1, "running"), (2, "ok"))
-            ]
-            (folder / "record.json").write_text(
-                json.dumps({"workspace": "adopt", "steps": [], "reports": reports})
-            )
-            self.assertEqual(
-                folder / "reports/2.json", e2e.latest_report(project, "adopt")
-            )
+            record = folder / "record.json"
+
+            def save(number: int, status: str) -> None:
+                path = folder / f"reports/{number}.json"
+                path.write_text(json.dumps({"status": status}))
+                value = (
+                    json.loads(record.read_text())
+                    if record.is_file()
+                    else {"workspace": "adopt", "steps": [], "reports": []}
+                )
+                value["reports"].append({"status": status, "path": str(path)})
+                record.write_text(json.dumps(value))
+
+            # An earlier run of the task saved a result.
+            save(1, "failed")
+            saves = []
+
+            def session(*_arguments, **_options):
+                for number, status in saves:
+                    save(number, status)
+                return {"end": "idle"}
+
+            log = project / ".concorde/runs/e2e/adopt-claude"
+            with patch.object(e2e.sessions, "start", session):
+                with self.assertRaises(e2e.E2EError) as raised:
+                    e2e.run_workflow(project, "claude", "brownfield", {}, log, "adopt")
+                self.assertEqual("no_result", raised.exception.code)
+                self.assertIn(
+                    "held 1 before the run and 1 after", raised.exception.detail
+                )
+                saves[:] = [(2, "running"), (3, "ok")]
+                value = e2e.run_workflow(
+                    project, "claude", "brownfield", {}, log, "adopt"
+                )
+            self.assertEqual({"status": "ok"}, value)
 
     def test_the_driver_needs_the_projects_rendered_script(self):
         with tempfile.TemporaryDirectory() as directory:

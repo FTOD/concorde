@@ -399,6 +399,35 @@ def start(
     known: set[str] = set()
     history = []
     end = "rounds_exhausted"
+
+    def save(ended: str, **extra) -> dict:
+        """Write ``session.json`` for the session as it ended."""
+        final = next(
+            (item["result"] for item in reversed(history) if item["result"]), None
+        )
+        if client == "pi":
+            # pi reports each round's own spending; Claude Code's result carries the session's
+            # total.
+            spent = [(item["result"] or {}).get("cost_usd") or 0.0 for item in history]
+            cost = round(sum(spent), 6)
+        else:
+            cost = (final or {}).get("cost_usd")
+        record = {
+            "project": str(project),
+            "client": client,
+            "session_id": session,
+            "prompt": prompt,
+            "started_at": began,
+            "ended_at": stamp(),
+            "end": ended,
+            **extra,
+            "rounds": history,
+            "cost_usd": cost,
+            "final": (final or {}).get("text"),
+        }
+        (directory / "session.json").write_text(json.dumps(record, indent=2) + "\n")
+        return record
+
     for number in range(1, rounds + 1):
         log = directory / f"round-{number}.jsonl"
         errors = directory / f"round-{number}.err"
@@ -454,31 +483,18 @@ def start(
         if not runs:
             end = "idle"
             break
-        wait_for(project, runs, wait_limit, poll)
+        try:
+            wait_for(project, runs, wait_limit, poll)
+        except E2EError as error:
+            # The session is kept like any other before the failure goes up, naming the run
+            # that outlived the wait.
+            save(error.code, progress=error.evidence.get("progress"))
+            error.evidence["session"] = str(directory / "session.json")
+            raise
         entry["woke_for"] = [item["run"] for item in runs]
         known.update(entry["woke_for"])
         message = wake_message(project, runs)
-    final = next((item["result"] for item in reversed(history) if item["result"]), None)
-    if client == "pi":
-        # pi reports each round's own spending; Claude Code's result carries the session's total.
-        spent = [(item["result"] or {}).get("cost_usd") or 0.0 for item in history]
-        cost = round(sum(spent), 6)
-    else:
-        cost = (final or {}).get("cost_usd")
-    record = {
-        "project": str(project),
-        "client": client,
-        "session_id": session,
-        "prompt": prompt,
-        "started_at": began,
-        "ended_at": stamp(),
-        "end": end,
-        "rounds": history,
-        "cost_usd": cost,
-        "final": (final or {}).get("text"),
-    }
-    (directory / "session.json").write_text(json.dumps(record, indent=2) + "\n")
-    return record
+    return save(end)
 
 
 def show(directory: Path) -> dict:

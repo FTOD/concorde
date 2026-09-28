@@ -97,6 +97,14 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - AND a fresh measurement yields the readiness's input digest again
 - AND the branch holds no delivery commit
 
+### scenario.delivery.hook-changed-commit — A commit hook that changes the content is caught
+
+- GIVEN a workspace that is ready, with a pre-commit hook that rewrites `src/a/calc.py` and stages it again
+- WHEN the workspace is delivered
+- THEN Git creates the delivery commit and the worktree is clean
+- BUT the commit's tree is not the tree recorded after staging, so the result has status `failed` with `commit_unverified`, reason `decision`, naming `src/a/calc.py` as changed
+- AND the commit stays on the branch, since Delivery never rewrites history
+
 ### scenario.delivery.stage-refused — Git refuses to stage the bundle
 
 - GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a Git clean filter that refuses the bundle's path
@@ -120,3 +128,11 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - THEN no new commit is created
 - AND the output is the existing commit with `recovered` true and no confirmations, and the worktree is clean
 - AND the branch still holds exactly that one delivery commit, which alone records the delivery
+
+### scenario.delivery.recover-unverified — A head that only looks delivered is not reported
+
+- GIVEN a clean workspace whose head has the subject and trailers of a delivery commit of the workspace
+- AND the head was cherry-picked onto another parent than its bundle's `parent_commit`, or its `Concorde-Readiness` trailer names another run than its bundle's readiness, or it adds no bundle
+- WHEN delivery runs
+- THEN the result has status `failed` with `commit_unverified`, reason `decision`, naming each mismatch
+- AND no commit is created and the head is unchanged

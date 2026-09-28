@@ -115,7 +115,9 @@ class LivePiWorkerTests(unittest.TestCase):
         self.assertTrue(any("Git metadata" in text for text in denials), denials)
         writes = [text for name, _, text, error in results if name == "write" and error]
         self.assertTrue(any("read-only" in text for text in writes), writes)
-        self.assertTrue(any("undeclared" in text for text in writes), writes)
+        self.assertTrue(
+            any("not in this task's grant" in text for text in writes), writes
+        )
         grep = [text for name, _, text, _ in results if name == "grep"]
         self.assertTrue(grep and "SECRET" not in grep[0] and "def add" in grep[0], grep)
         bash = "".join(text for name, _, text, _ in results if name == "bash")

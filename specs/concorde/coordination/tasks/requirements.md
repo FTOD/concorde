@@ -108,8 +108,22 @@ from its workspace's runs in the run store, its branch and its worktree each tim
 listed or shown.
 
 A `merging` task is shown as `merging`. Otherwise it is `delivered` when the branch head is a
-delivery commit of the task's workspace and the worktree is clean, `active` when the workspace has a run, the branch moved past its base commit or the
+delivery commit of the task's workspace that verifies against its evidence bundle and the worktree
+is clean, `active` when the workspace has a run, the branch moved past its base commit or the
 worktree has uncommitted changes, and `open` otherwise.
+
+### req.tasks.delivery-verified — Only a delivery commit that verifies counts
+
+Tasks SHALL count a task as delivered, and merge it or close it as merged, only when its branch
+head is a [delivery commit](../../glossary.json#concept.delivery-commit) of its workspace that
+verifies by Delivery's own check: its only parent is its
+[evidence bundle](../../glossary.json#concept.evidence-bundle)'s `parent_commit`, it adds the
+bundle its `Concorde-Evidence` trailer names, and the bundle's `readiness.run_id` is its
+`Concorde-Readiness` trailer.
+
+A head that does not verify is shown `active`, `task show` lists each mismatch with that delivery,
+and `merge` and `close --merged` refuse it with `delivery_unverified`, naming each mismatch, as
+[scenario.tasks.delivery-unverified](scenarios.md#scenario.tasks.delivery-unverified) shows.
 
 ### req.tasks.failure-explained — A failed task says why
 
@@ -128,13 +142,18 @@ can start there; one task runs one thing at a time by Execution's
 ### req.tasks.closed-no-session — A closed task gets no task session
 
 Tasks SHALL refuse with `task_closed` to start or record a
-[task session](../../glossary.json#concept.task-session) for a closed or failed task.
+[task session](../../glossary.json#concept.task-session), or to begin a round of one, for a closed
+or failed task.
+
+Beginning a round checks the task's state inside the record update that appends the round, so a
+close stored after the session's own check still refuses it. Finishing a round is never refused
+for a closed task, so the outcome of a round that was running when the task closed is recorded.
 
 ### req.tasks.merge-verified — Merged means contained in the primary branch
 
 Closing a task as merged SHALL succeed only when the task branch holds a delivery commit of the
-task's workspace since its base, the latest one is the head of the branch, that head is contained
-in the primary branch and the worktree has no uncommitted change.
+task's workspace since its base, the latest one is the head of the branch and verifies, that head
+is contained in the primary branch and the worktree has no uncommitted change.
 
 ### req.tasks.no-silent-discard — Uncommitted work is never discarded silently
 
@@ -152,6 +171,25 @@ restore the primary branch and the task stays `merging`; a `check_failed` whose 
 paths, which the reset leaves in the primary worktree and the refusal names; and a close that
 failed after the merge and its checks succeeded, which leaves the checked merge in place and the
 task `merging`.
+
+`concorde task close` and `concorde task escalate` are not atomic either: each changes Git, the
+task record and the decision log in steps that cannot be one transaction. Their refusals after a
+step leave that step done, and say so:
+
+- a close's `worktree_failed` may leave the worktree's submodules deinitialized, which the refusal
+  says with how to restore them;
+- a close refused while writing the record (`record_conflict`, `record_unwritable`) after it
+  removed the worktree leaves the task in its state without its worktree, which the refusal says;
+- a close's `decision_log_failed` leaves the task closed or failed in its record without its
+  closing in the decision log;
+- an escalation's `decision_log_failed` leaves the escalation in the record and not in the
+  decision log; the refusal names its number, carries the rendered chain, says that escalating
+  again would record it twice and asks for the chain to be appended by hand.
+
+Each refusal of a close says that running the same close again finishes it once the cause is
+fixed, or, for a close run by a merge whose task stays `merging`, `concorde task merge <task-id>
+--resume`: the rerun skips a worktree that is gone, and the same close of a task already closed
+with that outcome appends the closing its decision log lacks and changes nothing else.
 
 ## Merging
 

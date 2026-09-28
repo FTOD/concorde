@@ -33,7 +33,8 @@ any of them, and is skipped when there are none. Tests and scenarios are many-to
 Module's change runs are those verifying its scenarios, wherever their files are bound, so the
 Module that owns a test file only decides who may change it. A Python test is passed as
 `path::Class::name`, a TypeScript test by its file, and the log of a selective check begins with the
-tests it selected.
+tests it selected. Because the same check runs other tests for another selection, its measured
+digest also covers the selected Modules and the selected tests.
 
 The project's interpreter is the configuration's `python`: an absolute path as it is, a relative
 one in the worktree the check runs in or, when that has none, in the primary worktree, since a
@@ -75,14 +76,18 @@ added to the command line or diagnostic messages.
    test verifies a scenario of the selected Modules; `kinds` narrows the call to the ordinary checks
    (`module`) or to the selective ones (`selective`), so that a caller can run each Module's own
    checks separately and the selective checks once for the whole selection;
-4. for each kept check, computes `check_revision` of the check's own Module: the digest of that
-   Module's implementation digest, each of its checks' definitions, the digest of every file below
-   their inputs, and `CHECK_POLICY`;
+4. for each kept check, computes its measured digest with `measured_digest`, in the same file. For
+   an ordinary check it is `check_revision` of the check's own Module: the digest of that Module's
+   implementation digest, each of its checks' definitions, the digest of every file below their
+   inputs, and `CHECK_POLICY`. For a selective check it is the digest of that `check_revision`
+   together with the sorted selected Modules, the tests it selected and the digest of every file
+   holding one of them;
 5. runs the check through `execute_check` with `worktree` as project root and the default boundary,
    and writes `<stdout>\n<stderr>` to `<log_directory>/<check id>.log`, preceded for a selective
    check by the tests it selected; when the boundary refused the command, the log holds what it
    reported and the call fails with `check_sandbox_unavailable`;
-6. computes `check_revision` again and fails the whole call with `stale_evidence` when it differs;
+6. computes the measured digest again, selecting a selective check's tests anew, and fails the
+   whole call with `stale_evidence` when it differs;
 7. returns one check result per check it ran, in configuration order.
 
 A failure in any step ends the call without results, including those of checks that already ran.
@@ -97,12 +102,13 @@ is acceptable.
 | `module` | The Module the check belongs to |
 | `status` | `passed` (exit code 0), `failed` (any other exit code) or `timeout` |
 | `exit_code` | The exit status, `-1` on timeout |
-| `source_digest` | The `check_revision` measured before the run, the result's measured digest |
+| `source_digest` | The measured digest taken before the run |
 | `log` | The log's path |
 | `log_digest` | The digest of the saved log |
 
-A consumer decides whether a stored check result is still current by recomputing `check_revision`
-for the same Module and comparing it with `source_digest`.
+A consumer decides whether a stored check result is still current by recomputing `measured_digest`
+for the same check and, for a selective check, the same selected Modules, and comparing it with
+`source_digest`.
 
 ### Errors
 
@@ -116,6 +122,24 @@ names no project interpreter, or none that is an executable file where it was lo
 input changed while the check ran) and `unknown_module`. Each carries the fields of that error
 record: its code, a message naming the check or Module concerned, the code's reason, its location,
 remediation and causes.
+
+### Check execution's error as a link
+
+`service_error(error)` turns an error `run_checks` raised into this Module's own link of the
+Framework's [error chain](../../contracts.md#contract.concorde.error), which every caller keeps
+unchanged as a cause under its own link: Execution's stop for checks that could not run, the
+Workers round that runs a worker's checks, and Validation's blocking `check` finding and its
+`inputs_changed` stop. The link has the level `component`, the actor `Check execution`, the error's
+code, a detail with its message and location, the code's reason as explanation, its remediation as
+option and recommendation, and the error's own causes nested the same way. Its unhandled reason
+depends on the code:
+
+| Code | Reason |
+| --- | --- |
+| `check_sandbox_unavailable`, `stale_evidence` | `environment`: the host cannot establish the boundary, or something outside the service changed the input |
+| `system_error`: an operating-system error, raised as it is or reported by Spec core | `environment` |
+| `unexpected_error` of Spec core | `capability` |
+| every other code of `CheckError` or Spec core | `input`: the configuration or the Modules named are wrong, and only whoever supplied them can correct them |
 
 ### A check that did not pass as an error link
 
@@ -142,8 +166,18 @@ The check's own `env` and the scratch settings of [the boundary](boundary.md) ar
 
 ### req.checks.measured-input-unchanged — A check cannot vouch for input that changed
 
-A configured check run SHALL fail with `stale_evidence` when the implementation files or check
-inputs it measured differ after the run from before it.
+A configured check run SHALL fail with `stale_evidence` when the implementation files, check
+inputs or selected tests it measured differ after the run from before it.
+
+### req.checks.selection-measured — A selective result names its selection
+
+The measured digest of a selective check SHALL cover the selected Modules and the digest of every
+selected test file.
+
+### req.checks.service-link — A service failure reaches the caller as this Module's link
+
+The check service SHALL give every caller its failures as Check execution's own error link, which
+the caller keeps as a cause under its own link.
 
 ### req.checks.logs-where-asked — Check output stays with the caller's run
 
@@ -193,6 +227,7 @@ start.
 - THEN the selective check is skipped
 - AND when the checks of Module A run, the selective check runs once with `src/a/test_answer.py::test_answer` in place of `{tests}`, its log naming the selected tests
 - AND the readiness check runs only when readiness is decided
+- AND the selective check's measured digest for Module A differs from its measured digest for Modules A and B, and from its digest once the selected test file changes
 
 ### scenario.checks.service-read-only — A check cannot change the worktree
 
@@ -206,6 +241,7 @@ start.
 - GIVEN a check whose Module's implementation file changes while the check runs
 - WHEN the service measures the check revision again
 - THEN the call fails with `stale_evidence` and returns no result
+- AND Check execution's link for it has the level `component`, the actor `Check execution`, the code `stale_evidence` and the reason `environment`
 
 ### scenario.checks.service-refused — A refused check has no status
 
@@ -213,6 +249,7 @@ start.
 - WHEN the service runs the check
 - THEN the call fails with `check_sandbox_unavailable`
 - AND the log holds what the boundary reported
+- AND a caller that cannot run its checks keeps Check execution's `check_sandbox_unavailable` link as a cause
 - BUT no check result is returned
 
 ### scenario.checks.service-input-missing — A missing input stops the run

@@ -413,6 +413,40 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn("hook says no", envelope["error"]["causes"][0]["detail"])
         self.assert_undone(envelope, index, metadata)
 
+    @verifies("scenario.delivery.hook-changed-commit")
+    def test_a_commit_hook_that_changes_the_content_is_caught(self):
+        # The hook changes a validated file and stages it again, so the worktree stays clean
+        # and only the commit's tree shows what was not validated.
+        hook = self.project.root / ".git/hooks/pre-commit"
+        hook.write_text(
+            "#!/bin/sh\nprintf 'def add(a, b):\\n    return 0\\n' > src/a/calc.py\n"
+            "git add src/a/calc.py\n"
+        )
+        hook.chmod(0o755)
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(["commit_unverified"], codes(error))
+        self.assertEqual(error["unhandled"]["reason"], "decision")
+        self.assertIn("is not the staged tree", error["detail"])
+        self.assertIn("M src/a/calc.py", error["detail"])
+        self.assertNotIn(".concorde/evidence", error["detail"])
+        # The commit stays: Delivery never rewrites history.
+        commit = self.head()
+        self.assertEqual(
+            git(self.worktree, "log", "-1", "--format=%s"), "concorde: deliver t1"
+        )
+        self.assertEqual(
+            git(self.worktree, "rev-list", "--parents", "-n1", commit).split()[1:],
+            [self.base],
+        )
+        self.assertEqual(
+            self.committed("src/a/calc.py"), "def add(a, b):\n    return 0"
+        )
+        self.assertEqual(status_lines(self.worktree), "")
+        self.assertIsNone(envelope["output"])
+
     @verifies("scenario.delivery.stage-refused")
     def test_git_refuses_to_stage_the_bundle(self):
         # A required clean filter that fails refuses the bundle after every other change is
@@ -523,6 +557,80 @@ class DeliveryTests(unittest.TestCase):
             [d["commit"] for d in self.project.deliveries()], [delivered["commit"]]
         )
         self.assertEqual(status_lines(self.worktree), "")
+
+    @verifies("scenario.delivery.recover-unverified")
+    def test_a_head_that_only_looks_delivered_is_not_reported(self):
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        step = self.commit_step()
+        _, first = self.project.deliver()
+        self.assertEqual(first["status"], "ok", first)
+        delivered = first["output"]["commit"]
+        run = first["run_id"]
+
+        def message(bundle: str, readiness: str) -> str:
+            return (
+                "concorde: deliver t1\n\nFix A.\n\nConcorde-Workspace: t1\n"
+                f"Concorde-Evidence: {bundle}\nConcorde-Readiness: {readiness}\n"
+            )
+
+        def commit(*arguments: str, text: str):
+            subprocess.run(
+                ["git", "commit", "-q", *arguments, "-F", "-"],
+                cwd=self.worktree,
+                input=text,
+                text=True,
+                check=True,
+                capture_output=True,
+            )
+
+        def reworded():
+            commit("--amend", text=message(".concorde/evidence/t1/1.json", "r-other"))
+
+        def cherry_picked():
+            git(self.worktree, "reset", "-q", "--hard", step)
+            (self.worktree / "src/a/more.py").write_text("MORE = 1\n")
+            self.commit_step("Another step")
+            git(self.worktree, "cherry-pick", delivered)
+
+        def without_bundle():
+            commit("--allow-empty", text=message(".concorde/evidence/t1/2.json", "r-x"))
+
+        def with_the_parents_bundle():
+            commit("--allow-empty", text=message(".concorde/evidence/t1/1.json", run))
+
+        cases = [
+            (
+                reworded,
+                "readiness run "
+                + run
+                + " is not the Concorde-Readiness trailer's r-other",
+            ),
+            (cherry_picked, f"is not the bundle's parent_commit {step}"),
+            (
+                without_bundle,
+                ".concorde/evidence/t1/2.json its Concorde-Evidence trailer names "
+                "is not in the commit",
+            ),
+            (
+                with_the_parents_bundle,
+                "does not add the bundle .concorde/evidence/t1/1.json",
+            ),
+        ]
+        for forge, mismatch in cases:
+            with self.subTest(forge.__name__):
+                git(self.worktree, "reset", "-q", "--hard", delivered)
+                forge()
+                head = self.head()
+                self.assertEqual(status_lines(self.worktree), "")
+                status, envelope = self.project.deliver()
+                self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+                error = envelope["error"]
+                self.assertEqual(["commit_unverified"], codes(error))
+                self.assertEqual(error["unhandled"]["reason"], "decision")
+                self.assertIn(mismatch, error["detail"])
+                self.assertIn(head, error["detail"])
+                self.assertIsNone(envelope["output"])
+                self.assertEqual((self.head(), status_lines(self.worktree)), (head, ""))
 
     @verifies("scenario.delivery.unbound")
     def test_a_delivery_needs_a_bound_workspace(self):

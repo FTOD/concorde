@@ -186,6 +186,64 @@ def delivery_commits(
     return found
 
 
+def _git(worktree: Path, *arguments: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *arguments], cwd=worktree, capture_output=True, text=True, check=False
+    )
+
+
+def delivery_mismatches(worktree: Path, delivery: dict) -> list[str]:
+    """How the delivery commit ``delivery`` (as ``delivery_commits`` reads it) disagrees with
+    its bundle; empty when it verifies.
+
+    It verifies when its only parent is the bundle's ``parent_commit``, it adds the bundle its
+    ``Concorde-Evidence`` trailer names, and the bundle's readiness run is its
+    ``Concorde-Readiness`` trailer.
+    """
+    commit, path = delivery["commit"], delivery["bundle"]
+    problems = []
+    listed = _git(worktree, "rev-list", "--parents", "-n", "1", commit).stdout.split()
+    parents = listed[1:]
+    if len(parents) != 1:
+        problems.append(
+            f"it has {len(parents)} parent(s) ({', '.join(parents) or 'none'}) instead of one"
+        )
+    shown = _git(worktree, "show", f"{commit}:{path}")
+    if shown.returncode != 0:
+        problems.append(
+            f"the bundle {path} its Concorde-Evidence trailer names is not in the commit"
+        )
+        return problems
+    if (
+        parents
+        and _git(worktree, "cat-file", "-e", f"{parents[0]}:{path}").returncode == 0
+    ):
+        problems.append(
+            f"it does not add the bundle {path}: its parent {parents[0]} already holds it"
+        )
+    try:
+        bundle = json.loads(shown.stdout)
+    except ValueError as error:
+        problems.append(f"the bundle {path} is not JSON: {error}")
+        return problems
+    if not isinstance(bundle, dict):
+        problems.append(f"the bundle {path} is not a JSON object")
+        return problems
+    recorded = bundle.get("parent_commit")
+    if len(parents) == 1 and parents[0] != recorded:
+        problems.append(
+            f"its parent {parents[0]} is not the bundle's parent_commit {recorded}"
+        )
+    readiness = bundle.get("readiness")
+    run = readiness.get("run_id") if isinstance(readiness, dict) else None
+    if run != delivery["readiness_run"]:
+        problems.append(
+            f"the bundle's readiness run {run} is not the Concorde-Readiness trailer's "
+            f"{delivery['readiness_run']}"
+        )
+    return problems
+
+
 def _run_entry(records: Path, run: dict) -> dict:
     path = records / "runs" / run["run_id"] / "result.json"
     entry = {
@@ -286,6 +344,7 @@ __all__ = [
     "bundle_path",
     "commit_message",
     "delivery_commits",
+    "delivery_mismatches",
     "runs_since",
     "sequence_of",
 ]

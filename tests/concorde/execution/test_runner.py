@@ -739,8 +739,25 @@ class RunnerTests(unittest.TestCase):
         # The refusal is recorded like any run, and the lock is free again afterwards.
         self.assertEqual(envelope, self.saved(envelope))
         self.assertIsNone(runs.lock_holder(self.records, "t1"))
-        status, envelope = self.project.run("task-validation", "--task", "t1")
+        # An admitted run writes its result while it still holds the lock, so the next run
+        # admitted finds that result written.
+        holders = []
+        write_text = Path.write_text
+
+        def observed(path, *args, **kwargs):
+            if path.name == "result.json":
+                holders.append(runs.lock_holder(self.records, "t1"))
+            return write_text(path, *args, **kwargs)
+
+        with patch.object(Path, "write_text", observed):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        [holder] = holders
+        self.assertIn(envelope["run_id"], holder)
+        self.assertIsNone(runs.lock_holder(self.records, "t1"))
+        status, following = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual("ok", following["status"])
+        self.assertEqual(envelope, self.saved(envelope))
 
     @verifies("scenario.execution.workspace-wait")
     def test_a_waiting_run_queues_behind_the_running_one(self):

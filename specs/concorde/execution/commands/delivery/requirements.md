@@ -59,6 +59,17 @@ as its only parent.
 
 Every delivery commit SHALL contain one evidence bundle that satisfies the evidence bundle contract.
 
+### req.delivery.commit-verified — The commit is proven to hold what was staged
+
+Delivery SHALL end a run that created a delivery commit `ok` only when that commit's tree is the
+tree `git write-tree` recorded from the index after staging, its only parent is the validated head,
+it is the head of the bound branch and the worktree is clean, and otherwise fail with
+`commit_unverified`, naming every difference and leaving the commit in place.
+
+The repository's commit hooks run normally, and a hook may change what is committed; the recorded
+tree shows each path it changed, so the commit is exactly what was validated or the run says it is
+not.
+
 ### req.delivery.history-kept — History is never rewritten
 
 Delivery SHALL NOT amend, rebase, merge or push any commit, nor move its branch to a commit other
@@ -89,3 +100,14 @@ workspace and no uncommitted change waits.
 
 Such a run reports the existing commit instead, as
 [scenario.delivery.recover](scenarios.md#scenario.delivery.recover) shows.
+
+### req.delivery.recovered-verified — A delivered head is verified before it is reported
+
+Delivery SHALL report an existing delivery commit at the branch head as delivered only when its
+only parent is the `parent_commit` of its evidence bundle, the commit adds the bundle its
+`Concorde-Evidence` trailer names, and that bundle's `readiness.run_id` is its `Concorde-Readiness`
+trailer, and otherwise fail with `commit_unverified`, naming each mismatch and committing nothing.
+
+A delivery commit is recognised by its subject and trailers alone, which any commit can carry; the
+bundle is what ties it to the readiness it claims, as
+[scenario.delivery.recover-unverified](scenarios.md#scenario.delivery.recover-unverified) shows.

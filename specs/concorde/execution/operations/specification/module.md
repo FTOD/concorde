@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Specification changes Specs on the [main agent](../../../glossary.json#concept.main-agent)'s behalf.
+Specification changes Specs on the caller's behalf.
 It provides the `specify` [Operation](../../../glossary.json#concept.operation): a worker bound to
 one or more Modules edits those Modules' own [Spec](../../../glossary.json#concept.spec) documents
 to a stated intent, including declaring pending realization entries for files a later `implement`
 run will create. The Operation reconciles the registry mirror, validates the result and returns the
-[Spec change](../../../glossary.json#concept.spec-change) it observed, so the main agent can close
+[Spec change](../../../glossary.json#concept.spec-change) it observed, so the caller can close
 [Spec gaps](../../../glossary.json#concept.spec-gap) and fix where code may go before anyone writes
 it. Specification never touches code, creates the files it declares or changes another
 [Module](../../../glossary.json#concept.module)'s documents; a Spec that still fails validation after
@@ -15,7 +15,7 @@ the worker's bounded repair rounds stops the run for a decision, not another gue
 
 ## Usage
 
-The main agent runs the Operation in a task worktree, typically after `understand` reported Spec
+The caller runs the Operation in a task worktree, typically after `understand` reported Spec
 gaps or a plan that starts with a Spec change:
 
 ```text
@@ -46,9 +46,9 @@ or validation finds a new error. The [error chain](../../../glossary.json#concep
 ends in the worker's own link with its options, or, for a new validation error, in the Operation's
 `new_structural_errors` link (reason `decision`) with one cause per finding, its rule, file and
 message; `failed` when the worker could not be run or the audit found a write outside the grant.
-Edits stay uncommitted, for the main agent to accept, retry, repair or discard; `blocked`/`failed`
-still carries the observed change, except after an audit violation or a failure before the worker
-ran.
+Edits stay uncommitted, for the task level to accept, retry, repair or discard within its authority;
+`blocked`/`failed` still carries the observed change, except after an audit violation or a failure
+before the worker ran.
 
 The worker can write only documents its Modules already own, and the project glossary's entries
 those Modules own; a changed glossary shows among the changed documents. When the change needs a
@@ -113,7 +113,7 @@ the same rule, file and message counts as pre-existing too. After each round tha
 `ok` with a clean audit, the Operation validates the same way and resumes the worker, at most twice
 per worker launch, with every error its change introduced, so the worker repairs the Specs it broke
 itself; the second worker launched to fill created documents gets its own two repair rounds. Only
-errors left after the last round stop the run for the main agent's decision.
+errors left after the last round stop the run for a decision at the task level.
 
 The registry sits outside every Module's write set, so an edited `module` block leaves the mirror
 stale; step 6 is the reconciliation the Protocol provides, touching only existing Modules' mirrored

@@ -163,13 +163,19 @@ runs -> workers: an Operation launches
 <a id="uses-workflows"></a>
 
 **Workflows** is level 3, which a task session may start for its task when the work follows a known
-procedure. The session starts a [workflow](../../glossary.json#concept.workflow) exactly as the main
-agent would, for its own task only, and relies on the
-[workflow result](../../glossary.json#concept.workflow-result) keeping every step's
-[error chain](../../glossary.json#concept.error-chain) whole. A workflow that stops at a
-[decision point](../../glossary.json#concept.decision-point) is a decision for the session to take
-within its task's goal, or to escalate with its own link above the result's chain; it never merges
-or closes the task, which stays the main agent's.
+procedure. The session starts a [workflow](../../glossary.json#concept.workflow) as the main agent
+would, for its own task only, but only in no-ask
+[mode](../../glossary.json#concept.workflow-mode): nobody answers a task session, so an interactive
+workflow would stop at its first [decision point](../../glossary.json#concept.decision-point) with
+no one to settle it, while a no-ask workflow decides those points and reports every decision at the
+end. The session relies on the [workflow result](../../glossary.json#concept.workflow-result)
+listing those decisions and keeping every step's
+[error chain](../../glossary.json#concept.error-chain) whole. It copies the decisions and problems
+into the task's [decision log](../../glossary.json#concept.decision-log), gives the decisions in
+its own report, and escalates to the main agent what needs the developer: a result that is not `ok`
+and that it cannot repair within the task, with its own link above the result's chain, and a
+decision of major impact the workflow took, named in its report. The workflow never merges or
+closes the task, which stays the main agent's.
 
 <a id="uses-execution"></a>
 

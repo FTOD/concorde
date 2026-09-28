@@ -187,6 +187,7 @@ by every code whose round had one, even when the round also timed out or failed 
 | Code | Detail | Reason | Causes |
 | --- | --- | --- | --- |
 | `grant_unavailable` | which of the task type, grant, context identity or entries is missing | `input` | none |
+| `grant_malformed` | the first grant entry that is not an object with a worktree-relative path and a level of `rw`, `ro` or `names`, and what is wrong with it | `input` | none |
 | `run_directory_denied` | the deny rule that would cover the worker's own directories | `environment` | none |
 | `pending_not_created` | the pending path that could not be created and why | `environment` | none |
 | `snapshot_failed` | the Git command that failed and its output | `environment` | none |
@@ -214,6 +215,10 @@ unchanged.
 ### req.workers.frozen-grant — One grant for the whole run
 
 The host SHALL generate a run's settings, write hook, tool set and brief from one frozen grant.
+
+### req.workers.malformed-grant — Nothing is generated from a malformed grant
+
+The host SHALL refuse to launch a worker whose grant has an entry that is not an object with a non-empty path relative to the task worktree and a level of `rw`, `ro` or `names`, before it generates any settings, write hook or [permission extension](../../glossary.json#concept.permission-extension), and name that entry and what is wrong with it.
 
 ### req.workers.unchanged-across-rounds — The run's configuration never changes between rounds
 

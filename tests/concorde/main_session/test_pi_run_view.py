@@ -21,7 +21,8 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 SOURCE = REPOSITORY_ROOT / "src/concorde/main_session/pi_runs.ts"
 PROBE = """
 import {
-  recordedRuns, workersOf, view, concordeCommand, alive, taskWorktree, resultText,
+  recordedRuns, workersOf, view, concordeCommand, alive, taskWorktree, resultText, runError,
+  discoveredRuns,
 } from %(source)s;
 const root = %(root)s;
 const out = {};
@@ -31,9 +32,17 @@ for (const run of recordedRuns(root)) {
   out[run.run_id] = {
     workers: workers.map((worker) => worker.run_id),
     view: shown,
-    result: resultText(shown),
+    result: resultText(shown, runError(root, run.run_id)),
   };
 }
+const discovery = %(discovery)s;
+out.discovered = discoveredRuns(
+  recordedRuns(root),
+  new Set(discovery.known),
+  Date.parse(discovery.since),
+  new Set(discovery.launching),
+  (pid) => !discovery.dead.includes(pid),
+).map((run) => run.run_id);
 out.command = concordeCommand(root);
 out.worktrees = ["t1", "gone", "missing", "../t1"].map((task) => taskWorktree(root, task));
 out.self = alive(process.pid);
@@ -93,7 +102,7 @@ class RunViewTests(unittest.TestCase):
         (self.runs / value["run_id"]).mkdir(parents=True)
         (self.runs / value["run_id"] / "status.json").write_text(json.dumps(value))
 
-    def probe(self, alive=None) -> dict:
+    def probe(self, alive=None, discovery=None) -> dict:
         probe = self.root / "probe.mts"
         probe.write_text(
             PROBE
@@ -101,6 +110,15 @@ class RunViewTests(unittest.TestCase):
                 "source": json.dumps(SOURCE.as_posix()),
                 "root": json.dumps(self.root.as_posix()),
                 "alive": json.dumps(alive or {}),
+                "discovery": json.dumps(
+                    discovery
+                    or {
+                        "known": [],
+                        "since": "2026-09-25T00:00:00Z",
+                        "launching": [],
+                        "dead": [],
+                    }
+                ),
             }
         )
         completed = subprocess.run(
@@ -242,6 +260,99 @@ class RunViewTests(unittest.TestCase):
         self.assertIn("process 103", out["r-dead"]["view"]["preview"])
         self.assertTrue(out["self"])
         self.assertFalse(out["gone"])
+
+    @verifies("scenario.main-session.pi-run-view")
+    def test_runs_started_elsewhere_are_followed(self):
+        # Before the view began: one still running, one finished, one whose runner died.
+        self.status(operation("r-running", started_at="2026-09-25T09:00:00.000000Z"))
+        self.status(
+            operation(
+                "r-old",
+                phase="finished",
+                status="ok",
+                started_at="2026-09-25T09:00:01.000000Z",
+                host_pid=101,
+            )
+        )
+        self.status(
+            operation("r-stale", started_at="2026-09-25T09:00:02.000000Z", host_pid=102)
+        )
+        # Since the view began: started by bash or another session, one already ended.
+        self.status(operation("r-bash", host_pid=103))
+        self.status(
+            operation(
+                "r-quick", phase="finished", status="failed", summary="x", host_pid=104
+            )
+        )
+        # Already followed, or being launched by concorde_run itself.
+        self.status(operation("r-known", host_pid=105))
+        self.status(operation("r-launching", host_pid=106))
+        out = self.probe(
+            discovery={
+                "known": ["r-known"],
+                "since": "2026-09-25T09:30:00Z",
+                "launching": [106],
+                "dead": [102],
+            }
+        )
+        self.assertEqual(["r-running", "r-bash", "r-quick"], out["discovered"])
+
+    @verifies("scenario.main-session.pi-run-view")
+    def test_the_wake_message_carries_the_error_chain(self):
+        self.status(
+            operation(
+                "r-failed",
+                name="spec_review",
+                workspace=None,
+                phase="finished",
+                status="failed",
+                summary="The reviewer failed.",
+            )
+        )
+        chain = {
+            "level": "operation",
+            "actor": "Operation spec_review r-failed (unbound)",
+            "code": "worker_failed",
+            "detail": "the reviewer ended failed",
+            "unhandled": {
+                "reason": "decision",
+                "explanation": "the main agent decides",
+            },
+            "options": ["run it again"],
+            "causes": [
+                {
+                    "level": "worker",
+                    "actor": "reviewer",
+                    "code": "context_missing",
+                    "detail": "a Spec could not be read",
+                    "unhandled": {"reason": "input", "explanation": "nothing to read"},
+                    "options": [],
+                    "causes": [],
+                }
+            ],
+        }
+        (self.runs / "r-failed/result.json").write_text(
+            json.dumps({"status": "failed", "error": chain})
+        )
+        self.status(operation("r-ok", phase="finished", status="ok", summary="Done."))
+        (self.runs / "r-ok/result.json").write_text(
+            json.dumps({"status": "ok", "error": None})
+        )
+        out = self.probe()
+        text = out["r-failed"]["result"]
+        self.assertIn("finished failed. failed: The reviewer failed.", text)
+        self.assertIn(
+            "Error chain:\nOperation spec_review r-failed (unbound): worker_failed: "
+            "the reviewer ended failed (not handled: the main agent decides)",
+            text,
+        )
+        self.assertIn("  option: run it again", text)
+        self.assertIn(
+            "  reviewer: context_missing: a Spec could not be read (not handled: nothing "
+            "to read)",
+            text,
+        )
+        self.assertNotIn("Error chain", out["r-ok"]["result"])
 
     def test_the_command_prefers_the_installed_concorde(self):
         self.assertEqual(["concorde"], self.probe()["command"])

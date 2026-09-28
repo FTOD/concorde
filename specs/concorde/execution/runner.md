@@ -104,8 +104,10 @@ each worker launch's [run record](../glossary.json#concept.run-record) beside it
   refusal of the workspace binding, the unbound checkout or the run store with its message, such
   as Git's output for a checkout it refused, the run holding the lock of a busy workspace or the
   registered Modules for an unknown one.
-- The result is written before the lock is released, so a result always means a workspace free
-  for its next run.
+- The result is written while the lock is still held, so a run admitted to the workspace after
+  this one always finds its result written. The converse does not hold: whoever reads the result
+  may still find the lock held until the runner has ended, so a caller that wants to start the
+  next run waits for the lock to be free, not for the result.
 - Whenever the status is not `ok`, the runner also writes the
   [error chain](../glossary.json#concept.error-chain), rendered as indented text, to standard error.
 

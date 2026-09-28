@@ -59,7 +59,8 @@ Always include all six fields: `status`, `summary`, `commit`, `escalations`, `de
 `open`. Do not omit the unused field or use an empty string for `commit`.
 
 Add a `summary` of what the round did, every decision you made without the main agent with its
-reason in `decisions`, and what is still open in `open`. Concorde checks the commit against the
+reason in `decisions`, with every decision of a workflow you ran, and what is still open in `open`,
+with every workflow decision of major impact for the developer. Concorde checks the commit against the
 delivery commits on the task branch and the escalations against the task record; a report they do
 not bear out fails the round. Do
 not merge the task branch, close the task, start other sessions or record decisions for other

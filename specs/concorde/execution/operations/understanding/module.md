@@ -2,19 +2,19 @@
 
 ## Purpose
 
-Understanding lets the [main agent](../../../glossary.json#concept.main-agent) learn what one or
-more Modules promise before anything changes. It provides the `understand`
-[Operation](../../../glossary.json#concept.operation): a worker reads the bound Modules' Specs and
+Understanding lets callers learn what one or more Modules promise before anything changes. It
+provides the `understand` [Operation](../../../glossary.json#concept.operation): a worker reads the
+bound Modules' Specs and
 only the names of their code files, and answers a stated goal with what the Modules promise, whether
 their [Spec](../../../glossary.json#concept.spec) suffices, the
-[Spec gaps](../../../glossary.json#concept.spec-gap) if not, and, when asked, a plan. The main agent
+[Spec gaps](../../../glossary.json#concept.spec-gap) if not, and, when asked, a plan. The caller
 relies on it to plan work and confirm a Spec repair closed a gap. Understanding never changes a Spec
 or code file, never reads code contents and never fills a missing promise by guessing from code; a
-plan is a proposal the main agent may follow, change or reject.
+plan is a proposal the caller may follow, change or reject.
 
 ## Usage
 
-The main agent runs the Operation in a task worktree, usually before specifying or implementing:
+The caller runs the Operation in a task worktree, usually before specifying or implementing:
 
 ```text
 concorde run understand [--modules <module-id>[,<module-id>…]] --goal "<text>" [--plan] [--input <run-id>]…
@@ -27,7 +27,7 @@ worktree without a binding, such as the primary worktree, it is an
 exists; it then works on the Modules `--modules` names and admits only inputs of other unbound runs.
 `--modules` names the worker's bound Modules (default: the binding's; an unbound run without it
 fails at step 1 with `grant_unavailable`, since a grant needs a Module), `--goal` states what the
-main agent wants to know or do, `--plan` also asks for a plan, and `--input` admits an earlier `ok`
+caller wants to know or do, `--plan` also asks for a plan, and `--input` admits an earlier `ok`
 run's output as material, which the brief carries beside the goals. For example, `--modules
 module.issues --goal "let reports carry a severity" --plan` has the worker answer with either a plan
 (`specify`, `implement`, `test`, `code_review`, `task-validation`, `delivery`) or the Spec gaps that
@@ -43,14 +43,22 @@ whether the Spec is **sufficient**. When it is and a plan was requested, the pla
 to change, the files to declare as pending entries and where, the ordered next runs — the
 Operations `understand`, `specify`, `implement`, `test`, `spec_review` and `code_review`, and the
 [execution commands](../../../glossary.json#concept.execution-command) `task-validation` and
-`delivery` that end a task's work — and the open decisions the main agent has to take. The plan has
+`delivery` that end a task's work — and the open decisions left to the task level. The plan has
 no separate Operation: breaking work into steps is one use of understanding.
+
+The Spec is sufficient when it states every promise the goal relies on. For a goal that asks what
+the Modules promise, that is every promise the answer needs. For a goal that changes them, the
+existing Specs must state every promise the change relies on and say where each new promise it
+adds belongs, so that the change can be planned: the new promises become the plan's `specify`
+steps and are never Spec gaps.
 
 <a id="concept.spec-gap"></a>
 
-When not sufficient, the assessment lists each **Spec gap** instead of a plan: the Module and
-document where the promise belongs, what is missing, why the goal needs it and a suggested repair.
-The usual next step is `specify` to close the gaps, then another `understand` to confirm it.
+When not sufficient, the assessment lists each **Spec gap** instead of a plan: a promise the goal
+relies on that the Specs do not state, including where a new promise belongs when no bound Module's
+Spec says so. Each names the Module and document where the promise belongs, what is missing, why the
+goal needs it and a suggested repair. The usual next step is `specify` to close the gaps, then
+another `understand` to confirm it.
 
 `status` is `ok` whenever the worker completed an assessment, sufficient or not; `sufficient` says
 whether work may proceed. It is `blocked` when the worker could not assess the goal at all — an
@@ -60,12 +68,12 @@ what it tried and would need. It is `failed` when the worker could not be run or
 with Workers' launch, timeout or audit error as the cause of the Operation's link, as for every
 [standard worker sequence](../../../glossary.json#concept.standard-worker-sequence). It is also
 `failed` when the assessment names an unknown Module or is internally inconsistent (gaps and
-sufficiency, or plan and `--plan`, disagree; no entry for a bound Module): the Operation's own link
-then has the code `unknown_modules` or `inconsistent_assessment`, lists every unknown Module or
-every inconsistency, and gives `capability` as its reason — the Operation checks the assessment
-but never corrects it or relaunches the worker. A failed or blocked result carries no `output`; the
-worker's own answer stays in the `worker` field. Running the Operation again with the same inputs
-is safe.
+sufficiency, or plan and `--plan`, disagree; a bound Module has no entry or more than one; an entry
+names a Module that is not bound): the Operation's own link then has the code `unknown_modules` or
+`inconsistent_assessment`, lists every unknown Module or every inconsistency, and gives
+`capability` as its reason — the Operation checks the assessment but never corrects it or
+relaunches the worker. A failed or blocked result carries no `output`; the worker's own answer
+stays in the `worker` field. Running the Operation again with the same inputs is safe.
 
 ## Design
 
@@ -95,7 +103,7 @@ The Operation treats the assessment as the worker's claim, verifying only what i
 declarations and the assessment's own shape, then adds its own evidence, the **host evidence** of
 the [run result](../../../glossary.json#concept.run-result): grant,
 [context identity](../../../glossary.json#concept.context-identity), audit and transcript path, and
-every unknown Module or inconsistency it finds. Whether a plan is good is for the main agent and
+every unknown Module or inconsistency it finds. Whether a plan is good is for the caller and
 later Operations to find out. See the [requirements](requirements.md) and [scenarios](scenarios.md).
 
 <a id="realization.understanding.operation"></a>

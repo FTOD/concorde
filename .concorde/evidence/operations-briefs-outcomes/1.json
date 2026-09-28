@@ -1,0 +1,209 @@
+{
+  "workspace": "operations-briefs-outcomes",
+  "goal": "Developer-approved panel-review decisions for Understanding, Implementation and Code review: (understanding F10) the understand Operation also fails extra or duplicate modules entries, with a test; (understanding F2) define sufficiency for a change goal as: the existing Specs state every promise the change relies on and say where its new promises belong, so the change can be planned (new promises become the plan's specify steps; a gap is a relied-on promise the Specs do not state), in the contract semantics, Usage and prompts/workers/understand.md; (implementation F17) the implement and test briefs also carry the workspace's goal as context, as specify does (--goal stays implement's task, --focus narrows test); remove the unreachable not_started outcome from code_review's and implement's contracts and code (contract version bumps, CHECK_SCHEMA/OUTCOMES). Specs, prompts and tests.",
+  "modules": [
+    "module.understanding",
+    "module.implementation",
+    "module.code-review"
+  ],
+  "sequence": 1,
+  "base_commit": "1c901df3f11178ea5516eb0dc4f24d65f829f281",
+  "parent_commit": "f46c96d55e9a899c0a9fdefb91b9bdc11c3ea6ec",
+  "readiness": {
+    "run_id": "r-20260928T172807-delivery-bf3fe68d",
+    "input_digest": "sha256:c7cc6b72d14d85599e06e31e2ae62ff9bb51c28c03a8641cfaf74193def93983",
+    "modules": [
+      "module.adoption",
+      "module.checks",
+      "module.code-review",
+      "module.commands",
+      "module.concorde",
+      "module.coordination",
+      "module.delivery",
+      "module.distribution",
+      "module.dogfood-scenarios",
+      "module.dogfooding",
+      "module.e2e",
+      "module.execution",
+      "module.harness",
+      "module.headless-sessions",
+      "module.implementation",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.scaffold",
+      "module.spec",
+      "module.spec-mcp",
+      "module.spec-review",
+      "module.spec-tooling",
+      "module.specification",
+      "module.swe-bench-cases",
+      "module.task-session",
+      "module.tasks",
+      "module.understanding",
+      "module.validation",
+      "module.views",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:c25cbfc90170fc6f1d6867a1c9f51b839869d26b945fb7973aeac5b1f6e660db"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:5396357959bb710bb7c7a5b8b1b9df81c0616da03c9ac50088fab708361531c1"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:f9d0d447f96426ceaa8098297361d5e535c2c1b8d51b9bb7061b5acebcac69a3"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:6642b62c31d2c8a7a04c815c05ac15ee24aab9035c6181c880a9703b3574be01"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:55f7c7a36380f60c6bc34681300e91a2119344082fb4655d42e43a2e39f70fda"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:4ae5e92b08c1631c049f78994cce8c442d59e5f093e7ec995fb628a3ef48f8fe"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:e996b69a440b33a7c7dab682068287a3a1d468beceb3f6a4fc4ccbb611df972c"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:b4d4f3a56d5e334c01b511c24e967b259b2fd2e1b00e74a7e651f765147db742"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:2a1925278960ad81a7f3a8a3b6645cede006046a7e77ae7d2a07b5e8638208b8"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:2a1925278960ad81a7f3a8a3b6645cede006046a7e77ae7d2a07b5e8638208b8"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:4394c81eb6206c8f8329f337c5a39075175c4142064ef183b6ecfa88734b2976"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:d5e1078f7460d01eec253ea43b693a1f77bcc1863f6b7b8bcf39a43919eac722"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:51e1f812671ae7dbdfdb2056587a2239e102758357a1d07906f0115438debfc8"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:0feee2824c7a5b5884e49a90b9cc5d1728eb8465345f970c99eff131ae6b173e"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:c8bad5350f74d6d6f0c67214a19d09eb1e89cce39adc65373bf392751f8a69f7"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:8f48210cba42e32d681f1fa567e13e44de00719fff267723a057840b897c7c1b"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d0bd19f7e59e5a632ed9789a24f112056949270c99c0fb45b69d3517df08eff8"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:ce89d2d30c5b229ff4accf94c2023684f28a493c10be905a80b3202c6e880739"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:ba80c2bb220f1412a52b28bb5194b458723ed9f1394bf9a769a2bce270825959"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:4c9bac6c0a86d14c568dc05c2d78ebb43069bca37791a512f2c626e03be4dfbb"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:4c9bac6c0a86d14c568dc05c2d78ebb43069bca37791a512f2c626e03be4dfbb"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:4c9bac6c0a86d14c568dc05c2d78ebb43069bca37791a512f2c626e03be4dfbb"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:a7987473e72bf2f97d47d35541d258e5d9b23328f5c07c6b92f95ce97c8a8fdf"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T172215-task_validation-e3fe82b7",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.understanding",
+        "module.implementation",
+        "module.code-review"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:2861f7c237adc2018d80aaad49a0ba6ea34bb1c93ccccf1c561462ec6edaa745"
+    }
+  ],
+  "created_at": "2026-09-28T17:33:58Z"
+}

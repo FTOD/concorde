@@ -181,9 +181,9 @@ refuses with `{"error": <link>}` in the same shape.
 
 ## Keep the decision log
 
-Record in the task's decision log (`concorde task show <task>` prints its path) every result that
-is not `ok` and every decision you made without the developer, with the reason. Append; never
-rewrite earlier entries.
+Record in the task's decision log (`concorde task show <task>` prints its path) every result of
+the task's runs that is not `ok` and every decision you made without the developer, with the
+reason. Append; never rewrite earlier entries.
 
 ## Decide, and escalate only what matters
 
@@ -212,6 +212,14 @@ It records your link, with the named runs' chains, the errors saved from other c
 session's recorded escalations as its causes, in the task record and the decision log, and prints
 the chain rendered for the developer. Show the developer that rendered chain, with your question,
 instead of a paraphrase.
+
+The decision log and `concorde task escalate` belong to a task, so they cover the runs of a task.
+An unbound run belongs to none: when one is not `ok`, show the developer its whole error chain as
+rendered, from the command's standard error or, in pi, from the message that wakes you, never a
+summary of it. When the failure leads to work, open a task for that work and escalate in it with
+`--error-file .concorde/runs/<run-id>/result.json` (the primary worktree's run store), which records
+the unbound run's chain under your link in the task; `--run` names only runs of the task's own
+workspace.
 
 ## Task sessions
 

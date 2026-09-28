@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde import errors
 from concorde.errors import ERROR_SCHEMA, codes
 from concorde.execution import binding
 from concorde.execution.runs import workspace_lock
@@ -570,6 +571,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             ".concorde/evidence/t1/1.json", shown["deliveries"][0]["bundle"]
         )
+        self.assertEqual([], shown["deliveries"][0]["mismatches"])
         # A run that changes nothing leaves the task delivered.
         write_run(self.root, "r-20260927T000000-test-00000001", "t1", name="test")
         self.assertEqual("delivered", self.state())
@@ -586,6 +588,47 @@ class TaskStoreTests(unittest.TestCase):
             [item["bundle"] for item in store.show_task(self.root, "t1")["deliveries"]],
         )
         self.assertEqual(second, git(self.root, "rev-parse", "concorde/t1"))
+
+    @verifies("scenario.tasks.delivery-unverified")
+    def test_a_delivery_commit_that_does_not_verify_is_not_delivered(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        # Only the subject and trailers of a delivery commit, and no bundle.
+        head = deliver(worktree, bundle_run=None)
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual("active", shown["record"]["state"])
+        self.assertEqual([head], [item["commit"] for item in shown["deliveries"]])
+        (mismatch,) = shown["deliveries"][0]["mismatches"]
+        self.assertIn(".concorde/evidence/t1/1.json", mismatch)
+        self.assertIn("not in the commit", mismatch)
+        self.assertEqual(
+            ["active"], [item["state"] for item in store.list_tasks(self.root)]
+        )
+        git(self.root, "merge", "--ff-only", "concorde/t1")
+        before = self.record()
+        status, value = self.command("close", "t1", "--merged")
+        self.assertEqual(1, status, value)
+        error = value["error"]
+        self.assertEqual(
+            ("delivery_unverified", "decision"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertIn(head, error["detail"])
+        self.assertIn(mismatch, error["detail"])
+        self.assertEqual(before, self.record())
+        self.assertTrue(worktree.exists())
+        # A bundle whose readiness run is not the trailer's does not verify either.
+        second = deliver(worktree, text="second = True\n", bundle_run="r-other")
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual("active", shown["record"]["state"])
+        self.assertEqual(second, shown["deliveries"][1]["commit"])
+        (mismatch,) = shown["deliveries"][1]["mismatches"]
+        self.assertIn("readiness run r-other", mismatch)
+        # The next delivery that verifies delivers the task.
+        deliver(worktree, text="third = True\n")
+        shown = store.show_task(self.root, "t1")
+        self.assertEqual("delivered", shown["record"]["state"])
+        self.assertEqual([], shown["deliveries"][2]["mismatches"])
 
     @verifies("scenario.tasks.close-merged")
     def test_close_a_merged_task(self):
@@ -761,6 +804,183 @@ class TaskStoreTests(unittest.TestCase):
         with self.assertRaises(store.TaskError) as raised:
             store.record_session(self.root, "t1", {"program": "claude"})
         self.assertEqual("task_closed", raised.exception.code)
+
+    @verifies("scenario.tasks.round-closed")
+    def test_no_round_begins_in_a_task_closed_meanwhile(self):
+        self.project.open_task("t1")
+        store.record_session(
+            self.root, "t1", {"program": "pi", "id": "s1", "rounds": []}
+        )
+        running = {"round": 1, "status": "running", "supervisor_pid": 1}
+        store.begin_round(self.root, "t1", "s1", dict(running))
+        # A round running when the task closes still records its outcome.
+        self.command("close", "t1", "--completed", "--note", "done")
+        record = store.finish_round(self.root, "t1", "s1", 1, {"status": "stopped"})
+        self.assertEqual("stopped", record["sessions"][0]["rounds"][0]["status"])
+        with self.assertRaises(store.TaskError) as raised:
+            store.begin_round(self.root, "t1", "s1", dict(running, round=2))
+        self.assertEqual("task_closed", raised.exception.code)
+        # A close stored between the round's first check and its write refuses it on retry.
+        self.project.open_task("t2")
+        store.record_session(
+            self.root, "t2", {"program": "pi", "id": "s1", "rounds": []}
+        )
+        path = self.root / ".concorde/tasks/t2.json"
+        real_locked, real_session = store._locked, store._pi_session
+        checked = {"n": 0}
+
+        @contextlib.contextmanager
+        def closing(primary):
+            value = json.loads(path.read_text())
+            if value["state"] == "open":
+                value["state"] = "closed"
+                path.write_text(json.dumps(value))
+            with real_locked(primary):
+                yield
+
+        def counted(record, session_id):
+            checked["n"] += 1
+            return real_session(record, session_id)
+
+        with (
+            patch.object(store, "_locked", closing),
+            patch.object(store, "_pi_session", counted),
+            self.assertRaises(store.TaskError) as raised,
+        ):
+            store.begin_round(self.root, "t2", "s1", dict(running))
+        self.assertEqual("task_closed", raised.exception.code)
+        self.assertEqual(1, checked["n"])
+        self.assertEqual([], self.record("t2")["sessions"][0]["rounds"])
+
+    def read_only_log(self, task_id="t1"):
+        log = self.root / f".concorde/tasks/{task_id}.decisions.md"
+        log.chmod(0o444)
+        self.addCleanup(log.chmod, 0o644)
+        return log
+
+    @verifies("scenario.tasks.close-rerun")
+    def test_running_a_close_again_finishes_it(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        real_git = store._git
+
+        def refusing_removal(root, *arguments, check=True):
+            if arguments[:2] == ("worktree", "remove"):
+                return subprocess.CompletedProcess(arguments, 128, "", "fatal: locked")
+            return real_git(root, *arguments, check=check)
+
+        with patch.object(store, "_git", refusing_removal):
+            status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual((1, "worktree_failed"), (status, value["error"]["code"]))
+        self.assertIn("record of task t1 is unchanged", value["error"]["detail"])
+        self.assertIn("finishes the close", value["error"]["detail"])
+        self.assertTrue(worktree.exists())
+        real = store.update
+
+        def conflicting(primary, task_id, change):
+            raise store.TaskError(
+                "record_conflict", f"task {task_id} changed concurrently"
+            )
+
+        with patch.object(store, "update", conflicting):
+            status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(1, status, value)
+        error = value["error"]
+        self.assertEqual("record_conflict", error["code"])
+        self.assertIn(f"already removed the worktree {worktree}", error["detail"])
+        self.assertIn("stays open", error["detail"])
+        self.assertIn(
+            "`concorde task close t1 --completed` with the same", error["detail"]
+        )
+        self.assertFalse(worktree.exists())
+        self.assertEqual("open", self.record()["state"])
+        self.assertIs(real, store.update)
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            ("closed", False), (value["state"], value["closed"]["worktree_removed"])
+        )
+        self.assertIn("## Closed: completed", self.log())
+        # The record is written but the decision log refuses the closing.
+        self.project.open_task("t2")
+        log = self.read_only_log("t2")
+        status, value = self.command(
+            "close", "t2", "--failed", "--reason", "no", "--no-error"
+        )
+        self.assertEqual(1, status, value)
+        validate(value["error"], ERROR_SCHEMA)
+        self.assertEqual(
+            ("decision_log_failed", "environment"),
+            (value["error"]["code"], value["error"]["unhandled"]["reason"]),
+        )
+        self.assertIn("is failed in its record", value["error"]["detail"])
+        self.assertIn("`concorde task close t2 --failed`", value["error"]["detail"])
+        stored = self.record("t2")
+        self.assertEqual("failed", stored["state"])
+        self.assertEqual(
+            (1, "invalid_transition"),
+            self.refusal("close", "t2", "--completed", "--note", "other"),
+        )
+        log.chmod(0o644)
+        status, value = self.command(
+            "close", "t2", "--failed", "--reason", "no", "--no-error"
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual(stored, self.record("t2"))
+        heading = f"## Closed: failed, {stored['closed']['at']}"
+        self.assertEqual(1, self.log("t2").splitlines().count(heading))
+        self.assertIn("\nno\n", self.log("t2"))
+        self.assertEqual(
+            (1, "invalid_transition"),
+            self.refusal("close", "t2", "--failed", "--reason", "no", "--no-error"),
+        )
+        self.assert_contract(self.record("t2"))
+
+    def log(self, task_id="t1"):
+        return (self.root / f".concorde/tasks/{task_id}.decisions.md").read_text()
+
+    @verifies("scenario.tasks.escalate-log-failed")
+    def test_an_escalation_the_log_refused_is_recorded_once(self):
+        self.project.open_task("t1")
+        cause = self.root.parent / "cause.json"
+        cause.write_text(
+            json.dumps(
+                errors.link(
+                    "operation",
+                    "implement",
+                    "check_failed",
+                    "the tests of module.a failed",
+                    reason="decision",
+                    explanation="the fix is outside the goal",
+                )
+            )
+        )
+        self.read_only_log()
+        before = self.log()
+        status, value = self.command(
+            "escalate",
+            "t1",
+            "--error-file",
+            str(cause),
+            "--code",
+            "scope_decision",
+            "--detail",
+            "the fix needs module.b",
+            "--reason",
+            "decision",
+            "--explanation",
+            "binding module.b is the developer's decision",
+        )
+        self.assertEqual(1, status, value)
+        validate(value["error"], ERROR_SCHEMA)
+        detail = value["error"]["detail"]
+        self.assertEqual("decision_log_failed", value["error"]["code"])
+        self.assertIn("as escalation 1", detail)
+        self.assertIn("would record it twice", detail)
+        self.assertIn("the tests of module.a failed", detail)
+        self.assertEqual(1, len(self.record()["escalations"]))
+        self.assertEqual(before, self.log())
+        self.assert_contract(self.record())
 
 
 if __name__ == "__main__":

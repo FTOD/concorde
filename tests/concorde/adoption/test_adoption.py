@@ -590,7 +590,14 @@ class AdoptionTests(AdoptionCase):
         )
         self.assertEqual(0, status, envelope)
         self.assertEqual(claims["deviations"], envelope["output"]["deviations"])
+        # A deviation never replaces the promise the answer states.
         claims["promises"] = []
+        status, envelope = self.describe(
+            [{"result": {"output": claims}}], "--answers", answers
+        )
+        self.assertEqual("failed", envelope["status"])
+        self.assertEqual("inconsistent_description", envelope["error"]["code"])
+        self.assertIn("q.payment-retry", envelope["error"]["detail"])
         claims["deviations"] = []
         status, envelope = self.describe(
             [{"result": {"output": claims}}], "--answers", answers

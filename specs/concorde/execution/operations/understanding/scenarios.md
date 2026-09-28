@@ -8,7 +8,7 @@ is in the [contracts](contracts.md).
 ### scenario.understanding.sufficient — A sufficient Spec is confirmed
 
 - GIVEN a workspace whose bound [Module](../../../glossary.json#concept.module) states every promise a goal needs
-- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `understand` in it for that Module with the goal and without `--plan`
+- WHEN the caller runs `understand` in it for that Module with the goal and without `--plan`
 - THEN the worker receives the Module's [Spec context](../../../glossary.json#concept.spec-context) to read and its implementation files by name only
 - AND the result has status `ok` and an assessment marked sufficient
 - AND the assessment carries no plan and no [Spec gap](../../../glossary.json#concept.spec-gap)
@@ -16,7 +16,7 @@ is in the [contracts](contracts.md).
 ### scenario.understanding.plan — A plan is returned on request
 
 - GIVEN a workspace whose bound Modules state every promise a goal needs
-- WHEN the main agent runs `understand` in it for them with the goal and `--plan`
+- WHEN the caller runs `understand` in it for them with the goal and `--plan`
 - THEN the result has status `ok` and a sufficient assessment with a plan
 - AND the plan names the Modules to change, the files to declare as pending entries with their Module and realization, and the ordered next runs
 
@@ -24,7 +24,7 @@ is in the [contracts](contracts.md).
 
 - GIVEN a goal that needs a promise the bound Module's [Spec](../../../glossary.json#concept.spec) does not state
 - AND the Module's code may well implement that behaviour
-- WHEN the main agent runs `understand` for that Module with the goal and `--plan`
+- WHEN the caller runs `understand` for that Module with the goal and `--plan`
 - THEN the result has status `ok` and an assessment marked insufficient
 - AND each Spec gap names the Module, the document where the promise belongs, what is missing and why the goal needs it
 - BUT the assessment carries no plan and states no promise taken from the code

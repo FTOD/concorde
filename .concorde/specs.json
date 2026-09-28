@@ -7,7 +7,7 @@
       "entry": "specs/concorde/module.md",
       "owns": [
         "specs/concorde/module.md",
-        "specs/concorde/vocabulary.md",
+        "specs/concorde/core-concepts.md",
         "specs/concorde/requirements.md",
         "specs/concorde/scenarios.md",
         "specs/concorde/development.md",
@@ -411,7 +411,10 @@
           "target": "module.delivery",
           "meaning": "#uses-delivery",
           "relies_on": [
-            "concept.delivery-commit"
+            "concept.delivery-commit",
+            "concept.evidence-bundle",
+            "contract.delivery.evidence-bundle",
+            "req.delivery.recovered-verified"
           ]
         },
         {
@@ -724,7 +727,10 @@
         },
         {
           "target": "module.checks",
-          "meaning": "#uses-checks"
+          "meaning": "#uses-checks",
+          "relies_on": [
+            "req.checks.service-link"
+          ]
         },
         {
           "target": "module.commands",

@@ -31,7 +31,7 @@ from .claude_backend import BackendRefusal, ClaudeBackend
 from .pi_backend import PiBackend
 from .progress import Progress
 from .runs import create_run, now, remove_short_tmp, write_record
-from .settings import TOOL_SETS, GrantView
+from .settings import TOOL_SETS, SettingsError, grant_view
 
 BACKENDS = {"claude": ClaudeBackend, "pi": PiBackend}
 
@@ -141,9 +141,7 @@ def terms(grant: dict) -> str:
 
     entries = grant.get("terms") or []
     glossary = grant.get("glossary")
-    writable = (
-        glossary is not None and GrantView(grant["entries"]).level(glossary) == "rw"
-    )
+    writable = glossary is not None and grant_view(grant).level(glossary) == "rw"
     if not entries and not writable:
         return ""
     lines = ["## Terms\n\n"]
@@ -171,7 +169,7 @@ def terms(grant: dict) -> str:
 
 def brief(request: WorkerRequest, worktree: Path) -> str:
     """The worker's only instruction: the task, then its boundary as absolute paths."""
-    view = GrantView(request.grant["entries"])
+    view = grant_view(request.grant)
     pi = request.backend == "pi"
     shell, writer = ("bash", "write tool") if pi else ("Bash", "Write tool")
     ending = (
@@ -233,7 +231,7 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
 def _precreate(worktree: Path, grant: dict) -> list[str]:
     """Create every ``rw`` path that does not exist yet: files empty, directories empty."""
     created = []
-    for path in GrantView(grant["entries"]).paths("rw"):
+    for path in grant_view(grant).paths("rw"):
         target = worktree / path.rstrip("/")
         if target.exists() or target.is_symlink():
             continue
@@ -520,10 +518,20 @@ def run_worker(request: WorkerRequest) -> dict:
                 "input",
                 "Workers launches only with a complete frozen grant, which its caller computes",
             )
+        try:
+            rw = grant_view(request.grant).paths("rw")
+        except SettingsError as error:
+            return fail(
+                error.code,
+                f"the worker request's grant for task type {request.task_type!r} is "
+                f"malformed: {error}",
+                "input",
+                "Workers launches only with a well-formed frozen grant, which its caller "
+                "computes; it never repairs or guesses a grant",
+            )
         grant_file = paths.control / "grant.json"
         grant_file.write_text(json.dumps(request.grant, indent=2, sort_keys=True))
         record["grant_digest"] = _digest(grant_file)
-        rw = GrantView(request.grant["entries"]).paths("rw")
         schema = result_schema(request.output_schema)
         schema_text = json.dumps(schema, separators=(",", ":"))
         (paths.control / "result.schema.json").write_text(schema_text)
@@ -728,7 +736,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 continue
             progress.phase("checks")
             try:
-                from .checks import run_checks
+                from .checks import run_checks, service_error
 
                 checks = run_checks(
                     worktree,
@@ -745,16 +753,7 @@ def run_worker(request: WorkerRequest) -> dict:
                     "Workers runs the checks through Check execution and cannot repair its "
                     "configuration or sandbox",
                     attempts=attempts,
-                    causes=[
-                        link(
-                            "component",
-                            "Check execution",
-                            code,
-                            str(error),
-                            reason="environment",
-                            explanation="the check could not be run as configured",
-                        )
-                    ],
+                    causes=[service_error(error)],
                 )
             round_record["checks"] = checks
             failures = [item for item in checks if item["status"] != "passed"]

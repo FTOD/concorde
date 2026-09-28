@@ -398,8 +398,9 @@ def execute(
         if checkout is not None:
             context.evidence.extend(checkout.close())
         envelope = _envelope(chosen, context, stop, started)
-        # The result is written while the lock is still held, so whoever sees the result (a
-        # workflow step waiting for it) never finds the workspace busy with this run.
+        # The result is written while the lock is still held, so a run admitted after this one
+        # always finds it written. Seeing the result does not mean the lock is free: it is
+        # released only when this block ends.
         (run_dir / "result.json").write_text(json.dumps(envelope, indent=2) + "\n")
         _progress(
             context,

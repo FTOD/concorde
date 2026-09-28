@@ -190,7 +190,7 @@ SPEC_DESCRIPTION_SCHEMA = obj(
         ),
     }
 )
-# contract.adoption.answers, version 1
+# contract.adoption.answers, version 2
 ANSWERS_SCHEMA = obj(
     {
         "answers": {
@@ -238,16 +238,14 @@ def load_answers(path: str | None) -> list[dict]:
 
 
 def answer_problems(
-    answers: list[dict],
-    decisions: list[dict],
-    promises: list[dict] = (),
-    deviations: list[dict] = (),
+    answers: list[dict], decisions: list[dict], promises: list[dict] = ()
 ) -> list[str]:
     """Every answer an output does not follow, one sentence each.
 
     A decision answer (``d.``) is followed by a decision with its identity, decided by the
     developer, whose choice is the answer. A question answer (``q.``) is followed by a promise
-    with source ``answer`` naming the question, or by a deviation naming it.
+    with source ``answer`` naming the question; a deviation naming it never replaces that
+    promise, it only adds that the code does otherwise.
     """
     problems = []
     by_decision = {item["id"]: item for item in decisions}
@@ -272,10 +270,11 @@ def answer_problems(
         elif not any(
             item.get("source") == "answer" and item.get("question") == identity
             for item in promises
-        ) and not any(item["question"] == identity for item in deviations):
+        ):
             problems.append(
                 f"the answer to {identity} ({answer['answer']!r}) appears in no promise with "
-                "source answer and in no deviation"
+                "source answer, which every answered question needs even when a deviation "
+                "names it"
             )
     return problems
 

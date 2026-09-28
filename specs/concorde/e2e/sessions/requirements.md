@@ -44,9 +44,11 @@ The driver SHALL start no more rounds of a session than the session was allowed.
 
 When a run a round left behind is still running after the wait limit, the driver SHALL fail the
 session with `wait_exceeded`, naming that run's
-[run progress file](../../glossary.json#concept.run-progress-file).
+[run progress file](../../glossary.json#concept.run-progress-file) and the session's record.
 
 ### req.headless-sessions.logs-kept — Every round is kept
 
 The driver SHALL keep each round's output and standard error and the session's record in the
-session directory, including for a session that ends with a failed round.
+session directory, including for a session that ends with a failed round or fails with
+`wait_exceeded`, whose record ends `wait_exceeded` and names the run progress file of the run that
+outlived the wait.

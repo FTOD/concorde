@@ -545,10 +545,7 @@ def observe(ctx: RunContext):
     problems += repeated_ids(output["decisions"], "decision")
     problems += repeated_ids(output["open_questions"], "open question")
     problems += answer_problems(
-        ctx.state.get("answers") or [],
-        output["decisions"],
-        output["promises"],
-        output["deviations"],
+        ctx.state.get("answers") or [], output["decisions"], output["promises"]
     )
     if problems:
         ctx.output = None

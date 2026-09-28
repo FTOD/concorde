@@ -24,7 +24,9 @@ Situations the [main-session guidance](module.md) prepares the
 - AND an execution command's run is shown the same way without a worker, and an [unbound run](../../glossary.json#concept.unbound-run) with `unbound` in place of the workspace
 - AND a finished run shows `completed`, `stopped` or `failed` for `ok`, `blocked` or `failed` with the result's summary
 - AND a run whose runner process ended without finishing shows `failed`
-- AND the message the main agent is given for a finished run names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file
+- AND the message the main agent is given for a finished run names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file, followed by the result's whole [error chain](../../glossary.json#concept.error-chain) when it carries one
+- AND a run started after the session started by a command run with bash or by another session, even one that already ended, is shown and reported the same way
+- BUT a run that had already ended before the session started is not reported, and a run whose runner `concorde_run` is still starting is left to that tool
 
 ### scenario.main-session.project-terms — Every session starts with the project's terms
 
@@ -76,6 +78,15 @@ Situations the [main-session guidance](module.md) prepares the
 - AND to end every round by calling `concorde_report`, always supplying `status`, `summary`, `commit`, `escalations`, `decisions` and `open`, with the [delivery commit](../../glossary.json#concept.delivery-commit) and an empty escalation array when delivered, or after `concorde task escalate --by task-session` with a null commit and the unique escalation numbers
 - AND that the main agent's answer arrives as the prompt of the next round
 - BUT never to merge the task branch or close the task
+
+### scenario.main-session.task-session-workflow — A task session runs its workflow in no-ask mode
+
+- GIVEN the rendered Claude Code and pi task-session guidance
+- WHEN a task session reads how to run a task that follows a known procedure
+- THEN it is told to start the [workflow](../../glossary.json#concept.workflow) in its task worktree only in no-ask [mode](../../glossary.json#concept.workflow-mode), since nobody answers it at a [decision point](../../glossary.json#concept.decision-point)
+- AND to read the [workflow result](../../glossary.json#concept.workflow-result) like a run result, copying its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log)
+- AND to give the workflow's decisions in its own report to the main agent, naming those of major impact for the developer
+- AND to escalate a workflow result that is not `ok` and that it cannot repair within the task with `concorde task escalate --by task-session` and the report as `--error-file`
 
 ### scenario.main-session.pi-task-session-view — pi shows task-session rounds and wakes on their end
 
@@ -173,6 +184,16 @@ Situations the [main-session guidance](module.md) prepares the
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads how to handle a result that is not `ok`
 - THEN it is told that the result carries an error chain in `error`, what each link holds, and to read the whole chain before deciding
+
+### scenario.main-session.unbound-failure — The guidance brings a failed unbound run to the developer whole
+
+- GIVEN the rendered main-session guidance
+- AND an [unbound run](../../glossary.json#concept.unbound-run) of `spec_review` in the primary worktree that ended `failed`
+- WHEN a main agent reads how to handle its result
+- THEN it is told that the decision log and `concorde task escalate` cover the runs of a task, and that an unbound run belongs to none
+- AND to show the developer the run's whole rendered error chain, never a summary of it
+- AND when the failure leads to work, to open a task for that work and escalate in it with `--error-file .concorde/runs/<run-id>/result.json`, which records the run's chain under its own link
+- BUT not to name the unbound run with `--run`, which names only runs of the task's own workspace
 
 ## Issues
 

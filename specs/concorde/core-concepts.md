@@ -1,38 +1,40 @@
-# Shared vocabulary
+# Core concepts
 
-This page explains the words the whole Framework shares, which the root
-[Module](glossary.json#concept.module) owns. Their one-sentence definitions, like every term of the
-project, are in the [glossary](glossary.json); this page says how they fit together. Words of one
-Module's own interface, such as [Operation](glossary.json#concept.operation),
-[Task](glossary.json#concept.task), [Grant](glossary.json#concept.grant) or
-[Issue](glossary.json#concept.issue), are owned and explained by that Module.
+This topic gives focused, detailed explanations of the concepts the root
+[Module](glossary.json#concept.module) owns. Start with the [Concorde Framework](module.md) for
+how the concepts fit together and how the Modules collaborate. The [glossary](glossary.json) is the
+sole source of term definitions; the explanations here develop those meanings without defining
+another vocabulary. Concepts of a Module's own interface, such as
+[Operation](glossary.json#concept.operation), [Task](glossary.json#concept.task),
+[Grant](glossary.json#concept.grant) or [Issue](glossary.json#concept.issue), are owned and explained
+by that Module.
 
 ## The people and agents
 
 <a id="concept.developer"></a><a id="concept.main-agent"></a>
 
-The **developer** sets the project's direction with the
-**[main agent](glossary.json#concept.main-agent)**, the developer-facing session with the
-project-wide view. The main agent may also carry out a task itself; the role is not tied to staying
-in the primary worktree. The [levels of work](module.md#the-levels-of-work) place both,
-[Coordination](coordination/module.md) explains how tasks are worked, and
+The **[developer](glossary.json#concept.developer)** sets the project's direction with the
+**[main agent](glossary.json#concept.main-agent)**. The main agent's project-wide view lets it
+judge which responsibilities a change affects and which questions need the developer. It may also
+carry out a task itself; the role is not tied to staying in the primary worktree. The
+[levels of work](module.md#the-levels-of-work) place both, and
 [Main session](coordination/main-session/module.md) explains the working method and decision policy.
 
 <a id="concept.task-session"></a>
 
-A **[task session](glossary.json#concept.task-session)** carries one delegated task for the main
-agent, using the same agent program. It has a task-wide goal and reports to the main agent. Its
-lifecycle is explained by [Task sessions](coordination/task-session/module.md).
+A **[task session](glossary.json#concept.task-session)** works toward a task-wide goal: it may
+change Specs and code directly or use Operations, then validate and deliver. That responsibility
+is broader than a worker's single bounded job. It reports to the main agent, which alone merges;
+[Task sessions](coordination/task-session/module.md) explains its lifecycle.
 
 <a id="concept.worker"></a>
 
-A **worker** carries one bounded job under a frozen grant and reports to the Operation run that
-launched it, whose steps the [Execution runner](glossary.json#concept.execution-runner) executes.
-Its answer is a proposal until those steps verify it. [Workers](execution/workers/module.md)
-explains how a worker is launched, audited and recorded. Inside a run, a worker is the only part
-that reasons with a model; the run's steps and the services they call, such as
-[Check execution](execution/checks/module.md), are programs. Workers, plural, names the Execution
-code that manages workers, not the AI process itself.
+A **[worker](glossary.json#concept.worker)** receives a frozen grant for one job. Its answer is a
+proposal until the Operation's steps verify it; it cannot substitute its own judgement for the
+checks around it. [Workers](execution/workers/module.md) explains how it is launched, audited and
+recorded. Workers, plural, names the Execution code that manages workers, not the AI process
+itself. The root's [design](module.md#agents-at-both-ends-programs-between) explains why model
+reasoning and deterministic steps occupy different levels.
 
 ## Specs, context and boundaries
 
@@ -103,8 +105,16 @@ a permanent property of a Module, and a Spec never stores it.
 <a id="concept.error-chain"></a>
 
 An **[error chain](glossary.json#concept.error-chain)** preserves both the original failure and why
-each receiving level could not handle it. Each level adds its own detailed link, keeping the errors
-it received unchanged as causes. Worker links are claims; the links of runs, commands and components
-record observations. The [error contract](contracts.md#contract.concorde.error) defines the shape
-and contents, and [Main session](coordination/main-session/module.md) explains how the main agent
-handles and escalates a chain.
+each receiving level could not handle it. Read it from the top: first the account of the actor
+reporting to you, then the errors it received as causes. Each level adds its own detailed link and
+keeps those causes unchanged, so you can follow the account back to the failure without losing
+what earlier levels observed or tried.
+
+A link records the failure, the evidence and attempts, the specific reason that level cannot
+handle it, and any options and recommendation it offers. Reasons distinguish, for example, missing
+permission, a decision reserved to a higher level and used-up rounds. Worker links are claims;
+the links of runs, commands and components record observations. The
+[error contract](contracts.md#contract.concorde.error) gives the exact shape and fixed reasons.
+The root's [error flow](module.md#errors) explains how the chain moves between levels, and
+[Main session](coordination/main-session/module.md) explains how the main agent handles and
+escalates it.

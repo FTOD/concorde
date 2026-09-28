@@ -97,8 +97,10 @@ file](../glossary.json#concept.run-progress-file) naming the run it waits for, s
 that run ends, and is refused with `workspace_busy` only when the lock is still held after that
 many seconds. A caller that wants a `delivery` after an `implement` thus asks once, and never polls
 the lock. The lock is a file lock held by the runner's process, so
-the kernel releases it however the run ends. The lock lies in the run store, not in the workspace,
-so a run that only reads the workspace leaves it untouched.
+the kernel releases it however the run ends. The runner writes a run's result before it releases
+the lock, so a run admitted after it always finds that result written; a result on disk, though,
+does not mean the lock is free yet. The lock lies in the run store, not in the workspace, so a run
+that only reads the workspace leaves it untouched.
 
 <a id="concept.unbound-run"></a>
 

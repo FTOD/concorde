@@ -18,7 +18,7 @@ core) or judges code (Code review).
 
 <a id="concept.spec-review"></a>
 
-The [main agent](../../glossary.json#concept.main-agent) runs a **Spec review** when a
+The caller runs a **Spec review** when a
 [Spec change](../../glossary.json#concept.spec-change) is ready to be judged, typically after
 `specify` and before implementation, or when it doubts that an existing Spec is clear enough to hand
 to workers:
@@ -58,7 +58,7 @@ finding stands in any reviewed Module's [review memory](../../glossary.json#conc
 stands, and `incomplete` when a Module could not be reviewed — for example failed structural
 validation, a blocked/failed worker or an audit-found change; the
 [step table](operation.md#host-sequence) gives every cause. It carries every reviewed Module's
-context identity and stops applying once any of those Specs changes. The main agent decides what
+context identity and stops applying once any of those Specs changes. The task level decides what
 to act on, logs that decision, and reruns `specify` for changes; Spec review itself changes no
 Spec.
 
@@ -84,7 +84,7 @@ history.
 
 <a id="concept.spec-panel"></a><a id="concept.panel-report"></a>
 
-A **[Spec panel](../../glossary.json#concept.spec-panel)** is for a review the main agent wants to
+A **[Spec panel](../../glossary.json#concept.spec-panel)** is for a review the caller wants to
 rely on more than on one reviewer, whose findings vary from run to run and are sometimes wrong. It
 is run the same way as a Spec review:
 
@@ -174,7 +174,7 @@ result. A reviewer that does not finish stops the panel before the chair, so tha
 silently rests on fewer reviews than asked for.
 
 A reviewer cannot widen its own view: lacking a needed document of another Module, it reports a
-`context` finding naming it and goes on, and the main agent decides whether the Spec lacks a
+`context` finding naming it and goes on, and the task level decides whether the Spec lacks a
 relation or the review needs another Module. A reviewer ends `blocked` only when it cannot review
 at all, for example because the reviewed Module's own documents cannot be read. In this version,
 reviewers read Specs directly under their grant, not the Spec MCP server, on one checklist covering

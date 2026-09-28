@@ -64,7 +64,7 @@ The last row keeps system directories readable, as on the Claude Code backend.
 A write or edit is judged on the resolved path with its directories' symbolic links resolved and a
 final symbolic link judged by its own name, exactly as
 [the write hook](claude-code.md#write-hook) judges it, with
-the same decisions and reasons.
+the same rows, decisions and reasons, including the `.git` row.
 
 ### Sandbox
 

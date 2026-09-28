@@ -20,7 +20,7 @@ from pathlib import Path
 
 from ..errors import link
 from .claude_backend import BackendRefusal, RoundOutcome
-from .settings import GrantView, sandbox_filesystem, tool_set
+from .settings import SettingsError, grant_view, sandbox_filesystem, tool_set
 
 ACTOR = "pi process (pi -p)"
 HERE = Path(__file__).resolve().parent
@@ -120,7 +120,7 @@ def policy(
     request, worktree: Path, paths, programs: dict, user_home: Path, schema: dict
 ) -> dict:
     """The permission extension's policy: every path absolute, lists from the frozen grant."""
-    view = GrantView(request.grant["entries"])
+    view = grant_view(request.grant)
     package = Path(programs["sandbox_runtime"])
     filesystem = sandbox_filesystem(
         worktree, request.grant, paths, request.runtime, user_home
@@ -300,7 +300,15 @@ class PiBackend:
         self.programs = programs
         self._configure(request, paths)
         user_home = Path(os.path.realpath(request.home or Path.home()))
-        value = policy(request, worktree, paths, programs, user_home, schema)
+        try:
+            value = policy(request, worktree, paths, programs, user_home, schema)
+        except SettingsError as error:
+            raise BackendRefusal(
+                error.code,
+                f"the permission extension's policy cannot be generated: {error}",
+                "input",
+                "the policy follows from the frozen grant, which Workers never repairs",
+            ) from error
         shutil.copy2(POLICY_SOURCE, paths.control / "pi_policy.ts")
         extension = paths.control / "permission.ts"
         extension.write_text(

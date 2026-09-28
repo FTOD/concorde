@@ -46,3 +46,12 @@ Concrete situations that show the [requirements](requirements.md) of
 - GIVEN a project and a prompt
 - WHEN the driver is asked to start a headless session on a client other than Claude Code or pi
 - THEN it refuses with `unknown_client`
+
+### scenario.headless-sessions.wait-exceeded — A run that outlives the wait fails a kept session
+
+- GIVEN a session whose first round ends while an [Operation](../../glossary.json#concept.operation) run it started is still running
+- AND the run is still running when the wait limit is reached
+- WHEN the driver stops waiting
+- THEN it fails the session with `wait_exceeded`, naming the run's [run progress file](../../glossary.json#concept.run-progress-file) and the session's `session.json`
+- AND `session.json` exists, ends `wait_exceeded`, names the same run progress file under `progress` and keeps the first round with its log
+- AND the session is not woken for the run

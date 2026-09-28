@@ -23,7 +23,7 @@ change and the [test report](../../../glossary.json#concept.test-report) are in 
 ### scenario.implementation.implement-pass — A change passes its checks
 
 - GIVEN a workspace whose bound Module has configured checks
-- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `implement` for that Module with a goal the worker can meet in its grant
+- WHEN the caller runs `implement` for that Module with a goal the worker can meet in its grant
 - THEN the Operation audits the change and runs the Module's configured checks outside the worker
 - AND the result has status `ok` with the changed files and the passing [check results](../../../glossary.json#concept.check-result)
 
@@ -59,7 +59,7 @@ change and the [test report](../../../glossary.json#concept.test-report) are in 
 ### scenario.implementation.pending-file — A declared file is created and its marker cleared
 
 - GIVEN a bound Module with a pending entry for a file that does not exist
-- WHEN the main agent runs `implement` and the worker writes that file
+- WHEN the caller runs `implement` and the worker writes that file
 - THEN the Operation created the file empty before launch
 - AND after the last round the entry is no longer marked pending
 
@@ -82,14 +82,14 @@ change and the [test report](../../../glossary.json#concept.test-report) are in 
 ### scenario.implementation.test-pass — Passing checks are reported
 
 - GIVEN a workspace whose bound Module's configured checks pass
-- WHEN the main agent runs `test` for that Module
+- WHEN the caller runs `test` for that Module
 - THEN the Operation runs the checks before launching the worker
 - AND the result has status `ok` with a test report marking every check passed
 
 ### scenario.implementation.test-fail — A failing check is interpreted
 
 - GIVEN a workspace whose bound Module has a failing configured check
-- WHEN the main agent runs `test` for that Module
+- WHEN the caller runs `test` for that Module
 - THEN the worker receives the failing check result with the last part of its log and reads the Spec and the code without running a command
 - AND the test report keeps the Operation's failing check result
 - AND it names the scenario or requirement concerned, the likely cause and whether the code, a test, the Spec or the environment is at fault

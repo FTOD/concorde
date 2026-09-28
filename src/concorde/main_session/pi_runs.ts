@@ -181,6 +181,29 @@ export function recordedRuns(root: string): RunStatus[] {
   );
 }
 
+/**
+ * The runs of the store the view does not follow yet but should, whoever started them: every
+ * run still running with a live runner, and every run started since the view began at `since`
+ * (milliseconds), even one that ended between two looks. Runs whose runner process is one the
+ * view is launching itself are left to the tool that launches them, which answers a run that
+ * ended at once in its own result.
+ */
+export function discoveredRuns(
+  runs: RunStatus[],
+  known: Set<string>,
+  since: number,
+  launching: Set<number>,
+  isAlive: (pid: number) => boolean,
+): RunStatus[] {
+  return runs.filter(
+    (run) =>
+      !known.has(run.run_id) &&
+      !launching.has(run.host_pid) &&
+      ((run.phase === "running" && isAlive(run.host_pid)) ||
+        Date.parse(run.started_at) >= since),
+  );
+}
+
 /** The worker runs a run launched: same runner process, started after it; oldest first. */
 export function workersOf(root: string, operation: RunStatus): WorkerStatus[] {
   return (
@@ -263,11 +286,31 @@ export function view(
   };
 }
 
-/** What the main agent is told about a finished run: its status, summary and result file. */
-export function resultText(shown: RunView): string {
+/** The error chain a run's saved result carries, or null when it has none or none is saved. */
+export function runError(
+  root: string,
+  runId: string,
+): Record<string, unknown> | null {
+  const error = readJson(
+    join(runsDirectory(root), runId, "result.json"),
+  )?.error;
+  return error && typeof error === "object"
+    ? (error as Record<string, unknown>)
+    : null;
+}
+
+/**
+ * What the main agent is told about a finished run: its status, summary and result file, and the
+ * whole error chain of a result that carries one.
+ */
+export function resultText(
+  shown: RunView,
+  error: Record<string, unknown> | null = null,
+): string {
   return (
     `Concorde run ${shown.id} (${shown.label}) finished ${shown.status}. ` +
-    `${shown.preview ?? ""}\nRead the run result: ${shown.reportPath}`
+    `${shown.preview ?? ""}\nRead the run result: ${shown.reportPath}` +
+    (error ? `\nError chain:\n${chainText(error)}` : "")
   );
 }
 

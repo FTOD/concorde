@@ -143,7 +143,7 @@ failed
 merging
 start -> open: task open
 open -> active: a run, a commit or a change in the workspace
-active -> delivered: head is a delivery commit, worktree clean
+active -> delivered: head is a delivery commit that verifies, worktree clean
 delivered -> active: a change or a commit after it
 delivered -> merging: task merge
 merging -> closed: every check passed
@@ -157,20 +157,24 @@ active -> failed: task close --failed
 delivered -> failed: task close --failed
 ```
 
-A task is **delivered** when its branch head is a delivery commit of its workspace and its worktree
-is clean; **active** when its workspace has a run in the run store, running or finished, or its
+A task is **delivered** when its branch head is a delivery commit of its workspace that verifies
+against its [evidence bundle](../../glossary.json#concept.evidence-bundle) and its worktree is
+clean; **active** when its workspace has a run in the run store, running or finished, or its
 branch moved past the base commit, or its worktree has uncommitted changes; and **open** before any
 of these. A run that changes nothing, such as a review after delivery, leaves a delivered task
 delivered; a change after the delivery commit, committed or not, makes it active until the next
-delivery. A task ends in one of two states, and the record keeps the outcome:
+delivery. A head that carries the subject and trailers of a delivery commit but does not verify
+leaves the task active: `task show` lists it among the deliveries with its mismatches, and it is
+never merged (below). A task ends in one of two states, and the record keeps the outcome:
 
 - **closed** means the task was ended on purpose because it reached its goal. Merging is the usual
   way: the main agent merges a delivered task, unasked, with `concorde task merge` (below), which
   closes it with outcome `merged`. `concorde task close <task-id> --merged` closes a task merged
   some other way, and is accepted only when the latest delivery commit of the workspace is the
-  branch's head, that head is in the primary branch, and the worktree is clean. Merging is not the
-  only way to reach a goal: a task that tried something out, investigated a question or only needed
-  `understand` closes with `--completed --note "<what it achieved>"`, outcome `completed`.
+  branch's head and verifies, that head is in the primary branch, and the worktree is clean.
+  Merging is not the only way to reach a goal: a task that tried something out, investigated a
+  question or only needed `understand` closes with `--completed --note "<what it achieved>"`,
+  outcome `completed`.
 - **failed** means the task did not reach its goal. `--failed --reason "<why>"` records the reason,
   and when an error caused the failure, the error chains too: `--run <run-id>` takes the error of a
   run of the task's workspace and `--error-file` a saved one, each unchanged. A failure no error
@@ -202,13 +206,13 @@ to the end. It waits for them inside its own process, up to `--wait` seconds in 
 300): a `delivery` of the task that is still finishing is waited for rather than refused, and a
 run still holding the workspace lock after that time refuses the merge with `workspace_busy`,
 naming the run. It refuses, before touching anything, a task that
-could not be closed as merged apart from not being merged yet (`not_merged`, `dirty_worktree`),
-reading the task's delivery commits from Git, and a primary worktree with uncommitted or untracked
-paths or a detached `HEAD` (`primary_dirty`). The branch head those checks accepted, the task's
-latest delivery commit, is the commit it merges: it records the task as **merging**, with the
-primary branch's commit before the merge, that checked commit and the checks it will run, and only
-then runs `git merge <checked commit>` there, never `git merge` of the branch name, which could
-take a commit nobody checked. A conflict is aborted and refused with `merge_conflict`, naming the
+could not be closed as merged apart from not being merged yet (`not_merged`,
+`delivery_unverified`, `dirty_worktree`), reading the task's delivery commits from Git, and a
+primary worktree with uncommitted or untracked paths or a detached `HEAD` (`primary_dirty`). The
+branch head those checks accepted, the task's latest delivery commit, is the commit it merges: it
+records the task as **merging**, with the primary branch's commit before the merge, that checked
+commit and the checks it will run, and only then runs `git merge <checked commit>` there, never
+`git merge` of the branch name, which could take a commit nobody checked. A conflict is aborted and refused with `merge_conflict`, naming the
 paths: the conflict is resolved in the task worktree by merging the primary branch into the task
 branch, validating and delivering again, never in the primary worktree. After the merge, Tasks
 records the merge commit and runs the checks in the primary worktree: `concorde spec-validation`
@@ -382,12 +386,15 @@ the task level alone knows: why the task exists, what it may touch, who escalate
 sessions work it and how it ended. Everything about what happened in the worktree is read where
 Execution recorded it, each time Tasks needs it: a task is active when its workspace has a run or a
 change, delivered when Git shows a delivery commit of its workspace at the branch head with nothing
-after it, and mergeable only then. With no second copy there is nothing to recover and nothing that
+after it and that commit verifies against the evidence bundle it carries, and mergeable only then.
+The subject and trailers alone would not do: any commit can carry them, and only the bundle ties the
+commit to the readiness it claims. With no second copy there is nothing to recover and nothing that
 can disagree.
 
-Deriving costs a scan of the run store and a `git log` of the task branch whenever a task is listed
-or shown, which is small next to what a run costs, and it holds however a run ended: a run whose
-runner died is `lost` in the listing, and the kernel has already released its workspace lock.
+Deriving costs a scan of the run store, a `git log` of the task branch and a few Git reads to
+verify its head whenever a task is listed or shown, which is small next to what a run costs, and it
+holds however a run ended: a run whose runner died is `lost` in the listing, and the kernel has
+already released its workspace lock.
 
 ### Around it
 
@@ -400,7 +407,7 @@ commits: Delivery / Delivery commit
 store -> binding: writes when a task opens
 store -> runstore: reads the workspace's runs from
 store -> lock: holds while merging or closing, shows the holder of
-store -> commits: reads from the task branch
+store -> commits: reads from the task branch and verifies
 ```
 
 <a id="uses-execution"></a>
@@ -412,7 +419,7 @@ relies on Execution only reading it, working on the Modules, branch and base it 
 every run of the workspace in the [run store](../../glossary.json#concept.run-store) of the records
 directory it names, under the workspace's name, and holding the
 [workspace lock](../../glossary.json#concept.workspace-lock) for every bound run, so that Tasks,
-taking the same lock without waiting while it merges or closes the task, knows no run of it is
+holding the same lock, after waiting for a running run to release it, while it merges or closes the task, knows no run of it is
 changing the branch or worktree meanwhile. It reads a run's
 [result](../../glossary.json#concept.run-result) for its status, Modules and error chain, and the
 run's [run progress file](../../glossary.json#concept.run-progress-file) while it runs, whose
@@ -428,7 +435,15 @@ its readiness. Tasks relies on that commit being the only record of a delivery a
 delivery commits of the task's workspace on the task branch since its base commit, with Delivery's
 own reader, to derive `delivered`, to list deliveries in `task show`, and to decide whether a task
 may be merged or closed as merged. A task branch with no delivery commit is refused with
-`not_merged`.
+`not_merged`. Subject and trailers alone, which any commit can carry, do not make a delivery:
+Tasks counts the head as delivered only when it verifies against its
+[evidence bundle](../../execution/commands/delivery/contracts.md#contract.delivery.evidence-bundle)
+by Delivery's own check, the one Delivery applies before it reports a delivered head
+([req.delivery.recovered-verified](../../execution/commands/delivery/requirements.md#req.delivery.recovered-verified)):
+its only parent is the bundle's `parent_commit`, it adds the bundle its `Concorde-Evidence` trailer
+names, and the bundle's readiness run is its `Concorde-Readiness` trailer. A head that does not
+verify is refused with `delivery_unverified`, naming each mismatch, since it may not hold what was
+validated.
 
 - <a id="uses-workers"></a>**Workers** names the file of the [worker model
   configuration](../../glossary.json#concept.worker-model-configuration), which Tasks

@@ -53,6 +53,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND never to change the Concorde repository, the framework copy or an installed file, nor to work around a [Concorde defect](../glossary.json#concept.concorde-defect)
 - AND to place a refused read, write or tool in one of the four [boundary cases](../glossary.json#concept.boundary-case), with the evidence each needs, sending only the two Concorde cases to the Concorde repository
 - AND to write a [defect report](../glossary.json#concept.defect-report) under `.concorde/runs/defects/` with every required field, among them `report_key` and `subtype`, a `null` owner, its `origin` and the [error chain](../glossary.json#concept.error-chain) with its own link on top built by `concorde task escalate`
+- AND for a run that ended `ok` and still did something wrong to write its own link by hand in the shape of the [error contract](../contracts.md#contract.concorde.error), without causes, as the whole chain, citing the run in its evidence
+- AND for a defect seen outside a task to keep the report only under `.concorde/runs/defects/` and name it to the developer, opening no task for it
 - AND to check it with `concorde issues report --check` before handing it over
 - AND to take the fix with `concorde update` while nothing runs
 
@@ -62,6 +64,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN the Concorde repository's agent instructions
 - WHEN a session there is handed a defect report
-- THEN the instructions tell it to record the report as an [Issue](../glossary.json#concept.issue) in a task, fix the defect generally and close the Issue with the fix
+- THEN the instructions tell it to record the report as an [Issue](../glossary.json#concept.issue) in a task opened for the [Module](../glossary.json#concept.module) it judges at fault
+- AND to append a report to that Issue naming that Module as its `owner_target_id`
+- AND to fix the defect generally and close the Issue with the fix
 - AND to wait for the developer's decision before a design limitation changes Concorde's design or Protocol or loosens a boundary
 - AND they contain the same observation rule as the develop guidance

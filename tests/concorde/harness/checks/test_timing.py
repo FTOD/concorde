@@ -33,7 +33,7 @@ class TimingTests(unittest.TestCase):
     def test_success_error_cancel_unknown_privacy(self):
         trace = Trace()
         with tracing(trace):
-            with Span("outer", prompt="SECRET", input_tokens=None) as outer:
+            with Span("outer", prompt="SECRET", items=None) as outer:
                 with Span("inner"):
                     pass
                 try:
@@ -51,14 +51,27 @@ class TimingTests(unittest.TestCase):
         )
         self.assertTrue(all(s["duration_ns"] >= 0 for s in trace.records))
         self.assertEqual(trace.records[0]["parent_id"], outer.record["span_id"])
-        self.assertIsNone(trace.records[-1]["metadata"]["input_tokens"])
+        self.assertIsNone(trace.records[-1]["metadata"]["items"])
         self.assertNotIn("SECRET", json.dumps(trace.records))
         self.assertEqual(
             metadata({"argv": "SECRET", "env": "SECRET", "output": "SECRET"}), {}
         )
+        # Token counts and Operation or invocation labels are no span metadata.
+        self.assertEqual(
+            metadata(
+                {
+                    "input_tokens": 1,
+                    "output_tokens": 2,
+                    "operation": "implement",
+                    "invocation_id": "i-1",
+                    "launch_invocation_id": "i-2",
+                }
+            ),
+            {},
+        )
 
     @verifies("scenario.checks.timing-summary")
-    def test_overlap_and_missing_are_not_wall_or_thinking(self):
+    def test_overlap_and_missing_are_counted_per_process(self):
         spans = [
             {
                 "process_id": 1,
@@ -67,7 +80,7 @@ class TimingTests(unittest.TestCase):
                 "status": "ok",
                 "name": "SPAN-NAME-SECRET",
                 "trace_id": "TRACE-SECRET",
-                "metadata": {"invocation_id": "LABEL-SECRET"},
+                "metadata": {"target_id": "LABEL-SECRET"},
             },
             {"process_id": 1, "start_ns": 2e9, "duration_ns": 4e9, "status": "ok"},
             {"process_id": 1, "start_ns": 8e9, "duration_ns": 4e9, "status": "ok"},
@@ -82,8 +95,10 @@ class TimingTests(unittest.TestCase):
         self.assertEqual(result["covered_seconds_by_process"], {"1": 12})
         self.assertEqual(result["summed_span_seconds"], 18)
         self.assertFalse(result["complete"])
-        self.assertIsNone(result["wall_seconds"])
-        self.assertIsNone(result["server_thinking_seconds"])
+        self.assertEqual(
+            {"complete", "summed_span_seconds", "covered_seconds_by_process"},
+            set(result),
+        )
         self.assertNotIn("SECRET", json.dumps(result))
 
     @verifies("scenario.checks.timing-spans")
@@ -149,7 +164,7 @@ class ObservationScenarioTests(unittest.TestCase):
                         self.assertEqual({"value": 1}, work(1, prompt="p"))
                         with self.assertRaises(LookupError) as caught:
                             work("fail")
-                        with Span("fixture.bare", invocation_id="id-1") as bare:
+                        with Span("fixture.bare", target_id="id-1") as bare:
                             inside = "ran"
                         bare.finish("error")
             finally:
@@ -256,7 +271,7 @@ class ObservationScenarioTests(unittest.TestCase):
             return result, stderr.getvalue(), trace
 
         for outcome in (
-            {"status": "succeeded", "invocation_id": "x"},
+            {"status": "succeeded", "target_id": "x"},
             {"status": "failed", "errors": [{"code": "boundary_violation"}]},
             {"status": "raised"},
         ):
@@ -313,7 +328,7 @@ class ObservationScenarioTests(unittest.TestCase):
         def thread_worker(index):
             trace = Trace(f"thread-{index}")
             with tracing(trace):
-                with Span("outer", invocation_id=f"t{index}"):
+                with Span("outer", target_id=f"t{index}"):
                     barrier.wait(timeout=10)  # every trace is open before any span ends
                     with Span("inner"):
                         barrier.wait(timeout=10)
@@ -326,7 +341,7 @@ class ObservationScenarioTests(unittest.TestCase):
             self.assertEqual(
                 {f"thread-{index}"}, {s["trace_id"] for s in trace.records}
             )
-            self.assertEqual(f"t{index}", trace.records[1]["metadata"]["invocation_id"])
+            self.assertEqual(f"t{index}", trace.records[1]["metadata"]["target_id"])
             self.assertEqual(trace.records[1]["span_id"], trace.records[0]["parent_id"])
 
         async def task_worker(index, gates):

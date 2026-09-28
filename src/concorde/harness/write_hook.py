@@ -28,6 +28,8 @@ def decide(data: dict, grant: dict) -> str | None:
     if resolved != worktree and not resolved.startswith(worktree + "/"):
         return f"{target} is outside the task worktree"
     relative = resolved[len(worktree) + 1 :]
+    if relative == ".git" or relative.startswith(".git/"):
+        return "Git metadata is not available to workers"
 
     def listed(level: str) -> bool:
         return any(
@@ -42,8 +44,9 @@ def decide(data: dict, grant: dict) -> str | None:
     if listed("names"):
         return f"only the name of {relative} is visible to this task"
     return (
-        f"{relative} is undeclared; it must first be declared as a pending file of a Module "
-        "through a specify task"
+        f"{relative} is not in this task's grant; a file no Module declares must first be "
+        "declared as a pending file of a Module through a specify task, and a file another "
+        "Module declares needs that Module bound to the task"
     )
 
 

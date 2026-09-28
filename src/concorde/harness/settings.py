@@ -46,8 +46,9 @@ def tool_set(tool_sets: dict, task_type: str, grant: dict | None) -> str:
     A harness may give less than a task type assigns, such as a survey's ``code-to-spec`` grant
     with the Spec side withheld; such a worker gets no tool that changes files.
     """
-    if grant is not None and not any(
-        entry.get("level") == "rw" for entry in grant.get("entries") or []
+    entries = grant.get("entries") if isinstance(grant, dict) else None
+    if isinstance(entries, list) and not any(
+        isinstance(entry, dict) and entry.get("level") == "rw" for entry in entries
     ):
         return tool_sets[READ_ONLY_TASK_TYPE]
     return tool_sets[task_type]
@@ -99,13 +100,46 @@ class RunPaths:
         return (self.work, self.home, self.tmp)
 
 
+def entry_problem(entry) -> str | None:
+    """What makes one grant entry malformed, or None for a well-formed one."""
+    if not isinstance(entry, dict):
+        return f"it is a {type(entry).__name__}, not an object"
+    path, level = entry.get("path"), entry.get("level")
+    if not isinstance(path, str) or not path:
+        return "its path is missing or not a non-empty string"
+    if path.startswith("/"):
+        return f"its path {path!r} is absolute, not relative to the task worktree"
+    if ".." in path.rstrip("/").split("/"):
+        return f"its path {path!r} leaves the task worktree through '..'"
+    if level not in RANK:
+        return f"its level {level!r} is none of {', '.join(sorted(RANK))}"
+    return None
+
+
 class GrantView:
-    """Levels of concrete paths under one frozen grant (project-relative entries)."""
+    """Levels of concrete paths under one frozen grant (project-relative entries).
+
+    Raises ``SettingsError`` (``grant_malformed``) naming the first malformed entry and what is
+    wrong with it, so nothing is generated from a grant whose entries cannot be read.
+    """
 
     def __init__(self, entries):
         self.exact: dict[str, str] = {}
         self.directories: list[tuple[str, str]] = []
-        for entry in entries:
+        if not isinstance(entries, list):
+            raise SettingsError(
+                "grant_malformed",
+                f"the grant's entries are a {type(entries).__name__}, not a list of "
+                "path and level entries",
+            )
+        for index, entry in enumerate(entries):
+            problem = entry_problem(entry)
+            if problem is not None:
+                raise SettingsError(
+                    "grant_malformed",
+                    f"grant entry {index} ({json.dumps(entry, default=repr)}) is malformed: "
+                    f"{problem}",
+                )
             path, level = entry["path"], entry["level"]
             if path.endswith("/"):
                 self.directories.append((path, level))
@@ -145,6 +179,18 @@ class GrantView:
             ):
                 best = level
         return best
+
+
+def grant_view(grant) -> GrantView:
+    """The view of a frozen grant, or a ``SettingsError`` naming what makes it malformed."""
+    if not isinstance(grant, dict) or "entries" not in grant:
+        raise SettingsError(
+            "grant_malformed",
+            "the grant is not an object with an entries list"
+            if not isinstance(grant, dict)
+            else "the grant has no entries list",
+        )
+    return GrantView(grant["entries"])
 
 
 def _rule(kind: str, path: Path, directory: bool) -> str:
@@ -248,7 +294,7 @@ def deny_rules(
     """Every deny rule of one worker (see the module docstring)."""
     worktree = Path(os.path.realpath(worktree))
     home = Path(os.path.realpath(home or Path.home()))
-    view = GrantView(grant["entries"])
+    view = grant_view(grant)
     runtime = tuple(Path(os.path.realpath(path)) for path in runtime)
     rules = worktree_rules(worktree, view, (*runtime, *run.own()))
     rules += outside_rules(home, (worktree, *run.own(), *runtime))
@@ -288,7 +334,7 @@ def sandbox_filesystem(
     """
     worktree = Path(os.path.realpath(worktree))
     home = Path(os.path.realpath(home or Path.home()))
-    view = GrantView(grant["entries"])
+    view = grant_view(grant)
     readable = [
         (worktree / path.rstrip("/")).as_posix() for path in view.paths("ro", "rw")
     ]
@@ -316,7 +362,7 @@ def write_hook_source(worktree: Path, grant: dict) -> str:
     """The write hook script with the grant's lists embedded."""
     from . import write_hook
 
-    view = GrantView(grant["entries"])
+    view = grant_view(grant)
     data = {
         "worktree": Path(os.path.realpath(worktree)).as_posix(),
         "rw": view.paths("rw"),
@@ -379,6 +425,7 @@ __all__ = [
     "TOOL_SETS",
     "deny_rules",
     "denied",
+    "grant_view",
     "sandbox_filesystem",
     "worker_settings",
     "write_hook_source",

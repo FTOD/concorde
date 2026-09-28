@@ -23,10 +23,13 @@ The understand [Operation](../../../glossary.json#concept.operation) SHALL compu
 
 ### req.understanding.gaps-reported — Missing promises are gaps
 
-An assessment SHALL report every promise the stated goal needs and a bound
+An assessment SHALL report every promise the stated goal relies on and a bound
 [Module](../../../glossary.json#concept.module)'s Spec does not state as a
 [Spec gap](../../../glossary.json#concept.spec-gap) rather than as a fact inferred from code or file
 names.
+
+For a goal that changes the Modules, a new promise the change adds is not a gap when the Specs say
+where it belongs: it becomes a `specify` step of the plan.
 
 ### req.understanding.insufficient-no-plan — No plan on an insufficient Spec
 
@@ -47,8 +50,8 @@ The unknown identities are returned as host evidence; the Operation never drops 
 
 The understand Operation SHALL end a run `failed` when the assessment lists Spec gaps although it is
 sufficient or none although it is insufficient, carries a plan that was not requested or follows an
-insufficient Spec, carries no plan although one was requested and the Spec is sufficient, or has no
-entry for a bound Module.
+insufficient Spec, carries no plan although one was requested and the Spec is sufficient, has no
+entry or more than one for a bound Module, or has an entry for a Module that is not bound.
 
 Each inconsistency is returned as host evidence. The run is not resumed to repair it.
 
@@ -67,7 +70,7 @@ The understand Operation SHALL end a run `failed` when the
 run works on, such as a changed, new or deleted file.
 
 The changed paths are returned as host evidence and the change is left in place for the
-[main agent](../../../glossary.json#concept.main-agent), never reverted. The run's own
+caller, never reverted. The run's own
 [run progress file](../../../glossary.json#concept.run-progress-file) and
 [run result](../../../glossary.json#concept.run-result), and its worker's
 [progress file](../../../glossary.json#concept.progress-file) and

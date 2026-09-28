@@ -5,7 +5,8 @@ A task is a branch ``concorde/<id>``, a worktree checked out on it and bound as 
 ``.concorde/tasks/<id>.decisions.md``, all owned by the primary worktree. Only this module writes
 records, and nothing below the task level writes them: whether a task is active or delivered is
 derived each time from what the execution core recorded, its runs in the run store and its
-delivery commits on the branch; ``merging`` is stored while ``concorde task merge`` has put a merge
+delivery commits on the branch, a delivery counting only when its commit verifies against its
+evidence bundle; ``merging`` is stored while ``concorde task merge`` has put a merge
 into the primary branch that its checks have not decided yet. Every change is one read, a check of
 its preconditions and one atomic write bound to the bytes read; a concurrent change is retried and
 reported as ``record_conflict`` after three attempts.
@@ -24,7 +25,7 @@ from contextlib import ExitStack, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..delivery.bundle import delivery_commits
+from ..delivery.bundle import delivery_commits, delivery_mismatches
 from ..execution import binding as workspace_binding
 from ..execution.runs import RunError, lock_holder, workspace_lock, workspace_runs
 from ..harness.models import CONFIG, inherit
@@ -298,7 +299,11 @@ def _serialize(record: dict) -> bytes:
 
 
 def update(primary: Path, task_id: str, change) -> dict:
-    """Apply ``change(record) -> record`` bound to the bytes read; retry concurrent changes."""
+    """Apply ``change(record) -> record`` bound to the bytes read; retry concurrent changes.
+
+    A retry reads the record again and calls ``change`` again, so the preconditions it checks
+    hold for the record it writes.
+    """
     path = record_path(primary, task_id)
     for _ in range(ATTEMPTS):
         if not TASK_ID.match(task_id or "") or not path.is_file():
@@ -309,7 +314,13 @@ def update(primary: Path, task_id: str, change) -> dict:
         with _locked(primary):
             if path.read_bytes() != before:
                 continue
-            _write(path, _serialize(record))
+            try:
+                _write(path, _serialize(record))
+            except OSError as error:
+                raise TaskError(
+                    "record_unwritable",
+                    f"the task record {path} cannot be written: {error}",
+                ) from error
         return record
     raise TaskError(
         "record_conflict", f"task {task_id} changed concurrently {ATTEMPTS} times"
@@ -489,9 +500,20 @@ def _pi_session(record: dict, session_id: str) -> dict:
 
 
 def begin_round(primary: Path, task_id: str, session_id: str, entry: dict) -> dict:
-    """Append a running round to a pi task session whose rounds have all ended."""
+    """Append a running round to a pi task session of an unended task whose rounds have all
+    ended.
+
+    The task's state is checked inside the transaction, so a close stored between the caller's
+    own check and this write refuses the round.
+    """
 
     def change(record):
+        if record["state"] in ENDED:
+            raise TaskError(
+                "task_closed",
+                f"task {task_id} is {record['state']}; a round of a task session begins only "
+                "in an open task",
+            )
         found = _pi_session(record, session_id)
         running = [item for item in found["rounds"] if item["status"] == "running"]
         if running:
@@ -509,7 +531,7 @@ def begin_round(primary: Path, task_id: str, session_id: str, entry: dict) -> di
 def finish_round(
     primary: Path, task_id: str, session_id: str, number: int, fields: dict
 ) -> dict:
-    """Set the outcome of a running round of a pi task session."""
+    """Set the outcome of a running round of a pi task session, also of a closed task."""
 
     def change(record):
         found = _pi_session(record, session_id)
@@ -704,7 +726,9 @@ def _open_task(
 
 
 def deliveries(primary: Path, record: dict) -> list[dict]:
-    """The delivery commits of the task's workspace on its branch, oldest first."""
+    """The delivery commits of the task's workspace on its branch, oldest first, as Delivery's
+    reader recognises them by subject and trailers alone; ``verified`` adds whether each holds
+    what its bundle says was validated."""
     head = _git(
         primary, "rev-parse", "--verify", "--quiet", record["branch"], check=False
     ).stdout.strip()
@@ -713,10 +737,17 @@ def deliveries(primary: Path, record: dict) -> list[dict]:
     return delivery_commits(primary, record["base_commit"], head, record["id"])
 
 
+def verified(primary: Path, delivery: dict) -> dict:
+    """The delivery commit with ``mismatches``: how it disagrees with its evidence bundle by
+    Delivery's own check, empty when it verifies."""
+    return {**delivery, "mismatches": delivery_mismatches(primary, delivery)}
+
+
 def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -> str:
     """The task's state: merging, closed or failed as stored; otherwise delivered when its branch
-    head is a delivery commit of its workspace and its worktree is clean, active when its
-    workspace has runs or its branch moved past the base, and open before either."""
+    head is a delivery commit of its workspace that verifies against its bundle and its worktree
+    is clean, active when its workspace has runs or its branch moved past the base, and open
+    before either."""
     if record["state"] in (*ENDED, "merging"):
         return record["state"]
     head = _git(
@@ -724,7 +755,12 @@ def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -
     ).stdout.strip()
     delivered = deliveries(primary, record)
     worktree = Path(record["worktree"])
-    if delivered and delivered[-1]["commit"] == head and not _dirty(worktree):
+    if (
+        delivered
+        and delivered[-1]["commit"] == head
+        and not _dirty(worktree)
+        and not delivery_mismatches(primary, delivered[-1])
+    ):
         return "delivered"
     if runs is None:
         runs = workspace_runs(primary / ".concorde", record["id"])
@@ -743,15 +779,16 @@ def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
 
 
 def show_task(primary: Path, task_id: str) -> dict:
-    """The record with its derived state, the workspace's runs and delivery commits, who holds
-    the workspace lock, and the decision log's path."""
+    """The record with its derived state, the workspace's runs and delivery commits, each with
+    how it disagrees with its bundle, who holds the workspace lock, and the decision log's
+    path."""
     record = load_task(primary, task_id)
     runs = workspace_runs(primary / ".concorde", task_id)
     record["state"] = derived_state(primary, record, runs)
     return {
         "record": record,
         "runs": runs,
-        "deliveries": deliveries(primary, record),
+        "deliveries": [verified(primary, item) for item in deliveries(primary, record)],
         "busy": lock_holder(primary / ".concorde", task_id),
         "decision_log": decision_log_path(primary, task_id).as_posix(),
     }
@@ -786,16 +823,30 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
         return record
 
     record = update(primary, task_id, change)
-    with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
-        stream.write(
-            f"\n## Escalated to the {receiver}, {stamp}\n\n{render(error)}\n\n"
-            f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
-        )
+    path = decision_log_path(primary, task_id)
+    try:
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(
+                f"\n## Escalated to the {receiver}, {stamp}\n\n{render(error)}\n\n"
+                f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
+            )
+    except OSError as failure:
+        number = len(record["escalations"])
+        raise TaskError(
+            "decision_log_failed",
+            f"the escalation was written to the record of task {task_id} as escalation "
+            f"{number} (`concorde task show {task_id}` prints it under record.escalations), "
+            f"but appending it to the decision log {path} failed afterwards: {failure}; "
+            "escalating again would record it twice, so once the log is writable append it "
+            f"there by hand under the heading `## Escalated to the {receiver}, {stamp}`; the "
+            f"escalated chain:\n{render(error)}",
+        ) from failure
     return record
 
 
 def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
-    """The record and branch head of a task ``close --merged`` accepts once the head is merged."""
+    """The record and branch head of a task ``close --merged`` accepts once the head is merged:
+    the head is the latest delivery commit, which verifies, and the worktree is clean."""
     record = load_task(primary, task_id)
     if record["state"] in ENDED:
         raise TaskError(
@@ -814,6 +865,15 @@ def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
             "not_merged",
             f"{record['branch']} is at {head}, not at its last delivery commit "
             f"{delivered[-1]['commit']}; deliver again, or close it completed or failed",
+        )
+    mismatches = delivery_mismatches(primary, delivered[-1])
+    if mismatches:
+        raise TaskError(
+            "delivery_unverified",
+            f"the head {head} of {record['branch']} of task {task_id} has the subject and "
+            f"trailers of a delivery commit of its workspace but does not verify against its "
+            f"evidence bundle {delivered[-1]['bundle']}, so it may not hold what was validated: "
+            + "; ".join(mismatches),
         )
     worktree = Path(record["worktree"])
     if _dirty(worktree):
@@ -876,12 +936,28 @@ def close_locked(
     note: str | None = None,
     errors: list[dict] | None = None,
     force: bool = False,
+    again: str | None = None,
 ) -> dict:
-    """``close_task`` for a caller already holding the merge lock and the workspace lock."""
+    """``close_task`` for a caller already holding the merge lock and the workspace lock.
+
+    Removing the worktree, writing the record and appending to the decision log cannot be one
+    transaction, so a refusal after one of them says what this close did and that ``again``
+    (by default the same close) finishes it; the same close of a task whose record is closed
+    but whose decision log lacks its closing appends it.
+    """
     errors = list(errors or [])
+    again = (
+        again or f"`concorde task close {task_id} --{outcome}` with the same options"
+    )
     record = load_task(primary, task_id)
     worktree = Path(record["worktree"])
     if record["state"] in ENDED:
+        ended = record.get("closed") or {}
+        if ended.get("outcome") == outcome and not _closing_logged(
+            primary, task_id, ended
+        ):
+            _log_closing(primary, task_id, ended)
+            return record
         raise TaskError(
             "invalid_transition", f"task {task_id} is already {record['state']}"
         )
@@ -910,7 +986,10 @@ def close_locked(
             raise TaskError(
                 "worktree_failed",
                 f"git {' '.join(arguments)} in {worktree} exited {result.returncode}: "
-                f"{result.stderr.strip()}",
+                f"{result.stderr.strip()}; Git may have deinitialized the submodules before "
+                f"the one it stopped at (`git submodule update --init` in {worktree} restores "
+                f"them), the worktree stays and the record of task {task_id} is unchanged; "
+                f"once the cause is fixed, {again} finishes the close",
             )
     if worktree.exists():
         arguments = ["worktree", "remove", str(worktree)]
@@ -918,10 +997,18 @@ def close_locked(
             arguments.insert(2, "--force")
         result = _git(primary, *arguments, check=False)
         if result.returncode != 0:
+            done = (
+                f"this close deinitialized the submodules of {worktree} "
+                f"(`git submodule update --init` there restores them)"
+                if submodules
+                else "this close changed nothing before it"
+            )
             raise TaskError(
                 "worktree_failed",
                 f"git {' '.join(arguments)} exited {result.returncode}: "
-                f"{result.stderr.strip()}",
+                f"{result.stderr.strip()}; {done}, the worktree is as Git left it and the "
+                f"record of task {task_id} is unchanged; once the cause is fixed, {again} "
+                "finishes the close",
             )
         removed = True
     primary_head = _git(primary, "rev-parse", "HEAD").stdout.strip()
@@ -943,16 +1030,46 @@ def close_locked(
         }
         return record
 
-    closed = update(primary, task_id, change)
+    try:
+        closed = update(primary, task_id, change)
+    except TaskError as error:
+        if not removed:
+            raise
+        raise TaskError(
+            error.code,
+            f"{error}; this close had already removed the worktree {worktree}, so task "
+            f"{task_id} stays {record['state']} without it; once the cause is fixed, {again} "
+            "finishes the close",
+        ) from error
     _log_closing(primary, task_id, closed["closed"])
     return closed
+
+
+def _closing_heading(closed: dict) -> str:
+    return f"## Closed: {closed['outcome']}, {closed['at']}"
+
+
+def _closing_logged(primary: Path, task_id: str, closed: dict) -> bool:
+    """Whether the decision log holds the closing of the record's ``closed``."""
+    path = decision_log_path(primary, task_id)
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return False
+    except OSError as error:
+        raise TaskError(
+            "decision_log_failed",
+            f"task {task_id} is already {closed['state']}, and its decision log {path} cannot "
+            f"be read to see whether it holds that closing: {error}",
+        ) from error
+    return _closing_heading(closed) in lines
 
 
 def _log_closing(primary: Path, task_id: str, closed: dict) -> None:
     """Append how the task ended, with any error chains rendered and as JSON."""
     from ..errors import render
 
-    lines = [f"\n## Closed: {closed['outcome']}, {closed['at']}\n"]
+    lines = [f"\n{_closing_heading(closed)}\n"]
     if closed["note"]:
         lines.append(f"\n{closed['note']}\n")
     for error in closed["errors"]:
@@ -960,8 +1077,19 @@ def _log_closing(primary: Path, task_id: str, closed: dict) -> None:
             f"\n{render(error)}\n\n"
             f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
         )
-    with decision_log_path(primary, task_id).open("a", encoding="utf-8") as stream:
-        stream.write("".join(lines))
+    path = decision_log_path(primary, task_id)
+    try:
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write("".join(lines))
+    except OSError as error:
+        raise TaskError(
+            "decision_log_failed",
+            f"task {task_id} is {closed['state']} in its record, with outcome "
+            f"{closed['outcome']} at {closed['at']}, but appending its closing to the decision "
+            f"log {path} failed afterwards: {error}; once the log is writable, "
+            f"`concorde task close {task_id} --{closed['outcome']}` with the same options "
+            "appends it and changes nothing else",
+        ) from error
 
 
 __all__ = [
@@ -996,4 +1124,5 @@ __all__ = [
     "task_workspace_locked",
     "unfinished_merge",
     "unwritten_decision_log",
+    "verified",
 ]
