@@ -221,10 +221,23 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.backend-configured — Workers run on pi unless their configuration chooses Claude Code
 
 - GIVEN a command started from a Claude Code session, both programs installed, and a [worker configuration](../../glossary.json#concept.worker-configuration) whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a level
-- WHEN the choices of `implement`'s worker and of `spec_review`'s `reviewer` and `checker` are resolved
-- THEN a worker without an entry, in an empty configuration, runs on `pi` as Concorde's default [worker backend](../../glossary.json#concept.worker-backend)
-- AND the reviewer runs on pi with the default's model, and the checker on `claude` from its own entry, with its own level and Claude Code's own default model, since choosing Claude Code does not carry the pi model over
-- BUT when the `pi` command is not installed, a worker that runs on pi is refused with `backend_missing`, naming the worker, the command it looked for and how to choose Claude Code for it, and never runs on Claude Code instead, while the checker still resolves
+- WHEN the choices of `spec_review`'s `reviewer` and `checker` are resolved
+- THEN the reviewer runs on pi with the default's model
+- AND the checker runs on `claude` from its own entry, with its own level and Claude Code's own default model, since choosing Claude Code does not carry the pi model over
+
+### scenario.workers.backend-default — Without a configuration entry a worker runs on pi
+
+- GIVEN a command started from a Claude Code session and an empty worker configuration
+- WHEN the choice of `implement`'s worker is resolved
+- THEN it runs on `pi`, from Concorde's default [worker backend](../../glossary.json#concept.worker-backend), not from the main session's program
+
+### scenario.workers.backend-missing — A worker whose backend is not installed is refused
+
+- GIVEN a command started from a Claude Code session, a worker configuration that puts `spec_review`'s worker `checker` on `claude`, and no `pi` command installed
+- WHEN the choices of `implement`'s worker and of `spec_review`'s `checker` are resolved
+- THEN the worker that runs on pi is refused with `backend_missing`, naming the worker, the source of its backend, the command it looked for and how to choose Claude Code for it
+- AND it never runs on Claude Code instead
+- BUT the checker, on `claude`, still resolves
 
 ### scenario.workers.models-listed — The installed program's models are the candidates
 

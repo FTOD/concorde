@@ -59,14 +59,16 @@ class WorkerModelTests(unittest.TestCase):
             models.detect_client({"CONCORDE_CLIENT": "codex"})
         self.assertEqual("invalid_client", raised.exception.code)
 
-    @verifies("scenario.workers.backend-configured")
-    def test_workers_run_on_pi_unless_their_configuration_chooses_claude_code(self):
+    @verifies("scenario.workers.backend-default")
+    def test_a_worker_without_an_entry_runs_on_pi(self):
         session = dict(self.environ, CLAUDECODE="1")
         empty = {"schema_version": 1}
         self.assertEqual(
             ("pi", "Concorde's default worker backend"),
             _backend(models.worker_choice(empty, "implement", "worker", session)),
         )
+
+    def _checker_on_claude(self) -> dict:
         config = {
             "schema_version": 1,
             "default": {"model": "a/pi"},
@@ -78,6 +80,12 @@ class WorkerModelTests(unittest.TestCase):
         }
         self.save(config)
         self.assertEqual(config, models.load(self.base))
+        return config
+
+    @verifies("scenario.workers.backend-configured")
+    def test_workers_run_on_pi_unless_their_configuration_chooses_claude_code(self):
+        session = dict(self.environ, CLAUDECODE="1")
+        config = self._checker_on_claude()
         reviewer = models.worker_choice(config, "spec_review", "reviewer", session)
         checker = models.worker_choice(config, "spec_review", "checker", session)
         self.assertEqual(("pi", "a/pi"), (reviewer["backend"], reviewer["model"]))
@@ -98,7 +106,13 @@ class WorkerModelTests(unittest.TestCase):
                 checker["reasoning"],
             ),
         )
-        missing = dict(session, CONCORDE_PI=str(self.base / "nowhere"))
+
+    @verifies("scenario.workers.backend-missing")
+    def test_a_worker_whose_backend_is_not_installed_is_refused(self):
+        config = self._checker_on_claude()
+        missing = dict(
+            self.environ, CLAUDECODE="1", CONCORDE_PI=str(self.base / "nowhere")
+        )
         with self.assertRaises(models.ModelConfigError) as raised:
             models.worker_choice(config, "implement", "worker", missing)
         self.assertEqual("backend_missing", raised.exception.code)
