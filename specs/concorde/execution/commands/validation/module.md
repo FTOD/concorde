@@ -46,7 +46,7 @@ established, not only the first, each of one kind:
 | --- | --- |
 | `load` | the Specs fail to load at all |
 | `structural` | a [structural check](../../../glossary.json#concept.structural-check) error, e.g. a broken link or stale registry mirror, or a run [Module](../../../glossary.json#concept.module) the workspace's registry no longer registers |
-| `unbound` | a changed path is not a Spec document, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
+| `unbound` | a changed path is not a Spec document, the glossary, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
 | `check` | a changed or run Module's [configured check](../../../glossary.json#concept.configured-check) failed, timed out or couldn't run |
 
 Warnings, such as missing scenario coverage, are reported but never block. A pending entry whose

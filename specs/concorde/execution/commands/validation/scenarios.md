@@ -20,6 +20,7 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the result has status `blocked` and the readiness has `ready` false
 - AND `blocking` holds a structural finding, an unbound finding and a check finding
 - AND the summary names each finding with its location and message
+- BUT a changed project glossary is accounted for like a Spec document, never an unbound finding
 - AND the error's `not_deliverable` link, of level `command`, has one cause per finding, the check's with its exit code and the end of its log
 
 ### scenario.validation.warnings — Warnings do not block

@@ -48,8 +48,8 @@ Module that uses one of those, directly or through further uses.
 ### req.validation.unbound-paths — Every change is accounted for
 
 Validation SHALL report as blocking every changed path that still exists, is not a Spec document
-member, a control record under `.concorde/`, generated or build output or external material, and is
-bound by no Module.
+member, the project glossary, a control record under `.concorde/`, generated or build output or
+external material, and is bound by no Module.
 
 External material is what a Module includes as `external`. A submodule's gitlink counts as external
 material when a Module includes the submodule or a path inside it, so bumping a vendored reference

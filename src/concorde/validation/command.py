@@ -361,7 +361,10 @@ def require_accounted(ctx: RunContext):
     repository = state.repository
     if repository is None:
         return Continue()
-    members = set(repository.source_documents)
+    # The glossary is a Spec source like a document member: accounted for without a binding.
+    members = set(repository.source_documents) | (
+        {repository.glossary_path} if repository.glossary_path else set()
+    )
     outputs = generated_outputs(repository.root)
     entries = [
         entry for module in repository.modules.values() for entry in module.files
