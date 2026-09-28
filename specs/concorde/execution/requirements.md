@@ -28,10 +28,11 @@ breaks the binding contract or names a root other than that worktree.
 
 ### req.execution.one-result — Every accepted command line ends with one result
 
-Every `concorde run` or [execution command](../glossary.json#concept.execution-command) whose
-whole command line is accepted and names a known [Operation](../glossary.json#concept.operation) or
-command SHALL write exactly one run result, including when the run is refused, fails or is
-cancelled.
+Every `concorde run` or [execution command](../glossary.json#concept.execution-command) started in
+a Git worktree whose whole command line is accepted and names a known
+[Operation](../glossary.json#concept.operation) or command SHALL write exactly one run result,
+including when the run is refused, fails or is cancelled, unless it was started with `--detach` and
+reported `detach_failed`.
 
 A malformed command line, including one with an unknown argument, or one started outside every Git
 worktree starts no run and writes no result (exit status 2), and a detached runner that ends or is

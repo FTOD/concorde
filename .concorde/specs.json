@@ -311,7 +311,7 @@
             "concept.run-store",
             "concept.run-progress-file",
             "concept.unbound-run",
-            "req.execution.unbound-read-only"
+            "req.execution.no-writing-worker"
           ]
         },
         {
@@ -713,6 +713,7 @@
             "concept.workspace-lock",
             "req.execution.binding-trusted",
             "req.execution.workspace-lock",
+            "req.execution.workspace-busy",
             "contract.execution.run-result",
             "contract.execution.workspace-binding"
           ]
@@ -763,6 +764,7 @@
             "concept.workspace-binding",
             "concept.workspace-lock",
             "req.execution.workspace-lock",
+            "req.execution.workspace-busy",
             "contract.execution.run-result",
             "contract.execution.workspace-binding"
           ]
@@ -1028,6 +1030,7 @@
             "concept.detached-run",
             "concept.run-store",
             "req.execution.workspace-lock",
+            "req.execution.workspace-busy",
             "req.execution.no-chaining",
             "contract.execution.run-result"
           ]

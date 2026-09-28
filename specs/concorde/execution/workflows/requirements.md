@@ -15,8 +15,9 @@ The workflow commands SHALL refuse to run a step or build a report in a worktree
 A [workflow step](../../glossary.json#concept.workflow-step) SHALL start its run only as `concorde run <operation> --detach` or `concorde <command> --detach` of the workspace's own `concorde`, in the workspace the step runs in.
 
 The workflow leaves worker launches and service calls inside the run. What client
-[step agents](../../glossary.json#concept.step-agent) may do is stated once, in
-[req.workflows.step-agent-relays](#req.workflows.step-agent-relays).
+[step agents](../../glossary.json#concept.step-agent) may do is stated in
+[req.workflows.step-agent-relays](#req.workflows.step-agent-relays) and
+[req.workflows.step-agent-no-change](#req.workflows.step-agent-no-change).
 
 ### req.workflows.one-at-a-time — One run at a time
 

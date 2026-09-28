@@ -59,8 +59,9 @@ parses their command line, resolves the workspace, takes the
 [run result](../glossary.json#concept.run-result), so a workflow, the task level or an observer
 treats them alike. `--modules` names the Modules the run works on (default: the binding's, less any
 the workspace no longer registers); `--input` admits the output of an earlier `ok` run of the same
-workspace, such as a plan or a survey. `concorde workflow step|report …` works on the workspace the
-same way but is not itself a run: it starts and awaits runs through [Workflows](workflows/module.md).
+workspace, such as a plan or a survey. `concorde workflow step|report …` also works on the bound
+workspace without naming it, but is not itself a run: it starts and awaits runs through
+[Workflows](workflows/module.md).
 
 A run of `implement` in a task worktree, for example, reads the binding (workspace `retry`,
 [Module](../glossary.json#concept.module) `module.http`, base `4be1…`), takes the lock of `retry`,

@@ -4,8 +4,9 @@ The Module-wide obligations of [Operations](module.md). What every run promises,
 definition, is in the [Execution requirements](../requirements.md); the [scenarios](scenarios.md)
 rely in particular on
 [req.execution.claims-apart](../requirements.md#req.execution.claims-apart),
-[req.execution.error-when-not-ok](../requirements.md#req.execution.error-when-not-ok) and
-[req.execution.reasons](../requirements.md#req.execution.reasons). How an
+[req.execution.error-when-not-ok](../requirements.md#req.execution.error-when-not-ok),
+[req.execution.reasons](../requirements.md#req.execution.reasons) and
+[req.execution.error-detail](../requirements.md#req.execution.error-detail). How an
 [Operation](../../glossary.json#concept.operation) runs its workers is in
 [How an Operation runs its workers](workers.md), and the scenarios show the obligations at work.
 

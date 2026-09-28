@@ -128,8 +128,8 @@
     {
       "type": "relates",
       "source": "realization.task-session.starter",
-      "verb": "reads the program as",
-      "target": "concept.worker-backend"
+      "verb": "reads the main session's program through",
+      "target": "module.workers"
     },
     {
       "type": "relates",

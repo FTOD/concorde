@@ -157,11 +157,10 @@ runs -> workers: an Operation launches
 procedure. The session starts a [workflow](../../glossary.json#concept.workflow) exactly as the main
 agent would, for its own task only, and relies on the
 [workflow result](../../glossary.json#concept.workflow-result) keeping every step's
-[error chain](../../glossary.json#concept.error-chain) whole. A
-[decision point](../../glossary.json#concept.decision-point) is the developer's to settle, not the
-session's: an interactive workflow that stops at decision points is escalated with the session's
-own link above the result's chain, and the session starts the same workflow again with the answers
-it receives. A task session never merges or closes the task, which stays the main agent's.
+[error chain](../../glossary.json#concept.error-chain) whole. A workflow that stops at a
+[decision point](../../glossary.json#concept.decision-point) is a decision for the session to take
+within its task's goal, or to escalate with its own link above the result's chain; it never merges
+or closes the task, which stays the main agent's.
 
 <a id="uses-execution"></a>
 
@@ -275,21 +274,21 @@ with a fake `claude` and a fake `pi`; the pi path decisions also run under Node.
 
 ### Around it
 
-A start touches one piece of each provider: the session starter reads the program the way Workers
-does, writes the Harness's boundary, prompts the session with the Main session's guidance and
-records in the Tasks record, against which each session report is checked.
+A start touches one piece of each provider: the session starter reads the main session's program
+through Workers, writes the Harness's boundary, prompts the session with the Main session's guidance
+and records in the Tasks record, against which each session report is checked.
 
 ```d2
 starter: Session starter
 report: Session report
 guidance: Main session / Main-session guidance
 boundary: Harness / Session boundary
-backend: Workers / Worker backend
+workers: Workers
 record: Tasks / Task record
 commits: Delivery / Delivery commit
 starter -> guidance: prompts with
 starter -> boundary: writes
-starter -> backend: reads the program as
+starter -> workers: reads the main session's program through
 starter -> record: records rounds in
 report -> record: is checked against
 report -> commits: is checked against

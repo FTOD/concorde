@@ -27,6 +27,7 @@
           "concept.detached-run",
           "concept.run-store",
           "req.execution.workspace-lock",
+          "req.execution.workspace-busy",
           "req.execution.no-chaining",
           "contract.execution.run-result"
         ]

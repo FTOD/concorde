@@ -93,7 +93,8 @@ and a project in which Concorde is still running — a [run](../glossary.json#co
 Operation or of an [execution command](../glossary.json#concept.execution-command) whose runner
 process lives, as its [run progress file](../glossary.json#concept.run-progress-file) says, or a pi
 [task-session](../glossary.json#concept.task-session) round whose supervisor lives, each named in
-the refusal `concorde_busy` ([requirements](requirements.md#req.distribution.idle-install)), since
+the refusal `concorde_busy` ([requirements](requirements.md#req.distribution.idle-install),
+[naming](requirements.md#req.distribution.busy-named)), since
 replacing the framework copy under them would change their code halfway; the
 [progress file](../glossary.json#concept.progress-file) of an Operation's worker, which lies beside
 the Operation's and names the same runner, is not a run of its own — then places the Framework
@@ -118,7 +119,8 @@ one is declared, which `concorde init --apply` also adds when it creates the fir
 the `d2` release `concorde.json` pins, placed at
 `.concorde/tools/d2`, checked against its SHA-256 before anything else is written and kept on a
 later install with the same pin
-([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);
+([requirements](requirements.md#req.distribution.installer-pinned-d2),
+[checked first](requirements.md#req.distribution.installer-d2-first), `--without-d2` skips it);
 plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, the
 [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json` that each
 task worktree gets, `.concorde/worker-models.json`, `.concorde/framework/`, `.concorde/tools/` and
@@ -329,7 +331,9 @@ otherwise be bound to a Protocol copy it no longer carries, and writes the Git-i
 adds `CONCORDE-UPDATE-001` to Spec core's result while the mark is present, and removes the mark
 only on a result that is otherwise a success; a `task merge`, whose default check is that
 validation in the primary worktree, therefore stops until the project validates with the new
-Concorde ([requirements](requirements.md#req.distribution.update-unvalidated)).
+Concorde ([requirements](requirements.md#req.distribution.update-unvalidated),
+[reported](requirements.md#req.distribution.unvalidated-reported),
+[cleared](requirements.md#req.distribution.unvalidated-cleared)).
 
 How this Module's realizations call one another:
 

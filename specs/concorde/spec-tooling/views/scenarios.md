@@ -206,7 +206,8 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 - THEN the preview stops, the Specs are staged again, and the preview starts again from the new staging without opening another browser window
 - AND changes made together cause one restart
 
-See [req.views.preview-follows-specs](requirements.md#req.views.preview-follows-specs).
+See [req.views.preview-follows-specs](requirements.md#req.views.preview-follows-specs) and
+[req.views.preview-restart](requirements.md#req.views.preview-restart).
 
 ### scenario.views.preview-restart-failure — A staging failure during the preview is reported and retried
 

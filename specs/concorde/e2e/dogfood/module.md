@@ -50,7 +50,7 @@ A scenario has the fields `name`, `description`, `project` (`repository` and `re
 phrases and `unchanged` paths), and optionally `client`, `claude` or `pi`, the main session's
 program, `claude` when absent. The client names only the main session's program: the preparation
 writes no [worker model configuration](../../glossary.json#concept.worker-model-configuration), so
-the workers run on pi under either client. A fault therefore breaks what both
+the workers run on pi under either client. A fault still breaks what both
 [worker backends](../../glossary.json#concept.worker-backend) share, or each backend's part alike,
 so that it holds whichever backend a worker model configuration chooses.
 
@@ -123,14 +123,14 @@ against the checkout, so a refactor that invalidates one is noticed where it hap
 
 **Judged from files.** The evaluation reads what the session left, never what it said: the clone's
 commit and status, digests against the baselines, the report files and what the two report commands
-answer, and the project's branches and worktrees. A workaround may sit in a task worktree that was
-never merged or on a branch that was, so `no_workaround` looks at every branch and every worktree
-rather than the primary branch alone. The report checks run the same commands the two
-sides of Dogfooding run, so a scenario fails for exactly the report the Concorde repository would
-refuse. The classification check is a phrase match over the report's basis; it is deliberately
-narrow, and a session that reasons correctly in other words fails it, which the developer reads in
-the report rather than trusting the check alone. A model's behaviour varies between runs, so one
-passing run shows the guidance can be followed, not that it always is.
+answer, and the project's branches and worktrees. A workaround may sit on a branch that was never
+merged or, uncommitted, in the files of a task worktree, so `no_workaround` looks at every branch
+and at the files of every worktree rather than the primary branch alone. The report checks run the
+same commands the two sides of Dogfooding run, so a scenario fails for exactly the report the
+Concorde repository would refuse. The classification check is a phrase match over the report's
+basis; it is deliberately narrow, and a session that reasons correctly in other words fails it,
+which the developer reads in the report rather than trusting the check alone. A model's behaviour
+varies between runs, so one passing run shows the guidance can be followed, not that it always is.
 
 <a id="realization.dogfood-scenarios.runner"></a>
 
@@ -177,7 +177,7 @@ whose files outside `.concorde/` are the installed files the evaluation keeps di
 **Issues** provides `issues report --check`, which the evaluation runs in the project, and
 `issues report`, which it runs in a throwaway clone of the scenario's Concorde; a report that either
 command refuses fails the evaluation with the refusal's text. The throwaway clone records the
-reports as the Concorde repository's session would, without `--task`, which the command does not
-require; recording them in the scenario's own clone would add
-[Issue](../../glossary.json#concept.issue) files to it, which `concorde_untouched` requires to stay
-clean at the fault commit.
+reports with the same `issues report` the Concorde repository's session runs, but without `--task`,
+which supplies provenance only and which the command does not require; recording them in the
+scenario's own clone would add [Issue](../../glossary.json#concept.issue) files to it, which
+`concorde_untouched` requires to stay clean at the fault commit.

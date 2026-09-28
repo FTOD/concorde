@@ -24,6 +24,7 @@
           "concept.workspace-lock",
           "req.execution.binding-trusted",
           "req.execution.workspace-lock",
+          "req.execution.workspace-busy",
           "contract.execution.run-result",
           "contract.execution.workspace-binding"
         ]

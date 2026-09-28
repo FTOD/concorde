@@ -55,9 +55,11 @@ A session that did not start leaves the record unchanged.
 
 Task sessions SHALL record every pi [session round](../../glossary.json#concept.session-round) as `delivered`, `escalated`, `failed` or `stopped`.
 
-A round recorded as `failed` carries an error link naming pi's exit code, stop reason and error
-message, the paths of the round's logs and, for a report the record contradicts, each mismatch.
-A round whose supervisor ended without recording it is recorded `failed` by the next start,
+A round recorded as `failed` carries an error link with one of the codes in the
+[contracts](contracts.md#commands): without a report it names pi's exit code, stop reason and error
+message and the paths of the round's logs; for a report the record contradicts, each mismatch. A
+round whose supervisor ended without recording it is recorded `failed` with
+`session_supervisor_lost`, naming the supervisor's process and the round's logs, by the next start,
 `--answer` or `--stop` of the task.
 
 ### req.task-session.delivered-verified — Delivered only with the delivery commit

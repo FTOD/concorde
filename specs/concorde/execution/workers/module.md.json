@@ -50,7 +50,7 @@
           "concept.run-store",
           "concept.run-progress-file",
           "concept.unbound-run",
-          "req.execution.unbound-read-only"
+          "req.execution.no-writing-worker"
         ]
       },
       {

@@ -170,9 +170,10 @@ The `output` of `scaffold`, entirely observed by its steps.
 
 The codes of the run's own link, level `command`, in a result that is not `ok` because one of the
 scaffold's steps stopped it. Spec core links below it keep their own codes. A run the runner
-refuses before the first step, unbound (`binding_required`) or with an input it does not admit
-(`input_not_admissible`), carries the runner's `refused` link instead, listed in the
-[runner's errors](../../runner.md#errors).
+refuses before the first step, such as an
+[unbound run](../../../glossary.json#concept.unbound-run) (`binding_required`) or one with an input
+it does not admit (`input_not_admissible`), carries the runner's `refused` link instead, listed in
+the [runner's errors](../../runner.md#errors).
 
 | Code | Status | Reason | Raised when |
 | --- | --- | --- | --- |

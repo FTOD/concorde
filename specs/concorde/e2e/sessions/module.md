@@ -50,7 +50,8 @@ ExitWorktree, or a workflow's own list), since an untrusted project's allow rule
 answers questions, a command left in the background is stopped when the turn ends and nothing wakes
 the session, so Concorde commands run in the foreground, and a run still running at the end of a
 round is followed by a wake-up
-([requirements](requirements.md#req.headless-sessions.conditions-in-tool)). What the turn's end
+([requirements](requirements.md#req.headless-sessions.conditions-in-tool),
+[tools granted](requirements.md#req.headless-sessions.tools-granted)). What the turn's end
 stops is Claude Code's own background command; a Concorde run it was running then ends with the
 error code `cancelled` and the session is woken for it as a run stopped by that end, while a
 [detached run](../../glossary.json#concept.detached-run) outlives the round and wakes the session
@@ -73,8 +74,8 @@ session's total.
 **Waking the session.** When a round ends, the tool looks at the
 [runs](../../glossary.json#concept.run) of Operations and
 [execution commands](../../glossary.json#concept.execution-command) started since the session began
-that it has not reported yet ([requirements](requirements.md#req.headless-sessions.wake)), in the
-[run store](../../glossary.json#concept.run-store) of the session's worktree: the one its
+that it has not reported yet ([requirements](requirements.md#req.headless-sessions.wake-once)), in
+the [run store](../../glossary.json#concept.run-store) of the session's worktree: the one its
 [workspace binding](../../glossary.json#concept.workspace-binding) names when the session runs in a
 task worktree, otherwise the worktree's own `.concorde/runs/`. Every run started there since the
 session began counts as the session's, including the runs of the tasks it opened, whose workspace
@@ -88,10 +89,12 @@ until every running run has finished or its runner has gone, then, when a round 
 the same session with a **[wake message](../../glossary.json#concept.wake-message)** naming each
 run, its kind, name and workspace, how it ended and its result file, saying of a stopped run that
 the turn's end stopped it and of a run whose runner went without writing a result that it ended
-without one. The wait lasts at most an hour: a run still running then fails the session with
-`wait_exceeded`, naming that run's run progress file. The session ends `idle`, `exited` when a
-round's process fails (with its standard error kept), `no_session` when the first round names no
-session, or `rounds_exhausted` after the allowed rounds.
+without one ([requirements](requirements.md#req.headless-sessions.wake)). The wait lasts at most an
+hour: a run still running then fails the session with `wait_exceeded`, naming that run's
+run progress file ([requirements](requirements.md#req.headless-sessions.wait-bounded)). The session
+ends `idle`, `exited` when a round's process fails (with its standard error kept), `no_session` when
+the first round names no session, or `rounds_exhausted` after the allowed rounds
+([requirements](requirements.md#req.headless-sessions.rounds-bounded)).
 
 **Reading the logs.** A resumed Claude Code round first replays the stopped background command as
 a turn of its own with no model turn; its `result` event is not the round's answer. The round's
