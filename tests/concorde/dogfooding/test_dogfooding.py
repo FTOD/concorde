@@ -95,51 +95,82 @@ class DevelopInstallTests(unittest.TestCase):
         )
         self.assertNotIn("develop install", (project / "CLAUDE.md").read_text())
 
-    @verifies("scenario.dogfooding.refused-source")
-    def test_only_a_clean_primary_worktree_on_a_branch_is_installed_from(self):
-        package = repository(self)
-        linked = package.parent / "linked"
-        git(package, "worktree", "add", "-q", "-b", "task", str(linked))
-        write_build(linked)
-        (package / "stray.txt").write_text("uncommitted\n")
-        cases = [
-            (linked, "develop_source_not_primary", [str(package)]),
-            (package, "develop_source_dirty", ["stray.txt"]),
-        ]
-        detached = package.parent / "detached"
-        git(package, "worktree", "add", "-q", "--detach", str(detached))
-        write_build(detached)
-        cases.append((detached, "develop_source_not_primary", [str(package)]))
-        for index, (source, code, fragments) in enumerate(cases):
-            with self.subTest(code=code, source=source.name):
-                project = new_project(package, f"project-{index}")
-                with self.assertRaises(InstallError) as raised:
-                    install(
-                        project,
-                        source,
-                        pi_runtime=False,
-                        d2=False,
-                        develop=True,
-                        dependencies=False,
-                    )
-                self.assertEqual(code, raised.exception.code)
-                for fragment in fragments:
-                    self.assertIn(fragment, str(raised.exception))
-                self.assertEqual([".git"], [p.name for p in project.iterdir()])
-        (package / "stray.txt").unlink()
-        git(package, "checkout", "-q", "--detach")
-        project = new_project(package, "project-detached")
+    def assert_refused(self, source: Path, project: Path, code: str, *fragments: str):
+        """A develop install from ``source`` is refused with ``code`` and writes nothing."""
         with self.assertRaises(InstallError) as raised:
             install(
                 project,
-                package,
+                source,
                 pi_runtime=False,
                 d2=False,
                 develop=True,
                 dependencies=False,
             )
-        self.assertEqual("develop_source_detached", raised.exception.code)
+        self.assertEqual(code, raised.exception.code)
+        for fragment in fragments:
+            self.assertIn(fragment, str(raised.exception))
         self.assertEqual([".git"], [p.name for p in project.iterdir()])
+
+    @verifies("scenario.dogfooding.refused-source")
+    def test_a_linked_worktree_is_not_installed_from(self):
+        package = repository(self)
+        linked = package.parent / "linked"
+        git(package, "worktree", "add", "-q", "-b", "task", str(linked))
+        write_build(linked)
+        self.assert_refused(
+            linked,
+            new_project(package),
+            "develop_source_not_primary",
+            str(package),
+        )
+        # A linked worktree that is also detached is refused by the first check it fails.
+        detached = package.parent / "detached"
+        git(package, "worktree", "add", "-q", "--detach", str(detached))
+        write_build(detached)
+        self.assert_refused(
+            detached,
+            new_project(package, "project-detached"),
+            "develop_source_not_primary",
+            str(package),
+        )
+
+    @verifies("scenario.dogfooding.refused-not-root")
+    def test_a_checkout_that_is_no_worktree_root_is_not_installed_from(self):
+        # A built package copy outside any Git repository.
+        outside = package_copy(self)
+        self.assert_refused(
+            outside,
+            new_project(outside),
+            "develop_source_not_repository",
+            "not in a Git worktree",
+        )
+        # A built package copy committed inside a larger repository's worktree.
+        inside = package_copy(self)
+        git(inside.parent, "init", "-q", "-b", "main")
+        git(inside.parent, "add", "-A")
+        git(inside.parent, "commit", "-qm", "outer")
+        self.assert_refused(
+            inside,
+            new_project(inside),
+            "develop_source_not_repository",
+            f"inside the worktree {inside.parent}",
+        )
+
+    @verifies("scenario.dogfooding.refused-detached")
+    def test_a_detached_primary_worktree_is_not_installed_from(self):
+        package = repository(self)
+        git(package, "checkout", "-q", "--detach")
+        self.assert_refused(
+            package, new_project(package), "develop_source_detached", "detached"
+        )
+
+    @verifies("scenario.dogfooding.refused-dirty")
+    def test_a_primary_worktree_with_changes_is_not_installed_from(self):
+        package = repository(self)
+        (package / "stray.txt").write_text("uncommitted\n")
+        self.assert_refused(
+            package, new_project(package), "develop_source_dirty", "stray.txt"
+        )
 
     @verifies("scenario.dogfooding.update-keeps-develop")
     def test_an_update_installs_the_new_commit_in_develop_mode(self):
