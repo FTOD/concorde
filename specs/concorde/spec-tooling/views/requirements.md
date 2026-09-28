@@ -192,4 +192,8 @@ The scaffold SHALL NOT replace or delete any existing file.
 
 ### req.views.template-inventory — One template inventory
 
-The scaffold and the installer SHALL select the packaged docsite template files by one shared inventory rule.
+The scaffold and Distribution's installer SHALL select the packaged docsite template files by the one inventory rule Views defines.
+
+The scaffold proposes the selected files without `scaffold/`; the installer ships all of them,
+`scaffold/` included, into a project's `.concorde/framework/docsite/`, where the installed scaffold
+reads them, so the two never disagree on the template.
