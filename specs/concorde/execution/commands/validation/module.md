@@ -58,8 +58,8 @@ Modules bind a changed file or own a changed Spec document, found through the
 [impact indexes](../../../glossary.json#concept.impact-index); a shared file runs
 all its Modules' checks.
 
-The readiness records its inputs — head, base, every changed path's digest and the configuration
-digest — as one input digest, which proves exactly which inputs a readiness describes; a later
+The readiness records its inputs — head, base, every changed path's Git file mode and digest and
+the configuration digest — as one input digest, which proves exactly which inputs a readiness describes; a later
 change of the workspace alters it.
 
 | Status | Code | Reason | Detail |
@@ -69,7 +69,7 @@ change of the workspace alters it.
 | `failed` | `wrong_branch` | `permission` | the workspace's head is not on the branch its binding names |
 | `failed` | `measurement_failed` | `environment` | Git's or the configuration's error as cause |
 | `failed` | `checks_unavailable` | `environment` | Check execution's error as cause |
-| `failed` | `inputs_changed` | `environment` | the workspace changed mid-run |
+| `failed` | `inputs_changed` | `environment` | the workspace changed mid-run; Check execution's `stale_evidence` as cause when a check noticed it |
 
 The error is the run's own link of level `command`, with the actor
 `Command task-validation <run-id> (workspace <workspace>)`. A blocked summary starts
@@ -114,7 +114,7 @@ validation always covers the whole workspace, since a
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
 | 1 | Require the workspace's head to be on the branch its binding names | host | wrong or detached branch (`failed`) |
-| 2 | Measure inputs: head, base, changed paths' digests, config digest, combined | host, read-only Git | Git can't report the changes (`failed`) |
+| 2 | Measure inputs: head, base, changed paths' modes and digests, config digest, combined | host, read-only Git | Git can't report the changes (`failed`) |
 | 3 | Validate the workspace's Spec structure | Spec core | — (Specs that fail to load skip steps 5–7) |
 | 4 | Sort findings: errors block, filled pending entries become confirmations, warnings kept | host | — |
 | 5 | Require every changed path be accounted for, as the `unbound` kind lists | host, Spec core | — |
@@ -131,7 +131,8 @@ registry does not register is a structural blocking finding. At step 7, Check ex
 `check_sandbox_unavailable` fails the run with `checks_unavailable`, and its `stale_evidence` with
 `inputs_changed`; any other error it raises for a Module's checks, such as a missing check input or
 an invalid check, is a blocking `check` finding naming the Modules whose checks could not run, and
-the other Modules' checks still run. Unlike an Operation, the command diagnoses the Specs itself, so
+the other Modules' checks still run. Each of these keeps Check execution's own error link as its
+cause. Unlike an Operation, the command diagnoses the Specs itself, so
 the runner does not load them before the steps and these diagnoses always reach the caller as
 findings rather than as a refusal. Step 8 catches changes of the workspace during a check, which can
 take minutes.
@@ -172,6 +173,6 @@ bound-workspace fixture Delivery's tests share.
   read-only, with the workspace as the project, and returns one
   [check result](../../../glossary.json#concept.check-result) per check. The readiness keeps
   each result's check identity as `check`, its Module, status and exit code, its measured
-  `check_revision` as `measured_digest` and its log path relative to the directory holding the
+  digest as `measured_digest` and its log path relative to the directory holding the
   records directory; a timeout's exit code becomes null and the log digest is dropped. A boundary
   it cannot establish fails the run.

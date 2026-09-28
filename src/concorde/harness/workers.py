@@ -728,7 +728,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 continue
             progress.phase("checks")
             try:
-                from .checks import run_checks
+                from .checks import run_checks, service_error
 
                 checks = run_checks(
                     worktree,
@@ -745,16 +745,7 @@ def run_worker(request: WorkerRequest) -> dict:
                     "Workers runs the checks through Check execution and cannot repair its "
                     "configuration or sandbox",
                     attempts=attempts,
-                    causes=[
-                        link(
-                            "component",
-                            "Check execution",
-                            code,
-                            str(error),
-                            reason="environment",
-                            explanation="the check could not be run as configured",
-                        )
-                    ],
+                    causes=[service_error(error)],
                 )
             round_record["checks"] = checks
             failures = [item for item in checks if item["status"] != "passed"]

@@ -3,7 +3,8 @@
 Each check runs through ``execute_check`` with the worktree as project root, so a check can read
 the worktree but never change it. Before and after the run the service measures the Module's
 ``check_revision`` (its implementation files, its checks' definitions and inputs, and the policy);
-a difference means the check vouched for input that changed, and the call fails.
+a difference means the check vouched for input that changed, and the call fails. A selective
+check's measured digest also covers the selected Modules and the tests it selected.
 """
 
 from __future__ import annotations
@@ -208,6 +209,32 @@ def verified_tests(repository: SpecRepository, modules) -> list[str]:
     return sorted(tests)
 
 
+def measured_digest(
+    repository: SpecRepository, check: dict, modules, tests=None
+) -> str:
+    """The digest a result of ``check`` run for the selected ``modules`` is current against.
+
+    For an ordinary check it is its Module's ``check_revision``. A selective check also measures
+    the selected Modules, the tests it selects for them (``tests`` when already known) and the
+    digest of every selected test file, since another selection runs other tests."""
+    revision = check_revision(repository, check["module"])
+    if TESTS not in (check.get("argv") or []):
+        return revision
+    if tests is None:
+        tests = verified_tests(repository, modules)
+    files = sorted({test.split("::", 1)[0] for test in tests})
+    value = {
+        "check_revision": revision,
+        "modules": sorted(set(modules)),
+        "tests": list(tests),
+        "test_files": [(path, _file_digest(repository.root / path)) for path in files],
+    }
+    return (
+        "sha256:"
+        + hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+    )
+
+
 def _argv(check: dict, python, tests=()) -> list[str]:
     """The check's command; ``python`` gives the project interpreter for ``{python}`` and
     ``tests`` the test identities ``{tests}`` stands for."""
@@ -340,7 +367,7 @@ def run_checks(
             tests or (),
         )
         timeout = _timeout(check)
-        before = check_revision(repository, check["module"])
+        before = measured_digest(repository, check, selected, tests)
         log = log_directory / f"{check['id']}.log"
         try:
             outcome = execute_check(
@@ -363,7 +390,7 @@ def run_checks(
             else b""
         )
         log.write_bytes(header + outcome.stdout + b"\n" + outcome.stderr)
-        if check_revision(SpecRepository(worktree), check["module"]) != before:
+        if measured_digest(SpecRepository(worktree), check, selected) != before:
             raise CheckError(
                 f"the input of check {check['id']} changed while it ran",
                 "stale_evidence",
@@ -407,11 +434,50 @@ def check_error(result: dict) -> dict:
     )
 
 
+# Why a caller's Check execution link was not handled here, by the error's code; every other
+# code is a configuration or request only its sender can correct.
+SERVICE_REASONS = {
+    "check_sandbox_unavailable": "environment",
+    "stale_evidence": "environment",
+    "system_error": "environment",
+    "unexpected_error": "capability",
+}
+
+
+def service_error(error: BaseException) -> dict:
+    """Check execution's own error link for an error ``run_checks`` raised, which the caller
+    keeps as a cause under its own link."""
+    if not isinstance(error, SpecError):
+        return link(
+            "component",
+            "Check execution",
+            "system_error",
+            f"{type(error).__name__}: {error}",
+            reason="environment",
+            explanation="the operating system refused an operation Check execution needed",
+        )
+    where = error.where()
+    return link(
+        "component",
+        "Check execution",
+        error.code,
+        str(error) + (f" (at {where})" if where else ""),
+        reason=SERVICE_REASONS.get(error.code, "input"),
+        explanation=error.reason,
+        evidence=[evidence("location", where, "")] if where else [],
+        options=[error.remediation],
+        recommendation=error.remediation,
+        causes=[service_error(cause) for cause in error.causes],
+    )
+
+
 __all__ = [
     "affected_modules",
     "check_error",
     "check_revision",
     "checked_modules",
+    "measured_digest",
     "run_checks",
+    "service_error",
     "verified_tests",
 ]

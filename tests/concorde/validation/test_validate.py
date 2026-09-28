@@ -235,6 +235,20 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual(["vendor/lib"], changed_paths(self.worktree, head))
         self.assertTrue(has_uncommitted(self.worktree))
 
+    @verifies("scenario.validation.mode-change")
+    def test_a_changed_file_mode_changes_the_input_digest(self):
+        calc = self.worktree / "src/a/calc.py"
+        calc.write_text(FIXED)
+        base = git(self.worktree, "rev-parse", "HEAD")
+        before = measure(self.worktree, base)
+        calc.chmod(calc.stat().st_mode | 0o100)
+        after = measure(self.worktree, base)
+        [was] = before["changed"]
+        [now] = after["changed"]
+        self.assertEqual(("100644", "100755"), (was["mode"], now["mode"]))
+        self.assertEqual(was["digest"], now["digest"])
+        self.assertNotEqual(before["digest"], after["digest"])
+
     @verifies("scenario.validation.warnings")
     def test_warnings_do_not_block(self):
         (self.worktree / "src/a/calc.py").write_text(FIXED)
@@ -309,6 +323,31 @@ class ValidateTests(unittest.TestCase):
         )
         run_dir = self.project.root / ".concorde/runs" / envelope["run_id"]
         self.assertFalse((run_dir / "readiness.json").exists())
+        self.assertEqual([], envelope["error"]["causes"])
+
+        # A change while a check runs is noticed by Check execution, whose link is the cause.
+        real = check_service.execute_check
+
+        def racing(worktree, argv, **options):
+            outcome = real(worktree, argv, **options)
+            (self.worktree / "src/a/calc.py").write_text("raced = True\n")
+            return outcome
+
+        with patch.object(check_service, "execute_check", racing):
+            status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "failed"))
+        error = envelope["error"]
+        self.assertEqual("inputs_changed", error["code"])
+        [cause] = error["causes"]
+        self.assertEqual(
+            ("component", "Check execution", "stale_evidence", "environment"),
+            (
+                cause["level"],
+                cause["actor"],
+                cause["code"],
+                cause["unhandled"]["reason"],
+            ),
+        )
 
     @verifies("scenario.validation.wrong-branch")
     def test_a_worktree_off_the_task_branch_fails_without_checks(self):
@@ -338,7 +377,12 @@ class ValidateTests(unittest.TestCase):
             ("checks_unavailable", "environment"),
             (error["code"], error["unhandled"]["reason"]),
         )
-        self.assertIn("no namespaces here", error["causes"][0]["detail"])
+        [cause] = error["causes"]
+        self.assertEqual(
+            ("Check execution", "check_sandbox_unavailable"),
+            (cause["actor"], cause["code"]),
+        )
+        self.assertIn("no namespaces here", cause["detail"])
 
 
 class BindingTests(unittest.TestCase):

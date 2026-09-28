@@ -123,7 +123,8 @@ them. They rely on the [check result](../../glossary.json#concept.check-result),
 stale-measurement rule, and the boundary refusing to run rather than running a check unconfined.
 Every call returns to the caller's step: the check results go up as that caller's evidence, and a
 failure, such as `stale_evidence` or a boundary that cannot be established, goes up as this
-Module's own error link, which the caller keeps as a cause under its link. The check result is
+Module's own error link, made by `service_error` of [the check service](service.md), which the
+caller keeps as a cause under its link. The check result is
 owned here, next to the runner that produces it, so Workers, Validation and Delivery consume one
 record and never run checks another way. Logs go only to the directory the caller names, usually the calling run's directory in the
 [run store](../../glossary.json#concept.run-store); a check's output reaches a worker only as the

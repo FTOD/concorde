@@ -29,7 +29,13 @@ from ..execution.context import (
     evidence,
     spec_cause,
 )
-from ..harness.checks import affected_modules, check_error, checked_modules, run_checks
+from ..harness.checks import (
+    affected_modules,
+    check_error,
+    checked_modules,
+    run_checks,
+    service_error,
+)
 from ..spec.repository import SpecRepository
 from ..spec.repository_base import SpecError, bound_by, control_path, covers
 from ..spec.validation import (
@@ -73,9 +79,15 @@ READINESS_SCHEMA: dict = {
                     "items": {
                         "type": "object",
                         "additionalProperties": False,
-                        "required": ["path", "digest"],
+                        "required": ["path", "mode", "digest"],
                         "properties": {
                             "path": TEXT,
+                            "mode": {
+                                "anyOf": [
+                                    {"type": "null"},
+                                    {"enum": ["100644", "100755", "120000", "160000"]},
+                                ]
+                            },
                             "digest": {"anyOf": [{"type": "null"}, SHA256]},
                         },
                     },
@@ -435,8 +447,8 @@ def run_configured_checks(ctx: RunContext):
                 stop.evidence[:0] = found
                 return stop
             if error.code == "stale_evidence":
-                return inputs_changed(ctx, found, str(error))
-            block(state, "check", label, f"{error.code}: {error}")
+                return inputs_changed(ctx, found, str(error), service_error(error))
+            block(state, "check", label, f"{error.code}: {error}", service_error(error))
             found.append(evidence("check", label, f"{error.code}: {error}"))
             continue
         for result in results:
@@ -475,7 +487,11 @@ def run_configured_checks(ctx: RunContext):
     return Continue(evidence=found)
 
 
-def inputs_changed(ctx: RunContext, found: list[dict], detail: str) -> Stop:
+def inputs_changed(
+    ctx: RunContext, found: list[dict], detail: str, cause: dict | None = None
+) -> Stop:
+    """Stop ``failed``: the workspace changed mid-run; ``cause`` is Check execution's link when
+    it noticed the change."""
     return ctx.fail(
         "failed",
         "inputs_changed",
@@ -488,6 +504,7 @@ def inputs_changed(ctx: RunContext, found: list[dict], detail: str) -> Stop:
         "only issued for inputs that stayed the same",
         evidence=[evidence("readiness", "inputs_changed", detail)],
         host_evidence=found,
+        causes=[cause],
         options=["let the workspace settle and run task-validation again"],
         recommendation="run task-validation again once nothing else changes the workspace",
     )

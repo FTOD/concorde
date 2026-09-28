@@ -520,6 +520,27 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(2, len(record["rounds"]))
         self.assertEqual("failed", record["rounds"][-1]["checks"][0]["status"])
 
+    def test_checks_that_cannot_run_keep_check_executions_link(self):
+        from concorde.harness.check_executor import CheckSandboxError
+
+        def refused(*_arguments, **_options):
+            raise CheckSandboxError("no namespaces here")
+
+        with patch("concorde.harness.checks.execute_check", refused):
+            record = self.project.run([{}])
+        self.assertEqual("failed", record["status"])
+        error = record["error"]
+        self.assertEqual(
+            ("checks_unavailable", "environment"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        [cause] = error["causes"]
+        self.assertEqual(
+            ("component", "Check execution", "check_sandbox_unavailable"),
+            (cause["level"], cause["actor"], cause["code"]),
+        )
+        self.assertIn("no namespaces here", cause["detail"])
+
     @verifies("scenario.workers.blocked-not-resumed")
     def test_a_blocked_worker_is_not_resumed(self):
         record = self.project.run(

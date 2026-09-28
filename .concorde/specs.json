@@ -724,7 +724,10 @@
         },
         {
           "target": "module.checks",
-          "meaning": "#uses-checks"
+          "meaning": "#uses-checks",
+          "relies_on": [
+            "req.checks.service-link"
+          ]
         },
         {
           "target": "module.commands",
