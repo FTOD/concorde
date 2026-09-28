@@ -203,6 +203,31 @@ class UnderstandTests(unittest.TestCase):
             )
             self.assertEqual(1, len(envelope["worker_runs"]))
 
+    @verifies("scenario.understanding.inconsistent")
+    def test_extra_or_duplicate_module_entries_fail_the_run(self):
+        entry = {"module": "module.a", "promises": "A answers one question."}
+        other = {"module": "module.b", "promises": "B exists."}
+        for modules, expected in (
+            ([entry, other], "module.b, which are not bound"),
+            (
+                [entry, entry],
+                "more than one assessment entry for the Module(s) module.a",
+            ),
+        ):
+            status, envelope = self.understand(
+                [{"result": {"output": assessment(modules=modules)}}]
+            )
+            self.assertEqual(1, status, envelope)
+            self.assertEqual("failed", envelope["status"])
+            self.assertEqual("inconsistent_assessment", envelope["error"]["code"])
+            problems = [
+                item["detail"]
+                for item in envelope["host_evidence"]
+                if item["kind"] == "inconsistent-assessment"
+            ]
+            self.assertTrue(any(expected in problem for problem in problems), problems)
+            self.assertIsNone(envelope["output"])
+
     @verifies("scenario.understanding.change-detected")
     def test_a_change_to_the_worktree_fails_the_run(self):
         target = self.worktree / "specs/a/module.md"

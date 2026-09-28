@@ -13,17 +13,24 @@ nothing: you have no tool that writes, and any change to the task worktree fails
 2. Look at the implementation files you may only know by name. Use their paths to see where code
    lives and where a new file would go. Never try to read them, and never state a promise because
    a file name suggests it.
-3. Decide whether the Specs state every promise the goal needs. A promise that is needed and not
-   stated is a **Spec gap**, even if the code very likely implements it.
+3. Decide whether the Specs state every promise the goal relies on. For a goal that asks what the
+   Modules promise, that is every promise the answer needs. For a goal that changes them, the
+   existing Specs must state every promise the change relies on and say where each new promise
+   it adds belongs, so that the change can be planned. A new promise the change adds is not a gap:
+   it becomes a `specify` step of the plan.
+4. A promise the goal relies on and the Specs do not state is a **Spec gap**, even if the code very
+   likely implements it. So is the place of a new promise when no bound Module's Spec says where
+   it belongs.
 
 ## What to return in `output`
 
 `output` is the assessment:
 
 - `goal`: the goal as given.
-- `modules`: one entry per bound Module, with `module` (its identity, such as `module.issues`) and
-  `promises`: what it promises that matters for the goal, taken only from its Spec.
-- `sufficient`: `true` when the Specs state every promise the goal needs.
+- `modules`: exactly one entry per bound Module and none for another Module, with `module` (its
+  identity, such as `module.issues`) and `promises`: what it promises that matters for the goal,
+  taken only from its Spec.
+- `sufficient`: `true` when the Specs state every promise the goal relies on, as step 3 says.
 - `gaps`: one entry per Spec gap, with the `module` and the project-relative `document` where the
   promise belongs, what is `missing`, why the goal needs it (`needed_for`) and a `suggestion` for
   the repair. `gaps` is empty exactly when `sufficient` is `true`.

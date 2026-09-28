@@ -1014,7 +1014,7 @@
       "id": "concept.spec-gap",
       "title": "Spec gap",
       "owner": "module.understanding",
-      "definition": "A promise that the stated goal needs and that the Spec of a bound Module does not state, reported with where it belongs instead of being inferred.",
+      "definition": "A promise that the stated goal relies on and that the Spec of a bound Module does not state, reported with where it belongs instead of being inferred.",
       "explanation": "specs/concorde/execution/operations/understanding/module.md#concept.spec-gap"
     },
     {
