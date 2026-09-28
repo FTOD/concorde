@@ -9,10 +9,11 @@ bundle and the run that decided the readiness.
 3. Require new work: a commit since the base, or an uncommitted change.
 4. Decide the readiness of the whole workspace with Validation's steps, as task-validation does.
 5. Require that readiness to be ready, and every scenario changed with code to be verified.
-6. Record the index as a tree, then apply the readiness's confirmations through Validation.
+6. Record the index with Git (its tree, intent-to-add paths and skip-worktree and
+   assume-unchanged flags), then apply the readiness's confirmations through Validation.
 7. Write the evidence bundle in the workspace.
 8. Stage everything and create the delivery commit; when writing the bundle, staging or the
-   commit fails, undo steps 6 and 7 and read the recorded tree back into the index.
+   commit fails, undo steps 6 and 7 and give the recorded index back with Git.
 9. Verify the new head, its parent and a clean worktree.
 10. Return the delivery commit as the output.
 """
@@ -58,13 +59,56 @@ from .bundle import (
 
 
 @dataclass
+class IndexRecord:
+    """The index the readiness examined, as Git itself can give it back."""
+
+    # ``git write-tree`` of the index; ``git read-tree`` restores its entries.
+    tree: str
+    # Intent-to-add entries (``git add -N``), which a tree cannot hold.
+    intent_to_add: list[str]
+    # Entry flags, which a tree cannot hold either.
+    skip_worktree: list[str]
+    assume_unchanged: list[str]
+
+
+class _IndexRefused(Exception):
+    """A Git command recording or restoring the index failed; ``link`` is its component link."""
+
+    def __init__(self, link: dict):
+        super().__init__(link["detail"])
+        self.link = link
+
+
+@dataclass
+class Undone:
+    """What undoing a failed delivery could not restore: a short name and a cause for each."""
+
+    failed: list[tuple[str, dict]] = field(default_factory=list)
+
+    @property
+    def causes(self) -> list[dict]:
+        return [link for _, link in self.failed]
+
+    def __str__(self) -> str:
+        if not self.failed:
+            return "the workspace and its index were restored as the readiness examined them"
+        names = [name for name, _ in self.failed]
+        listed = (
+            ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
+        )
+        return (
+            f"restoring {listed} failed, so the workspace "
+            "is not as the readiness examined it (see the causes); everything else was restored"
+        )
+
+
+@dataclass
 class State:
     head: str = ""
     readiness_run: str = ""
     readiness: dict = field(default_factory=dict)
     backups: dict[str, bytes] = field(default_factory=dict)
-    # The tree ``git write-tree`` recorded from the index the readiness examined.
-    index: str = ""
+    index: IndexRecord | None = None
     bundle: str = ""
     sequence: int = 0
     created: list[Path] = field(default_factory=list)
@@ -146,6 +190,99 @@ def _git_link(command: str, result: subprocess.CompletedProcess) -> dict:
         "environment",
         "Git refused the command",
     )
+
+
+def _index_git(worktree: Path, *arguments: str, stdin: bytes | None = None) -> bytes:
+    """Run one Git command on the index; raise ``_IndexRefused`` with its output when it fails.
+
+    Bytes, not text, so that any path Git stores survives the round trip.
+    """
+    result = subprocess.run(
+        ["git", *arguments], cwd=worktree, input=stdin, capture_output=True, check=False
+    )
+    if result.returncode != 0:
+        output = (result.stdout + result.stderr).decode("utf-8", "replace").strip()
+        raise _IndexRefused(
+            component(
+                f"git {' '.join(arguments)}",
+                "git_failed",
+                f"git {' '.join(arguments)} in {worktree} exited {result.returncode}: "
+                + (output[-2000:] or "(no output)"),
+                "environment",
+                "Git refused the command",
+            )
+        )
+    return result.stdout
+
+
+def _split(raw: bytes) -> list[str]:
+    return [item for item in raw.decode("utf-8", "surrogateescape").split("\0") if item]
+
+
+def _joined(paths: list[str]) -> bytes:
+    return b"".join(path.encode("utf-8", "surrogateescape") + b"\0" for path in paths)
+
+
+def record_index(worktree: Path) -> IndexRecord:
+    """Record the index with Git's own means, so that ``restore_index`` gives it back exactly."""
+    tree = _index_git(worktree, "write-tree").decode().strip()
+    in_tree = set(
+        _split(
+            _index_git(
+                worktree, "ls-tree", "-r", "-z", "--name-only", "--full-tree", tree
+            )
+        )
+    )
+    # ``ls-files -v`` tags each entry: ``S`` or ``s`` skip-worktree, lower case assume-unchanged.
+    entries = [
+        (item[0], item[2:])
+        for item in _split(_index_git(worktree, "ls-files", "-v", "-z"))
+    ]
+    return IndexRecord(
+        tree=tree,
+        intent_to_add=[path for _, path in entries if path not in in_tree],
+        skip_worktree=[path for tag, path in entries if tag in "Ss"],
+        assume_unchanged=[path for tag, path in entries if tag.islower()],
+    )
+
+
+def restore_index(worktree: Path, record: IndexRecord) -> list[tuple[str, dict]]:
+    """Give the recorded index back; name and explain each part Git refused to restore."""
+    try:
+        _index_git(worktree, "read-tree", record.tree)
+    except _IndexRefused as error:
+        # Nothing further applies to an index that was not read back.
+        return [("the index", error.link)]
+    failed = []
+    parts = [
+        (
+            "the intent-to-add entries",
+            record.intent_to_add,
+            ["--literal-pathspecs", "add", "-N", "-f", "--pathspec-from-file=-"]
+            + ["--pathspec-file-nul"],
+        ),
+        (
+            "the skip-worktree flags",
+            record.skip_worktree,
+            ["update-index", "--skip-worktree", "-z", "--stdin"],
+        ),
+        (
+            "the assume-unchanged flags",
+            record.assume_unchanged,
+            ["update-index", "--assume-unchanged", "-z", "--stdin"],
+        ),
+    ]
+    for name, paths, arguments in parts:
+        if not paths:
+            continue
+        try:
+            _index_git(worktree, *arguments, stdin=_joined(paths))
+        except _IndexRefused as error:
+            failed.append((name, error.link))
+    # read-tree drops the cached file stats; refreshing them lets Git see unchanged files as
+    # such. It exits non-zero whenever a file differs from the index, which is expected here.
+    _git(worktree, "update-index", "-q", "--refresh")
+    return failed
 
 
 def _previous(ctx: RunContext) -> list[dict]:
@@ -365,18 +502,10 @@ def apply_confirmations(ctx: RunContext):
     state = _state(ctx)
     # Recorded before anything changes, so a failed delivery can give the index back exactly,
     # staged changes included, rather than resetting it to the head.
-    recorded = _git(ctx.worktree, "write-tree")
-    if recorded.returncode != 0:
-        return measurement_failed(
-            ctx,
-            MeasurementError(
-                "git_failed",
-                "git write-tree could not record the index, so a failed delivery could not "
-                "restore it: "
-                + (recorded.stderr.strip() or f"exit {recorded.returncode}"),
-            ),
-        )
-    state.index = recorded.stdout.strip()
+    try:
+        state.index = record_index(ctx.worktree)
+    except _IndexRefused as error:
+        return _index_unrecorded(ctx, error.link)
     listed = state.readiness["confirmations"]
     try:
         state.backups = confirming.apply(ctx.worktree, listed)
@@ -410,6 +539,47 @@ def apply_confirmations(ctx: RunContext):
     )
 
 
+def _index_unrecorded(ctx: RunContext, cause: dict) -> Stop:
+    unmerged = sorted(
+        {
+            line.split("\t", 1)[1]
+            for line in _git(ctx.worktree, "ls-files", "-u").stdout.splitlines()
+            if "\t" in line
+        }
+    )
+    if unmerged:
+        return _failed(
+            ctx,
+            "index_unrecorded",
+            f"The index has {len(unmerged)} unmerged path(s), which Git cannot record; "
+            "nothing was changed.",
+            [evidence("git", "unmerged", ", ".join(unmerged))],
+            f"the index of {ctx.worktree} holds unmerged paths ({', '.join(unmerged)}), so "
+            "git write-tree cannot record it and a failed delivery could not restore it; "
+            "nothing was changed",
+            [
+                "resolve the unmerged paths and stage them, then run delivery again",
+                "abort the merge, then run delivery again",
+            ],
+            reason="decision",
+            explanation="an unfinished merge is the task level's to resolve or abort; delivery "
+            "never commits an index it could not give back",
+            causes=[cause],
+        )
+    return _failed(
+        ctx,
+        "index_unrecorded",
+        "Git could not record the index; nothing was changed.",
+        [evidence("git", "index", cause["detail"])],
+        f"the index of {ctx.worktree} could not be recorded, so a failed delivery could not "
+        f"restore it; nothing was changed: {cause['detail']}",
+        ["repair the worktree's Git state, then run delivery again"],
+        explanation="delivery records the index before it changes anything and cannot repair "
+        "Git",
+        causes=[cause],
+    )
+
+
 def write_bundle(ctx: RunContext):
     state = _state(ctx)
     previous = _previous(ctx)
@@ -417,19 +587,21 @@ def write_bundle(ctx: RunContext):
     state.bundle = bundle_path(ctx.workspace_name, state.sequence)
     target = ctx.worktree / state.bundle
     if target.exists():
-        unrestored = undo(ctx)
+        undone = undo(ctx)
         return _failed(
             ctx,
             "bundle_exists",
-            f"The evidence bundle {state.bundle} already exists; nothing was committed.",
+            f"The evidence bundle {state.bundle} already exists; nothing was committed and "
+            f"{undone}.",
             [evidence("git", state.bundle, "bundle path taken")],
             f"the evidence bundle {state.bundle} already exists in {ctx.worktree} although "
-            f"the branch holds {state.sequence - 1} delivery commit(s) of the workspace",
+            f"the branch holds {state.sequence - 1} delivery commit(s) of the workspace; "
+            f"nothing was committed and {undone}",
             ["inspect the branch and the evidence directory"],
             reason="decision",
             explanation="delivery never overwrites evidence; reconciling the branch and its "
             "evidence is the task level's decision",
-            causes=unrestored,
+            causes=undone.causes,
         )
     since = previous[-1]["readiness_run"] if previous else None
     value = build_bundle(
@@ -453,31 +625,57 @@ def write_bundle(ctx: RunContext):
     return Continue()
 
 
-def undo(ctx: RunContext) -> list[dict]:
-    """Restore the confirmed metadata, remove the bundle and give the index back.
+def undo(ctx: RunContext) -> Undone:
+    """Restore the confirmed metadata, remove the bundle and give the recorded index back.
 
-    The index is read back from the tree recorded before the confirmations, so changes staged
-    before the delivery stay staged. Returns a ``component`` link for each Git command that failed
-    doing so, for the caller's error chain.
+    Every part is attempted even when another fails; each failure is named with its cause, so
+    the caller's result says exactly what is not as the readiness examined it.
     """
     state = _state(ctx)
-    confirming.restore(ctx.worktree, state.backups)
+    undone = Undone()
+    for path, data in state.backups.items():
+        try:
+            confirming.restore(ctx.worktree, {path: data})
+        except OSError as error:
+            undone.failed.append(
+                (
+                    f"the metadata {path}",
+                    component(
+                        "Delivery undo",
+                        "metadata_unrestored",
+                        f"the bytes of {path} read before the confirmations could not be "
+                        f"written back in {ctx.worktree}: {type(error).__name__}: {error}",
+                        "environment",
+                        "the file system refused the write",
+                    ),
+                )
+            )
     for path in reversed(state.created):
-        if path.is_dir():
-            try:
+        try:
+            if path.is_dir():
                 path.rmdir()
-            except OSError:
-                pass
-        else:
-            path.unlink(missing_ok=True)
-    if not state.index:
-        return []
-    restored = _git(ctx.worktree, "read-tree", state.index)
-    if restored.returncode != 0:
-        return [_git_link(f"read-tree {state.index}", restored)]
-    # read-tree drops the cached file stats; refreshing them lets Git see unchanged files as such.
-    _git(ctx.worktree, "update-index", "-q", "--refresh")
-    return []
+            else:
+                path.unlink(missing_ok=True)
+        except OSError as error:
+            if path.is_dir():
+                # An empty directory is no content of the workspace; Git does not see it.
+                continue
+            undone.failed.append(
+                (
+                    f"the bundle {path.relative_to(ctx.worktree)}",
+                    component(
+                        "Delivery undo",
+                        "bundle_unremoved",
+                        f"the evidence bundle {path} could not be removed: "
+                        f"{type(error).__name__}: {error}",
+                        "environment",
+                        "the file system refused the removal",
+                    ),
+                )
+            )
+    if state.index is not None:
+        undone.failed.extend(restore_index(ctx.worktree, state.index))
+    return undone
 
 
 def commit(ctx: RunContext):
@@ -488,25 +686,27 @@ def commit(ctx: RunContext):
     try:
         special = special_paths(ctx.worktree)
     except MeasurementError as error:
-        unrestored = undo(ctx)
+        undone = undo(ctx)
         failure = measurement_failed(ctx, error)
-        failure.error["causes"].extend(unrestored)
+        failure.summary += f" Nothing was committed and {undone}."
+        failure.error["detail"] += f"; nothing was committed and {undone}"
+        failure.error["causes"].extend(undone.causes)
         return failure
     excluded = [f":(exclude,literal){path}" for path in special]
     staged = _git(ctx.worktree, "add", "-A", "--", ".", *excluded)
     if staged.returncode == 0:
         staged = _git(ctx.worktree, "add", "-f", "--", state.bundle)
     if staged.returncode != 0:
-        unrestored = undo(ctx)
+        undone = undo(ctx)
         return _failed(
             ctx,
             "stage_failed",
-            "Git could not stage the delivery; the worktree was restored.",
+            f"Git could not stage the delivery; nothing was committed and {undone}.",
             [evidence("git", "add", staged.stderr.strip())],
-            f"git add failed in {ctx.worktree}, so nothing was committed; the confirmations "
-            f"and the bundle were undone: {staged.stderr.strip()}",
+            f"git add failed in {ctx.worktree}, so nothing was committed and {undone}: "
+            f"{staged.stderr.strip()}",
             ["repair the worktree's Git state, then run delivery again"],
-            causes=[_git_link("add", staged), *unrestored],
+            causes=[_git_link("add", staged), *undone.causes],
         )
     message = commit_message(ctx.workspace, state.bundle, state.readiness_run)
     result = subprocess.run(
@@ -519,21 +719,19 @@ def commit(ctx: RunContext):
     )
     if result.returncode != 0:
         output = (result.stdout + result.stderr).strip()
-        unrestored = undo(ctx)
+        undone = undo(ctx)
         return _failed(
             ctx,
             "commit_failed",
-            "Git refused the delivery commit; the confirmations and the bundle were undone "
-            "and the index restored.",
+            f"Git refused the delivery commit; {undone}.",
             found
             + [
                 evidence("git", "commit", output[-4000:] or f"exit {result.returncode}")
             ],
             f"git commit refused the delivery commit of workspace {ctx.workspace_name} in "
-            f"{ctx.worktree}; the confirmations and the bundle were undone and the index "
-            f"restored: {output[-1000:] or f'exit {result.returncode}'}",
+            f"{ctx.worktree}; {undone}: {output[-1000:] or f'exit {result.returncode}'}",
             ["fix the commit hook or the author identity, then run delivery again"],
-            causes=[_git_link("commit", result), *unrestored],
+            causes=[_git_link("commit", result), *undone.causes],
         )
     state.commit = head_commit(ctx.worktree)
     return Continue(evidence=[evidence("commit", state.commit, f"parent {state.head}")])
