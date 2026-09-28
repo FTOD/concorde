@@ -207,7 +207,8 @@ class GuidanceTests(unittest.TestCase):
             "Record the decision in the decision log and report it", self.skill
         )
         self.assertIn(
-            "every result that is not `ok` and every decision you made without the developer",
+            "every result of the task's runs that is not `ok` and every decision you made "
+            "without the developer",
             self.skill,
         )
 
@@ -228,6 +229,28 @@ class GuidanceTests(unittest.TestCase):
     def test_the_main_agent_reads_the_whole_error_chain(self):
         self.assertIn("carries an **error chain** in `error`", self.skill)
         self.assertIn("Read the whole chain before deciding", self.skill)
+
+    @verifies("scenario.main-session.unbound-failure")
+    def test_a_failed_unbound_run_reaches_the_developer_whole(self):
+        self.assertIn(
+            "The decision log and `concorde task escalate` belong to a task, so they cover the "
+            "runs of a task. An unbound run belongs to none",
+            self.skill,
+        )
+        self.assertIn(
+            "show the developer its whole error chain as rendered", self.skill
+        )
+        self.assertIn("never a summary of it", self.skill)
+        self.assertIn(
+            "When the failure leads to work, open a task for that work and escalate in it with "
+            "`--error-file .concorde/runs/<run-id>/result.json`",
+            self.skill,
+        )
+        self.assertIn("`--run` names only runs of the task's own workspace", self.skill)
+        self.assertIn(
+            "show the developer the whole rendered chain of an unbound run that is not `ok`",
+            self.block,
+        )
 
     @verifies("scenario.main-session.solve-issue")
     def test_issues_are_solved_by_ordinary_work(self):

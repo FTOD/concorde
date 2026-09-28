@@ -60,8 +60,9 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   report, a pi task session runs its `concorde` commands in the foreground within the round (see
   [Task sessions](../task-session/module.md)). Either way a task session escalates with its own
   link on the chain.
-- **Keep the decision log.** Record every non-`ok` result and every unsupervised choice, with its
-  reason, in the task's [decision log](../../glossary.json#concept.decision-log), including
+- **Keep the decision log.** Record every non-`ok` result of the task's runs and every
+  unsupervised choice, with its reason, in the task's
+  [decision log](../../glossary.json#concept.decision-log), including
   the decisions and problems of a workflow's report, which nothing else writes there.
 - **Merge delivered work.** Merge, without asking the developer's authorization, a task branch
   that `delivery` committed, from the primary worktree with `concorde task merge`, never with
@@ -131,10 +132,15 @@ the command line never names the task. Without a task it starts an
 execution command without a task starts there too, and Execution refuses it with `binding_required`
 in a worktree without a binding, a run refused at once whose result the tool returns (see below). A
 task without a worktree is refused before anything starts. The tool returns at once with the run
-identity. The extension follows every run of the project, Operation or recorded command, through its
-[run progress file](../../glossary.json#concept.run-progress-file) in the primary worktree's
+identity. The extension follows every run of the project, Operation or recorded command, whoever
+started it: the `concorde_run` tool, a command the main agent ran with bash, or another session,
+a pi task session's included. It looks in the primary worktree's
 [run store](../../glossary.json#concept.run-store), where every task worktree's binding records its
-runs, and through the [progress file](../../glossary.json#concept.progress-file) of the worker an
+runs, for every run still running when the session starts and every run started since, even one
+that ended between two looks; a run that had already ended when the session started is only listed
+by `/concorde` ([requirements](requirements.md#req.main-session.pi-run-follow)). It follows each
+through its [run progress file](../../glossary.json#concept.run-progress-file) there and through
+the [progress file](../../glossary.json#concept.progress-file) of the worker an
 Operation launched, paired by the runner's process identifier; an execution command has no worker.
 It shows each run as an external job in pi-subagents' FleetView — its workspace (or `unbound`) and
 name, its step, the worker's round and latest tool call, and on its end `completed`, `stopped` or
@@ -143,7 +149,8 @@ process ended without finishing is shown `failed`. A `bg_wait` call without an i
 running ones (with an id it matches only subagent runs); runs are filed under the session's file, or
 its identity when it is not persisted, the name pi-subagents gives the session. When a run ends the
 extension sends the main agent a message naming the run, its workspace and name, the result's status
-and summary and the run result's file: while the main agent is in a turn the message is steered into
+and summary and the run result's file, followed, for a result that carries an
+[error chain](../../glossary.json#concept.error-chain), by that whole chain as indented text: while the main agent is in a turn the message is steered into
 that turn after its current tool calls, and otherwise it starts the next turn. A run that has
 already finished when `concorde_run` finds it, such as one refused at once, is answered in the
 tool's own result instead, and no message follows. `/concorde` lists the recent runs of both kinds.
@@ -178,7 +185,13 @@ decision, discarding work or data, doing something an ordinary revert cannot und
 or credentials, or needing more resources than the developer set; in doubt it records its reasoning
 and asks. An escalation is never a summary: `concorde task escalate` adds its own link, with the
 reason it may not decide, on top of the chain, records it in the task and prints it rendered for the
-developer.
+developer. The decision log and the escalation both belong to a task, so they cover the runs of a
+task. An [unbound run](../../glossary.json#concept.unbound-run) belongs to none: when one is not
+`ok`, the guidance tells the main agent to show the developer its whole chain as rendered, on the
+command's standard error or in the pi run view's message, and, when the failure leads to work, to
+open a task for that work and escalate there with the run's result file,
+`--error-file .concorde/runs/<run-id>/result.json`, since `--run` names only runs of the task's own
+workspace ([requirements](requirements.md#req.main-session.unbound-failure)).
 
 <a id="concept.model-picker"></a>
 
@@ -501,8 +514,10 @@ configuration. It tells an execution command from an Operation by name and start
 `concorde <command>`, the second as `concorde run <operation>`. It pairs a worker's progress file
 with a run by the runner's process identifier and a start no earlier than the run's, so a worker of
 another runner, or of an earlier run whose process identifier was reused, is never attributed to
-it; a run still marked running whose runner process no longer exists is shown `failed`.
-`pi_runs.ts` also reads the status files of task-session rounds. The
+it; a run still marked running whose runner process no longer exists is shown `failed`. It looks
+for runs it does not follow yet on every refresh, leaving a run whose runner process `concorde_run`
+is still starting to that tool, which answers a run that ended at once in its own result, so that
+no run is reported twice. `pi_runs.ts` also reads the status files of task-session rounds. The
 tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi session
 and is exercised in one.
 
