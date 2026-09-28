@@ -1,0 +1,72 @@
+{
+  "workspace": "delivery-index-restore",
+  "goal": "When a delivery fails after staging (bundle_exists, measurement_failed while staging, stage_failed, commit_failed), restore the index the readiness examined instead of resetting it to HEAD, using Git's own mechanism (record the index with git write-tree before staging, restore it with git read-tree), so req.delivery.atomic holds; with a test that pre-staged changes survive a failed delivery",
+  "modules": [
+    "module.delivery"
+  ],
+  "sequence": 2,
+  "base_commit": "fee38b9ef5f99d70769dc82fd351552f2a1cbe7b",
+  "parent_commit": "1ad281f9073829253db09e0c2015d989d719d5ac",
+  "readiness": {
+    "run_id": "r-20260928T163009-delivery-38a8c338",
+    "input_digest": "sha256:a0705cbc36b46fa2c38eab4ba3a2a6be9c56357404862d845e9f5f9c1ec0c35b",
+    "modules": [
+      "module.delivery"
+    ],
+    "checks": [
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:b15a993d07d5d8ff529aa073f81a229d357bef43c7bcc49bb7218f949df738d9"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:f685615850423c0fb65b351a6090cf7b47d7b33cad241eee6a1625972004c02d"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:dcb1214ba0d8f0c648a8defae925e0e79a5734c9ce9c7f40ad8f6b6c7293d808"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:50f50e7d20e282477ac48f87fee7fcc5bc4fcdacef1eb2be361459a08173f1df"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:71b607d660dbf096de274e382842ae1132ee77a97fb8a76aada0f02a00b749c7"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:c15a32e51ad53596b7452b28c46032a479158bb66eb92d07110ba552974274a8"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T162924-task_validation-216e6fad",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.delivery"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:21c0cd891970b7fe4db73bac595255ffa7d4913763ffc3f1e1288673c72f0b74"
+    }
+  ],
+  "created_at": "2026-09-28T16:31:01Z"
+}
