@@ -16,10 +16,7 @@
     "uses": [
       {
         "target": "module.distribution",
-        "meaning": "#uses-distribution",
-        "relies_on": [
-          "concept.command-line-interface"
-        ]
+        "meaning": "#uses-distribution"
       },
       {
         "target": "module.specification",
@@ -32,7 +29,6 @@
         "target": "module.spec-review",
         "meaning": "#uses-spec-review",
         "relies_on": [
-          "concept.spec-review",
           "concept.review-verdict"
         ]
       }

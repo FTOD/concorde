@@ -60,13 +60,6 @@
       ]
     }
   ],
-  "relations": [
-    {
-      "type": "relates",
-      "source": "realization.understanding.operation",
-      "verb": "produces",
-      "target": "concept.assessment"
-    }
-  ],
+  "relations": [],
   "extensions": {}
 }

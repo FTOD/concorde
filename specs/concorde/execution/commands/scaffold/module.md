@@ -5,7 +5,7 @@
 Scaffold creates the child Modules a survey proposed. It provides the
 [execution command](../../../glossary.json#concept.execution-command) `concorde scaffold`: given
 one [decomposition proposal](../../../glossary.json#concept.decomposition-proposal) from an `ok`
-[survey](../../../glossary.json#concept.survey) of the same
+survey of the same
 [workspace](../../../glossary.json#concept.workspace), it writes each proposed child as a stub
 [Module](../../../glossary.json#concept.module) that says plainly what is not specified yet,
 narrows the parent's realizations to what no child took, adds the children to the parent's
@@ -48,10 +48,8 @@ checks stay a proposal the workflow reports. Everything is written in one
 [file transaction](../../../glossary.json#concept.file-transaction) that is kept
 only if validation finds no new error.
 
-<a id="concept.scaffold-record"></a>
-
 The [run result](../../../glossary.json#concept.run-result), of kind `command` with no worker,
-carries the **[scaffold record](../../../glossary.json#concept.scaffold-record)**
+carries the **scaffold record**
 ([contract](contracts.md#contract.scaffold.record)): the Modules created with their entries, the
 vendored paths made external inclusions, the parent's realization entries before and after, and
 every file written. The run is `blocked` with `stale_proposal` when the proposal no longer fits the
@@ -115,8 +113,6 @@ scaffold: Scaffold {
     "src/concorde/scaffold/"
     "tests/concorde/scaffold/"
   }
-  record: Scaffold record
-  command -> record: produces
 }
 ```
 

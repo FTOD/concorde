@@ -1,8 +1,8 @@
 # Implementation requirements
 
 The Module-wide obligations of [Implementation](module.md). The shapes of the
-[code change](../../../glossary.json#concept.code-change) and the
-[test report](../../../glossary.json#concept.test-report) are in the [contracts](contracts.md); the
+code change and the
+test report are in the [contracts](contracts.md); the
 [scenarios](scenarios.md) show the obligations in concrete situations.
 
 ## Implement

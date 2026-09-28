@@ -8,7 +8,7 @@ subject; each requirement belongs to the [Module](../../glossary.json#concept.mo
 ### req.spec-mcp.one-root — One root per session
 
 The server SHALL answer every query of a session from the Specs of the one
-[server root](../../glossary.json#concept.server-root) it resolved when the session started.
+server root it resolved when the session started.
 
 ### req.spec-mcp.no-root-no-answer — No root, no answer
 

@@ -3,7 +3,7 @@
 ## Purpose
 
 Code review gives callers an independent judgement of a workspace's
-[code changes](../../../glossary.json#concept.code-change) against the
+code changes against the
 Specs. It provides the `code_review` [Operation](../../../glossary.json#concept.operation): a worker
 reads the bound Modules' Specs, code and tests, changes nothing, and reports every problem it can
 establish in one pass, tied to the promise it judges the code against; the Operation derives the
@@ -31,10 +31,8 @@ never narrowing what may be reported. For example, `code_review --modules module
 reviewer the Issues Spec, code and tests, read access to the rest of the project's code, the
 workspace's diff since its base and the Issues checks.
 
-<a id="concept.code-review-report"></a>
-
 The Operation returns a [run result](../../../glossary.json#concept.run-result) whose `output` is a
-**[code review report](../../../glossary.json#concept.code-review-report)**
+**code review report**
 ([contract](contracts.md#contract.code-review.review)), with verdict `changes_required` when any
 finding is blocking, else `clean`.
 
@@ -51,10 +49,8 @@ Only an `ok` run carries a report; another run names as host evidence what its s
 before it stopped: the base once resolved, the diff's paths once computed and the check results
 once the checks ran.
 
-<a id="concept.code-review-finding"></a>
-
-Each **[code review finding](../../../glossary.json#concept.code-review-finding)** is blocking
-(undeliverable unfixed) or advisory, and names its kind: a violation of a stated promise, a defect
+Each **finding** of the report is blocking (undeliverable unfixed) or advisory, and names its
+kind: a violation of a stated promise, a defect
 the Spec's promises imply, a missing test for a touched scenario, a change outside the bound
 Modules' code, or a [Spec gap](../../../glossary.json#concept.spec-gap), where the code does
 something the Spec neither requires nor forbids. A blocking finding always names its basis — a

@@ -35,7 +35,7 @@ in, whose binding names it, and each is recorded in the
 [run store](../../../glossary.json#concept.run-store) like any run, so that the scaffold can admit
 the survey and a later survey or code_to_spec the run whose questions it answers.
 
-```d2
+```d2 illustrative
 survey: Survey
 proposal: Decomposition proposal
 codetospec: Code to spec
@@ -52,9 +52,9 @@ answers -> question: settle
 answers -> decision: settle
 ```
 
-<a id="concept.survey"></a><a id="concept.decomposition-proposal"></a>
+<a id="concept.decomposition-proposal"></a>
 
-**[Survey](../../../glossary.json#concept.survey).** A worker reads the code of one Module, usually
+**Survey.** A worker reads the code of one Module, usually
 the root, and returns a **decomposition proposal**
 ([contract](contracts.md#contract.adoption.decomposition)): for each child Module to create, its
 identity, title, a one-paragraph purpose, the paths it should bind and the Modules it uses with the
@@ -79,25 +79,23 @@ and the installer replaces them on every update.
 with `--input` from an `ok` survey of the same workspace: it creates each proposed child as a stub
 Module that states the survey's purpose and says honestly that nothing else is specified yet,
 narrows the parent's realizations, makes vendored code an external inclusion of its user, and
-returns a [scaffold record](../../../glossary.json#concept.scaffold-record). Adding Modules is a
+returns a scaffold record. Adding Modules is a
 project-level step no worker's write set includes, which is why deterministic code makes it and not
 a worker, and why it is not an [Operation](../../../glossary.json#concept.operation) of this Module.
 
-<a id="concept.code-to-spec"></a><a id="concept.spec-description"></a>
-
-**[Code to spec](../../../glossary.json#concept.code-to-spec).** A worker of [task
+**Code to spec.** A worker of [task
 type](../../../glossary.json#concept.task-type) `code-to-spec` reads the bound Modules' code and
 their Specs and rewrites their own documents: Purpose, Usage and Design of each entry document
 (`module.md`), the glossary entries of the words they own, and requirements, scenarios and contracts
 in implementation documents. The host prepares the implementation documents the worker may need,
 `requirements.md`, `scenarios.md` and `contracts.md`, as owned stubs before the grant is frozen, and
 removes again every stub the worker left unchanged or deleted, however the run ends. The answers are
-checked before anything is written. The result's output is a **[Spec
-description](../../../glossary.json#concept.spec-description)**
+checked before anything is written. The result's output is a **Spec
+description**
 ([contract](contracts.md#contract.adoption.spec-description)). Describing the root after its
 children are scaffolded describes how the children compose and the files that stayed with it.
 
-<a id="concept.decision"></a><a id="concept.open-question"></a>
+<a id="concept.open-question"></a>
 
 **Decisions and open questions.** Workers of both Operations meet two kinds of uncertainty and
 report each separately instead of hiding it in prose:
@@ -114,9 +112,7 @@ Neither Operation asks the developer: they have no one to ask. What happens next
 level's or the workflow's choice: go on with the worker's decisions, or seek the developer's
 answers through the existing escalation path.
 
-<a id="concept.answers"></a><a id="concept.deviation"></a>
-
-**[Answers](../../../glossary.json#concept.answers).** The developer's answers reach a later run as
+**Answers.** The developer's answers reach a later run as
 an **answers** file ([contract](contracts.md#contract.adoption.answers)) with `--answers`, each
 naming the decision or question it answers, the question's text and the answer; `--input` admits the
 run that asked, so the worker sees the earlier proposal or description. An answers file lists every

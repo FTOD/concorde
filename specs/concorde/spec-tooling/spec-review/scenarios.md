@@ -2,7 +2,7 @@
 
 Concrete situations of [Spec review](module.md). The step sequence and the payload are in the
 [Operation definition](operation.md), and those of the
-[Spec panel](../../glossary.json#concept.spec-panel) in its [definition](panel.md).
+Spec panel in its [definition](panel.md).
 
 ## Reviewing
 
@@ -86,7 +86,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 - GIVEN a panel of two reviewers for Module A
 - AND reviewer 1 reports that a requirement holds two obligations, and reviewer 2 reports the same problem in other words and an advisory wording problem
 - WHEN the chair merges the two reports of the requirement and rejects the wording problem with a reason
-- THEN the [panel report](../../glossary.json#concept.panel-report) has one blocking finding whose sources are `r1.1` and `r2.1`, reported by 2 reviewers, and the rejection of `r2.2`
+- THEN the panel report has one blocking finding whose sources are `r1.1` and `r2.1`, reported by 2 reviewers, and the rejection of `r2.2`
 - AND each reviewer's own findings are in the result, labelled
 - AND A's outcome and the verdict are `changes_required`
 - BUT no file of the workspace changes

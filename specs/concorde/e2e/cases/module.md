@@ -3,7 +3,7 @@
 ## Purpose
 
 SWE-bench cases test Concorde's whole change flow on real issues: a
-[case](../../glossary.json#concept.case) is prepared at its base commit, adopted, its Specs
+case is prepared at its base commit, adopted, its Specs
 repaired, its issue worked through Concorde as a [main
 agent](../../glossary.json#concept.main-agent) would, and the merged change graded with the case's
 own tests, the way SWE-bench grades it. This [Module](../../glossary.json#concept.module) holds the
@@ -17,8 +17,6 @@ delivered change, and the case itself. Preparing the project and running its wor
 python3 scripts/e2e/e2e.py repair-specs <project> [--modules <ids>] [--task repair-specs]
 python3 scripts/e2e/e2e.py grade <project> --instance <case.json> --python <interpreter> [--ref main] [--pythonpath <dir>]…
 ```
-
-<a id="concept.case"></a>
 
 **Working a case.** The developer builds the case's own Python environment outside the project (its
 interpreter and pinned dependencies, never the project installed in it), prepares the case's

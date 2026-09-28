@@ -58,7 +58,7 @@ The **root Module** is the first Module in registry order that no Module contain
 holds the Module records, the defined concepts and realizations with their owner, document and
 definition, and one page per document with: source and metadata paths, route, staged path, title,
 reading content, reading and metadata digests, document identity, owner,
-[reading collection](../../glossary.json#concept.reading-collection) (the role), whether it is its
+reading collection (the role), whether it is its
 Module's entry, and the selecting Modules.
 
 **Selecting Modules.** For each Module the publisher computes its one-level
@@ -78,7 +78,7 @@ Module; an inclusion reason is `{relation: "includes", kind, id}`, where `kind` 
 `hash(value)` is `sha256:` followed by the lowercase hex SHA-256 of the bytes. The source digest is
 `hash` of the JSON serialization of the ordered list of `[path, hash(bytes)]` pairs for the
 configuration, the registry, both members of every document in registry order, the glossary when
-the root Module declares one and, last, the [site identity](../../glossary.json#concept.site-identity)
+the root Module declares one and, last, the site identity
 `docsite/site.json` when it exists, since it shapes every page. Any byte change in any of them,
 including a metadata-only edit, changes it. It identifies inputs; it is not a claim about meaning.
 
@@ -177,15 +177,15 @@ The content plugin publishes Docusaurus global data with `schema_version`, `root
 route and renders the provenance bar: the collection label, the source path, links between the entry
 and the owner's implementation pages, and a "Spec metadata" disclosure with the document identity,
 the owner, the selecting Modules with their reasons, the metadata path and both digests. Without
-[user documents](../../glossary.json#concept.user-documents), the site root uses `rootModule` to
+user documents, the site root uses `rootModule` to
 redirect to the root Module's entry.
 
 ## Build hooks
 
-The Docusaurus configuration loads the [site identity](../../glossary.json#concept.site-identity)
+The Docusaurus configuration loads the site identity
 and the model at start-up. The Spec docs instance reads `.generated/content/specs` at route base
 `/specs`; user documents are a separate instance at route base `/` with a generated sidebar, and the
-root redirect page is then left out; each [custom docs](../../glossary.json#concept.custom-docs)
+root redirect page is then left out; each custom docs
 collection is a separate instance; local search indexes all of them. The navigation lists user
 documents, then Module documents and Implementation documents, then custom docs. Broken links,
 anchors and duplicate routes are build errors.
@@ -233,7 +233,7 @@ stops Docusaurus and the watchers and exits.
 `validateScopedBuild(root, directory)` reloads the model from the current sources and fails unless:
 
 - the candidate's `build-manifest.json` has the
-  [site build manifest](../../glossary.json#concept.site-build-manifest)'s `schema_version` (23,
+  site manifest's `schema_version` (23,
   see the [contracts](contracts.md)) and the current source digest, and its `pages` equal the
   expected entries exactly and in order;
 - every internal link resolves.

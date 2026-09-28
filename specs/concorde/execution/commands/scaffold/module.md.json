@@ -37,7 +37,6 @@
         "target": "module.adoption",
         "meaning": "#uses-adoption",
         "relies_on": [
-          "concept.survey",
           "concept.decomposition-proposal",
           "contract.adoption.decomposition",
           "req.adoption.proposal-checked"
@@ -70,13 +69,6 @@
       "pending": []
     }
   ],
-  "relations": [
-    {
-      "type": "relates",
-      "source": "realization.scaffold.command",
-      "verb": "produces",
-      "target": "concept.scaffold-record"
-    }
-  ],
+  "relations": [],
   "extensions": {}
 }

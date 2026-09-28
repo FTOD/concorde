@@ -42,7 +42,7 @@ A Spec review SHALL NOT launch a reviewer for a Module whose [context identity](
 
 ### req.spec-review.host-verdict — The Operation derives the verdict
 
-The verdict of a Spec review or a [Spec panel](../../glossary.json#concept.spec-panel) SHALL be
+The verdict of a [Spec](../../glossary.json#concept.spec) review or a Spec panel SHALL be
 derived by the [Operation](../../glossary.json#concept.operation) by the rule of that Operation's
 payload contract, never taken from a worker's statement.
 
@@ -66,7 +66,7 @@ statuses apart from the evidence the Operation produced itself.
 ### req.spec-review.panel-accounted — A panel report accounts for every reviewer finding
 
 A Spec panel SHALL NOT complete a Module whose
-[panel report](../../glossary.json#concept.panel-report) does not account for every reviewer
+panel report does not account for every reviewer
 finding exactly once or names a label no reviewer finding has.
 
 The [accounting](panel.md#the-panel-graph) rule says how a report accounts for a finding.

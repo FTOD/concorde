@@ -32,10 +32,7 @@
       },
       {
         "target": "module.distribution",
-        "meaning": "#uses-distribution",
-        "relies_on": [
-          "concept.installer"
-        ]
+        "meaning": "#uses-distribution"
       },
       {
         "target": "module.issues",

@@ -1,7 +1,7 @@
 # Implementation scenarios
 
 Concrete situations that show the [requirements](requirements.md) at work. The shapes of the code
-change and the [test report](../../../glossary.json#concept.test-report) are in the
+change and the test report are in the
 [contracts](contracts.md).
 
 ## Implement

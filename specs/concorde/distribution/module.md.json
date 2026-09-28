@@ -27,7 +27,6 @@
         "target": "module.views",
         "meaning": "#uses-views",
         "relies_on": [
-          "concept.scaffold-proposal",
           "req.views.template-inventory",
           "contract.views.scaffold-proposal"
         ]

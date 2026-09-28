@@ -54,8 +54,8 @@
     {
       "type": "relates",
       "source": "realization.commands.catalog",
-      "verb": "realizes",
-      "target": "concept.command-catalog"
+      "verb": "lists",
+      "target": "concept.execution-command"
     }
   ],
   "extensions": {}

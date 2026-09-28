@@ -33,8 +33,6 @@ module.issues --goal "let reports carry a severity" --plan` has the worker answe
 (`specify`, `implement`, `test`, `code_review`, `task-validation`, `delivery`) or the Spec gaps that
 block it.
 
-<a id="concept.assessment"></a>
-
 The Operation returns a [run result](../../../glossary.json#concept.run-result) whose `output` is an
 **assessment**, defined by the
 [assessment contract](contracts.md#contract.understanding.assessment): for each bound

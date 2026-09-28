@@ -12,29 +12,23 @@ deploys without opting into the GitHub Pages workflow.
 
 ## Usage
 
-<a id="concept.canonical-page"></a><a id="concept.reading-collection"></a>
-
-The site's Spec pages form two **[reading
-collections](../../glossary.json#concept.reading-collection)**, each a tab showing the Module tree
+The site's Spec pages form two **reading
+collections**, each a tab showing the Module tree
 built from `contains`: **[Module](../../glossary.json#concept.module) documents** and, when any
-document is role `implementation`, **Implementation documents**. Every **[canonical
-page](../../glossary.json#concept.canonical-page)** sits under its owner; a Module reading it
+document is role `implementation`, **Implementation documents**. Every **canonical
+page** sits under its owner; a Module reading it
 through `uses` or `includes` links there instead of copying it. Each page shows its owner, the
 Modules selecting it and why, and its source digests, with every identity anchored, term links
 leading to the glossary page, and illustrative diagrams labelled non-normative. The glossary is one
 page under the root Module, and an owning Module's entry page lists the terms it owns.
 
-<a id="concept.user-documents"></a><a id="concept.custom-docs"></a>
-
-**[User documents](../../glossary.json#concept.user-documents)** are written for the people who use
+**User documents** are written for the people who use
 the project, in any structure: the site publishes their directory as it is, with a sidebar that
 follows its folders, as the first tab, and their root page (`README` or `index`, `.md` or `.mdx`)
 is the home page at `/`. Without them the home page opens the root Module's entry.
-**[Custom docs](../../glossary.json#concept.custom-docs)** are further collections, such as
+**Custom docs** are further collections, such as
 Concorde's own Spec Protocol, each in its own tab after the Spec tabs. Neither belongs to a Module,
 may contain a registered document, or is ever agent context.
-
-<a id="concept.publication-candidate"></a><a id="concept.promotion"></a><a id="concept.published-site"></a><a id="concept.site-build-manifest"></a>
 
 The commands run from `docsite/` (Concorde's own, or one the scaffold below created) after
 `npm ci` has installed its dependencies there; `start` and `build` render diagrams with the `d2`
@@ -45,19 +39,16 @@ program, found as `CONCORDE_D2`, the `.concorde/tools/d2` the Concorde installer
 | --- | --- |
 | `npm run start` | Previews the site, restarting the preview whenever its Specs change. |
 | `npm run validate` | Checks without building. |
-| `npm run build` | Builds a **[publication candidate](../../glossary.json#concept.publication-candidate)**, checks it, and, by **[promotion](../../glossary.json#concept.promotion)**, makes it the **[published site](../../glossary.json#concept.published-site)** in `docsite/build/`. |
+| `npm run build` | Builds a **publication candidate**, checks it, and, by **promotion**, makes it the **published site** in `docsite/build/`. |
 
-A successful build writes a **[site build
-manifest](../../glossary.json#concept.site-build-manifest)** — every registered document's route,
+A successful build writes a **site manifest** — every registered document's route,
 owner and source digests, nothing about the code; user documents, custom docs and the Glossary page
 are not in it. A failure, such as a moved anchor's link, deletes the candidate and keeps the
 published site.
 
-<a id="concept.scaffold-proposal"></a><a id="concept.site-identity"></a>
-
 For another project, `concorde docsite --propose` returns a
-**[scaffold proposal](../../glossary.json#concept.scaffold-proposal)** — the exact template files
-plus a new **[site identity](../../glossary.json#concept.site-identity)** `docsite/site.json` — and
+**scaffold proposal** — the exact template files
+plus a new **site identity** `docsite/site.json` — and
 `--apply --proposal FILE` creates exactly those files, never replacing or deleting: `unchanged`
 when every file already has the proposed bytes, otherwise `conflict` when any destination exists,
 and `invalid` when the proposal no longer matches the installed template (another package version
@@ -187,7 +178,7 @@ project's Spec configuration isn't readable.
 Distribution calls the scaffold and packages it — `distribution -> views` above is its own `uses`,
 declared there. Its CLI dispatches `concorde docsite` to the scaffold, which reads templates from
 the installed package, returning `invalid` (asking for a reinstall) if `concorde.json`, the
-descriptor of the [package](../../glossary.json#concept.package), omits `docsite` as a package root
+descriptor of the package, omits `docsite` as a package root
 or the template is missing or unsafe; its installer ships the template files by calling the
 inventory rule Views defines rather than repeating it, so the two cannot disagree on the template.
 Its [build manifest](../../glossary.json#concept.build-manifest), unrelated to the docsite's,

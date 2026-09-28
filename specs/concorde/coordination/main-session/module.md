@@ -177,9 +177,7 @@ session itself, where `CONCORDE_TASK_SESSION` is set, the extension only adds th
 every prompt and marks the commands the session starts as started from pi; it starts, follows and
 reports no runs or rounds.
 
-<a id="concept.escalation-policy"></a>
-
-**[Escalation policy](../../glossary.json#concept.escalation-policy).** A result that is not `ok`,
+**Escalation policy.** A result that is not `ok`,
 or a refused `concorde` command, carries an [error chain](../../glossary.json#concept.error-chain);
 the guidance tells the main agent to read it in full, since the origin says what went wrong and each
 link says why that level could not handle it. The main agent decides ordinary design uncertainty
@@ -214,9 +212,7 @@ task may change its own copy, which reaches the primary branch when the task mer
 Git or inference API calls. Discovery does not gate custom/offline configuration or impose an extra
 question flow when the developer already chose a model.
 
-<a id="concept.questions-without-a-task"></a>
-
-**[Questions without a task](../../glossary.json#concept.questions-without-a-task).** The guidance
+**Questions without a task.** The guidance
 tells the main agent that `understand`, `survey`, `spec_review`, `spec_panel` and `code_review`
 (with `--base`) also run [unbound](../../glossary.json#concept.unbound-run), in a worktree without a
 workspace binding such as the primary worktree, on the Modules `--modules` names. Such a run works
@@ -310,7 +306,7 @@ unchanged; a normal install carries no such section.
 
 ### Spec queries
 
-The main agent may configure the [Spec MCP server](../../glossary.json#concept.spec-mcp-server) for
+The main agent may configure the Spec MCP server for
 its own session, to ask which Modules exist, what a Module's context is, or what grant a
 [task type](../../glossary.json#concept.task-type) gives. The server answers from the Specs of the
 worktree it is rooted in — the primary worktree for the main agent — and workers never receive it.
@@ -448,7 +444,7 @@ Two providers serve the main agent without being a level below it.
 **Issues** provides durable [Issue](../../glossary.json#concept.issue) records and the
 bookkeeping command for [reports](../../issues/interface.md#contract.issues.report) and
 [receipts](../../issues/interface.md#contract.issues.receipt). The guidance relies on
-[status](../../glossary.json#concept.issue-status) following dispositions and
+status following dispositions and
 [revisions](../../glossary.json#concept.issue-revision) detecting concurrent writes. It tells
 the main agent to inspect before recording, make every Issue write in a task, preserve unmerged
 observations for follow-up, and merge closure with the fix. The command records these decisions;
@@ -472,13 +468,11 @@ mainsession: Main session {
     "prompts/main-session/"
   }
   guidance: Main-session guidance
-  policy: Escalation policy
   view: pi run view {
     "pi_extension.ts"
     "pi_runs.ts"
   }
   sources -> guidance: authors
-  guidance -> policy: includes
 }
 ```
 

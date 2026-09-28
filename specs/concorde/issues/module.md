@@ -75,9 +75,7 @@ handling applies only when a caller reuses the same invocation and report key, a
 
 ### Lifecycle
 
-<a id="concept.issue-status"></a><a id="concept.disposition"></a>
-
-An **[Issue status](../glossary.json#concept.issue-status)** starts `open`. A **disposition**
+An **Issue status** starts `open`. A **disposition**
 records a decision to close or reopen it, with a reason, note, evidence and actor. `resolved`,
 `duplicate` and `not-actionable` are closing reasons, not extra statuses. The only statuses are
 `open` and `closed`:

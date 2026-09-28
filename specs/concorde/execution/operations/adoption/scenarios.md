@@ -63,7 +63,7 @@ shapes are in the [contracts](contracts.md).
 - WHEN the caller runs `concorde run code_to_spec --modules module.checkout` in the workspace `adopt`
 - THEN the worker's grant reads `src/checkout/` and writes only `module.checkout`'s documents
 - AND the worker has no tool that runs commands
-- AND the result is `ok` with a [Spec description](../../../glossary.json#concept.spec-description) whose changed documents include the entry document `module.md`
+- AND the result is `ok` with a Spec description whose changed documents include the entry document `module.md`
 - AND the stubs the worker did not fill are removed again
 - AND no implementation file changed
 

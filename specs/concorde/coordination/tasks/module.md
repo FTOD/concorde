@@ -126,9 +126,7 @@ no error, because what needs deciding is no failure but a decision it may not ke
 one a run that ended `ok` took without the developer, escalates its own link with no causes as the
 whole chain.
 
-<a id="concept.task-state"></a>
-
-**[Task state](../../glossary.json#concept.task-state).** Only merging and closing a task change its
+**Task state.** Only merging and closing a task change its
 stored state: the record says `open` from the open until the task ends, then `closed` or `failed`,
 and **merging** while `concorde task merge` has put, or is about to put, a merge of the task into
 the primary branch that its checks have not decided yet. Whether an open task is still **open**,
@@ -368,13 +366,11 @@ tasks: Tasks {
   record: Task record
   log: Decision log
   task: Task
-  state: Task state
   lock: Merge lock
   store -> record: writes
   store -> log: creates
   store -> lock: holds while merging, opening or closing
   record -> task: describes
-  record -> state: holds
   log -> task: explains the choices of
 }
 ```

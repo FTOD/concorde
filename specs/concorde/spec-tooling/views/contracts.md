@@ -1,9 +1,9 @@
 # Views contracts
 
 The interfaces of [Views](module.md): the
-[scaffold proposal](../../glossary.json#concept.scaffold-proposal) exchanged with its caller, the
+scaffold proposal exchanged with its caller, the
 site identity file, the build commands and the
-[site build manifest](../../glossary.json#concept.site-build-manifest).
+site manifest.
 
 ## Scaffold proposal
 
@@ -146,7 +146,7 @@ package's `docsite/`, and refuses to install a template this rule rejects. `temp
 `sha256:` over the UTF-8 text made of one line per template file, sorted by path, each `path`, a
 tab and the lowercase hex SHA-256 of its bytes, joined by newlines with a final newline.
 
-**Identity.** `identity` is a [site identity](../../glossary.json#concept.site-identity) (below)
+**Identity.** `identity` is a site identity (below)
 with `schema_version` 1, `title`, `url`, `baseUrl`, `organizationName`, `projectName` and, when
 known, `repository`. The title defaults to the root [Module](../../glossary.json#concept.module)'s
 title. A GitHub repository, given by `--repository` or read from the `origin` remote, supplies
@@ -155,8 +155,8 @@ repository) and the owner and repository names. Otherwise the defaults are `http
 and the lowercased title with every run of other characters replaced by one hyphen, trimmed, or
 `project` when empty; an info finding then asks the developer to set the final values. Explicit
 options override the defaults. The scaffold never adds
-[user documents](../../glossary.json#concept.user-documents) or
-[custom docs](../../glossary.json#concept.custom-docs).
+user documents or
+custom docs.
 
 **Conflicts.** `conflicts` lists every proposed destination that already exists, with reason
 `target already exists`. It is information only and authorizes nothing.
@@ -248,10 +248,10 @@ or a Docusaurus exit is reported while the command keeps waiting for the next ch
 [pipeline](pipeline.md#preview) describes, and an interruption stops it. `validate`, `start` and
 `build` fail first when the project has no Concorde configuration.
 
-## Site build manifest
+## Site manifest
 
 A successful build writes `build-manifest.json` at the root of the
-[published site](../../glossary.json#concept.published-site):
+published site:
 
 ```json
 {

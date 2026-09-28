@@ -56,18 +56,6 @@
     {
       "type": "relates",
       "source": "realization.spec-mcp.server",
-      "verb": "implements",
-      "target": "concept.spec-mcp-server"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec-mcp.server",
-      "verb": "is rooted at",
-      "target": "concept.server-root"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec-mcp.server",
       "verb": "answers with",
       "target": "module.spec"
     },

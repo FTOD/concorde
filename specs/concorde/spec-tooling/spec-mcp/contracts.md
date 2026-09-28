@@ -2,7 +2,7 @@
 
 The exact tools and results of the [Spec MCP server](module.md). Every path in an argument or a
 result is a canonical project-relative POSIX path unless stated otherwise; an absolute path argument
-is accepted only when it lies inside the [server root](../../glossary.json#concept.server-root) and
+is accepted only when it lies inside the server root and
 is answered in its project-relative form.
 
 ## Session

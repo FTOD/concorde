@@ -11,8 +11,6 @@ enforces nothing; workers have no access to it in this version.
 
 ## Usage
 
-<a id="concept.spec-mcp-server"></a>
-
 A project using Concorde registers the **Spec MCP server** for Claude Code in its `.mcp.json`:
 
 ```json
@@ -50,9 +48,7 @@ A call fails with a code, never a partial answer: one of the server's own codes 
 such as `protocol_mismatch` or `shared_file`; the [contracts](contracts.md#session) say when each
 applies. No tool writes, so a call may be repeated at any time and reads the Specs as they stand.
 
-<a id="concept.server-root"></a>
-
-The **[server root](../../glossary.json#concept.server-root)** is resolved once, at session start:
+The **server root** is resolved once, at session start:
 `CLAUDE_PROJECT_DIR` when set, otherwise the client's single `file://` root; without either, or with
 several roots and no variable, every call fails with `no_root`. It never moves during the session,
 and a path resolving outside it — via `..`, an absolute path elsewhere or a symlink whose target
@@ -70,8 +66,6 @@ mcp: Spec MCP server {
   server: Server program {
     "src/concorde/spec_mcp/"
   }
-  concept: Spec MCP server / Spec MCP server
-  server -> concept: implements
 }
 ```
 

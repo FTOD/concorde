@@ -16,8 +16,6 @@ core) or judges code (Code review).
 
 ## Usage
 
-<a id="concept.spec-review"></a>
-
 The caller runs a **Spec review** when a
 [Spec change](../../glossary.json#concept.spec-change) is ready to be judged, typically after
 `specify` and before implementation, or when it doubts that an existing Spec is clear enough to hand
@@ -82,9 +80,7 @@ never writes it, so only a review inside a workspace, whose
 [delivery commits](../../glossary.json#concept.delivery-commit) the memory, changes the shared
 history.
 
-<a id="concept.spec-panel"></a><a id="concept.panel-report"></a>
-
-A **[Spec panel](../../glossary.json#concept.spec-panel)** is for a review the caller wants to
+A **Spec panel** is for a review the caller wants to
 rely on more than on one reviewer, whose findings vary from run to run and are sometimes wrong. It
 is run the same way as a Spec review:
 
@@ -218,7 +214,7 @@ a rejected grant makes that Module's review `incomplete`.
 **Workers**, in Execution, turn a frozen grant into a running worker: launch each reviewer, checker,
 panel reviewer and chair with only its [brief](../../glossary.json#concept.brief), return its
 [worker result](../../glossary.json#concept.worker-result) extended with findings, checks or a
-[panel report](../../glossary.json#concept.panel-report), audit for changes, and keep a
+panel report, audit for changes, and keep a
 [run record](../../glossary.json#concept.run-record). A `blocked`/`failed` worker, or an audit
 finding a change, makes that Module's review or panel `incomplete`, its error link travelling in the
 result's [error chain](../../glossary.json#concept.error-chain) unchanged.

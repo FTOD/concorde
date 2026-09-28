@@ -59,11 +59,11 @@ fails with `stale_evidence`, because the result would vouch for input that chang
 stays valid only while a fresh measurement matches it. Exact declaration and records:
 [the check service](service.md).
 
-<a id="concept.read-only-check-boundary"></a><a id="concept.check-scratch"></a>
+<a id="concept.read-only-check-boundary"></a>
 
 Inside the **[read-only check boundary](../../glossary.json#concept.read-only-check-boundary)**, any
 file create/change/rename/delete fails at the system call; a command writes only to its
-**[check scratch](../../glossary.json#concept.check-scratch)**, pointed to by `TMPDIR`,
+**check scratch**, pointed to by `TMPDIR`,
 `XDG_CACHE_HOME`, `CONCORDE_CHECK_TMPDIR` and `CONCORDE_CHECK_REPORT_DIR`, fresh each run. A check
 that hard-codes a cache or report path inside the project fails and must be pointed at the scratch;
 a source-rewriting tool, e.g. a fix-mode formatter, isn't a check. When the boundary cannot be
@@ -71,10 +71,8 @@ established (only Linux with a root-owned bubblewrap and the needed namespaces i
 command does not start and the run is refused with a sandbox error; there is no subprocess fallback.
 Environment/mounts: [the boundary](boundary.md).
 
-<a id="concept.diagnostic-span"></a>
-
 The runner marks sandbox setup and each command as a
-**[diagnostic span](../../glossary.json#concept.diagnostic-span)**, kept only in a caller-opened
+**diagnostic span**, kept only in a caller-opened
 trace or under `CONCORDE_DIAGNOSTIC_TIMING_DIR`; spans never change a run's outcome. Record/summary:
 [the timing spans](timing.md).
 
@@ -166,14 +164,10 @@ checks: Check execution {
   check: Configured check
   result: Check result
   boundary: Read-only check boundary
-  scratch: Check scratch
-  span: Diagnostic span
   runner -> check: runs
   runner -> result: records
-  runner -> span: records
   runner -> boundary: enforces
   check -> boundary: runs inside
-  boundary -> scratch: provides
 }
 ```
 

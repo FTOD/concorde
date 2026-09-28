@@ -96,7 +96,7 @@ document, the registry or, except in update mode, the project configuration's
 
 ### req.distribution.update-unvalidated — An update marks the project Concorde unvalidated
 
-`concorde update` SHALL mark the project [Concorde unvalidated](../glossary.json#concept.concorde-unvalidated).
+`concorde update` SHALL mark the project Concorde unvalidated.
 
 The mark is the file `.concorde/update.json`, which the project ignores; only an update writes it.
 
@@ -120,7 +120,7 @@ missing or older than its sources.
 
 ### req.distribution.installer-locked-pi-runtime — Only the locked pi runtime is installed
 
-The installer SHALL install the [pi runtime](../glossary.json#concept.pi-runtime) only with `npm ci --ignore-scripts` from the `package-lock.json` the package ships.
+The installer SHALL install the pi runtime only with `npm ci --ignore-scripts` from the `package-lock.json` the package ships.
 
 `npm ci` installs exactly the versions the lockfile names and refuses a package whose integrity
 hash differs, and no install script of a dependency runs on the developer's machine.
@@ -139,7 +139,7 @@ A failed or tampered download therefore leaves the project untouched.
 
 ### req.distribution.installer-programs-first — Missing programs refuse before anything is written
 
-The installer SHALL refuse, before writing anything into the project, when `uv` is not on `PATH`, or when `npm` is not on `PATH` and the [pi runtime](../glossary.json#concept.pi-runtime) is to be installed and not already in place.
+The installer SHALL refuse, before writing anything into the project, when `uv` is not on `PATH`, or when `npm` is not on `PATH` and the pi runtime is to be installed and not already in place.
 
 The refusals are `uv_missing` and `npm_missing`. Only the steps that run those programs can then
 fail after the first write.

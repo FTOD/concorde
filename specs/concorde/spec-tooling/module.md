@@ -34,7 +34,7 @@ point, one per child:
 | `concorde spec-validation` | Spec core | every structural finding, in one run |
 | `spec_review` and `spec_panel` [Operations](../glossary.json#concept.operation) | Spec review | workers' findings and a verdict on the named Modules' Specs |
 | Spec MCP server (stdio) | Spec MCP server | which Modules exist, what one selects, whom a change concerns, what grant a task type gives |
-| [Published site](../glossary.json#concept.published-site) | Views | the Specs as pages for people |
+| Published site | Views | the Specs as pages for people |
 
 A worker's grant is computed by Spec core and frozen by the Operation that launches the worker,
 through the [Execution runner](../glossary.json#concept.execution-runner); the Spec MCP server,

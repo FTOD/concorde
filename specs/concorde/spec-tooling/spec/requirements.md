@@ -344,7 +344,7 @@ A file expected to be absent has a null digest and must still be absent.
 
 ### req.spec.init-allowed-files — Initialization writes only its own files
 
-Applying an [initial proposal](../../glossary.json#concept.initial-proposal) SHALL write only
+Applying an initial proposal SHALL write only
 `.concorde/config.json`, `.concorde/specs.json` and the members of the documents the proposed
 registry registers.
 

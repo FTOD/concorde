@@ -11,9 +11,9 @@ by that Module.
 
 ## The people and agents
 
-<a id="concept.developer"></a><a id="concept.main-agent"></a>
+<a id="concept.main-agent"></a>
 
-The **[developer](glossary.json#concept.developer)** sets the project's direction with the
+The **developer** sets the project's direction with the
 **[main agent](glossary.json#concept.main-agent)**. The main agent's project-wide view lets it
 judge which responsibilities a change affects and which questions need the developer. It may also
 carry out a task itself; the role is not tied to staying in the primary worktree. The

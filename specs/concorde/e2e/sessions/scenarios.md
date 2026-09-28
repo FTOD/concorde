@@ -7,7 +7,7 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN a prompt, and for a later round the session's identity
 - WHEN the driver builds the round's command
-- THEN it runs `claude -p` with the prompt, the [headless note](../../glossary.json#concept.headless-note) as appended system prompt, `stream-json` output and the [main agent](../../glossary.json#concept.main-agent)'s tools granted
+- THEN it runs `claude -p` with the prompt, the headless note as appended system prompt, `stream-json` output and the [main agent](../../glossary.json#concept.main-agent)'s tools granted
 - AND a later round resumes the session by its identity
 - AND the environment keeps a background workflow alive
 
@@ -20,7 +20,7 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.headless-sessions.unsettled — Which runs a round left behind
 
-- GIVEN runs of Operations and [execution commands](../../glossary.json#concept.execution-command) started before and since the session began: one running, one whose runner is gone, one cancelled at the round's end, one cancelled long before the round's end, one failed otherwise, runs already reported in an earlier [wake message](../../glossary.json#concept.wake-message), and a worker's [progress file](../../glossary.json#concept.progress-file)
+- GIVEN runs of Operations and [execution commands](../../glossary.json#concept.execution-command) started before and since the session began: one running, one whose runner is gone, one cancelled at the round's end, one cancelled long before the round's end, one failed otherwise, runs already reported in an earlier wake message, and a worker's [progress file](../../glossary.json#concept.progress-file)
 - WHEN a round ends
 - THEN the running run and the run cancelled at the round's end are unsettled
 - BUT a run started before the session, a run whose runner is gone, a run that failed otherwise, a run cancelled long before the round ended, a worker's progress file and a run already reported are not

@@ -6,7 +6,7 @@ them in concrete situations.
 ### req.headless-sessions.conditions-in-tool — Testing conditions are told by the tool
 
 Every round of a [headless session](../../glossary.json#concept.headless-session) SHALL be started
-with its client's [headless note](../../glossary.json#concept.headless-note) appended to its system
+with its client's headless note appended to its system
 prompt.
 
 ### req.headless-sessions.tools-granted — A Claude Code round is granted its tools
@@ -26,7 +26,7 @@ When a round other than the session's last ends with a run of an
 [Operation](../../glossary.json#concept.operation) or
 [execution command](../../glossary.json#concept.execution-command) of the session still running, or
 stopped by the round's end, the driver SHALL resume the same session with a
-[wake message](../../glossary.json#concept.wake-message) naming it once every such run has finished
+wake message naming it once every such run has finished
 or its runner has gone.
 
 The wait is bounded by [its own requirement](#req.headless-sessions.wait-bounded).

@@ -348,7 +348,7 @@ Execution recorded.
 **Execution** is the lower half, levels 3 to 5 in one bound workspace: Workflows, the runner that
 runs Operations and execution commands, the
 [Operation catalog](glossary.json#concept.operation-catalog) and its providers, the
-[command catalog](glossary.json#concept.command-catalog) with Validation, Delivery and Scaffold,
+command catalog with Validation, Delivery and Scaffold,
 Workers and Check execution. It knows no task and records every run in its run store.
 
 <a id="contains-harness"></a>
@@ -400,7 +400,7 @@ than carry the framework's function, so no diagram above draws them:
 - <a id="realization.concorde.user-documents"></a>**User documents** under `docs/` are written for
   the people who use Concorde, starting with the guide to using it. They follow no Spec Protocol
   structure and are never agent context; the docsite publishes them as its
-  [user documents](glossary.json#concept.user-documents), the first tab, with
+  user documents, the first tab, with
   `docs/README.md` as the site's home page.
 - <a id="realization.concorde.development-environment"></a>**Development environment** is this
   checkout's Python project and lock, pytest setup and shared test support, the reference

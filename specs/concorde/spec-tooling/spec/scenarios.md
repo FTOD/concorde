@@ -696,7 +696,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 - GIVEN a project where the installer has placed the Protocol copy but no configuration exists
 - WHEN a caller initializes it with `action: "propose"` and a name
-- THEN the result is an [initial proposal](../../glossary.json#concept.initial-proposal) with the configuration, the registry, and a root entry with its metadata
+- THEN the result is an initial proposal with the configuration, the registry, and a root entry with its metadata
 - AND the root entry says the project's purpose, behaviour and architecture are not yet specified
 - AND its metadata binds the project's existing tracked and not-ignored files in one realization, Existing project files
 - AND every proposed file has a null before-digest

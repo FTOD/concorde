@@ -46,7 +46,7 @@ starts in that worktree, whose [workspace binding](../../glossary.json#concept.w
 names it. Every workflow takes `mode`, `answers`, `retry` and `restart`, plus its own arguments such
 as `module`. `answers` maps a step's base key, such as `survey` or `describe:module.checkout`, to
 the list of every answer the developer has given for that step so far, in the shape of
-[answers](../../glossary.json#concept.answers); a relaunch passes all of them again, not only the
+answers; a relaunch passes all of them again, not only the
 newest. `retry` lists the base keys to run again after a failure. `restart` maps a base key to a
 short generation label, such as `{"scaffold": "2"}`, to run that step again whatever its outcome,
 for instance after the workspace was reset by hand: the label becomes part of the
@@ -60,7 +60,7 @@ workflow: both workflow commands answer there with `binding_required`.
 The **[workflow mode](../../glossary.json#concept.workflow-mode)** decides what happens at a
 **decision point**, an item in a run's output that is the developer's to settle: every
 [open question](../../glossary.json#concept.open-question), because only the developer knows what
-behaviour is intended, and every [decision](../../glossary.json#concept.decision) of a survey that
+behaviour is intended, and every decision of a survey that
 the worker took rather than the developer, because how a project splits into Modules shapes all
 later work. A code_to_spec decision, such as a concept's name, is ordinary: the workflow never stops
 for it and reports it.
@@ -168,7 +168,7 @@ Claude Code with a `meta` block and a step function whose **step agent** is a su
 step command once, waiting at most 100 seconds, and returns the JSON it printed, while the step
 function itself asks again as long as the run is still running and treats an outcome that names
 another step or no real run as no answer. A model retypes the command, and a live
-[headless run](../../glossary.json#concept.headless-run) showed one dropping a field of the request,
+headless run showed one dropping a field of the request,
 which the step command then refused as `invalid_request`; so the step function asks again after an
 outcome that is no answer, three times in a row at most, since the same key never starts a run
 twice. A step still without an answer is reported lost, and the script's result carries what its

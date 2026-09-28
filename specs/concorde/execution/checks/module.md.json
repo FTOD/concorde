@@ -74,12 +74,6 @@
     {
       "type": "relates",
       "source": "realization.checks.runner",
-      "verb": "records",
-      "target": "concept.diagnostic-span"
-    },
-    {
-      "type": "relates",
-      "source": "realization.checks.runner",
       "verb": "enforces",
       "target": "concept.read-only-check-boundary"
     }

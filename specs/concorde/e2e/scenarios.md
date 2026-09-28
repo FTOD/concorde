@@ -18,7 +18,7 @@ Concrete situations that show the [requirements](requirements.md) of
 ### scenario.e2e.default-root — Test projects live in the temporary directory
 
 - GIVEN an environment without `CONCORDE_E2E_ROOT`
-- WHEN the tool resolves the [end-to-end root](../glossary.json#concept.end-to-end-root)
+- WHEN the tool resolves the end-to-end root
 - THEN it is `concorde-e2e` in the system's temporary directory, outside the developer's home
 
 ### scenario.e2e.trust — Trusting a test project
@@ -31,7 +31,7 @@ Concrete situations that show the [requirements](requirements.md) of
 ### scenario.e2e.headless — A headless run waits for its workflow without trust
 
 - GIVEN an untrusted test project with an open task
-- WHEN the developer starts a [headless run](../glossary.json#concept.headless-run) of the [brownfield workflow](../glossary.json#concept.brownfield-workflow) with `--restart scaffold=2`
+- WHEN the developer starts a headless run of the [brownfield workflow](../glossary.json#concept.brownfield-workflow) with `--restart scaffold=2`
 - THEN the `claude -p` session has `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` set to `0`
 - AND its command line grants the workflow and its step and report commands
 - AND the workflow's arguments, the restart label `2` of `scaffold` included, reach the session's prompt

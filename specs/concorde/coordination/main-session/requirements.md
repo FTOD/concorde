@@ -241,7 +241,7 @@ works and that the change reaches the primary branch when the task merges.
 
 ### req.main-session.escalation-policy — Only major decisions reach the developer
 
-The guidance SHALL state the [escalation policy](../../glossary.json#concept.escalation-policy):
+The guidance SHALL state the escalation policy:
 decide ordinary questions itself, record and report them, and ask the developer before acting
 only on decisions with major impact.
 

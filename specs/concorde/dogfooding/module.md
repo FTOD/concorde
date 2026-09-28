@@ -172,7 +172,7 @@ into a normal one, or the reverse, is a new install with or without `--develop`.
 
 <a id="uses-distribution"></a>
 
-**Distribution** provides the [installer](../glossary.json#concept.installer)
+**Distribution** provides the installer
 and `concorde update`. Dogfooding relies on it to call the develop source check before writing
 anything and to refuse on its refusal, to add the develop guidance to what it places, to record the
 mode and the source commit in the receipt, to keep develop mode on update and to refuse an update

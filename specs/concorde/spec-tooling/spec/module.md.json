@@ -159,12 +159,6 @@
     {
       "type": "relates",
       "source": "realization.spec.model",
-      "verb": "loads",
-      "target": "concept.document"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec.model",
       "verb": "verifies",
       "target": "concept.protocol-binding"
     },
@@ -239,12 +233,6 @@
       "source": "realization.spec.transactions",
       "verb": "applies",
       "target": "concept.file-transaction"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec.initializer",
-      "verb": "proposes",
-      "target": "concept.initial-proposal"
     },
     {
       "type": "relates",

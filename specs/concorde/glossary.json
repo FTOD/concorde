@@ -9,36 +9,6 @@
       "explanation": "specs/concorde/harness/module.md#concept.agent-harness"
     },
     {
-      "id": "concept.answers",
-      "title": "Answers",
-      "owner": "module.adoption",
-      "definition": "The developer's answers to earlier decisions and open questions, passed to a later survey or code_to_spec run so that its worker follows them.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.answers",
-      "relates": [
-        {
-          "verb": "settle",
-          "target": "concept.open-question"
-        },
-        {
-          "verb": "settle",
-          "target": "concept.decision"
-        }
-      ]
-    },
-    {
-      "id": "concept.assessment",
-      "title": "Assessment",
-      "owner": "module.understanding",
-      "definition": "The result of one understand run: what the bound Modules promise, whether their Spec is sufficient for the stated goal, the Spec gaps found and, when requested and sufficient, a plan.",
-      "explanation": "specs/concorde/execution/operations/understanding/module.md#concept.assessment",
-      "relates": [
-        {
-          "verb": "reports",
-          "target": "concept.spec-gap"
-        }
-      ]
-    },
-    {
       "id": "concept.boundary",
       "title": "Boundary",
       "owner": "module.concorde",
@@ -80,13 +50,6 @@
       ]
     },
     {
-      "id": "concept.build",
-      "title": "Build",
-      "owner": "module.distribution",
-      "definition": "The deterministic rendering of every prompt root under `prompts/` and of every workflow script of the workflow catalog into plain files under `generated/`, recorded in the build manifest.",
-      "explanation": "specs/concorde/distribution/module.md#concept.build"
-    },
-    {
       "id": "concept.build-manifest",
       "title": "Build manifest",
       "owner": "module.distribution",
@@ -94,31 +57,11 @@
       "explanation": "specs/concorde/distribution/module.md#concept.build-manifest"
     },
     {
-      "id": "concept.canonical-page",
-      "title": "Canonical page",
-      "owner": "module.views",
-      "definition": "The single page at which one registered Spec document is published.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.canonical-page",
-      "relates": [
-        {
-          "verb": "is listed in",
-          "target": "concept.reading-collection"
-        }
-      ]
-    },
-    {
       "id": "concept.capability-context",
       "title": "Capability context",
       "owner": "module.concorde",
       "definition": "The tools a worker may use and the contracts those tools reach, which tell it what it can do and never what the project promises.",
       "explanation": "specs/concorde/core-concepts.md#concept.capability-context"
-    },
-    {
-      "id": "concept.case",
-      "title": "Case",
-      "owner": "module.swe-bench-cases",
-      "definition": "A SWE-bench task instance: an issue of one repository at its base commit, with a test patch and the tests that must pass once the issue is resolved.",
-      "explanation": "specs/concorde/e2e/cases/module.md#concept.case"
     },
     {
       "id": "concept.check-result",
@@ -129,73 +72,6 @@
       "narrows": [
         "concept.evidence"
       ]
-    },
-    {
-      "id": "concept.check-scratch",
-      "title": "Check scratch",
-      "owner": "module.checks",
-      "definition": "The fresh directory outside the project that one run may write, holding its temporary files, caches and reports, removed after the run.",
-      "explanation": "specs/concorde/execution/checks/module.md#concept.check-scratch"
-    },
-    {
-      "id": "concept.code-change",
-      "title": "Code change",
-      "owner": "module.implementation",
-      "definition": "The result of one implement run: the files the worker changed, created or had deleted, the configured check results of the last round, the rounds used and the worker's account of the change.",
-      "explanation": "specs/concorde/execution/operations/implementation/module.md#concept.code-change"
-    },
-    {
-      "id": "concept.code-review-finding",
-      "title": "Code review finding",
-      "owner": "module.code-review",
-      "definition": "One problem the reviewer established in the reviewed code, judged blocking or advisory and tied to the Spec promise or passage it violates or leaves unanswered.",
-      "explanation": "specs/concorde/execution/operations/code-review/module.md#concept.code-review-finding"
-    },
-    {
-      "id": "concept.code-review-report",
-      "title": "Code review report",
-      "owner": "module.code-review",
-      "definition": "The result of one code review run: the reviewer's findings about the workspace's code changes, the verdict the Operation derived from them and the inputs the review examined.",
-      "explanation": "specs/concorde/execution/operations/code-review/module.md#concept.code-review-report",
-      "relates": [
-        {
-          "verb": "holds",
-          "target": "concept.code-review-finding"
-        }
-      ]
-    },
-    {
-      "id": "concept.code-to-spec",
-      "title": "Code to spec",
-      "owner": "module.adoption",
-      "definition": "The Operation in which a worker of task type `code-to-spec` reads the bound Modules' code and writes their own documents to describe it.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.code-to-spec",
-      "relates": [
-        {
-          "verb": "produces",
-          "target": "concept.spec-description"
-        }
-      ]
-    },
-    {
-      "id": "concept.command-catalog",
-      "title": "Command catalog",
-      "owner": "module.commands",
-      "definition": "The fixed table naming each execution command and the definition its providing Module declares.",
-      "explanation": "specs/concorde/execution/commands/module.md#concept.command-catalog",
-      "relates": [
-        {
-          "verb": "lists",
-          "target": "concept.execution-command"
-        }
-      ]
-    },
-    {
-      "id": "concept.command-line-interface",
-      "title": "Command-line interface",
-      "owner": "module.distribution",
-      "definition": "The `concorde` command, which routes requests to their owning Modules and prints their results.",
-      "explanation": "specs/concorde/distribution/module.md#concept.command-line-interface"
     },
     {
       "id": "concept.concorde-defect",
@@ -210,13 +86,6 @@
       "owner": "module.dogfooding",
       "definition": "The independent Git repository of Concorde that a develop install is made and updated from, and in which the Concorde defects it reports are fixed.",
       "explanation": "specs/concorde/dogfooding/module.md#concept.concorde-repository"
-    },
-    {
-      "id": "concept.concorde-unvalidated",
-      "title": "Concorde unvalidated",
-      "owner": "module.distribution",
-      "definition": "The state `concorde update` marks a project with by writing `.concorde/update.json`, in which `spec-validation` in the primary worktree reports an error until a validation first passes and removes the mark.",
-      "explanation": "specs/concorde/distribution/module.md#concept.concorde-unvalidated"
     },
     {
       "id": "concept.configured-check",
@@ -246,20 +115,6 @@
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.context-identity"
     },
     {
-      "id": "concept.custom-docs",
-      "title": "Custom docs",
-      "owner": "module.views",
-      "definition": "Project-owned documentation that the site publishes in its own tab after the Spec tabs, beside the Specs and outside them.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.custom-docs"
-    },
-    {
-      "id": "concept.decision",
-      "title": "Decision",
-      "owner": "module.adoption",
-      "definition": "A choice between named options that a worker took where the code allowed several, recorded with its reason and whether the worker or the developer made it.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.decision"
-    },
-    {
       "id": "concept.decision-log",
       "title": "Decision log",
       "owner": "module.tasks",
@@ -284,13 +139,7 @@
       "title": "Decomposition proposal",
       "owner": "module.adoption",
       "definition": "The output of a survey: the child Modules to create with their purposes, bound entries and uses, the checks it proposes, the decisions it took and its open questions.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.decomposition-proposal",
-      "relates": [
-        {
-          "verb": "lists",
-          "target": "concept.decision"
-        }
-      ]
+      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.decomposition-proposal"
     },
     {
       "id": "concept.defect-report",
@@ -334,54 +183,6 @@
       "explanation": "specs/concorde/dogfooding/module.md#concept.develop-install"
     },
     {
-      "id": "concept.developer",
-      "title": "Developer",
-      "owner": "module.concorde",
-      "definition": "The person who uses Concorde to specify, change and understand a project.",
-      "explanation": "specs/concorde/core-concepts.md#concept.developer"
-    },
-    {
-      "id": "concept.deviation",
-      "title": "Deviation",
-      "owner": "module.adoption",
-      "definition": "A difference between the intent the developer stated in an answer and what the code does, which the Spec states as intent and the result reports for later implementation work.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.deviation"
-    },
-    {
-      "id": "concept.diagnostic-span",
-      "title": "Diagnostic span",
-      "owner": "module.checks",
-      "definition": "A bounded timing record of one named unit of host work, with its trace, parent, status and duration and never its arguments, output or messages.",
-      "explanation": "specs/concorde/execution/checks/module.md#concept.diagnostic-span"
-    },
-    {
-      "id": "concept.disposition",
-      "title": "Disposition",
-      "owner": "module.issues",
-      "definition": "A recorded decision that closes an Issue as resolved, duplicate or not actionable, or reopens a closed one, with a note, evidence and the actor.",
-      "explanation": "specs/concorde/issues/module.md#concept.disposition",
-      "relates": [
-        {
-          "verb": "closes or reopens",
-          "target": "concept.issue"
-        }
-      ]
-    },
-    {
-      "id": "concept.distribution-command",
-      "title": "Distribution command",
-      "owner": "module.distribution",
-      "definition": "A `concorde` command Distribution owns itself rather than routing to another Module: `build`, `protocol-manifest` and `update`.",
-      "explanation": "specs/concorde/distribution/module.md#concept.distribution-command"
-    },
-    {
-      "id": "concept.document",
-      "title": "Document",
-      "owner": "module.spec",
-      "definition": "One registered Markdown reading file together with its `.md.json` metadata file, which share one identity and one owning Module.",
-      "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.document"
-    },
-    {
       "id": "concept.dogfood-scenario",
       "title": "Dogfood scenario",
       "owner": "module.dogfood-scenarios",
@@ -389,39 +190,11 @@
       "explanation": "specs/concorde/e2e/dogfood/module.md#concept.dogfood-scenario"
     },
     {
-      "id": "concept.driver-run",
-      "title": "Driver run",
-      "owner": "module.e2e",
-      "definition": "A workflow run by the deterministic driver, which plays the pi runtime and has the pi script's step agents execute the real `concorde workflow` commands, with real workers.",
-      "explanation": "specs/concorde/e2e/module.md#concept.driver-run"
-    },
-    {
-      "id": "concept.end-to-end-root",
-      "title": "End-to-end root",
-      "owner": "module.e2e",
-      "definition": "The directory holding the test projects, `CONCORDE_E2E_ROOT` or `concorde-e2e` in the system's temporary directory, `/tmp/concorde-e2e` on Linux.",
-      "explanation": "specs/concorde/e2e/module.md#concept.end-to-end-root"
-    },
-    {
       "id": "concept.error-chain",
       "title": "Error chain",
       "owner": "module.concorde",
       "definition": "The structured report of an error that travels up: one link per level that could not handle it, each with its detailed account and its reason for not handling it, and the errors it received from below nested as its causes.",
       "explanation": "specs/concorde/core-concepts.md#concept.error-chain"
-    },
-    {
-      "id": "concept.escalation-policy",
-      "title": "Escalation policy",
-      "owner": "module.main-session",
-      "definition": "The rule by which the main agent decides ordinary questions itself, records and reports them, and asks the developer only for decisions with major impact.",
-      "explanation": "specs/concorde/coordination/main-session/module.md#concept.escalation-policy"
-    },
-    {
-      "id": "concept.evaluation",
-      "title": "Evaluation",
-      "owner": "module.dogfood-scenarios",
-      "definition": "The checks that decide, from the scenario directory's files and the results of commands run on them, never from the session's messages, whether a scenario's session behaved as Dogfooding requires.",
-      "explanation": "specs/concorde/e2e/dogfood/module.md#concept.evaluation"
     },
     {
       "id": "concept.evidence",
@@ -459,13 +232,6 @@
       "explanation": "specs/concorde/core-concepts.md#concept.external-context"
     },
     {
-      "id": "concept.fault",
-      "title": "Fault",
-      "owner": "module.dogfood-scenarios",
-      "definition": "A set of exact text edits to Concorde's sources that makes Concorde defective in a known way, committed alone in the scenario's Concorde clone.",
-      "explanation": "specs/concorde/e2e/dogfood/module.md#concept.fault"
-    },
-    {
       "id": "concept.file-transaction",
       "title": "File transaction",
       "owner": "module.spec",
@@ -478,20 +244,6 @@
       "owner": "module.spec",
       "definition": "The per-path access list, each path at level `names`, `ro` or `rw`, that one task type assigns to the bound Modules, computed from one worktree's Specs and identified by its context identity.",
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.grant"
-    },
-    {
-      "id": "concept.headless-note",
-      "title": "Headless note",
-      "owner": "module.headless-sessions",
-      "definition": "The system prompt the tool appends to every round, telling the session that nobody answers, what happens to a run left behind when its turn ends, and that it will be woken.",
-      "explanation": "specs/concorde/e2e/sessions/module.md#concept.headless-note"
-    },
-    {
-      "id": "concept.headless-run",
-      "title": "Headless run",
-      "owner": "module.e2e",
-      "definition": "A workflow run by a non-interactive `claude -p` main session started by the tool, waiting without limit for the workflow and granted its tools on the command line.",
-      "explanation": "specs/concorde/e2e/module.md#concept.headless-run"
     },
     {
       "id": "concept.headless-session",
@@ -513,20 +265,6 @@
       "owner": "module.concorde",
       "definition": "The code side of a worker's context: the names of the bound Modules' implementation files and, when the task type grants it, the contents of the whole project's code, the Protocol's ProjectImplementation.",
       "explanation": "specs/concorde/core-concepts.md#concept.implementation-context"
-    },
-    {
-      "id": "concept.initial-proposal",
-      "title": "Initial proposal",
-      "owner": "module.spec",
-      "definition": "The exact files that initialization offers for a new project before anything is written.",
-      "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.initial-proposal"
-    },
-    {
-      "id": "concept.installer",
-      "title": "Installer",
-      "owner": "module.distribution",
-      "definition": "The program that places the Protocol copy, the `concorde` command and the main-session guidance into a project without writing its Specs.",
-      "explanation": "specs/concorde/distribution/module.md#concept.installer"
     },
     {
       "id": "concept.issue",
@@ -556,13 +294,6 @@
       "explanation": "specs/concorde/issues/module.md#concept.issue-revision"
     },
     {
-      "id": "concept.issue-status",
-      "title": "Issue status",
-      "owner": "module.issues",
-      "definition": "The open or closed state of an Issue in one worktree, determined by its disposition history starting from open.",
-      "explanation": "specs/concorde/issues/module.md#concept.issue-status"
-    },
-    {
       "id": "concept.main-agent",
       "title": "Main agent",
       "owner": "module.concorde",
@@ -574,13 +305,7 @@
       "title": "Main-session guidance",
       "owner": "module.main-session",
       "definition": "The instructions, installed as a project skill for Claude Code and for pi and as a `CLAUDE.md` block, that tell the main agent how to work with Concorde.",
-      "explanation": "specs/concorde/coordination/main-session/module.md#concept.main-session-guidance",
-      "relates": [
-        {
-          "verb": "includes",
-          "target": "concept.escalation-policy"
-        }
-      ]
+      "explanation": "specs/concorde/coordination/main-session/module.md#concept.main-session-guidance"
     },
     {
       "id": "concept.merge-lock",
@@ -634,32 +359,11 @@
       ]
     },
     {
-      "id": "concept.package",
-      "title": "Package",
-      "owner": "module.distribution",
-      "definition": "The set of Concorde files, described by `concorde.json`, that is built, checked and installed as one unit.",
-      "explanation": "specs/concorde/distribution/module.md#concept.package"
-    },
-    {
-      "id": "concept.panel-report",
-      "title": "Panel report",
-      "owner": "module.spec-review",
-      "definition": "The chair's merged findings of one Module, each naming the reviewer findings it merges, and the reviewer findings it rejected with their reasons, accounting for every reviewer finding exactly once.",
-      "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.panel-report"
-    },
-    {
       "id": "concept.permission-extension",
       "title": "Permission extension",
       "owner": "module.harness",
       "definition": "The pi extension the Harness generates from a grant, which checks every file tool against it, runs every command in the sandbox and receives the worker result.",
       "explanation": "specs/concorde/harness/module.md#concept.permission-extension"
-    },
-    {
-      "id": "concept.pi-runtime",
-      "title": "pi runtime",
-      "owner": "module.distribution",
-      "definition": "The sandbox engine `@anthropic-ai/sandbox-runtime` in which pi workers run their commands, which every install places under `.concorde/tools/pi-runtime/` from the package's lockfile unless `--without-pi-runtime` leaves it out.",
-      "explanation": "specs/concorde/distribution/module.md#concept.pi-runtime"
     },
     {
       "id": "concept.progress-file",
@@ -673,13 +377,6 @@
           "reason": "a worker run's progress file follows one worker; the run progress file follows the Operation or command run, which may launch several"
         }
       ]
-    },
-    {
-      "id": "concept.promotion",
-      "title": "Promotion",
-      "owner": "module.views",
-      "definition": "The directory swap that makes a checked publication candidate the new published site.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.promotion"
     },
     {
       "id": "concept.protocol-binding",
@@ -696,44 +393,11 @@
       "explanation": "specs/concorde/distribution/module.md#concept.protocol-copy"
     },
     {
-      "id": "concept.publication-candidate",
-      "title": "Publication candidate",
-      "owner": "module.views",
-      "definition": "A complete new build, generated apart from the published site, that must pass every check before it may replace it.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.publication-candidate",
-      "relates": [
-        {
-          "verb": "replaces",
-          "target": "concept.published-site"
-        }
-      ]
-    },
-    {
-      "id": "concept.published-site",
-      "title": "Published site",
-      "owner": "module.views",
-      "definition": "The last docsite build that passed every check, kept in `docsite/build/`.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.published-site"
-    },
-    {
-      "id": "concept.questions-without-a-task",
-      "title": "Questions without a task",
-      "owner": "module.main-session",
-      "definition": "The guidance's rule that the Operations which allow it run unbound, in a worktree without a workspace binding such as the primary worktree, for a question or review that changes nothing.",
-      "explanation": "specs/concorde/coordination/main-session/module.md#concept.questions-without-a-task"
-    },
-    {
       "id": "concept.read-only-check-boundary",
       "title": "Read-only check boundary",
       "owner": "module.checks",
       "definition": "The Linux sandbox in which a check runs: the whole host filesystem read-only, one fresh writable scratch directory, private process and IPC namespaces, and the host's network.",
-      "explanation": "specs/concorde/execution/checks/module.md#concept.read-only-check-boundary",
-      "relates": [
-        {
-          "verb": "provides",
-          "target": "concept.check-scratch"
-        }
-      ]
+      "explanation": "specs/concorde/execution/checks/module.md#concept.read-only-check-boundary"
     },
     {
       "id": "concept.readiness",
@@ -741,13 +405,6 @@
       "owner": "module.validation",
       "definition": "The outcome of Validation's readiness steps in one `task-validation` or `delivery` run: whether the workspace may be delivered, with its blocking findings, the checks run and the pending entries to confirm, bound to a digest of the exact inputs examined.",
       "explanation": "specs/concorde/execution/commands/validation/module.md#concept.readiness"
-    },
-    {
-      "id": "concept.reading-collection",
-      "title": "Reading collection",
-      "owner": "module.views",
-      "definition": "One of the two Spec tabs of the site, Module documents or Implementation documents, chosen for each document by its declared role.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.reading-collection"
     },
     {
       "id": "concept.registry",
@@ -789,13 +446,6 @@
           "target": "concept.review-finding"
         }
       ]
-    },
-    {
-      "id": "concept.round",
-      "title": "Round",
-      "owner": "module.headless-sessions",
-      "definition": "One `claude -p` or `pi -p` process of a headless session, the first with the developer's prompt and each later one continuing the same session with a wake message.",
-      "explanation": "specs/concorde/e2e/sessions/module.md#concept.round"
     },
     {
       "id": "concept.run",
@@ -881,34 +531,6 @@
       "explanation": "specs/concorde/coordination/main-session/module.md#concept.run-view"
     },
     {
-      "id": "concept.scaffold-proposal",
-      "title": "Scaffold proposal",
-      "owner": "module.views",
-      "definition": "The exact list of files, with their digests, that the scaffold command would create in a project.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.scaffold-proposal"
-    },
-    {
-      "id": "concept.scaffold-record",
-      "title": "Scaffold record",
-      "owner": "module.scaffold",
-      "definition": "The output of a scaffold: the Modules and documents it created, the vendored paths it made external inclusions, and the parent's realization entries before and after.",
-      "explanation": "specs/concorde/execution/commands/scaffold/module.md#concept.scaffold-record"
-    },
-    {
-      "id": "concept.scenario-directory",
-      "title": "Scenario directory",
-      "owner": "module.dogfood-scenarios",
-      "definition": "The directory, under the end-to-end root, holding a scenario's Concorde clone, project, sessions, baselines and evaluation.",
-      "explanation": "specs/concorde/e2e/dogfood/module.md#concept.scenario-directory"
-    },
-    {
-      "id": "concept.server-root",
-      "title": "Server root",
-      "owner": "module.spec-mcp",
-      "definition": "The worktree whose Specs answer every query of one server process, fixed when the session starts.",
-      "explanation": "specs/concorde/spec-tooling/spec-mcp/module.md#concept.server-root"
-    },
-    {
       "id": "concept.session-boundary",
       "title": "Session boundary",
       "owner": "module.harness",
@@ -946,26 +568,6 @@
       ]
     },
     {
-      "id": "concept.site-build-manifest",
-      "title": "Site build manifest",
-      "owner": "module.views",
-      "definition": "The record a build writes beside its pages, listing every registered Spec document with its route and source digests.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.site-build-manifest",
-      "contrasts": [
-        {
-          "target": "concept.build-manifest",
-          "reason": "the docsite build manifest lists the Spec pages and source digests of one published site; Distribution's build manifest records the sources and outputs of the Concorde build"
-        }
-      ]
-    },
-    {
-      "id": "concept.site-identity",
-      "title": "Site identity",
-      "owner": "module.views",
-      "definition": "The project-owned file `docsite/site.json` that names the site and configures its optional user documents and custom docs.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.site-identity"
-    },
-    {
       "id": "concept.spec",
       "title": "Spec",
       "owner": "module.concorde",
@@ -987,55 +589,11 @@
       "explanation": "specs/concorde/core-concepts.md#concept.spec-context"
     },
     {
-      "id": "concept.spec-description",
-      "title": "Spec description",
-      "owner": "module.adoption",
-      "definition": "The output of a code_to_spec run: the documents changed, the promises written, the decisions taken, the open questions, the deviations between stated intent and code, and the validation outcome.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.spec-description",
-      "relates": [
-        {
-          "verb": "lists",
-          "target": "concept.decision"
-        },
-        {
-          "verb": "lists",
-          "target": "concept.open-question"
-        }
-      ]
-    },
-    {
       "id": "concept.spec-gap",
       "title": "Spec gap",
       "owner": "module.understanding",
       "definition": "A promise that the stated goal relies on and that the Spec of a bound Module does not state, reported with where it belongs instead of being inferred.",
       "explanation": "specs/concorde/execution/operations/understanding/module.md#concept.spec-gap"
-    },
-    {
-      "id": "concept.spec-mcp-server",
-      "title": "Spec MCP server",
-      "owner": "module.spec-mcp",
-      "definition": "The local stdio MCP server that answers read-only queries about the Specs of the one worktree it is rooted at.",
-      "explanation": "specs/concorde/spec-tooling/spec-mcp/module.md#concept.spec-mcp-server"
-    },
-    {
-      "id": "concept.spec-panel",
-      "title": "Spec panel",
-      "owner": "module.spec-review",
-      "definition": "One run of the `spec_panel` Operation, in which several reviewers review each named Module independently and a chair audits and merges their findings into one panel report.",
-      "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.spec-panel"
-    },
-    {
-      "id": "concept.spec-review",
-      "title": "Spec review",
-      "owner": "module.spec-review",
-      "definition": "One run of the `spec_review` Operation, which judges the Specs of the named Modules of one worktree and returns findings and a verdict.",
-      "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.spec-review",
-      "contrasts": [
-        {
-          "target": "module.spec-review",
-          "reason": "the Module Spec review provides both the spec_review and the spec_panel Operations; a Spec review is one run of spec_review"
-        }
-      ]
     },
     {
       "id": "concept.standard-worker-sequence",
@@ -1072,19 +630,6 @@
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.structural-check"
     },
     {
-      "id": "concept.survey",
-      "title": "Survey",
-      "owner": "module.adoption",
-      "definition": "The read-only Operation in which a worker reads one Module's code and proposes a decomposition, without writing anything.",
-      "explanation": "specs/concorde/execution/operations/adoption/module.md#concept.survey",
-      "relates": [
-        {
-          "verb": "produces",
-          "target": "concept.decomposition-proposal"
-        }
-      ]
-    },
-    {
       "id": "concept.task",
       "title": "Task",
       "owner": "module.tasks",
@@ -1108,10 +653,6 @@
         {
           "verb": "describes",
           "target": "concept.task"
-        },
-        {
-          "verb": "holds",
-          "target": "concept.task-state"
         }
       ]
     },
@@ -1121,13 +662,6 @@
       "owner": "module.concorde",
       "definition": "A session of the main agent's own program to which the main agent delegates the work of one task when it runs several at once, working only inside that task's worktree until delivery and reporting to the main agent.",
       "explanation": "specs/concorde/core-concepts.md#concept.task-session"
-    },
-    {
-      "id": "concept.task-state",
-      "title": "Task state",
-      "owner": "module.tasks",
-      "definition": "The stage of a task's life, open, active, delivered, then closed when the task reached its goal (merged or completed) or failed when it did not, with merging between delivered and closed while a merge of the task is in the primary branch unchecked, of which only open, merging, closed and failed are stored and active and delivered are derived from what Execution recorded.",
-      "explanation": "specs/concorde/coordination/tasks/module.md#concept.task-state"
     },
     {
       "id": "concept.task-type",
@@ -1142,13 +676,6 @@
       "owner": "module.e2e",
       "definition": "A codebase cloned at a pinned revision into the end-to-end root, from SWE-bench's repositories unless `--any` admits another, with Concorde installed, initialized and a task open.",
       "explanation": "specs/concorde/e2e/module.md#concept.test-project"
-    },
-    {
-      "id": "concept.test-report",
-      "title": "Test report",
-      "owner": "module.implementation",
-      "definition": "The result of one test run: the Operation's configured check results for the bound Modules together with the worker's interpretation of every failure against their Specs.",
-      "explanation": "specs/concorde/execution/operations/implementation/module.md#concept.test-report"
     },
     {
       "id": "concept.typed-value",
@@ -1178,25 +705,11 @@
       ]
     },
     {
-      "id": "concept.user-documents",
-      "title": "User documents",
-      "owner": "module.views",
-      "definition": "Project-owned documentation for the project's users, published from one directory as the site's first tab, whose root page is the site's home page.",
-      "explanation": "specs/concorde/spec-tooling/views/module.md#concept.user-documents"
-    },
-    {
       "id": "concept.verification-declaration",
       "title": "Verification declaration",
       "owner": "module.spec",
       "definition": "A statement in a test's own source that names the scenario identities the test verifies.",
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.verification-declaration"
-    },
-    {
-      "id": "concept.wake-message",
-      "title": "Wake message",
-      "owner": "module.headless-sessions",
-      "definition": "The message a later round resumes the session with, naming each run the previous round left running or stopped, as the notification an interactive session receives.",
-      "explanation": "specs/concorde/e2e/sessions/module.md#concept.wake-message"
     },
     {
       "id": "concept.worker",

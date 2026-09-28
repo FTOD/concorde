@@ -21,7 +21,7 @@ like any other definition's.
 ## Usage
 
 An Operation hides the internal execution of one AI job from its caller. For `implement`, it
-prepares a grant and brief, delegates [code changes](../../glossary.json#concept.code-change) to a
+prepares a grant and brief, delegates code changes to a
 worker through Workers, and uses check results to check the changes and drive bounded repair rounds.
 The caller receives one run result without managing those rounds. At the task level, either the
 [main agent](../../glossary.json#concept.main-agent) or a
@@ -53,10 +53,10 @@ The **Operation catalog** of this version:
 | `understand` | [Understanding](understanding/module.md) | `understand` | `worker` | yes | no | [an assessment](understanding/contracts.md#contract.understanding.assessment), with a plan when asked |
 | `specify` | [Specification](specification/module.md) | `specify` | `worker` | no | Specs of the bound Modules, including documents it creates, and the registry mirror | a [Spec change](../../glossary.json#concept.spec-change) ([contract](specification/contracts.md#contract.specification.spec-change)) |
 | `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | no | code of the bound Modules, and the pending markers of the entries whose files now exist | [a code change](implementation/contracts.md#contract.implementation.code-change) |
-| `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a [test report](../../glossary.json#concept.test-report) ([contract](implementation/contracts.md#contract.implementation.test-report)) |
+| `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a test report ([contract](implementation/contracts.md#contract.implementation.test-report)) |
 | `spec_review` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | a bound run: the reviewed Modules' [review memory](../../glossary.json#concept.review-memory); unbound: no | [review findings](../../glossary.json#concept.review-finding) and a verdict ([contract](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)) |
-| `spec_panel` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer1` … `reviewer5`, `chair` | yes | no | a [panel report](../../glossary.json#concept.panel-report) merged from independent reviews, and a verdict ([contract](../../spec-tooling/spec-review/panel.md#contract.spec-review.panel-payload)) |
-| `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base`) | no | a [code review report](../../glossary.json#concept.code-review-report) with findings and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
+| `spec_panel` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer1` … `reviewer5`, `chair` | yes | no | a panel report merged from independent reviews, and a verdict ([contract](../../spec-tooling/spec-review/panel.md#contract.spec-review.panel-payload)) |
+| `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base`) | no | a code review report with findings and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
 
@@ -149,7 +149,7 @@ the run `failed`, with Workers' link as a cause of the Operation's own.
 [configured checks](../../glossary.json#concept.configured-check) read-only, for the resume rounds
 Workers drives and for providers that run checks themselves, returning each result's command, exit
 code and log as evidence. An Operation relies on a check writing nothing in the workspace outside
-its [check scratch](../../glossary.json#concept.check-scratch), and on a result being refused as
+its check scratch, and on a result being refused as
 `stale_evidence` when the input it measured changed during the run, whatever changed it. It keeps
 each [check result](../../glossary.json#concept.check-result) as its own evidence rather than a
 worker's claim, and ends the run `failed` when the check boundary cannot be established or a check

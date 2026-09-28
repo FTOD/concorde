@@ -3,24 +3,22 @@
 ## Purpose
 
 Distribution turns the Concorde checkout into something a developer can run and install: describes
-the [package](../glossary.json#concept.package), builds the generated files, routes each `concorde`
+the package, builds the generated files, routes each `concorde`
 command to its owning [Module](../glossary.json#concept.module), writes the
 [Protocol copy](../glossary.json#concept.protocol-copy) a project carries, and installs Concorde
 with the [main-session guidance](../glossary.json#concept.main-session-guidance), for Claude Code
 and, on request, for pi. It does not decide what a command does, what the
 [main agent](../glossary.json#concept.main-agent) is told, or a project's Specs and configuration —
-the [installer](../glossary.json#concept.installer) never writes Specs.
+the installer never writes Specs.
 
 ## Usage
-
-<a id="concept.package"></a>
 
 **The package.** `concorde.json` is the package's identity: name, version, licence, the roots the
 installer ships, install locations, the supported clients `claude-code` and `pi`, and the pinned
 third-party programs under `tools` (today `d2`, by release, URL and per-platform SHA-256). The build
 reads it too, so a changed descriptor makes every render stale.
 
-<a id="concept.build"></a><a id="concept.build-manifest"></a>
+<a id="concept.build-manifest"></a>
 
 **Building.** `python3 scripts/concorde.py build` expands every prompt root into `generated/`
 ([requirements](requirements.md#req.distribution.build-reachable)), `{{name}}` becoming the literal
@@ -36,8 +34,6 @@ to the same path under `generated/`; `build --check` only reports what is stale,
 nothing ([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
 Git-ignored, so a checkout always rebuilds. `protocol-manifest --write --bind-project` accepts a
 Protocol change's fresh digests, binds the configuration and refreshes this checkout's own copy.
-
-<a id="concept.command-line-interface"></a>
 
 **The command line.** `scripts/concorde.py` (or the `concorde.sh`/`concorde.ps1` wrappers) takes a
 global `--project-root` and one subcommand. In a source checkout that `uv sync` prepared, it runs
@@ -61,12 +57,10 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 | `update [--from <checkout>] [--pi]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
 
-<a id="concept.distribution-command"></a>
-
 A command is named after the part of Concorde that owns it: `task` gives the coordination
 commands, `spec-validation`, `registry`, `docsite`, `grant`, `spec-mcp` and `init` the Spec tooling
 commands, `issues` the Issues commands, and `build`, `protocol-manifest` and `update` the
-**[distribution commands](../glossary.json#concept.distribution-command)**, the only ones
+**distribution commands**, the only ones
 Distribution owns itself. Of Execution's, `task-validation`, `delivery` and `scaffold` are the
 [execution commands](../glossary.json#concept.execution-command), runs without a worker; `run`
 starts an Operation and `workflow` a workflow step.
@@ -84,7 +78,7 @@ is shipped under `.concorde/framework/scripts/available_models.py` with the runt
 its imports relative to itself and works outside a Git worktree; it lists advisory configured
 candidates without probing inference API access. Configuration validation does not call it.
 
-<a id="concept.protocol-copy"></a><a id="concept.installer"></a>
+<a id="concept.protocol-copy"></a>
 
 **Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale build,
 a machine without `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python, and a project in
@@ -151,7 +145,7 @@ every other setting untouched. The command runs the Framework copy of the worktr
 task worktree has none of its own, since Git ignores it, unless the task reinstalled Concorde there,
 so its command runs the primary worktree's copy, found through Git's common directory.
 
-<a id="concept.distribution.update"></a><a id="concept.concorde-unvalidated"></a>
+<a id="concept.distribution.update"></a>
 
 **Updating an installed Concorde.** `concorde update` runs, in update mode, the installer of the
 Concorde checkout the receipt names as its `source` (or `--from <checkout>`): it installs as the
@@ -162,7 +156,7 @@ an install made before the runtime was placed by default), creating Concorde's o
 again with uv for the new checkout's Python requirement, and refusing like an install while
 Concorde runs in the project; binds the new Protocol copy in the configuration itself, the one
 write of the project configuration an installer makes; and marks the project
-**[Concorde unvalidated](../glossary.json#concept.concorde-unvalidated)** by writing
+**Concorde unvalidated** by writing
 `.concorde/update.json`, which Git ignores, with the versions, installed commits and Protocol
 bindings before and after; the validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002`
 described next name the commits too, since between two commits of a
@@ -174,10 +168,10 @@ stops validating because of its own changes is never marked by it. The result li
 and, when the Protocol copy changed, asks for the primary branch to be merged into each, since their
 worktrees keep the previous copy until then.
 
-<a id="concept.pi-runtime"></a>Workers run on pi unless the
+Workers run on pi unless the
 [worker configuration](../glossary.json#concept.worker-configuration) chooses Claude
 Code for them, whatever program the main session is, so every install places the
-**[pi runtime](../glossary.json#concept.pi-runtime)** — the sandbox engine
+**pi runtime** — the sandbox engine
 `@anthropic-ai/sandbox-runtime` that pi workers run their commands in — under
 `.concorde/tools/pi-runtime/` by copying the package's
 `src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
@@ -237,7 +231,7 @@ and never interprets a Spec itself; a Spec core refusal prints unchanged.
 <a id="uses-views"></a>
 
 **Views** owns the docsite scaffold; `docsite` only routes `--propose`/`--apply` to it. The
-[scaffold proposal](../glossary.json#concept.scaffold-proposal) and every file
+scaffold proposal and every file
 it writes are Views' responsibility, and an `--apply` without `--proposal` is refused first. Views
 also owns the template inventory, the rule selecting which files of the package's `docsite/` are
 the template; the installer ships exactly those files, `scaffold/` included, by calling that rule

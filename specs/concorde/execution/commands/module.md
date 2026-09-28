@@ -20,7 +20,7 @@ through a [workflow](../workflows/module.md), decides what runs. The other `conc
 not execution commands, even those of Execution: `run` starts an Operation, `workflow` a
 [workflow step](../../glossary.json#concept.workflow-step), and the rest belong to Coordination, Spec tooling, Issues or Distribution, as the
 table of subcommands of the
-[command-line interface](../../glossary.json#concept.command-line-interface) shows.
+command-line interface shows.
 
 ## Usage
 
@@ -44,9 +44,7 @@ refused with `binding_required` and changes nothing. Its run result has `kind` `
 `worker` and no `worker_runs`, and when it is not `ok` its error link has the level `command`.
 `concorde run` naming an execution command is a command-line error that names the command to use.
 
-<a id="concept.command-catalog"></a>
-
-The **[command catalog](../../glossary.json#concept.command-catalog)** is the fixed table, in
+The **command catalog** is the fixed table, in
 Concorde's code, of the execution commands and their providers. A project cannot extend it: a new
 execution command is a change to Concorde, a new row and a definition in its providing Module. The
 catalog of this version:
@@ -83,7 +81,6 @@ execution command whose step calls Check execution, as an Operation's step does.
 
 ```d2
 commands: Commands {
-  catalog: Command catalog
   command: Execution command
   table: Command table {
     "src/concorde/commands/"
@@ -91,8 +88,7 @@ commands: Commands {
   validation: Validation
   delivery: Delivery
   scaffold: Scaffold
-  catalog -> command: lists
-  table -> catalog: realizes
+  table -> command: lists
 }
 ```
 
@@ -129,7 +125,7 @@ delivery commits are the only record of a delivery.
 
 **Scaffold** provides `scaffold`, which applies one
 [decomposition proposal](../../glossary.json#concept.decomposition-proposal) of an `ok`
-[survey](../../glossary.json#concept.survey) run and creates the proposed child Modules as stubs
+survey run and creates the proposed child Modules as stubs
 whose entries state the survey's purpose and say plainly that their behaviour and design are not
 yet specified. Adding Modules is a project-level change a worker may never make, so deterministic
 code makes it from the proposal a worker only suggested.

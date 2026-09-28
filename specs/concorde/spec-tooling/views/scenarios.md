@@ -157,7 +157,7 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 
 - GIVEN a loaded project model
 - WHEN the publisher stages it
-- THEN it replaces the staged content under `docsite/.generated/` with one Markdown page per document, carrying its route, title and [reading collection](../../glossary.json#concept.reading-collection), and one sidebar per reading collection
+- THEN it replaces the staged content under `docsite/.generated/` with one Markdown page per document, carrying its route, title and reading collection, and one sidebar per reading collection
 - AND each page's table of contents lists its level-2 and level-3 headings
 - AND only after every page and sidebar is written does it write the staging identity record with the source digest
 
@@ -183,14 +183,14 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 
 ### scenario.views.validate-candidate-mismatch — A stale or incomplete candidate is rejected
 
-- GIVEN a candidate whose [site build manifest](../../glossary.json#concept.site-build-manifest) version, source digest or page inventory differs from the current sources, or which contains an internal link to a missing page or anchor
+- GIVEN a candidate whose site manifest version, source digest or page inventory differs from the current sources, or which contains an internal link to a missing page or anchor
 - WHEN the candidate is validated
 - THEN validation fails, naming the problem and, for a link, the referring page and destination
 - BUT it repairs nothing and promotes nothing
 
 ### scenario.views.publish-preserves-previous-on-failure — A failed build keeps the published site
 
-- GIVEN a [published site](../../glossary.json#concept.published-site) and a build in which sources change during the build, a registered page is not rendered, a link does not resolve or a diagram fails to render
+- GIVEN a published site and a build in which sources change during the build, a registered page is not rendered, a link does not resolve or a diagram fails to render
 - WHEN the build checks the candidate
 - THEN promotion is refused and the candidate is deleted
 - AND the published site is unchanged
@@ -223,7 +223,7 @@ See [req.views.preview-follows-specs](requirements.md#req.views.preview-follows-
 
 - GIVEN a document of Module A that links, by relative source path and fragment, to a definition in a document owned by Module B
 - WHEN the site is built and validated
-- THEN the rendered link leads to the [canonical page](../../glossary.json#concept.canonical-page) of B's document and the requested anchor exists there
+- THEN the rendered link leads to the canonical page of B's document and the requested anchor exists there
 
 A document has only its canonical route, so moving a document requires updating the links to it;
 a link to a page or anchor that does not exist stops promotion, as
@@ -236,9 +236,9 @@ a link to a page or anchor that does not exist stops promotion, as
 - GIVEN `docsite/site.json` sets `userDocs.path` to a directory whose root page is `README.md`, `README.mdx`, `index.md` or `index.mdx`
 - WHEN the site is built
 - THEN the root page is the site's home page at `/`, and every other document is published at its path in the directory
-- AND the first navigation tab, labelled `userDocs.label` or "[User documents](../../glossary.json#concept.user-documents)", leads to them, with a sidebar that follows the directory's folders
-- AND the Module documents tab, the Implementation documents tab when any document is role `implementation`, and one tab per configured [custom docs](../../glossary.json#concept.custom-docs) collection follow in that order
-- BUT user documents are not Spec pages, are not listed in the site build manifest, belong to no Module and grant no context
+- AND the first navigation tab, labelled `userDocs.label` or "User documents", leads to them, with a sidebar that follows the directory's folders
+- AND the Module documents tab, the Implementation documents tab when any document is role `implementation`, and one tab per configured custom docs collection follow in that order
+- BUT user documents are not Spec pages, are not listed in the site manifest, belong to no Module and grant no context
 
 ### scenario.views.publish-homepage-default — No user documents configured
 
@@ -250,7 +250,7 @@ a link to a page or anchor that does not exist stops promotion, as
 ### scenario.views.user-docs-invalid — An invalid user documents entry is refused
 
 - GIVEN `docsite/site.json` contains a `userDocs` value that is not an object with a relative `path` and an optional nonblank `label`, or still contains the removed `homepage` field
-- WHEN the [site identity](../../glossary.json#concept.site-identity) is loaded
+- WHEN the site identity is loaded
 - THEN loading fails with an error naming `docsite/site.json` and the invalid field, and a `homepage` field is told to become the root page of user documents
 - AND no candidate is promoted
 
@@ -266,7 +266,7 @@ a link to a page or anchor that does not exist stops promotion, as
 - GIVEN `docsite/site.json` configures `customDocs` collections, or the project provides `docsite/custom-docs/index.ts`
 - WHEN the site is built
 - THEN each collection and each extension item has its own navigation entry after the Spec tabs
-- AND custom pages are not listed in the site build manifest and belong to no Module
+- AND custom pages are not listed in the site manifest and belong to no Module
 
 ### scenario.views.custom-docs-refused — Invalid custom docs fail the build
 
@@ -289,7 +289,7 @@ a link to a page or anchor that does not exist stops promotion, as
 
 - GIVEN an initialized project and optional `--title`, `--repository`, `--url`, `--base-url` and `--github-pages` options
 - WHEN `concorde docsite --propose` runs
-- THEN it returns a deterministic [scaffold proposal](../../glossary.json#concept.scaffold-proposal) listing the template files, a new `docsite/site.json` and, with `--github-pages`, the deployment workflow
+- THEN it returns a deterministic scaffold proposal listing the template files, a new `docsite/site.json` and, with `--github-pages`, the deployment workflow
 - AND it reports whether Node.js 20 or newer and npm are present, without changing the proposal
 - AND it lists already existing destinations as conflicts
 - BUT it writes nothing to the project

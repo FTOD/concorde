@@ -22,7 +22,6 @@ writer: Transaction writer
 types: Typed values
 
 registry: Registry
-document: Document
 binding: Protocol binding
 sets: Boundary set
 impact: Impact index
@@ -32,10 +31,8 @@ grant: Grant
 identity: Context identity
 value: Typed value
 transaction: File transaction
-proposal: Initial proposal
 
 model -> registry: loads
-model -> document: loads
 model -> binding: verifies
 model -> sets: computes
 model -> impact: computes
@@ -48,7 +45,6 @@ grants -> grant: computes
 grants -> identity: computes
 types -> value: checks
 writer -> transaction: applies
-init -> proposal: proposes
 init -> writer: writes through
 init -> validator: validates the result with
 ```
@@ -56,7 +52,7 @@ init -> validator: validates the result with
 The commands named below are `concorde` commands; in the Concorde checkout itself they run as
 `python3 scripts/concorde.py`.
 
-<a id="concept.registry"></a><a id="concept.document"></a><a id="concept.protocol-binding"></a>
+<a id="concept.registry"></a><a id="concept.protocol-binding"></a>
 
 **Loading.** Every program that needs the Specs loads the configuration `.concorde/config.json`, the
 [Protocol binding](../../glossary.json#concept.protocol-binding), the
@@ -112,7 +108,7 @@ update and the agents working on the project are configured by it. The
 at launch and the Spec MCP server returns the same computation; Spec core neither stores nor
 enforces it.
 
-<a id="concept.typed-value"></a><a id="concept.file-transaction"></a><a id="concept.initial-proposal"></a>
+<a id="concept.typed-value"></a><a id="concept.file-transaction"></a>
 
 **Shared services.** Every structured value Modules exchange is a [typed
 value](../../glossary.json#concept.typed-value) `{type_id, schema_version, data}` whose owner

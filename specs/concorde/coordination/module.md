@@ -34,7 +34,7 @@ developer.
 Work does not always go that way. A result that is not `ok` is read with its whole [error
 chain](../glossary.json#concept.error-chain), then repaired within the task or escalated with a link
 of its own: a task session escalates to the main agent, which decides ordinary questions itself
-under the [escalation policy](../glossary.json#concept.escalation-policy) and asks the developer
+under the escalation policy and asks the developer
 only for decisions with major impact. A merge refused for a conflict is resolved in the task
 worktree by merging the primary branch into the task branch and delivering again, a merge whose
 checks fail is undone and the failure handled as new work, and a task that reached its goal without

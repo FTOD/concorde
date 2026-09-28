@@ -9,14 +9,14 @@ defect, places it in the right [boundary case](../../glossary.json#concept.bound
 it completely as a [defect report](../../glossary.json#concept.defect-report), and neither works
 around it nor changes Concorde. Each [dogfood
 scenario](../../glossary.json#concept.dogfood-scenario) injects one known
-[fault](../../glossary.json#concept.fault) into a clone of this checkout's Concorde, makes a develop
+fault into a clone of this checkout's Concorde, makes a develop
 install of a real project from that clone, runs a headless main session there with an ordinary
 request of a developer, and evaluates what the session left behind. It serves the people developing
 Concorde only; the checkout itself is never changed.
 
 ## Usage
 
-<a id="concept.dogfood-scenario"></a><a id="concept.fault"></a>
+<a id="concept.dogfood-scenario"></a>
 
 **A scenario.** `scripts/e2e/scenarios/write-hook-rw-directories.json` is the first. Its fault
 makes the workers' write checks ignore writable directory entries: the Claude Code
@@ -54,8 +54,6 @@ the workers run on pi under either client. A fault still breaks what both
 [worker backends](../../glossary.json#concept.worker-backend) share, or each backend's part alike,
 so that it holds whichever backend a worker configuration chooses.
 
-<a id="concept.scenario-directory"></a>
-
 **Running one.**
 
 ```text
@@ -65,8 +63,8 @@ python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directori
 python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
 ```
 
-`prepare` makes the **[scenario directory](../../glossary.json#concept.scenario-directory)** under
-the [end-to-end root](../../glossary.json#concept.end-to-end-root): it clones this checkout's
+`prepare` makes the **scenario directory** under
+the end-to-end root: it clones this checkout's
 committed Concorde into `concorde/`, applies the fault's edits there and commits them as one commit
 of their own, builds that clone, clones the project at its revision into `project/`, makes a develop
 install there from the clone without `d2`, with `--pi` for a pi scenario or `--client pi`,
@@ -85,8 +83,6 @@ scenario directory that already exists with `scenario_exists`; `--name` gives th
 name under the end-to-end root, so one scenario can be prepared several times. `run` and `evaluate`
 refuse a directory without a readable `dogfood.json` with `not_prepared`. `run` may be repeated:
 each time it adds a session under `sessions/` and evaluates again, replacing `evaluation.json`.
-
-<a id="concept.evaluation"></a>
 
 **The evaluation.** `evaluate`, and `run` after its session, writes `evaluation.json` into the
 scenario directory. It names the scenario and the report files found and holds one entry per check,

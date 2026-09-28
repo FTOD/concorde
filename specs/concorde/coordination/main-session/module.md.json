@@ -64,7 +64,6 @@
         "meaning": "#uses-issues",
         "relies_on": [
           "concept.issue",
-          "concept.issue-status",
           "concept.issue-revision",
           "contract.issues.report",
           "contract.issues.receipt"
@@ -72,10 +71,7 @@
       },
       {
         "target": "module.spec-mcp",
-        "meaning": "#uses-spec-mcp",
-        "relies_on": [
-          "concept.spec-mcp-server"
-        ]
+        "meaning": "#uses-spec-mcp"
       },
       {
         "target": "module.commands",

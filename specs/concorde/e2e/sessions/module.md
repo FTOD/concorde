@@ -13,7 +13,7 @@ here, never in the [main-session guidance](../../glossary.json#concept.main-sess
 
 ## Usage
 
-<a id="concept.headless-session"></a><a id="concept.round"></a>
+<a id="concept.headless-session"></a>
 
 **Running a session.** A **headless session** is one main session run without a person, in one
 or more **rounds**: each round is one `claude -p` or `pi -p` process, the first given the
@@ -37,16 +37,14 @@ otherwise. `--client` accepts only `claude` and `pi`, and the driver refuses any
 `run --via claude`, is a headless session of one workflow prompt, kept under
 `.concorde/runs/e2e/<task>-claude/`, and a
 [dogfood scenario](../../glossary.json#concept.dogfood-scenario) runs its prompt as one, kept under
-its [scenario directory](../../glossary.json#concept.scenario-directory)'s `sessions/<time>/`,
+its scenario directory's `sessions/<time>/`,
 which the scenario runner passes in place of the default.
-
-<a id="concept.headless-note"></a>
 
 **What the session is told.** A Claude Code round is started with the main agent's tools granted on
 the command line (Bash, Read, Write, Edit, Glob, Grep, Skill, TodoWrite, EnterWorktree and
 ExitWorktree, or a workflow's own list), since an untrusted project's allow rules are ignored, with
 `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`, which keeps a background workflow alive, and with the
-**[headless note](../../glossary.json#concept.headless-note)** appended to its system prompt: nobody
+**headless note** appended to its system prompt: nobody
 answers questions, a command left in the background is stopped when the turn ends and nothing wakes
 the session, so Concorde commands run in the foreground, and a run still running at the end of a
 round is followed by a wake-up
@@ -69,8 +67,6 @@ session ends its turn where it would otherwise wait. The project must have been 
 `--pi`. pi reports each round's own cost, which the record adds up; Claude Code reports the
 session's total.
 
-<a id="concept.wake-message"></a>
-
 **Waking the session.** When a round ends, the tool looks at the
 [runs](../../glossary.json#concept.run) of Operations and
 [execution commands](../../glossary.json#concept.execution-command) started since the session began
@@ -86,7 +82,7 @@ lives is still running; a run whose result has the error code `cancelled` and wa
 30 seconds of the round's end was stopped by that end. These two are the round's **unsettled**
 runs. If there are none, the session is **idle** and ends. Otherwise the tool waits
 until every running run has finished or its runner has gone, then, when a round is left, resumes
-the same session with a **[wake message](../../glossary.json#concept.wake-message)** naming each
+the same session with a **wake message** naming each
 run, its kind, name and workspace, how it ended and its result file, saying of a stopped run that
 the turn's end stopped it and of a run whose runner went without writing a result that it ended
 without one ([requirements](requirements.md#req.headless-sessions.wake)). The wait lasts at most an

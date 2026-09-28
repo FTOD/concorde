@@ -144,12 +144,6 @@
       "source": "realization.spec-review.panel",
       "verb": "shares the checklist of",
       "target": "realization.spec-review.checklist"
-    },
-    {
-      "type": "relates",
-      "source": "realization.spec-review.operation",
-      "verb": "checks the accounting of",
-      "target": "concept.panel-report"
     }
   ],
   "extensions": {}

@@ -64,13 +64,6 @@
       ]
     }
   ],
-  "relations": [
-    {
-      "type": "relates",
-      "source": "realization.code-review.operation",
-      "verb": "produces",
-      "target": "concept.code-review-report"
-    }
-  ],
+  "relations": [],
   "extensions": {}
 }

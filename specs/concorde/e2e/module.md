@@ -32,12 +32,12 @@ python3 scripts/e2e/e2e.py watch <project>
 Its children add `session` ([Headless sessions](sessions/module.md)), `repair-specs` and `grade`
 ([SWE-bench cases](cases/module.md)) and `dogfood` ([Dogfood scenarios](dogfood/module.md)).
 
-<a id="concept.test-project"></a><a id="concept.end-to-end-root"></a>
+<a id="concept.test-project"></a>
 
 **Preparing a [test project](../glossary.json#concept.test-project).** `repos` lists the
 repositories SWE-bench's harness names, read from the vendored `references/swe-bench/`.
 `prepare psf/requests --rev v2.31.0` fetches that revision, a tag, a branch or a commit, without
-earlier history into the **[end-to-end root](../glossary.json#concept.end-to-end-root)**, under
+earlier history into the **end-to-end root**, under
 `--name` or the repository's name, checks it out as a `main` branch, installs Concorde from this
 checkout without `d2`, initializes it, commits and opens a task bound to the root
 [Module](../glossary.json#concept.module), which makes a **test project**. The task is `--task`
@@ -56,8 +56,6 @@ marks each named project's repository root trusted in Claude Code's configuratio
 (or under `CLAUDE_CONFIG_DIR`), after backing the file up once. It changes the developer's own
 configuration, so the developer runs it; a headless run does not need it.
 
-<a id="concept.headless-run"></a><a id="concept.driver-run"></a>
-
 **Running a workflow.** `run` runs a workflow to its end in the worktree of the test project's
 task `--task` (default `adopt`), whose
 [workspace binding](../glossary.json#concept.workspace-binding) the workflow and
@@ -67,14 +65,14 @@ workflow saved last in its [workflow record](../glossary.json#concept.workflow-r
 under `.concorde/runs/workflows/<task>/` of the project, and logs the session under
 `.concorde/runs/e2e/`:
 
-- A **[headless run](../glossary.json#concept.headless-run)** (`--via claude`) runs, as a
+- A **headless run** (`--via claude`) runs, as a
   [headless session](../glossary.json#concept.headless-session) kept under
   `.concorde/runs/e2e/<task>-claude/`, a main session started in the task's worktree and asked to
   run the installed workflow there and report with `concorde workflow report`. Two testing
   conditions are handled for it: `claude -p` otherwise stops a background workflow after ten idle
   minutes, so the session keeps `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`; and an untrusted project
   ignores its allow rules, so the workflow and its step commands are granted with `--allowedTools`.
-- A **[driver run](../glossary.json#concept.driver-run)** (`--via driver`) runs the rendered pi
+- A **driver run** (`--via driver`) runs the rendered pi
   script of the workflow from the runtime the installer places under `.concorde/framework/`, which
   every install carries with or without `--pi`, and refuses with `script_missing` when that script
   is absent. It runs the script under the stand-in runtime of the Workflows tests, whose

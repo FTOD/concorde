@@ -16,5 +16,5 @@ edit, its file and how often the old text was found, before committing anything.
 ### req.dogfood-scenarios.judged-from-files — The evaluation reads files, not the session
 
 The evaluation SHALL decide every check from the files of the
-[scenario directory](../../glossary.json#concept.scenario-directory) and the results of commands run
+scenario directory and the results of commands run
 on them, never from the session's messages.

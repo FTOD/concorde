@@ -64,19 +64,6 @@
       ]
     }
   ],
-  "relations": [
-    {
-      "type": "relates",
-      "source": "realization.implementation.operations",
-      "verb": "produces",
-      "target": "concept.code-change"
-    },
-    {
-      "type": "relates",
-      "source": "realization.implementation.operations",
-      "verb": "produces",
-      "target": "concept.test-report"
-    }
-  ],
+  "relations": [],
   "extensions": {}
 }

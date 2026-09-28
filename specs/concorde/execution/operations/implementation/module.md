@@ -7,7 +7,7 @@ against its [Spec](../../../glossary.json#concept.spec). It provides two Operati
 lets a worker change the bound Modules' code toward a stated goal, then audits it and runs the
 configured checks, resuming the worker with failures for a limited number of rounds; `test` runs the
 checks itself and lets a read-only worker interpret the results into a
-[test report](../../../glossary.json#concept.test-report). Neither worker ever changes a Spec — a
+test report. Neither worker ever changes a Spec — a
 missing or contradictory promise stops the run with a
 [Spec gap](../../../glossary.json#concept.spec-gap) — and `implement`'s only Spec edit is the
 [Operation](../../../glossary.json#concept.operation) clearing a pending marker once its file
@@ -37,10 +37,8 @@ declares `src/concorde/issues/severity.py` pending, `implement --goal "accept an
 severity"` lets the worker create it and change the other Issues files, returning once the checks
 pass or the rounds run out.
 
-<a id="concept.code-change"></a>
-
 `implement` returns a [run result](../../../glossary.json#concept.run-result) whose `output` is
-a **[code change](../../../glossary.json#concept.code-change)**, defined by the
+a **code change**, defined by the
 [code change contract](contracts.md#contract.implementation.code-change). `status` is `ok` when the
 last round's checks passed; `blocked` when the worker reported a Spec gap or another problem it
 cannot solve within its grant, such as a change that needs a file only an unbound Module binds,
@@ -52,8 +50,6 @@ unbound Module, which is refused before any worker starts. A run with
 no configured check ends `ok` with no check evidence, which the result states, and the caller
 should run `test` or add checks. Whenever the worker returned a result, the output holds the code
 change whatever the status, and edits stay uncommitted.
-
-<a id="concept.test-report"></a>
 
 `test` returns a **test report**, defined by the
 [test report contract](contracts.md#contract.implementation.test-report). `--focus` narrows what the

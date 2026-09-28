@@ -16,7 +16,7 @@ shapes are in the [contracts](contracts.md).
 - AND the registry has both records
 - BUT the project configuration and the checks files are unchanged, and the proposed check stays in the survey's proposal
 - AND the worktree validates with no new error
-- AND the result is `ok`, of kind `command` with no worker, with a [scaffold record](../../../glossary.json#concept.scaffold-record) listing every file written
+- AND the result is `ok`, of kind `command` with no worker, with a scaffold record listing every file written
 
 ### scenario.scaffold.stale — A proposal overtaken by the worktree
 

@@ -83,57 +83,9 @@
     },
     {
       "type": "relates",
-      "source": "realization.views.publisher",
-      "verb": "reads",
-      "target": "concept.site-identity"
-    },
-    {
-      "type": "relates",
-      "source": "realization.views.publisher",
-      "verb": "publishes each document as",
-      "target": "concept.canonical-page"
-    },
-    {
-      "type": "relates",
-      "source": "realization.views.publisher",
-      "verb": "publishes first, as the home page",
-      "target": "concept.user-documents"
-    },
-    {
-      "type": "relates",
-      "source": "realization.views.publisher",
-      "verb": "publishes beside the Specs",
-      "target": "concept.custom-docs"
-    },
-    {
-      "type": "relates",
-      "source": "realization.views.publisher",
-      "verb": "builds",
-      "target": "concept.publication-candidate"
-    },
-    {
-      "type": "relates",
-      "source": "realization.views.publisher",
-      "verb": "writes",
-      "target": "concept.site-build-manifest"
-    },
-    {
-      "type": "relates",
-      "source": "realization.views.scaffold",
-      "verb": "returns",
-      "target": "concept.scaffold-proposal"
-    },
-    {
-      "type": "relates",
       "source": "realization.views.scaffold",
       "verb": "copies",
       "target": "realization.views.publisher"
-    },
-    {
-      "type": "relates",
-      "source": "realization.views.scaffold",
-      "verb": "creates",
-      "target": "concept.site-identity"
     },
     {
       "type": "relates",

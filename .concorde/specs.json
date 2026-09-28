@@ -901,7 +901,6 @@
           "meaning": "#uses-issues",
           "relies_on": [
             "concept.issue",
-            "concept.issue-status",
             "concept.issue-revision",
             "contract.issues.report",
             "contract.issues.receipt"
@@ -909,10 +908,7 @@
         },
         {
           "target": "module.spec-mcp",
-          "meaning": "#uses-spec-mcp",
-          "relies_on": [
-            "concept.spec-mcp-server"
-          ]
+          "meaning": "#uses-spec-mcp"
         },
         {
           "target": "module.commands",
@@ -965,7 +961,6 @@
           "target": "module.views",
           "meaning": "#uses-views",
           "relies_on": [
-            "concept.scaffold-proposal",
             "req.views.template-inventory",
             "contract.views.scaffold-proposal"
           ]
@@ -1232,10 +1227,7 @@
       "uses": [
         {
           "target": "module.distribution",
-          "meaning": "#uses-distribution",
-          "relies_on": [
-            "concept.command-line-interface"
-          ]
+          "meaning": "#uses-distribution"
         },
         {
           "target": "module.specification",
@@ -1248,7 +1240,6 @@
           "target": "module.spec-review",
           "meaning": "#uses-spec-review",
           "relies_on": [
-            "concept.spec-review",
             "concept.review-verdict"
           ]
         }
@@ -1291,10 +1282,7 @@
         },
         {
           "target": "module.distribution",
-          "meaning": "#uses-distribution",
-          "relies_on": [
-            "concept.installer"
-          ]
+          "meaning": "#uses-distribution"
         },
         {
           "target": "module.issues",
@@ -1320,10 +1308,7 @@
       "uses": [
         {
           "target": "module.distribution",
-          "meaning": "#uses-distribution",
-          "relies_on": [
-            "concept.installer"
-          ]
+          "meaning": "#uses-distribution"
         },
         {
           "target": "module.main-session",
@@ -1605,7 +1590,6 @@
           "target": "module.adoption",
           "meaning": "#uses-adoption",
           "relies_on": [
-            "concept.survey",
             "concept.decomposition-proposal",
             "contract.adoption.decomposition",
             "req.adoption.proposal-checked"
