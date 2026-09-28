@@ -21,10 +21,6 @@ _CURRENT = contextvars.ContextVar("concorde_trace", default=None)
 _PARENT = contextvars.ContextVar("concorde_span", default=None)
 COUNTS = frozenset(
     {
-        "input_tokens",
-        "output_tokens",
-        "cache_read_tokens",
-        "cache_write_tokens",
         "prompt_bytes",
         "context_bytes",
         "items",
@@ -34,10 +30,7 @@ COUNTS = frozenset(
 )
 LABELS = frozenset(
     {
-        "operation",
         "stage",
-        "invocation_id",
-        "launch_invocation_id",
         "target_id",
         "change_id",
         "context_id",
@@ -293,6 +286,4 @@ def summarize(spans):
         "complete": complete,
         "summed_span_seconds": summed / 1e9,
         "covered_seconds_by_process": unions,
-        "wall_seconds": None,
-        "server_thinking_seconds": None,
     }

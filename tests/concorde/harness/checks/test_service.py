@@ -13,16 +13,20 @@ from pathlib import Path
 from threading import Thread
 from unittest.mock import patch
 
+from concorde.errors import ERROR_SCHEMA
 from concorde.harness.check_executor import execute_check
 from concorde.harness.checks import (
     affected_modules,
     check_revision,
     environment,
+    measured_digest,
     project_python,
     run_checks,
+    service_error,
 )
 from concorde.spec.repository import SpecRepository
 from concorde.spec.repository_base import SpecError
+from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject
 from tests.concorde.support.environment import child_environment
@@ -341,6 +345,25 @@ assert result['status'] == 'passed', result
         log = (self.logs / "check.a.selected.log").read_text()
         self.assertIn("selected tests: src/a/test_answer.py::test_answer", log)
         self.assertIn("['src/a/test_answer.py::test_answer']", log)
+        # Its measured digest names the selection: other Modules or a changed test file are
+        # other input, although the check's own Module is unchanged.
+        check = config["checks"][0]
+        alone = measured_digest(self.repository(), check, ["module.a"])
+        self.assertEqual(alone, result["source_digest"])
+        self.assertNotEqual(check_revision(self.repository(), "module.b"), alone)
+        [both] = run_checks(
+            self.root, modules=["module.a", "module.b"], log_directory=self.logs
+        )
+        self.assertEqual(
+            measured_digest(self.repository(), check, ["module.b", "module.a"]),
+            both["source_digest"],
+        )
+        self.assertNotEqual(alone, both["source_digest"])
+        with (self.root / "src/a/test_answer.py").open("a") as stream:
+            stream.write("# changed\n")
+        self.assertNotEqual(
+            alone, measured_digest(self.repository(), check, ["module.a"])
+        )
         # A readiness check runs only when readiness is decided.
         results = run_checks(
             self.root,
@@ -376,6 +399,18 @@ assert result['status'] == 'passed', result
             with self.assertRaises(SpecError) as raised:
                 run_checks(self.root, modules=["module.a"], log_directory=self.logs)
         self.assertEqual("stale_evidence", raised.exception.code)
+        error = service_error(raised.exception)
+        validate(error, ERROR_SCHEMA)
+        self.assertEqual(
+            ("component", "Check execution", "stale_evidence", "environment"),
+            (
+                error["level"],
+                error["actor"],
+                error["code"],
+                error["unhandled"]["reason"],
+            ),
+        )
+        self.assertIn("check.a", error["detail"])
 
     @verifies("scenario.checks.service-refused")
     def test_a_refused_check_has_no_result(self):
@@ -390,6 +425,11 @@ assert result['status'] == 'passed', result
                 run_checks(self.root, modules=["module.a"], log_directory=self.logs)
         self.assertEqual("check_sandbox_unavailable", raised.exception.code)
         self.assertIn("why", (self.logs / "check.a.log").read_text())
+        error = service_error(raised.exception)
+        self.assertEqual(
+            ("check_sandbox_unavailable", "environment"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
 
     @verifies("scenario.checks.service-input-missing")
     def test_a_missing_input_stops_before_any_command(self):
@@ -400,6 +440,17 @@ assert result['status'] == 'passed', result
             run_checks(self.root, modules=["module.a"], log_directory=self.logs)
         self.assertIn("checks/missing.py", str(raised.exception))
         self.assertFalse((self.logs / "check.a.log").exists())
+        # A wrong configuration is input only its sender can correct.
+        error = service_error(raised.exception)
+        self.assertEqual(
+            ("check_input_missing", "input"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        system = service_error(OSError("disk"))
+        self.assertEqual(
+            ("system_error", "environment"),
+            (system["code"], system["unhandled"]["reason"]),
+        )
 
 
 if __name__ == "__main__":

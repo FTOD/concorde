@@ -572,7 +572,10 @@ class RunContext:
         )
 
     def checks_unavailable(self, error, modules: list[str] | None = None) -> Stop:
-        """Stop ``failed`` because Check execution could not run the configured checks."""
+        """Stop ``failed`` because Check execution could not run the configured checks; its own
+        link is the cause."""
+        from ..harness.checks import service_error
+
         code = getattr(error, "code", None) or "checks_unavailable"
         names = ", ".join(modules or self.modules)
         return self.fail(
@@ -585,15 +588,7 @@ class RunContext:
             explanation="the Operation runs checks through Check execution and cannot repair "
             "their configuration or their sandbox",
             evidence=[evidence("checks_unavailable", code, str(error))],
-            causes=[
-                component(
-                    "Check execution",
-                    code,
-                    str(error),
-                    "environment",
-                    "a check that cannot run as configured produces no result",
-                )
-            ],
+            causes=[service_error(error)],
             options=[
                 "repair the check configuration",
                 "run the Operation on a host that supports the check sandbox",

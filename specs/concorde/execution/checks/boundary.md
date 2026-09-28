@@ -9,10 +9,8 @@ explains what the boundary is for and what it deliberately leaves out.
 ```python
 execute_check(project_root: Path, argv: Sequence[str], *, timeout: float,
               environment: Mapping[str, str],
-              evidence: Callable[[Path | None, CheckResult | None, BaseException | None], None] | None = None,
               cancel_event: threading.Event | None = None) -> CheckResult
-CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False,
-            stdout_bytes: int | None = None, stderr_bytes: int | None = None)
+CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False)
 ```
 
 `execute_check` in `src/concorde/harness/check_executor.py` is trusted host code; no argument comes
@@ -31,11 +29,9 @@ this runner's command outcome, not the [check result](../../glossary.json#concep
 | --- | --- |
 | Exit | `returncode` is the exit status, or `128 + signal` for a signal |
 | Timeout (sandbox setup included) | `timed_out=True`, `returncode=-1`, captured partial output |
-| Cancellation (`cancel_event` set, or interrupt) | `CheckCancelled(KeyboardInterrupt)` after cleanup, carrying the drained output and observed byte counts |
+| Cancellation (`cancel_event` set, or interrupt) | `CheckCancelled(KeyboardInterrupt)` after cleanup, carrying the drained output |
 
-`evidence`, when given, is called after every descendant has ended and the pipes are drained but
-before the scratch is removed, with the scratch path and the result or exception; with it, each
-output stream keeps only its last 2 MiB while counting all bytes.
+Every outcome carries both output streams whole; the check service saves them as the check's log.
 
 `CHECK_POLICY = "project-read-only-v1"` names the boundary. The policy name is part of every
 [configured check](../../glossary.json#concept.configured-check)'s measured digest, the
@@ -162,5 +158,5 @@ started a new session or reset their parent-death signal.
 
 - GIVEN a running command
 - WHEN the caller sets its cancel event or the host is interrupted
-- THEN the host terminates the whole process tree, drains both pipes and raises a cancellation carrying the drained output and byte counts
-- AND the evidence callback, when given, still runs before the scratch is removed
+- THEN the host terminates the whole process tree, drains both pipes and raises a cancellation carrying the drained output
+- AND the scratch is removed

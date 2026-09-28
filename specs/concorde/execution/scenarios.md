@@ -69,7 +69,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - WHEN a second run is started in the same workspace
 - THEN no step of the second run runs and its result is `failed` with `refused` evidence naming `workspace_busy` and the run holding the lock
 - AND its error gives `decision` as the reason, with the options to wait for the running run or cancel it
-- AND once the first run has written its result, a new run is admitted
+- AND once the first run has ended, a new run is admitted and finds the first run's result already written, since a run writes its result before it releases the lock
 
 ### scenario.execution.removed-module — A Module the workspace removed is left out
 

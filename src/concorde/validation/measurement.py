@@ -4,8 +4,8 @@ The changed paths are everything Git reports as different between the base commi
 tree, staged or not, plus the untracked paths Git does not ignore. A submodule counts as changed
 when its checked-out commit differs, never for changes inside its own worktree: the task commits
 only the submodule's commit, and looking inside may need objects a partial clone has to fetch
-over a network the caller may not have. Each gets the SHA-256 digest of
-its bytes, or ``None`` when it no longer exists. The input digest covers the head and base
+over a network the caller may not have. Each gets its Git file mode and the SHA-256 digest of
+its bytes, both ``None`` when it no longer exists. The input digest covers the head and base
 commits, the changed paths and the digest of ``.concorde/config.json``. Delivery measures through
 this module too, so both sides compute the same digest for the same worktree.
 """
@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 import subprocess
 from pathlib import Path
 
@@ -118,6 +119,21 @@ def path_digest(worktree: Path, relative: str) -> str | None:
     return None
 
 
+def path_mode(worktree: Path, relative: str) -> str | None:
+    """Git's file mode of one changed path in the worktree; ``None`` when it is gone.
+
+    A regular file is ``100755`` when its owner may execute it, Git's own rule, else ``100644``.
+    """
+    path = worktree / relative
+    if path.is_symlink():
+        return "120000"
+    if path.is_file():
+        return "100755" if path.stat().st_mode & stat.S_IXUSR else "100644"
+    if path.is_dir():  # a submodule
+        return "160000"
+    return None
+
+
 def canonical(value) -> bytes:
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
@@ -134,7 +150,11 @@ def measure(worktree: Path, base: str) -> dict:
         .strip()
     )
     changed = [
-        {"path": path, "digest": path_digest(worktree, path)}
+        {
+            "path": path,
+            "mode": path_mode(worktree, path),
+            "digest": path_digest(worktree, path),
+        }
         for path in changed_paths(worktree, base_commit)
     ]
     config = worktree / ".concorde/config.json"
@@ -181,6 +201,7 @@ __all__ = [
     "head_commit",
     "measure",
     "path_digest",
+    "path_mode",
     "sha256",
     "special_paths",
 ]

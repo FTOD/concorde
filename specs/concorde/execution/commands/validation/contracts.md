@@ -19,7 +19,11 @@ it is bound to.
   the worktree: a regular file's bytes; for a symbolic link, `symlink:` followed by its link text;
   for a directory, which is a submodule or another repository, `gitlink:` followed by the
   hexadecimal name of the commit it has checked out. It is `null` when the path no longer exists.
-  File modes are not measured.
+- A changed path's **mode** is its Git file mode in the worktree, as six octal digits: `100755`
+  for a regular file whose owner may execute it, `100644` for any other regular file, `120000` for
+  a symbolic link and `160000` for a directory, which is a submodule; it is `null` when the path no
+  longer exists. Setting or clearing a file's execute bit therefore changes the input digest even
+  when its bytes stay the same.
 - The **configuration digest** is the digest of `.concorde/config.json` in the workspace.
 - The **input digest** is the digest of the canonical JSON (sorted keys, no insignificant
   whitespace, UTF-8) of the object `{"head", "base", "changed", "config_digest"}` with the values
@@ -33,7 +37,7 @@ the same workspace.
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -81,12 +85,28 @@ the same workspace.
               "additionalProperties": false,
               "required": [
                 "path",
+                "mode",
                 "digest"
               ],
               "properties": {
                 "path": {
                   "type": "string",
                   "minLength": 1
+                },
+                "mode": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "enum": [
+                        "100644",
+                        "100755",
+                        "120000",
+                        "160000"
+                      ]
+                    }
+                  ]
                 },
                 "digest": {
                   "anyOf": [
@@ -248,7 +268,7 @@ the same workspace.
       }
     }
   },
-  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its run directory. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. confirmations lists every pending realization entry whose file exists, with the metadata document declaring it and that document's digest, for Delivery to clear; blocking and warnings are those of the Specs as they read with these markers cleared. checks lists one result per configured check run, in run order, with measured_digest the check revision Check execution measured before the check ran, exit_code null on timeout and log the path of its saved log in the run directory, relative to the directory that holds the records directory. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. A behaviour or field change increments the version.",
+  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its run directory. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path with its mode and digest; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. confirmations lists every pending realization entry whose file exists, with the metadata document declaring it and that document's digest, for Delivery to clear; blocking and warnings are those of the Specs as they read with these markers cleared. checks lists one result per configured check run, in run order, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log in the run directory, relative to the directory that holds the records directory. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. A behaviour or field change increments the version.",
   "example": {
     "workspace": "severity",
     "ready": true,
@@ -258,10 +278,12 @@ the same workspace.
       "changed": [
         {
           "path": "specs/concorde/issues/interface.md",
+          "mode": "100644",
           "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
         },
         {
           "path": "src/concorde/issues/severity.py",
+          "mode": "100644",
           "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
         }
       ],

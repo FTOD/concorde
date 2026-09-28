@@ -57,6 +57,13 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the submodule is no changed path and the workspace has no uncommitted change
 - BUT when the submodule is moved to another commit, it is a changed path and an uncommitted change
 
+### scenario.validation.mode-change — A changed file mode changes the input digest
+
+- GIVEN a workspace with a changed regular file
+- WHEN only the file's execute bit is set and the inputs are measured again
+- THEN the file's entry records the mode `100755` instead of `100644`, with the same content digest
+- AND the input digest differs from the one measured before
+
 ### scenario.validation.confirmation — A filled pending entry becomes a confirmation
 
 - GIVEN a realization entry marked pending whose file an `implement` run created
@@ -72,6 +79,7 @@ readiness is defined in the [contracts](contracts.md).
 - WHEN a file of the workspace that the input measurement covers changes and is still changed when the run remeasures its inputs
 - THEN the result has status `failed` with `inputs_changed`
 - AND no readiness is issued
+- AND when a configured check noticed the change, the error's cause is Check execution's `stale_evidence` link
 
 ### scenario.validation.wrong-branch — The workspace is not on its bound branch
 
@@ -92,6 +100,7 @@ readiness is defined in the [contracts](contracts.md).
 - GIVEN a host where the [read-only check boundary](../../../glossary.json#concept.read-only-check-boundary) cannot be established
 - WHEN `task-validation` reaches its checks
 - THEN the result has status `failed` with the code `checks_unavailable` and the reason `environment`
+- AND the error's cause is Check execution's `check_sandbox_unavailable` link
 - AND no check runs outside the boundary
 
 ## Confirmation for Delivery
