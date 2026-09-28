@@ -1,6 +1,7 @@
 """File transactions refuse stale inputs, and two Spec revisions compare by their definitions."""
 
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -39,6 +40,74 @@ class FileTransactionTests(unittest.TestCase):
         self.assertEqual(
             ["a.txt", "b.txt"], sorted(p.name for p in self.root.iterdir())
         )
+
+    @verifies("scenario.spec.transaction-write-refused")
+    def test_a_refused_write_is_a_system_error_and_restores_earlier_writes(self):
+        (self.root / "a.txt").write_text("a\n")
+        # A regular file where the second change needs a directory: the OS refuses the write.
+        (self.root / "blocker").write_text("not a directory\n")
+        changes = [
+            file_change(self.root, "a.txt", "A\n"),
+            file_change(self.root, "blocker/b.txt", "B\n"),
+        ]
+        with self.assertRaises(SpecError) as raised:
+            apply_files(self.root, changes, {"a.txt", "blocker/b.txt"})
+        error = raised.exception
+        self.assertEqual("system_error", error.code)
+        self.assertEqual("blocker/b.txt", error.path)
+        self.assertIn("every file written so far was restored", str(error))
+        self.assertEqual(["system_error"], [cause.code for cause in error.causes])
+        self.assertEqual("blocker/b.txt", error.causes[0].path)
+        self.assertIsInstance(error.__cause__, OSError)
+        self.assertEqual("a\n", (self.root / "a.txt").read_text())
+
+    @verifies("scenario.spec.transaction-restore-refused")
+    @unittest.skipIf(os.geteuid() == 0, "root ignores directory permissions")
+    def test_a_refused_restore_names_the_file_left_with_new_content(self):
+        (self.root / "a.txt").write_text("a\n")
+        (self.root / "locked").mkdir()
+        self.addCleanup(os.chmod, self.root / "locked", 0o700)
+        changes = [
+            file_change(self.root, "a.txt", "A\n"),
+            file_change(self.root, "locked/new.txt", "N\n"),
+        ]
+
+        def verify():
+            # The final check fails, and the new file's directory no longer allows its removal.
+            os.chmod(self.root / "locked", 0o500)
+            raise SpecError("the written project does not validate", "invalid_proposal")
+
+        with self.assertRaises(SpecError) as raised:
+            apply_files(self.root, changes, {"a.txt", "locked/new.txt"}, verify=verify)
+        error = raised.exception
+        self.assertEqual("system_error", error.code)
+        self.assertIn("locked/new.txt", str(error))
+        self.assertNotIn("a.txt,", str(error))
+        self.assertEqual(
+            ["invalid_proposal", "system_error"], [cause.code for cause in error.causes]
+        )
+        self.assertEqual("locked/new.txt", error.causes[1].path)
+        self.assertEqual("N\n", (self.root / "locked/new.txt").read_text())
+        self.assertEqual("a\n", (self.root / "a.txt").read_text())
+
+    @verifies("scenario.spec.transaction-check-error")
+    def test_the_final_checks_own_exception_propagates_unchanged(self):
+        (self.root / "a.txt").write_text("a\n")
+        for failure in (RuntimeError("the caller's check failed"), OSError("its own")):
+            with self.subTest(type(failure).__name__):
+                changes = [
+                    file_change(self.root, "a.txt", "A\n"),
+                    file_change(self.root, "b.txt", "B\n"),
+                ]
+
+                def verify(failure=failure):
+                    raise failure
+
+                with self.assertRaises(type(failure)) as raised:
+                    apply_files(self.root, changes, {"a.txt", "b.txt"}, verify=verify)
+                self.assertIs(failure, raised.exception)
+                self.assertEqual("a\n", (self.root / "a.txt").read_text())
+                self.assertFalse((self.root / "b.txt").exists())
 
 
 class ChangedDefinitionTests(unittest.TestCase):

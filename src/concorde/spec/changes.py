@@ -6,8 +6,9 @@ import os
 import tempfile
 from pathlib import Path
 
-from .typed_data import checked_path
+from .errors import system_cause, unexpected
 from .repository import SpecError, digest, read_file
+from .typed_data import checked_path
 
 
 def file_change(root: Path, path: str, content: str) -> dict:
@@ -82,8 +83,10 @@ def apply_files(
         finally:
             Path(temporary).unlink(missing_ok=True)
 
+    current = None
     try:
         for item in changes:
+            current = item["path"]
             path = checked_path(root, item["path"])
             observed = read_file(root, item["path"]) if path.exists() else None
             if observed != backups[item["path"]]:
@@ -95,16 +98,50 @@ def apply_files(
                 )
             write(path, item["content"].encode())
             changed.append(item["path"])
+        current = None
         if verify:
-            verify()
-    except Exception:
+            verify()  # its own exception propagates unchanged once the files are restored
+    except Exception as error:
+        unrestored = []
         for relative in reversed(changed):
             path = checked_path(root, relative)
             original = backups[relative]
-            if original is None:
-                path.unlink()
-            else:
-                write(path, original)
+            try:
+                if original is None:
+                    path.unlink()
+                else:
+                    write(path, original)
+            except OSError as problem:
+                unrestored.append(system_cause(problem, path=relative))
+        if unrestored:
+            cause = (
+                error
+                if isinstance(error, SpecError)
+                else system_cause(error, path=current)
+                if isinstance(error, OSError) and current is not None
+                else unexpected(error)
+            )
+            raise SpecError(
+                "a file transaction failed and could not restore "
+                + ", ".join(problem.path for problem in unrestored)
+                + "; each of those files still holds the transaction's new content, while "
+                "every other written file was restored",
+                "system_error",
+                reason="a file transaction restores every file it wrote when it fails, and "
+                "the operating system refused a restore",
+                remediation="restore the named files by hand from version control or the "
+                "transaction's inputs, fix the cause of the first failure, and apply again",
+                causes=[cause, *unrestored],
+            ) from error
+        if isinstance(error, OSError) and current is not None:
+            raise SpecError(
+                f"writing {current} failed; every file written so far was restored",
+                "system_error",
+                path=current,
+                reason="a file transaction writes every listed file or restores them all, "
+                "and the operating system refused a write",
+                causes=[system_cause(error, path=current)],
+            ) from error
         raise
     return changed
 

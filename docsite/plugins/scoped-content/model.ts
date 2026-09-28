@@ -131,6 +131,17 @@ export function safeRead(root: string, path: string): string {
     readFileSync(current),
   );
 }
+/** The project-owned site identity, the last input of the source digest when it exists. */
+const SITE_IDENTITY = "docsite/site.json";
+function siteIdentityExists(root: string): boolean {
+  try {
+    lstatSync(resolve(root, SITE_IDENTITY));
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
 /** Publication needs an initialized project: a readable configuration naming the registry. */
 export function requireScoped(root: string): void {
   let config: any;
@@ -639,6 +650,10 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       primaryOf: module.entry === path ? moduleId : null,
       readingCollection: unit.document.role,
     });
+  }
+  // The site identity shapes every page, so a candidate built from an older one is stale too.
+  if (siteIdentityExists(root)) {
+    inputs.push([SITE_IDENTITY, hash(safeRead(root, SITE_IDENTITY))]);
   }
   return {
     schema_version: 23,

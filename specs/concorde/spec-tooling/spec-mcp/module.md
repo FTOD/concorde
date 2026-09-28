@@ -80,6 +80,15 @@ mcp: Spec MCP server {
 **Server program** runs the stdio MCP session, resolves and holds the root, confines path
 arguments, maps each tool to Spec core, and turns every failure into a tool error — a small
 hand-written JSON-RPC session with no MCP library dependency, tested over a real stdio connection.
+The session is written by hand because its wire is small and fully specified: newline-delimited
+JSON-RPC carrying `initialize`, `ping`, `tools/list` and `tools/call`, and one `roots/list` request
+to the client. An MCP library would add a runtime dependency to every project that installs
+Concorde for that much protocol.
+
+`CLAUDE_PROJECT_DIR` wins over the client's roots because it is the project directory Claude Code
+sets for the session, one directory by construction, while a client may offer several roots and
+none of them is marked as the project; the roots are the fallback for a client that sets no
+variable, and only when they name exactly one directory.
 
 Rooting at one worktree keeps answers honest across concurrent tasks: a branch may declare a
 pending file or a `uses` the primary lacks, and only its own server sees it. The running Concorde

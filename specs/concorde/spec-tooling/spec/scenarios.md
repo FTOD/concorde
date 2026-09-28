@@ -618,6 +618,30 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - THEN every written file is restored to its original bytes, and files that did not exist are removed
 - AND the failure is reported, never success
 
+### scenario.spec.transaction-write-refused — A refused write is a Spec error
+
+- GIVEN a file transaction of two files whose second write the operating system refuses
+- WHEN it is applied
+- THEN it fails with a `SpecError` of code `system_error` naming the second file
+- AND its cause is a `system_error` record of the operating system's error
+- AND the first file holds its original bytes again
+
+### scenario.spec.transaction-restore-refused — A refused restore is named
+
+- GIVEN a file transaction that has written two files and whose final check fails
+- AND the operating system refuses to restore one of them
+- WHEN the failure is handled
+- THEN the transaction fails with `system_error` naming the file it could not restore
+- AND its causes are the final check's failure and the refused restore
+- AND the named file holds the new content while the other file holds its original bytes
+
+### scenario.spec.transaction-check-error — The final check's own error propagates
+
+- GIVEN a file transaction whose final check raises its own exception
+- WHEN it is applied
+- THEN every written file is restored
+- AND the exception the caller receives is the one the final check raised
+
 ### scenario.spec.transaction-stale — A changed file stops a transaction before it writes
 
 - GIVEN a file transaction whose expected digest for one file no longer matches that file's bytes

@@ -469,7 +469,7 @@
       "id": "concept.file-transaction",
       "title": "File transaction",
       "owner": "module.spec",
-      "definition": "A set of whole-file writes, each bound to the digest of the bytes it replaces, that is applied completely or not at all.",
+      "definition": "A set of whole-file writes, each bound to the digest of the bytes it replaces, that is applied completely or, when a write or its final check fails while the process runs, not at all.",
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.file-transaction"
     },
     {
@@ -990,7 +990,7 @@
       "id": "concept.spec-context",
       "title": "Spec context",
       "owner": "module.concorde",
-      "definition": "The read-only documents the bound Modules' declarations select: the Protocol's SpecContext of those Modules together with their ExternalContext.",
+      "definition": "The read-only documents the bound Modules' declarations select and the glossary entries of their terms: the Protocol's SpecContext of those Modules, without their ExternalContext.",
       "explanation": "specs/concorde/core-concepts.md#concept.spec-context"
     },
     {

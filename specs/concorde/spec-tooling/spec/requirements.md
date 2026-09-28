@@ -112,6 +112,10 @@ Every validation result SHALL carry a digest of the exact configuration, registr
 [Protocol binding](../../glossary.json#concept.protocol-binding) and configured-check input states
 it assessed.
 
+The digest covers only those inputs. The files that Modules bind, the list of version-controlled
+files and the contents of the tests scanned for verification declarations are not in it, so findings
+about bindings, unbound files and scenario coverage can change while the digest stays the same.
+
 ## Registry mirror
 
 ### req.spec.registry-mirror-only — Regeneration changes only mirrored fields
@@ -288,7 +292,30 @@ code may be loaded twice.
 ### req.spec.transaction-all-or-nothing — A transaction applies completely or not at all
 
 A [file transaction](../../glossary.json#concept.file-transaction) SHALL either write every listed
-file with its new content or leave every listed file with its original bytes.
+file with its new content or, when a write or its final check fails while the process runs, leave
+every listed file with its original bytes.
+
+The guarantee covers only failures the process observes as an exception. A process that is killed,
+stopped by a signal or a keyboard interrupt, or loses its machine part-way leaves each listed file
+it had already replaced with the new content and every other listed file with its original bytes,
+and may leave `.concorde-write-` temporary files beside them. No listed file ever holds part of
+each, because every file is replaced by a rename.
+
+### req.spec.transaction-restore-reported — A failed restore is named
+
+When a file transaction fails and the operating system refuses to restore one of the files it had
+written, the transaction SHALL fail with a `system_error` that names every file it could not
+restore, carries the first failure and each refused restore as causes, and states that those files
+still hold the new content while every other written file was restored.
+
+### req.spec.transaction-system-errors — Refused writes are Spec errors
+
+A file transaction SHALL report an operating-system error from one of its writes as a `SpecError`
+with the code `system_error`, naming the file, whose cause is the `system_error` record of the
+operating system's error.
+
+An exception raised by the caller's final check is the caller's own and propagates unchanged once
+every written file is restored.
 
 ### req.spec.transaction-digest-bound — Stale input stops a transaction
 
@@ -309,10 +336,15 @@ registry registers.
 
 Applying an initial proposal SHALL NOT replace a file that already exists.
 
-### req.spec.init-explicit-envelope — Apply accepts only the exact proposal
+### req.spec.init-explicit-envelope — Apply checks shape, integrity and freshness
 
-Applying SHALL accept an initial proposal only as the complete typed value that propose returned,
-named by the proposal digest propose returned for it.
+Applying SHALL accept an initial proposal only as a complete typed value of the proposal type in
+exactly the shape propose returns, together with a proposal digest that is the digest of that
+value, and only while its source digest is the project's current one.
+
+These checks establish the proposal's shape, its integrity and its freshness, not that propose
+produced it: the proposal digest is one any caller can compute. What else an applied proposal is
+held to is the allowed files, the rule that nothing is overwritten and a project that validates.
 
 ### req.spec.init-validated — The result must validate
 

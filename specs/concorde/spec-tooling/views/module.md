@@ -110,7 +110,7 @@ is refused.
 
 Rendering can fail halfway and sources can change while a build runs, so the publisher builds a
 candidate apart from the published site and compares one source digest, over the configuration, the
-registry, both files of every document and the glossary, at staging, after the Docusaurus build and
+registry, both files of every document, the glossary and the site identity, at staging, after the Docusaurus build and
 in the final validation, which also follows every internal link and anchor in the built HTML.
 Promotion renames whole directories with rollback:
 

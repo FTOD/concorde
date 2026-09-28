@@ -397,12 +397,18 @@ describe("a project holding only initialization outputs", () => {
     expect(
       await readFile(resolve(root, "docsite/build/app.html"), "utf8"),
     ).toContain("Custom application");
-    expect(
+    // The pages are unchanged; only the source digest moves with the site identity.
+    const rebuilt = JSON.parse(
       await readFile(
         resolve(root, "docsite/build/build-manifest.json"),
         "utf8",
       ),
-    ).toBe(before);
+    );
+    const previous = JSON.parse(before);
+    expect(rebuilt.sourceDigest).not.toBe(previous.sourceDigest);
+    expect({ ...rebuilt, sourceDigest: previous.sourceDigest }).toEqual(
+      previous,
+    );
     expect(await readFile(resolve(root, ".concorde/specs.json"), "utf8")).toBe(
       registryBefore,
     );

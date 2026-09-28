@@ -77,9 +77,10 @@ Module; an inclusion reason is `{relation: "includes", kind, id}`, where `kind` 
 
 `hash(value)` is `sha256:` followed by the lowercase hex SHA-256 of the bytes. The source digest is
 `hash` of the JSON serialization of the ordered list of `[path, hash(bytes)]` pairs for the
-configuration, the registry, both members of every document in registry order and, last, the
-glossary when the root Module declares one. Any byte change in any of them, including a
-metadata-only edit, changes it. It identifies inputs; it is not a claim about meaning.
+configuration, the registry, both members of every document in registry order, the glossary when
+the root Module declares one and, last, the [site identity](../../glossary.json#concept.site-identity)
+`docsite/site.json` when it exists, since it shapes every page. Any byte change in any of them,
+including a metadata-only edit, changes it. It identifies inputs; it is not a claim about meaning.
 
 ## Routes {#routes}
 

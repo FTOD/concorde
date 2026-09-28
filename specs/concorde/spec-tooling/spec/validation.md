@@ -92,8 +92,13 @@ function of the Specs and the files they bind.
 
 ## What success means
 
-A successful run means that these checks passed for the exact files assessed. The result carries a
-digest of those inputs, so a caller can tell later whether anything has changed since. It does not
-mean that a Spec explains enough for its reader, that a scenario is worth having, or that the code
-keeps any promise. The result states this explicitly, and no Concorde step treats structural
-success as review or test evidence.
+A successful run means that these checks passed for the files assessed at the time of the run. The
+result carries a digest of the configuration, the registry, the Spec documents, the glossary, the
+Protocol binding and the configured-check inputs, so a caller can tell later whether any of those
+has changed since. The digest does not cover everything the checks read: the files that Modules
+bind, the list of version-controlled files and the tests scanned for verification declarations are
+outside it, so findings about bindings, unbound files and scenario coverage can change while the
+digest stays the same. A caller that needs those findings current runs validation again. A success
+does not mean that a Spec explains enough for its reader, that a scenario is worth having, or that
+the code keeps any promise. The result states this explicitly, and no Concorde step treats
+structural success as review or test evidence.

@@ -678,7 +678,10 @@ it("adds collection and executable tabs without changing registered context inpu
       customDocs: identity.customDocs,
     }),
   );
-  expect(load()).toEqual(before);
+  // Only the source digest moves, because the site identity is one of its inputs.
+  const after = load();
+  expect(after.sourceDigest).not.toBe(before.sourceDigest);
+  expect({ ...after, sourceDigest: before.sourceDigest }).toEqual(before);
 });
 
 // verifies: scenario.views.custom-docs
