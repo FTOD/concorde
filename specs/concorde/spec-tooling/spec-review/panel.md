@@ -16,7 +16,7 @@ as merged there. `--modules` names one or more registered Modules of that worktr
 the number of reviewers on each [Module](../../glossary.json#concept.module)'s panel, 3 by default.
 Each reviewer is the worker `reviewer<seat>`, `reviewer1` to `reviewer5`, and the chair the worker
 `chair`; by these [worker ids](../../glossary.json#concept.worker-id) the
-[worker model configuration](../../glossary.json#concept.worker-model-configuration) gives each
+[worker configuration](../../glossary.json#concept.worker-configuration) gives each
 reviewer and the chair its own backend, model and thinking level, and three reviewers on three
 different models make their reviews more independent still. The
 [Operation](../../glossary.json#concept.operation) takes no other argument and needs no user

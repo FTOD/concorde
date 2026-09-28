@@ -3,8 +3,7 @@
 What the [main-session guidance](module.md) must tell the
 [main agent](../../glossary.json#concept.main-agent) and
 [task sessions](../../glossary.json#concept.task-session), and what the pi
-[run view](../../glossary.json#concept.run-view) and
-[model picker](../../glossary.json#concept.model-picker) must do. Most are obligations on the
+[run view](../../glossary.json#concept.run-view) must do. Most are obligations on the
 content of the guidance: a deterministic check establishes what the rendered guidance says, while
 whether a model follows it is not something such a check can establish. The requirements on the pi
 extension and on what a session holds in its context are obligations on runtime behaviour, checked
@@ -224,22 +223,19 @@ only its brief, as the [Harness](../../harness/module.md) describes.
 
 The guidance SHALL tell the main agent to change worker models only when the developer asks.
 
-### req.main-session.model-change-method — AI-driven model changes edit the configuration
+### req.main-session.model-change-method — Model changes edit the tracked configuration
 
-The guidance SHALL tell the main agent to make an AI-driven change of worker models by editing the
-configuration's JSON directly and then validating it read-only, the shared terminal draft editor
-being for the developer's own choices.
+The guidance SHALL tell the main agent to change worker models by editing the tracked
+[worker configuration](../../glossary.json#concept.worker-configuration) directly, and to commit a
+change of that file alone directly on the primary branch when it is meant for future tasks.
 
-### req.main-session.task-models-on-request — A task's models change only on request
+That commit is the one change the main agent makes directly in the primary worktree; it is never
+made while a merge is unfinished.
 
-The guidance SHALL tell the main agent to change an existing task's
-[worker model configuration](../../glossary.json#concept.worker-model-configuration) only when the
-developer asks for that task.
+### req.main-session.task-models-kept — A task's own model change merges with it
 
-### req.main-session.pi-picker-terminal — The picker restores pi's terminal
-
-In pi, the model picker SHALL restore pi's terminal whenever Workers' editor ends, whether after
-Save, a cancellation or a launch failure.
+The guidance SHALL tell the main agent that a task may change its own worker configuration while it
+works and that the change reaches the primary branch when the task merges.
 
 ## Escalation
 

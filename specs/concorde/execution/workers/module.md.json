@@ -129,24 +129,12 @@
     {
       "id": "realization.workers.models",
       "type": "realization",
-      "title": "Model configuration",
+      "title": "Configuration reader",
       "meaning": "#realization.workers.models",
       "entries": [
         "src/concorde/harness/models.py",
         "src/concorde/harness/available_models.py",
         "scripts/available_models.py"
-      ],
-      "pending": []
-    },
-    {
-      "id": "realization.workers.configure",
-      "type": "realization",
-      "title": "Configure-workers command",
-      "meaning": "#realization.workers.configure",
-      "entries": [
-        "src/concorde/harness/configure.py",
-        "src/concorde/harness/configure_tui.py",
-        "tests/concorde/harness/test_configure.py"
       ],
       "pending": []
     }
@@ -181,18 +169,6 @@
       "source": "realization.workers.runtime",
       "verb": "launches",
       "target": "realization.workers.pi"
-    },
-    {
-      "type": "relates",
-      "source": "realization.workers.configure",
-      "verb": "changes the file through",
-      "target": "realization.workers.models"
-    },
-    {
-      "type": "relates",
-      "source": "realization.workers.configure",
-      "verb": "implements",
-      "target": "concept.configure-workers"
     }
   ],
   "extensions": {}

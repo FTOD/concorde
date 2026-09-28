@@ -734,8 +734,7 @@ class SpecProject:
             self.root,
             ".concorde/config.json",
             {
-                "profile_version": 18,
-                "registry": ".concorde/specs.json",
+                "profile_version": 19,
                 "protocol": protocol_binding(PACKAGE),
                 "python": sys.executable,
             },

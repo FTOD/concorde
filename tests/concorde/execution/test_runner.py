@@ -284,7 +284,7 @@ class RunnerTests(unittest.TestCase):
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 3,
+                    "schema_version": 1,
                     "default": {
                         "backend": "claude",
                         "model": "sonnet",
@@ -314,7 +314,7 @@ class RunnerTests(unittest.TestCase):
         (self.root / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 3,
+                    "schema_version": 1,
                     "default": {"backend": "claude", "model": "haiku"},
                 }
             )
@@ -352,7 +352,7 @@ class RunnerTests(unittest.TestCase):
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 3,
+                    "schema_version": 1,
                     "operations": {
                         "implement": {"workers": {"worker": {"model": "local/fast"}}},
                         "spec_review": {"workers": {"worker": {"backend": "claude"}}},
@@ -494,7 +494,7 @@ class RunnerTests(unittest.TestCase):
         [cause] = envelope["error"]["causes"]
         self.assertEqual("config_invalid", cause["code"])
         self.assertIn(str(self.worktree / models.CONFIG), cause["detail"])
-        (self.worktree / models.CONFIG).write_text(json.dumps({"schema_version": 3}))
+        (self.worktree / models.CONFIG).write_text(json.dumps({"schema_version": 1}))
         status, envelope = self.project.run(
             "implement",
             "--task",
@@ -512,11 +512,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("environment", cause["unhandled"]["reason"])
         self.assertIn("Concorde's default worker backend", cause["detail"])
         self.assertIn("CONCORDE_PI", cause["detail"])
-        self.assertIn(
-            "edit its backend in .concorde/worker-models.json", cause["detail"]
-        )
+        self.assertIn(f"edit its backend in {models.CONFIG}", cause["detail"])
         self.assertTrue(
-            any("--check" in option for option in envelope["error"]["options"])
+            any("commit it" in option for option in envelope["error"]["options"])
         )
         self.assertNotIn("--backend", json.dumps(envelope["error"]))
         validate(envelope["error"], ERROR_SCHEMA)
@@ -1123,21 +1121,30 @@ class UnboundCheckoutTests(unittest.TestCase):
         checks = read_checks(self.root)
         checks[0]["argv"] = [".venv/bin/python", "checks/a_check.py"]
         write_checks(self.root, checks)
+        # The worker configuration is the committed one of the examined commit.
+        (self.root / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "default": {"backend": "claude"},
+                    "operations": {
+                        "understand": {"workers": {"worker": {"model": "opus"}}}
+                    },
+                }
+            )
+        )
         examined = self.commit("check with the environment")
         (self.root / ".venv/bin").mkdir(parents=True)
         (self.root / ".venv/bin/python").symlink_to(sys.executable)
         (self.root / ".venv/bin/tool").write_text("tool\n")
         # An uncommitted change of the worktree the run starts in is not examined.
         (self.root / "src/a/calc.py").write_text("uncommitted\n")
-        # The worker model configuration is the starting worktree's own.
+        # An uncommitted change of the worker configuration is not used either.
         (self.root / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 3,
-                    "default": {"backend": "claude"},
-                    "operations": {
-                        "understand": {"workers": {"worker": {"model": "opus"}}}
-                    },
+                    "schema_version": 1,
+                    "default": {"backend": "claude", "model": "haiku"},
                 }
             )
         )
@@ -1154,7 +1161,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual(str(self.root / ".venv"), probe["venv"])
         self.assertEqual(["passed"], probe["checks"])
         # The worker worked and was audited in the checkout, so the commit made meanwhile in
-        # the starting worktree left its audit clean; its model came from the starting worktree.
+        # the starting worktree left its audit clean; its model came from the examined commit.
         record = self.worker_record(envelope)
         self.assertEqual(str(checkout), record["worktree"])
         self.assertEqual("opus", record["model"])

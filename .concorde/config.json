@@ -1,16 +1,8 @@
 {
-  "profile_version": 18,
-  "registry": ".concorde/specs.json",
+  "profile_version": 19,
   "protocol": {
     "version": "15.0.0",
     "digest": "sha256:a676ac7ed1b9e7cd97dc211b681a479ebbebb09e42cb16d16dfc802be5624414"
   },
-  "python": ".venv/bin/python",
-  "workers": {
-    "runtime": [
-      ".venv",
-      "node_modules",
-      "docsite/node_modules"
-    ]
-  }
+  "python": ".venv/bin/python"
 }

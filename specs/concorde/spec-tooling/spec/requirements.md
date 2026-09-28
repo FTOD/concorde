@@ -115,6 +115,13 @@ check the Module its file is named after.
 A `checks` field in the configuration, a `module` field in a check entry and a checks file not
 named after a registered Module each refuse the project.
 
+### req.spec.fixed-registry — The registry has one place
+
+Spec core SHALL read the registry only from `.concorde/specs.json`.
+
+A configuration that still names a registry, a field no current profile has, is refused.
+
+
 ### req.spec.digest-per-assessment — Every result names what it assessed
 
 Every validation result SHALL carry a digest of the exact configuration, checks files, registry, document members, glossary,

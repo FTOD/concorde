@@ -136,8 +136,7 @@ class SharedFileProject:
             ".concorde/config.json",
             json.dumps(
                 {
-                    "profile_version": 18,
-                    "registry": ".concorde/specs.json",
+                    "profile_version": 19,
                     "protocol": protocol_binding(PACKAGE),
                     "python": sys.executable,
                 }

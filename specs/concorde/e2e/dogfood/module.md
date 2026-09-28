@@ -49,10 +49,10 @@ A scenario has the fields `name`, `description`, `project` (`repository` and `re
 (`summary` and `edits`, each `file`, `old` and `new`), `prompt` and `expect` (`types`, `basis`
 phrases and `unchanged` paths), and optionally `client`, `claude` or `pi`, the main session's
 program, `claude` when absent. The client names only the main session's program: the preparation
-writes no [worker model configuration](../../glossary.json#concept.worker-model-configuration), so
+writes no [worker configuration](../../glossary.json#concept.worker-configuration), so
 the workers run on pi under either client. A fault still breaks what both
 [worker backends](../../glossary.json#concept.worker-backend) share, or each backend's part alike,
-so that it holds whichever backend a worker model configuration chooses.
+so that it holds whichever backend a worker configuration chooses.
 
 <a id="concept.scenario-directory"></a>
 

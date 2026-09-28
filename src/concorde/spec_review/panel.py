@@ -213,7 +213,7 @@ class Panel:
         )
 
     def _launch(self, worker: str, instructions: str, schema: dict, label: str):
-        """The worker ``worker``, one of the panel's worker ids, so that the worker model
+        """The worker ``worker``, one of the panel's worker ids, so that the worker
         configuration may give each reviewer and the chair its own backend, model and thinking
         level; returns (output or None, host evidence, context identity, stop or None)."""
         result = self.ctx.run_worker(

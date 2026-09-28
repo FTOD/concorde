@@ -1,7 +1,9 @@
-"""Worker configuration, shared by runtime, read-only commands and the draft editor.
+"""The worker configuration ``.concorde/workers.json``: backends, models and limits of workers.
 
-The worktree's JSON is the source of truth. Validation never discovers models or checks
-credentials. Explicit backend entries reset inherited model/reasoning fields.
+The file is tracked with the project, so a task starts from its base commit's configuration and
+its own changes merge with it. The worktree's JSON is the source of truth, edited directly.
+Validation never discovers models or checks credentials. Explicit backend entries reset
+inherited model/reasoning fields.
 """
 
 from __future__ import annotations
@@ -9,13 +11,23 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import tempfile
 from pathlib import Path
 
 from ..spec.schema import ContractError, validate
 
-CONFIG = ".concorde/worker-models.json"
-SCHEMA_VERSION = 3
+CONFIG = ".concorde/workers.json"
+# The untracked file that held worker models before; refused, never read.
+RETIRED = ".concorde/worker-models.json"
+SCHEMA_VERSION = 1
+# The limits of every worker launch when the configuration names none.
+LIMITS = {
+    "timeout_seconds": 1800,
+    "max_turns": 200,
+    "max_budget_usd": None,
+    "rounds": 3,
+}
+# The paths Bash may read besides the grant when the configuration names none.
+DEFAULT_RUNTIME = (".venv", "node_modules")
 DEFAULT_BACKEND = "pi"
 CLIENTS = ("claude", "pi")
 LEVELS = {
@@ -55,6 +67,17 @@ SCHEMA = {
                 },
             },
         },
+        "limits": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "timeout_seconds": {"type": "number", "minimum": 1},
+                "max_turns": {"type": "integer", "minimum": 1},
+                "max_budget_usd": {"type": "number", "minimum": 0.01},
+                "rounds": {"type": "integer", "minimum": 0},
+            },
+        },
+        "runtime": {"type": "array", "items": TEXT, "uniqueItems": True},
     },
 }
 
@@ -133,6 +156,16 @@ def config_path(worktree: Path) -> Path:
     return Path(worktree) / CONFIG
 
 
+def limits(config: dict) -> dict:
+    """The limits of every worker launch: the configuration's, else ``LIMITS``."""
+    return LIMITS | config.get("limits", {})
+
+
+def runtime(config: dict) -> tuple[str, ...]:
+    """The paths Bash may read besides the grant: the configuration's, else the default."""
+    return tuple(config.get("runtime", DEFAULT_RUNTIME))
+
+
 def _unique_object(pairs):
     value = {}
     for key, item in pairs:
@@ -149,6 +182,14 @@ def load(worktree: Path) -> dict:
             path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object
         )
     except FileNotFoundError:
+        if (Path(worktree) / RETIRED).exists():
+            raise ModelConfigError(
+                "config_invalid",
+                f"{Path(worktree) / RETIRED} is no longer read: worker models are configured "
+                f"in the tracked {CONFIG}, which this worktree does not have; move its "
+                f"default and operations into {CONFIG} with schema_version {SCHEMA_VERSION}, "
+                f"commit it and delete {RETIRED}",
+            ) from None
         return {"schema_version": SCHEMA_VERSION}
     except (OSError, ValueError) as error:
         raise ModelConfigError(
@@ -157,31 +198,13 @@ def load(worktree: Path) -> dict:
     if isinstance(value, dict) and value.get("schema_version") != SCHEMA_VERSION:
         raise ModelConfigError(
             "config_invalid",
-            f"{path} has schema_version {value.get('schema_version')!r}; expected {SCHEMA_VERSION}, keyed by worker id",
+            f"{path} has schema_version {value.get('schema_version')!r}; expected {SCHEMA_VERSION}",
         )
     try:
         validate_config(value)
     except ModelConfigError as error:
         raise ModelConfigError(error.code, f"{path}: {error}") from error
     return value
-
-
-def save(worktree: Path, value: dict) -> Path:
-    validate_config(value)
-    path = config_path(worktree)
-    temporary = None
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=".worker-models.")
-        with os.fdopen(handle, "w", encoding="utf-8") as stream:
-            stream.write(json.dumps(value, indent=2, sort_keys=True) + "\n")
-        os.replace(temporary, path)
-    except OSError as error:
-        raise ModelConfigError("config_write_failed", f"{path}: {error}") from error
-    finally:
-        if temporary and os.path.exists(temporary):
-            os.unlink(temporary)
-    return path
 
 
 def _levels_of(
@@ -254,69 +277,9 @@ def worker_choice(config: dict, operation: str, worker: str, environ=None) -> di
             "backend_missing",
             f"the {worker} worker of {operation} runs on {backend} ({chosen['backend_source']}), "
             f"but the {backend} command is not installed: PATH and {variable} name no executable. "
-            "A worker never falls back; install its program or edit its backend in "
-            ".concorde/worker-models.json (or use concorde configure-workers).",
+            f"A worker never falls back; install its program or edit its backend in {CONFIG}.",
         )
     return chosen
-
-
-def inherit(primary: Path, worktree: Path) -> str | None:
-    source = config_path(primary)
-    if not source.is_file():
-        return None
-    target = config_path(worktree)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, target)
-    return target.as_posix()
-
-
-def _entry(config: dict, operation: str | None, worker: str | None, create: bool):
-    if operation is None:
-        return config.setdefault("default", {}) if create else config.get("default")
-    operations = (
-        config.setdefault("operations", {}) if create else config.get("operations", {})
-    )
-    entry = (
-        operations.setdefault(operation, {})
-        if create
-        else operations.get(operation, {})
-    )
-    if worker is None:
-        return entry.setdefault("default", {}) if create else entry.get("default")
-    workers = entry.setdefault("workers", {}) if create else entry.get("workers", {})
-    return workers.setdefault(worker, {}) if create else workers.get(worker)
-
-
-def set_choice(config, operation, worker, backend, model, reasoning) -> dict:
-    entry = _entry(config, operation, worker, create=True)
-    assert entry is not None
-    for field, value in (
-        ("backend", backend),
-        ("model", model),
-        ("reasoning", reasoning),
-    ):
-        if value is not None:
-            entry[field] = value
-    return config
-
-
-def unset_choice(config: dict, operation: str | None, worker: str | None) -> bool:
-    if operation is None:
-        return config.pop("default", None) is not None
-    operations = config.get("operations", {})
-    entry = operations.get(operation, {})
-    if worker is None:
-        removed = entry.pop("default", None)
-    else:
-        workers = entry.get("workers", {})
-        removed = workers.pop(worker, None)
-        if "workers" in entry and not workers:
-            entry.pop("workers")
-    if operation in operations and not entry:
-        operations.pop(operation)
-    if "operations" in config and not operations:
-        config.pop("operations")
-    return removed is not None
 
 
 HANDLING = {
@@ -333,7 +296,7 @@ HANDLING = {
     "backend_missing": (
         "environment",
         "the machine must provide the program",
-        ["install the backend or edit .concorde/worker-models.json"],
+        [f"install the backend or edit {CONFIG}"],
     ),
     "discovery_failed": (
         "environment",
@@ -343,13 +306,6 @@ HANDLING = {
     "config_invalid": (
         "input",
         "invalid configuration is never ignored",
-        [
-            "edit .concorde/worker-models.json and run concorde configure-workers --check"
-        ],
-    ),
-    "config_write_failed": (
-        "environment",
-        "the configuration could not be saved",
-        ["check the file and directory permissions"],
+        [f"correct {CONFIG} as the error says"],
     ),
 }

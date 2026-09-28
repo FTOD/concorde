@@ -7,12 +7,11 @@ work](../../module.md#the-levels-of-work): one headless worker for one job under
 [grant](../../glossary.json#concept.grant), on Claude Code or on pi, turning what happened into a
 [run record](../../glossary.json#concept.run-record) the
 [Operation](../../glossary.json#concept.operation) that launched it can trust. Each run is its own
-session, its own process and its own permissions, on the model the worktree's [worker model
-configuration](../../glossary.json#concept.worker-model-configuration) chooses, and its [run
+session, its own process and its own permissions, on the model the worktree's [worker
+configuration](../../glossary.json#concept.worker-configuration) chooses, and its [run
 directory](../../glossary.json#concept.run-directory) lies in the [run
 store](../../glossary.json#concept.run-store) beside the Operation run that launched it. Workers
-also owns that configuration and the command `concorde configure-workers` that edits it in a
-terminal and inspects it read-only. Of each run it owns the whole lifecycle: the run directory, the
+also owns that configuration, which the project tracks and edits directly. Of each run it owns the whole lifecycle: the run directory, the
 brief, the launch and [resume rounds](../../glossary.json#concept.resume-round), the [write
 audit](../../glossary.json#concept.write-audit), the checks after each round and the record. The
 worker's permissions and environment are its [agent
@@ -103,7 +102,7 @@ name the run even when it is interrupted before the run returns.
 <a id="concept.worker-backend"></a>
 
 The **[worker backend](../../glossary.json#concept.worker-backend)** is the agent program a worker
-runs on. The [worker model configuration](../../glossary.json#concept.worker-model-configuration)
+runs on. The [worker configuration](../../glossary.json#concept.worker-configuration)
 may choose it for one worker, for an Operation's workers or for every worker; when no entry chooses
 it, the worker runs on **pi**, whatever program the main session runs on. A Claude Code main session
 so runs pi workers unless it chooses Claude Code for some of them, and a pi main session may do the
@@ -132,10 +131,10 @@ mechanics](pi.md).
 
 ### Choosing worker models
 
-<a id="concept.worker-model-configuration"></a><a id="concept.worker-id"></a>
+<a id="concept.worker-configuration"></a><a id="concept.worker-id"></a>
 
-The **worker model configuration** of a worktree is its `.concorde/worker-models.json`, ignored by
-Git because it names models of this machine's installation. It is keyed by
+The **worker configuration** of a worktree is its `.concorde/workers.json`, tracked by Git like
+the project's code. Its models are keyed by
 **[worker id](../../glossary.json#concept.worker-id)**: every Operation declares the ids of the
 workers it may launch in the [Operation catalog](../../glossary.json#concept.operation-catalog),
 such as `spec_panel`'s `reviewer1` to `reviewer5` and `chair`, `spec_review`'s `reviewer` and
@@ -149,11 +148,12 @@ entry or a more specific one, since a model named for one program means nothing 
 field no entry sets leaves the program's own default, and a backend no entry sets is pi. An
 Operation's step asks for the choice of one worker of its Operation by its id, in the worktree the
 run works on, and passes the model with `--model` and the level with `--effort` to Claude Code or
-`--thinking` to pi:
+`--thinking` to pi. The same file holds the `limits` of every worker launch and the `runtime`
+paths, which [the worker limits](../operations/workers.md#worker-limits) describe:
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 1,
   "default": {"model": "anthropic/claude-sonnet-5", "reasoning": "medium"},
   "operations": {
     "spec_panel": {
@@ -164,7 +164,9 @@ run works on, and passes the model with `--model` and the level with `--effort` 
         "chair": {"backend": "claude", "model": "opus"}
       }
     }
-  }
+  },
+  "limits": {"timeout_seconds": 1800, "rounds": 3},
+  "runtime": [".venv", "node_modules"]
 }
 ```
 
@@ -172,63 +174,31 @@ Here every worker runs on pi, on `anthropic/claude-sonnet-5` at `medium`, except
 `reviewer1` on `anthropic/claude-opus-5-5` at `high`, `reviewer2` on `local-openai/gpt-6` at
 `high`, `reviewer3` on `local-openai/gpt-6` at the default's `medium`, and the `chair` on Claude
 Code with its `opus` alias at Claude Code's own default level, since choosing Claude Code does not
-carry the pi default's level over. The JSON file is the editable source of truth: a human may use
-the terminal editor and an AI edits it directly. The shared validator checks structure, duplicate
-keys, Operation and worker names against the catalog, and the effective backend's reasoning
-vocabulary whenever the runtime loads the file, inspection checks it, or the editor saves it. That
-vocabulary is fixed: `low`, `medium`, `high`, `xhigh` and `max` on Claude Code, and `off`,
-`minimal`, `low`, `medium`, `high`, `xhigh` and `max` on pi; an omitted level is always valid.
-It accepts custom model names without discovery, installed backends or credentials. A malformed
-file is refused with `config_invalid`, naming the file and problem; earlier schema versions are
-not migrated or ignored.
-[Tasks](../../coordination/tasks/module.md) copies the primary worktree's file into a task worktree
-when it opens the task, so later primary edits never reach an existing task.
+carry the pi default's level over. The JSON file is the source of truth, and a human or an AI edits
+it directly; there is no editor. The validator checks structure, duplicate keys, Operation and
+worker names against the catalog, the limits and the effective backend's reasoning vocabulary
+whenever a worker launches. That vocabulary is fixed: `low`, `medium`, `high`, `xhigh` and `max` on
+Claude Code, and `off`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max` on pi; an omitted
+level is always valid. It accepts custom model names without discovery, installed backends or
+credentials. A malformed file is refused with `config_invalid`, naming the file and problem;
+earlier schema versions are not migrated or ignored, and a worktree that still has the untracked
+`.concorde/worker-models.json` of earlier versions but no `.concorde/workers.json` is refused with
+`config_invalid` saying how to move it, rather than silently run on defaults.
+
+Because the file is tracked, a [task](../../glossary.json#concept.task) carries the configuration of
+its base commit: a later change on the primary branch never reaches a task already open, a change
+the task makes to its own copy is part of its branch and reaches the primary branch when the task
+merges, and a change of this file alone may be committed directly on the primary branch for the
+tasks opened after it.
 
 Discovery is separate and advisory. `python3 scripts/available_models.py --backend pi|claude`
-(optionally `--json`) works outside Git, and its shared functions supply the editor. pi lists
-configured credentialed candidates with `pi --no-extensions --list-models`; Claude Code offers
-an incomplete list of aliases and names from user settings and environment because it cannot
-list account entitlements. Discovery makes no inference API calls and does not verify access.
-An empty listing, a missing program or failed discovery does not prevent custom/offline edits.
-The candidate output names the source and reasoning levels, with pi's non-reasoning models
-listing only `off`; these are suggestions, not the configuration's admission policy.
-
-### Changing worker models: configure-workers
-
-<a id="concept.configure-workers"></a>
-
-Run `concorde configure-workers` in a terminal to edit a draft. It shows the worktree, global
-default, Operation defaults and every worker, the effective backend/model/reasoning and each
-field's source. Open a scope to choose a backend, model or reasoning level, inherit a field,
-or remove the whole entry. A backend selection clears that entry's model and reasoning so the
-new program starts afresh. Custom model input is always available; discovery runs only when the
-human requests candidates. Unsaved changes stay in memory. Save validates the entire draft
-and writes atomically. Cancel, q or Escape at the top screen and Ctrl-C anywhere offer
-Keep editing (the default) or Discard changes when the draft is dirty; a clean draft exits
-without a prompt. Escape or another Ctrl-C at the confirmation keeps the draft. `/` filters
-scope and candidate model lists; an empty search restores all rows. Returning from Edit
-preserves the selected scope and its filter. A file
-changed by another editor while the draft is open is refused rather than overwritten.
-
-AI agents edit `.concorde/worker-models.json` directly, preserving unrelated sparse overrides,
-then run `concorde configure-workers --check`. `--show --json` returns the validated source and
-every worker's effective values and sources; `--check --json` returns the same read-only result
-with action `check`. Without `--json`, these options print human-readable inspection. Neither
-performs discovery or writes any file. Mutation flags and `--candidates` are not supported.
-
-The command resolves the Git worktree from any directory inside it: primary edits affect future
-tasks, and task edits affect only that task's copy. It launches no worker, needs no workspace
-binding, takes no [workspace lock](../../glossary.json#concept.workspace-lock) and records no run. A
-bare invocation without an interactive terminal is refused with instructions for direct edits and
-read-only inspection.
-
-JSON inspection follows the
-[command result](contracts.md#contract.workers.configure-workers-result): exit 0 and the
-[configuration](contracts.md#contract.workers.worker-configuration) on success; exit 1 with
-`configuration_refused` and its Workers cause on invalid configuration. Malformed options or a
-directory outside Git return `invalid_request` and exit 2. A refused Save leaves the file unchanged
-and the draft available for correction. The terminal editor is also opened by pi's
-[model picker](../../glossary.json#concept.model-picker).
+(optionally `--json`) works outside Git. pi lists configured credentialed candidates with
+`pi --no-extensions --list-models`; Claude Code offers an incomplete list of aliases and names from
+user settings and environment because it cannot list account entitlements. Discovery makes no
+inference API calls and does not verify access. An empty listing, a missing program or failed
+discovery does not prevent custom/offline edits. The candidate output names the source and
+reasoning levels, with pi's non-reasoning models listing only `off`; these are suggestions, not the
+configuration's admission policy.
 
 ### What the worker gets and leaves behind
 
@@ -359,8 +329,7 @@ workers -> operations
 
 The Operation providers, Spec review and Delivery use this Module; the worker runtime knows none of
 them. They rely on the run record and on the rule that a worker's result is kept apart from host
-evidence. The shared configuration validator looks at the Operation catalog when the runtime
-loads the file, inspection checks it or the editor saves it.
+evidence. The configuration validator looks at the Operation catalog when a worker launches.
 
 <a id="uses-spec"></a>
 
@@ -415,24 +384,23 @@ store](../../glossary.json#concept.run-store), beside the Operation run, and rec
 runner's process identifier in the progress file, as the runner's own [run progress
 file](../../glossary.json#concept.run-progress-file) does. Workers relies on the runner refusing an
 unbound run's writing worker before it reaches Workers, and never reads a workspace binding itself.
-For an unbound run the step passes the run's checkout as the worktree and reads the backend and
-model from the worker model configuration of the worktree the run started in, so Workers never
-learns that the worktree it audits is a checkout.
+For an unbound run the step passes the run's checkout as the worktree and reads the backend,
+model and limits from the worker configuration committed in that checkout, as every other input of
+the run, so Workers never learns that the worktree it audits is a checkout.
 
 <a id="uses-operations"></a>
 
 **Operations** declares, in its [catalog](../../glossary.json#concept.operation-catalog), which
 Operations launch workers and the ids of their workers. The shared validator checks all configured
-Operation and worker names against it; inspection and the editor list each worker's effective
-choice. It relies on the catalog naming every worker an Operation may launch.
+Operation and worker names against it. It relies on the catalog naming every worker an Operation may
+launch.
 
-Three Modules read Workers' definitions without launching a run: the [Main
+Two Modules read Workers' definitions without launching a run: the [Main
 session](../../coordination/main-session/module.md) shows the progress file and changes the worker
-model configuration through the terminal editor or direct JSON edits, [Task
+configuration by editing it directly, and [Task
 sessions](../../coordination/task-session/module.md) reads the main session's program from the
-environment, as [Two backends from one grant](#two-backends-from-one-grant) describes, and
-[Tasks](../../coordination/tasks/module.md) copies the worker model configuration into a new task
-worktree.
+environment, as [Two backends from one grant](#two-backends-from-one-grant) describes. A task
+worktree carries the worker configuration of its base commit through Git, with nothing copied.
 
 ### Inside
 
@@ -451,23 +419,17 @@ workers: Workers {
   pi: pi backend {
     "pi_backend.py"
   }
-  models: Model configuration {
+  models: Configuration reader {
     "models.py"
-  }
-  configure: Configure-workers command {
-    "configure.py"
   }
   runtime -> claude: launches
   runtime -> pi: launches
-  configure -> models: changes the file through
 }
 ```
 
-The runtime drives every run and hands the agent process to one of two backends; the model
+The runtime drives every run and hands the agent process to one of two backends; the worker
 configuration stands apart, because the Operation's step, not the runtime, asks it for a worker's
-backend and model before calling Workers, and the
-[configure-workers](../../glossary.json#concept.configure-workers) command changes the file only
-through it.
+backend, model and limits before calling Workers.
 
 - <a id="realization.workers.runtime"></a>The **worker runtime** writes the brief, decides rounds,
   runs the write audit, keeps the progress file, manages run directories/records, and supplies the
@@ -485,15 +447,12 @@ through it.
   launches and resumes `pi -p` and reads its event stream. Tests fake `pi` for host behaviour, run
   the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`, run a real pi worker.
 
-- <a id="realization.workers.models"></a>The **model configuration** validates, reads and writes
-  `.concorde/worker-models.json`, resolves the backend, model and level of an Operation's worker by
-  its id and checks that its program is installed at launch. The separate `available_models.py`
-  module and `scripts/available_models.py` entry point discover advisory candidates without Git or
-  inference probes. Model configuration also detects the main session's program for Task sessions.
-- <a id="realization.workers.configure"></a>The **configure-workers command** provides read-only
-  inspection and the draft terminal editor in `configure_tui.py`. Both use shared validation;
-  the editor alone writes through model configuration, after explicit Save. Tests exercise the
-  command and terminal in primary and task worktrees with discovery faked.
+- <a id="realization.workers.models"></a>The **configuration reader** validates and reads
+  `.concorde/workers.json`, resolves the backend, model and level of an Operation's worker by its id
+  and the limits and runtime paths of every launch, and checks that the worker's program is
+  installed at launch; it never writes the file. The separate `available_models.py` module and
+  `scripts/available_models.py` entry point discover advisory candidates without Git or inference
+  probes. It also detects the main session's program for Task sessions.
 
 What one run leaves behind. The runtime generates the brief, keeps the progress file and writes the
 run record; both files sit in the run directory, and the record is the run's evidence:

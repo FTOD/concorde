@@ -369,40 +369,30 @@ justified.
 
 ## Worker models
 
-Workers run on pi, whatever program you are, unless the worktree's `.concorde/worker-models.json`
-puts some of them on Claude Code. The file is keyed by **worker id**, the name each Operation gives
-the workers it launches: `worker` for an Operation with one worker, `reviewer` and `checker` for
-`spec_review`, `reviewer1` to `reviewer5` and `chair` for `spec_panel`. It holds a `default`, and
-per Operation a `default` and one entry per worker id; each entry may set a `backend` (`pi` or
-`claude`), a `model` and a `reasoning` level, and the most specific entry that sets a field wins.
-An entry that chooses a backend starts that program afresh: models named for the other program are
-not inherited. Git ignores the file. `concorde task open` copies the primary worktree's file into
-the new task worktree, so a task keeps the configuration it started with, and a later change in the
-primary worktree never reaches it. Without a file, every worker runs on pi with pi's default model.
+Workers run on pi, whatever program you are, unless the worktree's `.concorde/workers.json`
+puts some of them on Claude Code. The file is tracked by Git like the project's code. It is keyed
+by **worker id**, the name each Operation gives the workers it launches: `worker` for an Operation
+with one worker, `reviewer` and `checker` for `spec_review`, `reviewer1` to `reviewer5` and `chair`
+for `spec_panel`. It holds `schema_version: 1`, a `default`, and per Operation a `default` and one
+entry per worker id under `operations.<operation>.default` and
+`operations.<operation>.workers.<worker-id>`; each entry may set a `backend` (`pi` or `claude`), a
+`model` and a `reasoning` level, and the most specific entry that sets a field wins. Set
+`backend: "claude"` to choose Claude Code; an entry that chooses a backend starts that program
+afresh, so models named for the other program are not inherited. Remove a field to inherit it
+rather than writing null. The file also holds the `limits` of every worker launch
+(`timeout_seconds`, `max_turns`, `max_budget_usd`, `rounds`) and the `runtime` paths workers may
+read besides their grant (by default `.venv` and `node_modules`). Without a file, every worker runs
+on pi with pi's default model and the default limits.
 
-The `concorde configure-workers` command opens a human-facing terminal editor of the current
-worktree's file. It launches no worker and records no run. The editor shows backend, model,
-reasoning and each effective source for the global default, Operation defaults and individual
-workers. Edits stay in a draft until Save; dirty exits offer Keep editing or Discard changes,
-including Ctrl-C. Search scopes or models with `/`; an empty search clears the filter. Remove fields to
-inherit, or remove a whole override. The same editor opens in pi when you call the
-`concorde_configure_workers` tool or the developer types `/concorde-models`; it requires a terminal.
-
-Change worker models only when the developer asks. Edit the primary worktree's file to choose
-what future tasks inherit; run it in a task worktree only when the developer asks to change a task
-that already exists. For AI-driven changes, edit `.concorde/worker-models.json` directly,
-preserving unrelated entries, then validate and inspect:
-
-```bash
-concorde configure-workers --check
-concorde configure-workers --show --json
-```
-
-Use `schema_version: 3`, a `default` entry and sparse `operations.<operation>.default` or
-`operations.<operation>.workers.<worker-id>` entries. Set `backend: "claude"` to choose Claude Code;
-an explicit backend resets model and reasoning inheritance. Remove a field to inherit it rather
-than writing null. The shared validator checks structure and catalog names at runtime as well as
-on Save or `--check`. Inspection never writes or discovers models. Old mutation flags are gone.
+A task carries the file of its base commit, so a later change on the primary branch never reaches
+a task already open. Change worker models only when the developer asks, by editing the JSON
+directly and preserving unrelated entries; there is no editor. For future tasks, edit the primary
+worktree's `.concorde/workers.json` and commit that file alone on the primary branch: a change of
+nothing but this file is the one change you commit directly in the primary worktree, never while a
+`concorde task merge` is unfinished. A task may change its own models while it works, as any
+tracked file of its branch; the change stays with the task and reaches the primary branch when the
+task merges. An unbound run reads the committed file of the commit it examines, so commit a
+change before an unbound run is to use it.
 
 For suggestions, run `python3 scripts/available_models.py --backend pi` or `--backend claude`,
 optionally with `--json`. In an installed project the script is under
@@ -412,10 +402,11 @@ are incomplete and do not prove account access. Discovery failure or an empty li
 custom/offline model names. AI may use these suggestions when the developer asks for options;
 if a requested model is already known, edit it directly without a mandatory question flow.
 
-The chosen backend must be installed when a worker launches, but it need not be installed to
-edit or validate configuration. A missing program causes `backend_missing`, never fallback.
-An Operation whose worker cannot be configured ends `failed` with `worker_model_unavailable`,
-naming the worker, file or missing program.
+Workers validate the whole file when a worker launches. The chosen backend must be installed then,
+but need not be installed to edit the file. A missing program causes `backend_missing`, never
+fallback, and a malformed file `config_invalid` naming the field. An Operation whose worker cannot
+be configured ends `failed` with `worker_model_unavailable`, naming the worker, file or missing
+program.
 
 ## Spec queries
 

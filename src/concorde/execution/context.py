@@ -13,7 +13,6 @@ maps its outcome to a step outcome.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,10 +20,13 @@ from typing import Callable
 
 from ..errors import evidence, from_exception, link
 from ..harness.models import (
+    CONFIG,
     HANDLING,
     ModelConfigError,
     config_path,
+    limits,
     load,
+    runtime,
     worker_choice,
 )
 
@@ -61,7 +63,7 @@ class Provider:
     # worktree it starts in and may launch only read-only workers.
     binding: str = "required"
     # The ids of the workers the Operation may launch, stable across runs; the first is the
-    # default. The worker model configuration, run records and evidence name workers by them.
+    # default. The worker configuration, run records and evidence name workers by them.
     workers: tuple[str, ...] = ("worker",)
     kind: str = "operation"
 
@@ -80,8 +82,6 @@ def command(name: str, steps, **fields) -> Provider:
 
 # Task types whose workers may change files; an unbound run never launches one.
 WRITING_TASK_TYPES = ("specify", "implement", "code-to-spec")
-# The runtime paths of ``workers.runtime`` when the project configuration names none.
-DEFAULT_RUNTIME = (".venv", "node_modules")
 
 
 def component(
@@ -185,15 +185,19 @@ WORKER_HANDLING = {
     "worker_timeout": (
         "exhausted",
         "the Operation passes the configured limits to Workers and does not raise them; "
-        "raising workers.timeout_seconds in .concorde/config.json is the main agent's decision",
-        ["raise workers.timeout_seconds", "run the Operation with a narrower goal"],
+        f"raising limits.timeout_seconds in {CONFIG} is the main agent's decision",
+        [
+            f"raise limits.timeout_seconds in {CONFIG}",
+            "run the Operation with a narrower goal",
+        ],
     ),
     "worker_limit_reached": (
         "exhausted",
         "the Operation passes the configured limits to Workers and does not raise them; "
-        "raising workers.max_turns or workers.max_budget_usd is the main agent's decision",
+        f"raising limits.max_turns or limits.max_budget_usd in {CONFIG} is the main agent's "
+        "decision",
         [
-            "raise workers.max_turns or workers.max_budget_usd",
+            f"raise limits.max_turns or limits.max_budget_usd in {CONFIG}",
             "run the Operation with a narrower goal",
         ],
     ),
@@ -304,7 +308,7 @@ class RunContext:
 
     @property
     def started_in(self) -> Path:
-        """The worktree the run started in, whose worker model configuration it uses."""
+        """The worktree the run started in: an unbound run's origin, else its worktree."""
         return self.origin or self.worktree
 
     @property
@@ -323,10 +327,6 @@ class RunContext:
     def branch(self) -> str | None:
         return self.workspace["branch"] if self.workspace else None
 
-    def workers_config(self) -> dict:
-        config = json.loads((self.worktree / ".concorde/config.json").read_text())
-        return config.get("workers") or {}
-
     def run_worker(
         self,
         instructions: str,
@@ -343,7 +343,7 @@ class RunContext:
     ):
         """The standard worker sequence; returns ``Continue`` or ``Stop``.
 
-        ``worker`` is the id of the worker to launch, one the provider declares; the worker model
+        ``worker`` is the id of the worker to launch, one the provider declares; the worker
         configuration chooses its backend, model and level.
 
         ``read_only`` withholds every writable level of the task type's grant, turning it into
@@ -393,20 +393,21 @@ class RunContext:
                 )
             )
         try:
-            backend, model = self.worker_model(worker)
+            config = load(self.worktree)
+            backend, model = self.worker_model(worker, config)
         except ModelConfigError as error:
             return self.model_failure(worker, error)
-        config = self.workers_config()
-        runtime = tuple(
+        bounds = limits(config)
+        readable_paths = tuple(
             Path(path) if os.path.isabs(path) else self.worktree / path
-            for path in config.get("runtime", DEFAULT_RUNTIME)
+            for path in runtime(config)
             if (Path(path) if os.path.isabs(path) else self.worktree / path).exists()
         ) + tuple(Path(path) for path in readable if Path(path).exists())
         interpreter = self.project_interpreter()
         if interpreter is not None:
             # The environment the interpreter belongs to, and the installation it links to,
             # must be readable for the worker to run it; neither is ever writable.
-            runtime += interpreter_roots(interpreter)
+            readable_paths += interpreter_roots(interpreter)
         record = run_worker(
             WorkerRequest(
                 worktree=self.worktree,
@@ -419,12 +420,12 @@ class RunContext:
                     if checks
                     else None
                 ),
-                runtime=runtime,
+                runtime=readable_paths,
                 output_schema=output_schema,
-                rounds=rounds if rounds is not None else int(config.get("rounds", 3)),
-                timeout=float(config.get("timeout_seconds", 1800)),
-                max_turns=int(config.get("max_turns", 200)),
-                max_budget_usd=config.get("max_budget_usd"),
+                rounds=rounds if rounds is not None else bounds["rounds"],
+                timeout=float(bounds["timeout_seconds"]),
+                max_turns=bounds["max_turns"],
+                max_budget_usd=bounds["max_budget_usd"],
                 model=model["model"],
                 backend=backend,
                 backend_source=model["backend_source"],
@@ -458,35 +459,38 @@ class RunContext:
         except (CheckError, SpecError, OSError):
             return None
 
-    def worker_model(self, worker: str) -> tuple[str, dict]:
-        """The backend of this Operation's worker ``worker`` — the one the worktree's
-        configuration chooses, otherwise pi — and the model and level chosen for it there."""
-        chosen = worker_choice(load(self.started_in), self.name, worker)
+    def worker_model(self, worker: str, config: dict | None = None) -> tuple[str, dict]:
+        """The backend of this Operation's worker ``worker`` — the one the worker configuration
+        of the worktree the run works in chooses, otherwise pi — and the model and level chosen
+        for it there."""
+        chosen = worker_choice(
+            load(self.worktree) if config is None else config, self.name, worker
+        )
         return chosen["backend"], chosen
 
     def model_failure(self, worker: str, error) -> Stop:
-        """Stop ``failed``: the backend or the worker model configuration cannot be settled."""
-        path = config_path(self.started_in).as_posix()
+        """Stop ``failed``: the backend or the worker configuration cannot be settled."""
+        path = config_path(self.worktree).as_posix()
         reason = HANDLING.get(error.code, ("input",))[0]
         return self.fail(
             "failed",
             "worker_model_unavailable",
             f"The {worker} worker could not be configured ({error.code}).",
-            f"the backend and model of the {worker} worker of {self.name} in {self.started_in} "
+            f"the backend and model of the {worker} worker of {self.name} in {self.worktree} "
             f"cannot be settled: {error.code}: {error} (configuration file {path})",
             reason=reason,
-            explanation="an Operation runs a worker on the program the worktree's configuration "
-            "chooses for it, otherwise on pi, with the model and level chosen there, and never "
-            "guesses, repairs or falls back from either",
-            evidence=[evidence("worker_models", path, f"{error.code}: {error}")],
+            explanation="an Operation runs a worker on the program the worker configuration "
+            "chooses for it, otherwise on pi, with the model, level and limits given there, and "
+            "never guesses, repairs or falls back from any of them",
+            evidence=[evidence("worker_configuration", path, f"{error.code}: {error}")],
             causes=[
                 component(
-                    "Workers (worker model configuration)",
+                    "Workers (worker configuration)",
                     error.code,
                     str(error),
                     reason,
-                    "Workers reads the backend, model and level from the file and changes "
-                    "nothing",
+                    "Workers reads the backend, model, level and limits from the file and "
+                    "changes nothing",
                 )
             ],
             options=[
@@ -494,9 +498,8 @@ class RunContext:
                     "install the program the worker runs on, or edit the backend of "
                     f"operations.{self.name}.workers.{worker} in {path}"
                 ),
-                f"inspect with concorde configure-workers --show --json in {self.started_in}; "
-                "edit the JSON directly or use the terminal editor, then run "
-                "concorde configure-workers --check",
+                f"correct {path} as the error says and commit it; an unbound run reads the "
+                "committed file of its checkout",
             ],
         )
 

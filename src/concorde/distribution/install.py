@@ -12,7 +12,7 @@ satisfies the package's ``runtime.python`` requirement, a uv-managed CPython whe
 none, and installs the locked runtime dependencies of the package's ``uv.lock`` there, such as
 LangGraph. The installer also places the locked pi runtime
 under ``.concorde/tools/pi-runtime/``, which every pi worker runs in (workers run on pi unless the
-worker model configuration chooses Claude Code). With ``pi`` it also places, for a pi main
+worker configuration chooses Claude Code). With ``pi`` it also places, for a pi main
 session, Concorde's pi extension under ``.pi/extensions/concorde/`` and the guidance as the pi
 skill ``.pi/skills/concorde/SKILL.md``.
 Every rendered workflow is installed for Claude Code under ``.claude/workflows/`` with the
@@ -63,7 +63,6 @@ PI_EXTENSION = ".pi/extensions/concorde"
 PI_EXTENSION_SOURCES = {
     "index.ts": "src/concorde/main_session/pi_extension.ts",
     "pi_runs.ts": "src/concorde/main_session/pi_runs.ts",
-    "pi_models.ts": "src/concorde/main_session/pi_models.ts",
 }
 CLAUDE_MD = "CLAUDE.md"
 CLAUDE_WORKFLOWS = ".claude/workflows"
@@ -89,7 +88,6 @@ IGNORED = (
     ".concorde/runs/",
     ".concorde/tasks/",
     ".concorde/workspace.json",
-    ".concorde/worker-models.json",
     ".concorde/framework/",
     f"{TOOLS}/",
     ".claude/worktrees/",
@@ -255,12 +253,7 @@ GLOSSARY_MARK = "<!-- concorde:glossary -->"
 def declared_glossary(project: Path) -> str | None:
     """The glossary path the project's registry declares, or None when there is none to read."""
     try:
-        config = json.loads((project / ".concorde/config.json").read_text("utf-8"))
-        registry = json.loads(
-            (project / config.get("registry", ".concorde/specs.json")).read_text(
-                "utf-8"
-            )
-        )
+        registry = json.loads((project / ".concorde/specs.json").read_text("utf-8"))
     except (OSError, UnicodeError, ValueError, AttributeError, TypeError):
         return None
     modules = registry.get("modules") if isinstance(registry, dict) else None

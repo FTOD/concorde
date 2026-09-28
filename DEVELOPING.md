@@ -84,6 +84,9 @@ still open when it reports the delivered work.
 Only a very small change, such as a typo, a one-line fix or a wording correction, may be made
 directly in the primary worktree, and only after the developer approves that specific change: say
 what you would change and why it is small, and wait for the approval. Without it, open a task.
+A change of the worker configuration `.concorde/workers.json` alone, made when the developer asks
+for other worker models, is the exception: commit that file by itself directly on the primary
+branch, never while a `task merge` is unfinished.
 
 Concorde's own Operations and worker agents may be used on this checkout, but they are still in
 early development, so using them is optional: do the work directly whenever that is more reliable.

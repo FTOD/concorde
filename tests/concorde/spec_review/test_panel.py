@@ -15,6 +15,7 @@ from concorde.spec.verification import verifies
 from concorde.spec_review.panel import PAYLOAD_SCHEMA, account
 from tests.concorde.support.operation_project import (
     OperationProject,
+    commit,
     link_at,
     worker_error,
 )
@@ -207,7 +208,7 @@ class SpecPanelTests(unittest.TestCase):
     @verifies("scenario.spec-review.panel-worker-models")
     def test_each_reviewer_runs_on_the_model_configured_for_its_worker_id(self):
         config = {
-            "schema_version": 3,
+            "schema_version": 1,
             "default": {"backend": "claude"},
             "operations": {
                 "spec_panel": {
@@ -219,7 +220,9 @@ class SpecPanelTests(unittest.TestCase):
                 }
             },
         }
-        (self.root / ".concorde/worker-models.json").write_text(json.dumps(config))
+        # The worker configuration is tracked: the task opened by the panel carries it.
+        (self.root / ".concorde/workers.json").write_text(json.dumps(config))
+        commit(self.root, "choose the panel's models")
         exit_status, envelope = self.panel(
             {
                 "reviewer module.a 1": worker(findings=[]),

@@ -23,9 +23,10 @@ developer the whole rendered chain of an unbound run that is not `ok`; merge del
 task branches without asking, always with `concorde task merge <task>`, never `git merge`, and
 finish a merge that a `merge_incomplete` refusal names with `concorde task merge <task> --resume`
 (or `--abort`) before anything else;
-change the models workers use only when the developer asks: AI edits `.concorde/worker-models.json`
-directly and runs `configure-workers --check`, while the human-facing
-`concorde configure-workers` command opens a draft editor with Save/Cancel (the skill's "Worker models"); run a question or review that
+change the models workers use only when the developer asks, by editing the tracked
+`.concorde/workers.json` directly: commit a change of that file alone on the primary branch for
+future tasks, or change it in a task that is to use it (the skill's "Worker models"); run a
+question or review that
 needs no task as an unbound Operation in the primary worktree; run a task that follows a known procedure as its workflow
 (the skill's "Workflows"), such as `brownfield` right after adopting Concorde in a codebase whose
 code came before its Specs. A

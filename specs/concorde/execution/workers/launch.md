@@ -16,7 +16,7 @@ A run is requested with:
 
 | Input | Meaning |
 | --- | --- |
-| backend | `claude` or `pi`: the [worker backend](../../glossary.json#concept.worker-backend) the worker model configuration chooses for the worker, pi when nothing chooses one |
+| backend | `claude` or `pi`: the [worker backend](../../glossary.json#concept.worker-backend) the worker configuration chooses for the worker, pi when nothing chooses one |
 | worktree | Absolute path of the Git worktree the worker works in: the bound workspace, or for an [unbound run](../../glossary.json#concept.unbound-run) its [unbound checkout](../../glossary.json#concept.unbound-checkout) |
 | records | The records directory of the run that asks for the worker, whose [run store](../../glossary.json#concept.run-store) receives the run directory: the [workspace binding](../../glossary.json#concept.workspace-binding)'s for a bound run, the `.concorde` of the worktree an unbound run started in; the worktree's own `.concorde` when none is given |
 | [task type](../../glossary.json#concept.task-type) | One of the seven Protocol task types; it selects the tool set |
@@ -26,7 +26,7 @@ A run is requested with:
 | validation | Optionally the caller's own validation, run after a round whose checks pass: nothing to repair, or the text naming what to repair |
 | runtime paths | Extra absolute paths Bash may read, such as the toolchain, `.venv` or `node_modules` |
 | limits | Timeout per round, `--max-turns`, `--max-budget-usd`, and the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3) |
-| model | Optionally the model passed with `--model`, from the run worktree's [worker model configuration](../../glossary.json#concept.worker-model-configuration) for the worker's id |
+| model | Optionally the model passed with `--model`, from the run worktree's [worker configuration](../../glossary.json#concept.worker-configuration) for the worker's id |
 | operation, worker | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for, recorded only |
 | reasoning | Optionally the reasoning level from the same configuration, passed with `--effort` on the Claude Code backend and `--thinking` on the pi backend |
 

@@ -1,7 +1,7 @@
 """Fake ``claude`` and ``pi`` programs for listing the models workers may use.
 
-``fake_agents`` writes both into a directory and returns the variables that make the worker model
-configuration and ``configure_workers`` run them instead of the installed programs.
+``fake_agents`` writes both into a directory and returns the variables that make the worker
+configuration and the model listing run them instead of the installed programs.
 """
 
 from __future__ import annotations

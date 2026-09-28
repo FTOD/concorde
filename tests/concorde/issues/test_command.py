@@ -32,7 +32,7 @@ class IssueCommandTests(unittest.TestCase):
         self.root = Path(temporary.name)
         (self.root / ".concorde").mkdir()
         (self.root / ".concorde/config.json").write_text(
-            json.dumps({"registry": ".concorde/specs.json"})
+            json.dumps({"profile_version": 19})
         )
         (self.root / ".concorde/specs.json").write_text(json.dumps(REGISTRY))
         (self.root / "specs/service").mkdir(parents=True)

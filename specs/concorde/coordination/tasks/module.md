@@ -38,13 +38,12 @@ concorde task open severity --goal "let Issue reports carry a severity" --module
 Tasks checks the identity is new and every named [Module](../../glossary.json#concept.module) exists
 in the [registry](../../glossary.json#concept.registry), creates branch `concorde/severity` from the
 primary worktree's commit (or `--base <ref>`), adds a worktree at `.claude/worktrees/severity`
-inside the primary worktree by default (or `--path <dir>`), copies the primary worktree's
-[worker model configuration](../../glossary.json#concept.worker-model-configuration) into it when
-there is one, binds the worktree as a workspace, writes the record and log, and prints the record.
-Git ignores that configuration, so the copy is the task's own: the task's workers keep the models
-chosen when it opened, whatever the primary worktree chooses later, until someone edits the task's
-JSON file directly or saves changes with `concorde configure-workers` in the task worktree;
-`concorde configure-workers --show` and `--check` only read it. A worktree path inside the primary
+inside the primary worktree by default (or `--path <dir>`), binds the worktree as a workspace,
+writes the record and log, and prints the record. The
+[worker configuration](../../glossary.json#concept.worker-configuration) is tracked by Git, so the
+task carries the one of its base commit: its workers keep the models chosen then, whatever the
+primary branch chooses later, and a change the task makes to its own copy merges with the task. A
+worktree path inside the primary
 worktree must be ignored by Git there, or the open is refused with `worktree_not_ignored`; the
 installer adds `.claude/worktrees/` to `.gitignore`.
 
@@ -72,10 +71,9 @@ runs of every task land in one [run store](../../glossary.json#concept.run-store
 beside the task records, and survive the worktree. From then on the task's work happens inside that
 worktree with the worktree's own `concorde`: every Operation, execution command and workflow started
 there reads the binding and works on this task's goal, Modules, branch and base without naming the
-task. Tasks writes the binding once and never again; closing removes it with the worktree. A copy
-of the configuration or a binding the file system refuses ends the open with `config_copy_failed`
-or `binding_failed`, naming the worktree and branch left behind and how to remove them, and records
-no task. Parallelism exists only between tasks: none share a worktree, and Execution's
+task. Tasks writes the binding once and never again; closing removes it with the worktree. A
+binding the file system refuses ends the open with `binding_failed`, naming the worktree and branch
+left behind and how to remove them, and records no task. Parallelism exists only between tasks: none share a worktree, and Execution's
 [workspace lock](../../glossary.json#concept.workspace-lock) lets each workspace run
 one thing at a time.
 
@@ -451,10 +449,12 @@ names, and the bundle's readiness run is its `Concorde-Readiness` trailer. A hea
 verify is refused with `delivery_unverified`, naming each mismatch, since it may not hold what was
 validated.
 
-- <a id="uses-workers"></a>**Workers** names the file of the [worker model
-  configuration](../../glossary.json#concept.worker-model-configuration), which Tasks
-  copies into a new task worktree. Tasks relies on it being one untracked file per worktree; it
-  never reads or changes its content.
+- <a id="uses-workers"></a>**Workers** reads the main session's program from the environment,
+  which `concorde task session` needs to start a task session on that program. Tasks relies on
+  it naming exactly one [worker backend](../../glossary.json#concept.worker-backend) program or
+  refusing with the variables it looked at; since the [worker
+  configuration](../../glossary.json#concept.worker-configuration) is tracked, `task open` copies
+  nothing and never reads it.
 - <a id="uses-task-session"></a>**Task sessions** starts, answers and stops
   [task sessions](../../glossary.json#concept.task-session) when `concorde task session`
   hands it a task that passed Tasks' checks. Tasks relies on it recording sessions and

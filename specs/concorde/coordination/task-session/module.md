@@ -337,7 +337,7 @@ without starting anything, so no session runs without its boundary.
 **Workers** reads the main session's program from the environment and tells where the
 sandbox-runtime package is installed, which a pi task session needs as a worker does. That program
 is not a worker's [worker backend](../../glossary.json#concept.worker-backend), which the
-[worker model configuration](../../glossary.json#concept.worker-model-configuration) chooses and
+[worker configuration](../../glossary.json#concept.worker-configuration) chooses and
 which is pi otherwise, whatever the main session runs on: a task session never takes its program
 from that configuration, and a command from neither program is refused with `client_unknown`.
 

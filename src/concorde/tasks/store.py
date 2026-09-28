@@ -28,7 +28,6 @@ from pathlib import Path
 from ..delivery.bundle import delivery_commits, delivery_mismatches
 from ..execution import binding as workspace_binding
 from ..execution.runs import RunError, lock_holder, workspace_lock, workspace_runs
-from ..harness.models import CONFIG, inherit
 
 TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
 # The stages of a task's life. Only open, merging, closed and failed are stored; active and
@@ -669,16 +668,6 @@ def _open_task(
             f"git worktree add -b {branch} {worktree} {base_commit} exited "
             f"{created.returncode}: {created.stderr.strip()}",
         )
-    try:
-        inherit(primary, worktree)
-    except OSError as error:
-        raise TaskError(
-            "config_copy_failed",
-            f"the worker model configuration {CONFIG} of {primary} could not be copied into the "
-            f"new worktree {worktree}: {error}. The worktree and branch {branch} exist but no "
-            f"task was recorded; remove them with git worktree remove {worktree} and git branch "
-            f"-D {branch} before opening the task again",
-        ) from error
     try:
         workspace_binding.write(
             worktree,

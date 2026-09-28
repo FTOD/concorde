@@ -121,7 +121,7 @@ read, and Workers audits, that checkout; the result's `commit` names the commit 
 merge tasks into the primary worktree while such a run lasts, and a merge there can therefore
 neither change what the run reads nor make a worker's audit fail. What the run examines is the
 commit, not uncommitted changes of the worktree it started in. The run is still recorded in that
-worktree's run store and uses its [worker model configuration](../glossary.json#concept.worker-model-configuration);
+worktree's run store and uses its [worker configuration](../glossary.json#concept.worker-configuration);
 the environments the project configuration names as runtime paths and Git ignores, such as `.venv`
 and `node_modules`, are linked from it into the checkout, so the checks a review runs there find
 them, and submodules it has checked out are checked out in the checkout too. However the run ends,
@@ -296,8 +296,8 @@ creates the child Modules a survey proposed. The runner runs their steps like an
 <a id="contains-workers"></a>
 
 **Workers** runs one headless worker under a frozen grant for the Operation that asked, audits it,
-runs its checks and records the worker run in the run store, and owns the worker model
-configuration and the `configure-workers` command that changes it.
+runs its checks and records the worker run in the run store, and owns the tracked worker
+configuration.
 
 <a id="contains-checks"></a>
 

@@ -61,10 +61,6 @@ HANDLING = {
         "Tasks merges only a delivery commit that holds what its evidence bundle says was "
         "validated, and repairing the task branch is work for the task",
     ),
-    "config_copy_failed": (
-        "environment",
-        "the file system refused the copy, and Tasks does not remove a worktree it just created",
-    ),
     "binding_failed": (
         "environment",
         "the file system refused the workspace binding, and Tasks does not remove a worktree it "

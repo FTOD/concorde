@@ -77,7 +77,7 @@ describe("build interface", () => {
     await mkdir(resolve(root, ".concorde"), { recursive: true });
     await writeFile(
       resolve(root, ".concorde/config.json"),
-      JSON.stringify({ registry: ".concorde/specs.json" }),
+      JSON.stringify({ profile_version: 19 }),
       "utf8",
     );
     await writeFile(

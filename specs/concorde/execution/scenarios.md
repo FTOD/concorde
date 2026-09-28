@@ -42,7 +42,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - GIVEN a primary worktree at commit `C` with an uncommitted change, a `.venv` Git ignores and a submodule it has checked out sparsely
 - WHEN an unbound `understand` run is started there and a main session commits a merge in the primary worktree while its worker works
 - THEN the run's steps and worker work in a detached checkout of `C` in a private temporary directory, reading `C`'s files without the uncommitted change, the primary worktree's `.venv` through a link, and the submodule with the same sparse patterns
-- AND the worker's audit of the checkout is clean, and its model is the one the primary worktree's [worker model configuration](../glossary.json#concept.worker-model-configuration) chooses
+- AND the worker's audit of the checkout is clean, and its model is the one `C`'s committed [worker configuration](../glossary.json#concept.worker-configuration) chooses, not an uncommitted change of it
 - AND the result is `ok`, names `C` as `commit`, has `checkout` evidence and is saved in the primary worktree's run store
 - AND the checkout and its temporary directory are gone once the result is written, also when a step raised an error, and the primary worktree keeps its uncommitted change, its `.venv` and the merge
 - BUT in a worktree whose `HEAD` names no commit the run is refused with `checkout_unavailable`, reason `environment`, and leaves nothing behind

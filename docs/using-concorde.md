@@ -310,19 +310,15 @@ Workers run on pi, whatever program you talk to, unless you put some of them on 
 model and reasoning level each worker uses is yours to choose, for every worker or for one worker
 by its id, such as a cheaper model for `implement`'s `worker` or three different models for
 `spec_panel`'s `reviewer1`, `reviewer2` and `reviewer3`; ask the main agent to change the worker
-models.
+models, or edit the file yourself.
 
-- In pi, the main agent opens a picker (you can also type `/concorde-models`). You choose the
-  default or a worker, then a model from the ones pi lists with credentials, then a reasoning
-  level.
-- In Claude Code, the main agent lists the candidates and asks you the same three questions.
-
-The choice is stored per worktree in `.concorde/worker-models.json`, which Git ignores, keyed by
-worker id. The most specific entry wins, field by field:
+The choice lives in `.concorde/workers.json`, which Git tracks like your code, keyed by worker id.
+The most specific entry wins, field by field. The same file holds the limits of every worker launch
+and the paths workers may read besides their grant:
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 1,
   "default": { "model": "anthropic/claude-sonnet-5", "reasoning": "medium" },
   "operations": {
     "spec_panel": {
@@ -336,30 +332,24 @@ worker id. The most specific entry wins, field by field:
         "chair": { "backend": "claude", "model": "opus" }
       }
     }
-  }
+  },
+  "limits": { "timeout_seconds": 1800, "max_turns": 200, "rounds": 3 },
+  "runtime": [".venv", "node_modules"]
 }
 ```
 
-A task copies the primary worktree's file when it is opened and keeps it: a change you make later
-applies to tasks opened after it, and changes an existing task only if you ask for that task.
-Behind both is the `concorde configure-workers` command, which changes the file of the worktree it
-runs in and works by hand too:
-
-```bash
-concorde configure-workers                       # pi's candidates and every worker's choice
-concorde configure-workers --model anthropic/claude-sonnet-5 --reasoning medium
-concorde configure-workers --operation spec_panel --worker reviewer2 --model local-openai/gpt-6 --reasoning high
-concorde configure-workers --operation spec_panel --worker chair --backend claude --model opus
-concorde configure-workers --operation spec_panel --worker reviewer2 --unset
-concorde configure-workers --candidates claude   # Claude Code's candidates
-(cd .claude/worktrees/retry && concorde configure-workers --model …)   # one task's own copy
-```
+Because the file is tracked, a task carries the configuration of the commit it started from. A
+change meant for future tasks is committed on its own on your primary branch; the main agent does
+that directly, without a task. A task may change its own models while it works, and that change
+arrives with the task when it merges. Runs outside a task use the committed file, so commit a change
+before such a run is to use it.
 
 An entry that puts a worker on Claude Code starts that program afresh, so a pi model set more
-generally is not carried over to it. Claude Code cannot list the models of your account, so its
-candidates are its aliases (`fable`, `opus`, `sonnet`, `haiku`) and the models your settings name;
-pass `--allow-unlisted` for another. A worker whose program is not installed fails with
-`backend_missing` instead of running on the other one.
+generally is not carried over to it. For suggestions, `python3 scripts/available_models.py
+--backend pi` (or `--backend claude`) lists the models pi has credentials for and Claude Code's
+aliases; any other name may be written too. A worker whose program is not installed fails with
+`backend_missing` instead of running on the other one, and a malformed file fails the next worker
+launch with `config_invalid`, naming what is wrong.
 
 The reasoning level is passed as `--effort` to Claude Code and as `--thinking` to pi. A pi worker
 uses copies of your pi `auth.json` and `models.json` and nothing else from your pi configuration.
@@ -668,6 +658,7 @@ Neither user documents nor custom docs may contain a registered Spec document.
 | `specs/`                                   | Your Specs: each Module's documents and their `.md.json` metadata.           |
 | `.concorde/config.json`                    | The Protocol binding and your project's interpreter.                         |
 | `.concorde/checks/`                        | Your checks, one `<module id>.json` file per Module.                         |
+| `.concorde/workers.json`                   | The models and limits of the workers.                                        |
 | `.concorde/specs.json`                     | The registry of Modules.                                                     |
 | `.concorde/protocol/`                      | The installed Spec Protocol.                                                 |
 | `.concorde/bin/concorde`                   | The `concorde` command.                                                      |

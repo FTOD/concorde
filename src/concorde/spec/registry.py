@@ -16,7 +16,7 @@ from .changes import apply_files, file_change
 from .content_model import MODULE_FIELDS, MODULE_OPTIONAL, metadata_path
 from .model import Finding, ToolResult
 from .errors import system_cause
-from .repository_base import SpecError, decode, read_file
+from .repository_base import REGISTRY_PATH, SpecError, decode, read_file
 
 MIRRORED = MODULE_FIELDS
 RECORD_FIELDS = (
@@ -29,27 +29,10 @@ RECORD_FIELDS = (
 OPTIONAL_FIELDS = MODULE_OPTIONAL
 
 
-def _registry_path(root: Path) -> str:
-    config = decode(read_file(root, ".concorde/config.json").decode("utf-8"))
-    if not isinstance(config, dict) or not isinstance(config.get("registry"), str):
-        found = config.get("registry") if isinstance(config, dict) else config
-        raise SpecError(
-            f"the configuration names no registry path; its registry field is {found!r}",
-            "invalid_spec",
-            "/registry",
-            path=".concorde/config.json",
-            reason="the configuration's registry field is the project-relative path of the "
-            "Spec registry",
-        )
-    return config["registry"]
-
-
-def mirrored_registry(
-    root: Path, registry_path: str | None = None
-) -> tuple[dict, list[str]]:
+def mirrored_registry(root: Path) -> tuple[dict, list[str]]:
     """The regenerated registry value and the identities of the records that differed."""
     root = Path(root)
-    registry_path = registry_path or _registry_path(root)
+    registry_path = REGISTRY_PATH
     registry = decode(read_file(root, registry_path).decode("utf-8"))
     if (
         not isinstance(registry, dict)
@@ -125,8 +108,8 @@ def registry_command(root: str | Path, *, write: bool) -> ToolResult:
     """``registry --write`` rewrites the mirrored fields; ``registry --check`` only reports."""
     root = Path(root)
     try:
-        registry_path = _registry_path(root)
-        value, stale = mirrored_registry(root, registry_path)
+        registry_path = REGISTRY_PATH
+        value, stale = mirrored_registry(root)
     except SpecError as error:
         return ToolResult("registry", ".", "failed", error=error)
     except (ValueError, OSError) as error:

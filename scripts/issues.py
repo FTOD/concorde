@@ -151,17 +151,16 @@ def show_action(root: Path, args) -> int:
 
 
 def registry(root: Path) -> tuple[str, bytes, list[dict]]:
-    """The configured registry's path, bytes and Modules; a refusal names what is wrong."""
-    config_path = root / ".concorde/config.json"
+    """The registry's path, bytes and Modules; a refusal names what is wrong."""
+    relative = ".concorde/specs.json"
     try:
-        relative = json.loads(config_path.read_text(encoding="utf-8"))["registry"]
         data = (root / relative).read_bytes()
         modules = json.loads(data)["modules"]
         return relative, data, modules
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise Refusal(
             "unreadable_registry",
-            f"cannot read the registry configured in {config_path}: {error}",
+            f"cannot read the registry {root / relative}: {error}",
         ) from error
 
 

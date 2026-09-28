@@ -13,6 +13,7 @@ from .repository_base import *  # noqa: F403 - public facade for shared helpers
 from .repository_base import (
     CHECKS_DIR,
     PROFILE_VERSION,
+    REGISTRY_PATH,
     PROTOCOL_DIR,
     PROTOCOL_MANIFEST_PATH,
     PROTOCOL_VERSION,
@@ -27,10 +28,18 @@ from .repository_base import (
 from .errors import system_cause
 from .typed_data import TypedDataError, checked_path, safe_path
 
-CONFIG_FIELDS = {"profile_version", "registry", "protocol"}
-# Optional sections the harness reads: the worker settings and the project interpreter
-# (`python`). The configured checks live in files of their own under CHECKS_DIR.
-OPTIONAL_CONFIG_FIELDS = {"workers", "python"}
+CONFIG_FIELDS = {"profile_version", "protocol"}
+# The project interpreter, which Check execution reads.
+OPTIONAL_CONFIG_FIELDS = {"python"}
+# Fields earlier profiles had, each with where its setting lives now.
+MOVED_CONFIG_FIELDS = {
+    "checks": f"each Module's configured checks are the file {CHECKS_DIR}/<module id>.json, "
+    'holding {"checks": [...]} with entries that have no module field',
+    "registry": f"the registry is always {REGISTRY_PATH}; move the registry file there if it is "
+    "elsewhere",
+    "workers": "the worker limits and runtime paths are limits and runtime of the tracked "
+    ".concorde/workers.json, beside the worker models",
+}
 
 
 def checks_files(root: Path) -> list[tuple[str, str]]:
@@ -218,6 +227,21 @@ class SpecRepository(DocumentUnitRepository):
                 "invalid_spec",
                 path=".concorde/config.json",
             )
+        moved = [name for name in MOVED_CONFIG_FIELDS if name in self.config]
+        if moved:
+            raise SpecError(
+                f"the configuration has {', '.join(moved)}, which profile {PROFILE_VERSION} "
+                "keeps elsewhere: "
+                + "; ".join(f"{name}: {MOVED_CONFIG_FIELDS[name]}" for name in moved),
+                "invalid_spec",
+                f"/{moved[0]}",
+                path=".concorde/config.json",
+                reason=f"the project configuration of profile {PROFILE_VERSION} holds only "
+                "profile_version, protocol and python, so that settings changed by different "
+                "work live in files of their own",
+                remediation="move each setting where the message says, remove the fields and "
+                f"set profile_version to {PROFILE_VERSION}",
+            )
         if (
             type(self.config.get("profile_version")) is not int
             or self.config["profile_version"] != PROFILE_VERSION
@@ -231,24 +255,10 @@ class SpecRepository(DocumentUnitRepository):
             )
         missing = sorted(CONFIG_FIELDS - self.config.keys())
         extra = sorted(self.config.keys() - CONFIG_FIELDS - OPTIONAL_CONFIG_FIELDS)
-        if "checks" in extra:
-            raise SpecError(
-                "the configuration has a checks field, but the configured checks live in "
-                f"{CHECKS_DIR}/<module id>.json",
-                "invalid_spec",
-                "/checks",
-                path=".concorde/config.json",
-                reason=f"since profile {PROFILE_VERSION} each Module's configured checks are "
-                "a file of their own, so that changes to different Modules' checks never meet "
-                "in one array",
-                remediation=f"move each entry into {CHECKS_DIR}/<its module>.json, whose "
-                'content is {"checks": [...]}, drop the entry\'s module field, and remove the '
-                "checks field",
-            )
         if missing or extra:
             raise SpecError(
-                "the configuration's fields must be profile_version, registry, protocol and "
-                "optionally workers and python; "
+                "the configuration's fields must be profile_version, protocol and optionally "
+                "python; "
                 + "; ".join(
                     part
                     for part in (
@@ -267,7 +277,6 @@ class SpecRepository(DocumentUnitRepository):
         checks = configured_checks(root)
         super().__init__(
             root,
-            registry_path=self.config["registry"],
             registry_bytes=registry_bytes,
             document_overrides=document_overrides,
             configured_checks=checks,

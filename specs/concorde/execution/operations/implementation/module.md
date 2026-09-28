@@ -31,7 +31,8 @@ workspace's goal as context, as `specify`'s does, beside the run's own argument:
 `--goal` states the run's own task, which may be one step of the workspace's goal, and `test`'s
 `--focus` narrows what its worker looks at. `implement` also admits earlier `ok` outputs via
 `--input`, and `--rounds` sets the resume-round limit (0 or more); without it the limit is the
-configuration's `workers.rounds`, and three when that is not set. For example, after `specify`
+[worker configuration](../../../glossary.json#concept.worker-configuration)'s `limits.rounds`, and
+three when that is not set. For example, after `specify`
 declares `src/concorde/issues/severity.py` pending, `implement --goal "accept and store the report
 severity"` lets the worker create it and change the other Issues files, returning once the checks
 pass or the rounds run out.

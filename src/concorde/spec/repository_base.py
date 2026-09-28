@@ -24,13 +24,15 @@ from .schema import admit as admit
 from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode
 
-PROFILE_VERSION = 18
+PROFILE_VERSION = 19
 PROTOCOL_VERSION = "15.0.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 # The installed Protocol copy the configuration binds; the installer places it there.
 PROTOCOL_DIR = ".concorde/protocol"
 PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
+# The registry, at a fixed place in every project.
+REGISTRY_PATH = ".concorde/specs.json"
 # The configured checks, one file per Module named by its identity.
 CHECKS_DIR = ".concorde/checks"
 RENDERED_PROTOCOL_PREFIX = "generated/protocol/"

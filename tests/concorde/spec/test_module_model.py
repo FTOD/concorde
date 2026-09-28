@@ -92,9 +92,9 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
         "scenario.spec.reject-unsupported-profile",
         "scenario.spec.reject-configuration-profile",
     )
-    def test_only_profile_18_with_the_installed_protocol_binding_is_admitted(self):
+    def test_only_profile_19_with_the_installed_protocol_binding_is_admitted(self):
         config = json.loads((self.root / ".concorde/config.json").read_text())
-        for profile in (16, 17, 19):
+        for profile in (17, 18, 20):
             with self.subTest(profile=profile):
                 self.write(
                     ".concorde/config.json",
@@ -178,16 +178,32 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
         self.assertEqual(
             ("invalid_spec", ".concorde/checks/notes.txt"), (error.code, error.path)
         )
-        # A checks field left in the configuration names where the checks live now.
+
+    @verifies("scenario.spec.config-fields-moved")
+    def test_a_moved_configuration_field_names_where_its_setting_lives(self):
         config = json.loads((self.root / ".concorde/config.json").read_text())
-        self.write(".concorde/config.json", json.dumps({**config, "checks": []}))
+        self.write(
+            ".concorde/config.json",
+            json.dumps(
+                {
+                    **config,
+                    "profile_version": 18,
+                    "registry": ".concorde/specs.json",
+                    "checks": [],
+                    "workers": {"runtime": [".venv"]},
+                }
+            ),
+        )
         with self.assertRaises(SpecError) as raised:
             self.repository()
         self.assertEqual("invalid_spec", raised.exception.code)
-        self.assertIn(".concorde/checks/<module id>.json", str(raised.exception))
-        self.assertIn(
-            ".concorde/checks/<its module>.json", raised.exception.remediation
-        )
+        for place in (
+            ".concorde/checks/<module id>.json",
+            "the registry is always .concorde/specs.json",
+            ".concorde/workers.json",
+        ):
+            self.assertIn(place, str(raised.exception))
+        self.assertIn("profile_version to 19", raised.exception.remediation)
 
     def test_parent_context_contains_the_children_and_children_do_not_see_the_parent(
         self,

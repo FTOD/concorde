@@ -142,7 +142,9 @@ function siteIdentityExists(root: string): boolean {
     throw error;
   }
 }
-/** Publication needs an initialized project: a readable configuration naming the registry. */
+/** Where every project keeps its Module registry. */
+export const REGISTRY_PATH = ".concorde/specs.json";
+/** Publication needs an initialized project: a readable configuration. */
 export function requireScoped(root: string): void {
   let config: any;
   try {
@@ -159,8 +161,8 @@ export function requireScoped(root: string): void {
     throw error;
   }
   requireThat(
-    config && typeof config.registry === "string",
-    ".concorde/config.json must name the project registry",
+    config && typeof config === "object" && !Array.isArray(config),
+    ".concorde/config.json must be a JSON object",
   );
 }
 /** The registry record's fields that mirror the entry's `module` block. */
@@ -191,13 +193,9 @@ interface Loaded {
 }
 export function loadScopedRegistry(root: string): ScopedRegistry {
   const configText = safeRead(root, ".concorde/config.json");
-  const config = parseJson(configText, ".concorde/config.json");
-  requireThat(
-    config && typeof config.registry === "string",
-    ".concorde/config.json must name the project registry",
-  );
-  const registryText = safeRead(root, config.registry);
-  const registry = parseJson(registryText, config.registry);
+  parseJson(configText, ".concorde/config.json");
+  const registryText = safeRead(root, REGISTRY_PATH);
+  const registry = parseJson(registryText, REGISTRY_PATH);
   requireThat(
     registry &&
       Object.keys(registry).sort().join(",") === "modules,schema_version" &&
@@ -213,7 +211,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   const owner = new Map<string, string>();
   const inputs: [string, string][] = [
     [".concorde/config.json", hash(configText)],
-    [config.registry, hash(registryText)],
+    [REGISTRY_PATH, hash(registryText)],
   ];
   for (const m of modules) {
     requireThat(
@@ -658,7 +656,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   return {
     schema_version: 23,
     projectRoot: root,
-    registryPath: config.registry,
+    registryPath: REGISTRY_PATH,
     rootModule: rootModules[0].id,
     sourceDigest: hash(JSON.stringify(inputs)),
     modules,
