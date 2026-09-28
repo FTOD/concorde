@@ -85,6 +85,32 @@ be reported.
 | 9 | Remove any pre-created path still empty that step 8 left; clear the pending marker of every entry that now exists | Operation, Spec core | — (a marker update that fails is recorded as `pending-markers` evidence) |
 | 10 | Return the run's output | Operation, Execution runner | — |
 
+The main path, the resume loop and the exits, which all meet at steps 8–10:
+
+```d2 illustrative
+direction: down
+grant: 1 Freeze the implement grant
+precreate: 2 Pre-create pending files
+brief: 3 Settings, tools and brief
+launch: 4 Launch or resume the worker
+audit: 5 Audit against the grant
+checks: 6 Run the configured checks
+record: "8 Proposed deletions after a clean audit, empty pre-created paths removed, run record"
+markers: "9 Leftover empty paths removed, pending markers of existing entries cleared"
+output: 10 Return the code change
+stopped: "failed, no worker launched" {shape: oval}
+grant -> precreate -> brief -> launch -> audit
+audit -> checks: worker ok, audit clean
+launch <- checks: "7 a check fails, rounds left: resume with the failures"
+checks -> record: "all passed, or none configured: ok"
+checks -> record: "still failing, rounds used up: failed" {style.stroke-dash: 3}
+audit -> record: "write outside the grant: failed;\nworker blocked or failed: its status, unresumed" {style.stroke-dash: 3}
+launch -> record: "launch error or timeout: failed" {style.stroke-dash: 3}
+precreate -> record: "cannot create: failed" {style.stroke-dash: 3}
+grant -> stopped: Specs not loaded, Module unknown {style.stroke-dash: 3}
+record -> markers -> output
+```
+
 Once launched, steps 8–10 run whatever the status, so Specs and the run record stay consistent after
 a failure. Steps 1–8 are the
 [standard worker sequence](../../../glossary.json#concept.standard-worker-sequence); step 9 is this

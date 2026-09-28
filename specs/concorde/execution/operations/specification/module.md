@@ -78,13 +78,45 @@ it.
 | 1 | Validate the workspace's Specs as a baseline | Operation, Spec core | Specs cannot load (`failed`) |
 | 2 | Compute and freeze the `specify` [grant](../../../glossary.json#concept.grant) | Operation, Spec core | unknown Module (`failed`) |
 | 3 | Generate settings, tools and the [brief](../../../glossary.json#concept.brief) | Workers | — |
-| 4 | Launch the worker and wait for its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
+| 4 | Launch the worker and wait for its [worker result](../../../glossary.json#concept.worker-result); after each round it ended `ok` with a clean audit, validate against the baseline and, at most twice per worker launch, resume it with every error its change introduced | Workers, worker, Operation | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
 | 5 | [Audit](../../../glossary.json#concept.write-audit), perform proposed deletions, write the [run record](../../../glossary.json#concept.run-record) | Workers | a write outside the grant (`failed`) |
 | 5a | When the worker ended `blocked` proposing new documents of bound Modules: create them, empty and owned, regenerate the registry mirror, and repeat steps 2–5 once with a brief naming them | Operation, Workers | a proposal it may not create (`blocked`, `document-refused`); the second worker's own outcome |
 | 6 | Regenerate the [registry](../../../glossary.json#concept.registry) mirror from the changed entries | Operation, Spec core | — |
 | 7 | Validate again and compare with the baseline | Operation, Spec core | a new error left after the last repair round of a worker that ended `ok` (`blocked`) |
 | 8 | Compute changed documents, added entries and affected Modules via the [impact index](../../../glossary.json#concept.impact-index) | Operation, Spec core | — |
 | 9 | Return the Spec change as the run's output | Operation, Execution runner | — |
+
+The repair loop inside each worker launch, the one relaunch of step 5a and the exits:
+
+```d2 illustrative
+direction: down
+baseline: 1 Validate the Specs as a baseline
+grant: 2 Freeze the specify grant
+brief: 3 Settings, tools and brief
+launch: 4 Launch or resume the worker
+audit: 5 Audit, proposed deletions, run record
+repair: "4 Validate against the baseline"
+create: "5a Create the proposed documents, empty and owned;\nregenerate the registry mirror"
+registry: 6 Regenerate the registry mirror
+validate: "7 Validate again against the baseline"
+impact: 8 Changed documents, added entries, affected Modules
+output: 9 Return the Spec change
+stopped: "failed, nothing observed" {shape: oval}
+baseline -> grant -> brief -> launch -> audit
+audit -> repair: worker ok, audit clean
+launch <- repair: "new errors, repair rounds left (two per launch): resume with them"
+repair -> registry: "no new error, or repair rounds used up"
+audit -> create: "worker blocked, proposing new documents (first launch only)" {style.stroke-dash: 3}
+grant <- create: "all created: launch once more, the brief naming them" {style.stroke-dash: 3}
+create -> registry: "a proposal refused: blocked, nothing created" {style.stroke-dash: 3}
+audit -> registry: "worker blocked or failed: its status" {style.stroke-dash: 3}
+audit -> stopped: write outside the grant {style.stroke-dash: 3}
+baseline -> stopped: Specs cannot load {style.stroke-dash: 3}
+grant -> stopped: unknown Module {style.stroke-dash: 3}
+registry -> validate
+validate -> impact: "a new error left after an ok worker: blocked"
+impact -> output
+```
 
 When the worker ends `blocked` or `failed` after editing — including a round that timed out or
 reached a limit, and an invalid worker result — steps 6–8 still run so the result shows what was
