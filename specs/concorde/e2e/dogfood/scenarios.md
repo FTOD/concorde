@@ -39,7 +39,7 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.dogfood-scenarios.untouched — A changed framework or installed file is seen
 
-- GIVEN a project with the installed framework and installed files
-- WHEN a framework source or an installed file changes
-- THEN its digest differs from the baseline
-- BUT Python's caches under the framework change nothing
+- GIVEN a prepared scenario whose project has the framework copy and the installed files of its baselines
+- WHEN a framework source or an installed file outside `.concorde/` changes and the scenario is evaluated
+- THEN `concorde_untouched` fails, naming the changed installed file or the changed framework copy
+- BUT a change only to Python's caches under the framework copy leaves `concorde_untouched` passing

@@ -43,11 +43,12 @@ concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--det
 concorde task-validation [--modules …] [--input …] [--detach]
 concorde delivery        [--adoption] [--detach]
 concorde scaffold        --input <survey run> [--detach]
-concorde workflow step|report …
 ```
 
-An [Operation](../glossary.json#concept.operation) launches AI workers under a grant computed from
-the workspace's Specs; the catalog of [Operations](operations/module.md) lists them. An
+An [Operation](../glossary.json#concept.operation) launches AI workers under a
+[grant](../glossary.json#concept.grant), the per-path access list its
+[task type](../glossary.json#concept.task-type) assigns, computed from the workspace's Specs; the
+catalog of [Operations](operations/module.md) lists them. An
 [execution command](../glossary.json#concept.execution-command) is deterministic and launches no
 worker: [`task-validation`](commands/validation/module.md) decides whether the workspace is ready to
 deliver, [`delivery`](commands/delivery/module.md) validates it again and commits it with its
@@ -58,7 +59,8 @@ parses their command line, resolves the workspace, takes the
 [run result](../glossary.json#concept.run-result), so a workflow, the task level or an observer
 treats them alike. `--modules` names the Modules the run works on (default: the binding's, less any
 the workspace no longer registers); `--input` admits the output of an earlier `ok` run of the same
-workspace, such as a plan or a survey.
+workspace, such as a plan or a survey. `concorde workflow step|report …` works on the workspace the
+same way but is not itself a run: it starts and awaits runs through [Workflows](workflows/module.md).
 
 A run of `implement` in a task worktree, for example, reads the binding (workspace `retry`,
 [Module](../glossary.json#concept.module) `module.http`, base `4be1…`), takes the lock of `retry`,
@@ -88,9 +90,9 @@ over the unchanged errors it received. The
 **One run at a time.** A bound run holds the **workspace lock** for its whole life. A second run
 started in the same workspace while the first holds it is refused with `workspace_busy`, naming the
 run that holds it, and a [workflow step](../glossary.json#concept.workflow-step) waits for the
-lock to be free before it starts its run. The kernel releases the lock however the run ends. The
-lock lies in the run store, not in the workspace, so a run that only reads the workspace
-leaves it untouched.
+lock to be free before it starts its run. The lock is a file lock held by the runner's process, so
+the kernel releases it however the run ends. The lock lies in the run store, not in the workspace,
+so a run that only reads the workspace leaves it untouched.
 
 <a id="concept.unbound-run"></a>
 
@@ -98,9 +100,9 @@ leaves it untouched.
 may also run **unbound**, in a worktree without a binding such as the primary worktree:
 `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`). It works on
 that worktree with the Modules `--modules` names, records `workspace` null, admits only unbound
-inputs, takes no lock and may launch only reading workers, so it changes no
-[Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution command is
-refused unbound with `binding_required`.
+inputs, takes no lock, having no workspace to lock, and may launch only reading workers, so it
+changes no [Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution
+command is refused unbound with `binding_required`.
 
 <a id="concept.detached-run"></a><a id="concept.run-progress-file"></a>
 
@@ -108,8 +110,8 @@ refused unbound with `binding_required`.
 **[detached run](../glossary.json#concept.detached-run)**, a process of its own that outlives the
 command, and prints the run identity and the path of its result as soon as the run's
 **[run progress file](../glossary.json#concept.run-progress-file)** exists. Everything else about
-the run is the same, including a refusal, which still becomes its result. While a run lives, its run
-progress file names what runs, in which workspace and step, with the runner's process identifier,
+the run is the same, including a refusal, which still becomes its result. While a run lives, its
+run progress file names what runs, in which workspace and step, with the runner's process identifier,
 which every worker run it launches records too, so an observer such as the main session's
 [run view](../glossary.json#concept.run-view) follows a run and its worker without asking the
 runner.
@@ -117,8 +119,8 @@ runner.
 <a id="concept.run-store"></a>
 
 **Where runs are kept.** The **run store** is the `runs/` directory of the records directory: each
-run's directory with its [progress file](../glossary.json#concept.progress-file) and result, the
-[run records](../glossary.json#concept.run-record) of the workers it launched, and
+run's directory with its [run progress file](../glossary.json#concept.run-progress-file) and
+result, the [run records](../glossary.json#concept.run-record) of the workers it launched, and
 [Workflows](workflows/module.md)' own records under `runs/workflows/`. A bound run records in the
 directory its binding names; an unbound run in its own worktree's `.concorde`. The store is ignored
 by Git. Whoever prepared a workspace reads its runs there, by the workspace's name, to know what
@@ -170,10 +172,10 @@ execution command is itself the run, with a workspace, a lock and a recorded res
 The **Execution runner** runs one run per process. It parses the command line, reads the binding,
 takes the workspace lock for a bound run, checks the Modules and inputs, runs the definition's
 steps in their declared order until one stops the run, composes the run result, checks it against
-its contract and the definition's output contract, and writes it while it still holds the lock, so
-that whoever sees the result never finds the workspace busy with that run. A refusal before the
-steps, a step that raises, a signal or an invalid result each still end in a written result with
-the runner's link on top. Its exact behaviour is in [How a run is executed](runner.md).
+its contract and, when it is `ok`, the definition's output contract, and writes it while it still
+holds the lock, so that whoever sees the result never finds the workspace busy with that run. A
+refusal before the steps, a step that raises, a signal or an invalid result each still end in a
+written result with the runner's link on top. Its exact behaviour is in [How a run is executed](runner.md).
 
 The **Runner and run store** realization binds the binding reader, the run store, the run context
 and definitions that steps work with and the runner itself, with their tests; the runner finds an

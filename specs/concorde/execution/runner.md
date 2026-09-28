@@ -2,10 +2,11 @@
 
 The exact behaviour of the [Execution runner](../glossary.json#concept.execution-runner): the
 command lines, the [workspace binding](../glossary.json#concept.workspace-binding) it reads, the
-runner's steps, the [progress file](../glossary.json#concept.progress-file) and how refusals and
-failures become a result. The envelope is the
-[run result contract](contracts.md#contract.execution.run-result) and the binding the
-[workspace binding contract](contracts.md#contract.execution.workspace-binding). What an
+runner's steps, the [run progress file](../glossary.json#concept.run-progress-file) and how refusals
+and failures become a result. The Operation or execution command a command line names is the run's
+definition: its steps, its arguments, whether it may run unbound and its output contract. The
+envelope is the [run result contract](contracts.md#contract.execution.run-result) and the binding
+the [workspace binding contract](contracts.md#contract.execution.workspace-binding). What an
 [Operation](../glossary.json#concept.operation) adds, its worker sequence, is in
 [How an Operation runs its workers](operations/workers.md).
 
@@ -31,8 +32,9 @@ concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--det
   material of the run. Any other run is refused with `input_not_admissible`.
 - Operation and command arguments are defined by the definition and parsed with the rest; an
   unknown argument is a command-line error.
-- Standard output receives exactly the [run result](../glossary.json#concept.run-result) as one JSON
-  value. Diagnostics go to standard error.
+- Without `--detach`, standard output receives exactly the
+  [run result](../glossary.json#concept.run-result) as one JSON value; with it, the announcement
+  described in [Detached runs](#detached-runs). Diagnostics go to standard error.
 - Exit status 0 means the result's status is `ok`, 1 means `blocked` or `failed`, and 2 means the
   command line was malformed or named no known Operation or command, in which case no run is
   created and no result is written.
@@ -55,25 +57,24 @@ The runner never writes the binding.
 ## Run identity and directory
 
 The runner creates the run identity `r-<YYYYMMDD>T<HHMMSS>-<name>-<8 hex digits>` from the UTC start
-time, the definition's name with `-` written as `_`, and random digits, and the
-[run directory](../glossary.json#concept.run-directory) `<records>/runs/<run-id>/`. The directory
-holds `result.json`, the run result exactly as printed, the progress file, the logs of the checks
-the run ran, and for a [detached run](../glossary.json#concept.detached-run) the runner's output
-`host.out`. Workers keeps each worker launch's [run record](../glossary.json#concept.run-record)
-beside it, in the same [run store](../glossary.json#concept.run-store), and the result lists their
-identities.
+time, the definition's name with `-` written as `_`, and random digits, and the run's directory
+`<records>/runs/<run-id>/`. The directory holds `result.json`, the run result exactly as printed,
+the run progress file, the logs of the checks the run ran, and for a
+[detached run](../glossary.json#concept.detached-run) the runner's output `host.out`. Workers keeps
+each worker launch's [run record](../glossary.json#concept.run-record) beside it, in the same
+[run store](../glossary.json#concept.run-store), and the result lists their identities.
 
 ## Runner
 
 | # | Step | Stops the run when |
 | --- | --- | --- |
-| 1 | Parse the command line and look up the definition; only then create the run identity and directory | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
-| 2 | Read the workspace binding | an unreadable, invalid or misplaced binding (`failed`) |
+| 1 | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity, the run's directory and its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
+| 2 | Refuse a binding that could not be read, breaks the binding contract or names another root | an unreadable, invalid or misplaced binding (`failed`) |
 | 3 | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock) | `workspace_busy` (`failed`) |
 | 4 | Admit the run: refuse an unbound run of a definition that needs a binding; settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `binding_required`, `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
 | 5 | Execute the definition's steps in order | a step stops the run with a status |
-| 6 | Compose the run result from the step outcomes and check it against the run result contract and the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
-| 7 | Write `result.json`, mark the progress file finished, release the lock, print the result and exit | — |
+| 6 | Compose the run result from the step outcomes and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
+| 7 | Write `result.json`, mark the run progress file finished, release the lock, print the result and exit | — |
 
 - Each step returns either "continue", with any output and evidence it produced, or "stop", with a
   status, a summary and evidence. Steps of one run share the run context: the workspace binding, the
@@ -84,11 +85,12 @@ identities.
 - An exception raised by a step becomes a `failed` result with `host-error` evidence naming the
   step, the error type and message; the cause of its error is a `component` link with the
   exception's type, message and command output, where it was raised and the path of the full
-  traceback in the run directory.
+  traceback in the run's directory.
 - On `SIGINT` or `SIGTERM` the runner stops its running step, ends every worker process the run
   started through Workers and finishes with a `failed` result with `cancelled` evidence naming the
   signal. Its `cancelled` link names every worker run the run started, with evidence of kind
-  `worker-run` pointing at each run's record and progress file, and `worker_runs` lists them: the
+  `worker-run` pointing at each run's record and
+  [progress file](../glossary.json#concept.progress-file), and `worker_runs` lists them: the
   runner learns each worker run's identity when the worker run starts, not when it returns.
 - Steps 6 and 7 run whatever happened before them. A refusal in steps 2 to 4 still writes and
   prints a result, with the refusal code as `refused` evidence and an error whose cause is the
@@ -102,17 +104,19 @@ identities.
 ## Detached runs
 
 With `--detach` the command checks the command line (a malformed one starts nothing, with exit
-status 2), chooses the run identity, creates the run directory and starts the runner as a process of
-its own, in a new session, handing it the identity. It then waits until the run's progress file
-exists and prints `{run_id, kind, name, host_pid, progress, result}` with exit status 0. A runner
-that ends or has not written its progress file within the announcement wait is killed, with its
-process group, and the command prints the same fields with an `error` link `detach_failed` naming
-the end of the runner's output, with exit status 1, so an unannounced runner never starts its run
-later.
+status 2), reads the workspace binding to select the records directory as step 1 does, chooses the
+run identity, creates the run's directory and starts the runner as a process of its own, in a new
+session, handing it the identity, so that the runner records in the directory the command
+announces. It then waits until the run progress file exists and prints
+`{run_id, kind, name, host_pid, progress, result}` with exit status 0. A runner that ends or has
+not written its run progress file within the announcement wait, 60 seconds from its start, is
+killed, with its process group, and the command prints the same fields with an `error` link
+`detach_failed` naming the end of the runner's output, with exit status 1, so an unannounced runner
+never starts its run later.
 
-## Progress file
+## Run progress file
 
-The runner writes `<records>/runs/<run-id>/status.json` atomically when the run directory is
+The runner writes `<records>/runs/<run-id>/status.json` atomically when the run's directory is
 created, before each step and when the result is written:
 
 | Field | Content |

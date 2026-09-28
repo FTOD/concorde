@@ -1,6 +1,6 @@
-# Task session scenarios
+# Task sessions scenarios
 
-Concrete situations that show the [requirements](requirements.md) of [Task session](module.md).
+Concrete situations that show the [requirements](requirements.md) of [Task sessions](module.md).
 Commands, the [session report](../../glossary.json#concept.session-report) and error codes are
 defined in the [contracts](contracts.md).
 
@@ -19,7 +19,7 @@ defined in the [contracts](contracts.md).
 ### scenario.task-session.program — A task session runs on the main session's program
 
 - GIVEN an open task `severity`
-- WHEN `concorde task session severity` runs from a Claude Code session, from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and from neither
+- WHEN `concorde task session severity --main concorde-7d` runs from a Claude Code session, from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and from neither
 - THEN the first starts `claude --bg` and the second a pi [session round](../../glossary.json#concept.session-round)
 - AND the third is refused with `client_unknown`, naming every variable it looked at, and the record is unchanged
 
@@ -29,15 +29,15 @@ defined in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde task session severity`
 - THEN `.concorde/tasks/severity.session/` holds `boundary.ts` with the task worktree and [decision log](../../glossary.json#concept.decision-log) embedded
 - AND a detached supervisor runs `pi -p --mode json --approve -e <boundary.ts>` in the task worktree with the developer's pi configuration, `CONCORDE_TASK_SESSION` set and a session file under `pi/`, its prompt the pi [task-session](../../glossary.json#concept.task-session) guidance followed by the task's goal, Modules and decision log
-- AND the task record lists the session with the program `pi` and round 1 as `running`, and the [progress file](../../glossary.json#concept.progress-file) names the round
-- BUT when pi or the sandbox-runtime package is missing, the command fails with `session_failed` naming each missing program, and the record is unchanged
+- AND the task record lists the session with the program `pi` and round 1 as `running`, and the round's status file `status.json` names the round
+- BUT when pi, on Linux `bwrap` or `socat`, or the sandbox-runtime package is missing, the command fails with `session_failed` naming each missing program, and the record is unchanged
 
 ### scenario.task-session.pi-boundary — The pi boundary confines the session's writes
 
 - GIVEN the boundary written for a pi task session
 - WHEN it judges a `write` of a file in the task worktree, of the decision log and of a file of the primary worktree, and a `bash` command
 - THEN the first two are allowed and the third is blocked with a reason naming the task worktree
-- AND the command is rewritten to run in sandbox-runtime, writing only the task worktree, the Git directory, the primary worktree's `.concorde/runs/` and `.concorde/tasks/` and package caches, with every network host allowed
+- AND the command is rewritten to run in sandbox-runtime, writing only the task worktree, the Git directory, the primary worktree's `.concorde/runs/` and `.concorde/tasks/`, package caches and the session's private temporary directory, with every network host allowed
 
 ### scenario.task-session.pi-rounds — The main agent's answer starts the next round
 
@@ -51,14 +51,14 @@ defined in the [contracts](contracts.md).
 
 - GIVEN a pi session round whose report says `delivered` with a commit that is no delivery commit of the task's workspace on its branch, or `escalated` naming an escalation the task record does not have
 - WHEN the supervisor records the round
-- THEN the round is `failed` with a `session_report_unverified` link naming each mismatch, and the report is kept beside it
+- THEN the round is `failed` with a `session_report_unverified` link naming each mismatch, and the round's entry in the task record keeps the report beside that link
 
 ### scenario.task-session.pi-report-shape — New reports use one fixed field set
 
 - GIVEN a new pi task-session report with the six fields `status`, `summary`, `commit`, `escalations`, `decisions` and `open`
 - WHEN the boundary and supervisor validate the report
 - THEN delivered is accepted only with a full delivery commit and an empty escalation array, and escalated only with a null commit and a nonempty unique array of positive escalation numbers
-- BUT an omitted field, empty commit, mixed status fields or malformed value is refused
+- BUT a `concorde_report` call with an omitted field, empty commit, mixed status fields or malformed value returns an error naming the problem and does not end the round, and a report that reaches the supervisor without following the contract ends the round `failed` with a `session_report_unverified` link
 - AND persisted version 1 reports remain unchanged when a task record is read or settled
 
 ### scenario.task-session.pi-failed — A round without a report fails with its evidence
@@ -66,7 +66,7 @@ defined in the [contracts](contracts.md).
 - GIVEN a pi session round whose pi exits with status 1 without calling `concorde_report`
 - WHEN the supervisor records the round
 - THEN the round is `failed` with a `session_no_report` link naming the exit code, pi's stop reason and error message and the paths of the event stream and standard error
-- AND the progress file shows the round finished
+- AND the round's status file shows the round finished
 
 ### scenario.task-session.pi-stop — Stop a running round
 

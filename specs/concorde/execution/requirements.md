@@ -29,8 +29,19 @@ breaks the binding contract or names a root other than that worktree.
 ### req.execution.one-result — Every accepted command line ends with one result
 
 Every `concorde run` or [execution command](../glossary.json#concept.execution-command) whose
-command line names a known [Operation](../glossary.json#concept.operation) or command SHALL write
-and print exactly one run result, including when the run is refused, fails or is cancelled.
+whole command line is accepted and names a known [Operation](../glossary.json#concept.operation) or
+command SHALL write exactly one run result, including when the run is refused, fails or is
+cancelled.
+
+A malformed command line, including one with an unknown argument, or one started outside every Git
+worktree starts no run and writes no result (exit status 2), and a detached runner that ends or is
+killed before it announced its run (`detach_failed`) leaves no run, as
+[How a run is executed](runner.md) describes.
+
+### req.execution.result-printed — A foreground run prints its result
+
+A command started without `--detach` SHALL print on standard output exactly the run result it
+wrote.
 
 ### req.execution.claims-apart — Worker claims stay the worker's
 
@@ -46,37 +57,49 @@ own, with the errors of the worker runs, checks or components the run called as 
 ### req.execution.reasons — The run says why it cannot handle the error
 
 The run's own link SHALL give the reason the run cannot handle the error as its definition's
-[Spec](../glossary.json#concept.spec) or [How a run is executed](runner.md#errors) assigns it, and a
-detail that names the workspace, the Modules, the run, the paths and the messages concerned.
+[Spec](../glossary.json#concept.spec) or [How a run is executed](runner.md#errors) assigns it.
+
+### req.execution.error-detail — The run's link names what is concerned
+
+The run's own link SHALL give a detail that names the workspace, the Modules, the run, the paths
+and the messages concerned.
 
 ### req.execution.output-checked — Outputs match their contract
 
-The runner SHALL replace a result that fails the run result contract, or whose `output` fails the
-definition's output contract, by a `failed` result before writing it.
+The runner SHALL replace a result that fails the run result contract, or an `ok` result whose
+`output` fails the definition's output contract, by a `failed` result before writing it.
 
 ## Runs
 
 ### req.execution.workspace-lock — One run per workspace
 
 The runner SHALL hold the [workspace lock](../glossary.json#concept.workspace-lock) of a bound run
-from before its first step until after its result is written, refusing with `workspace_busy` a run
-of a workspace whose lock another process holds.
+from before its first step until after its result is written.
 
-### req.execution.unbound-read-only — An unbound run changes no Spec or code
+### req.execution.workspace-busy — A busy workspace refuses a run
+
+The runner SHALL refuse with `workspace_busy` a run of a workspace whose lock another process
+holds.
+
+### req.execution.unbound-read-only — Only a definition that allows it runs unbound
 
 An [unbound run](../glossary.json#concept.unbound-run) SHALL be admitted only for a definition that
-allows unbound runs and never launch a worker whose grant would keep a writable path.
+allows unbound runs.
+
+### req.execution.no-writing-worker — An unbound run launches no writing worker
+
+An unbound run SHALL NOT launch a worker whose grant would keep a writable path.
 
 ### req.execution.records-directory — Runs are recorded where the binding says
 
-The runner SHALL write every [run directory](../glossary.json#concept.run-directory) and result
-under `runs/` of the binding's records directory, or of the worktree's own `.concorde` for an
-unbound run.
+The runner SHALL write every run's directory and result under `runs/` of the binding's records
+directory, or of the worktree's own `.concorde` for an unbound run or a run whose binding it
+refused.
 
 ### req.execution.inputs-same-workspace — Inputs come from the same workspace
 
-The runner SHALL admit as `--input` only an `ok` run whose workspace is the run's own workspace, or
-none for an unbound run.
+The runner SHALL admit as `--input` only an `ok` run whose workspace is the run's own workspace,
+which for an unbound run is a run whose `workspace` is null.
 
 ### req.execution.detached-same-run — A detached run is an ordinary run
 
@@ -84,12 +107,17 @@ A run started with `--detach` SHALL check, record and report exactly as the same
 
 ### req.execution.detached-announced — A detached run is announced once it exists
 
-A command started with `--detach` SHALL print the run identity and result path only once the run's [run progress file](../glossary.json#concept.run-progress-file) exists.
+A command started with `--detach` SHALL announce the run, printing its run identity and result path
+with exit status 0, only once the run's
+[run progress file](../glossary.json#concept.run-progress-file) exists.
+
+When the runner ends or stays silent until the announcement wait runs out, the command reports
+`detach_failed` instead, as [How a run is executed](runner.md#detached-runs) describes.
 
 ### req.execution.fixed-order — Steps run in their declared order
 
-The runner SHALL execute a definition's steps in their declared order, each at most once, and stop
-at the first step that stops the run.
+The runner SHALL execute each of a definition's steps at most once, in their declared order, up to
+and including the first step that stops the run.
 
 ### req.execution.no-chaining — Runs do not start runs
 

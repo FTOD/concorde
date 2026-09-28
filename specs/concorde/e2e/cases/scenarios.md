@@ -15,7 +15,7 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the developer grades the project
 - THEN the result names each FAIL_TO_PASS test that did not pass and reports the case unresolved
 - AND after a change that makes every listed test pass and edits the same test file itself, grading reports it resolved, the test file graded as the case's test patch writes it
-- AND the project has neither the test patch's files nor an extra worktree afterwards
+- AND afterwards the project's files are as its `main` branch holds them, the change's own edit of the test file included, and the project has no extra worktree
 
 ### scenario.swe-bench-cases.repair-specs — An adopted case's Specs are repaired before its issue
 

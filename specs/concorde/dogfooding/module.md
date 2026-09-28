@@ -3,12 +3,13 @@
 ## Purpose
 
 Dogfooding lets the developer use Concorde on a real project while also developing Concorde, and
-turns what goes wrong there into fixes of Concorde. It provides the
-**[develop install](../glossary.json#concept.develop-install)**, which runs the Concorde of an
-independent [Concorde repository](../glossary.json#concept.concorde-repository) the developer also
-changes; the guidance that makes the project's [main agent](../glossary.json#concept.main-agent)
-watch Concorde, tell Concorde's defects from the project's own problems, and hand each defect over
-as an Issue report; and the rules by which the Concorde repository takes such a report and fixes it.
+turns what goes wrong there into fixes of Concorde. It provides the **[develop
+install](../glossary.json#concept.develop-install)**, which runs the Concorde of an independent
+[Concorde repository](../glossary.json#concept.concorde-repository) the developer also changes; the
+guidance that makes the project's [main agent](../glossary.json#concept.main-agent) watch Concorde,
+tell Concorde's defects from the project's own problems, and hand each defect over as an [Issue
+report](../glossary.json#concept.issue-report); and the rules by which the Concorde repository takes
+such a report and fixes it.
 
 The developer and the main agents on both sides rely on it. It never changes Concorde from the
 project: the project's main agent only observes and reports, and every fix is ordinary work in the
@@ -39,23 +40,27 @@ own task worktrees therefore work exactly as in a normal install; only the main 
 differs.
 
 **What the project's main agent does.** Besides its work on the project, it watches Concorde. It
-observes every run of an [Operation](../glossary.json#concept.operation) or
-[execution command](../glossary.json#concept.execution-command), every workflow and every worker run
-closely, the result, error chain, host evidence, [run record](../glossary.json#concept.run-record)
-and the changes it made, rather than trusting its status, and treats a run that ended `ok` but did
-something wrong like a failure. It never changes the Concorde repository, the framework copy or any
-file the installer placed ([requirements](requirements.md#req.dogfooding.never-change-concorde)),
-and never works around a defect in the project. For every problem it asks whose it is: a problem of
-the project, its Specs, code, checks or configuration, is ordinary work there; a
-**[Concorde defect](../glossary.json#concept.concorde-defect)** is one that would happen in any
-project using Concorde the same way.
+observes every run of an [Operation](../glossary.json#concept.operation) or [execution
+command](../glossary.json#concept.execution-command), every
+[workflow](../glossary.json#concept.workflow) and every [worker](../glossary.json#concept.worker)
+run closely, the result, [error chain](../glossary.json#concept.error-chain), host evidence, [run
+record](../glossary.json#concept.run-record) and the changes it made, rather than trusting its
+status, and treats a run that ended `ok` but did something wrong like a failure. It never changes
+the Concorde repository, the framework copy under `.concorde/framework/` or any file the installer
+placed ([requirements](requirements.md#req.dogfooding.never-change-concorde)), and never works
+around a defect in the project ([requirements](requirements.md#req.dogfooding.no-workaround)) but
+reports it ([requirements](requirements.md#req.dogfooding.defect-reported)). For every problem it
+asks whose it is: a problem of the project, its Specs, code, checks or configuration, is ordinary
+work there; a **[Concorde defect](../glossary.json#concept.concorde-defect)** is one that would
+happen in any project using Concorde the same way, whether Concorde implements its design wrongly or
+its design cannot serve what a correct project legitimately needs.
 
 <a id="concept.concorde-defect"></a><a id="concept.boundary-case"></a>
 
-**When a boundary blocks work.** A refused read, write or tool is the case where the two are most
-easily confused, and where the tempting fix, loosening the boundary, is most often wrong. The
-guidance therefore makes the main agent place every refusal in one of four
-**[boundary cases](../glossary.json#concept.boundary-case)** before it acts
+**When a [boundary](../glossary.json#concept.boundary) blocks work.** A refused read, write or tool
+is the case where the two are most easily confused, and where the tempting fix, loosening the
+boundary, is most often wrong. The guidance therefore makes the main agent place every refusal in
+one of four **[boundary cases](../glossary.json#concept.boundary-case)** before it acts
 ([requirements](requirements.md#req.dogfooding.boundary-classified)):
 
 | Case | How it is told | Where it goes | Who decides |
@@ -68,8 +73,10 @@ guidance therefore makes the main agent place every refusal in one of four
 The case is decided from three pieces of evidence, which a report of a blocked boundary always
 carries: the [Spec](../glossary.json#concept.spec) text and Protocol rule the boundary is derived
 from, the [grant](../glossary.json#concept.grant) actually computed (`concorde grant` and the run's
-host evidence), and the refused action with its message. Only the last two cases reach the Concorde
-repository, and only the third may be fixed there without asking the developer.
+host evidence), and the refused action with its message
+([requirements](requirements.md#req.dogfooding.boundary-evidence)). Only the last two cases reach
+the Concorde repository ([requirements](requirements.md#req.dogfooding.concorde-cases-only)), and
+only the third may be fixed there without asking the developer.
 
 <a id="concept.defect-report"></a>
 
@@ -82,9 +89,11 @@ the project; its `origin` names the project's absolute path, the project's `HEAD
 [error chain](../glossary.json#concept.error-chain) with the main agent's own link on
 top, whose reason is `scope`: the fix lies in a repository it never changes. In a task,
 `concorde task escalate … --reason scope --run <run>` builds and records exactly that link. The
-guidance lists every field the Issue report contract requires, with an example, and has the main
-agent check the report with `concorde issues report --check --file <path>`, which runs the checks
-the Concorde repository will run when it records the report, so an incomplete report is repaired
+guidance lists every field the
+[Issue report contract](../issues/interface.md#contract.issues.report) requires, with an example,
+and has the main agent check the report with `concorde issues report --check --file <path>`
+([requirements](requirements.md#req.dogfooding.report-checked)), which runs the checks the Concorde
+repository will run when it records the report, so an incomplete report is repaired
 where it was written rather than refused after the hand-off. The main agent records the report in
 the task's
 [decision log](../glossary.json#concept.decision-log), tells the developer where it is,
@@ -130,16 +139,18 @@ or by listing the Concorde repository's Issues with `concorde issues list --root
 `concorde update` from the project's primary worktree. The update refuses while a run of an
 Operation or execution command or a pi [task-session](../glossary.json#concept.task-session) round
 is still running in the project, re-checks that the Concorde repository's primary worktree is clean,
-installs from it again in develop mode ([requirements](requirements.md#req.dogfooding.develop-kept))
-and, like every update, leaves the project unvalidated until `concorde spec-validation` passes. The
-main agent then merges the primary branch into the open tasks when the update asks for it and takes
-up the blocked work.
+installs from it again in develop mode
+([requirements](requirements.md#req.dogfooding.develop-kept)), recording the commit it installed
+([requirements](requirements.md#req.dogfooding.update-commit-recorded)), and, like every update,
+leaves the project unvalidated until `concorde spec-validation` passes. The main agent then merges
+the primary branch into the open tasks when the update asks for it and takes up the blocked work.
 
 A develop install is refused, writing nothing, when the checkout is not a Git worktree's root
 (`develop_source_not_repository`), is a linked worktree (`develop_source_not_primary`, naming the
 primary worktree), has a detached `HEAD` (`develop_source_detached`) or has uncommitted changes
-(`develop_source_dirty`, naming them). Turning a develop install into a normal one, or the reverse,
-is a new install with or without `--develop`.
+(`develop_source_dirty`, naming them)
+([requirements](requirements.md#req.dogfooding.refusal-names-reason)). Turning a develop install
+into a normal one, or the reverse, is a new install with or without `--develop`.
 
 ## Design
 
@@ -167,7 +178,8 @@ main agent is told.
 **Issues** provides the [Issue](../glossary.json#concept.issue) records and the
 [Issue report](../glossary.json#concept.issue-report) shape with its `origin` and
 `error_chain`. Dogfooding relies on the report command checking a report's evidence in its origin
-project and its error chain against the Framework's error contract, so a defect report that
+project and its error chain against the Framework's
+[error contract](../contracts.md#contract.concorde.error), so a defect report that
 reaches the Concorde repository incomplete is refused with the field that is wrong.
 
 <a id="uses-tasks"></a>
@@ -215,8 +227,10 @@ then names exactly the Concorde a defect was seen on, so the Concorde repository
 the defect is already fixed at its head.
 
 **One observation rule.** Watching runs closely is asked of the Concorde repository's own agents
-too. Both receive the same sentence, kept once as a prompt fragment and checked against the
-repository's agent instructions
+too. The repository's agent instructions are its `DEVELOPING.md`, which its `CLAUDE.md` imports and
+its `AGENTS.md` has pi read in full; the root Module binds these files, not Dogfooding. Both sides
+receive the same sentence, kept once as a prompt fragment that the develop guidance includes and
+that the Dogfooding tests find word for word in `DEVELOPING.md`
 ([requirements](requirements.md#req.dogfooding.one-observation-rule)), so that the two sides never
 drift into different ideas of what observing a run means.
 

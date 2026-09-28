@@ -25,7 +25,7 @@ command and `{"error": …}` with the failed command and its output otherwise:
 python3 scripts/e2e/e2e.py repos
 python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--name <dir>] [--python <interpreter>] [--task <task>] [--any]
 python3 scripts/e2e/e2e.py trust <project>…
-python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
+python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--module <id>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
 python3 scripts/e2e/e2e.py watch <project>
 ```
 
@@ -40,10 +40,13 @@ repositories SWE-bench's harness names, read from the vendored `references/swe-b
 earlier history into the **[end-to-end root](../glossary.json#concept.end-to-end-root)**, under
 `--name` or the repository's name, checks it out as a `main` branch, installs Concorde from this
 checkout without `d2`, initializes it, commits and opens a task bound to the root
-[Module](../glossary.json#concept.module), which makes a **test project**. It refuses a repository
-SWE-bench does not name unless `--any` is given, and a project directory that already exists. The
-end-to-end root defaults to the system's temporary directory, never the developer's home: test
-projects are throwaway, and the home directory itself is also where Claude Code keeps no trust.
+[Module](../glossary.json#concept.module), which makes a **test project**. The task is `--task`
+(default `adopt`), and `--python` records the project's interpreter, which its
+[configured checks](../glossary.json#concept.configured-check) run for `{python}`. It refuses a
+repository SWE-bench does not name unless `--any` is given, and a project directory that already
+exists. The end-to-end root is `CONCORDE_E2E_ROOT` when it is set, and otherwise `concorde-e2e` in
+the system's temporary directory (`/tmp/concorde-e2e` on Linux), never the developer's home: test
+projects are throwaway, and Claude Code keeps no trust for the home directory itself.
 
 **Trusting test projects.** Claude Code applies a project's `.claude/settings.json` allow rules,
 which the installer writes for its workflows, only once that exact repository is trusted: trust is
@@ -71,13 +74,28 @@ under `.concorde/runs/workflows/<task>/` of the project, and logs the session un
   conditions are handled for it: `claude -p` otherwise stops a background workflow after ten idle
   minutes, so the session keeps `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`; and an untrusted project
   ignores its allow rules, so the workflow and its step commands are granted with `--allowedTools`.
-- A **[driver run](../glossary.json#concept.driver-run)** (`--via driver`) runs the project's
-  rendered pi script under the stand-in runtime of the Workflows tests, whose
+- A **[driver run](../glossary.json#concept.driver-run)** (`--via driver`) runs the rendered pi
+  script of the workflow from the runtime the installer places under `.concorde/framework/`, which
+  every install carries with or without `--pi`, and refuses with `script_missing` when that script
+  is absent. It runs the script under the stand-in runtime of the Workflows tests, whose
   [step agents](../glossary.json#concept.step-agent) execute the real
-  `concorde [workflow step](../glossary.json#concept.workflow-step) --stdin` and `report --stdin` in
-  the task's worktree. It has no model between steps, so it tests Concorde's side alone.
+  `concorde workflow step --stdin` and `concorde workflow report --stdin` in the task's worktree, so
+  every [workflow step](../glossary.json#concept.workflow-step) is a real one. It has no
+  main-session model between steps, while its Operations still launch real workers, so it tests
+  Concorde's side without the client runtime.
 
-`--retry` and `--restart` pass the workflow's own arguments, for a run that continues a task.
+`--workflow` names the workflow (default `brownfield`), `--module` the Module it works on (default
+the root Module, `module.project`) and `--mode` its
+[workflow mode](../glossary.json#concept.workflow-mode) (default `no-ask`); an `interactive` run
+ends at its first [decision point](../glossary.json#concept.decision-point), and `run` passes no
+answers to continue it. `--retry <key>` and `--restart <key>=<label>` become the workflow's own
+`retry` list and `restart` map, for a run that continues a task.
+
+A workflow result whose status is not `ok` is printed like any other. `run` fails instead with
+`run_failed` when the headless session ends `exited` or `no_session`, naming its `session.json`,
+or when the driver exits with a non-zero status, with its standard error and log; with the
+session's own error, such as `wait_exceeded`, when the session fails; and with `no_result` when the
+workflow record holds no saved result.
 
 **Watching.** `watch` lists every run of the project's
 [run store](../glossary.json#concept.run-store) with its workspace, phase, step and outcome, and,
@@ -94,8 +112,13 @@ whose findings become ordinary tasks.
 
 The headless run and the driver run answer different questions. The headless run is what a user's
 main session does, Claude Code's workflow runtime and its step agents included. The driver run
-removes the model from between the steps, so a failure there is Concorde's. When a headless run
-fails, a driver run of the same task tells whether Concorde or the client runtime is at fault.
+removes the main session's model and the client runtime from between the steps, but its
+Operations still launch real workers, so a failure there lies on Concorde's side, in its commands,
+Operations or workers. When a headless run fails, a driver run of the same task with `--retry` for
+the failed step's key runs that step again without the client runtime, reusing the steps that
+succeeded, and so points to whether Concorde or the client runtime is at fault; without `--retry`
+it would only find the failed run recorded. Since the workers are real, one such comparison is
+evidence, not proof.
 
 The testing conditions stay here. A user's main session is interactive and its project trusted,
 so neither the wait ceiling nor the trust keying reaches the user-facing guidance; this Module
@@ -120,7 +143,7 @@ repositories only, without the network or agents, verifying the
 Three children carry parts of End-to-end testing. Each reaches a different part of Concorde: a
 headless session wakes on the runs of Execution, a case is set up through Distribution, and a
 dogfood scenario drives headless sessions against a develop install that Dogfooding describes. The
-parent itself runs the workflows a test project executes.
+parent itself sets test projects up through Distribution and runs the workflows they execute.
 
 ```d2
 e2e: End-to-end testing {
@@ -135,6 +158,7 @@ dogfooding: Dogfooding
 workflows: Workflows
 e2e -> workflows
 e2e -> execution
+e2e -> distribution
 e2e.sessions -> execution
 e2e.cases -> distribution
 e2e.dogfood -> distribution
@@ -143,8 +167,8 @@ e2e.dogfood -> dogfooding
 
 <a id="contains-sessions"></a>
 
-**Headless sessions** drives a real headless Claude Code main session: it grants the session its
-tools, tells it the conditions of running headless, wakes it when a run it left behind ends and
+**Headless sessions** drives a real headless Claude Code or pi main session: it grants the session
+its tools, tells it the conditions of running headless, wakes it when a run it left behind ends and
 keeps every round's log. The headless runs of workflows are headless sessions, and so are
 the [dogfood scenarios](../glossary.json#concept.dogfood-scenario)' sessions.
 
@@ -182,8 +206,8 @@ record listing the saved results in order and each step with its run.
 its task worktree is bound as: Tasks writes that
 [workspace binding](../glossary.json#concept.workspace-binding) when `prepare` opens the task, and
 End-to-end testing never writes it. `watch` reads the run store's
-[progress files](../glossary.json#concept.progress-file) for each run's workspace, phase, step and
-status, relying on them to name those fields.
+[run progress files](../glossary.json#concept.run-progress-file) for each run's workspace, phase,
+step and status, relying on them to name those fields.
 
 <a id="uses-distribution"></a>
 

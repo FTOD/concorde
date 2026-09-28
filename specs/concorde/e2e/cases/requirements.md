@@ -3,10 +3,24 @@
 The Module-wide obligations of [SWE-bench cases](module.md). The [scenarios](scenarios.md) show
 them in concrete situations.
 
-### req.swe-bench-cases.repair-specs-only — A case's repair changes Specs, never code
+### req.swe-bench-cases.repair-specs-only — A case's Specs are repaired in one bounded round
 
-The tool SHALL repair an adopted case's Specs in one bounded round, a review, one `specify` and a second review, before the case's issue is worked, changing the project's Specs and never its code.
+The tool SHALL repair an adopted case's Specs in one bounded round: a review and, when that review
+does not accept the Specs, one `specify` and a second review.
+
+The developer runs the round before the case's issue is worked, as
+[Working a case](module.md#usage) describes.
+
+### req.swe-bench-cases.specs-not-code — A case's repair never changes code
+
+The repair of an adopted case's Specs SHALL change the project's Specs and never its code.
 
 ### req.swe-bench-cases.graded-apart — A case's tests stay outside the project
 
-The tool SHALL grade a case in a throwaway worktree of the project, applying the case's test patch only there and removing the worktree afterwards.
+The tool SHALL grade a case in a throwaway worktree of the project, applying the case's test patch
+only there.
+
+### req.swe-bench-cases.grading-worktree-removed — The grading worktree does not outlive grading
+
+The tool SHALL remove a case's grading worktree afterwards, whether grading ends with a verdict or
+with an error.

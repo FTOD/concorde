@@ -39,8 +39,8 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 ### scenario.execution.unbound-read-only — An unbound run never launches a writing worker
 
 - GIVEN an [Operation](../glossary.json#concept.operation) that allows unbound runs
-- WHEN an unbound run of it asks Workers for an `implement` or `specify` worker
-- THEN no worker starts and the result is `failed` with `unbound_write`, its actor naming the run as unbound
+- WHEN an unbound run of it asks for a `specify`, `implement` or `code-to-spec` worker without withholding every writable level of its grant
+- THEN no worker starts and the result is `failed` with `unbound_write`, the refusal [How an Operation runs its workers](operations/workers.md) defines, its actor naming the run as unbound
 - AND an `--input` naming a run of a workspace is refused with `input_not_admissible`
 
 ### scenario.execution.command-run — An execution command is a run without a worker
@@ -78,7 +78,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - WHEN `concorde run` or an [execution command](../glossary.json#concept.execution-command) is invoked
 - THEN it exits with status 2
 - AND standard error names what is wrong, such as the unknown Operation or argument
-- AND no result and no [run directory](../glossary.json#concept.run-directory) are written
+- AND no result is written and no run's directory is created
 
 ### scenario.execution.progress-file — A run shows its progress
 
@@ -100,7 +100,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - GIVEN a bound workspace `severity`
 - WHEN the task level runs `concorde run implement --detach` there
 - THEN the command prints the run identity and the path of its future result and exits with status 0 while the runner keeps running
-- AND the run's progress file exists when the command exits
+- AND the run's [run progress file](../glossary.json#concept.run-progress-file) exists when the command exits
 - AND the runner writes the same result and [run record](../glossary.json#concept.run-record) as a run started without `--detach`
 - BUT a workspace already running something still gets a `failed` result naming the refusal, written where the printed path says
 

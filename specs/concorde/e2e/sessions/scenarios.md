@@ -15,12 +15,12 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN a round's log with the session's identity, a replayed result without a model turn, tool calls, texts and the round's own result
 - WHEN the driver reads the log
-- THEN it names the session, every tool call with its target and every text
+- THEN it names the session, every tool call with its target (its command, path or skill) and every text
 - AND the round's result is the last one with a model turn
 
 ### scenario.headless-sessions.unsettled — Which runs a round left behind
 
-- GIVEN runs of Operations and [execution commands](../../glossary.json#concept.execution-command) started before and since the session began: one running, one whose runner is gone, one cancelled at the round's end, one failed otherwise, and a worker's [progress file](../../glossary.json#concept.progress-file)
+- GIVEN runs of Operations and [execution commands](../../glossary.json#concept.execution-command) started before and since the session began: one running, one whose runner is gone, one cancelled at the round's end, one cancelled long before the round's end, one failed otherwise, runs already reported in an earlier [wake message](../../glossary.json#concept.wake-message), and a worker's [progress file](../../glossary.json#concept.progress-file)
 - WHEN a round ends
 - THEN the running run and the run cancelled at the round's end are unsettled
 - BUT a run started before the session, a run whose runner is gone, a run that failed otherwise, a run cancelled long before the round ended, a worker's progress file and a run already reported are not
@@ -36,7 +36,8 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.headless-sessions.wake — A run left running wakes the session
 
-- GIVEN a session whose first round ends while an [Operation](../../glossary.json#concept.operation) run it started is still running
+- GIVEN a session allowed more than one round, whose first round ends while an [Operation](../../glossary.json#concept.operation) run it started is still running
+- AND whose second round succeeds and leaves no run behind
 - WHEN the run ends
 - THEN the driver resumes the same session with a message naming the run, its kind, name and workspace, how it ended and its result file
 - AND the session ends idle after the second round, with both rounds, the run it woke for and the final answer and cost in `session.json`

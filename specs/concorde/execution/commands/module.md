@@ -2,14 +2,14 @@
 
 ## Purpose
 
-Commands is how deterministic work on a bound workspace is run and recorded. It holds the catalog of
-[execution commands](../../glossary.json#concept.execution-command) and delegates each to the
-[Module](../../glossary.json#concept.module) that provides it: Validation's `task-validation`,
-Delivery's `delivery` and Scaffold's `scaffold`. An execution command launches no worker, yet it is
-a run like an Operation: the [Execution runner](../../glossary.json#concept.execution-runner) runs
-it in the workspace of the worktree it starts in, under the
-[workspace lock](../../glossary.json#concept.workspace-lock), and records its
-[run result](../../glossary.json#concept.run-result) in the
+Commands names the deterministic runs Concorde offers on a bound workspace, the
+[execution commands](../../glossary.json#concept.execution-command): it holds their catalog and
+delegates each to the [Module](../../glossary.json#concept.module) that provides it: Validation's
+`task-validation`, Delivery's `delivery` and Scaffold's `scaffold`. An execution command launches no
+worker, yet it is a run like an Operation: the
+[Execution runner](../../glossary.json#concept.execution-runner) runs it in the workspace of the
+worktree it starts in, under the [workspace lock](../../glossary.json#concept.workspace-lock), and
+records its [run result](../../glossary.json#concept.run-result) in the
 [run store](../../glossary.json#concept.run-store), so that a workflow can take it as a step and a
 later run can cite it. Work that needs a model is not an execution command: it is an
 [Operation](../../glossary.json#concept.operation).
@@ -19,8 +19,9 @@ Commands never chooses the next run, asks the developer anything or reads a
 through a [workflow](../workflows/module.md), decides what runs. The other `concorde` commands are
 not execution commands, even those of Execution: `run` starts an Operation, `workflow` a
 [workflow step](../../glossary.json#concept.workflow-step), `configure-workers` changes the worker
-configuration, and the rest belong to Coordination, Spec tooling, Issues or Distribution, as
-[Distribution's command table](../../glossary.json#concept.command-line-interface) shows.
+configuration, and the rest belong to Coordination, Spec tooling, Issues or Distribution, as the
+table of subcommands of the
+[command-line interface](../../glossary.json#concept.command-line-interface) shows.
 
 ## Usage
 
@@ -34,17 +35,22 @@ concorde delivery        [--adoption] [--detach]
 concorde scaffold        --input <survey run> [--detach]
 ```
 
-`--modules`, `--input`, `--detach`, the run identity, the
-[progress file](../../glossary.json#concept.progress-file), the workspace lock and the result are
-the [Execution runner](../runner.md)'s, the same for every run; each command adds its own arguments.
-Every execution command needs a bound workspace: in a worktree without a binding it is refused with
-`binding_required` and changes nothing. Its run result has `kind` `command`, no `worker` and no
-`worker_runs`, and when it is not `ok` its error link has the level `command`. `concorde run` naming
-an execution command is a command-line error that names the command to use.
+`--modules`, `--input` and `--detach` are the [Execution runner](../runner.md)'s, and every
+execution command accepts them like every run, even where a line above leaves them out; each command
+adds its own arguments, such as `--adoption`. The run identity, the
+[run progress file](../../glossary.json#concept.run-progress-file), the workspace lock and the
+result are the runner's too: it keeps them for a command as for an Operation, though no worker is
+launched. Every execution command needs a bound workspace: in a worktree without a binding it is
+refused with `binding_required` and changes nothing. Its run result has `kind` `command`, no
+`worker` and no `worker_runs`, and when it is not `ok` its error link has the level `command`.
+`concorde run` naming an execution command is a command-line error that names the command to use.
 
 <a id="concept.command-catalog"></a>
 
-The **[command catalog](../../glossary.json#concept.command-catalog)** of this version:
+The **[command catalog](../../glossary.json#concept.command-catalog)** is the fixed table, in
+Concorde's code, of the execution commands and their providers. A project cannot extend it: a new
+execution command is a change to Concorde, a new row and a definition in its providing Module. The
+catalog of this version:
 
 | Command | Provider | Writes | Output |
 | --- | --- | --- | --- |
@@ -94,14 +100,20 @@ commands: Commands {
 <a id="realization.commands.catalog"></a>
 
 The **Command table** realization, `src/concorde/commands/catalog.py`, maps each command's name to
-the definition its provider declares and imports that definition only when the command runs. The
-providers' own code lives with their Modules.
+the definition its provider declares and imports that definition only when the command runs, so
+running one command loads only the code its provider needs. A definition that cannot be imported is
+a command-line error that names why, and no run begins. The providers' own code lives with their
+Modules.
 
 ### The providers
 
-Each execution command's steps live with the Module that provides it. A provider supplies its steps
-and the contract of its output; the runner runs those steps, checks the output against its contract
-and wraps it in the run result.
+Each execution command's steps live with the Module that provides it. A provider's definition
+declares the command's name, its steps, the contract of its output, the arguments of its own, such
+as Delivery's `--adoption`, and whether its run may begin when the worktree's Specs cannot be
+loaded, as `task-validation`'s may because it diagnoses those Specs itself. The runner parses those
+arguments with its own, refuses a run without a binding, admits the inputs, runs the steps, checks
+the output against its contract and wraps it in the run result. What an admitted input must be,
+such as Scaffold's one survey, the provider's own steps check.
 
 <a id="contains-validation"></a>
 
@@ -118,9 +130,10 @@ delivery commits are the only record of a delivery.
 
 **Scaffold** provides `scaffold`, which applies one
 [decomposition proposal](../../glossary.json#concept.decomposition-proposal) of an `ok`
-[survey](../../glossary.json#concept.survey) run and creates the proposed child Modules as honest
-stubs. Adding Modules is a project-level change a worker may never make, so deterministic code makes
-it from the proposal a worker only suggested.
+[survey](../../glossary.json#concept.survey) run and creates the proposed child Modules as stubs
+whose entries state the survey's purpose and say plainly that their behaviour and design are not
+yet specified. Adding Modules is a project-level change a worker may never make, so deterministic
+code makes it from the proposal a worker only suggested.
 
 ### What Commands relies on
 

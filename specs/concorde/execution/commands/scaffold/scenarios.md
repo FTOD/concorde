@@ -7,11 +7,12 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.scaffold.creates — A scaffold creates the proposed Modules
 
-- GIVEN the workspace `adopt` with an `ok` survey proposing `module.checkout` bound to `src/checkout/` and `module.inventory` bound to `src/inventory/`, and a pytest check for checkout
+- GIVEN the root Module `module.shop`, whose entry is `specs/shop/module.md` and whose realization binds `src/`, holding `src/checkout/`, `src/inventory/` and `src/db.py`
+- AND the workspace `adopt` with an `ok` survey of `module.shop` proposing `module.checkout` bound to `src/checkout/` and `module.inventory` bound to `src/inventory/`, and a pytest check for checkout
 - WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `concorde scaffold --input <survey run>` in its worktree
 - THEN `specs/shop/checkout/module.md` and `specs/shop/inventory/module.md` exist with their metadata, each stating its purpose and that its behaviour is not yet specified
 - AND the root's entry contains both with an explaining paragraph each and its realization no longer binds `src/checkout/` or `src/inventory/`
-- AND the root still binds every other file it bound under `src/`
+- AND the root still binds every other file it bound under `src/`, here `src/db.py`
 - AND the registry has both records
 - BUT the project configuration is unchanged, and the proposed check stays in the survey's proposal
 - AND the worktree validates with no new error
@@ -29,9 +30,9 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN a workspace `adopt`
 - WHEN the main agent runs the scaffold with no `--input`, with two, or with a run of the workspace that is not a survey
-- THEN the result is `failed` with `invalid_request` naming what was given and what is needed
+- THEN each of these runs is `failed` with `invalid_request` naming what was given and what is needed
 - AND no file was written
-- BUT an unbound survey, or one of another workspace, is refused before the run begins with `input_not_admissible`
+- BUT an unbound survey, or one of another workspace, is refused before the first step: the result is `failed` and its `command` link `refused` has the cause `input_not_admissible`
 
 ### scenario.scaffold.unbound — The scaffold needs a bound workspace
 
@@ -39,13 +40,13 @@ shapes are in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde scaffold --input <that run>` in the primary worktree
 - THEN the result is `failed`, of kind `command` with `workspace` null, and its `command` link `refused` has the cause `binding_required`
 - AND no file was written
-- BUT the same command in a bound task worktree, with a survey of that workspace, scaffolds `ok`
+- BUT the same command in a bound task worktree, with an `ok` survey of that workspace whose proposal fits it, ends `ok`, of kind `command` with no worker
 
 ### scenario.scaffold.vendored-external — Vendored code becomes external material
 
 - GIVEN a survey whose worker proposes `src/db.py` as vendored third-party code used by the proposed child `module.checkout`
 - WHEN the survey ends and the scaffold applies its proposal
 - THEN `src/db.py` is among no [Module](../../../glossary.json#concept.module)'s entries and `module.checkout` includes it as external material with the worker's reason
-- AND the project validates without errors
-- AND a vendored path inside a child's directory entry, such as `src/checkout/payment.py` inside `src/checkout/`, leaves that child binding the rest of the directory, `src/checkout/api.py`
-- BUT a vendored path that a child would bind itself, or part of it, fails the survey with `inconsistent_proposal`
+- AND the project validates with no new error
+- AND when the vendored path lies inside a child's directory entry instead, such as `src/checkout/payment.py` inside `src/checkout/`, which holds `src/checkout/api.py` too, that child binds `src/checkout/api.py` and includes `src/checkout/payment.py` as external material
+- BUT a vendored path equal to a child's entry, or a vendored directory containing one, such as `src/checkout/` itself, fails the survey with `inconsistent_proposal`
