@@ -1,0 +1,90 @@
+{
+  "workspace": "follow-ups-0929b",
+  "goal": "Small follow-ups: (1) developer's decision: concorde task escalate may be run without --run, --error-file or --escalation; it then records the main agent's or task session's own link with no causes as the whole chain (the shape the dogfooding F5 guidance writes by hand), so a decision an ok no-ask workflow took can be escalated; update the Tasks Spec and the main-session, task-session and dogfooding guidance that currently works around it; (2) pi_session.verify accepts a delivered session report only when its delivery commit verifies (Tasks' store.verified / Delivery's delivery_mismatches); (3) Tasks' clean-worktree check ignores untracked paths Git cannot version (e.g. sandbox mount stubs), as Delivery does; (4) Workflows' module.md and req.workflows.one-at-a-time no longer say a finished step leaves the workspace free (a step waits for the lock; Execution's corrected property); (5) specify's brief heading 'The task's own goal' becomes 'The workspace's goal', as implement and test use; (6) Distribution's wording that init --apply 'applies exactly the proposal it printed' matches Spec core's restated guarantee (shape, integrity, freshness). Specs, prompts (then build) and tests.",
+  "modules": [
+    "module.tasks",
+    "module.task-session",
+    "module.main-session",
+    "module.dogfooding",
+    "module.workflows",
+    "module.specification",
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "8d0d5d9a12d9fb135351aac29646661c97105c63",
+  "parent_commit": "ce1b76d8e29076da90c6093268d08d7571a99172",
+  "readiness": {
+    "run_id": "r-20260928T184429-delivery-b161b18d",
+    "input_digest": "sha256:0050b7bcd8833b7f9cfa8519c18d4ab4f4dcfa6a56bcc16492b935137374f9b1",
+    "modules": [
+      "module.distribution",
+      "module.dogfooding",
+      "module.main-session",
+      "module.specification",
+      "module.task-session",
+      "module.tasks",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:ac0e8af8943d41db18eb27f71419407afe2f5f647a9cae091c0b6c0a019d3450"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:bce17475a6bb634a00ed3b10eca00f257575d7c39f59170ad6bd710693b0adf2"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:ec9448149deeff75050555ca554ceeacc44499eb574bee5e3dc6760871098d4f"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:53fc31cee8d5ae12067c9d9f9f38fe8e51edda5c4b4f6e202a2b6a45ae83c074"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:d490d0945fd8b76bffc258155dd481458425b7f5516c0d7b6824ff98541d8d67"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:0c2f1f52f710ba5a003badfafd97b9194420017fc5254052eb7c1c4c30985395"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T184334-task_validation-28ddd216",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.tasks",
+        "module.task-session",
+        "module.main-session",
+        "module.dogfooding",
+        "module.workflows",
+        "module.specification",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:c87288889192aca2ad25b8490fd5e39d0b3988ccae37ceb3b496ebb99c0f2ba6"
+    }
+  ],
+  "created_at": "2026-09-28T18:45:25Z"
+}
