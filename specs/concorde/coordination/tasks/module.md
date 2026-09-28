@@ -228,6 +228,43 @@ waited and its warnings, such as a decision log nobody wrote in. A merge thus en
 closed on a checked merge commit or delivered again on the commit the primary branch had; after a
 conflict or a failed check the task is delivered again.
 
+The flow of one `concorde task merge`, with where each way out leaves the primary branch and the
+task; a task left `merging` is finished as the next passage explains:
+
+```d2 illustrative
+direction: down
+locks: "Take the workspace lock, then the merge lock"
+preflight: "Check the task and the primary worktree"
+record: "Record the task merging"
+merge: "git merge the checked commit"
+checks: "Run the checks on the merge commit"
+reset: "git reset --keep to the commit before"
+close: "Close the task as merged"
+busy: "workspace_busy or merge_busy: nothing changed"
+refused: "not_merged, delivery_unverified, dirty_worktree or primary_dirty: nothing changed"
+conflict: "merge_conflict: merge aborted, primary branch at its commit, task delivered"
+failed: "check_failed: primary branch at its commit, task delivered, left paths named"
+merged: "Task closed as merged on the checked merge commit"
+unchecked: "Task left merging: task commands refused with merge_incomplete"
+aborted: "Primary branch at the commit before, task delivered"
+locks -> preflight: both held
+locks -> busy: still held after --wait
+preflight -> record: accepted
+preflight -> refused
+record -> merge
+merge -> checks: merged
+merge -> conflict: conflict
+checks -> close: every check passed
+checks -> reset: a check failed or left paths
+reset -> failed
+close -> merged
+checks -> unchecked: the process ended
+reset -> unchecked: rollback_failed
+close -> unchecked: the close failed
+unchecked -> checks: "--resume, head still the merge commit"
+unchecked -> aborted: --abort
+```
+
 **An interrupted merge.** A merge whose process ends before its checks decided, killed or crashed,
 leaves the task `merging` and perhaps an unchecked merge commit at the head of the primary branch.
 The kernel has released the merge lock, so nothing but the record says that the primary branch is
