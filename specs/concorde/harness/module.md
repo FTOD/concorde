@@ -24,12 +24,12 @@ levels need very different amounts of each:
 
 | | Main session | Task session | Worker |
 | --- | --- | --- | --- |
-| Context | the installed [guidance](../glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its brief: the [Operation](../glossary.json#concept.operation)'s instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec](../glossary.json#concept.spec), implementation and [task context](../glossary.json#concept.task-context); its tool set is its [capability context](../glossary.json#concept.capability-context) |
+| Context | the installed [guidance](../glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its brief: the [Operation](../glossary.json#concept.operation)'s instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec context](../glossary.json#concept.spec-context), [external context](../glossary.json#concept.external-context), [implementation context](../glossary.json#concept.implementation-context) and [task context](../glossary.json#concept.task-context); its tool set is its [capability context](../glossary.json#concept.capability-context) |
 | Permission | none | file tools and shell write only the task worktree, its decision log and what commits and runs need; reads and the network open | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
 | Environment | the developer's | the developer's configuration and program | its own configuration directory, a cleared environment, its own working directory and limits |
 | Applied by | Distribution, which installs the guidance | the [session boundary](../glossary.json#concept.session-boundary), for Task sessions | [worker settings](../glossary.json#concept.worker-settings) or the [permission extension](../glossary.json#concept.permission-extension), for Workers |
 
-The context of a worker, its four kinds and how each is computed are defined in the
+The context of a worker, its five kinds and how each is computed are defined in the
 [shared vocabulary](../glossary.json#concept.context); the Harness decides how that context reaches
 the agent, which for a worker is the brief and the files the grant lets it read. The permission and
 environment are what the Harness generates. It is used as a library: an agent Module assembles the
@@ -150,11 +150,12 @@ are intercepted, so the developer's own extensions keep theirs.
 
 A worker gets three layers on Claude Code since each alone failed in a spike against Claude Code
 2.1.280: the Bash sandbox governs only Bash and its children — alone it let Read return ungranted
-files and Claude Code's credential file, and Edit change a read-only Spec; deny rules alone confine
-reads but can't stop a Write creating an undeclared file, since a deny rule always beats an allow
-rule, so "only these files are writable" cannot be expressed. The write hook closes exactly that
-gap, staying small. A task session needs only the write side, because its reads and network are open
-by design, so it gets the hook and the sandbox without deny rules.
+files and Claude Code's credential file, and Edit change a read-only
+[Spec](../glossary.json#concept.spec); deny rules alone confine reads but can't stop a Write
+creating an undeclared file, since a deny rule always beats an allow rule, so "only these files are
+writable" cannot be expressed. The write hook closes exactly that gap, staying small. A task
+session needs only the write side, because its reads and network are open by design, so it gets
+the hook and the sandbox without deny rules.
 
 ### What a worker's harness enforces in v1
 

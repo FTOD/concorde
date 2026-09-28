@@ -566,7 +566,19 @@ concorde grant --modules module.payments --type implement
 ```
 
 It lists the paths the worker may know by name (`names`), read (`ro`) and write (`rw`); every other
-path is denied. The same grant is compiled into each backend's own mechanism. A Claude Code worker
+path is denied. Together with the worker's brief and tools, those paths make up its context, in
+five kinds:
+
+- **Spec context**: the bound Modules' own documents, the documents their relations select one
+  level deep, and the glossary entries of the terms they use;
+- **external context**: the documentation and source of external dependencies that the bound
+  Modules include as `external`, pinned by your version control, for example as a submodule;
+- **implementation context**: the names of the bound Modules' files, and for task types that read
+  code, the contents of the whole project's code;
+- **capability context**: the tools the worker may use and the result it must return;
+- **task context**: the brief with the task, its constraints and the artifacts of earlier steps.
+
+The same grant is compiled into each backend's own mechanism. A Claude Code worker
 runs in its own run directory under `.concorde/runs/` with:
 
 - deny rules for the file tools, which Claude Code also applies to its Bash sandbox;

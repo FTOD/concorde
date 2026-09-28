@@ -423,7 +423,7 @@ to it.
 ### scenario.spec.external-reference — Pinned external material
 
 - GIVEN a Module with an `includes` of kind `external` naming a directory of vendored material tracked by version control
-- WHEN its external context is resolved
+- WHEN its [external context](../../glossary.json#concept.external-context) is resolved
 - THEN it contains the readable files below that directory, media and archives excluded, identified by one digest over their paths and bytes
 - AND the material enters neither the Spec context nor the implementation context
 

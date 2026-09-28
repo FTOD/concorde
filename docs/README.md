@@ -20,8 +20,9 @@ New here? Start with **[Using Concorde](using-concorde.md)**.
 2. **The division derives the harness.** A task binds some Modules and has one of seven task types:
    `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`, and `code-to-spec`
    for describing code written before its Specs. From those alone
-   Concorde computes the worker's context, the Specs, implementation files and tools it needs, and
-   its grant, every path it may know by name, read or write. Everything else is denied.
+   Concorde computes the worker's context, the Specs, the pinned documentation and source of the
+   external dependencies they include, the implementation files and tools it needs, and its grant,
+   every path it may know by name, read or write. Everything else is denied.
 3. **The host enforces and verifies.** The grant is compiled into the worker's own settings. After
    the worker stops, the host audits what it changed, runs the project's checks itself and keeps
    what it verified apart from what the worker claims.

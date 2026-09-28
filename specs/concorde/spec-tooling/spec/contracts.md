@@ -241,7 +241,7 @@ computed from declarations alone:
 | Set or index | Returns | Repository query |
 | --- | --- | --- |
 | [Spec context](../../glossary.json#concept.spec-context) | both members of each owned and selected document, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context` |
-| External context | per external inclusion: the entry, whether it is a directory, whether it exists, the readable files below it and one digest over their paths and bytes | `external_context`; `external_inclusions` lists the declared entries, `external_files` and `external_digest` expand and digest one entry |
+| [External context](../../glossary.json#concept.external-context) | per external inclusion: the entry, whether it is a directory, whether it exists, the readable files below it and one digest over their paths and bytes | `external_context`; `external_inclusions` lists the declared entries, `external_files` and `external_digest` expand and digest one entry |
 | Implementation context | the names of the existing files the realizations bind, and of pending exact entries | `implementation_context`; `bound_files` lists only the existing bound files |
 | Spec scope | both members of each owned document, and the project glossary, of whose entries only those the Module owns or adds are its to change | `spec_scope` |
 | Implementation scope | the realization entries, pending entries included; a directory entry covers every present and future file below it | `implementation_scope`; `missing_entries` lists the entries not yet on disk |
