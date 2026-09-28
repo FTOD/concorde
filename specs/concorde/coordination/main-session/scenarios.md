@@ -93,6 +93,15 @@ Situations the [main-session guidance](module.md) prepares the
 - AND never to merge with `git merge` itself, because other main sessions may be merging, and that the merge runs `concorde spec-validation` unless it names other checks
 - AND to run the command again on `merge_busy`, and to resolve a `merge_conflict` in the task worktree and deliver again
 
+### scenario.main-session.merge-interrupted — The guidance finishes an interrupted merge first
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads what to do when a task command is refused with `merge_incomplete`
+- THEN it is told to finish that merge before anything else with `concorde task merge <task> --resume`, without asking the developer
+- AND to use `--abort` when the merge commit is no longer the primary branch's head or `--resume` answers `not_resumable`, and to bring `merge_diverged` to the developer
+- AND to wait for a task's run to end on `workspace_busy`
+- AND a task session is told to send a `merge_incomplete` or `merge_busy` refusal of its escalation to the main agent
+
 ## Worker models
 
 ### scenario.main-session.pi-model-picker — pi's picker applies the developer's choice

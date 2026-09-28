@@ -138,6 +138,37 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("merge delivered task branches without asking", self.block)
 
+    @verifies("scenario.main-session.merge-interrupted")
+    def test_an_interrupted_merge_is_finished_first(self):
+        skill = " ".join(self.skill.split())
+        self.assertIn("fails with `merge_incomplete`", skill)
+        self.assertIn(
+            "Finish it before anything else, without asking the developer: run "
+            "`concorde task merge <task> --resume`",
+            skill,
+        )
+        self.assertIn(
+            "Run `concorde task merge <task> --abort` instead when the refusal says the primary "
+            "branch is not at the merge commit or `--resume` answers `not_resumable`",
+            skill,
+        )
+        self.assertIn(
+            "`merge_diverged` means the primary branch was changed by hand", skill
+        )
+        self.assertIn("discarding them is the developer's decision", skill)
+        self.assertIn(
+            "fails with `workspace_busy`, a run of that task is still going", skill
+        )
+        self.assertIn(
+            "`concorde task merge <task> --resume`", " ".join(self.block.split())
+        )
+        for session in (self.session, self.pi_session):
+            self.assertIn(
+                "refused with `merge_incomplete` or `merge_busy`, a merge in the primary "
+                "worktree is unfinished or still running",
+                " ".join(session.split()),
+            )
+
     @verifies("scenario.main-session.brownfield")
     def test_existing_code_is_adopted_through_the_brownfield_workflow(self):
         self.assertIn(

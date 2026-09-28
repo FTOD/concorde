@@ -131,6 +131,16 @@ than `git merge`.
 the merge, runs `concorde spec-validation` of the merged checkout, or exactly the `--check`
 commands given, and undoes a merge whose checks fail.
 
+### req.main-session.merge-interrupted — An interrupted merge is finished first
+
+The guidance SHALL tell the main agent, when a `concorde task` command is refused with
+`merge_incomplete`, to finish the named task's merge before anything else, with `concorde task
+merge <task> --resume`, or `--abort` when the merge commit is not the primary branch's head, and to
+bring a `merge_diverged` refusal to the developer.
+
+The task-session guidance tells a task session whose escalation is refused with `merge_incomplete`
+or `merge_busy` to send that refusal to the main agent instead.
+
 ### req.main-session.project-terms — Sessions use the project's terms exactly
 
 The guidance SHALL tell the main agent and every task session to use each project term exactly as
