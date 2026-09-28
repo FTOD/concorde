@@ -69,6 +69,24 @@ an [Issue report](../glossary.json#concept.issue-report) with every field its co
 `null` owner, its `origin` and the failure's whole
 [error chain](../glossary.json#concept.error-chain) with the main agent's own link on top.
 
+### req.dogfooding.ok-run-defect — A defect in an `ok` run is the main agent's own link
+
+The develop guidance SHALL require the defect report of a run that ended `ok` and still did
+something wrong to carry, as its whole error chain, the main agent's own link without causes,
+written by hand in the shape of the Framework's
+[error contract](../contracts.md#contract.concorde.error), whose evidence cites the run.
+
+Such a run reported no error, so there is no chain to extend and `concorde task escalate` has no
+run error to name.
+
+### req.dogfooding.defect-outside-task — A defect outside a task opens no task
+
+The develop guidance SHALL require the defect report of a defect seen outside a task to be kept
+only under `.concorde/runs/defects/` and named to the developer, without opening a task for it.
+
+Its error chain is the main agent's link written by hand, with the failure's own error, if any, as
+its only cause.
+
 ### req.dogfooding.report-checked — A defect report is checked before the hand-off
 
 The develop guidance SHALL require a defect report to be checked with
@@ -84,6 +102,14 @@ boundary.
 
 An implementation bug, whose fix brings Concorde back to its design, is fixed without that
 decision.
+
+### req.dogfooding.owner-assigned — The Module at fault owns the recorded Issue
+
+The Concorde repository's agent instructions SHALL require the session that records a defect report
+to append, after opening the task, a report to the recorded [Issue](../glossary.json#concept.issue)
+naming the [Module](../glossary.json#concept.module) at fault as its `owner_target_id`.
+
+The defect report's owner is `null`, and an Issue's owner is its latest report's.
 
 ### req.dogfooding.one-observation-rule — Both sides observe runs by the same rule
 

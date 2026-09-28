@@ -88,16 +88,25 @@ the project; its `origin` names the project's absolute path, the project's `HEAD
 `source_commit` of the receipt and the task; and its `error_chain` is the failure's whole
 [error chain](../glossary.json#concept.error-chain) with the main agent's own link on
 top, whose reason is `scope`: the fix lies in a repository it never changes. In a task,
-`concorde task escalate … --reason scope --run <run>` builds and records exactly that link. The
+`concorde task escalate … --reason scope --run <run>` builds and records exactly that link.
+Otherwise the main agent writes its link by hand in the shape of the Framework's
+[error contract](../contracts.md#contract.concorde.error): outside a task with the failure's own
+error, the refusal's or that of the run's result, as its only cause; and for a run that ended `ok`
+and still did something wrong, which reported no error and so gives `task escalate` nothing to
+name, without causes, so that its link is the whole chain and its evidence cites the run
+([requirements](requirements.md#req.dogfooding.ok-run-defect)). The
 guidance lists every field the
 [Issue report contract](../issues/interface.md#contract.issues.report) requires, with an example,
 and has the main agent check the report with `concorde issues report --check --file <path>`
 ([requirements](requirements.md#req.dogfooding.report-checked)), which runs the checks the Concorde
 repository will run when it records the report, so an incomplete report is repaired
-where it was written rather than refused after the hand-off. The main agent records the report in
-the task's
+where it was written rather than refused after the hand-off. In a task, the main agent records the
+report in the task's
 [decision log](../glossary.json#concept.decision-log), tells the developer where it is,
-keeps the runs it names, leaves the blocked work open and turns to other work. For example:
+keeps the runs it names, leaves the blocked work open and turns to other work. A defect seen
+outside a task, in an [unbound run](../glossary.json#concept.unbound-run) or a refused command,
+opens no task for Concorde's sake: its report is kept only under `.concorde/runs/defects/` and named
+to the developer ([requirements](requirements.md#req.dogfooding.defect-outside-task)). For example:
 
 ```json
 {
@@ -127,7 +136,11 @@ keeps the runs it names, leaves the blocked work open and turns to other work. F
 the Concorde repository. That session follows the repository's own agent instructions: it opens a
 task for the Module it judges at fault, records the report there as an Issue with
 `python3 scripts/issues.py report --file <path> --task <task>`, whose evidence is checked in the
-origin project, fixes the defect generally, never only for the reporting project, closes the
+origin project, and then appends a report to that Issue naming the Module at fault as its
+`owner_target_id`, with the Issue's `issue_id` and current `expected_revision`, since the defect
+report's owner is `null` and the Issue's owner is its latest report's
+([requirements](requirements.md#req.dogfooding.owner-assigned)). It fixes the defect generally,
+never only for the reporting project, closes the
 Issue on the task branch with the fix as evidence, and delivers and merges the task as usual. A
 report of a Concorde design limitation waits for the developer's decision before anything changes
 Concorde's design or Protocol or loosens a boundary
