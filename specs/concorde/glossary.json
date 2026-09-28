@@ -235,7 +235,7 @@
       "id": "concept.context",
       "title": "Context",
       "owner": "module.concorde",
-      "definition": "Everything one worker may know: the union of its Spec context, implementation context, capability context and task context.",
+      "definition": "Everything one worker may know: the union of its Spec context, external context, implementation context, capability context and task context.",
       "explanation": "specs/concorde/core-concepts.md#concept.context"
     },
     {
@@ -452,6 +452,13 @@
       "explanation": "specs/concorde/execution/module.md#concept.execution-runner"
     },
     {
+      "id": "concept.external-context",
+      "title": "External context",
+      "owner": "module.concorde",
+      "definition": "The pinned documentation and source of external dependencies that the bound Modules' `external` inclusions select: the Protocol's ExternalContext of those Modules, read only.",
+      "explanation": "specs/concorde/core-concepts.md#concept.external-context"
+    },
+    {
       "id": "concept.fault",
       "title": "Fault",
       "owner": "module.dogfood-scenarios",
@@ -504,7 +511,7 @@
       "id": "concept.implementation-context",
       "title": "Implementation context",
       "owner": "module.concorde",
-      "definition": "The code side of a worker's context: the names of the bound Modules' implementation files, and the contents of those files when the task type grants them.",
+      "definition": "The code side of a worker's context: the names of the bound Modules' implementation files and, when the task type grants it, the contents of the whole project's code, the Protocol's ProjectImplementation.",
       "explanation": "specs/concorde/core-concepts.md#concept.implementation-context"
     },
     {
@@ -976,7 +983,7 @@
       "id": "concept.spec-context",
       "title": "Spec context",
       "owner": "module.concorde",
-      "definition": "The read-only documents the bound Modules' declarations select and the glossary entries of their terms: the Protocol's SpecContext of those Modules, without their ExternalContext.",
+      "definition": "The read-only documents the bound Modules' declarations select and the glossary entries of their terms: the Protocol's SpecContext of those Modules, which holds no external material.",
       "explanation": "specs/concorde/core-concepts.md#concept.spec-context"
     },
     {

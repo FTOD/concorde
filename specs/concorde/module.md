@@ -20,7 +20,7 @@ repairs a Spec on its own. The main agent and the workers run on Claude Code or 
 
 This entry explains the overall relationships among Concorde's concepts and how its Modules
 collaborate. [Core concepts](core-concepts.md) gives focused, detailed explanations of the concepts
-this Module owns, including the agent roles, the four kinds of context and the task types. The
+this Module owns, including the agent roles, the five kinds of context and the task types. The
 [glossary](glossary.json), declared by this Module, remains the sole source of term definitions;
 documents link to those definitions where they use the terms.
 

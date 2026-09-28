@@ -55,26 +55,36 @@ describe it in Specs when the code came first. The Protocol defines the complete
 
 <a id="concept.context"></a>
 
-The **context** of one worker is everything it may know. It always has the same four kinds, each
+The **context** of one worker is everything it may know. It always has the same five kinds, each
 computed from declarations or produced for the task rather than chosen by hand. Some kinds may be
-empty for a given task, but never all four.
+empty for a given task, but never all five.
 
 <a id="concept.spec-context"></a>
 
 The **[Spec context](glossary.json#concept.spec-context)** is what the Protocol calls the
 SpecContext of the bound Modules: the documents they own and the documents their `contains`, `uses`
 and `includes` select, one level deep, and the glossary entries of the terms they use. It is read
-only. A provider's Specs arrive here instead of its code. The pinned third-party material the bound
-Modules include is not part of it: that is their ExternalContext, a read set of its own that every
-task type grants beside the Spec context.
+only. A provider's Specs arrive here instead of its code. It holds only the project's own
+documents and terms, never external material.
+
+<a id="concept.external-context"></a>
+
+The **[external context](glossary.json#concept.external-context)** is what the Protocol calls the
+ExternalContext of the bound Modules: the documentation and source of external dependencies that
+their `external` inclusions pin, such as a library's reference documentation or a vendored copy of
+its code, checked out at the commit the project's version control records. Only the bound Modules'
+own inclusions count; a Module their relations select brings none. Every task type grants it read
+only, beside the Spec context. It explains how a dependency works and never adds a promise the Spec
+does not state.
 
 <a id="concept.implementation-context"></a>
 
 The **[implementation context](glossary.json#concept.implementation-context)** starts from the
 Protocol's ImplementationContext, the names of the files the bound Modules' realizations bind. Only
 when the task type grants it, as for `implement`, `test`, `review-code` and `code-to-spec`, does it
-also carry the contents of the files in the bound Modules' ImplementationScope; an `understand`
-worker sees only the names.
+also carry contents: the whole project's code, the Protocol's ProjectImplementation, which also
+holds every Module's external material, so that a task reading code reads the code it uses; it may
+change at most the bound Modules' ImplementationScope. An `understand` worker sees only the names.
 
 <a id="concept.capability-context"></a>
 
