@@ -216,6 +216,10 @@ carries the task to delivery by the same method and reports to you. It is your o
 smaller scale, so it always runs on your program. Start sessions only for tasks that may run in
 parallel, and stay in the primary worktree while any runs.
 
+Once you have dispatched tasks, opened them and started their sessions, show the developer the
+name of every task you dispatched with its goal in one line, and use those names whenever you
+report on the tasks afterwards, so the developer can follow, ask about or stop each one.
+
 Before starting one, do in the task worktree the preparation that writes the repository's shared
 Git configuration, such as initializing submodules, as the project's own instructions say: the
 session's sandbox keeps `.git/config` and Git's hooks read-only, even though it may commit.

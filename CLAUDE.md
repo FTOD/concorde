@@ -37,7 +37,13 @@ your authority, and merge delivered tasks with the shared merge checks.
 
 On `merge_busy`, retry. On `merge_conflict`, re-enter the task worktree, merge main into the task
 branch, resolve, verify and deliver again; leave with ExitWorktree (`action: "keep"`) before
-retrying the checked merge from the primary worktree.
+retrying the checked merge from the primary worktree. On `workspace_busy`, wait for the task's run
+to end and retry. On `merge_incomplete`, finish the interrupted merge the refusal names first, with
+`task merge <task> --resume` (or `--abort` when the primary branch is no longer at its merge
+commit); bring `merge_diverged` to the developer.
+
+After dispatching tasks to task sessions, show the developer each task's name with its goal in one
+line, and report on the tasks by those names.
 
 ## Task session
 

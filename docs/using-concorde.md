@@ -458,6 +458,21 @@ task and process holds the lock. The lock belongs to the running command, so it 
 when that command or its session is killed. Merge with `concorde task merge`, not with `git merge`,
 so that the lock applies.
 
+A merge also waits for the task itself: while a run of that task is still going, `merge` and
+`close` refuse with `workspace_busy`, naming the run, and are run again once it has ended. They
+merge exactly the commit the merge's preflight checked, never whatever the task branch holds a
+moment later.
+
+A merge that was interrupted after `git merge` and before its checks finished, because its command
+or its session was killed, leaves the task **merging**. Until it is finished, every `concorde task`
+command that changes a task refuses with `merge_incomplete`, naming the task, the commit before the
+merge and the merge commit, while `concorde task list` and `show` still answer. Finish it with
+`concorde task merge retry --resume`, which reruns the merge's checks on the merge commit and then
+closes the task or undoes the merge, or with `concorde task merge retry --abort`, which resets the
+primary branch to the commit before the merge and returns the task to delivered, to be merged
+again. If the primary branch was changed by hand after the merge, both refuse with
+`merge_diverged`, and what to keep is your decision.
+
 A task ends as **closed** when it reached its goal, merged or not, or as **failed** when it did
 not. `concorde task merge` closes a merged task. A task that reached its goal without a merge,
 such as an experiment or an investigation, is closed with

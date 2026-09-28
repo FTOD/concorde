@@ -57,10 +57,11 @@ or none. A task of the same name that already exists fails the command with `tas
 does: in a throwaway worktree of `--ref` it puts every file the case's test patch touches back as
 it was at the case's base commit, since the change may have edited the same test files, applies
 the test patch, runs the test files it names with the given interpreter (`--pythonpath`
-directories of that worktree first on `PYTHONPATH`), and reports how many of the FAIL_TO_PASS and
-PASS_TO_PASS tests passed, each one that did not, and whether the case is resolved. The test patch
-and the case's tests stay outside the project: no worker sees them, and the project is left as it
-was ([requirements](requirements.md#req.swe-bench-cases.graded-apart)). The pytest output is kept
+directories of that worktree first on `PYTHONPATH`, and colour off whatever the caller's
+environment asks for, since the statuses are read from pytest's summary lines), and reports how many
+of the FAIL_TO_PASS and PASS_TO_PASS tests passed, each one that did not, and whether the case is
+resolved. The test patch and the case's tests stay outside the project: no worker sees them, and
+the project is left as it was ([requirements](requirements.md#req.swe-bench-cases.graded-apart)). The pytest output is kept
 under `.concorde/runs/e2e/`. The case is resolved when every FAIL_TO_PASS and every PASS_TO_PASS
 test passed. Failing tests are a verdict, not an error: each listed test that did not pass is named
 with its status, `not run` for one pytest never reported, and pytest's exit code is kept. Grading
