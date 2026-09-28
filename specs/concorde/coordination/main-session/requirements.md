@@ -275,6 +275,19 @@ agent with its own link on top of the [error chain](../../glossary.json#concept.
 A Claude Code task session sends the escalation with SendMessage; a pi task session names the
 escalation's number in its round's report.
 
+### req.main-session.task-session-no-ask — A task session runs workflows without asking
+
+The task-session guidance SHALL tell a task session to run a
+[workflow](../../glossary.json#concept.workflow) only in no-ask
+[mode](../../glossary.json#concept.workflow-mode), to give the decisions of the workflow's report in
+its own report, and to escalate to the main agent what needs the developer.
+
+Nobody answers a task session at a [decision point](../../glossary.json#concept.decision-point), so
+an interactive workflow would stop there with no one to settle it. A
+[workflow result](../../glossary.json#concept.workflow-result) that is not `ok` is escalated with the report as `--error-file`; a decision of major impact the workflow took,
+which carries no error, is named in the session's report for the main agent to put to the
+developer.
+
 ### req.main-session.task-session-reports — A task session reports its end
 
 The task-session guidance SHALL tell a task session to report to the main agent when it has

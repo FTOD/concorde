@@ -115,6 +115,41 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("stage the paths you changed by name", self.pi_session)
         self.assertIn("Do not merge the task branch, close the task", self.pi_session)
 
+    @verifies("scenario.main-session.task-session-workflow")
+    def test_a_task_session_runs_workflows_in_no_ask_mode(self):
+        for session in (self.session, self.pi_session):
+            with self.subTest(session=session[:40]):
+                self.assertIn(
+                    'but only in `no-ask` mode (`"mode": "no-ask"` in its `args`): nobody '
+                    "answers you at a decision point",
+                    session,
+                )
+                self.assertIn(
+                    "`.concorde/runs/workflows/<task>/reports/<n>.json` of the primary worktree",
+                    session,
+                )
+                self.assertIn(
+                    "copy its decisions and problems into the decision log", session
+                )
+                self.assertIn(
+                    "give its decisions in your report to the main agent", session
+                )
+                self.assertIn(
+                    "Escalate to the main agent what needs the developer: a result that is "
+                    "not `ok` and that you cannot repair within the task, with "
+                    "`--error-file` naming that report",
+                    session,
+                )
+                self.assertIn(
+                    "a decision of major impact among those the workflow took", session
+                )
+        self.assertIn("with every decision of a workflow you ran", self.session)
+        self.assertIn("with every decision of a workflow you ran", self.pi_session)
+        self.assertIn(
+            "with every workflow decision of major impact for the developer",
+            self.pi_session,
+        )
+
     @verifies("scenario.main-session.parallel-tasks")
     def test_parallelism_only_between_non_overlapping_worktrees(self):
         self.assertIn(

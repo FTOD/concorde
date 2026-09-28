@@ -245,7 +245,11 @@ enters the worktree and runs the installed `/concorde-<name>` workflow; in pi it
 installed script through pi-subagents with the task worktree as working directory. The main agent
 asks the developer which [mode](../../glossary.json#concept.workflow-mode) to use unless the
 developer already said; interactive suits a developer who is present, no-ask one who wants the
-result later. When a workflow ends `awaiting_decision`, the main agent puts every pending
+result later. A task session, which nobody answers, runs a workflow only in no-ask mode: its guidance
+tells it to copy the report's decisions and problems into the decision log, to give the decisions in
+its own report and to escalate to the main agent what needs the developer, a result that is not
+`ok` with the report as `--error-file` and a decision of major impact named in its report
+([requirements](requirements.md#req.main-session.task-session-no-ask)). When a workflow ends `awaiting_decision`, the main agent puts every pending
 [decision point](../../glossary.json#concept.decision-point) to the developer at once, with its
 options and recommendation, and starts the same workflow again with its `answers` keyed by each
 step's base key, its [step key](../../glossary.json#concept.step-key) without a restart label or

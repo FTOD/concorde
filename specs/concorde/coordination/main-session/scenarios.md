@@ -79,6 +79,15 @@ Situations the [main-session guidance](module.md) prepares the
 - AND that the main agent's answer arrives as the prompt of the next round
 - BUT never to merge the task branch or close the task
 
+### scenario.main-session.task-session-workflow — A task session runs its workflow in no-ask mode
+
+- GIVEN the rendered Claude Code and pi task-session guidance
+- WHEN a task session reads how to run a task that follows a known procedure
+- THEN it is told to start the [workflow](../../glossary.json#concept.workflow) in its task worktree only in no-ask [mode](../../glossary.json#concept.workflow-mode), since nobody answers it at a [decision point](../../glossary.json#concept.decision-point)
+- AND to read the [workflow result](../../glossary.json#concept.workflow-result) like a run result, copying its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log)
+- AND to give the workflow's decisions in its own report to the main agent, naming those of major impact for the developer
+- AND to escalate a workflow result that is not `ok` and that it cannot repair within the task with `concorde task escalate --by task-session` and the report as `--error-file`
+
 ### scenario.main-session.pi-task-session-view — pi shows task-session rounds and wakes on their end
 
 - GIVEN a pi main session that started a task session with `concorde_task_session`

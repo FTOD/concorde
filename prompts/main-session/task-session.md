@@ -36,5 +36,6 @@ wait for its answer before continuing that part of the work.
 
 When the task is delivered, or cannot go further, send the main agent's session one message with
 the SendMessage tool: the delivery commit (or the full error chain), the decisions you made on
-its behalf and why, and what is still open. Then stop. Do not merge the task branch, close the
+its behalf and why, with every decision of a workflow you ran, and what is still open, with every
+workflow decision of major impact for the developer. Then stop. Do not merge the task branch, close the
 task, start other sessions or record decisions for other tasks.
