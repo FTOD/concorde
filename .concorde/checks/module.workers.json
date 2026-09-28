@@ -1,0 +1,29 @@
+{
+  "checks": [
+    {
+      "id": "check.workers.tests",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/harness/workers",
+        "tests/concorde/harness/test_configure.py"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        "conftest.py",
+        "prompts",
+        "pyproject.toml",
+        "src",
+        "tests/concorde/harness/test_configure.py",
+        "tests/concorde/harness/workers",
+        "tests/concorde/spec/test_grants.py",
+        "tests/concorde/support"
+      ]
+    }
+  ]
+}

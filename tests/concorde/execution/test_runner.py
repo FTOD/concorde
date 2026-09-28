@@ -33,6 +33,7 @@ from tests.concorde.harness.workers.test_workers import git
 from tests.concorde.harness.workers.test_pi import fake_which
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.spec_project import read_checks, write_checks
 
 
 def head(root: Path) -> str:
@@ -1119,9 +1120,9 @@ class UnboundCheckoutTests(unittest.TestCase):
             (self.root / ".gitignore").read_text() + ".venv/\n"
         )
         # The configured check runs the interpreter of the environment Git ignores.
-        config = json.loads((self.root / ".concorde/config.json").read_text())
-        config["checks"][0]["argv"] = [".venv/bin/python", "checks/a_check.py"]
-        (self.root / ".concorde/config.json").write_text(json.dumps(config, indent=2))
+        checks = read_checks(self.root)
+        checks[0]["argv"] = [".venv/bin/python", "checks/a_check.py"]
+        write_checks(self.root, checks)
         examined = self.commit("check with the environment")
         (self.root / ".venv/bin").mkdir(parents=True)
         (self.root / ".venv/bin/python").symlink_to(sys.executable)

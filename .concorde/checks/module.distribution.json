@@ -1,0 +1,29 @@
+{
+  "checks": [
+    {
+      "id": "check.distribution.tests",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/distribution"
+      ],
+      "timeout_seconds": 600,
+      "inputs": [
+        "conftest.py",
+        "prompts",
+        "protocol",
+        "pyproject.toml",
+        "scripts",
+        "specs",
+        "src",
+        "tests/concorde/distribution",
+        "tests/concorde/support"
+      ]
+    }
+  ]
+}

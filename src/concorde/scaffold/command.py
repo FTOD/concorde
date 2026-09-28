@@ -131,10 +131,6 @@ def admit(ctx: RunContext):
     return Continue(evidence=[evidence("input", identity, "survey proposal admitted")])
 
 
-def configured(worktree: Path) -> dict:
-    return json.loads((worktree / ".concorde/config.json").read_text(encoding="utf-8"))
-
-
 def recheck(ctx: RunContext):
     """Step 2: a baseline, and the proposal checked against the worktree as it is now."""
     from ..spec.repository import SpecRepository
@@ -145,7 +141,6 @@ def recheck(ctx: RunContext):
     module = proposal["module"]
     try:
         repository = SpecRepository(ctx.worktree)
-        config = configured(ctx.worktree)
     except (SpecError, OSError, ValueError) as error:
         return ctx.fail(
             "failed",
@@ -167,7 +162,7 @@ def recheck(ctx: RunContext):
             repository,
             module,
             proposal,
-            {check.get("id") for check in config.get("checks") or []},
+            set(repository.checks),
         )
     if problems:
         return ctx.fail(
@@ -190,7 +185,6 @@ def recheck(ctx: RunContext):
         if f.severity == "error"
     }
     ctx.state["repository"] = repository
-    ctx.state["config"] = config
     return Continue(
         evidence=[
             evidence(

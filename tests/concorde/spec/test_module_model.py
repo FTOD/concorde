@@ -92,9 +92,9 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
         "scenario.spec.reject-unsupported-profile",
         "scenario.spec.reject-configuration-profile",
     )
-    def test_only_profile_17_with_the_installed_protocol_binding_is_admitted(self):
+    def test_only_profile_18_with_the_installed_protocol_binding_is_admitted(self):
         config = json.loads((self.root / ".concorde/config.json").read_text())
-        for profile in (15, 16, 18):
+        for profile in (16, 17, 19):
             with self.subTest(profile=profile):
                 self.write(
                     ".concorde/config.json",
@@ -122,6 +122,72 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
         self.assertEqual("protocol_mismatch", raised.exception.code)
         self.write(".concorde/config.json", json.dumps(config))
         self.assertEqual("module.a", self.repository().module("module.a").id)
+
+    @verifies("scenario.spec.checks-files")
+    def test_configured_checks_are_read_from_one_file_per_module(self):
+        def check(identity):
+            return {"id": identity, "argv": ["true"], "timeout_seconds": 5}
+
+        self.write(
+            ".concorde/checks/module.b.json",
+            json.dumps({"checks": [check("check.b.second"), check("check.b.first")]}),
+        )
+        self.write(
+            ".concorde/checks/module.a.json", json.dumps({"checks": [check("check.a")]})
+        )
+        repository = self.repository()
+        # Files by name, entries in file order; each check carries its file's Module.
+        self.assertEqual(
+            [
+                ("check.a", "module.a"),
+                ("check.b.second", "module.b"),
+                ("check.b.first", "module.b"),
+            ],
+            [(item["id"], item["module"]) for item in repository.checks.values()],
+        )
+        self.assertEqual(("check.a",), repository.module("module.a").checks)
+        valid = (self.root / ".concorde/checks/module.a.json").read_text()
+
+        def refused(content, name="module.a.json"):
+            (self.root / ".concorde/checks" / name).write_text(content)
+            try:
+                with self.assertRaises(SpecError) as raised:
+                    self.repository()
+            finally:
+                (self.root / ".concorde/checks" / name).unlink()
+                self.write(".concorde/checks/module.a.json", valid)
+            return raised.exception
+
+        error = refused(
+            json.dumps({"checks": [{**check("check.a"), "module": "module.b"}]})
+        )
+        self.assertEqual(
+            ("invalid_spec", ".concorde/checks/module.a.json"),
+            (error.code, error.path),
+        )
+        self.assertIn("module.a", error.reason)
+        error = refused(json.dumps({"checks": [check("check.b.first")]}))
+        self.assertIn(".concorde/checks/module.b.json", str(error))
+        self.assertEqual("invalid_spec", refused(json.dumps([check("x.y")])).code)
+        error = refused(json.dumps({"checks": []}), "module.unknown.json")
+        self.assertEqual(
+            ("unknown_module", ".concorde/checks/module.unknown.json"),
+            (error.code, error.path),
+        )
+        error = refused("{}", "notes.txt")
+        self.assertEqual(
+            ("invalid_spec", ".concorde/checks/notes.txt"), (error.code, error.path)
+        )
+        # A checks field left in the configuration names where the checks live now.
+        config = json.loads((self.root / ".concorde/config.json").read_text())
+        self.write(".concorde/config.json", json.dumps({**config, "checks": []}))
+        with self.assertRaises(SpecError) as raised:
+            self.repository()
+        self.assertEqual("invalid_spec", raised.exception.code)
+        self.assertIn(".concorde/checks/<module id>.json", str(raised.exception))
+        self.assertIn(
+            ".concorde/checks/<its module>.json", raised.exception.remediation
+        )
 
     def test_parent_context_contains_the_children_and_children_do_not_see_the_parent(
         self,

@@ -15,6 +15,7 @@ from .spec_project import (
     MIRRORED,
     DocumentSource,
     module_document,
+    write_checks,
     write_document,
 )
 
@@ -135,11 +136,10 @@ class SharedFileProject:
             ".concorde/config.json",
             json.dumps(
                 {
-                    "profile_version": 17,
+                    "profile_version": 18,
                     "registry": ".concorde/specs.json",
                     "protocol": protocol_binding(PACKAGE),
                     "python": sys.executable,
-                    "checks": [],
                 }
             ),
         )
@@ -202,9 +202,7 @@ class SharedFileProject:
         self.save_metadata(module_id, value)
 
     def configure_checks(self, checks):
-        config = json.loads((self.root / ".concorde/config.json").read_text())
-        config["checks"] = checks
-        self.write(".concorde/config.json", json.dumps(config))
+        write_checks(self.root, checks)
 
     def declare_reference(self, module="module.a", entries=("references/lib/",)):
         """Declare vendored material as ``includes`` of kind ``external`` of ``module``."""

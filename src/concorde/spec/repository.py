@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
 from .content_repository import DocumentUnitRepository, RepositoryCore  # noqa: F401
@@ -9,6 +11,7 @@ from .content_repository import DocumentUnitRepository, RepositoryCore  # noqa: 
 # Keep the established import surface for shared value types and deterministic helpers.
 from .repository_base import *  # noqa: F403 - public facade for shared helpers
 from .repository_base import (
+    CHECKS_DIR,
     PROFILE_VERSION,
     PROTOCOL_DIR,
     PROTOCOL_MANIFEST_PATH,
@@ -17,77 +20,160 @@ from .repository_base import (
     decode,
     digest,
     identifier,
+    is_identity,
     protocol_asset_path,
     read_file,
 )
 from .errors import system_cause
-from .typed_data import TypedDataError, safe_path
+from .typed_data import TypedDataError, checked_path, safe_path
 
 CONFIG_FIELDS = {"profile_version", "registry", "protocol"}
-# Optional sections: configured checks, read here, and the worker settings and the project
-# interpreter (`python`) that the harness reads.
-OPTIONAL_CONFIG_FIELDS = {"checks", "workers", "python"}
+# Optional sections the harness reads: the worker settings and the project interpreter
+# (`python`). The configured checks live in files of their own under CHECKS_DIR.
+OPTIONAL_CONFIG_FIELDS = {"workers", "python"}
 
 
-def configured_checks(config: dict) -> list[dict]:
-    """The project's configured checks (``.concorde/config.json`` ``checks``).
+def checks_files(root: Path) -> list[tuple[str, str]]:
+    """The checks files of a worktree as ``(path, Module id)``, in the byte order of their names.
 
-    Spec tooling reads only what it needs: a unique ``id``, a registered ``module`` and the
-    optional unique, canonical ``inputs``. The command fields belong to Check execution, which
-    validates them when it runs the check.
+    ``.concorde/checks/`` holds only regular files named ``<module id>.json``; a missing
+    directory means the project configures no checks.
+    """
+    try:
+        directory = checked_path(root, CHECKS_DIR)
+    except TypedDataError as error:
+        raise SpecError(
+            f"{CHECKS_DIR} in {root} is reached through a symbolic link",
+            "unsafe_path",
+            path=CHECKS_DIR,
+            reason="the configured checks are read only from the worktree's own files",
+            remediation=f"replace the link with a real {CHECKS_DIR} directory",
+        ) from error
+    if not directory.exists():
+        return []
+    if not directory.is_dir():
+        raise SpecError(
+            f"{CHECKS_DIR} in {root} is not a directory",
+            "invalid_spec",
+            path=CHECKS_DIR,
+            reason="the configured checks are one file per Module under this directory",
+            remediation="move the file away and put each Module's checks in "
+            f"{CHECKS_DIR}/<module id>.json",
+        )
+    result = []
+    for name in sorted(os.listdir(directory)):
+        relative = f"{CHECKS_DIR}/{name}"
+        module = name.removesuffix(".json") if name.endswith(".json") else ""
+        entry = directory / name
+        if not is_identity(module) or entry.is_symlink() or not entry.is_file():
+            state = (
+                "a symbolic link"
+                if entry.is_symlink()
+                else "not a regular file"
+                if not entry.is_file()
+                else "not named <module id>.json"
+            )
+            raise SpecError(
+                f"{relative} is {state}",
+                "invalid_spec",
+                path=relative,
+                reason=f"{CHECKS_DIR} holds only the regular files <module id>.json, each "
+                "with the configured checks of the Module it names",
+                remediation="rename the file after its Module's identity or move it out of "
+                f"{CHECKS_DIR}",
+            )
+        result.append((relative, module))
+    return result
+
+
+def configured_checks(root: Path) -> list[dict]:
+    """The project's configured checks, read from ``.concorde/checks/<module id>.json``.
+
+    Each file is ``{"checks": [...]}``; the file name gives every entry its ``module``, which the
+    returned checks carry after their ``id``. Spec tooling reads only what it needs: a unique
+    ``id`` and the optional unique, canonical ``inputs``. The command fields belong to Check
+    execution, which validates them when it runs the check. Files come in the byte order of
+    their names and entries in file order.
     """
     from .repository_base import check_input_error
 
-    raw = config.get("checks", [])
-    if not isinstance(raw, list):
-        raise SpecError(
-            f"the configuration's checks must be an array, not a JSON {type(raw).__name__}",
-            "invalid_spec",
-            "/checks",
-            path=".concorde/config.json",
-        )
-    result, seen = [], set()
-    for position, check in enumerate(raw):
-        if not isinstance(check, dict) or not {"id", "module"} <= check.keys():
+    result, seen = [], {}
+    for path, module in checks_files(root):
+        value = decode(read_file(root, path).decode("utf-8"))
+        if not isinstance(value, dict) or set(value) != {"checks"}:
             raise SpecError(
-                f"configured check {position} needs an id and a module: {check!r}"[
-                    :300
-                ],
+                f"{path} must be a JSON object with exactly the field checks, not "
+                f"{json.dumps(value)[:200]}",
                 "invalid_spec",
-                f"/checks/{position}",
-                path=".concorde/config.json",
-                reason="a configured check is identified by its id and belongs to one Module",
+                path=path,
+                reason="a checks file lists, under checks, the configured checks of the "
+                "Module it is named after",
+                remediation='write {"checks": [...]} with one entry per check',
             )
-        key = identifier(check["id"])
-        if key in seen:
+        raw = value["checks"]
+        if not isinstance(raw, list):
             raise SpecError(
-                f"the configured check id {key} is used twice",
+                f"the checks of {path} must be an array, not a JSON {type(raw).__name__}",
                 "invalid_spec",
-                f"/checks/{position}/id",
-                path=".concorde/config.json",
-                reason="a configured check's id identifies it uniquely in results and logs",
+                "/checks",
+                path=path,
             )
-        seen.add(key)
-        identifier(check["module"])
-        inputs = check.get("inputs", [])
-        if (
-            not isinstance(inputs, list)
-            or any(not isinstance(x, str) for x in inputs)
-            or len(set(inputs)) != len(inputs)
-        ):
-            raise SpecError(
-                f"the inputs of configured check {key} must be an array of distinct "
-                f"strings, not {inputs!r}"[:300],
-                "invalid_spec",
-                f"/checks/{position}/inputs",
-                path=".concorde/config.json",
-            )
-        for path in inputs:
-            try:
-                safe_path(path, path)
-            except TypedDataError as error:
-                raise check_input_error(check, path, error) from error
-        result.append(check)
+        for position, entry in enumerate(raw):
+            pointer = f"/checks/{position}"
+            if not isinstance(entry, dict) or "id" not in entry:
+                raise SpecError(
+                    f"configured check {position} of {path} needs an id: {entry!r}"[
+                        :300
+                    ],
+                    "invalid_spec",
+                    pointer,
+                    path=path,
+                    reason="a configured check is identified by its id",
+                )
+            if "module" in entry:
+                raise SpecError(
+                    f"configured check {entry['id']!r} of {path} has a module field",
+                    "invalid_spec",
+                    pointer + "/module",
+                    path=path,
+                    reason=f"the check belongs to {module}, the Module its file is named "
+                    "after, so a module field could only disagree with it",
+                    remediation="remove the field, or move the check into "
+                    f"{CHECKS_DIR}/<its module id>.json",
+                )
+            key = identifier(entry["id"])
+            if key in seen:
+                raise SpecError(
+                    f"the configured check id {key} is used in {seen[key]} and again in "
+                    f"{path}",
+                    "invalid_spec",
+                    pointer + "/id",
+                    path=path,
+                    reason="a configured check's id identifies it uniquely in results and "
+                    "logs",
+                    remediation="rename one of the two checks",
+                )
+            seen[key] = path
+            check = {"id": key, "module": module} | entry
+            inputs = check.get("inputs", [])
+            if (
+                not isinstance(inputs, list)
+                or any(not isinstance(x, str) for x in inputs)
+                or len(set(inputs)) != len(inputs)
+            ):
+                raise SpecError(
+                    f"the inputs of configured check {key} must be an array of distinct "
+                    f"strings, not {inputs!r}"[:300],
+                    "invalid_spec",
+                    pointer + "/inputs",
+                    path=path,
+                )
+            for relative in inputs:
+                try:
+                    safe_path(relative, relative)
+                except TypedDataError as error:
+                    raise check_input_error(check, relative, error) from error
+            result.append(check)
     return result
 
 
@@ -145,10 +231,24 @@ class SpecRepository(DocumentUnitRepository):
             )
         missing = sorted(CONFIG_FIELDS - self.config.keys())
         extra = sorted(self.config.keys() - CONFIG_FIELDS - OPTIONAL_CONFIG_FIELDS)
+        if "checks" in extra:
+            raise SpecError(
+                "the configuration has a checks field, but the configured checks live in "
+                f"{CHECKS_DIR}/<module id>.json",
+                "invalid_spec",
+                "/checks",
+                path=".concorde/config.json",
+                reason=f"since profile {PROFILE_VERSION} each Module's configured checks are "
+                "a file of their own, so that changes to different Modules' checks never meet "
+                "in one array",
+                remediation=f"move each entry into {CHECKS_DIR}/<its module>.json, whose "
+                'content is {"checks": [...]}, drop the entry\'s module field, and remove the '
+                "checks field",
+            )
         if missing or extra:
             raise SpecError(
                 "the configuration's fields must be profile_version, registry, protocol and "
-                "optionally checks, workers and python; "
+                "optionally workers and python; "
                 + "; ".join(
                     part
                     for part in (
@@ -164,7 +264,7 @@ class SpecRepository(DocumentUnitRepository):
                 remediation="remove or rename the field that is not allowed, and add the "
                 "missing ones",
             )
-        checks = configured_checks(self.config)
+        checks = configured_checks(root)
         super().__init__(
             root,
             registry_path=self.config["registry"],
@@ -173,15 +273,16 @@ class SpecRepository(DocumentUnitRepository):
             configured_checks=checks,
             _defer_document_admission=_defer_document_admission,
         )
-        for check in checks:
-            if check["module"] not in self.modules:
+        for path, module in checks_files(root):
+            if module not in self.modules:
                 raise SpecError(
-                    f"configured check {check['id']} names {check['module']}, which the "
-                    "registry does not register",
+                    f"{path} holds configured checks of {module}, which the registry does "
+                    "not register",
                     "unknown_module",
-                    "/checks",
-                    path=".concorde/config.json",
-                    subject=check["id"],
+                    path=path,
+                    subject=module,
+                    remediation="rename the file after the Module whose checks it holds, or "
+                    "remove it together with its Module",
                 )
         self.protocol_manifest, self.protocol_assets = self._protocol()
 

@@ -177,18 +177,6 @@ def propose(ctx: RunContext):
     )
 
 
-def configured_check_ids(worktree: Path) -> set[str]:
-    try:
-        config = json.loads((worktree / ".concorde/config.json").read_text())
-    except (OSError, ValueError):
-        return set()
-    return {
-        check.get("id")
-        for check in config.get("checks") or []
-        if isinstance(check, dict)
-    }
-
-
 def check(ctx: RunContext):
     """Step 3: the proposal fits the worktree and the answers; add the remaining entries."""
     module = ctx.modules[0]
@@ -201,9 +189,7 @@ def check(ctx: RunContext):
             for path in proposed["inputs"]
         ]
     repository = repository_of(ctx)
-    problems = proposal_problems(
-        repository, module, claims, configured_check_ids(ctx.worktree)
-    )
+    problems = proposal_problems(repository, module, claims, set(repository.checks))
     answers = ctx.state.get("answers") or []
     problems += answer_problems(
         [item for item in answers if item["id"].startswith("d.")], claims["decisions"]

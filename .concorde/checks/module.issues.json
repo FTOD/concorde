@@ -1,0 +1,43 @@
+{
+  "checks": [
+    {
+      "id": "check.issues.store",
+      "argv": [
+        "{python}",
+        "scripts/issues.py",
+        "check"
+      ],
+      "timeout_seconds": 60,
+      "inputs": [
+        ".concorde/issues",
+        ".concorde/config.json",
+        ".concorde/checks",
+        ".concorde/specs.json",
+        "scripts/issues.py",
+        "src"
+      ]
+    },
+    {
+      "id": "check.issues.tests",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/issues"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        ".concorde/issues",
+        "conftest.py",
+        "pyproject.toml",
+        "src",
+        "tests/concorde/issues",
+        "tests/concorde/support"
+      ]
+    }
+  ]
+}

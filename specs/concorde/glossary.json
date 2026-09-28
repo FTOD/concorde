@@ -229,7 +229,7 @@
       "id": "concept.configured-check",
       "title": "Configured check",
       "owner": "module.checks",
-      "definition": "A command that the project configuration assigns to one Module, with its arguments, time limit and the input paths its result depends on.",
+      "definition": "A command that a Module's own checks file, `.concorde/checks/<module id>.json`, assigns to that Module, with its arguments, time limit and the input paths its result depends on.",
       "explanation": "specs/concorde/execution/checks/module.md#concept.configured-check",
       "relates": [
         {

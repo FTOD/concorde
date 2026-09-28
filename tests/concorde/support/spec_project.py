@@ -137,6 +137,27 @@ def write_json(root, path, value):
     (root / path).write_text(json.dumps(value, indent=2) + "\n")
 
 
+def write_checks(root, checks):
+    """Replace the configured checks, given with their ``module``, by one file per Module."""
+    folder = Path(root) / ".concorde/checks"
+    for old in folder.glob("*") if folder.is_dir() else ():
+        old.unlink()
+    by_module = {}
+    for check in checks:
+        entry = {name: value for name, value in check.items() if name != "module"}
+        by_module.setdefault(check["module"], []).append(entry)
+    for module, entries in by_module.items():
+        folder.mkdir(parents=True, exist_ok=True)
+        write_json(folder, f"{module}.json", {"checks": entries})
+
+
+def read_checks(root):
+    """The configured checks as loaded, each with its ``module``, in configuration order."""
+    from concorde.spec.repository import configured_checks
+
+    return configured_checks(Path(root))
+
+
 def registry(root) -> dict:
     return read_json(root, ".concorde/specs.json")
 
@@ -713,13 +734,13 @@ class SpecProject:
             self.root,
             ".concorde/config.json",
             {
-                "profile_version": 17,
+                "profile_version": 18,
                 "registry": ".concorde/specs.json",
                 "protocol": protocol_binding(PACKAGE),
                 "python": sys.executable,
-                "checks": list(checks),
             },
         )
+        write_checks(self.root, checks)
         write_json(
             self.root, ".concorde/specs.json", {"schema_version": 3, "modules": []}
         )
@@ -822,7 +843,5 @@ def project(root):
     value = {"schema_version": 3, "modules": records}
     write_json(root, ".concorde/specs.json", value)
     value = sync_registry(root)
-    config = read_json(root, ".concorde/config.json")
-    config["checks"] = json.loads(json.dumps(CHECKS))
-    write_json(root, ".concorde/config.json", config)
+    write_checks(root, CHECKS)
     return value

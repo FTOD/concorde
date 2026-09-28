@@ -37,7 +37,7 @@ run begins with `input_not_admissible`, as for every run.
 
 ### req.scaffold.checks-proposed-only — Proposed checks are never configured
 
-The scaffold host SHALL NOT change the project configuration.
+The scaffold host SHALL NOT change the project configuration or any checks file.
 
 A proposed check is a command a model chose after reading code; the developer configures the ones
 they accept.

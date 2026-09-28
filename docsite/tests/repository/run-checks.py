@@ -27,6 +27,7 @@ DIRECTORIES = (
     "docs",
     "scripts",
     "tests",
+    ".concorde/checks",
     "docsite",
     "reference",
 )

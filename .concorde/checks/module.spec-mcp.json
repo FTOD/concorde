@@ -1,0 +1,26 @@
+{
+  "checks": [
+    {
+      "id": "check.spec-mcp.tests",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/spec_mcp"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        "conftest.py",
+        "pyproject.toml",
+        "src",
+        "tests/concorde/spec/test_grants.py",
+        "tests/concorde/spec_mcp",
+        "tests/concorde/support"
+      ]
+    }
+  ]
+}

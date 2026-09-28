@@ -18,6 +18,7 @@ from concorde.validation import confirmations
 from concorde.validation.command import READINESS_SCHEMA, TASK_VALIDATION
 from concorde.validation.measurement import measure
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.spec_project import read_checks, write_checks
 from tests.concorde.validation.project import (
     ValidationProject,
     evidence_of,
@@ -247,6 +248,18 @@ class ValidateTests(unittest.TestCase):
         [now] = after["changed"]
         self.assertEqual(("100644", "100755"), (was["mode"], now["mode"]))
         self.assertEqual(was["digest"], now["digest"])
+        self.assertNotEqual(before["digest"], after["digest"])
+
+    @verifies("scenario.validation.checks-configuration")
+    def test_a_changed_check_command_changes_the_configuration_digest(self):
+        base = git(self.worktree, "rev-parse", "HEAD")
+        before = measure(self.worktree, base)
+        checks = read_checks(self.worktree)
+        self.assertEqual(["module.a"], [check["module"] for check in checks])
+        checks[0]["argv"] = [*checks[0]["argv"], "--again"]
+        write_checks(self.worktree, checks)
+        after = measure(self.worktree, base)
+        self.assertNotEqual(before["config_digest"], after["config_digest"])
         self.assertNotEqual(before["digest"], after["digest"])
 
     @verifies("scenario.validation.warnings")

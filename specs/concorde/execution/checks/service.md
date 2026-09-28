@@ -7,19 +7,22 @@ serve. The [entry](../../glossary.json#concept.configured-check) explains why it
 
 ## Declaring a configured check
 
-The project configuration lists checks under `checks`. Each has:
+Each [Module](../../glossary.json#concept.module)'s checks are listed under `checks` in its own
+[checks file](../../spec-tooling/spec/contracts.md#checks-files),
+`.concorde/checks/<module id>.json`; the file's name is the Module the checks belong to, so an
+entry has no `module` field. The configuration order of the checks is the byte order of the file
+names, then the order of the entries in each file. Each entry has:
 
 | Field | Meaning |
 | --- | --- |
 | `id` | The check's identity, unique in the project |
-| `module` | The [Module](../../glossary.json#concept.module) the check belongs to |
 | `argv` | The command as an argument list; an element `{python}` is replaced by the project's interpreter, and an element `{tests}` by the tests that declare they verify a scenario of the Modules being checked, which makes the check selective |
 | `env` | Optional variables of the command, names to strings, such as `{"PYTHONPATH": "src"}` |
 | `when` | Optional: `always` (the default) runs the check wherever checks run; `readiness` runs it only when readiness is decided, by `task-validation` and `delivery`, for a full suite too slow for every round |
 | `timeout_seconds` | A positive time limit |
 | `inputs` | Project-relative files or directories the result depends on, beyond the Module's own implementation files |
 
-The Spec core validates `id`, `module` and `inputs` when it loads the configuration; the service
+The Spec core validates the files, `id` and `inputs` when it loads the Specs; the service
 validates `argv`, `env`, `when` and `timeout_seconds` when it runs the check. An input names a
 regular file or a directory; below a directory the service measures every regular file outside
 `__pycache__` directories. An input that is missing, is itself a symbolic link or is neither a

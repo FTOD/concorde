@@ -284,9 +284,10 @@ audits the worktree and writes the run records; any change beyond the grant fail
 <a id="uses-checks"></a>
 
 **Check execution** defines the [configured check](../../../glossary.json#concept.configured-check)
-entries of the project configuration. A survey proposes checks in that shape so that the
-developer can configure the ones they accept unchanged; Adoption itself never runs or configures a
-check.
+entries of the checks files, one `.concorde/checks/<module id>.json` per Module. A survey proposes
+checks in that shape, each with the `module` it is for, so that the developer can put each one they
+accept into that Module's checks file without its `module` and otherwise unchanged; Adoption itself
+never runs or configures a check.
 
 <a id="uses-spec"></a>
 

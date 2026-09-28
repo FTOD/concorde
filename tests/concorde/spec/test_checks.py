@@ -25,6 +25,7 @@ from tests.concorde.support.spec_project import (
     sync_registry,
     update_glossary_entry,
     upsert_concepts,
+    write_checks,
     write_json,
 )
 
@@ -1213,17 +1214,18 @@ class CheckTests(unittest.TestCase):
         (self.root / "data").mkdir()
         (self.root / "data/real.txt").write_text("input\n")
         (self.root / "data/link.txt").symlink_to("real.txt")
-        config = read_json(self.root, ".concorde/config.json")
-        config["checks"] = [
-            {
-                "id": "check.consumer",
-                "module": "module.consumer",
-                "argv": ["{python}", "-c", "open('ran', 'w').close()"],
-                "timeout_seconds": 10,
-                "inputs": ["data/missing.txt", "data/link.txt", "data/real.txt"],
-            }
-        ]
-        write_json(self.root, ".concorde/config.json", config)
+        write_checks(
+            self.root,
+            [
+                {
+                    "id": "check.consumer",
+                    "module": "module.consumer",
+                    "argv": ["{python}", "-c", "open('ran', 'w').close()"],
+                    "timeout_seconds": 10,
+                    "inputs": ["data/missing.txt", "data/link.txt", "data/real.txt"],
+                }
+            ],
+        )
         findings = self.project.findings("CONCORDE-CHECK-001")
         self.assertEqual(
             [

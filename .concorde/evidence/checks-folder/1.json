@@ -1,0 +1,225 @@
+{
+  "workspace": "checks-folder",
+  "goal": "Move the configured checks out of .concorde/config.json into one file per Module under .concorde/checks/, and state in Check execution's Spec that a test answers whether the code is right while a check answers what one command produced on exactly this input and whether that result can be trusted.",
+  "modules": [
+    "module.checks",
+    "module.spec",
+    "module.validation",
+    "module.adoption",
+    "module.scaffold",
+    "module.spec-mcp",
+    "module.views",
+    "module.main-session",
+    "module.concorde",
+    "module.issues",
+    "module.distribution"
+  ],
+  "sequence": 1,
+  "base_commit": "519ac5fdde0ff29b508757a431e68f00406713f4",
+  "parent_commit": "e32dff02be2a74e0f52f30e5af908122dc5e5453",
+  "readiness": {
+    "run_id": "r-20260928T175719-delivery-2cf55353",
+    "input_digest": "sha256:8c7ff248ca4aa256b97e14bbb1068ed2d81fe43235f37cd7f17432752243d432",
+    "modules": [
+      "module.adoption",
+      "module.checks",
+      "module.code-review",
+      "module.commands",
+      "module.concorde",
+      "module.coordination",
+      "module.delivery",
+      "module.distribution",
+      "module.dogfood-scenarios",
+      "module.dogfooding",
+      "module.e2e",
+      "module.execution",
+      "module.harness",
+      "module.headless-sessions",
+      "module.implementation",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.scaffold",
+      "module.spec",
+      "module.spec-mcp",
+      "module.spec-review",
+      "module.spec-tooling",
+      "module.specification",
+      "module.swe-bench-cases",
+      "module.task-session",
+      "module.tasks",
+      "module.understanding",
+      "module.validation",
+      "module.views",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:a64964732f603259f5db2ac971e8233de9aa49c904942380b79cfb154d470d89"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:bb8fdcd441f35d510540161bc572704797ecb6e21a51acb63a4ba443d8ee1ab6"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:b8f81f41e125768a64656a5f3c9fed08970d8e5940e665473ed405918d840721"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:74901a6013e3958c469cd6e1151e8ad98068263f4f76d6d36c2123ede0e81527"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:a1e82cc584a6d40d2adb64367168c8b78cb0ae465e9a0a5fe2a34b80a8b7a4c9"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:ed902338b7e221e38535613182deedb96a3dd3a4b6587973a1782768c0e5c4a3"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:db791f6cfe8ba5516ff7799d4183109ed59ff41f9f175b3865a5f3b188cd14a0"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:5edbb146556b34efe97fa3088eadd65df8b761008070934f1a5a49e3d5125542"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:7ccaa9eeab2b31356df6478ee7763d64b5ed83109fb5a70a28957f9f607a7d79"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:7ccaa9eeab2b31356df6478ee7763d64b5ed83109fb5a70a28957f9f607a7d79"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:4b6076480e5545e1642c054fe8717c267bd3895640be7e2e0be814ad1094a251"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:65ec0e239cdbc545194c977e458433966f6803cbbfbc3bd238f8584a5f96bdf4"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:c19161cc578e8d8065e3638bb422bb4b13faf3cb28ff5bb33487ec1efd879295"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:378a0da05c6c1ad08099c6b875f1be9dc3cfc55eeec37a5d6db04be89a087764"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:de5aa780201bb48e829e95255fb55eaaef83196fb9765245ef7f04e647594e29"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:70bb89e708c3204c35a0f66431e316ff250f6912f7e84719902c6850d78f4477"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:7ff7a0d98a90bb91abcc03cf46ca0da57d18e40c762351bf9895c59038547d34"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:4f29075338e94b999fbae2574c75d9be04b48cb28ea2e2dc87a7c788a8539014"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:bc98be503f37b9bbb7ffe6491035e3e16480fa84ae9e955d3ced4d58cc707427"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:fa53adf4d67bebd47bd46188dabbf5cb8585b6a4559ab9e58642800b49fb0cac"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:fa53adf4d67bebd47bd46188dabbf5cb8585b6a4559ab9e58642800b49fb0cac"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:fa53adf4d67bebd47bd46188dabbf5cb8585b6a4559ab9e58642800b49fb0cac"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:def008cb0546bcaabba028f86a415fc97ec4fb03d24304898c67408e5c6e3d18"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T175157-task_validation-d8422368",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.checks",
+        "module.spec",
+        "module.validation",
+        "module.adoption",
+        "module.scaffold",
+        "module.spec-mcp",
+        "module.views",
+        "module.main-session",
+        "module.concorde",
+        "module.issues",
+        "module.distribution"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:eca71a8722a6b1deae6572ef6f19e7b77aa30f443e078aaa0467f408e3cf08f2"
+    }
+  ],
+  "created_at": "2026-09-28T18:02:38Z"
+}

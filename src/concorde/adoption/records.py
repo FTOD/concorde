@@ -433,7 +433,7 @@ def proposal_problems(
             except TypedDataError:
                 problems.append(
                     f"check {check['id']} input {path!r} is not a canonical project-relative "
-                    "path, as the configuration's check inputs must be"
+                    "path, as a configured check's inputs must be"
                 )
         if check["module"] != module and check["module"] not in child_ids:
             problems.append(
