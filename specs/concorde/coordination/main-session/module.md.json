@@ -18,41 +18,41 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.workspace-binding",
-          "concept.execution.run-result",
-          "concept.execution.unbound-run",
-          "concept.execution.progress-file",
-          "concept.execution.runner"
+          "concept.workspace-binding",
+          "concept.run-result",
+          "concept.unbound-run",
+          "concept.run-progress-file",
+          "concept.execution-runner"
         ]
       },
       {
         "target": "module.operations",
         "meaning": "#uses-operations",
         "relies_on": [
-          "concept.operations.operation"
+          "concept.operation"
         ]
       },
       {
         "target": "module.workers",
         "meaning": "#uses-workers",
         "relies_on": [
-          "concept.workers.progress-file",
-          "concept.workers.model-configuration"
+          "concept.progress-file",
+          "concept.worker-model-configuration"
         ]
       },
       {
         "target": "module.tasks",
         "meaning": "#uses-tasks",
         "relies_on": [
-          "concept.tasks.task",
-          "concept.tasks.decision-log"
+          "concept.task",
+          "concept.decision-log"
         ]
       },
       {
         "target": "module.task-session",
         "meaning": "#uses-task-session",
         "relies_on": [
-          "concept.task-session.round"
+          "concept.session-round"
         ]
       },
       {
@@ -63,9 +63,9 @@
         "target": "module.issues",
         "meaning": "#uses-issues",
         "relies_on": [
-          "concept.issues.issue",
-          "concept.issues.status",
-          "concept.issues.revision",
+          "concept.issue",
+          "concept.issue-status",
+          "concept.issue-revision",
           "contract.issues.report",
           "contract.issues.receipt"
         ]
@@ -74,23 +74,18 @@
         "target": "module.spec-mcp",
         "meaning": "#uses-spec-mcp",
         "relies_on": [
-          "concept.spec-mcp.server"
+          "concept.spec-mcp-server"
         ]
       },
       {
         "target": "module.commands",
         "meaning": "#uses-commands",
         "relies_on": [
-          "concept.commands.execution-command"
+          "concept.execution-command"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -110,36 +105,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.main-session.guidance",
-      "type": "concept",
-      "title": "Main-session guidance",
-      "meaning": "#concept.main-session.guidance"
-    },
-    {
-      "id": "concept.main-session.run-view",
-      "type": "concept",
-      "title": "Run view",
-      "meaning": "#concept.main-session.run-view"
-    },
-    {
-      "id": "concept.main-session.model-picker",
-      "type": "concept",
-      "title": "Model picker",
-      "meaning": "#concept.main-session.model-picker"
-    },
-    {
-      "id": "concept.main-session.no-task-operations",
-      "type": "concept",
-      "title": "Questions without a task",
-      "meaning": "#concept.main-session.no-task-operations"
-    },
-    {
-      "id": "concept.main-session.escalation-policy",
-      "type": "concept",
-      "title": "Escalation policy",
-      "meaning": "#concept.main-session.escalation-policy"
-    },
     {
       "id": "realization.main-session.guidance",
       "type": "realization",
@@ -176,15 +141,9 @@
   "relations": [
     {
       "type": "relates",
-      "source": "concept.main-session.guidance",
-      "verb": "includes",
-      "target": "concept.main-session.escalation-policy"
-    },
-    {
-      "type": "relates",
       "source": "realization.main-session.guidance",
       "verb": "authors",
-      "target": "concept.main-session.guidance"
+      "target": "concept.main-session-guidance"
     },
     {
       "type": "relates",
@@ -196,25 +155,25 @@
       "type": "relates",
       "source": "realization.main-session.pi-run-view",
       "verb": "follows",
-      "target": "concept.task-session.round"
+      "target": "concept.session-round"
     },
     {
       "type": "relates",
       "source": "realization.main-session.pi-run-view",
       "verb": "reads",
-      "target": "concept.workers.progress-file"
+      "target": "concept.progress-file"
     },
     {
       "type": "relates",
       "source": "realization.main-session.pi-run-view",
       "verb": "reads",
-      "target": "concept.execution.progress-file"
+      "target": "concept.run-progress-file"
     },
     {
       "type": "relates",
       "source": "realization.main-session.pi-model-picker",
       "verb": "applies choices to",
-      "target": "concept.workers.model-configuration"
+      "target": "concept.worker-model-configuration"
     }
   ],
   "extensions": {}

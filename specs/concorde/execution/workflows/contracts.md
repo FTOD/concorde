@@ -1,13 +1,16 @@
 # Workflows contracts
 
-The exact shapes of [Workflows](module.md): what one step prints, the request a pi step agent
-passes on standard input, the workflow result, and the error codes of the workflow's own links.
-Error links follow the Framework's [error contract](../../contracts.md#contract.concorde.error),
-copied here as `$defs`.
+The exact shapes of [Workflows](module.md): what one step prints, the request a pi
+[step agent](../../glossary.json#concept.step-agent) passes on standard input, the
+[workflow result](../../glossary.json#concept.workflow-result), and the error codes of the
+workflow's own links. Error links follow the Framework's
+[error contract](../../contracts.md#contract.concorde.error), copied here as `$defs`.
 
 ## Step outcome
 
-Printed by `concorde workflow step`, from the workspace's workflow record and the saved run result.
+Printed by `concorde workflow step`, from the workspace's
+[workflow record](../../glossary.json#concept.workflow-record) and the saved
+[run result](../../glossary.json#concept.run-result).
 
 ```concorde-contract
 {
@@ -1288,7 +1291,7 @@ causes.
 
 | Code | Where | Reason | Raised when |
 | --- | --- | --- | --- |
-| `awaiting_decision` | result | `decision` | an interactive run ended at decision points; the evidence names each pending point |
+| `awaiting_decision` | result | `decision` | an interactive run ended at [decision points](../../glossary.json#concept.decision-point); the evidence names each pending point |
 | `step_blocked` | result | `decision` | the procedure stopped at a step that ended `blocked`, or at a validation that was not ready; the step's error is the cause |
 | `step_failed` | result | `decision` | the procedure stopped at a step that ended `failed`; the step's error is the cause |
 | `step_lost` | step outcome, result | `environment` | a step's run has no result and no living runner, its link carrying the end of the runner's output `host.out` as evidence and cause; or the script reported the key with nothing recorded |
@@ -1300,9 +1303,11 @@ causes.
 | `invalid_request` | step command | `input` | the step command line or standard-input request breaks the step request contract; exit status 2 |
 | `report_failed` | report command | `capability` | the report could not be built for a reason of its own, such as a recorded result the report's contract refuses; the detail names the reason, instead of the command ending in a traceback |
 
-The step and report commands also answer with a `component` link of the actor `Workflows (concorde
-workflow step)` or `Workflows (concorde workflow report)`, printed as `{"error": <link>}` with exit
-status 1, when they cannot work at all: `binding_required` when the worktree they start in has no
-workspace binding, `binding_unreadable`, `binding_invalid` or `binding_misplaced` when its binding
-is refused, and, for the report, `no_workflow` when the workspace ran no workflow step and
-`record_unreadable` when its workflow record cannot be read.
+The step and report commands also answer with a `component` link of the actor
+`Workflows (concorde [workflow step](../../glossary.json#concept.workflow-step))` or
+`Workflows (concorde workflow report)`, printed as `{"error": <link>}` with exit status 1, when they
+cannot work at all: `binding_required` when the worktree they start in has no
+[workspace binding](../../glossary.json#concept.workspace-binding), `binding_unreadable`,
+`binding_invalid` or `binding_misplaced` when its binding is refused, and, for the report,
+`no_workflow` when the workspace ran no [workflow step](../../glossary.json#concept.workflow-step)
+and `record_unreadable` when its workflow record cannot be read.

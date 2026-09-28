@@ -1,8 +1,10 @@
 # Code review contracts
 
 The exact shape of what [Code review](module.md) returns. The report is the `output` of the
-[run result](../../module.md#concept.execution.run-result). The reviewer supplies `summary` and `findings` as the Operation-specific part of
-its answer; the Operation adds the inputs it examined and derives the verdict.
+[run result](../../../glossary.json#concept.run-result). The reviewer supplies `summary` and
+`findings` as the Operation-specific part of its answer; the
+[Operation](../../../glossary.json#concept.operation) adds the inputs it examined and derives the
+verdict.
 
 ## Code review report
 

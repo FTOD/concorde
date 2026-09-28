@@ -1,9 +1,10 @@
 # How an Operation runs its workers
 
-What an [Operation](module.md#concept.operations.operation) adds to an ordinary run of the
+What an [Operation](../../glossary.json#concept.operation) adds to an ordinary run of the
 [Execution runner](../runner.md): the limits of its worker launches, how it settles each worker's
-program and model, the standard worker sequence its steps follow, and the error links that
-sequence adds. The runner's own steps, refusals and errors are in
+program and model, the
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) its steps follow,
+and the error links that sequence adds. The runner's own steps, refusals and errors are in
 [How a run is executed](../runner.md).
 
 ## Worker settings in the project configuration
@@ -18,42 +19,43 @@ read besides the grant, relative to the workspace or absolute (default `.venv` a
 
 No tracked project setting chooses the agent program or the model of a worker. Before each worker
 launch the step resolves, for the worker the provider names by its id — or its first worker — the
-[worker backend](../workers/module.md#concept.workers.backend), the model and the reasoning level
+[worker backend](../../glossary.json#concept.worker-backend), the model and the reasoning level
 from the run worktree's [worker model
-configuration](../workers/module.md#concept.workers.model-configuration); the backend is pi unless
+configuration](../../glossary.json#concept.worker-model-configuration); the backend is pi unless
 the configuration chooses Claude Code for that worker, its Operation or every worker.
 The shared validator checks the file's structure and every configured Operation and worker name
 against the catalog before resolving any worker. It does not discover models or require
 credentials; custom/offline model names remain valid. A malformed or unknown-name entry fails
 even when it is for a different Operation, so runtime and editor validation agree.
 
-Workers records the Operation, worker id, backend and where it came from, model and level in the run
-record, and the step adds `worker-model` evidence naming the worker id, the backend and its source,
-the model and the level the worker ran with. When the worker's program is not installed or the
-configuration file cannot be read, the step stops `failed` with `worker_model_unavailable` before
-any worker starts.
+Workers records the Operation, [worker id](../../glossary.json#concept.worker-id), backend and where
+it came from, model and level in the run record, and the step adds `worker-model` evidence naming
+the worker id, the backend and its source, the model and the level the worker ran with. When the
+worker's program is not installed or the configuration file cannot be read, the step stops `failed`
+with `worker_model_unavailable` before any worker starts.
 
 ## Standard worker sequence
 
-A worker-backed provider step hands Workers the task type, the Modules, the workspace, the records
-directory, the brief material and the result schema of its task type, whether configured checks
-run, and the number of resume rounds (default 3). Workers performs:
+A worker-backed provider step hands Workers the [task type](../../glossary.json#concept.task-type),
+the Modules, the workspace, the records directory, the brief material and the result schema of its
+task type, whether [configured checks](../../glossary.json#concept.configured-check) run, and the
+number of [resume rounds](../../glossary.json#concept.resume-round) (default 3). Workers performs:
 
 | # | Step | Stops the step when |
 | --- | --- | --- |
-| 1 | Compute the grant for the task type and Modules from the workspace's Specs through Spec core, lower every writable level to read when the provider withholds writes, and freeze it with its context identity | the Specs cannot be loaded or a Module is unknown |
+| 1 | Compute the grant for the task type and Modules from the workspace's Specs through Spec core, lower every writable level to read when the provider withholds writes, and freeze it with its [context identity](../../glossary.json#concept.context-identity) | the Specs cannot be loaded or a [Module](../../glossary.json#concept.module) is unknown |
 | 2 | Pre-create the pending files that the grant makes writable | a pending file cannot be created |
-| 3 | Generate the worker settings, the tool list and the brief from the frozen grant | — |
-| 4 | Launch the worker in its own run directory of the run store and wait for its worker result | launch error, timeout or a result that fails its schema |
+| 3 | Generate the [worker settings](../../glossary.json#concept.worker-settings), the tool list and the brief from the frozen grant | — |
+| 4 | Launch the worker in its own [run directory](../../glossary.json#concept.run-directory) of the [run store](../../glossary.json#concept.run-store) and wait for its [worker result](../../glossary.json#concept.worker-result) | launch error, timeout or a result that fails its schema |
 | 5 | Audit the workspace's changes against the grant | any write outside the grant's writable paths |
 | 6 | Run the bound Modules' configured checks outside the worker, when the step asks for checks | — |
 | 7 | While a check fails and rounds remain, resume the same worker with the failures and repeat steps 5 and 6 | the rounds are used up with a check still failing |
-| 8 | Write the run record | — |
+| 8 | Write the [run record](../../glossary.json#concept.run-record) | — |
 
-An unbound run never reaches step 1 with a grant that would keep a writable path: the step refuses
-it first with `unbound_write`, whatever the provider asks. A `specify`, `implement` or
-`code-to-spec` launch of an unbound run is therefore refused unless its provider withholds every
-writable level, as a survey does.
+An [unbound run](../../glossary.json#concept.unbound-run) never reaches step 1 with a grant that
+would keep a writable path: the step refuses it first with `unbound_write`, whatever the provider
+asks. A `specify`, `implement` or `code-to-spec` launch of an unbound run is therefore refused
+unless its provider withholds every writable level, as a survey does.
 
 The step's outcome maps to the result status as follows; the first matching row wins.
 
@@ -95,5 +97,6 @@ sequence adds these codes.
 | Worker result invalid | `worker_result_invalid` | `capability` | the run record's error |
 | Any other failure of a worker run | the run record's code | `environment` | the run record's error |
 
-For a worker run the Operation's options are the worker's own options, when it gave any, followed
-by the Operation's; each provider's Spec lists the links its own steps add.
+For a worker run the Operation's options are the worker's own options, when it gave any, followed by
+the Operation's; each provider's [Spec](../../glossary.json#concept.spec) lists the links its own
+steps add.

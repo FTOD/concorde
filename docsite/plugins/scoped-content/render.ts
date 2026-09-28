@@ -2,21 +2,16 @@
  *
  * - every stable identity becomes an addressable anchor;
  * - requirement and scenario headings show their titles and keep their identity as the anchor;
- * - import rows of Terminology tables show the imported definition, marked with its owner;
+ * - every term link is rewritten to the rendered glossary page, by `rewriteLinks`;
+ * - a Module's entry page gains a derived list of the terms it owns, linking to the glossary;
  * - D2 blocks are rendered to images separately, by `diagrams.ts`. */
 import {
   DEFINITION_HEADING,
   OPENING_ANCHORS,
   parseJson,
   readingMeanings,
-  tableCells,
 } from "./reading-format";
-import {
-  rewriteLinks,
-  rewriteMarkdownLinks,
-  type Page,
-  type ScopedRegistry,
-} from "./model";
+import { rewriteLinks, type Page, type ScopedRegistry } from "./model";
 
 export const ILLUSTRATIVE_LABEL =
   '<p class="diagram-illustrative"><strong>Illustrative, non-normative.</strong> This diagram explains; it declares no relationship.</p>';
@@ -80,58 +75,22 @@ export function injectAnchors(content: string): string {
   return out.join("\n");
 }
 
-/** Enrich import rows and anchor defining rows of the Terminology table. */
-function renderTerminology(
+/** A derived list of the terms a Module owns, linking to their glossary entries. Never written
+ * into the source; shown only on the Module's own entry page. */
+function appendTerms(
   registry: ScopedRegistry,
   page: Page,
   content: string,
-  anchored: Set<string>,
 ): string {
-  const concepts = registry.nodes.filter((n) => n.type === "concept");
-  const local = concepts.filter((n) => n.document === page.sourcePath);
-  let fence: string | undefined;
-  let inSection = false;
-  let row = 0;
-  return content
-    .split("\n")
-    .map((line) => {
-      if (fence) {
-        if (closes(line, fence)) fence = undefined;
-        return line;
-      }
-      const marker = FENCE.exec(line);
-      if (marker) {
-        fence = marker[1];
-        return line;
-      }
-      const heading = /^(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$/.exec(line);
-      if (heading) {
-        if (heading[1].length <= 2) inSection = heading[2] === "Terminology";
-        row = 0;
-        return line;
-      }
-      if (!inSection || !line.trim().startsWith("|")) return line;
-      if (row++ < 2) return line;
-      const [term = "", definition = "", ...rest] = tableCells(line);
-      const link = /^\[[^\]]+\]\([^\s)]*#(concept\.[^\s)#]+)\)$/.exec(term);
-      if (link) {
-        const concept = concepts.find((n) => n.id === link[1]);
-        if (!concept || definition) return line;
-        const owner = registry.modules.find((m) => m.id === concept.owner)!;
-        const entry = registry.pages.find((p) => p.primaryOf === owner.id)!;
-        const imported = `*Imported from [${owner.title}](${entry.route}).*`;
-        // The definition was written on its owner's page; address its links from there.
-        const cell = concept.definition
-          ? `${rewriteMarkdownLinks(registry, concept.document, concept.definition, true)} ${imported}`
-          : imported;
-        return `| ${[term, cell, ...rest].join(" | ")} |`;
-      }
-      const concept = local.find((n) => n.title === term);
-      if (!concept || anchored.has(concept.id)) return line;
-      anchored.add(concept.id);
-      return `| ${[anchor(concept.id) + term, definition, ...rest].join(" | ")} |`;
-    })
-    .join("\n");
+  if (!page.primaryOf || !registry.glossary) return content;
+  const owned = registry.glossary.concepts
+    .filter((c) => c.owner === page.primaryOf)
+    .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
+  if (!owned.length) return content;
+  const items = owned.map(
+    (c) => `- [${c.title}](${registry.glossary!.route}#${c.id})`,
+  );
+  return `${content}\n\n## Terms\n\n${items.join("\n")}\n`;
 }
 
 /** Place anchors for metadata-declared nodes whose identity the reading does not carry. */
@@ -193,8 +152,6 @@ export function renderPage(registry: ScopedRegistry, page: Page): string {
   const anchored = new Set(
     readingMeanings(page.content, page.sourcePath).keys(),
   );
-  if (page.readingCollection === "module")
-    content = renderTerminology(registry, page, content, anchored);
   const pending = new Map<string, string[]>();
   for (const node of registry.nodes)
     if (node.document === page.sourcePath && !anchored.has(node.id)) {
@@ -206,5 +163,10 @@ export function renderPage(registry: ScopedRegistry, page: Page): string {
   const top = [page.primaryOf, page.documentId].filter(
     (id): id is string => Boolean(id) && !anchored.has(id!),
   );
-  return anchorPage(injectAnchors(content), top);
+  content = appendTerms(
+    registry,
+    page,
+    anchorPage(injectAnchors(content), top),
+  );
+  return content;
 }

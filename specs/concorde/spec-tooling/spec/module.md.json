@@ -17,88 +17,10 @@
     ],
     "contains": [],
     "uses": [],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      }
-    ],
+    "includes": [],
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.spec.registry",
-      "type": "concept",
-      "title": "Registry",
-      "meaning": "#concept.spec.registry"
-    },
-    {
-      "id": "concept.spec.document",
-      "type": "concept",
-      "title": "Document",
-      "meaning": "#concept.spec.document"
-    },
-    {
-      "id": "concept.spec.protocol-binding",
-      "type": "concept",
-      "title": "Protocol binding",
-      "meaning": "#concept.spec.protocol-binding"
-    },
-    {
-      "id": "concept.spec.structural-check",
-      "type": "concept",
-      "title": "Structural check",
-      "meaning": "#concept.spec.structural-check"
-    },
-    {
-      "id": "concept.spec.boundary-set",
-      "type": "concept",
-      "title": "Boundary set",
-      "meaning": "#concept.spec.boundary-set"
-    },
-    {
-      "id": "concept.spec.grant",
-      "type": "concept",
-      "title": "Grant",
-      "meaning": "#concept.spec.grant"
-    },
-    {
-      "id": "concept.spec.context-identity",
-      "type": "concept",
-      "title": "Context identity",
-      "meaning": "#concept.spec.context-identity"
-    },
-    {
-      "id": "concept.spec.impact-index",
-      "type": "concept",
-      "title": "Impact index",
-      "meaning": "#concept.spec.impact-index"
-    },
-    {
-      "id": "concept.spec.verification-declaration",
-      "type": "concept",
-      "title": "Verification declaration",
-      "meaning": "#concept.spec.verification-declaration"
-    },
-    {
-      "id": "concept.spec.typed-value",
-      "type": "concept",
-      "title": "Typed value",
-      "meaning": "#concept.spec.typed-value"
-    },
-    {
-      "id": "concept.spec.file-transaction",
-      "type": "concept",
-      "title": "File transaction",
-      "meaning": "#concept.spec.file-transaction"
-    },
-    {
-      "id": "concept.spec.initial-proposal",
-      "type": "concept",
-      "title": "Initial proposal",
-      "meaning": "#concept.spec.initial-proposal"
-    },
     {
       "id": "realization.spec.model",
       "type": "realization",
@@ -110,6 +32,7 @@
         "src/concorde/spec/boundaries.py",
         "src/concorde/spec/content_model.py",
         "src/concorde/spec/content_repository.py",
+        "src/concorde/spec/glossary.py",
         "src/concorde/spec/impact.py",
         "src/concorde/spec/model.py",
         "src/concorde/spec/repository.py",
@@ -231,19 +154,19 @@
       "type": "relates",
       "source": "realization.spec.model",
       "verb": "loads",
-      "target": "concept.spec.registry"
+      "target": "concept.registry"
     },
     {
       "type": "relates",
       "source": "realization.spec.model",
       "verb": "loads",
-      "target": "concept.spec.document"
+      "target": "concept.document"
     },
     {
       "type": "relates",
       "source": "realization.spec.model",
       "verb": "verifies",
-      "target": "concept.spec.protocol-binding"
+      "target": "concept.protocol-binding"
     },
     {
       "type": "relates",
@@ -255,37 +178,37 @@
       "type": "relates",
       "source": "realization.spec.model",
       "verb": "computes",
-      "target": "concept.spec.boundary-set"
+      "target": "concept.boundary-set"
     },
     {
       "type": "relates",
       "source": "realization.spec.model",
       "verb": "computes",
-      "target": "concept.spec.impact-index"
+      "target": "concept.impact-index"
     },
     {
       "type": "relates",
       "source": "realization.spec.grants",
       "verb": "applies a task type to",
-      "target": "concept.spec.boundary-set"
+      "target": "concept.boundary-set"
     },
     {
       "type": "relates",
       "source": "realization.spec.grants",
       "verb": "computes",
-      "target": "concept.spec.grant"
+      "target": "concept.grant"
     },
     {
       "type": "relates",
       "source": "realization.spec.grants",
       "verb": "computes",
-      "target": "concept.spec.context-identity"
+      "target": "concept.context-identity"
     },
     {
       "type": "relates",
       "source": "realization.spec.validator",
       "verb": "runs",
-      "target": "concept.spec.structural-check"
+      "target": "concept.structural-check"
     },
     {
       "type": "relates",
@@ -297,31 +220,31 @@
       "type": "relates",
       "source": "realization.spec.validator",
       "verb": "reads",
-      "target": "concept.spec.verification-declaration"
+      "target": "concept.verification-declaration"
     },
     {
       "type": "relates",
       "source": "realization.spec.validator",
       "verb": "regenerates the mirror of",
-      "target": "concept.spec.registry"
+      "target": "concept.registry"
     },
     {
       "type": "relates",
       "source": "realization.spec.typed-values",
       "verb": "checks",
-      "target": "concept.spec.typed-value"
+      "target": "concept.typed-value"
     },
     {
       "type": "relates",
       "source": "realization.spec.transactions",
       "verb": "applies",
-      "target": "concept.spec.file-transaction"
+      "target": "concept.file-transaction"
     },
     {
       "type": "relates",
       "source": "realization.spec.initializer",
       "verb": "proposes",
-      "target": "concept.spec.initial-proposal"
+      "target": "concept.initial-proposal"
     },
     {
       "type": "relates",

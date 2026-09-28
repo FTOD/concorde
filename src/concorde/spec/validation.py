@@ -1,4 +1,4 @@
-"""Every decidable check of Spec Protocol 14 (``protocol/checks.md``), reported as findings.
+"""Every decidable check of Spec Protocol 15 (``protocol/checks.md``), reported as findings.
 
 A finding's ``rule_id`` is the check identity (``CHK.*``). A few tool findings keep a
 ``CONCORDE-*`` identity: link fragments, scenario coverage, configured check inputs, Issue records
@@ -9,14 +9,16 @@ establishes that the Spec is sufficient or that the implementation conforms.
 from __future__ import annotations
 
 import json
+import posixpath
 import subprocess
 import unicodedata
 from collections import Counter
 from pathlib import Path
 
-from .content_model import metadata_path
+from .content_model import MODULE_OPTIONAL, metadata_path
 from .content_repository import DocumentUnitRepository, severity
 from .errors import system_cause
+from .glossary import plain_definition
 from .model import Finding, ToolResult
 from .repository import SpecRepository
 from .repository_base import (
@@ -43,9 +45,9 @@ from .syntax import (
     diagram_model,
     entry_section_problems,
     explained,
-    first_section,
     link_target,
     one_sentence,
+    term_uses,
     test_declarations,
 )
 from .typed_data import TypedDataError
@@ -60,6 +62,10 @@ REMEDIATION = {
     ),
     "CHK.context.reconciled": "Select the defining document through uses, contains or an includes with a reason, or remove the relation.",
     "CHK.contrasts.required": "Declare a contrasts relation with a reason between the two nodes.",
+    "CHK.term.unlinked": (
+        "Link the term where the document first uses it, or rephrase a word that only looks "
+        "like the term."
+    ),
 }
 
 
@@ -109,7 +115,8 @@ class Checks:
         for family in (
             self.registry,
             self.documents,
-            self.terminology,
+            self.glossary,
+            self.terms,
             self.nodes,
             self.module_relations,
             self.metadata_relations,
@@ -142,17 +149,21 @@ class Checks:
             module = repository.declarations.get(record["id"])
             if module is None or module.block is None:
                 continue
-            if set(record) != set(fields):
+            expected = fields + tuple(
+                name for name in MODULE_OPTIONAL if name in module.block
+            )
+            if set(record) != set(expected):
                 self.add(
                     "CHK.registry.mirror",
                     repository.registry_path,
-                    f"registry record {record['id']} must have exactly the fields {list(fields)}",
+                    f"registry record {record['id']} must have exactly the fields "
+                    f"{list(expected)}",
                     subject=record["id"],
                 )
                 continue
             differing = [
                 name
-                for name in fields[1:]
+                for name in expected[1:]
                 if name != "entry" and record.get(name) != module.block.get(name)
             ]
             if differing:
@@ -190,132 +201,145 @@ class Checks:
                     self.add(
                         problem.check, module.entry, problem.message, line=problem.line
                     )
-        for path, unit in repository.units.items():
-            reading = repository.readings[path]
-            if unit.role != "module" or path in self.entries:
-                continue
-            defines_concepts = any(
-                concept.document == path
-                for concept in repository.concept_nodes.values()
-            )
-            imports = any(item["document"] == path for item in repository.imports)
-            if (
-                defines_concepts or imports or reading.terminology is not None
-            ) and first_section(reading.text) != "Terminology":
-                if defines_concepts or imports:
-                    self.add(
-                        "CHK.document.topic-terminology",
-                        path,
-                        "a module topic that defines or imports a concept starts with ## Terminology",
-                    )
 
-    # --- terminology ---------------------------------------------------------------------
+    # --- the glossary and term links -----------------------------------------------------
 
-    def terminology(self) -> None:
+    def glossary(self) -> None:
+        """CHK.glossary.declared for a project that names concepts without a glossary, and
+        CHK.concept.definition and CHK.node.meaning for every entry."""
         repository = self.repository
-        for path, unit in repository.units.items():
-            reading = repository.readings[path]
-            rows = reading.terminology or []
-            defined = {
-                concept.title: concept
-                for concept in repository.concept_nodes.values()
-                if concept.document == path
-            }
-            titles = Counter(row.term for row in rows if row.href is None)
-            for row in rows:
-                if row.href is not None:
-                    continue
-                if unit.role != "module":
-                    self.add(
-                        "CHK.terminology.rows",
-                        path,
-                        f"only module documents define concepts in Terminology: {row.term}",
-                        line=row.line,
-                    )
-                elif row.term not in defined:
-                    self.add(
-                        "CHK.terminology.rows",
-                        path,
-                        f"Terminology row {row.term!r} is neither a concept this document defines "
-                        "nor an import link",
-                        line=row.line,
-                    )
-            for title, concept in defined.items():
-                if titles[title] != 1:
-                    self.add(
-                        "CHK.concept.definition",
-                        path,
-                        f"concept {concept.id} needs exactly one defining Terminology row titled "
-                        f"{title!r}; found {titles[title]}",
-                        subject=concept.id,
-                    )
-                elif not concept.definition or not one_sentence(concept.definition):
-                    self.add(
-                        "CHK.concept.definition",
-                        path,
-                        f"the definition of concept {concept.id} must be one nonempty sentence",
-                        subject=concept.id,
-                    )
-        seen: set[tuple[str, str]] = set()
-        for item in repository.imports:
-            path, line = item["document"], item["line"]
-            unit = repository.units[path]
-            concept = repository.concept_nodes.get(item["concept"] or "")
-            if unit.role != "module":
-                self.add(
-                    "CHK.terminology.import-row",
-                    path,
-                    "only module documents import concepts",
-                    line=line,
-                )
-                continue
-            if item["definition"].strip():
-                self.add(
-                    "CHK.terminology.import-row",
-                    path,
-                    f"import row {item['href']} must leave Definition empty",
-                    line=line,
-                )
-            if (
-                concept is None
-                or item["path"] != concept.document
-                or item["path"] == path
+        if repository.glossary_path is None:
+            named = sorted(
+                {item["concept"] for item in repository.mentions}
+                | {
+                    identity
+                    for module in repository.declarations.values()
+                    for kind in ("contains", "uses")
+                    for item in module.relations(kind)
+                    for identity in item.get("relies_on", ())
+                    if identity.startswith("concept.")
+                }
+                | {
+                    relation["target"]
+                    for relation in repository.metadata_relations
+                    if str(relation.get("target", "")).startswith("concept.")
+                }
+            )
+            if named and not any(
+                module.glossary for module in repository.declarations.values()
             ):
                 self.add(
-                    "CHK.terminology.import-row",
-                    path,
-                    f"import row {item['href']} must link to a concept identity in its defining "
-                    "document",
-                    line=line,
+                    "CHK.glossary.declared",
+                    repository.registry_path,
+                    "the Specs name concepts but no Module declares a glossary: "
+                    + ", ".join(named[:10])
+                    + (f" and {len(named) - 10} more" if len(named) > 10 else ""),
                 )
-                continue
-            key = (path, concept.id)
-            if key in seen:
+            return
+        path = repository.glossary_path
+        for concept in repository.concept_nodes.values():
+            if concept.definition is not None and not one_sentence(
+                plain_definition(concept.definition)
+            ):
                 self.add(
-                    "CHK.terminology.rows",
+                    "CHK.concept.definition",
                     path,
-                    f"concept {concept.id} is imported twice",
-                    line=line,
-                )
-            seen.add(key)
-            if concept.owner == item["owner"]:
-                self.add(
-                    "CHK.imports.foreign",
-                    path,
-                    f"concept {concept.id} is owned by this document's own Module",
-                    line=line,
+                    f"the definition of concept {concept.id} must be one nonempty sentence",
                     subject=concept.id,
                 )
-            elif (
-                concept.owner not in repository.modules[item["owner"]].uses
-                and concept.owner not in self.ancestors(item["owner"])
-                and item["owner"] not in self.ancestors(concept.owner)
+            owner = repository.declarations[concept.owner]
+            unit = repository.units.get(concept.document)
+            anchor = (
+                repository.readings[concept.document].anchors.get(concept.anchor)
+                if concept.document in repository.readings
+                else None
+            )
+            if (
+                concept.document not in owner.owns
+                or unit is None
+                or unit.role != "module"
+                or anchor is None
+                or not anchor.text.strip()
+            ):
+                reason = (
+                    f"{concept.document} is not a document {concept.owner} owns"
+                    if concept.document not in owner.owns
+                    else f"{concept.document} is not a module-role document"
+                    if unit is None or unit.role != "module"
+                    else f"{concept.document} has no anchor {concept.anchor!r}"
+                    if anchor is None
+                    else f"the anchor at {concept.document}:{anchor.line} has no prose "
+                    "before the next heading or anchor group (anchors explained by the same prose "
+                    "go together on one line, since a blank line between them starts a new group)"
+                )
+                self.add(
+                    "CHK.node.meaning",
+                    path,
+                    f"concept {concept.id} explanation {concept.explanation!r} must resolve to "
+                    f"nonempty prose in a module document its owner owns: {reason}",
+                    subject=concept.id,
+                )
+            for identity in concept.mentions:
+                if identity not in repository.concept_nodes:
+                    self.add(
+                        "CHK.term.link",
+                        path,
+                        f"the definition of {concept.id} links #{identity}, which is no "
+                        "concept of the glossary",
+                        subject=concept.id,
+                    )
+
+    def terms(self) -> None:
+        """CHK.term.link for every term link in reading, and CHK.term.unlinked."""
+        repository = self.repository
+        linked: dict[str, set[str]] = {}
+        for item in repository.mentions:
+            if repository.glossary_path is None:
+                break
+            if (
+                item["path"] != repository.glossary_path
+                or item["concept"] not in repository.concept_nodes
             ):
                 self.add(
-                    "CHK.imports.owner",
+                    "CHK.term.link",
+                    item["document"],
+                    f"term link {item['href']} must address the glossary "
+                    f"{repository.glossary_path} and name one of its concepts"
+                    + (
+                        ""
+                        if item["concept"] in repository.concept_nodes
+                        else f"; {item['concept']} is no concept of the glossary"
+                    ),
+                    line=item["line"],
+                    subject=item["concept"],
+                )
+                continue
+            linked.setdefault(item["document"], set()).add(item["concept"])
+        if repository.glossary_path is None:
+            return
+        titles = {
+            concept.id: concept.title
+            for concept in repository.concept_nodes.values()
+            if concept.title.strip()
+        }
+        module_titles = [module.title for module in repository.declarations.values()]
+        for path, reading in repository.readings.items():
+            own = linked.get(path, set())
+            uses = term_uses(reading.text, titles, module_titles)
+            relative = posixpath.relpath(
+                repository.glossary_path, posixpath.dirname(path) or "."
+            )
+            for identity, (line, _, _) in sorted(
+                uses.items(), key=lambda item: item[1]
+            ):
+                if identity in own:
+                    continue
+                concept = repository.concept_nodes[identity]
+                self.add(
+                    "CHK.term.unlinked",
                     path,
-                    f"imported concept {concept.id} belongs to {concept.owner}, which "
-                    f"{item['owner']} neither uses, descends from nor contains transitively",
+                    f"uses the term {concept.title!r} without linking it; link its first use "
+                    f"as [{concept.title}]({relative}#{concept.id})",
                     line=line,
                     subject=concept.id,
                 )
@@ -341,11 +365,22 @@ class Checks:
                     repository.registry_path,
                     f"Module title {title!r} is not unique: {', '.join(owners)}",
                 )
+        terms: dict[str, list[str]] = {}
+        for concept in repository.concept_nodes.values():
+            terms.setdefault(normalize_title(concept.title), []).append(concept.id)
+        for identities in terms.values():
+            if len(identities) > 1:
+                self.add(
+                    "CHK.node.title",
+                    repository.glossary_path or repository.registry_path,
+                    f"concepts {', '.join(identities)} share one title; a term has one "
+                    "meaning in the project, so give each meaning its own title",
+                    subject=identities[0],
+                )
         local: dict[tuple[str, str], list[str]] = {}
-        for node in (
-            *repository.concept_nodes.values(),
-            *repository.realization_nodes.values(),
-        ):
+        for concept in repository.concept_nodes.values():
+            local.setdefault((concept.owner, concept.title), []).append(concept.id)
+        for node in repository.realization_nodes.values():
             local.setdefault((node.owner, node.title), []).append(node.id)
             unit = repository.units[node.document]
             anchor_name = node.meaning[1:] if node.meaning.startswith("#") else None
@@ -368,7 +403,9 @@ class Checks:
                     subject=node.id,
                 )
         for (owner, title), identities in local.items():
-            if len(identities) > 1:
+            if len(identities) > 1 and any(
+                identity in repository.realization_nodes for identity in identities
+            ):
                 self.add(
                     "CHK.node.title",
                     repository.modules[owner].primary_document,
@@ -477,8 +514,10 @@ class Checks:
             if linked is None:
                 continue
             node = repository.nodes.get(linked[1])
+            # A term link names a word, not a relied-upon promise: it grants its definition.
             if (
                 node is not None
+                and node.type != "concept"
                 and node.owner == target
                 and linked[1] not in item["relies_on"]
             ):
@@ -535,88 +574,102 @@ class Checks:
     # --- metadata relations ------------------------------------------------------------
 
     def metadata_relations(self) -> None:
+        """Endpoints, sites and uniqueness of every relates, and of every relation a glossary
+        entry declares."""
         repository = self.repository
         concepts = repository.concept_nodes
         permitted = {
-            "narrows": ({"concept"}, {"concept"}),
-            "supersedes": ({"concept"}, {"concept"}),
-            "contrasts": ({"concept"}, {"concept", "module"}),
-            "relates": (
-                {"concept", "realization", "module"},
-                {"concept", "realization", "module"},
-            ),
+            "narrows": {"concept"},
+            "supersedes": {"concept"},
+            "contrasts": {"concept", "module"},
+            "relates": {"concept", "realization", "module"},
         }
         relates: Counter = Counter()
         contrasts: Counter = Counter()
-        supersedes: Counter = Counter()
         narrows: dict[str, set[str]] = {}
         for relation in repository.metadata_relations:
-            kind, path = relation["type"], relation["document"]
+            path = relation["document"]
             source_meta = metadata_path(path)
             if not isinstance(relation.get("source"), str) or not isinstance(
                 relation.get("target"), str
             ):
                 continue
-            source_type = self.node_type(relation["source"])
-            target_type = self.node_type(relation["target"])
-            sources, targets = permitted[kind]
-            if source_type not in sources or target_type not in targets:
+            source, target = relation["source"], relation["target"]
+            source_type = self.node_type(source)
+            if (
+                source_type not in {"realization", "module"}
+                or self.node_type(target) not in permitted["relates"]
+            ):
                 self.add(
                     "CHK.relation.endpoints",
                     source_meta,
-                    f"{kind} {relation['source']} -> {relation['target']} needs a "
-                    f"{'/'.join(sorted(sources))} source and a {'/'.join(sorted(targets))} target",
+                    f"relates {source} -> {target} in document metadata needs a realization "
+                    "or Module source and a concept, realization or Module target"
+                    + (
+                        "; a concept's relates is declared in its glossary entry"
+                        if source_type == "concept"
+                        else ""
+                    ),
                 )
                 continue
             local = (
-                repository.nodes[relation["source"]].document == path
-                if relation["source"] in repository.nodes
-                else kind == "relates" and relation["source"] == relation["owner"]
+                repository.nodes[source].document == path
+                if source in repository.nodes
+                else source == relation["owner"]
             )
             if not local:
                 self.add(
-                    "CHK.relates.source" if kind == "relates" else "CHK.relation.site",
+                    "CHK.relates.source",
                     source_meta,
-                    f"{kind} source {relation['source']} is not defined by this document"
-                    + (" nor its owning Module" if kind == "relates" else ""),
+                    f"relates source {source} is not defined by this document nor its "
+                    "owning Module",
                 )
+            if isinstance(relation.get("verb"), str):
+                relates[(source, relation["verb"].strip(), target)] += 1
+        glossary = repository.glossary_path or repository.registry_path
+        for relation in repository.glossary_relations():
+            kind, source, target = (
+                relation["type"],
+                relation["source"],
+                relation["target"],
+            )
+            if self.node_type(target) not in permitted[kind]:
+                self.add(
+                    "CHK.relation.endpoints",
+                    glossary,
+                    f"{kind} {source} -> {target} needs a "
+                    f"{'/'.join(sorted(permitted[kind]))} target",
+                    subject=source,
+                )
+                continue
             if kind == "relates" and isinstance(relation.get("verb"), str):
-                relates[
-                    (relation["source"], relation["verb"].strip(), relation["target"])
-                ] += 1
+                relates[(source, relation["verb"].strip(), target)] += 1
             elif kind == "contrasts":
-                contrasts[frozenset((relation["source"], relation["target"]))] += 1
+                contrasts[frozenset((source, target))] += 1
             elif kind == "supersedes":
-                supersedes[relation["source"]] += 1
-                concept = concepts.get(relation["source"])
+                concept = concepts.get(source)
                 if concept is None or concept.retired is None:
                     self.add(
                         "CHK.concept.retired",
-                        source_meta,
-                        f"{relation['source']} supersedes another concept but is not retired",
+                        glossary,
+                        f"{source} supersedes another concept but is not retired",
+                        subject=source,
                     )
             elif kind == "narrows":
-                narrows.setdefault(relation["source"], set()).add(relation["target"])
+                narrows.setdefault(source, set()).add(target)
         for (source, verb, target), count in relates.items():
             if count > 1:
                 self.add(
                     "CHK.relates.verb",
-                    repository.definer(source) or repository.registry_path,
+                    repository.definer(source) if source not in concepts else glossary,
                     f"relates ({source}, {verb}, {target}) is declared more than once",
                 )
         for pair, count in contrasts.items():
             if count > 1:
                 self.add(
                     "CHK.contrasts.once",
-                    repository.definer(sorted(pair)[0]) or repository.registry_path,
+                    glossary,
                     f"contrasts between {' and '.join(sorted(pair))} is declared more than once",
-                )
-        for source, count in supersedes.items():
-            if count > 1:
-                self.add(
-                    "CHK.concept.retired",
-                    repository.definer(source) or repository.registry_path,
-                    f"{source} supersedes more than one concept",
                 )
         for start in narrows:
             stack, seen = list(narrows[start]), set()
@@ -625,7 +678,7 @@ class Checks:
                 if current == start:
                     self.add(
                         "CHK.narrows.acyclic",
-                        repository.definer(start) or repository.registry_path,
+                        glossary,
                         f"narrows relates {start} to itself",
                         subject=start,
                     )
@@ -642,41 +695,32 @@ class Checks:
         return node.type if node else None
 
     def collisions(self, contrasts: Counter) -> None:
+        """CHK.contrasts.required: a concept and a Module other than its owner, same title."""
         repository = self.repository
-        named: dict[str, list[tuple[str, str]]] = {}
-        for concept in repository.concept_nodes.values():
-            named.setdefault(normalize_title(concept.title), []).append(
-                (concept.id, concept.owner)
-            )
+        modules: dict[str, list[str]] = {}
         for module in repository.declarations.values():
-            named.setdefault(normalize_title(module.title), []).append(
-                (module.id, module.id)
-            )
-        for items in named.values():
-            for index, (first, first_owner) in enumerate(items):
-                for second, second_owner in items[index + 1 :]:
-                    if first_owner == second_owner:
-                        continue
-                    if (
-                        first in repository.declarations
-                        and second in repository.declarations
-                    ):
-                        continue
-                    if frozenset((first, second)) not in contrasts:
-                        self.add(
-                            "CHK.contrasts.required",
-                            repository.definer(first)
-                            or repository.definer(second)
-                            or repository.registry_path,
-                            f"{first} and {second} have equal normalized titles and no contrasts",
-                            subject=first,
-                        )
+            modules.setdefault(normalize_title(module.title), []).append(module.id)
+        for concept in repository.concept_nodes.values():
+            for module in modules.get(normalize_title(concept.title), ()):
+                if module == concept.owner:
+                    continue
+                if frozenset((concept.id, module)) not in contrasts:
+                    self.add(
+                        "CHK.contrasts.required",
+                        repository.glossary_path or repository.registry_path,
+                        f"{concept.id} and {module} have equal normalized titles and no "
+                        "contrasts",
+                        subject=concept.id,
+                    )
 
     # --- realizations ----------------------------------------------------------------
 
     def bindings(self) -> None:
         repository = self.repository
-        members = set(repository.source_documents)
+        # The glossary is a Spec source like a document member: never bound, never unbound.
+        members = set(repository.source_documents) | (
+            {repository.glossary_path} if repository.glossary_path else set()
+        )
         outputs = generated_outputs(repository.root)
         installed = installed_files(repository.root)
         for module in repository.declarations.values():
@@ -1068,7 +1112,10 @@ class Checks:
         }
         relates = {
             (relation["source"], relation["target"])
-            for relation in repository.metadata_relations
+            for relation in (
+                *repository.metadata_relations,
+                *repository.glossary_relations(),
+            )
             if relation["type"] == "relates"
         }
         for edge in edges:
@@ -1118,18 +1165,24 @@ class Checks:
             context = set(repository._context_paths(target))
             owned = set(module.owns)
             requires: list[tuple[str, str, str]] = []
-            for item in repository.imports:
-                if (
-                    item["document"] in owned
-                    and item["concept"] in repository.concept_nodes
-                ):
-                    requires.append((item["concept"], item["document"], "imports"))
+            # A relates to a realization or a Module requires its defining document; a relation
+            # to a concept grants the definition itself and requires nothing.
             for relation in repository.metadata_relations:
-                if relation["document"] in owned and relation["type"] in {
-                    "narrows",
-                    "supersedes",
-                    "relates",
-                }:
+                if (
+                    relation["document"] in owned
+                    and relation["type"] == "relates"
+                    and not str(relation.get("target", "")).startswith("concept.")
+                    and relation.get("target") not in repository.concept_nodes
+                ):
+                    requires.append(
+                        (relation["target"], relation["document"], relation["type"])
+                    )
+            for relation in repository.glossary_relations():
+                if (
+                    relation["owner"] == module.id
+                    and relation["type"] == "relates"
+                    and relation["target"] not in repository.concept_nodes
+                ):
                     requires.append(
                         (relation["target"], relation["document"], relation["type"])
                     )
@@ -1163,7 +1216,10 @@ class Checks:
                 if linked is None:
                     continue
                 target_path, fragment = linked
-                if not fragment.startswith(NODE_PREFIXES):
+                # A concept fragment is a term link, which CHK.term.link checks.
+                if not fragment.startswith(NODE_PREFIXES) or fragment.startswith(
+                    "concept."
+                ):
                     continue
                 definer = repository.definer(fragment)
                 if definer is None or definer != target_path:
@@ -1428,6 +1484,9 @@ def validate_repository(
             )
         for path, unit in sorted(repository.units.items()):
             inputs.extend((member.path, member.digest) for member in unit.sources)
+        if repository.glossary_bytes is not None:
+            artifacts.append(repository.glossary_path)
+            inputs.append((repository.glossary_path, digest(repository.glossary_bytes)))
         findings.extend(spec_findings(repository))
         inputs.append((".concorde/config.json", config_digest))
         inputs.append((repository.registry_path, digest(repository.registry_bytes)))
@@ -1447,7 +1506,7 @@ def validate_repository(
             },
             "source_digest": digest(sorted(inputs)),
             "claims": [
-                "Protocol 14 structural checks (protocol/checks.md)",
+                "Protocol 15 structural checks (protocol/checks.md)",
                 "registry mirror of the entries' module blocks",
                 "configured check input availability and path safety",
                 "stable-identity link fragments",

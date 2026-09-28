@@ -1,10 +1,12 @@
 # How a run is executed
 
-The exact behaviour of the [Execution runner](module.md#concept.execution.runner): the command
-lines, the workspace binding it reads, the runner's steps, the progress file and how refusals and
-failures become a result. The envelope is the [run result contract](contracts.md#contract.execution.run-result)
-and the binding the [workspace binding contract](contracts.md#contract.execution.workspace-binding).
-What an Operation adds, its worker sequence, is in
+The exact behaviour of the [Execution runner](../glossary.json#concept.execution-runner): the
+command lines, the [workspace binding](../glossary.json#concept.workspace-binding) it reads, the
+runner's steps, the [progress file](../glossary.json#concept.progress-file) and how refusals and
+failures become a result. The envelope is the
+[run result contract](contracts.md#contract.execution.run-result) and the binding the
+[workspace binding contract](contracts.md#contract.execution.workspace-binding). What an
+[Operation](../glossary.json#concept.operation) adds, its worker sequence, is in
 [How an Operation runs its workers](operations/workers.md).
 
 ## Command lines
@@ -14,22 +16,23 @@ concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--det
 concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [command arguments]
 ```
 
-- `<operation>` is a name from the [Operation catalog](operations/module.md#concept.operations.catalog);
-  `<command>` is one of the execution commands `task-validation`, `delivery` and `scaffold`.
-  `concorde run` naming an execution command is a command-line error that names the command to use
-  instead.
+- `<operation>` is a name from the [Operation catalog](../glossary.json#concept.operation-catalog);
+  `<command>` is one of the [execution commands](../glossary.json#concept.execution-command)
+  `task-validation`, `delivery` and `scaffold`. `concorde run` naming an execution command is a
+  command-line error that names the command to use instead.
 - The run works on the worktree the command starts in: the Git worktree containing the current
   directory. A directory outside every Git worktree is a command-line error.
 - `--modules` names the Modules the run works on. Without it a bound run works on the binding's
-  Modules that the workspace still registers, and an unbound run on none. Every named Module must
-  be registered in the worktree.
+  Modules that the workspace still registers, and an
+  [unbound run](../glossary.json#concept.unbound-run) on none. Every named
+  [Module](../glossary.json#concept.module) must be registered in the worktree.
 - Each `--input` names a run whose result is `ok` and whose workspace is this run's workspace, or,
   for an unbound run, a run without a workspace; its saved `output` is admitted, with its name, as
   material of the run. Any other run is refused with `input_not_admissible`.
 - Operation and command arguments are defined by the definition and parsed with the rest; an
   unknown argument is a command-line error.
-- Standard output receives exactly the run result as one JSON value. Diagnostics go to standard
-  error.
+- Standard output receives exactly the [run result](../glossary.json#concept.run-result) as one JSON
+  value. Diagnostics go to standard error.
 - Exit status 0 means the result's status is `ok`, 1 means `blocked` or `failed`, and 2 means the
   command line was malformed or named no known Operation or command, in which case no run is
   created and no result is written.
@@ -52,11 +55,13 @@ The runner never writes the binding.
 ## Run identity and directory
 
 The runner creates the run identity `r-<YYYYMMDD>T<HHMMSS>-<name>-<8 hex digits>` from the UTC start
-time, the definition's name with `-` written as `_`, and random digits, and the run directory
-`<records>/runs/<run-id>/`. The directory holds `result.json`, the run result exactly as printed,
-the progress file, the logs of the checks the run ran, and for a detached run the runner's output
-`host.out`. Workers keeps each worker launch's run record beside it, in the same run store, and the
-result lists their identities.
+time, the definition's name with `-` written as `_`, and random digits, and the
+[run directory](../glossary.json#concept.run-directory) `<records>/runs/<run-id>/`. The directory
+holds `result.json`, the run result exactly as printed, the progress file, the logs of the checks
+the run ran, and for a [detached run](../glossary.json#concept.detached-run) the runner's output
+`host.out`. Workers keeps each worker launch's [run record](../glossary.json#concept.run-record)
+beside it, in the same [run store](../glossary.json#concept.run-store), and the result lists their
+identities.
 
 ## Runner
 
@@ -64,17 +69,18 @@ result lists their identities.
 | --- | --- | --- |
 | 1 | Parse the command line and look up the definition; only then create the run identity and directory | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
 | 2 | Read the workspace binding | an unreadable, invalid or misplaced binding (`failed`) |
-| 3 | For a bound run, take the workspace lock | `workspace_busy` (`failed`) |
+| 3 | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock) | `workspace_busy` (`failed`) |
 | 4 | Admit the run: refuse an unbound run of a definition that needs a binding; settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `binding_required`, `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
 | 5 | Execute the definition's steps in order | a step stops the run with a status |
 | 6 | Compose the run result from the step outcomes and check it against the run result contract and the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
 | 7 | Write `result.json`, mark the progress file finished, release the lock, print the result and exit | — |
 
 - Each step returns either "continue", with any output and evidence it produced, or "stop", with a
-  status, a summary and evidence. Steps of one run share the run context: the workspace binding,
-  the worktree, the records directory, the Modules, the admitted inputs, the output so far, a
-  state the definition owns, and the run record of the latest worker launch. The runner never
-  skips, repeats or reorders steps; any repetition, such as resume rounds, happens inside one step.
+  status, a summary and evidence. Steps of one run share the run context: the workspace binding, the
+  worktree, the records directory, the Modules, the admitted inputs, the output so far, a state the
+  definition owns, and the run record of the latest worker launch. The runner never skips, repeats
+  or reorders steps; any repetition, such as [resume rounds](../glossary.json#concept.resume-round),
+  happens inside one step.
 - An exception raised by a step becomes a `failed` result with `host-error` evidence naming the
   step, the error type and message; the cause of its error is a `component` link with the
   exception's type, message and command output, where it was raised and the path of the full
@@ -90,8 +96,8 @@ result lists their identities.
   lock of a busy workspace or the registered Modules for an unknown one.
 - The result is written before the lock is released, so a result always means a workspace free
   for its next run.
-- Whenever the status is not `ok`, the runner also writes the error chain, rendered as indented
-  text, to standard error.
+- Whenever the status is not `ok`, the runner also writes the
+  [error chain](../glossary.json#concept.error-chain), rendered as indented text, to standard error.
 
 ## Detached runs
 
@@ -145,5 +151,6 @@ When a Spec tooling error causes a run's error, the step translates it into a `c
 the actor `Spec core`: the record's message and location become the detail, its reason becomes the
 explanation of why Spec core could not handle it (reason `input`, or `environment` for a
 `system_error`), its remediation becomes the option and recommendation, and each of its causes
-becomes a nested link the same way. A Check execution or Issue error, which are subclasses of the
-Spec tooling error type registered by their own Modules, is translated the same way.
+becomes a nested link the same way. A Check execution or [Issue](../glossary.json#concept.issue)
+error, which are subclasses of the Spec tooling error type registered by their own Modules, is
+translated the same way.

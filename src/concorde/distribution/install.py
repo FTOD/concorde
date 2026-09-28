@@ -224,6 +224,58 @@ def _copy_runtime(package: Path, target: Path) -> None:
     shutil.copy2(package / "concorde.json", target / "concorde.json")
 
 
+# Marks the part of the CLAUDE.md block that imports the project's glossary. Claude Code loads
+# an `@path` import at launch with no size limit, which a SessionStart hook's output has not.
+GLOSSARY_MARK = "<!-- concorde:glossary -->"
+
+
+def declared_glossary(project: Path) -> str | None:
+    """The glossary path the project's registry declares, or None when there is none to read."""
+    try:
+        config = json.loads((project / ".concorde/config.json").read_text("utf-8"))
+        registry = json.loads(
+            (project / config.get("registry", ".concorde/specs.json")).read_text(
+                "utf-8"
+            )
+        )
+    except (OSError, UnicodeError, ValueError, AttributeError, TypeError):
+        return None
+    modules = registry.get("modules") if isinstance(registry, dict) else None
+    for record in modules if isinstance(modules, list) else ():
+        if isinstance(record, dict) and isinstance(record.get("glossary"), str):
+            return record["glossary"]
+    return None
+
+
+def with_glossary(block: str, project: Path) -> str:
+    """The CLAUDE.md block with the import of the project's glossary, when it declares one."""
+    block = block.split(GLOSSARY_MARK, 1)[0].rstrip("\n")
+    path = declared_glossary(project)
+    if path is None:
+        return block
+    return (
+        f"{block}\n\n{GLOSSARY_MARK}\n"
+        "The project's terms, each defined once in its glossary, which you use exactly as "
+        f'defined (the skill\'s "Project terms"): @{path}'
+    )
+
+
+def refresh_glossary(project: Path) -> bool:
+    """Bring the glossary import of an installed CLAUDE.md block up to date; whether it changed."""
+    path = project / CLAUDE_MD
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8")
+    if START not in text or END not in text:
+        return False
+    block = text.split(START, 1)[1].split(END, 1)[0]
+    updated = with_glossary(block, project)
+    if updated.strip() == block.strip():
+        return False
+    _claude_md(project, updated)
+    return True
+
+
 def _claude_md(project: Path, block: str) -> None:
     path = project / CLAUDE_MD
     text = path.read_text(encoding="utf-8") if path.exists() else ""
@@ -424,7 +476,7 @@ def install(
     command.chmod(0o755)
     (project / SKILL).parent.mkdir(parents=True, exist_ok=True)
     (project / SKILL).write_text(SKILL_HEADER + skill, encoding="utf-8")
-    _claude_md(project, block)
+    _claude_md(project, with_glossary(block, project))
     pi_files = []
     if pi:
         (project / PI_SKILL).parent.mkdir(parents=True, exist_ok=True)

@@ -45,11 +45,6 @@
     "includes": [
       {
         "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "document",
         "target": "document.concorde.contracts",
         "reason": "the Framework's error contract, which every run's errors follow"
       }
@@ -57,66 +52,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.execution.workspace",
-      "type": "concept",
-      "title": "Workspace",
-      "meaning": "#concept.execution.workspace"
-    },
-    {
-      "id": "concept.execution.workspace-binding",
-      "type": "concept",
-      "title": "Workspace binding",
-      "meaning": "#concept.execution.workspace-binding"
-    },
-    {
-      "id": "concept.execution.unbound-run",
-      "type": "concept",
-      "title": "Unbound run",
-      "meaning": "#concept.execution.unbound-run"
-    },
-    {
-      "id": "concept.execution.run",
-      "type": "concept",
-      "title": "Run",
-      "meaning": "#concept.execution.run"
-    },
-    {
-      "id": "concept.execution.run-result",
-      "type": "concept",
-      "title": "Run result",
-      "meaning": "#concept.execution.run-result"
-    },
-    {
-      "id": "concept.execution.run-store",
-      "type": "concept",
-      "title": "Run store",
-      "meaning": "#concept.execution.run-store"
-    },
-    {
-      "id": "concept.execution.workspace-lock",
-      "type": "concept",
-      "title": "Workspace lock",
-      "meaning": "#concept.execution.workspace-lock"
-    },
-    {
-      "id": "concept.execution.detached-run",
-      "type": "concept",
-      "title": "Detached run",
-      "meaning": "#concept.execution.detached-run"
-    },
-    {
-      "id": "concept.execution.progress-file",
-      "type": "concept",
-      "title": "Run progress file",
-      "meaning": "#concept.execution.progress-file"
-    },
-    {
-      "id": "concept.execution.runner",
-      "type": "concept",
-      "title": "Execution runner",
-      "meaning": "#concept.execution.runner"
-    },
     {
       "id": "realization.execution.runner",
       "type": "realization",
@@ -135,31 +70,25 @@
       "type": "relates",
       "source": "realization.execution.runner",
       "verb": "reads",
-      "target": "concept.execution.workspace-binding"
+      "target": "concept.workspace-binding"
     },
     {
       "type": "relates",
       "source": "realization.execution.runner",
       "verb": "holds for each bound run",
-      "target": "concept.execution.workspace-lock"
+      "target": "concept.workspace-lock"
     },
     {
       "type": "relates",
       "source": "realization.execution.runner",
       "verb": "writes",
-      "target": "concept.execution.run-result"
-    },
-    {
-      "type": "relates",
-      "source": "concept.execution.run-store",
-      "verb": "keeps",
-      "target": "concept.execution.run-result"
+      "target": "concept.run-result"
     },
     {
       "type": "relates",
       "source": "realization.execution.runner",
       "verb": "implements",
-      "target": "concept.execution.runner"
+      "target": "concept.execution-runner"
     }
   ],
   "extensions": {}

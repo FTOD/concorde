@@ -5,17 +5,20 @@ them in concrete situations.
 
 ### req.headless-sessions.conditions-in-tool — Testing conditions are told by the tool
 
-Every round of a headless session SHALL be started with its client's headless note appended to its
-system prompt, and for Claude Code with its tools granted on the command line.
+Every round of a [headless session](../../glossary.json#concept.headless-session) SHALL be started
+with its client's [headless note](../../glossary.json#concept.headless-note) appended to its system
+prompt, and for Claude Code with its tools granted on the command line.
 
-The headless note is the tool's; no part of it is added to the main-session guidance, which stays
-what users get.
+The headless note is the tool's; no part of it is added to the
+[main-session guidance](../../glossary.json#concept.main-session-guidance), which stays what users
+get.
 
 ### req.headless-sessions.wake — A run left behind wakes the session once
 
-When a round ends with a run of an Operation or execution command of the session still running, or stopped by the round's
-end, the driver SHALL wait for it to finish and resume the same session with a wake message naming
-it.
+When a round ends with a run of an [Operation](../../glossary.json#concept.operation) or
+[execution command](../../glossary.json#concept.execution-command) of the session still running, or
+stopped by the round's end, the driver SHALL wait for it to finish and resume the same session with
+a [wake message](../../glossary.json#concept.wake-message) naming it.
 
 Each run is named in one wake message only, so a session is never woken twice for one run.
 

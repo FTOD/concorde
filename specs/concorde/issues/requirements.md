@@ -8,11 +8,11 @@ situations.
 
 ### req.issues.report-control — Reporting does not control execution
 
-Recording an Issue report SHALL NOT stop the reporter, start a repair or change the outcome of the
-task in which the problem was found.
+Recording an [Issue report](../glossary.json#concept.issue-report) SHALL NOT stop the reporter,
+start a repair or change the outcome of the task in which the problem was found.
 
-The main agent can record several problems and still complete its task. Whether a problem stops the
-task is decided separately.
+The [main agent](../glossary.json#concept.main-agent) can record several problems and still complete
+its task. Whether a problem stops the task is decided separately.
 
 ### req.issues.caller-provenance — Provenance comes from the command
 
@@ -32,14 +32,16 @@ the main agent decides what to record after reading their results.
 
 ### req.issues.report-checked — A report names a registered owner and existing evidence
 
-The bookkeeping command SHALL refuse a report whose owner is not a registered Module, whose
-evidence path does not exist in the project or, for a report with an origin, in the origin project,
-or whose error chain is not an error of the Framework's error contract.
+The bookkeeping command SHALL refuse a report whose owner is not a registered
+[Module](../glossary.json#concept.module), whose evidence path does not exist in the project or, for
+a report with an origin, in the origin project, or whose
+[error chain](../glossary.json#concept.error-chain) is not an error of the Framework's error
+contract.
 
 ### req.issues.durable-receipt — A receipt means the report is on disk
 
-The Issue store SHALL return a receipt only after the record holding the report is durably
-published.
+The [Issue](../glossary.json#concept.issue) store SHALL return a receipt only after the record
+holding the report is durably published.
 
 ### req.issues.specific-refusals — Refusals name what is wrong
 

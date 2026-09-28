@@ -30,14 +30,15 @@ scans directories for Markdown or follows links to find documents.
 
 Rendering works on a staged copy under `.generated/`; Spec files are never changed.
 
-- Every stable identity is an anchor: the Module (on its entry), the document, and every concept,
+- Every stable identity is an anchor: the Module (on its entry), the document, and every
   realization, requirement, scenario and contract it defines. Requirement and scenario headings
   show only their titles and keep their identity as the heading anchor, so
-  `scenarios.md#scenario.x.y` resolves. A concept or realization whose identity the reading does
-  not carry gets an anchor at its Terminology row or explanation anchor.
-- A Terminology import row, which holds only a link in its source, shows the imported concept's
-  definition from its owner's defining row, marked *Imported from* the owning Module. A definition
-  cell that is written is shown as written.
+  `scenarios.md#scenario.x.y` resolves. A realization whose identity the reading does not carry
+  gets an anchor at its explanation anchor.
+- The project glossary is one Glossary page under the root Module: every concept, sorted by title,
+  anchored by its identity, with its definition, its owner and a link to its explanation. Every
+  term link (`…/glossary.json#concept.x`) leads to the concept's entry there, and a Module's entry
+  page ends with the list of terms it owns.
 - A `d2` block renders where it is written, as an SVG produced by the `d2` program. A checked
   block holds only shapes, nesting and edges; the publisher gives each shape and edge its look from
   what it names (a block inside a block for containment, a realization with its files as a table, a
@@ -51,10 +52,10 @@ The publisher refuses what it cannot publish correctly: an unreadable configurat
 that is not schema 3, malformed Module records or metadata that is not schema 3, a document owned
 twice, a duplicate identity, a composition cycle or a Module with two parents, an entry that is not
 a `module`-role `module.md` with a `module` block, a requirement, scenario or contract in a
-`module`-role document, a concept defined in an `implementation`-role document, a Mermaid block, a
-checked `d2` block that sets styles or layout, a `relies_on` identity the target does not own, a
-Terminology import row that does not link to its concept's defining document, and a relative link to
-an unregistered document. After the build, every internal link and anchor must resolve.
+`module`-role document, a concept record in document metadata, a malformed or doubly declared
+glossary, a Mermaid block, a checked `d2` block that sets styles or layout, a `relies_on` identity
+the target does not own, a term link to a concept the glossary does not declare, and a relative
+link to an unregistered document. After the build, every internal link and anchor must resolve.
 
 The publisher is not the Protocol validator. Structural conformance, such as what checked diagrams
 assert, the registry mirror, realization bindings and contract examples, is established by

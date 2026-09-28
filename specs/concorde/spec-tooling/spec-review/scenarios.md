@@ -1,17 +1,17 @@
 # Spec review scenarios
 
 Concrete situations of [Spec review](module.md). The step sequence and the payload are in the
-[Operation definition](operation.md), and those of the Spec panel in its
-[definition](panel.md).
+[Operation definition](operation.md), and those of the
+[Spec panel](../../glossary.json#concept.spec-panel) in its [definition](panel.md).
 
 ## Reviewing
 
 ### scenario.spec-review.accepted — A clear Spec is accepted
 
-- GIVEN a workspace whose Module A validates without errors
+- GIVEN a workspace whose [Module](../../glossary.json#concept.module) A validates without errors
 - AND a reviewer that finds only advisory problems in A's documents
-- WHEN the main agent runs `spec_review` for Module A
-- THEN the verdict is `accepted` and A's outcome carries the context identity of its `review-spec` grant
+- WHEN the [main agent](../../glossary.json#concept.main-agent) runs `spec_review` for Module A
+- THEN the verdict is `accepted` and A's outcome carries the [context identity](../../glossary.json#concept.context-identity) of its `review-spec` grant
 - AND the advisory findings are returned
 - BUT no file of the workspace changes
 
@@ -24,7 +24,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 
 ### scenario.spec-review.checker — The checker disputes a finding
 
-- GIVEN a reviewer that reports one blocking finding the Spec does not support
+- GIVEN a reviewer that reports one blocking finding the [Spec](../../glossary.json#concept.spec) does not support
 - WHEN the main agent runs `spec_review` with `--check-findings`
 - THEN the checker marks that finding `disputed` with a reason
 - AND the finding is still returned
@@ -42,7 +42,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 
 ### scenario.spec-review.structural-errors — A structurally invalid Spec is not reviewed
 
-- GIVEN a Module A whose Specs fail a structural check
+- GIVEN a Module A whose Specs fail a [structural check](../../glossary.json#concept.structural-check)
 - WHEN the main agent runs `spec_review` for Module A
 - THEN no reviewer is launched for A
 - AND A's outcome is `incomplete`, with the structural findings as host evidence
@@ -51,13 +51,13 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 ### scenario.spec-review.worker-blocked — A reviewer that cannot finish
 
 - GIVEN a reviewer that ends `blocked` because it needs a document outside its grant
-- WHEN the Operation collects its result
+- WHEN the [Operation](../../glossary.json#concept.operation) collects its result
 - THEN A's outcome is `incomplete` and the verdict is `incomplete`
 - AND the result's error is the Operation's `review_incomplete` link whose cause for A ends in the reviewer's own link with its detail, attempts and options unchanged
 
 ### scenario.spec-review.memory — A repeated review builds on the memory
 
-- GIVEN a workspace whose review memory of `module.a` holds the open blocking findings `f.1` and `f.2` and the open advisory `f.3`
+- GIVEN a workspace whose [review memory](../../glossary.json#concept.review-memory) of `module.a` holds the open blocking findings `f.1` and `f.2` and the open advisory `f.3`
 - WHEN a reviewer, given those earlier findings, reports `f.2` changed, one new advisory finding, and `f.3` and an unknown `f.9` resolved
 - THEN the memory keeps `f.2` with its new content, adds the new finding as `f.4`, marks `f.3` resolved with the reason and keeps `f.1` open
 - AND the result lists `f.4` as new, `f.2` as updated, `f.3` as resolved, `f.1` as carried in full and `f.9` as ignored
@@ -86,17 +86,17 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 - GIVEN a panel of two reviewers for Module A
 - AND reviewer 1 reports that a requirement holds two obligations, and reviewer 2 reports the same problem in other words and an advisory wording problem
 - WHEN the chair merges the two reports of the requirement and rejects the wording problem with a reason
-- THEN the panel report has one blocking finding whose sources are `r1.1` and `r2.1`, reported by 2 reviewers, and the rejection of `r2.2`
+- THEN the [panel report](../../glossary.json#concept.panel-report) has one blocking finding whose sources are `r1.1` and `r2.1`, reported by 2 reviewers, and the rejection of `r2.2`
 - AND each reviewer's own findings are in the result, labelled
 - AND A's outcome and the verdict are `changes_required`
 - BUT no file of the workspace changes
 
 ### scenario.spec-review.panel-worker-models — Each reviewer runs on the model of its worker id
 
-- GIVEN a worker model configuration putting every worker on Claude Code, giving `spec_panel`'s default a model and level, `reviewer2` another model, and the `chair` its own model and level
+- GIVEN a [worker model configuration](../../glossary.json#concept.worker-model-configuration) putting every worker on Claude Code, giving `spec_panel`'s default a model and level, `reviewer2` another model, and the `chair` its own model and level
 - WHEN the main agent runs `spec_panel` with two reviewers
 - THEN `reviewer1` runs on the Operation's model, `reviewer2` on its own model at the Operation's level, and the `chair` on its own
-- AND each worker's run record names its worker id, and the host evidence names the model each worker used
+- AND each worker's [run record](../../glossary.json#concept.run-record) names its [worker id](../../glossary.json#concept.worker-id), and the host evidence names the model each worker used
 
 ### scenario.spec-review.panel-accounting — A report that loses a finding goes back to the chair
 

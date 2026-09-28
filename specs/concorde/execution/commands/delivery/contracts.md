@@ -1,6 +1,7 @@
 # Delivery contracts
 
-The exact commit, evidence bundle and output of the execution command `delivery` of
+The exact commit, [evidence bundle](../../../glossary.json#concept.evidence-bundle) and output of
+the [execution command](../../../glossary.json#concept.execution-command) `delivery` of
 [Delivery](module.md).
 
 ## Delivery commit
@@ -22,12 +23,13 @@ workspace that Git does not ignore, except an untracked path Git cannot version 
 file, a symbolic link nor a directory), the metadata changed by the applied confirmations and the
 evidence bundle; when every step was committed before, only the bundle and any cleared markers.
 
-The delivery commits are the only record of a delivery. A commit is a delivery commit of a
-workspace when it lies on the first-parent history of the branch since the base commit, its
-subject is exactly `concorde: deliver <workspace>`, its `Concorde-Workspace` trailer names the same
-workspace, and its `Concorde-Evidence` and `Concorde-Readiness` trailers are present, the first
-naming a bundle whose file name is its sequence number. Delivery reads its earlier deliveries this
-way, and so may anyone who needs to know whether and how often a workspace was delivered.
+The [delivery commits](../../../glossary.json#concept.delivery-commit) are the only record of a
+delivery. A commit is a delivery commit of a workspace when it lies on the first-parent history of
+the branch since the base commit, its subject is exactly `concorde: deliver <workspace>`, its
+`Concorde-Workspace` trailer names the same workspace, and its `Concorde-Evidence` and
+`Concorde-Readiness` trailers are present, the first naming a bundle whose file name is its sequence
+number. Delivery reads its earlier deliveries this way, and so may anyone who needs to know whether
+and how often a workspace was delivered.
 
 ## Evidence bundle
 

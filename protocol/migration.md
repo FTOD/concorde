@@ -1,4 +1,4 @@
-# Migration to Protocol 11, 12, 13 and 14
+# Migration to Protocol 11, 12, 13, 14 and 15
 
 Version 11 replaces Protocol 10's prose model with a declared one. Version-10 registries, metadata
 and reading structures are invalid and MUST be migrated explicitly. No tool may silently
@@ -93,9 +93,9 @@ five sections of an entry may appear in any order, and an anchor may open a para
 item, in which case it explains exactly that block.
 
 To migrate, rewrite every Mermaid block. For a checked flowchart, draw each `contains` edge as
-nesting, keep each `uses` edge as an unlabelled `->` between the two Modules, and keep each `relates`
-edge as `->` with its verb as label; drop styling, `accTitle` and `accDescr`. Rewrite an illustrative
-Mermaid block as `d2 illustrative`. Nothing else in a specification needs to change.
+nesting, keep each `uses` edge as an unlabelled `->` between the two Modules, and keep each
+`relates` edge as `->` with its verb as label; drop styling, `accTitle` and `accDescr`. Rewrite an
+illustrative Mermaid block as `d2 illustrative`. Nothing else in a specification needs to change.
 
 ## Version 13.1
 
@@ -138,3 +138,37 @@ reasons they belong to, and delete the heading. The `meaning` anchors of `contai
 their identities and move with their explanations. Replace a diagram that only lists children
 without edges by one that shows the edges that matter, or by prose. Metadata, relations and checked
 diagram syntax do not change.
+
+## Version 15
+
+Version 15 moves every term of a project into one glossary. Per-Module Terminology tables made each
+reader list, as link-only import rows, the shared words it used, and select their defining
+documents with further inclusions; the rows carried no meaning of their own, and a word could be
+defined twice in two Modules without either noticing. Now:
+
+- Every concept is an entry of the glossary the root Module declares (`glossary` in its `module`
+  block): identity, title, owner, one-sentence definition and a reference to its explanation in a
+  document of the owner. Titles are unique in the project.
+- A document links a term where it uses it. The link is the `mentions` relation, replacing
+  `imports`, and it grants the definition rather than requiring the defining document.
+- A reader's context holds the definitions of the terms its documents link and of the concepts
+  its Module owns, closed over the terms those definitions link: the `term` channel.
+- An entry has the sections Purpose, Usage and Design; no document has a Terminology table.
+- `narrows`, `supersedes`, `contrasts` and a concept's `relates` are declared in its glossary entry;
+  document metadata declares only realizations and their, or the Module's, `relates`.
+- A task whose type writes `SpecScope` may change the glossary entries its bound Modules own, and
+  the harness compares the file before and after to hold it to them.
+
+To migrate:
+
+1. Create the glossary and declare it in the root Module's `module` block; regenerate the registry.
+2. Give every concept a project-wide identity `concept.<name>` and a title unique in the project;
+   rename a title defined by two Modules into two distinct terms.
+3. Move each concept record into the glossary with its owner, its Terminology row's sentence as
+   `definition` and its `meaning` anchor, qualified by its document's path, as `explanation`. Move
+   its `narrows`, `supersedes`, `contrasts` and `relates` from the document's `relations` into the
+   entry.
+4. Delete every Terminology section and every `includes` that existed only to satisfy an import.
+5. Point every link to a concept's anchor at the glossary (`<path to glossary>#concept.<name>`),
+   rename identities in `relies_on` and `relates`, and link each term where a document first uses
+   it; `CHK.term.unlinked` lists the rest.

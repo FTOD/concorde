@@ -6,45 +6,21 @@ Execution is Concorde's execution core, the lower of its two halves: given one b
 gets Spec-bounded work done there and returns checked results. It holds the workflows that order
 that work, the Operations that combine AI workers with host logic, the execution commands that do
 deterministic work such as deciding readiness and delivering, the workers themselves and Check
-execution, which runs the project's checks for them. Everything in it learns what it works on from one place, the workspace binding in
-the worktree it starts in, and records what it did in its own run store. Whoever prepares a
-workspace and reads those records relies on it: in Concorde that is the task level of
-[Coordination](../coordination/module.md), which binds each task worktree and derives the task's
-state from what Execution recorded.
+execution, which runs the project's checks for them. Everything in it learns what it works on from
+one place, the [workspace binding](../glossary.json#concept.workspace-binding) in the worktree it
+starts in, and records what it did in its own [run store](../glossary.json#concept.run-store).
+Whoever prepares a workspace and reads those records relies on it: in Concorde that is the task
+level of [Coordination](../coordination/module.md), which binds each task worktree and derives the
+task's state from what Execution recorded.
 
-Execution never opens, merges or closes a task, never reads or writes a task record, never
-switches branches and never asks the developer anything; it does not know that tasks exist. It
-chooses no next step on its own: whoever started a run, or the workflow that orders runs, decides
-what runs next.
-
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Workspace | One worktree prepared for a bounded piece of work, with a name, a goal, the Modules it works on, the branch it works on and the commit it started from. |
-| Workspace binding | The file `.concorde/workspace.json` at a workspace's root that names it, its goal, Modules, branch, base commit and the records directory, written by whoever prepares the workspace and only read by Execution. |
-| Unbound run | A run started in a worktree without a workspace binding, such as the primary worktree, which works on that worktree alone, records no workspace and may only read. |
-| Run | One execution of an Operation or an execution command in one worktree, with its own run identity, progress file and run result. |
-| Run result | The structured envelope every run returns and saves: what ran, in which workspace, its status, its output, the worker's claims when there was a worker, the runner's own evidence and, when it is not ok, its error chain. |
-| Run store | The `runs/` directory of the records directory, holding every run's progress file and result, the workers' run records and the workflows' records. |
-| Workspace lock | The lock of one workspace, held by the process running one of its runs for that run's whole life, so that a workspace runs one thing at a time. |
-| Detached run | A run whose runner the command starts as a process of its own, printing the run identity at once instead of waiting for the result. |
-| Run progress file | A run's `status.json`, which the runner keeps current with what is running, where and in which step, and once finished with the status and summary. |
-| Execution runner | The deterministic process that runs one Operation's or execution command's steps in its workspace, launches workers only through the steps that ask for them and writes the run result. |
-| [Operation](operations/module.md#concept.operations.operation) | |
-| [Execution command](commands/module.md#concept.commands.execution-command) | |
-| [Worker](../vocabulary.md#concept.concorde.worker) | |
-| [Module](../vocabulary.md#concept.concorde.module) | |
-| [Evidence](../vocabulary.md#concept.concorde.evidence) | |
-| [Error chain](../vocabulary.md#concept.concorde.error-chain) | |
-| [Workflow](workflows/module.md#concept.workflows.workflow) | |
-
-Read Workspace binding and Run first: every other word here says how a run learns its workspace,
-how it is recorded, or how two runs are kept apart.
+Execution never opens, merges or closes a task, never reads or writes a
+[task record](../glossary.json#concept.task-record), never switches branches and never asks the
+developer anything; it does not know that tasks exist. It chooses no next step on its own: whoever
+started a run, or the workflow that orders runs, decides what runs next.
 
 ## Usage
 
-<a id="concept.execution.workspace"></a><a id="concept.execution.workspace-binding"></a>
+<a id="concept.workspace"></a><a id="concept.workspace-binding"></a>
 
 **Binding a workspace.** A **workspace** exists once its **workspace binding** does. Whoever
 prepares it writes `.concorde/workspace.json` at the worktree's root, as the
@@ -58,7 +34,7 @@ reads it and never writes it; a binding that breaks its contract, or that names 
 the worktree it lies in, is refused rather than trusted, since a copied binding would bind the
 wrong workspace.
 
-<a id="concept.execution.run"></a>
+<a id="concept.run"></a>
 
 **Running work.** Inside a bound workspace, every run works on that workspace without naming it:
 
@@ -70,73 +46,79 @@ concorde scaffold        --input <survey run> [--detach]
 concorde workflow step|report …
 ```
 
-An [Operation](operations/module.md#concept.operations.operation) launches AI workers under a
-grant computed from the workspace's Specs; the catalog of [Operations](operations/module.md) lists
-them. An [execution command](commands/module.md#concept.commands.execution-command) is
-deterministic and launches no worker: [`task-validation`](commands/validation/module.md) decides
-whether the workspace is ready to deliver, [`delivery`](commands/delivery/module.md) validates it
-again and commits it with its evidence, and [`scaffold`](commands/scaffold/module.md) creates the
-child Modules a survey proposed; the catalog of [Commands](commands/module.md) lists them. Both
-kinds are **runs**: the same runner parses their command line, resolves the workspace, takes the
-workspace lock, runs their steps and writes one run result, so a workflow, the task level or an
-observer treats them alike. `--modules` names the Modules the run works on (default: the
-binding's, less any the workspace no longer registers); `--input` admits the output of an earlier
-`ok` run of the same workspace, such as a plan or a survey.
+An [Operation](../glossary.json#concept.operation) launches AI workers under a grant computed from
+the workspace's Specs; the catalog of [Operations](operations/module.md) lists them. An
+[execution command](../glossary.json#concept.execution-command) is deterministic and launches no
+worker: [`task-validation`](commands/validation/module.md) decides whether the workspace is ready to
+deliver, [`delivery`](commands/delivery/module.md) validates it again and commits it with its
+evidence, and [`scaffold`](commands/scaffold/module.md) creates the child Modules a survey proposed;
+the catalog of [Commands](commands/module.md) lists them. Both kinds are **runs**: the same runner
+parses their command line, resolves the workspace, takes the
+[workspace lock](../glossary.json#concept.workspace-lock), runs their steps and writes one
+[run result](../glossary.json#concept.run-result), so a workflow, the task level or an observer
+treats them alike. `--modules` names the Modules the run works on (default: the binding's, less any
+the workspace no longer registers); `--input` admits the output of an earlier `ok` run of the same
+workspace, such as a plan or a survey.
 
-A run of `implement` in a task worktree, for example, reads the binding (workspace `retry`, Module
-`module.http`, base `4be1…`), takes the lock of `retry`, computes the implement grant for
-`module.http` from the worktree's Specs, launches one worker through [Workers](workers/module.md),
-audits and checks its change, and prints and saves its run result as
-`<records>/runs/<run-id>/result.json`. The command exits 0 for `ok`, 1 for `blocked` or `failed`,
-and 2 for a malformed command line, which starts nothing.
+A run of `implement` in a task worktree, for example, reads the binding (workspace `retry`,
+[Module](../glossary.json#concept.module) `module.http`, base `4be1…`), takes the lock of `retry`,
+computes the implement grant for `module.http` from the worktree's Specs, launches one worker
+through [Workers](workers/module.md), audits and checks its change, and prints and saves its run
+result as `<records>/runs/<run-id>/result.json`. The command exits 0 for `ok`, 1 for `blocked` or
+`failed`, and 2 for a malformed command line, which starts nothing.
 
-<a id="concept.execution.run-result"></a>
+<a id="concept.run-result"></a>
 
-**Reading the result.** Every run ends with one **run result**: its kind (`operation` or
-`command`), name, workspace, Modules, run identity, status, summary and output. `status` is `ok`
-when the run did what it promises, `blocked` when it needs a decision above it, such as a reported
-Spec gap or a workspace that is not ready, and `failed` when something went wrong: a refusal, a
-write outside the grant, checks still failing after the last resume round, a Git refusal or a
-runner error. A worker-backed run also carries the worker's own
-[worker result](workers/module.md#concept.workers.worker-result) unchanged, beside the runner's
-own evidence, so a caller always tells what the runner observed from what a worker claims. When
-`status` is not `ok`, `error` is the run's [error chain](../vocabulary.md#concept.concorde.error-chain),
-the run's own link over the unchanged errors it received. The
+**Reading the result.** Every run ends with one **run result**: its kind (`operation` or `command`),
+name, workspace, Modules, run identity, status, summary and output. `status` is `ok` when the run
+did what it promises, `blocked` when it needs a decision above it, such as a reported
+[Spec gap](../glossary.json#concept.spec-gap) or a workspace that is not ready, and `failed` when
+something went wrong: a refusal, a write outside the grant, checks still failing after the last
+[resume round](../glossary.json#concept.resume-round), a Git refusal or a runner error. A
+worker-backed run also carries the worker's own
+[worker result](../glossary.json#concept.worker-result) unchanged, beside the runner's own evidence,
+so a caller always tells what the runner observed from what a worker claims. When `status` is not
+`ok`, `error` is the run's [error chain](../glossary.json#concept.error-chain), the run's own link
+over the unchanged errors it received. The
 [run result contract](contracts.md#contract.execution.run-result) defines the envelope and
 [How a run is executed](runner.md) how the runner fills it.
 
-<a id="concept.execution.workspace-lock"></a>
+<a id="concept.workspace-lock"></a>
 
 **One run at a time.** A bound run holds the **workspace lock** for its whole life. A second run
 started in the same workspace while the first holds it is refused with `workspace_busy`, naming the
-run that holds it, and a [workflow step](workflows/module.md#concept.workflows.step) waits for the
+run that holds it, and a [workflow step](../glossary.json#concept.workflow-step) waits for the
 lock to be free before it starts its run. The kernel releases the lock however the run ends. The
 lock lies in the run store, not in the workspace, so a run that only reads the workspace
 leaves it untouched.
 
-<a id="concept.execution.unbound-run"></a>
+<a id="concept.unbound-run"></a>
 
-**Unbound runs.** An Operation whose catalog entry allows it may also run **unbound**, in a
-worktree without a binding such as the primary worktree: `understand`, `survey`, `spec_review`,
-`spec_panel` and `code_review` (with `--base`). It works on that worktree with the Modules
-`--modules` names, records `workspace` null, admits only unbound inputs, takes no lock and may
-launch only reading workers, so it changes no Spec or code. Every other Operation and every
-execution command is refused unbound with `binding_required`.
+**[Unbound runs](../glossary.json#concept.unbound-run).** An Operation whose catalog entry allows it
+may also run **unbound**, in a worktree without a binding such as the primary worktree:
+`understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`). It works on
+that worktree with the Modules `--modules` names, records `workspace` null, admits only unbound
+inputs, takes no lock and may launch only reading workers, so it changes no
+[Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution command is
+refused unbound with `binding_required`.
 
-<a id="concept.execution.detached-run"></a><a id="concept.execution.progress-file"></a>
+<a id="concept.detached-run"></a><a id="concept.run-progress-file"></a>
 
-**Long runs.** With `--detach` the command starts the runner as a **detached run**, a process of its
-own that outlives the command, and prints the run identity and the path of its result as soon as
-the run's **run progress file** exists. Everything else about the run is the same, including a refusal,
-which still becomes its result. While a run lives, its run progress file names what runs, in which
-workspace and step, with the runner's process identifier, which every worker run it launches
-records too, so an observer such as the main session's run view follows a run and its worker
-without asking the runner.
+**Long runs.** With `--detach` the command starts the runner as a
+**[detached run](../glossary.json#concept.detached-run)**, a process of its own that outlives the
+command, and prints the run identity and the path of its result as soon as the run's
+**[run progress file](../glossary.json#concept.run-progress-file)** exists. Everything else about
+the run is the same, including a refusal, which still becomes its result. While a run lives, its run
+progress file names what runs, in which workspace and step, with the runner's process identifier,
+which every worker run it launches records too, so an observer such as the main session's
+[run view](../glossary.json#concept.run-view) follows a run and its worker without asking the
+runner.
 
-<a id="concept.execution.run-store"></a>
+<a id="concept.run-store"></a>
 
 **Where runs are kept.** The **run store** is the `runs/` directory of the records directory: each
-run's directory with its progress file and result, the run records of the workers it launched, and
+run's directory with its [progress file](../glossary.json#concept.progress-file) and result, the
+[run records](../glossary.json#concept.run-record) of the workers it launched, and
 [Workflows](workflows/module.md)' own records under `runs/workflows/`. A bound run records in the
 directory its binding names; an unbound run in its own worktree's `.concorde`. The store is ignored
 by Git. Whoever prepared a workspace reads its runs there, by the workspace's name, to know what
@@ -147,9 +129,10 @@ happened in it.
 The upper half of Concorde decides what to work on and in which workspace; this half does the work.
 Execution keeps the two apart with one narrow seam: a file the upper half writes and Execution only
 reads, the binding, and records Execution writes and the upper half only reads, the run store and
-the delivery commits. Nothing in Execution imports or writes the task store, so a change of how
-tasks are managed, parallelized or merged never reaches the code that bounds, launches and checks
-workers, and the execution core can run in any workspace someone prepared, not only in a task.
+the [delivery commits](../glossary.json#concept.delivery-commit). Nothing in Execution imports or
+writes the task store, so a change of how tasks are managed, parallelized or merged never reaches
+the code that bounds, launches and checks workers, and the execution core can run in any workspace
+someone prepared, not only in a task.
 
 ### Why a binding file
 
@@ -171,18 +154,18 @@ records themselves, read where they are, so there is no second copy that could d
 
 An Operation exists to combine AI workers with host logic that checks them. Deciding readiness,
 delivering and scaffolding need no model, so they are not Operations; but a workflow must be able to
-take them as steps, delivery must cite the run that decided the readiness it committed, and a
-caller must be able to wait for them, read their evidence and receive their error chain like any
+take them as steps, delivery must cite the run that decided the readiness it committed, and a caller
+must be able to wait for them, read their evidence and receive their error chain like any
 Operation's. Running execution commands with the same runner gives them all of that without the
-Operation catalog or any worker machinery: the only difference a caller sees is the result's
-`kind` and the error link's level, `command` instead of `operation`. Being a run is also what
-tells an execution command from a deterministic service such as [Check execution](checks/module.md):
-a service is called by a run's step and answers it, while an execution command is itself the run,
-with a workspace, a lock and a recorded result.
+[Operation catalog](../glossary.json#concept.operation-catalog) or any worker machinery: the only
+difference a caller sees is the result's `kind` and the error link's level, `command` instead of
+`operation`. Being a run is also what tells an execution command from a deterministic service such
+as [Check execution](checks/module.md): a service is called by a run's step and answers it, while an
+execution command is itself the run, with a workspace, a lock and a recorded result.
 
 ### The runner
 
-<a id="concept.execution.runner"></a><a id="realization.execution.runner"></a>
+<a id="concept.execution-runner"></a><a id="realization.execution.runner"></a>
 
 The **Execution runner** runs one run per process. It parses the command line, reads the binding,
 takes the workspace lock for a bound run, checks the Modules and inputs, runs the definition's
@@ -192,10 +175,11 @@ that whoever sees the result never finds the workspace busy with that run. A ref
 steps, a step that raises, a signal or an invalid result each still end in a written result with
 the runner's link on top. Its exact behaviour is in [How a run is executed](runner.md).
 
-The **Runner and run store** realization binds the binding reader, the run store, the run context and
-definitions that steps work with and the runner itself, with their tests; the runner finds an
-execution command by name in the catalog of [Commands](commands/module.md). The `concorde` command belongs to [Distribution](../distribution/module.md), which hands
-`run`, the execution commands and `workflow` to this Module's parts.
+The **Runner and run store** realization binds the binding reader, the run store, the run context
+and definitions that steps work with and the runner itself, with their tests; the runner finds an
+execution command by name in the catalog of [Commands](commands/module.md). The `concorde` command
+belongs to [Distribution](../distribution/module.md), which hands `run`, the execution commands and
+`workflow` to this Module's parts.
 
 ```d2
 execution: Execution {
@@ -245,8 +229,9 @@ execution: Execution {
 <a id="contains-workflows"></a>
 
 **Workflows** orders one workspace's runs for a known procedure, such as describing existing code,
-and handles their decision points. Each step is an ordinary run of this runner, started detached
-and awaited; the workflow keeps its own record in the run store and never reaches into a task.
+and handles their [decision points](../glossary.json#concept.decision-point). Each step is an
+ordinary run of this runner, started detached and awaited; the workflow keeps its own record in the
+run store and never reaches into a task.
 
 <a id="contains-operations"></a>
 
@@ -270,9 +255,10 @@ configuration and the `configure-workers` command that changes it.
 
 <a id="contains-checks"></a>
 
-**Check execution** runs the project's configured checks in a read-only boundary and returns each
-result with its log. Operations' steps, execution commands' steps and the Workers host code call it
-in-process; it starts no run and no worker.
+**Check execution** runs the project's
+[configured checks](../glossary.json#concept.configured-check) in a read-only boundary and returns
+each result with its log. Operations' steps, execution commands' steps and the Workers host code
+call it in-process; it starts no run and no worker.
 
 ### What Execution relies on
 

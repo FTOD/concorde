@@ -18,16 +18,11 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.grant"
+          "concept.grant"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "external",
         "target": "references/pi/",
@@ -37,42 +32,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.harness.harness",
-      "type": "concept",
-      "title": "Agent harness",
-      "meaning": "#concept.harness.harness"
-    },
-    {
-      "id": "concept.harness.worker-settings",
-      "type": "concept",
-      "title": "Worker settings",
-      "meaning": "#concept.harness.worker-settings"
-    },
-    {
-      "id": "concept.harness.deny-rules",
-      "type": "concept",
-      "title": "Deny rules",
-      "meaning": "#concept.harness.deny-rules"
-    },
-    {
-      "id": "concept.harness.write-hook",
-      "type": "concept",
-      "title": "Write hook",
-      "meaning": "#concept.harness.write-hook"
-    },
-    {
-      "id": "concept.harness.permission-extension",
-      "type": "concept",
-      "title": "Permission extension",
-      "meaning": "#concept.harness.permission-extension"
-    },
-    {
-      "id": "concept.harness.session-boundary",
-      "type": "concept",
-      "title": "Session boundary",
-      "meaning": "#concept.harness.session-boundary"
-    },
     {
       "id": "realization.harness.package",
       "type": "realization",
@@ -114,37 +73,25 @@
       "type": "relates",
       "source": "realization.harness.claude",
       "verb": "generates",
-      "target": "concept.harness.worker-settings"
+      "target": "concept.worker-settings"
     },
     {
       "type": "relates",
       "source": "realization.harness.pi",
       "verb": "provides",
-      "target": "concept.harness.permission-extension"
+      "target": "concept.permission-extension"
     },
     {
       "type": "relates",
       "source": "realization.harness.claude",
       "verb": "provides the write hook of",
-      "target": "concept.harness.session-boundary"
+      "target": "concept.session-boundary"
     },
     {
       "type": "relates",
       "source": "realization.harness.pi",
       "verb": "provides the extension of",
-      "target": "concept.harness.session-boundary"
-    },
-    {
-      "type": "relates",
-      "source": "concept.harness.worker-settings",
-      "verb": "carries",
-      "target": "concept.harness.deny-rules"
-    },
-    {
-      "type": "relates",
-      "source": "concept.harness.worker-settings",
-      "verb": "carries",
-      "target": "concept.harness.write-hook"
+      "target": "concept.session-boundary"
     }
   ],
   "extensions": {}

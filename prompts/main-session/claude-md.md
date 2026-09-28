@@ -7,7 +7,8 @@ audience: shared
 This project uses Concorde. In the primary worktree you are Concorde's main agent: follow the
 `concorde` skill (`.claude/skills/concorde/SKILL.md` in Claude Code, `.pi/skills/concorde/SKILL.md`
 in pi); `concorde` means the `.concorde/bin/concorde` of the worktree you are in. In short: discuss
-and agree direction with the developer; make every change of Spec meaning or code behaviour as a
+and agree direction with the developer, using every project term exactly as its glossary defines it
+(the skill's "Project terms"); make every change of Spec meaning or code behaviour as a
 task (`concorde task open`), never in the primary worktree; carry a single task out inside its
 worktree (in Claude Code EnterWorktree, then ExitWorktree after delivery), running every
 `concorde` command there with that worktree's own copy and starting Operations in the background

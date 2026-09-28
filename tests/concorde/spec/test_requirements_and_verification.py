@@ -14,6 +14,8 @@ from tests.concorde.support.spec_project import (
     block,
     module_document,
     register_module,
+    update_glossary_entry,
+    upsert_concepts,
     write_document,
 )
 
@@ -304,24 +306,35 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                 self.assertIn(label, findings[0].message)
         notes.write_text(str(NOTES))
         self.assertEqual([], self.project.findings("CHK.defines.role"))
-        # A concept defined in an implementation document.
-        obligations = self.project.metadata("specs/shop/obligations.md")
-        obligations["defines"].append(
-            {
-                "id": "concept.shop.order",
-                "type": "concept",
-                "title": "Order",
-                "meaning": "#concept.shop.order",
-            }
+        # A concept explained in an implementation document.
+        (self.root / "specs/shop/obligations.md").write_text(
+            (self.root / "specs/shop/obligations.md").read_text()
+            + '\n<a id="concept.shop.order"></a>\n\nAn order is one submitted basket.\n'
         )
-        self.project.save_metadata("specs/shop/obligations.md", obligations)
-        findings = self.project.findings("CHK.defines.role")
-        self.assertIn(
-            ("specs/shop/obligations.md.json", "concept.shop.order"),
+        upsert_concepts(
+            self.root,
+            "specs/shop/obligations.md",
+            [
+                {
+                    "id": "concept.shop.order",
+                    "title": "Order",
+                    "owner": "module.shop",
+                    "definition": "One submitted basket.",
+                }
+            ],
+        )
+        findings = self.project.findings("CHK.node.meaning")
+        self.assertEqual(
+            [("specs/glossary.json", "concept.shop.order")],
             [(f.source, f.subject_id) for f in findings],
         )
-        obligations["defines"].pop()
-        self.project.save_metadata("specs/shop/obligations.md", obligations)
+        self.assertIn("not a module-role document", findings[0].message)
+        update_glossary_entry(
+            self.root,
+            "concept.shop.order",
+            explanation="specs/shop/module.md#realization.shop.cart",
+        )
+        self.assertEqual([], self.project.findings("CHK.node.meaning"))
         # A missing or unknown role.
         metadata = self.project.metadata("specs/shop/notes.md")
         for label, document in {

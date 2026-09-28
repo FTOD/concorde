@@ -1,8 +1,9 @@
 # Execution contracts
 
-The canonical values of [Execution](module.md): the workspace binding a run reads and the run
-result every run returns. How the runner reads and fills them is in
-[How a run is executed](runner.md).
+The canonical values of [Execution](module.md): the
+[workspace binding](../glossary.json#concept.workspace-binding) a run reads and the
+[run result](../glossary.json#concept.run-result) every run returns. How the runner reads and fills
+them is in [How a run is executed](runner.md).
 
 ## Workspace binding
 

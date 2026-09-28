@@ -1,16 +1,17 @@
 # Specification scenarios
 
-Concrete situations that show the [requirements](requirements.md) at work. The Spec change's shape
-is in the [contracts](contracts.md).
+Concrete situations that show the [requirements](requirements.md) at work. The
+[Spec change](../../../glossary.json#concept.spec-change)'s shape is in the
+[contracts](contracts.md).
 
 ## Changing Specs
 
 ### scenario.specification.change — A Spec change is made and validated
 
 - GIVEN a workspace whose Specs pass structural validation
-- WHEN the main agent runs `specify` for a Module with an intent the worker can carry out
+- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `specify` for a [Module](../../../glossary.json#concept.module) with an intent the worker can carry out
 - THEN the worker edits only documents that Module owns
-- AND the Operation regenerates the registry mirror and validates the workspace
+- AND the [Operation](../../../glossary.json#concept.operation) regenerates the registry mirror and validates the workspace
 - AND the result has status `ok` with the changed documents, the affected Modules and no new finding
 
 ### scenario.specification.declare-pending — A new file is declared, not created
@@ -43,7 +44,7 @@ is in the [contracts](contracts.md).
 - GIVEN an intent that can only be carried out by changing a document of a Module that is not bound
 - WHEN the worker finds it cannot make the change within its grant
 - THEN the result has status `blocked`
-- AND its error chain ends in the worker's own link naming the other Module, the reason it could not change it and the options it sees
+- AND its [error chain](../../../glossary.json#concept.error-chain) ends in the worker's own link naming the other Module, the reason it could not change it and the options it sees
 
 ### scenario.specification.new-document — A needed document is created and filled
 
@@ -56,7 +57,7 @@ is in the [contracts](contracts.md).
 
 ### scenario.specification.code-write — A write to code fails the run
 
-- GIVEN a specify run whose write audit finds a changed implementation file
+- GIVEN a specify run whose [write audit](../../../glossary.json#concept.write-audit) finds a changed implementation file
 - WHEN the Operation evaluates the audit
 - THEN the result has status `failed` with the changed path as host evidence
 - BUT the Operation runs no validation for the run

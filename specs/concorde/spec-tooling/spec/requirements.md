@@ -1,7 +1,8 @@
 # Spec requirements
 
-The Module-wide obligations of the [Spec core](module.md) Module. The headings group them by
-subject; each requirement belongs to the Module as a whole.
+The Module-wide obligations of the [Spec core](module.md)
+[Module](../../glossary.json#concept.module). The headings group them by subject; each requirement
+belongs to the Module as a whole.
 
 ## Independence
 
@@ -39,8 +40,8 @@ Repeated queries against the same repository SHALL return equal results in the s
 
 ### req.spec.no-implementation-read — Boundary sets never read code
 
-Loading the Specs and computing boundary sets, grants and impact indexes SHALL NOT read the
-contents of implementation files.
+Loading the Specs and computing [boundary sets](../../glossary.json#concept.boundary-set), grants
+and impact indexes SHALL NOT read the contents of implementation files.
 
 Listing a directory to expand its entries is allowed; only paths are used. Validation's coverage
 scan, which parses bound test files, is a separate step.
@@ -55,9 +56,10 @@ validator opens the repository so that the same problems become findings instead
 
 ### req.spec.protocol-binding — Only the accepted Protocol is admitted
 
-The loader SHALL admit a project only when its configuration binds exactly the Protocol copy under
-`.concorde/protocol/`, that copy's assets match their recorded digests, and the copy's manifest
-equals the Protocol manifest of the running Concorde package.
+The loader SHALL admit a project only when its configuration binds exactly the
+[Protocol copy](../../glossary.json#concept.protocol-copy) under `.concorde/protocol/`, that copy's
+assets match their recorded digests, and the copy's manifest equals the Protocol manifest of the
+running Concorde package.
 
 ## Checks
 
@@ -80,25 +82,29 @@ The validation status SHALL be `invalid` exactly when at least one finding has s
 
 ### req.spec.no-structural-proof — Structural checks are not semantic proof
 
-A validation result SHALL NOT be represented as proof that a Spec is semantically sufficient or
-that an implementation conforms to it.
+A validation result SHALL NOT be represented as proof that a
+[Spec](../../glossary.json#concept.spec) is semantically sufficient or that an implementation
+conforms to it.
 
 The result carries an explicit marker saying semantic completeness is not proven.
 
 ### req.spec.link-fragments — Links to definitions resolve
 
 Validation SHALL report as an error every link in Spec reading whose fragment has the form of a
-node identity and does not name a definition in the linked document.
+node identity and does not name a definition in the linked document, where a concept's definition is
+its entry in the project glossary.
 
 ### req.spec.check-inputs — Configured check inputs exist and are safe
 
-Validation SHALL report as an error every configured-check input that is missing, is not a
+Validation SHALL report as an error every
+[configured-check](../../glossary.json#concept.configured-check) input that is missing, is not a
 canonical project-relative path, or is reached through a symbolic link.
 
 ### req.spec.digest-per-assessment — Every result names what it assessed
 
-Every validation result SHALL carry a digest of the exact configuration, registry, document members,
-Protocol binding and configured-check input states it assessed.
+Every validation result SHALL carry a digest of the exact configuration, registry, document members, glossary,
+[Protocol binding](../../glossary.json#concept.protocol-binding) and configured-check input states
+it assessed.
 
 ## Registry mirror
 
@@ -108,7 +114,7 @@ Regenerating the registry SHALL rewrite only the mirrored fields of the Modules 
 leaving each record's identity and entry path and the set of recorded Modules unchanged.
 
 The mirrored fields are every field of the entry's `module` block: `title`, `owns`, `contains`,
-`uses`, `includes` and `participates`.
+`uses`, `includes` and `participates`, and `glossary` in the one block that declares it.
 
 ### req.spec.registry-check-read-only — Checking the mirror never writes
 
@@ -119,10 +125,20 @@ without writing any file.
 
 ### req.spec.one-level-selection — Context selection is one level deep
 
-Spec context selection SHALL follow only the selected Module's own `owns`, `contains`, `uses` and
-`includes` declarations and never the relations of the Modules and documents they select.
+[Spec context](../../glossary.json#concept.spec-context) selection SHALL follow only the selected
+Module's own `owns`, `contains`, `uses` and `includes` declarations and never the relations of the
+Modules and documents they select.
 
 Sharing a bound file with another Module adds nothing to either Module's Spec context.
+
+### req.spec.term-selection — A context holds the definitions its documents use
+
+A Module's Spec context SHALL hold exactly the glossary entries of the concepts the Module owns, of
+the concepts the documents it selects link or relate to and of the concepts its `relies_on` names,
+closed over the concepts those entries' definitions link and their `narrows`, `supersedes` and
+`relates` target.
+
+The closure stays inside the glossary: it adds definitions, never a document.
 
 ### req.spec.both-members — Documents are selected whole
 
@@ -131,8 +147,12 @@ member.
 
 ### req.spec.write-sets-own-only — Write sets hold only the Module's own files
 
-A Module's Spec scope and implementation scope SHALL contain only the documents it owns and the
-files its own realizations cover.
+A Module's Spec scope and implementation scope SHALL contain only the documents it owns, the
+project glossary and the files its own realizations cover.
+
+Of the glossary, only the entries the Module owns, and new entries naming it as owner, are the
+Module's to change; the grant that makes the file writable names the Modules whose entries it
+covers, so a harness can hold the change to them.
 
 A provider's documents therefore appear in a consumer's Spec context but never in the consumer's
 Spec scope.
@@ -155,7 +175,8 @@ scenario.
 
 ### req.spec.indexes-derived — Impact indexes come from declarations alone
 
-Every impact index SHALL be computed from the loaded declarations and realization entries alone.
+Every [impact index](../../glossary.json#concept.impact-index) SHALL be computed from the loaded
+declarations and realization entries alone.
 
 No index reads implementation file contents, test results or recorded evidence, and no index
 query changes a boundary set.
@@ -165,7 +186,8 @@ query changes a boundary set.
 ### req.spec.grant-task-type-levels — A task type fixes every level
 
 A grant SHALL give each boundary set of each bound Module exactly the access level that the
-Protocol's task-type table assigns to the grant's task type.
+Protocol's [task-type](../../glossary.json#concept.task-type) table assigns to the grant's task
+type.
 
 The levels are serialized as `names`, `ro` and `rw`; the table is repeated in the
 [interface definitions](contracts.md#grants).
@@ -207,8 +229,9 @@ path.
 
 ### req.spec.context-identity-changes — The context identity tracks its sources
 
-The context identity SHALL change whenever a byte of a selected document member, a selecting
-declaration, a document's owner or pinned external material changes.
+The [context identity](../../glossary.json#concept.context-identity) SHALL change whenever a byte of
+a selected document member, a selected glossary entry, a selecting declaration, a document's owner
+or pinned external material changes.
 
 It covers no implementation file contents, so a worker's writes inside its grant never change it.
 
@@ -216,15 +239,17 @@ It covers no implementation file contents, so a worker's writes inside its grant
 
 ### req.spec.coverage-from-tests — Coverage comes from the tests
 
-Scenario coverage SHALL be read only from verification declarations in bound test sources, without
-importing, compiling or running the tests.
+Scenario coverage SHALL be read only from
+[verification declarations](../../glossary.json#concept.verification-declaration) in bound test
+sources, without importing, compiling or running the tests.
 
 ## Typed values
 
 ### req.spec.typed-closed — Typed values are closed and exactly versioned
 
-Checking a typed value SHALL reject an unknown type, a schema version other than the registered
-one, a missing required field and any field its schema does not declare.
+Checking a [typed value](../../glossary.json#concept.typed-value) SHALL reject an unknown type, a
+schema version other than the registered one, a missing required field and any field its schema does
+not declare.
 
 ### req.spec.typed-offline — Typed values are checked offline
 
@@ -243,8 +268,8 @@ code may be loaded twice.
 
 ### req.spec.transaction-all-or-nothing — A transaction applies completely or not at all
 
-A file transaction SHALL either write every listed file with its new content or leave every listed
-file with its original bytes.
+A [file transaction](../../glossary.json#concept.file-transaction) SHALL either write every listed
+file with its new content or leave every listed file with its original bytes.
 
 ### req.spec.transaction-digest-bound — Stale input stops a transaction
 
@@ -257,8 +282,9 @@ A file expected to be absent has a null digest and must still be absent.
 
 ### req.spec.init-allowed-files — Initialization writes only its own files
 
-Applying an initial proposal SHALL write only `.concorde/config.json`, `.concorde/specs.json` and
-the members of the documents the proposed registry registers.
+Applying an [initial proposal](../../glossary.json#concept.initial-proposal) SHALL write only
+`.concorde/config.json`, `.concorde/specs.json` and the members of the documents the proposed
+registry registers.
 
 ### req.spec.init-no-overwrite — Initialization never overwrites
 

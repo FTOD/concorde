@@ -41,7 +41,7 @@ writes it as part of its own documents, and learns who it relates to without any
     "contains": [],
     "uses": [
       {"target": "module.inventory", "meaning": "#uses-inventory",
-       "relies_on": ["req.inventory.hold-expiry", "concept.inventory.reservation",
+       "relies_on": ["req.inventory.hold-expiry", "concept.reservation",
                      "contract.inventory.reserve"]}
     ],
     "includes": [
@@ -69,6 +69,9 @@ writes it as part of its own documents, and learns who it relates to without any
   a document identity, or a project-relative path; a directory ends in `/`) and a nonempty `reason`.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
+- `glossary` is optional and appears only in the block of a Module without a parent: the
+  project-relative path of the project's [glossary](#glossary), a `.json` file. At most one Module
+  declares it.
 - `contains`, `uses`, `includes` and `participates` are explicit arrays and MAY be empty.
 - A relation `meaning` is a local `#anchor` into the entry, or a qualified `<reading path>#<anchor>`
   into another document the Module owns.
@@ -85,7 +88,7 @@ boundary, without opening every Module. It is not a declaration site.
     {"id": "module.checkout", "title": "Checkout", "entry": "checkout/module.md",
      "owns": ["checkout/module.md", "checkout/contracts.md"], "contains": [],
      "uses": [{"target": "module.inventory", "meaning": "#uses-inventory",
-               "relies_on": ["req.inventory.hold-expiry", "concept.inventory.reservation",
+               "relies_on": ["req.inventory.hold-expiry", "concept.reservation",
                              "contract.inventory.reserve"]}],
      "includes": ["..."], "participates": ["..."]}
   ]
@@ -93,7 +96,8 @@ boundary, without opening every Module. It is not a declaration site.
 ```
 
 - Every Module has exactly one registry record: `id`, `title`, `entry` (the entry's reading path)
-  and every field of its `module` block, equal to that block.
+  and every field of its `module` block, equal to that block; `glossary` appears in the record
+  exactly when it appears in the block.
 - The registry lists which Modules exist. A tool MAY regenerate the mirrored fields from the
   entries; adding or removing a Module is a deliberate registry change.
 - A disagreement between the registry and an entry is a structural error
@@ -108,20 +112,12 @@ The Protocol fixes the registry's content. Its serialization and location are a 
   "schema_version": 3,
   "document": {"id": "document.checkout.topic.holds", "owner": "module.checkout", "role": "module"},
   "defines": [
-    {"id": "concept.checkout.basket", "type": "concept", "title": "Basket",
-     "meaning": "#concept.checkout.basket"},
-    {"id": "concept.checkout.hold", "type": "concept", "title": "Hold",
-     "meaning": "#concept.checkout.hold"},
     {"id": "realization.checkout.service", "type": "realization", "title": "Checkout service",
      "meaning": "#realization.checkout.service", "entries": ["src/checkout/"], "pending": []}
   ],
   "relations": [
-    {"type": "narrows", "source": "concept.checkout.hold",
-     "target": "concept.inventory.reservation"},
-    {"type": "contrasts", "source": "concept.checkout.basket", "target": "concept.catalog.basket",
-     "reason": "a catalog basket is a saved wish list; this one is submitted immediately"},
     {"type": "relates", "source": "realization.checkout.service", "verb": "records",
-     "target": "concept.checkout.hold"}
+     "target": "concept.hold"}
   ],
   "extensions": {}
 }
@@ -131,12 +127,11 @@ The Protocol fixes the registry's content. Its serialization and location are a 
 - `document` has exactly `id`, `owner` and `role`, agreeing with the owner's `owns`. `role` is
   exactly `module` or `implementation` with no default; the entry `module.md` has role `module`.
 - `module` is present exactly in the entry; see [Module declaration](#module-declaration).
-- `defines` lists only `concept` and `realization` records. Concepts are defined only in `module`
-  documents, and each concept's definition is its row in the document's Terminology table.
-  Requirements, scenarios and contracts are located by their reading syntax below.
-- `relations` lists `narrows`, `supersedes`, `contrasts` and `relates`, each naming a `source` that
-  this document defines or, for `relates`, the owning Module itself. Imports are declared by
-  Terminology rows, not here.
+- `defines` lists only `realization` records. Concepts are glossary entries, and requirements,
+  scenarios and contracts are located by their reading syntax below.
+- `relations` lists only `relates`, each naming as `source` a realization this document defines
+  or the owning Module itself. A concept's relations are in its glossary entry; `mentions` is
+  declared by term links.
 - `defines` and `relations` are explicit arrays and MAY be empty.
 - `extensions`, if present, is an object keyed by stable names holding tool data. A tool MUST define
   and validate the extension vocabulary it uses. An extension MUST NOT create a relation, change
@@ -151,9 +146,9 @@ project-wide unique and match:
 ^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$
 ```
 
-Requirement identities begin `req.`; scenario identities begin `scenario.`. Prefixes do not
-establish ownership. Stable identities let links survive renames and moves, and let boundaries,
-reviews and tests name exactly one thing.
+Requirement identities begin `req.`; scenario identities begin `scenario.`; concept identities begin
+`concept.`. Prefixes do not establish ownership. Stable identities let links survive renames and
+moves, and let boundaries, reviews and tests name exactly one thing.
 
 A readable anchor is one of three forms:
 
@@ -181,7 +176,6 @@ An entry `module.md` has these level-2 sections, outside fences, each exactly on
 
 ```text
 Purpose
-Terminology
 Usage
 Design
 ```
@@ -192,9 +186,8 @@ the first of them. Purpose is nonempty plain prose: no lists, tables, nested hea
 Usage and Design contain explanatory prose, not only links, headings or diagrams. Honest unknowns
 are stated explicitly.
 
-A `module`-role topic begins with a short orienting introduction. When the topic defines or imports
-a concept, its first level-2 section is `## Terminology`. In the entry, Terminology may hold only
-prose when the entry defines and imports nothing.
+A `module`-role topic begins with a short orienting introduction. A document holds no table of
+term definitions: definitions live in the glossary, and a document links the terms it uses.
 
 `module` documents MUST NOT contain requirement or scenario definitions or canonical contract
 fences. `implementation` documents contain those definitions and MAY group them under headings
@@ -205,33 +198,52 @@ in `implementation` reading regardless of the syntax used to write them. Concept
 safe-use explanation stay in `module` reading. A `module` document MUST NOT hide destructive
 defaults, security limits or known unfulfilled guarantees behind a link.
 
-## Terminology
+## Glossary
 
-The Terminology section of a `module` document holds exactly one Markdown table with the columns
-`Term` and `Definition`, optionally followed by orienting prose. Every row is one of two kinds:
+The glossary is one UTF-8 JSON file with unique keys, at the path the root Module's `glossary`
+field declares:
 
-```markdown
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Hold | Stock withheld from other customers until a submission succeeds or expires. |
-| [Reservation](../inventory/module.md#concept.inventory.reservation) | |
+```json
+{
+  "schema_version": 1,
+  "concepts": [
+    {"id": "concept.hold", "title": "Hold", "owner": "module.checkout",
+     "definition": "Stock withheld from other customers until a submission succeeds or expires.",
+     "explanation": "checkout/module.md#concept.hold",
+     "narrows": ["concept.reservation"]},
+    {"id": "concept.basket", "title": "Basket", "owner": "module.checkout",
+     "definition": "The items a customer submits together as one [Hold](#concept.hold).",
+     "explanation": "checkout/module.md#concept.basket",
+     "contrasts": [{"target": "concept.wish-list",
+                    "reason": "a wish list is saved for later; a basket is submitted immediately"}]}
+  ]
+}
 ```
 
-- A **defining row** has the plain title of a concept this document defines and its definition: one
-  sentence. The row is the definition's only home; the metadata record holds the concept's identity,
-  title, explanation anchor and relations.
-- An **import row** has a link to another Module's concept, addressed by that concept's identity,
-  and an empty `Definition` cell. The row declares the `imports` relation. It never copies the
-  definition, because copies drift; the link text is free, so renaming the concept breaks nothing.
+- `schema_version` is the integer `1`; `concepts` is an array of entries sorted by `id`.
+- An entry has exactly `id`, `title`, `owner`, `definition` and `explanation`, and optionally
+  `retired`, `external_conflict`, `narrows`, `supersedes`, `contrasts` and `relates`.
+- `owner` is a registered Module identity. `definition` is one sentence; a term link inside it
+  addresses another entry by fragment alone, `#concept.<identity>`.
+- `explanation` is `<reading path>#<anchor>`, naming a `module` document the owner owns and an
+  anchor in it that resolves to nonempty prose.
+- `narrows` is an array of concept identities; `supersedes` is one concept identity; `contrasts`
+  is an array of `{target, reason}` with a concept or Module target; `relates` is an array of
+  `{verb, target}` with a concept, realization or Module target.
 
-The rows correspond one to one with the concepts the document defines and imports. A document with
-neither has no table. A publisher MAY show imported definitions inline; that enrichment is a
-[view](views.md) and never written into the file.
+## Term links
 
-Each definition is written once, in its owner's table. A change to it rewrites no document of an
-importer; the importer's context still changes, because the defining document is in it.
+A **term link** is a Markdown link whose fragment is a concept identity. In reading, its path
+addresses the glossary file, relative to the document like any other link:
+
+```markdown
+A [hold](../glossary.json#concept.hold) expires unless the submission succeeds.
+```
+
+A term link declares `mentions` of that concept. Its text is free: a plural, an inflection or a
+different letter case links the same term. A publisher sends every term link to the rendered
+glossary page. A document SHOULD link a term where it first uses it, so that a reader meets the
+definition before relying on it.
 
 ## Requirements
 
@@ -277,8 +289,12 @@ In an `implementation` document, a `concorde-contract` JSON fence defines exactl
 the example satisfies the schema. Schema references MUST NOT load Spec documents or remote
 resources. Publishers expose the contract identity as an anchor at the fence.
 
-A schema is checked offline and uses only these JSON Schema keywords: `$schema`, `$id`, `$defs`, `$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and `format`. Any other keyword, such as `propertyNames` or `patternProperties`, is an error;
-what it would express goes into `semantics`.
+A schema is checked offline and uses only these JSON Schema keywords: `$schema`, `$id`, `$defs`,
+`$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`,
+`required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`,
+`maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and
+`format`. Any other keyword, such as `propertyNames` or `patternProperties`, is an error; what it
+would express goes into `semantics`.
 
 No role or peer appears in a definition; those belong to `participates`. A behaviour or schema
 change increments the version, and every participant is reconciled in the same change. Editorial
@@ -293,8 +309,9 @@ other diagram language, such as Mermaid, is an error. The rules are in [Views](v
 ## Links
 
 Ordinary Markdown links navigate to readable definitions. A stable-identity fragment MUST name an
-actual definition in the addressed reading document; other fragments use the renderer's slug rules.
-A link never adds a document to context.
+actual definition in the addressed reading document; a concept fragment MUST address the glossary,
+as a [term link](#term-links). Other fragments use the renderer's slug rules. A link never adds a
+document to context; a term link adds the term's definition.
 
 ## Evidence declarations
 

@@ -31,7 +31,12 @@ from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.spec.test_grants import document, realization
 from tests.concorde.support.paths import REPOSITORY_ROOT
-from tests.concorde.support.spec_project import SpecProject
+from tests.concorde.support.spec_project import (
+    GLOSSARY,
+    SpecProject,
+    read_glossary,
+    upsert_concepts,
+)
 
 FAKE = Path(__file__).with_name("fake_claude.py")
 ENVIRONMENT = {
@@ -605,3 +610,87 @@ class WorkerRunTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GlossaryTests(unittest.TestCase):
+    """A Spec-writing worker may change only its Modules' glossary entries, and every worker's
+    brief carries the definitions of its terms."""
+
+    def setUp(self):
+        self.project = WorkerProject(self)
+        root = self.project.root
+        for module, anchor in (
+            ("a", "realization.a.code"),
+            ("b", "realization.b.code"),
+        ):
+            upsert_concepts(
+                root,
+                f"specs/{module}/module.md",
+                [
+                    {
+                        "id": f"concept.{module}.answer",
+                        "title": f"{module.upper()} answer",
+                        "owner": f"module.{module}",
+                        "definition": f"What {module.upper()} returns for one question.",
+                        "anchor": anchor,
+                    }
+                ],
+            )
+        entry = root / "specs/a/module.md"
+        entry.write_text(
+            entry.read_text()
+            + "\nA returns an [A answer](../glossary.json#concept.a.answer).\n"
+        )
+        git(root, "add", "-A")
+        git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "terms")
+        self.grant = grant(
+            SpecRepository(root, REPOSITORY_ROOT), ["module.a"], "specify"
+        ).value
+
+    def edited(self, identity, definition):
+        value = read_glossary(self.project.root)
+        for entry in value["concepts"]:
+            if entry["id"] == identity:
+                entry["definition"] = definition
+        return json.dumps(value, indent=2) + "\n"
+
+    def run_writing(self, content):
+        return self.project.run(
+            [{"writes": {f"{self.project.root}/{GLOSSARY}": content}}],
+            task_type="specify",
+            grant=self.grant,
+            check_modules=None,
+        )
+
+    @verifies("scenario.workers.glossary-entries")
+    def test_a_worker_changes_only_its_modules_entries(self):
+        self.assertEqual(
+            "rw", {e["path"]: e["level"] for e in self.grant["entries"]}[GLOSSARY]
+        )
+        own = self.run_writing(self.edited("concept.a.answer", "What A returns."))
+        self.assertEqual("ok", own["status"], own.get("error"))
+        self.assertEqual([], own["rounds"][0]["audit"]["violations"])
+        foreign = self.run_writing(self.edited("concept.b.answer", "What B returns."))
+        self.assertEqual("failed", foreign["status"])
+        self.assertEqual("audit_violation", foreign["error"]["code"])
+        self.assertEqual(
+            [f"{GLOSSARY}#concept.b.answer (owner before: module.b, after: module.b)"],
+            foreign["rounds"][0]["audit"]["violations"],
+        )
+
+    @verifies("scenario.workers.brief-terms")
+    def test_the_brief_carries_the_workers_terms(self):
+        record = self.project.run(
+            [{}], task_type="specify", grant=self.grant, check_modules=None
+        )
+        [call] = self.project.rounds(record)
+        self.assertIn("## Terms", call["prompt"])
+        self.assertIn(
+            "- **A answer** (`concept.a.answer`, owned by module.a): What A returns for one "
+            "question.",
+            call["prompt"],
+        )
+        self.assertNotIn("concept.b.answer", call["prompt"])
+        self.assertIn(
+            f"The glossary {GLOSSARY} is writable, but only by entry", call["prompt"]
+        )

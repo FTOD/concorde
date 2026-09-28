@@ -123,6 +123,41 @@ def spec_rule(task_type: str) -> str:
     )
 
 
+def terms(grant: dict) -> str:
+    """The brief's glossary section: the definitions of the words the bound Modules' documents
+    link, and, when the glossary is writable, which of its entries the worker may change."""
+    from ..spec.glossary import plain_definition
+
+    entries = grant.get("terms") or []
+    glossary = grant.get("glossary")
+    writable = (
+        glossary is not None and GrantView(grant["entries"]).level(glossary) == "rw"
+    )
+    if not entries and not writable:
+        return ""
+    lines = ["## Terms\n\n"]
+    if entries:
+        lines.append(
+            "The words your documents link to the glossary mean the following; a term link's "
+            "fragment is the identity in brackets.\n\n"
+        )
+        lines.extend(
+            f"- **{entry['title']}** (`{entry['id']}`, owned by {entry['owner']}): "
+            f"{plain_definition(entry['definition'])}\n"
+            for entry in entries
+        )
+        lines.append("\n")
+    if writable:
+        owners = ", ".join(grant.get("modules", ()))
+        lines.append(
+            f"The glossary {glossary} is writable, but only by entry: change, add or remove only "
+            f"entries whose owner is {owners}, and never change another Module's entry or move "
+            "an entry to another owner. Every other change of the file is refused after you "
+            "finish.\n\n"
+        )
+    return "".join(lines)
+
+
 def brief(request: WorkerRequest, worktree: Path) -> str:
     """The worker's only instruction: the task, then its boundary as absolute paths."""
     view = GrantView(request.grant["entries"])
@@ -157,7 +192,8 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
         f"{listing('ro')}\n"
         "You may know that these files exist, but you may not read or change them:\n\n"
         f"{listing('names')}\n"
-        "Every other path is hidden from you. A refused read or write means the path is outside "
+        + terms(request.grant)
+        + "Every other path is hidden from you. A refused read or write means the path is outside "
         "your boundary: do not work around it. If you need it, stop and return `blocked`, naming "
         "the path and why you need it.\n\n"
         + (
@@ -502,7 +538,7 @@ def run_worker(request: WorkerRequest) -> dict:
                 "Workers cannot create files the file system refuses",
             )
         try:
-            before = snapshot(worktree)
+            before = snapshot(worktree, request.grant.get("glossary"))
         except (OSError, subprocess.CalledProcessError) as error:
             from ..errors import exception_detail
 
@@ -550,7 +586,13 @@ def run_worker(request: WorkerRequest) -> dict:
             round_record.update(concluded.info)
             record["transcript"] = backend.transcript(paths, session)
             progress.phase("audit")
-            verdict = audit(worktree, before, rw)
+            verdict = audit(
+                worktree,
+                before,
+                rw,
+                request.grant.get("glossary"),
+                request.grant.get("modules", ()),
+            )
             round_record["audit"] = verdict.record()
             # A write outside the grant is reported whatever else went wrong in the round.
             outside = (

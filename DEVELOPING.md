@@ -4,6 +4,15 @@ This is a source checkout, not a consumer installation. Read the canonical
 `.concorde/protocol/principles.md` and the affected complete Specs under `specs/` before changing
 sources. Specs and their paired metadata use English.
 
+## Project terms
+
+Every term of this project is defined once, in `specs/concorde/glossary.json`. Use each term
+exactly as its entry defines it, when you talk with the developer and in task goals, decision logs,
+escalations, commit messages, Specs and code; never coin a synonym for a defined term or use one in
+another sense. When a word you need is missing, or a definition no longer fits, say so and change
+the glossary in a task, by the Module that owns the term. When the developer uses a term in another
+sense, point out the difference before acting on it.
+
 ## How work is organized
 
 Concorde supports Claude Code and pi. The developer works with a main agent: the Claude Code or pi

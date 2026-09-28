@@ -1,17 +1,18 @@
 # Task session scenarios
 
 Concrete situations that show the [requirements](requirements.md) of [Task session](module.md).
-Commands, the session report and error codes are defined in the [contracts](contracts.md).
+Commands, the [session report](../../glossary.json#concept.session-report) and error codes are
+defined in the [contracts](contracts.md).
 
 ## Starting and confining
 
 ### scenario.task-session.start — Start a task session
 
-- GIVEN an open task `severity` and a Claude Code main agent whose session is named `concorde-7d`
+- GIVEN an open task `severity` and a Claude Code [main agent](../../glossary.json#concept.main-agent) whose session is named `concorde-7d`
 - WHEN the main agent runs `concorde task session severity --main concorde-7d`
-- THEN `.concorde/tasks/severity.session/` holds a settings file and a write hook
+- THEN `.concorde/tasks/severity.session/` holds a settings file and a [write hook](../../glossary.json#concept.write-hook)
 - AND `claude --bg` is started in the task worktree with those settings and a first prompt naming the task, its goal and `concorde-7d`
-- AND the task record lists the started session with its identity and name
+- AND the [task record](../../glossary.json#concept.task-record) lists the started session with its identity and name
 - BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying Claude Code's output, and the record is unchanged
 - AND `--answer` or `--stop` for a Claude Code session is refused with `invalid_input`
 
@@ -19,16 +20,16 @@ Commands, the session report and error codes are defined in the [contracts](cont
 
 - GIVEN an open task `severity`
 - WHEN `concorde task session severity` runs from a Claude Code session, from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and from neither
-- THEN the first starts `claude --bg` and the second a pi session round
+- THEN the first starts `claude --bg` and the second a pi [session round](../../glossary.json#concept.session-round)
 - AND the third is refused with `client_unknown`, naming every variable it looked at, and the record is unchanged
 
 ### scenario.task-session.pi-start — Start a pi task session
 
 - GIVEN a pi main session, an open task `severity`, and pi, `bwrap`, `socat` and the sandbox-runtime package installed
 - WHEN the main agent runs `concorde task session severity`
-- THEN `.concorde/tasks/severity.session/` holds `boundary.ts` with the task worktree and decision log embedded
-- AND a detached supervisor runs `pi -p --mode json --approve -e <boundary.ts>` in the task worktree with the developer's pi configuration, `CONCORDE_TASK_SESSION` set and a session file under `pi/`, its prompt the pi task-session guidance followed by the task's goal, Modules and decision log
-- AND the task record lists the session with the program `pi` and round 1 as `running`, and the progress file names the round
+- THEN `.concorde/tasks/severity.session/` holds `boundary.ts` with the task worktree and [decision log](../../glossary.json#concept.decision-log) embedded
+- AND a detached supervisor runs `pi -p --mode json --approve -e <boundary.ts>` in the task worktree with the developer's pi configuration, `CONCORDE_TASK_SESSION` set and a session file under `pi/`, its prompt the pi [task-session](../../glossary.json#concept.task-session) guidance followed by the task's goal, Modules and decision log
+- AND the task record lists the session with the program `pi` and round 1 as `running`, and the [progress file](../../glossary.json#concept.progress-file) names the round
 - BUT when pi or the sandbox-runtime package is missing, the command fails with `session_failed` naming each missing program, and the record is unchanged
 
 ### scenario.task-session.pi-boundary — The pi boundary confines the session's writes
@@ -43,7 +44,7 @@ Commands, the session report and error codes are defined in the [contracts](cont
 - GIVEN a pi task session whose round 1 ended `escalated`, naming escalation 1, which it recorded with `concorde task escalate --by task-session`
 - WHEN the main agent runs `concorde task session severity --answer "<answer>"`
 - THEN round 2 runs on the same session file with the answer as its prompt
-- AND when it reports `delivered` naming the task's delivery commit, round 2 is recorded `delivered` with the report
+- AND when it reports `delivered` naming the task's [delivery commit](../../glossary.json#concept.delivery-commit), round 2 is recorded `delivered` with the report
 - BUT `--answer` while a round runs is refused with `session_busy`, and for a task with no pi session with `no_session`
 
 ### scenario.task-session.pi-report-verified — A report the record contradicts fails the round

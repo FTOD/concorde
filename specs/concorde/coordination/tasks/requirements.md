@@ -7,13 +7,15 @@ The Module-wide obligations of [Tasks](module.md). Exact fields, commands and er
 
 ### req.tasks.primary-records — Records live in the primary worktree
 
-Tasks SHALL keep every task record and decision log under `.concorde/tasks/` of the primary
+Tasks SHALL keep every [task record](../../glossary.json#concept.task-record) and
+[decision log](../../glossary.json#concept.decision-log) under `.concorde/tasks/` of the primary
 worktree and nowhere else.
 
 ### req.tasks.store-writes — Only the Task store writes records
 
-Every change to a task record SHALL be made by the Task store as one file transaction bound to the
-digest of the record bytes it replaces.
+Every change to a task record SHALL be made by the [Task](../../glossary.json#concept.task) store as
+one [file transaction](../../glossary.json#concept.file-transaction) bound to the digest of the
+record bytes it replaces.
 
 A concurrent change is detected by the digest, never overwritten; after three conflicting attempts
 the update is refused with `record_conflict`.
@@ -31,14 +33,18 @@ on the task, never by Tasks.
 
 ### req.tasks.registered-modules — Records name only registered Modules
 
-Tasks SHALL refuse to open a task that names a Module absent from the primary worktree's registry.
+Tasks SHALL refuse to open a task that names a [Module](../../glossary.json#concept.module) absent
+from the primary worktree's registry.
 
-A record's Modules never change after the open; the Modules a run worked on are in its run result.
+A record's Modules never change after the open; the Modules a run worked on are in its
+[run result](../../glossary.json#concept.run-result).
 
 ### req.tasks.no-copies — Tasks keeps no copy of what Execution records
 
-Tasks SHALL NOT store a task's runs, deliveries or workflow in its record, nor write the run store,
-a workflow record or a delivery commit.
+Tasks SHALL NOT store a task's runs, deliveries or workflow in its record, nor write the
+[run store](../../glossary.json#concept.run-store), a
+[workflow record](../../glossary.json#concept.workflow-record) or a
+[delivery commit](../../glossary.json#concept.delivery-commit).
 
 What happened in a task's workspace is read where Execution recorded it, each time it is needed,
 so no second copy can disagree with it.
@@ -65,12 +71,14 @@ tasks ever share a branch or a worktree.
 
 ### req.tasks.binding — Every task worktree is a bound workspace
 
-Opening a task SHALL write the task record only after writing the new worktree's workspace binding,
-which names the task identity as the workspace.
+Opening a task SHALL write the task record only after writing the new worktree's
+[workspace binding](../../glossary.json#concept.workspace-binding), which names the task identity as
+the workspace.
 
-The binding satisfies the [binding contract](../../execution/contracts.md#contract.execution.workspace-binding),
-names the primary worktree's `.concorde` as the records directory and is never rewritten by Tasks
-afterwards; closing removes it with the worktree.
+The binding satisfies the
+[binding contract](../../execution/contracts.md#contract.execution.workspace-binding), names the
+primary worktree's `.concorde` as the records directory and is never rewritten by Tasks afterwards;
+closing removes it with the worktree.
 
 ### req.tasks.transitions — Only closing changes the stored state
 
@@ -89,17 +97,18 @@ worktree has uncommitted changes, and `open` otherwise.
 
 ### req.tasks.failure-explained — A failed task says why
 
-Closing a task as failed SHALL record a reason and either the error chains that caused the
-failure, unchanged, or an explicit declaration that no error caused it.
+Closing a task as failed SHALL record a reason and either the
+[error chains](../../glossary.json#concept.error-chain) that caused the failure, unchanged, or an
+explicit declaration that no error caused it.
 
 ### req.tasks.closed-inert — A closed task stays closed
 
 Tasks SHALL keep a closed or failed task in that state whatever its workspace records afterwards,
-and refuse to start or record a task session for it.
+and refuse to start or record a [task session](../../glossary.json#concept.task-session) for it.
 
 Closing removes the worktree and with it the workspace binding, so no run of the task's workspace
 can start there; one task runs one thing at a time by Execution's
-[workspace lock](../../execution/module.md#concept.execution.workspace-lock), not by the record.
+[workspace lock](../../glossary.json#concept.workspace-lock), not by the record.
 
 ### req.tasks.merge-verified — Merged means contained in the primary branch
 
@@ -126,9 +135,9 @@ the checked merge in place.
 
 ### req.tasks.merge-serialized — One merge into the primary at a time
 
-Tasks SHALL hold the merge lock of the primary worktree for the whole of every `concorde task
-merge`, `open` and `close`, so no two of them overlap and none sees a merge that may still be
-rolled back.
+Tasks SHALL hold the [merge lock](../../glossary.json#concept.merge-lock) of the primary worktree
+for the whole of every `concorde task merge`, `open` and `close`, so no two of them overlap and none
+sees a merge that may still be rolled back.
 
 ### req.tasks.merge-lock-released — The lock ends with its process
 
@@ -151,7 +160,8 @@ delivered, apart from a `rollback_failed` or a failed close that it reports.
 `concorde task merge` SHALL list, in its output's `warnings`, the task's decision log with its path when the log is missing or holds nothing beyond the heading and goal that `open` wrote, without refusing or undoing the merge for it.
 
 Tasks cannot tell whether a task needed any decision, so an empty log is a reminder to whoever
-merges, not a failure: the main agent appends what it decided alone before it reports the task.
+merges, not a failure: the [main agent](../../glossary.json#concept.main-agent) appends what it
+decided alone before it reports the task.
 
 ### req.tasks.merge-clean-primary — A merge starts from a clean primary
 

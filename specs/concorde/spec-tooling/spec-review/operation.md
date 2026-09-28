@@ -1,7 +1,7 @@
 # Spec review Operation
 
-The exact step sequence, arguments and result of the `spec_review` Operation of
-[Spec review](module.md).
+The exact step sequence, arguments and result of the `spec_review`
+[Operation](../../glossary.json#concept.operation) of [Spec review](module.md).
 
 ## Invocation
 
@@ -9,16 +9,19 @@ The exact step sequence, arguments and result of the `spec_review` Operation of
 concorde run spec_review [--modules <id>[,<id>...]] [--check-findings] [--force]
 ```
 
-The review works on the worktree it starts in. With a workspace binding there, it reviews that
-[workspace](../../execution/module.md#concept.execution.workspace), and `--modules` defaults to the
-binding's Modules. Without one it is an
-[unbound run](../../execution/module.md#concept.execution.unbound-run), for instance on the primary
-worktree, and judges the Specs as merged there. `--modules` names one or more registered Modules of
-that worktree. `--check-findings` adds the checker, and `--force` reviews a Module again although
-its review memory already judged its current context identity. The reviewer and the checker
-are the Operation's two workers, with the [worker
-ids](../../execution/workers/module.md#concept.workers.worker-id) `reviewer` and `checker`, so the
-worker model configuration may give each its own backend, model and level. The Operation takes no other argument and needs no user consent.
+The review works on the worktree it starts in. With a
+[workspace binding](../../glossary.json#concept.workspace-binding) there, it reviews that
+[workspace](../../glossary.json#concept.workspace), and `--modules` defaults to the binding's
+Modules. Without one it is an [unbound run](../../glossary.json#concept.unbound-run), for instance
+on the primary worktree, and judges the Specs as merged there. `--modules` names one or more
+registered Modules of that worktree. `--check-findings` adds the checker, and `--force` reviews a
+[Module](../../glossary.json#concept.module) again although its
+[review memory](../../glossary.json#concept.review-memory) already judged its current
+[context identity](../../glossary.json#concept.context-identity). The reviewer and the checker are
+the Operation's two workers, with the [worker ids](../../glossary.json#concept.worker-id) `reviewer`
+and `checker`, so the
+[worker model configuration](../../glossary.json#concept.worker-model-configuration) may give each
+its own backend, model and level. The Operation takes no other argument and needs no user consent.
 
 ## Step sequence {#host-sequence}
 
@@ -31,14 +34,15 @@ another. Step 1 validates the worktree once for all Modules.
 | 1 | Load the workspace's Specs and validate the Module | Operation (Spec core) | loading error: the Operation fails; structural error in the Module's own documents or about the Module or a node it defines: the Module is `incomplete`, with the findings as host evidence |
 | 2 | Compute the `review-spec` grant for the Module with the workspace as root and freeze it with its context identity | Operation (Spec core) | the Module is `incomplete` |
 | 3 | Read the Module's review memory; generate the reviewer's settings, tool list and brief from the grant, the Reviewer brief and the memory's open findings | Operation (Workers) | an unusable memory: the Module is `incomplete` (`review_memory_unusable`); otherwise the Operation fails |
-| 4 | Launch the reviewer and wait for its worker result with findings; there is one round and no resume | Operation (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
+| 4 | Launch the reviewer and wait for its [worker result](../../glossary.json#concept.worker-result) with findings; there is one round and no resume | Operation (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
 | 5 | Audit that the worktree has no change | Operation (Workers) | any change: the Module is `incomplete`, with the audit violations as host evidence |
 | 6 | With `--check-findings` and at least one finding, launch the checker under the same grant with the reviewer's numbered findings as task material, then audit again | Operation (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
 | 7 | Normalize the findings, merge them and the resolutions into the review memory (written only by a bound run), and derive the Module's outcome from the memory's open findings | Operation | a finding whose path is not in the workspace: the Module is `incomplete`, with `invalid-output` evidence |
-| 8 | Write a run record per worker | Operation (Workers) | the Operation fails |
+| 8 | Write a [run record](../../glossary.json#concept.run-record) per worker | Operation (Workers) | the Operation fails |
 
 After every Module is done, the Operation derives the verdict and returns the run's output. No step
-runs configured checks and no step resumes a worker, because a review changes no file.
+runs [configured checks](../../glossary.json#concept.configured-check) and no step resumes a worker,
+because a review changes no file.
 
 Normalizing a finding means: an absolute path inside the workspace becomes relative to it;
 `module` becomes the Module that owns the cited document when the path is a registered document or
@@ -82,7 +86,7 @@ A finding is `{module, path, anchor, line, dimension, severity, problem, evidenc
 
 ## Review payload
 
-The run result carries this payload as its `output`:
+The [run result](../../glossary.json#concept.run-result) carries this payload as its `output`:
 
 ```concorde-contract
 {

@@ -7,16 +7,16 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.step-starts — A step starts and records a run
 
-- GIVEN a task worktree whose binding names the workspace `adopt` and the Module `module.shop`, with no workflow recorded
+- GIVEN a task worktree whose binding names the workspace `adopt` and the [Module](../../glossary.json#concept.module) `module.shop`, with no workflow recorded
 - WHEN `concorde workflow step --workflow brownfield --mode no-ask --key survey -- survey --modules module.shop` is run there
 - THEN it starts `concorde run survey --modules module.shop --detach` with the workspace's own `concorde`
-- AND the workspace's workflow record names the workflow `brownfield` and the key `survey` with the run
+- AND the workspace's [workflow record](../../glossary.json#concept.workflow-record) names the workflow `brownfield` and the key `survey` with the run
 - AND once the run has finished it prints the step outcome with state `finished`, the workspace `adopt` and the result's status, and exits with status 0
-- AND a step naming the execution command `task-validation` starts `concorde task-validation --detach`, and its outcome carries the readiness's `ready`
+- AND a step naming the [execution command](../../glossary.json#concept.execution-command) `task-validation` starts `concorde task-validation --detach`, and its outcome carries the readiness's `ready`
 
 ### scenario.workflows.unbound-refused — No workflow runs in an unbound worktree
 
-- GIVEN a worktree without a workspace binding, such as the primary worktree
+- GIVEN a worktree without a [workspace binding](../../glossary.json#concept.workspace-binding), such as the primary worktree
 - WHEN `concorde workflow step` or `concorde workflow report` is run there
 - THEN it prints a `component` link `binding_required` naming the worktree and exits with status 1
 - AND nothing is started or recorded
@@ -27,7 +27,7 @@ shapes are in the [contracts](contracts.md).
 - WHEN the step command is run
 - THEN it prints the step outcome with state `running` and exits with status 3 after at most `--wait` seconds
 - AND running the same command again starts no second run and waits for the recorded one
-- AND a step whose workspace lock another run still holds waits for that run to end before starting its own, within the same bound
+- AND a step whose [workspace lock](../../glossary.json#concept.workspace-lock) another run still holds waits for that run to end before starting its own, within the same bound
 
 ### scenario.workflows.step-cached — A finished step returns at once
 
@@ -38,7 +38,7 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.step-refused — A step that does not belong
 
-- GIVEN a workspace whose recorded workflow is `brownfield`, with the key `survey` recorded for the `survey` Operation
+- GIVEN a workspace whose recorded workflow is `brownfield`, with the key `survey` recorded for the `survey` [Operation](../../glossary.json#concept.operation)
 - WHEN a step names another workflow, or the key `survey` for `task-validation`
 - THEN the command exits with status 1 and prints the outcome with state `refused` and a `step_rejected` link whose cause, `workflow_conflict` or `step_conflict`, names the recorded workflow or Operation
 - AND nothing is started or recorded
@@ -47,10 +47,10 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.interactive-pause — An interactive run ends at a survey decision
 
-- GIVEN the brownfield workflow started in interactive mode in the workspace `adopt`
+- GIVEN the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) started in interactive mode in the workspace `adopt`
 - WHEN the survey ends `ok` with the decision `d.db-helper`
 - THEN no scaffold runs
-- AND the workflow result has status `awaiting_decision`, lists `d.db-helper` as pending with its options, and its `workflow` link gives `decision` as the reason
+- AND the [workflow result](../../glossary.json#concept.workflow-result) has status `awaiting_decision`, lists `d.db-helper` as pending with its options, and its `workflow` link gives `decision` as the reason
 
 ### scenario.workflows.interactive-resume — The answered workflow goes on
 
@@ -63,12 +63,12 @@ shapes are in the [contracts](contracts.md).
 ### scenario.workflows.no-ask-complete — A no-ask run reports everything at the end
 
 - GIVEN the brownfield workflow started in no-ask mode in the workspace `adopt` bound to `module.shop`
-- AND the survey proposes `module.checkout` and `module.inventory`, the `code_to_spec` of `module.inventory` ends `blocked`, and the one of `module.checkout` reports an open question
+- AND the survey proposes `module.checkout` and `module.inventory`, the `code_to_spec` of `module.inventory` ends `blocked`, and the one of `module.checkout` reports an [open question](../../glossary.json#concept.open-question)
 - WHEN the workflow runs to its end
 - THEN it runs survey, scaffold, the three code_to_spec steps, spec_review, task-validation and, when the workspace is ready, `delivery --adoption`, one after another
 - AND the workflow result lists the survey's decisions, the open question and the blocked description as a problem with its chain unchanged
 - AND the result is saved with its Markdown rendering beside the workspace's workflow record and listed there
-- BUT no decision log changes
+- BUT no [decision log](../../glossary.json#concept.decision-log) changes
 
 ## Results
 
@@ -89,7 +89,7 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.relay-refused — A step agent mistypes the step command
 
-- GIVEN a Claude Code workflow run whose step agent for `delivery` drops a field while retyping the step command, so that the command refuses the request with `invalid_request`
+- GIVEN a Claude Code workflow run whose [step agent](../../glossary.json#concept.step-agent) for `delivery` drops a field while retyping the step command, so that the command refuses the request with `invalid_request`
 - WHEN the step function receives that refusal, which names no step
 - THEN it asks a step agent again with the same command, and goes on with the procedure once an outcome for `delivery` comes back
 - AND after three refusals in a row it reports `delivery` lost, and the script's result carries the last refusal under `relayed`, with the key and the number of attempts
@@ -125,6 +125,6 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.workflows.report-ignores-relay — The report reads the recorded results
 
-- GIVEN a finished workflow whose step agent returned a summary that differs from the saved run result
+- GIVEN a finished workflow whose step agent returned a summary that differs from the saved [run result](../../glossary.json#concept.run-result)
 - WHEN `concorde workflow report` runs
 - THEN the workflow result states the saved result's status, summary and error

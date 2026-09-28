@@ -7,12 +7,12 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.adoption.survey-proposes — A survey proposes children
 
-- GIVEN an initialized project whose root Module `module.shop` binds `src/`, `tests/`, `README.md` and `pyproject.toml`
+- GIVEN an initialized project whose root [Module](../../../glossary.json#concept.module) `module.shop` binds `src/`, `tests/`, `README.md` and `pyproject.toml`
 - AND a task worktree whose binding names the workspace `adopt` and `module.shop`
-- WHEN the main agent runs `concorde run survey --modules module.shop` there
+- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `concorde run survey --modules module.shop` there
 - THEN the worker's grant reads the Specs and the code `module.shop` binds and writes nothing
 - AND its brief lists every bound file with its size in lines
-- AND the result is `ok` with a decomposition proposal naming `module.checkout` and `module.inventory` with their entries
+- AND the result is `ok` with a [decomposition proposal](../../../glossary.json#concept.decomposition-proposal) naming `module.checkout` and `module.inventory` with their entries
 - AND the proposal's remaining entries are the root's entries without the children's paths
 - AND no file of the worktree changed
 
@@ -25,16 +25,16 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.adoption.survey-no-task — An unbound survey before any task
 
-- GIVEN an initialized project whose primary worktree has no workspace binding, and no task
+- GIVEN an initialized project whose primary worktree has no [workspace binding](../../../glossary.json#concept.workspace-binding), and no task
 - WHEN the main agent runs `concorde run survey --modules module.shop` in the primary worktree
 - THEN the run is unbound and the result is `ok` with `workspace` null and a decomposition proposal
-- AND no task record exists or changes
+- AND no [task record](../../../glossary.json#concept.task-record) exists or changes
 
 ### scenario.adoption.survey-checks — Proposed checks take the configuration's form
 
 - GIVEN a survey whose worker proposes a check with the inputs `src/checkout/` and `tests/` and the env `{"PYTHONPATH": "src"}`
 - WHEN the survey ends
-- THEN the proposed check's inputs are `src/checkout` and `tests`, as configured check inputs are written, and its env is kept
+- THEN the proposed check's inputs are `src/checkout` and `tests`, as [configured check](../../../glossary.json#concept.configured-check) inputs are written, and its env is kept
 - AND the worker was asked to name the project's interpreter as `{python}` rather than an interpreter on `PATH`
 - BUT a proposed input that is not a canonical project-relative path, such as `../elsewhere`, fails the survey with `inconsistent_proposal` naming it
 
@@ -43,7 +43,7 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a survey worker whose proposal gives a child the entry `lib/` that `module.shop` does not bind, and reuses the registered title `Shop`
 - WHEN the host checks the proposal
 - THEN the result is `failed`
-- AND the Operation's link lists both inconsistencies with `capability` as its reason
+- AND the [Operation](../../../glossary.json#concept.operation)'s link lists both inconsistencies with `capability` as its reason
 - AND the worker's proposal stays in the result's `worker` field only
 
 ### scenario.adoption.survey-answers — A survey follows the developer's answers
@@ -62,7 +62,7 @@ shapes are in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde run code_to_spec --modules module.checkout` in the workspace `adopt`
 - THEN the worker's grant reads `src/checkout/` and writes only `module.checkout`'s documents
 - AND the worker has no tool that runs commands
-- AND the result is `ok` with a Spec description whose changed documents include the entry
+- AND the result is `ok` with a [Spec description](../../../glossary.json#concept.spec-description) whose changed documents include the entry
 - AND the stubs the worker did not fill are removed again
 - AND no implementation file changed
 
@@ -70,8 +70,8 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN checkout code that retries a declined payment but not a timed-out one, with nothing explaining the difference
 - WHEN a code_to_spec worker describes `module.checkout`
-- THEN the Spec states no requirement or scenario about retrying payments
-- AND the result is `ok` with an open question naming the behaviour, the file, why it is uncertain and the options
+- THEN the [Spec](../../../glossary.json#concept.spec) states no requirement or scenario about retrying payments
+- AND the result is `ok` with an [open question](../../../glossary.json#concept.open-question) naming the behaviour, the file, why it is uncertain and the options
 
 ### scenario.adoption.answered-deviation — An answer that the code does not follow
 
@@ -86,7 +86,7 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a code_to_spec worker whose first round leaves a scenario of `module.checkout` without a THEN step
 - WHEN the host validates the Specs after that round
 - THEN it resumes the same worker with the structural error, and after a round that repairs it the run ends `ok` with no new error
-- BUT a worker that leaves the error through its two resume rounds ends the run `blocked` with `new_structural_errors`
+- BUT a worker that leaves the error through its two [resume rounds](../../../glossary.json#concept.resume-round) ends the run `blocked` with `new_structural_errors`
 
 ### scenario.adoption.describe-own-errors — The worker learns the errors it must repair
 

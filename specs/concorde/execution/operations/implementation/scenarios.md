@@ -1,7 +1,8 @@
 # Implementation scenarios
 
 Concrete situations that show the [requirements](requirements.md) at work. The shapes of the code
-change and the test report are in the [contracts](contracts.md).
+change and the [test report](../../../glossary.json#concept.test-report) are in the
+[contracts](contracts.md).
 
 ## Implement
 
@@ -15,17 +16,17 @@ change and the test report are in the [contracts](contracts.md).
 
 ### scenario.implementation.checks-of-users — A change runs the checks of the Modules that use it
 
-- GIVEN Module A, which uses Module B and has a configured check, and Module B, which has none
+- GIVEN [Module](../../../glossary.json#concept.module) A, which uses Module B and has a [configured check](../../../glossary.json#concept.configured-check), and Module B, which has none
 - WHEN an implement run bound to Module B changes B's code
-- THEN the Operation runs A's check as well, and its result is among the run's checks
+- THEN the [Operation](../../../glossary.json#concept.operation) runs A's check as well, and its result is among the run's checks
 - AND a change bound to A alone runs only A's own checks, since no Module uses A
 
 ### scenario.implementation.implement-pass — A change passes its checks
 
 - GIVEN a workspace whose bound Module has configured checks
-- WHEN the main agent runs `implement` for that Module with a goal the worker can meet in its grant
+- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `implement` for that Module with a goal the worker can meet in its grant
 - THEN the Operation audits the change and runs the Module's configured checks outside the worker
-- AND the result has status `ok` with the changed files and the passing check results
+- AND the result has status `ok` with the changed files and the passing [check results](../../../glossary.json#concept.check-result)
 
 ### scenario.implementation.resume — A failed check is repaired in a resume round
 
@@ -37,21 +38,21 @@ change and the test report are in the [contracts](contracts.md).
 
 ### scenario.implementation.rounds-exhausted — Checks still failing after the last round
 
-- GIVEN an implement run whose configured checks still fail after the last allowed resume round
+- GIVEN an implement run whose configured checks still fail after the last allowed [resume round](../../../glossary.json#concept.resume-round)
 - WHEN the Operation evaluates the last check results
 - THEN the result has status `failed` with the failing check results as host evidence
 - AND the worker's edits stay uncommitted in the workspace
 
 ### scenario.implementation.spec-gap — A Spec gap stops the run
 
-- GIVEN a goal whose code needs a promise the bound Module's Spec does not state
-- WHEN the worker returns `blocked` naming the Spec gap
-- THEN the result has status `blocked` with an error chain that ends in the worker's own link naming the Spec gap, unchanged
+- GIVEN a goal whose code needs a promise the bound Module's [Spec](../../../glossary.json#concept.spec) does not state
+- WHEN the worker returns `blocked` naming the [Spec gap](../../../glossary.json#concept.spec-gap)
+- THEN the result has status `blocked` with an [error chain](../../../glossary.json#concept.error-chain) that ends in the worker's own link naming the Spec gap, unchanged
 - BUT the Operation neither resumes the worker nor changes any Spec document
 
 ### scenario.implementation.out-of-grant — A write outside the grant fails the run
 
-- GIVEN an implement run whose write audit finds a changed file outside the grant's writable paths
+- GIVEN an implement run whose [write audit](../../../glossary.json#concept.write-audit) finds a changed file outside the grant's writable paths
 - WHEN the Operation evaluates the audit
 - THEN the result has status `failed` with that path as host evidence
 - BUT no checks run and the worker is not resumed

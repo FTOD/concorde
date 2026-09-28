@@ -333,7 +333,7 @@ class RoutingTests(unittest.TestCase):
 
 
 class InstallTests(unittest.TestCase):
-    @verifies("scenario.distribution.install")
+    @verifies("scenario.distribution.install", "scenario.distribution.glossary-import")
     def test_install_places_concorde_without_touching_specs(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -394,6 +394,8 @@ class InstallTests(unittest.TestCase):
         claude = (project / "CLAUDE.md").read_text()
         self.assertIn("Keep this.", claude)
         self.assertEqual(1, claude.count("<!-- concorde:start -->"))
+        # No glossary is declared before initialization, so nothing is imported yet.
+        self.assertNotIn("<!-- concorde:glossary -->", claude)
         self.assertIn(".concorde/runs/", (project / ".gitignore").read_text())
         self.assertIn(".concorde/workspace.json", (project / ".gitignore").read_text())
         self.assertIn(".claude/worktrees/", (project / ".gitignore").read_text())
@@ -453,6 +455,17 @@ class InstallTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual("success", json.loads(valid.stdout)["status"], valid.stdout)
+        # The glossary initialization created is imported by the CLAUDE.md block, once.
+        claude = (project / "CLAUDE.md").read_text()
+        block = claude.split("<!-- concorde:start -->", 1)[1].split(
+            "<!-- concorde:end -->"
+        )[0]
+        self.assertIn("@specs/project/glossary.json", block)
+        self.assertIn("Keep this.", claude)
+        install(project, package, pi_runtime=False, fetch=fetch, dependencies=False)
+        self.assertEqual(
+            1, (project / "CLAUDE.md").read_text().count("@specs/project/glossary.json")
+        )
 
     @verifies("scenario.distribution.install-busy")
     def test_install_and_update_wait_until_concorde_is_idle(self):

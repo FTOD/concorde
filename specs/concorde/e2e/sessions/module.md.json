@@ -18,48 +18,18 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.run",
-          "concept.execution.progress-file",
-          "concept.execution.run-result",
-          "concept.execution.run-store",
-          "concept.execution.workspace-binding"
+          "concept.run",
+          "concept.run-progress-file",
+          "concept.run-result",
+          "concept.run-store",
+          "concept.workspace-binding"
         ]
       }
     ],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      }
-    ],
+    "includes": [],
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.headless-sessions.session",
-      "type": "concept",
-      "title": "Headless session",
-      "meaning": "#concept.headless-sessions.session"
-    },
-    {
-      "id": "concept.headless-sessions.round",
-      "type": "concept",
-      "title": "Round",
-      "meaning": "#concept.headless-sessions.round"
-    },
-    {
-      "id": "concept.headless-sessions.note",
-      "type": "concept",
-      "title": "Headless note",
-      "meaning": "#concept.headless-sessions.note"
-    },
-    {
-      "id": "concept.headless-sessions.wake",
-      "type": "concept",
-      "title": "Wake message",
-      "meaning": "#concept.headless-sessions.wake"
-    },
     {
       "id": "realization.headless-sessions.driver",
       "type": "realization",

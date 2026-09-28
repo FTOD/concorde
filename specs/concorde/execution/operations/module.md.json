@@ -56,18 +56,13 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.runner",
-          "concept.execution.run-result",
-          "concept.execution.workspace"
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.workspace"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -77,24 +72,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.operations.operation",
-      "type": "concept",
-      "title": "Operation",
-      "meaning": "#concept.operations.operation"
-    },
-    {
-      "id": "concept.operations.catalog",
-      "type": "concept",
-      "title": "Operation catalog",
-      "meaning": "#concept.operations.catalog"
-    },
-    {
-      "id": "concept.operations.standard-worker-sequence",
-      "type": "concept",
-      "title": "Standard worker sequence",
-      "meaning": "#concept.operations.standard-worker-sequence"
-    },
     {
       "id": "realization.operations.catalog",
       "type": "realization",
@@ -106,25 +83,6 @@
       "pending": []
     }
   ],
-  "relations": [
-    {
-      "type": "relates",
-      "source": "concept.operations.catalog",
-      "verb": "lists",
-      "target": "concept.operations.operation"
-    },
-    {
-      "type": "relates",
-      "source": "concept.operations.operation",
-      "verb": "launches workers through",
-      "target": "module.workers"
-    },
-    {
-      "type": "relates",
-      "source": "concept.operations.operation",
-      "verb": "runs checks through",
-      "target": "module.checks"
-    }
-  ],
+  "relations": [],
   "extensions": {}
 }

@@ -23,9 +23,9 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.runner",
-          "concept.execution.run-result",
-          "concept.execution.workspace"
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.workspace"
         ]
       },
       {
@@ -40,11 +40,6 @@
     "includes": [
       {
         "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "document",
         "target": "document.concorde.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
       }
@@ -52,12 +47,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.specification.spec-change",
-      "type": "concept",
-      "title": "Spec change",
-      "meaning": "#concept.specification.spec-change"
-    },
     {
       "id": "realization.specification.operation",
       "type": "realization",
@@ -75,7 +64,7 @@
       "type": "relates",
       "source": "realization.specification.operation",
       "verb": "produces",
-      "target": "concept.specification.spec-change"
+      "target": "concept.spec-change"
     }
   ],
   "extensions": {}

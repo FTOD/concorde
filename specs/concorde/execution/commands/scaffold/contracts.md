@@ -1,7 +1,7 @@
 # Scaffold contracts
 
 The exact shape [Scaffold](module.md) returns, the `output` of its
-[run result](../../module.md#concept.execution.run-result), and the codes of its errors. The
+[run result](../../../glossary.json#concept.run-result), and the codes of its errors. The
 proposal it applies is Adoption's
 [decomposition proposal](../../operations/adoption/contracts.md#contract.adoption.decomposition).
 

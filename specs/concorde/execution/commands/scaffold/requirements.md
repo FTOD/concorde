@@ -7,7 +7,7 @@ The obligations of [Scaffold](module.md). The shapes are in the [contracts](cont
 
 ### req.scaffold.vendored-external — Vendored code is never a Module
 
-The scaffold SHALL make every path the survey proposes as vendored third-party code an external inclusion of the Module that uses it, bound by no Module, so that no worker describes or reviews it as the project's code.
+The scaffold SHALL make every path the survey proposes as vendored third-party code an external inclusion of the [Module](../../../glossary.json#concept.module) that uses it, bound by no Module, so that no worker describes or reviews it as the project's code.
 
 ### req.scaffold.input — The scaffold applies one survey of its workspace
 
@@ -29,7 +29,7 @@ The scaffold host SHALL check the proposal against the workspace again before wr
 
 ### req.scaffold.atomic — A scaffold is kept whole or not at all
 
-The scaffold host SHALL write all its changes in one file transaction that is kept only when it adds no structural error.
+The scaffold host SHALL write all its changes in one [file transaction](../../../glossary.json#concept.file-transaction) that is kept only when it adds no structural error.
 
 ### req.scaffold.parent-narrowed — A child's paths leave the parent
 

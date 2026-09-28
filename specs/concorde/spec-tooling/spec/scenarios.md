@@ -1,14 +1,14 @@
 # Spec scenarios
 
-The concrete situations the [Spec core](module.md) Module promises to handle, one outcome each.
-The headings group them by subject; each scenario belongs to the Module as a whole. The obligations
-they illustrate are in the [requirements](requirements.md).
+The concrete situations the [Spec core](module.md) [Module](../../glossary.json#concept.module)
+promises to handle, one outcome each. The headings group them by subject; each scenario belongs to
+the Module as a whole. The obligations they illustrate are in the [requirements](requirements.md).
 
 ## Loading
 
 ### scenario.spec.admit-inventory — Loading a consistent project
 
-- GIVEN a project whose configuration binds the installed Protocol copy
+- GIVEN a project whose configuration binds the installed [Protocol copy](../../glossary.json#concept.protocol-copy)
 - AND whose registry records every Module with its entry path and a copy of its `module` block
 - AND whose entries and registered documents are schema-3 pairs
 - WHEN a repository is constructed
@@ -53,13 +53,13 @@ to it.
 - GIVEN a Module whose entry and topics have role `module` and whose requirements, scenarios and contracts are in documents with role `implementation`
 - WHEN the project is validated
 - THEN no role finding is reported
-- AND both roles contribute both members to the Module's Spec context
+- AND both roles contribute both members to the Module's [Spec context](../../glossary.json#concept.spec-context)
 
 ### scenario.spec.document-role-misplaced — Definitions in the wrong role
 
-- GIVEN a requirement, scenario or contract fence in a `module` document, a concept defined in an `implementation` document, or a document with a missing or unknown role
+- GIVEN a requirement, scenario or contract fence in a `module` document, a glossary entry whose explanation lies in an `implementation` document, or a document with a missing or unknown role
 - WHEN the validator runs
-- THEN it reports `CHK.defines.role` for each misplaced definition and `CHK.document.role` for the missing or unknown role
+- THEN it reports `CHK.defines.role` for each misplaced definition, `CHK.node.meaning` for the misplaced explanation and `CHK.document.role` for the missing or unknown role
 
 ## Checks
 
@@ -82,7 +82,7 @@ to it.
 ### scenario.spec.node-checks — Malformed nodes
 
 - GIVEN an implementation document with a requirement whose first sentence has no `SHALL`, a scenario whose steps return from `THEN` to `GIVEN`, and a `concorde-contract` fence whose example does not satisfy its schema
-- AND a module document whose concept record has a `meaning` anchor that does not resolve, or no defining Terminology row
+- AND a glossary entry whose explanation names no anchor with prose in a document its owner owns, or whose definition is two sentences
 - WHEN the validator runs
 - THEN it reports `CHK.requirement.statement`, `CHK.scenario.steps`, `CHK.contract.fence`, `CHK.node.meaning` and `CHK.concept.definition` as errors
 
@@ -95,8 +95,8 @@ to it.
 
 ### scenario.spec.reader-parts — A well-formed entry and topic
 
-- GIVEN an entry whose first level-2 headings are Purpose, Terminology, Usage and Design, in that order
-- AND a topic that defines a concept and starts with a Terminology section
+- GIVEN an entry whose first level-2 headings are Purpose, Usage and Design, in that order
+- AND a topic that links every term it uses to the glossary
 - WHEN the validator runs
 - THEN no document-structure finding is reported
 - BUT passing says nothing about whether the explanations are sufficient
@@ -109,25 +109,40 @@ to it.
 - BUT headings inside fences do not count as sections
 - AND the required sections in another order, or an additional level-2 section, are not problems
 
-### scenario.spec.terminology-imports — Importing a provider's term
+### scenario.spec.term-links — Linking another Module's term
 
-- GIVEN a Module document whose Terminology table has a defining row for each concept it defines and a link-only row for a concept of a provider it uses
+- GIVEN a Module document that links a term owned by a Module it neither uses nor contains
 - WHEN the validator runs
-- THEN the import is accepted without a finding
-- AND the provider's defining document is required in the Module's context
+- THEN the link is accepted without a finding
+- AND the term's glossary entry is in the Module's context, with the linking document as the reason
+- BUT no document of the term's owner is added to the context
 
-### scenario.spec.terminology-import-invalid — Malformed Terminology rows
+### scenario.spec.term-link-invalid — A term link that names no glossary entry
 
-- GIVEN an import row with a definition, a defining row with no matching concept, or an import of a concept the document's own Module owns
+- GIVEN a link whose fragment is a concept identity but which addresses a document other than the glossary, a term link to a concept the glossary does not declare, or a glossary definition that links an undeclared concept
 - WHEN the validator runs
-- THEN it reports `CHK.terminology.import-row`, `CHK.terminology.rows` or `CHK.imports.foreign` as an error for each row
+- THEN it reports `CHK.term.link` as an error for each link
 
-### scenario.spec.import-owner-warning — Importing from an unrelated Module
+### scenario.spec.term-unlinked — A term used without a link
 
-- GIVEN a Module that imports a concept owned by a Module it neither uses, contains nor descends from
-- AND the defining document is in its context through an inclusion
+- GIVEN a document whose prose uses the title of a concept outside code, headings and links, and never links that concept
 - WHEN the validator runs
-- THEN it reports a `CHK.imports.owner` warning naming the concept and its owner
+- THEN it reports a `CHK.term.unlinked` warning naming the term, the line and the link to write
+- BUT a Module's title, a shorter title inside a longer one, and a one-word title as the first word of a sentence or table cell are no use of a term
+
+### scenario.spec.glossary-invalid — A malformed glossary
+
+- GIVEN a glossary entry without an owner or with an unknown field, two concepts whose titles normalize equal, entries not sorted by identity, a glossary declared by a Module that has a parent or by two Modules, or a concept record left in document metadata
+- WHEN the validator runs
+- THEN it reports `CHK.glossary.schema`, `CHK.node.title`, `CHK.glossary.declared` or `CHK.node.type` for each problem
+
+### scenario.spec.term-selection — The definitions a Module's context holds
+
+- GIVEN a Module A that owns concept X and uses Module B without `relies_on`
+- AND a document of A links concept Y, a document of B links concept Z, and Y's definition links concept W
+- WHEN A's Spec context is resolved
+- THEN its terms are the glossary entries of X, Y, Z and W, each with the declarations that selected it: `owns` of A for X, `mentions` of the linking document for Y and Z, `mentions` of Y for W
+- BUT a concept that no selected document, declaration or selected definition names is not among them
 
 ### scenario.spec.composition-checks — Composition and dependency errors
 
@@ -152,7 +167,8 @@ to it.
 
 - GIVEN a Module that uses a provider with `relies_on` listing one requirement and one concept the provider owns
 - WHEN the Module's Spec context is resolved
-- THEN it contains the provider's entry and the documents defining those two nodes
+- THEN it contains the provider's entry, the document defining the requirement and the document the concept's glossary entry names as its explanation
+- AND the concept's glossary entry is among its terms
 - BUT no other document of the provider
 
 ### scenario.spec.relies-on-invalid — A `relies_on` that does not match its explanation
@@ -160,6 +176,7 @@ to it.
 - GIVEN a `uses` whose `relies_on` names a node the provider does not own, and whose meaning section links to a provider node the list omits
 - WHEN the validator runs
 - THEN it reports `CHK.relies-on.owned` for the foreign node and `CHK.relies-on.linked` for the unlisted link
+- BUT a term link to one of the provider's concepts names a word, not a relied-upon promise, and needs no listing
 
 ### scenario.spec.reference-resolution — Only the selecting Module's own relations count
 
@@ -167,7 +184,7 @@ to it.
 - AND A includes one document of Module D with a reason
 - WHEN A's Spec context is resolved
 - THEN it contains A's documents, B's documents and the included D document, each with the relation that selected it: `owns` for A's own, `uses` of B for B's, `includes` of document D for D's
-- AND a document selected by two relations appears once, listing both, and removing either changes the context identity
+- AND a document selected by two relations appears once, listing both, and removing either changes the [context identity](../../glossary.json#concept.context-identity)
 - BUT no document of C appears unless A itself selects it
 
 ### scenario.spec.reference-invalid — Unresolved or misplaced relations
@@ -186,13 +203,14 @@ to it.
 
 ### scenario.spec.context-reconciled — A declaration requires its definition in context
 
-- GIVEN a Module that relates one of its realizations to another Module's concept, without any `uses`, `contains` or `includes` that selects the concept's defining document
+- GIVEN a Module that relates one of its realizations to another Module's realization, without any `uses`, `contains` or `includes` that selects the document defining it
 - WHEN the validator runs
 - THEN it reports `CHK.context.reconciled` naming the Module and the missing document
+- BUT a `relates` to another Module's concept needs no selection, because it brings the concept's glossary entry into the context itself
 
 ### scenario.spec.meaning-relations — Invalid relations between meanings
 
-- GIVEN concepts where one narrows itself through a chain of `narrows`, a `supersedes` from a concept that is not retired, two `contrasts` for one pair, or a `relates` with an empty verb or a source the declaring document does not define
+- GIVEN glossary entries where one narrows itself through a chain of `narrows`, a `supersedes` from a concept that is not retired, two `contrasts` for one pair or a `relates` with an empty verb, or document metadata with a `relates` whose source the declaring document does not define
 - WHEN the validator runs
 - THEN it reports `CHK.narrows.acyclic`, `CHK.concept.retired`, `CHK.contrasts.once`, `CHK.relates.verb` or `CHK.relates.source`
 
@@ -204,15 +222,15 @@ to it.
 
 ### scenario.spec.name-collision — Same-named nodes of different owners
 
-- GIVEN two concepts of different Modules whose titles differ only in case, hyphens or spacing, or a concept whose title equals another Module's title, with no `contrasts` between them
+- GIVEN a concept whose title differs only in case, hyphens or spacing from the title of a Module other than its owner, with no `contrasts` between them
 - WHEN the validator runs
 - THEN it reports `CHK.contrasts.required` for the pair
-- BUT a concept is never compared with its own Module
+- BUT a concept is never compared with its own Module, and two concepts sharing a title fail `CHK.node.title`, which no contrast settles
 
 ### scenario.spec.name-collision-contrasted — A declared contrast settles a collision
 
-- GIVEN two same-named concepts of different Modules
-- AND a `contrasts` between them with a reason
+- GIVEN a concept named like a Module other than its owner
+- AND a `contrasts` to that Module with a reason in the concept's glossary entry
 - WHEN the validator runs
 - THEN no `CHK.contrasts.required` finding is reported for the pair
 
@@ -243,7 +261,7 @@ to it.
 
 ### scenario.spec.check-input-missing — A configured check names a missing input
 
-- GIVEN a configuration whose configured check declares an input path that does not exist, or one reached through a symbolic link
+- GIVEN a configuration whose [configured check](../../glossary.json#concept.configured-check) declares an input path that does not exist, or one reached through a symbolic link
 - WHEN the validator runs
 - THEN it reports `CONCORDE-CHECK-001` as an error naming the check and the path
 - BUT it runs no check and reads no input's content
@@ -297,7 +315,7 @@ to it.
 ### scenario.spec.query-files — Resolving an identity to its Spec files
 
 - GIVEN a registered Module identity or scenario identity
-- WHEN a caller queries its Spec files
+- WHEN a caller queries its [Spec](../../glossary.json#concept.spec) files
 - THEN the result is the Spec context of the Module or of the scenario's owner, both members of each document, without duplicates and sorted by path
 - BUT the query reads none of the returned files' contents
 
@@ -312,9 +330,10 @@ to it.
 
 - GIVEN Module A uses Module B and binds `src/a/` with a pending entry `src/a/new.py`
 - WHEN A's write sets are computed
-- THEN A's Spec scope contains both members of every document A owns and nothing of B
+- THEN A's Spec scope contains both members of every document A owns and the glossary file, and nothing of B
+- AND of the glossary's entries, only those A owns, and new ones naming A as owner, are A's to change
 - AND A's implementation scope covers every file below `src/a/` including the not-yet-created `src/a/new.py`
-- BUT A's implementation context lists only the names of existing bound files and declared entries, never their contents
+- BUT A's [implementation context](../../glossary.json#concept.implementation-context) lists only the names of existing bound files and declared entries, never their contents
 
 ### scenario.spec.shared-file — A file bound by several Modules
 
@@ -355,7 +374,7 @@ to it.
 
 - GIVEN realizations whose `pending` lists some entries whose files now exist and some that are still missing
 - WHEN a caller confirms pending entries
-- THEN the existing entries leave `pending` in one file transaction that rewrites only the affected metadata members
+- THEN the existing entries leave `pending` in one [file transaction](../../glossary.json#concept.file-transaction) that rewrites only the affected metadata members
 - AND the result lists each confirmed entry with its Module and realization, and each still-missing entry
 - BUT no reading member and no registry byte changes
 
@@ -413,7 +432,8 @@ to it.
 - THEN a change to that document concerns B, A and C through the selected-by index
 - AND a change to the listed requirement concerns A through the referenced-by index
 - AND a change to the shared file concerns B and D through the implemented-by index
-- BUT the indexes add nothing to any Module's boundary sets
+- AND a change to a concept's glossary entry concerns every Module whose terms hold the concept
+- BUT the indexes add nothing to any Module's [boundary sets](../../glossary.json#concept.boundary-set)
 
 ### scenario.spec.changed-definitions — Comparing two revisions of the Specs
 
@@ -421,17 +441,18 @@ to it.
 - AND in the later one a requirement's statement changed while its document's other definitions did not
 - WHEN a caller asks for the changed documents and the changed nodes between them
 - THEN the changed documents are the documents whose members differ
-- AND the changed nodes are exactly the nodes whose defining section, contract fence, concept record and definition row, realization record or entry `module` block differ
+- AND the changed nodes are exactly the nodes whose defining section, contract fence, glossary entry, realization record or entry `module` block differ
 
 ## Grants
 
 ### scenario.spec.grant-understand — An understanding grant reads Specs and names code
 
 - GIVEN Module A that binds `src/a/`, uses Module B and includes pinned external material under `references/lib/`
-- WHEN a grant for task type `understand` and Module A is computed
+- WHEN a grant for [task type](../../glossary.json#concept.task-type) `understand` and Module A is computed
 - THEN both members of every document in A's Spec context are listed as `ro`
 - AND every existing file below `src/a/` is listed as `names`
 - AND `references/lib/` is listed as `ro`
+- AND the grant carries the glossary entries of A's terms, while the glossary file itself is not listed
 - BUT no path is `rw`, and no file of B's realization or of any other Module appears
 
 A `review-spec` grant for the same Module is equal to it apart from its task type.
@@ -440,7 +461,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 - GIVEN Module A that owns three documents and uses Module B
 - WHEN a grant for task type `specify` and Module A is computed
-- THEN both members of A's own documents are listed as `rw`
+- THEN both members of A's own documents and the glossary file are listed as `rw`
 - AND B's selected documents are listed as `ro`
 - AND A's implementation files are listed as `names`
 - BUT no implementation file is `ro` or `rw`
@@ -517,9 +538,9 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 ### scenario.spec.context-identity — The context identity changes only with the context
 
 - GIVEN a grant for Module A, which uses Module B
-- WHEN one byte of a B document A selects changes, a redundant inclusion of that document is removed, or an implementation file of A changes
-- THEN the recomputed context identity differs after the change to the document and after the removal of the inclusion
-- BUT it is unchanged after the change to the implementation file
+- WHEN one byte of a B document A selects changes, a redundant inclusion of that document is removed, the definition of a concept among A's terms changes, or an implementation file of A changes
+- THEN the recomputed context identity differs after the change to the document, after the removal of the inclusion and after the change to the definition
+- BUT it is unchanged after the change to the implementation file, and after a change to a glossary entry outside A's terms
 
 ## Coverage
 
@@ -616,7 +637,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 - GIVEN a project where the installer has placed the Protocol copy but no configuration exists
 - WHEN a caller initializes it with `action: "propose"` and a name
-- THEN the result is an initial proposal with the configuration, the registry, and a root entry with its metadata
+- THEN the result is an [initial proposal](../../glossary.json#concept.initial-proposal) with the configuration, the registry, and a root entry with its metadata
 - AND the root entry says the project's purpose, behaviour and architecture are not yet specified
 - AND its metadata binds the project's existing tracked and not-ignored files in one realization, Existing project files
 - AND every proposed file has a null before-digest
@@ -654,7 +675,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ### scenario.spec.reject-invalid-proposal — A malformed proposal is refused
 
-- GIVEN a proposal that is not the one its named `proposal_digest` identifies, whose envelope is incomplete, that lacks the configuration or the registry, whose Protocol binding no longer matches the installed copy, or that has a non-null before-digest
+- GIVEN a proposal that is not the one its named `proposal_digest` identifies, whose envelope is incomplete, that lacks the configuration or the registry, whose [Protocol binding](../../glossary.json#concept.protocol-binding) no longer matches the installed copy, or that has a non-null before-digest
 - WHEN apply is requested
 - THEN it fails with `invalid_proposal`
 - AND no file is written

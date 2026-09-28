@@ -49,12 +49,16 @@ const plugin = (baseUrl = "/") =>
     { siteDir: resolve(root, "docsite"), baseUrl } as LoadContext,
     {},
   );
-/** Stand in for Docusaurus: one HTML file per registered route. */
+/** Stand in for Docusaurus: one HTML file per registered route, plus the glossary route it
+ * derives, when the registry declares one. */
 function render(outDir: string, html: (route: string) => string) {
-  for (const page of load().pages) {
-    const file = resolve(outDir, page.route.slice(1) + ".html");
+  const registry = load();
+  const routes = registry.pages.map((page) => page.route);
+  if (registry.glossary) routes.push(registry.glossary.route);
+  for (const route of routes) {
+    const file = resolve(outDir, route.slice(1) + ".html");
     mkdirSync(resolve(file, ".."), { recursive: true });
-    writeFileSync(file, html(page.route));
+    writeFileSync(file, html(route));
   }
 }
 beforeEach(() => {

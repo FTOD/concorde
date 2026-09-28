@@ -1,6 +1,6 @@
-/** Protocol 14 reading and metadata parsing for publication.
+/** Protocol 15 reading and metadata parsing for publication.
  *
- * Publication reads what it renders: document pairs, identities, anchors, Terminology tables,
+ * Publication reads what it renders: document pairs, identities, anchors, the project glossary,
  * definition headings, contract fences and D2 blocks. Structural conformance as a whole is
  * `concorde.py validate`; this module rejects only what would make a page wrong or unaddressable. */
 export const identityPattern = /^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$/;
@@ -136,7 +136,7 @@ export function isIllustrative(info: string): boolean {
   const words = info.split(/\s+/);
   return words[0] === "d2" && words.slice(1).includes("illustrative");
 }
-/** Diagrams in reading are D2; a Mermaid block is not part of Protocol 14 reading. */
+/** Diagrams in reading are D2; a Mermaid block is not part of Protocol 15 reading. */
 export function requireMarkedDiagrams(content: string, path: string): void {
   for (const fence of fenceRanges(content)) {
     const line = content.slice(0, fence.start).split("\n").length;
@@ -278,58 +278,7 @@ export function readingMeanings(
   }
   return result;
 }
-export function sectionBody(content: string, title: string): string {
-  const headings = headingList(content);
-  const section = headings.find((h) => h.level === 2 && h.text === title);
-  if (!section) return "";
-  const end =
-    headings.find((h) => h.start > section.start && h.level <= 2)?.start ??
-    content.length;
-  return prose(content).slice(section.body, end).trim();
-}
-/** Split a Markdown table row on unescaped pipes. */
-export function tableCells(line: string): string[] {
-  return line
-    .trim()
-    .replace(/^\|/, "")
-    .replace(/(?<!\\)\|$/, "")
-    .split(/(?<!\\)\|/)
-    .map((cell) => cell.trim());
-}
-export interface TerminologyRow {
-  term: string;
-  definition: string;
-  /** Present for an import row: the linked text and destination. */
-  link?: { text: string; href: string; fragment: string };
-}
-/** The rows of a document's Terminology table, header and separator excluded. */
-export function terminologyRows(content: string): TerminologyRow[] {
-  const rows = sectionBody(content, "Terminology")
-    .split("\n")
-    .filter((line) => line.trim().startsWith("|"))
-    .map(tableCells);
-  if (rows.length < 2 || !rows[1].every((cell) => /^:?-{3,}:?$/.test(cell)))
-    return [];
-  return rows.slice(2).map(([term = "", definition = ""]) => {
-    const link = /^\[([^\]]+)\]\(([^\s)]+)\)$/.exec(term);
-    return {
-      term,
-      definition,
-      ...(link
-        ? {
-            link: {
-              text: link[1],
-              href: link[2],
-              fragment: link[2].includes("#")
-                ? link[2].slice(link[2].indexOf("#") + 1)
-                : "",
-            },
-          }
-        : {}),
-    };
-  });
-}
-const ENTRY_SECTIONS = ["Purpose", "Terminology", "Usage", "Design"];
+const ENTRY_SECTIONS = ["Purpose", "Usage", "Design"];
 /** A Module's relationships belong in its Design, never in a section of their own. */
 const FORBIDDEN_ENTRY_SECTIONS = ["Relationships"];
 export function requireReading(
@@ -350,7 +299,7 @@ export function requireReading(
       ENTRY_SECTIONS.every(
         (name) => top.filter((text) => text === name).length === 1,
       ),
-      `Module entry requires level-2 Purpose, Terminology, Usage, Design, each exactly once: ${path}`,
+      `Module entry requires level-2 Purpose, Usage, Design, each exactly once: ${path}`,
     );
     const forbidden = top.filter((text) =>
       FORBIDDEN_ENTRY_SECTIONS.includes(text),
@@ -393,13 +342,11 @@ export function contracts(content: string, path: string): Contract[] {
 
 export interface NodeRecord {
   id: string;
-  type: "concept" | "realization";
+  type: "realization";
   title: string;
   meaning: string;
-  entries?: string[];
+  entries: string[];
   pending?: string[];
-  retired?: { reason: string };
-  external_conflict?: string;
 }
 export interface Selection {
   target: string;
@@ -425,6 +372,9 @@ export interface ModuleBlock {
   uses: Selection[];
   includes: Inclusion[];
   participates: Participation[];
+  /** Only in the block of a Module without a parent: the project-relative path of the project's
+   * glossary. At most one Module declares it. */
+  glossary?: string;
 }
 export interface DocumentMetadata {
   schema_version: 3;
@@ -472,7 +422,7 @@ export function moduleBlock(value: any, subject: string): ModuleBlock {
   fields(
     value,
     ["title", "owns", "contains", "uses", "includes", "participates"],
-    [],
+    ["glossary"],
     subject,
   );
   requireThat(
@@ -482,6 +432,13 @@ export function moduleBlock(value: any, subject: string): ModuleBlock {
   requireThat(
     uniqueStrings(value.owns) && value.owns.length,
     `Module owns must be a nonempty unique list: ${subject}`,
+  );
+  requireThat(
+    value.glossary === undefined ||
+      (typeof value.glossary === "string" &&
+        value.glossary.trim() &&
+        value.glossary.endsWith(".json")),
+    `Invalid glossary path: ${subject}`,
   );
   selections(value.contains, subject);
   selections(value.uses, subject);
@@ -569,23 +526,15 @@ export function metadata(
   );
   for (const node of value.defines) {
     requireThat(
-      node && (node.type === "concept" || node.type === "realization"),
-      `A defines record is a concept or realization: ${path}`,
+      node && node.type === "realization",
+      `A defines record is a realization: ${String(node?.type)} (${path})`,
     );
-    if (node.type === "concept")
-      fields(
-        node,
-        ["id", "type", "title", "meaning"],
-        ["retired", "external_conflict"],
-        path,
-      );
-    else
-      fields(
-        node,
-        ["id", "type", "title", "meaning", "entries"],
-        ["pending"],
-        path,
-      );
+    fields(
+      node,
+      ["id", "type", "title", "meaning", "entries"],
+      ["pending"],
+      path,
+    );
     requireThat(
       typeof node.id === "string" &&
         identityPattern.test(node.id) &&
@@ -595,22 +544,28 @@ export function metadata(
         /^#[^#\s]+$/.test(node.meaning),
       `Invalid ${node.type} record ${String(node.id)}: ${path}`,
     );
-    if (node.type === "realization")
-      requireThat(
-        uniqueStrings(node.entries) &&
-          node.entries.length &&
-          (node.pending === undefined || uniqueStrings(node.pending)),
-        `Invalid realization entries: ${path}`,
-      );
-  }
-  for (const relation of value.relations)
     requireThat(
-      relation &&
-        typeof relation === "object" &&
-        ["narrows", "supersedes", "contrasts", "relates"].includes(
-          relation.type,
-        ),
+      uniqueStrings(node.entries) &&
+        node.entries.length &&
+        (node.pending === undefined || uniqueStrings(node.pending)),
+      `Invalid realization entries: ${path}`,
+    );
+  }
+  for (const relation of value.relations) {
+    requireThat(
+      relation && typeof relation === "object" && relation.type === "relates",
       `Invalid metadata relation: ${path}`,
     );
+    fields(relation, ["type", "source", "verb", "target"], [], path);
+    requireThat(
+      typeof relation.source === "string" &&
+        relation.source.trim() &&
+        typeof relation.verb === "string" &&
+        relation.verb.trim() &&
+        typeof relation.target === "string" &&
+        relation.target.trim(),
+      `Invalid relates record: ${path}`,
+    );
+  }
   return value;
 }

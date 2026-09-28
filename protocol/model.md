@@ -17,16 +17,18 @@ owner and no explanation, because the specification makes no promise about it.
 | `id` | Stable, project-wide unique, matching `^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$` |
 | `type` | One of the seven node types below |
 | owner | Exactly one Module identity, derived from the defining document or declared for a document |
-| explanation | Nonempty prose in the defining document; where it lives depends on the node type |
+| explanation | Nonempty prose in a document the owner owns; where it lives depends on the node type |
 
 An ID prefix does not establish ownership. Titles and paths may change without changing identity.
 An explanation cannot be outsourced: it is never a URL or a path into another document.
 
-Nodes are declared at one of two sites. **Metadata-declared** nodes (`concept`, `realization`) are
-records in a document's metadata and point to their explanation with a local `meaning` anchor.
-**Reading-declared** nodes (`requirement`, `scenario`, `contract`) are located by reading syntax,
-and their defining section is their explanation. A Module and the documents it owns are declared
-in the `module` block of its entry's metadata, and mirrored in the project registry.
+Nodes are declared at one of three sites. A **concept** is an entry of the project
+[glossary](#the-glossary), which names its owner and points to its explanation in a document that
+owner owns. A **realization** is a record in a document's metadata and points to its explanation
+with a local `meaning` anchor. **Reading-declared** nodes (`requirement`, `scenario`, `contract`)
+are located by reading syntax, and their defining section is their explanation. A Module and the
+documents it owns are declared in the `module` block of its entry's metadata, and mirrored in the
+project registry.
 
 ## module
 
@@ -60,9 +62,9 @@ becomes a second, unreviewed specification.
 **Boundaries.** The pair is the unit of ownership, selection and writing. A boundary always
 contains both members or neither.
 
-**Fields.** `id`, `owner` and `role`, stated in the metadata and agreeing with the owner's `owns`. `role` is
-exactly `module` or `implementation`, with no default. A document explains itself; it has no
-separate explanation.
+**Fields.** `id`, `owner` and `role`, stated in the metadata and agreeing with the owner's `owns`.
+`role` is exactly `module` or `implementation`, with no default. A document explains itself; it has
+no separate explanation.
 
 - `module` — the entry and explanatory topics: the responsibility, its correct use, its design and
   its collaborations.
@@ -83,42 +85,62 @@ actor, an external standard, a participant in a collaboration. Its title is the 
 specification uses for it.
 
 **Understanding.** Meaning is what crosses Module boundaries. A concept gives a word one owner and
-one canonical sentence, so a reader finds one meaning per word, and importing, specializing,
-retiring and colliding are declarations a tool checks instead of prose conventions.
+one canonical sentence, and the whole project shares one list of them, so a reader finds one
+meaning per word everywhere, and specializing, retiring and colliding are declarations a tool checks
+instead of prose conventions.
 
-**Boundaries.** Importing or relating to a concept puts its defining document into the read set,
-and `referenced-by` makes the impact of changing its definition computable.
+**Boundaries.** A reader receives the definition of every concept its documents link and of every
+concept its declarations name, never the whole glossary; see [Context](context.md#term-selection).
+The definition is one sentence; the extended explanation lives in a document of the owner and is
+read only through a `uses` or `contains` of the owner, or an `includes`. `referenced-by` makes the
+impact of changing a definition computable.
 
-**Fields.** A metadata record with `id`, `type`, `title` and `meaning`, optional `retired` and
-`external_conflict`; and a **definition**, written as the concept's row in the defining document's
-Terminology table.
+**Fields.** One entry of the glossary:
 
-| Part | Meaning |
+| Field | Meaning |
 | --- | --- |
-| definition | One sentence in the Terminology table: the canonical meaning, written once |
-| `meaning` | Local anchor of the extended explanation in the defining document's reading |
+| `id` | Identity; a concept identity begins `concept.` |
+| `title` | The term, unique in the project under the normalization of `CHK.contrasts.required` |
+| `owner` | The Module entitled to change the meaning |
+| `definition` | One sentence: the canonical meaning, written once. It MAY link other concepts by term link |
+| `explanation` | `<reading path>#<anchor>`: the extended explanation, in a `module` document the owner owns |
 | `retired` | Optional object `{"reason": "..."}`; the term is kept only for migration readers |
 | `external_conflict` | Optional prose naming a conflicting usage outside this project |
 
-The definition is one sentence on purpose, and it lives in the Markdown so that a human opening the
-file reads it in place. Extended explanation belongs in reading prose at the `meaning` anchor.
+The entry also declares the relations whose source is the concept: `narrows`, `supersedes`,
+`contrasts` and `relates`; see [Relations](relations.md#meaning).
 
-**Constraints.** A concept is defined only in a `module` document. It MUST NOT bind implementation
-and MUST NOT stand for another Module; a collaboration with another Module is a `uses` or
-`contains` relation, and a naming collision with one is a `contrasts` relation.
+**Constraints.** A concept MUST NOT bind implementation and MUST NOT stand for another Module; a
+collaboration with another Module is a `uses` or `contains` relation, and a naming collision with
+one is a `contrasts` relation.
 
-**Who owns a word.** Owning a concept means being entitled to change its meaning: its definition
-lies in the owner's write set, and a change concerns every importer. Ownership does not mean having
-invented the word or using it most. Every concept has exactly one owner, chosen as follows:
+**Who owns a word.** Owning a concept means being entitled to change its meaning: its entry lies in
+the owner's write set, and a change concerns every Module whose context holds the definition.
+Ownership does not mean having invented the word or using it most. Every concept has exactly one
+owner, chosen as follows:
 
-- A word of a provider's own interface belongs to the provider; its consumers import it.
+- A word of a provider's own interface belongs to the provider.
 - A word several Modules use with one meaning belongs to their nearest common ancestor in the
   composition tree, or to the root. When the owner is hard to name, move the word one level up.
-- A word that means different things in different Modules is several concepts, each owned where
-  it is used, connected by `contrasts` or `narrows`.
+- A project has one meaning per term. A word two Modules use differently needs two terms, such as
+  `Session round` and `Headless round`, connected by `contrasts` or `narrows` when a reader could
+  confuse them.
 
-A composite that owns shared vocabulary SHOULD keep it in one small `module` document, so that its
-descendants select only that document when they import from it.
+## The glossary
+
+**What it is.** The project's one JSON file of concept entries. It is not a node and has no owner:
+each of its entries has one. A project declares it by the `glossary` field of its root Module's
+`module` block; see [Required format](format.md#glossary). A project without concepts needs no
+glossary.
+
+**Understanding.** A reader looks words up in one place and never meets two definitions of one
+term. A publisher renders the glossary as a page, and every term link leads there.
+
+**Boundaries.** The glossary is the declaration site of every concept, so it is a shared file with
+entry-level ownership: a task bound to a Module may change the entries that Module owns and add
+entries naming it as owner, and nothing else in the file. See
+[Boundaries](boundaries.md#the-glossary). Definitions reach a reader one by one, as
+[term selection](context.md#term-selection) chooses them, never as the whole file.
 
 ## realization
 
@@ -171,10 +193,10 @@ grammar keeps a situation from quietly growing into a Module-wide obligation.
 task focused on a scenario is bound to the scenario's owner and receives that owner's whole
 boundary.
 
-**Constraints.** Declared by a heading in an `implementation` document; the heading supplies `id` and
-title. Situations with different successful, failed, repeated or concurrent outcomes get their own
-scenarios. A Module-wide obligation is defined once as a requirement and linked, never restated in
-steps.
+**Constraints.** Declared by a heading in an `implementation` document; the heading supplies `id`
+and title. Situations with different successful, failed, repeated or concurrent outcomes get their
+own scenarios. A Module-wide obligation is defined once as a requirement and linked, never restated
+in steps.
 
 ## contract
 
@@ -192,9 +214,9 @@ is undetectable.
 `concorde-contract` fence in an `implementation` document. Its explanation is `semantics` together
 with the prose of the section containing the fence.
 
-**Constraints.** The schema vocabulary is explicit and offline: a schema MUST NOT load Spec documents
-or remote resources. The example MUST satisfy the schema. A behaviour or schema change increments
-`version`, and every participant is reconciled atomically.
+**Constraints.** The schema vocabulary is explicit and offline: a schema MUST NOT load Spec
+documents or remote resources. The example MUST satisfy the schema. A behaviour or schema change
+increments `version`, and every participant is reconciled atomically.
 
 ## Value types
 
@@ -203,5 +225,5 @@ These appear as relation targets or attributes but are not nodes.
 | Value | Where it appears | Why it is not a node |
 | --- | --- | --- |
 | **path literal** | `binds`, external `includes`, `verifies` | A path carries no promise and has no owner in the Spec's sense. |
-| **anchor** | `meaning` of nodes and reified relations | It has no identity of its own; only its declaration refers to it. |
+| **anchor** | `meaning` of realizations and reified relations, `explanation` of concepts | It has no identity of its own; only its declaration refers to it. |
 | **digest** | context identity | It is a measurement of a source member, not a declared thing. |

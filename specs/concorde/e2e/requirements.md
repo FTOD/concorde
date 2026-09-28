@@ -11,17 +11,18 @@ The tool SHALL prepare only repositories SWE-bench's harness names, unless the d
 
 ### req.e2e.user-setup — A test project is set up as a user's
 
-The tool SHALL set up a test project only through this checkout's installer and `concorde` command, the same steps a user takes, never writing the project's Specs or configuration itself.
+The tool SHALL set up a [test project](../glossary.json#concept.test-project) only through this checkout's installer and `concorde` command, the same steps a user takes, never writing the project's Specs or configuration itself.
 
 ### req.e2e.never-installed — End-to-end testing reaches no user
 
-No file of this Module SHALL be installed into a project or rendered into the main-session guidance.
+No file of this [Module](../glossary.json#concept.module) SHALL be installed into a project or
+rendered into the [main-session guidance](../glossary.json#concept.main-session-guidance).
 
 ## Running
 
 ### req.e2e.headless-waits — A headless run lasts as long as its workflow
 
-A headless run SHALL start its `claude -p` session with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` set to `0`.
+A [headless run](../glossary.json#concept.headless-run) SHALL start its `claude -p` session with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` set to `0`.
 
 ### req.e2e.headless-granted — A headless run needs no trust
 

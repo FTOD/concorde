@@ -214,7 +214,6 @@ def child_reading(child: dict, titles: dict[str, str]) -> str:
     )
     return (
         f"# {title}\n\n## Purpose\n\n{purpose}\n\n"
-        "## Terminology\n\nNo terms have been defined yet.\n\n"
         "## Usage\n\n"
         f"How {title} is used is not specified yet: its entry points, inputs, results, effects,\n"
         "errors and repeat behaviour are unknown.\n\n"

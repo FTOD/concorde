@@ -1,14 +1,15 @@
 # Framework contracts
 
-The one contract every Module of the [Concorde Framework](module.md) shares: the shape of an
-[error chain](vocabulary.md#concept.concorde.error-chain). The rules it serves are the
-[result and error requirements](requirements.md#results-and-errors).
+The one contract every [Module](glossary.json#concept.module) of the [Concorde Framework](module.md)
+shares: the shape of an [error chain](glossary.json#concept.error-chain). The rules it serves are
+the [result and error requirements](requirements.md#results-and-errors).
 
 ## Error link
 
 An error chain is a tree of links read from the top. The top link is written by the actor that
-reports to the reader, such as the Operation in its run result or the main agent in an
-escalation; each link's `causes` are the errors of its children that it could not handle. The
+reports to the reader, such as the [Operation](glossary.json#concept.operation) in its
+[run result](glossary.json#concept.run-result) or the [main agent](glossary.json#concept.main-agent)
+in an escalation; each link's `causes` are the errors of its children that it could not handle. The
 order of reading is therefore the order of responsibility: the reader first learns what the level
 directly below it could not do and why, then what that level received, down to where the error
 started.
@@ -216,10 +217,10 @@ started.
 
 | Where | The top link is written by |
 | --- | --- |
-| `error` of a workflow result | the workflow (`workflow`) |
-| `error` of a run result | the Operation (`operation`) or the execution command (`command`) |
-| `error` of a worker run record | Workers (`workers`) |
-| `error` of a worker result | the worker, without `level`, `actor` and `causes`, which Workers adds |
+| `error` of a [workflow result](glossary.json#concept.workflow-result) | the workflow (`workflow`) |
+| `error` of a run result | the Operation (`operation`) or the [execution command](glossary.json#concept.execution-command) (`command`) |
+| `error` of a worker [run record](glossary.json#concept.run-record) | Workers (`workers`) |
+| `error` of a [worker result](glossary.json#concept.worker-result) | the worker, without `level`, `actor` and `causes`, which Workers adds |
 | `{"error": …}` printed by a refused `concorde task` or `concorde issues` command | the refusing component (`component`) |
 | `error` of the result of `concorde configure-workers` | the command (`command`) |
 | an escalation recorded with `concorde task escalate` | the main agent (`main-agent`) |

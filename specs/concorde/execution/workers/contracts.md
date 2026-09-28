@@ -4,7 +4,7 @@ The exact answer every worker ends with, and what `concorde configure-workers` p
 
 ## Worker result
 
-The [entry](module.md#concept.workers.worker-result) explains the worker result's role; [the run
+The [entry](../../glossary.json#concept.worker-result) explains the worker result's role; [the run
 mechanics](launch.md#rounds) say how the host reacts to it. Its `error` is the worker's link of the
 Framework's [error chain](../../contracts.md#contract.concorde.error).
 
@@ -183,7 +183,7 @@ Framework's [error chain](../../contracts.md#contract.concorde.error).
 
 ## Worker configuration
 
-The output of [`concorde configure-workers`](module.md#concept.workers.configure-workers), inside
+The output of [`concorde configure-workers`](../../glossary.json#concept.configure-workers), inside
 its [command result](#contract.workers.configure-workers-result).
 
 ```concorde-contract

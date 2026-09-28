@@ -83,14 +83,12 @@ it("loads Modules, composition and one page per registered document", () => {
     primaryOf: null,
     readingCollection: "implementation",
   });
-  expect(registry.nodes.map((n) => [n.id, n.owner, n.definition])).toEqual([
-    [
-      "concept.transfer.hold",
-      "module.transfer",
-      "Money withheld until a transfer settles.",
-    ],
-    ["realization.transfer.service", "module.transfer", undefined],
-    ["realization.ledger.book", "module.ledger", undefined],
+  expect(registry.nodes.map((n) => [n.id, n.type, n.owner])).toEqual([
+    ["realization.transfer.service", "realization", "module.transfer"],
+    ["realization.ledger.book", "realization", "module.ledger"],
+  ]);
+  expect(registry.glossary?.concepts.map((c) => [c.id, c.owner])).toEqual([
+    ["concept.transfer.hold", "module.transfer"],
   ]);
   expect(loadScopedRegistry(project.root)).toEqual(registry);
 });
@@ -262,19 +260,25 @@ it("rejects invalid roles, a non-module entry and definitions outside implementa
   expect(load).toThrow(/belong in an implementation-role document/);
   updateMetadata(project, topic, (m) => {
     m.document.role = "implementation";
+  });
+});
+
+// verifies: scenario.views.reject-reading-collection
+it("rejects a concept record in defines like any unknown defines type", () => {
+  const path = "specs/transfer/module.md";
+  updateMetadata(project, path, (m) => {
     m.defines.push({
       id: "concept.transfer.submission",
       type: "concept",
       title: "Submission",
-      meaning: "#req.transfer.single",
+      meaning: "#realization.transfer.service",
     });
   });
-  expect(load).toThrow(/Concepts are defined only in module-role documents/);
-  updateMetadata(project, topic, (m) => m.defines.pop());
+  expect(load).toThrow(/A defines record is a realization: concept/);
 });
 
 // verifies: scenario.views.reject-reading-collection
-it("requires the four entry sections exactly once, in any order, and no Relationships section", () => {
+it("requires the three entry sections exactly once, in any order, and no Relationships section", () => {
   const path = "specs/ledger/module.md";
   const original = read(project, path);
   for (const invalid of [
@@ -283,9 +287,7 @@ it("requires the four entry sections exactly once, in any order, and no Relation
     original + "\n## Design\n\nAgain.\n",
   ]) {
     put(project, path, invalid);
-    expect(load).toThrow(
-      /Purpose, Terminology, Usage, Design, each exactly once/,
-    );
+    expect(load).toThrow(/Purpose, Usage, Design, each exactly once/);
   }
   put(project, path, original + "\n## Relationships\n\nThe parts.\n");
   expect(load).toThrow(/relationships belong in its Design/);
@@ -300,23 +302,6 @@ it("requires the four entry sections exactly once, in any order, and no Relation
   expect(load).not.toThrow();
   put(project, path, original + "\n## Open questions\n\nNone.\n");
   expect(load).not.toThrow();
-});
-
-// verifies: scenario.views.reject-reading-collection
-it("requires import rows to link their concept's defining document", () => {
-  const path = "specs/audit/module.md";
-  const original = read(project, path);
-  for (const href of [
-    "../transfer/requirements.md#concept.transfer.hold",
-    "../transfer/module.md#concept.transfer.missing",
-  ]) {
-    put(
-      project,
-      path,
-      original.replace("../transfer/module.md#concept.transfer.hold", href),
-    );
-    expect(load).toThrow(/Terminology import row/);
-  }
 });
 
 // verifies: scenario.views.reading-collections
@@ -338,6 +323,8 @@ it("builds both reading paths from the contains tree without repeating a documen
           items: [{ type: "doc", id: "ledger/module", label: "Ledger" }],
         },
         { type: "doc", id: "audit/module", label: "Audit" },
+        // Bank declares the project glossary, so its own category also lists it.
+        { type: "doc", id: "bank/glossary", label: "Glossary" },
       ],
     },
   ]);
@@ -359,7 +346,10 @@ it("builds both reading paths from the contains tree without repeating a documen
       ],
     },
   ]);
-  const ids = [...docs(reading), ...docs(implementation)];
+  // The glossary page is a derived view, addressable but not one of the registered pages.
+  const ids = [...docs(reading), ...docs(implementation)].filter(
+    (id) => id !== "bank/glossary",
+  );
   expect(ids.sort()).toEqual(
     registry.pages.map((p) => p.stagedPath.replace(/\.md$/, "")).sort(),
   );
@@ -376,9 +366,11 @@ it("orders topics by owns and children by contains, labelling topics by file nam
   });
   writeRegistry(project);
   const sidebar = scopedSidebar(load());
+  // Bank's own declared glossary is appended after its children, in either contains order.
   expect(sidebar[0].items!.map((item) => item.label)).toEqual([
     "Audit",
     "Transfer",
+    "Glossary",
   ]);
   expect(sidebar[0].items![1].items).toEqual([
     { type: "doc", id: "transfer/elsewhere/notes", label: "notes" },

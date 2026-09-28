@@ -7,11 +7,11 @@ is in the [contracts](contracts.md).
 
 ### scenario.understanding.sufficient — A sufficient Spec is confirmed
 
-- GIVEN a workspace whose bound Module states every promise a goal needs
-- WHEN the main agent runs `understand` in it for that Module with the goal and without `--plan`
-- THEN the worker receives the Module's Spec context to read and its implementation files by name only
+- GIVEN a workspace whose bound [Module](../../../glossary.json#concept.module) states every promise a goal needs
+- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `understand` in it for that Module with the goal and without `--plan`
+- THEN the worker receives the Module's [Spec context](../../../glossary.json#concept.spec-context) to read and its implementation files by name only
 - AND the result has status `ok` and an assessment marked sufficient
-- AND the assessment carries no plan and no Spec gap
+- AND the assessment carries no plan and no [Spec gap](../../../glossary.json#concept.spec-gap)
 
 ### scenario.understanding.plan — A plan is returned on request
 
@@ -22,7 +22,7 @@ is in the [contracts](contracts.md).
 
 ### scenario.understanding.gap — A missing promise is reported, not inferred
 
-- GIVEN a goal that needs a promise the bound Module's Spec does not state
+- GIVEN a goal that needs a promise the bound Module's [Spec](../../../glossary.json#concept.spec) does not state
 - AND the Module's code may well implement that behaviour
 - WHEN the main agent runs `understand` for that Module with the goal and `--plan`
 - THEN the result has status `ok` and an assessment marked insufficient
@@ -34,14 +34,14 @@ is in the [contracts](contracts.md).
 - GIVEN a goal that concerns a Module the run is not bound to
 - WHEN the worker cannot assess the goal from its Spec context
 - THEN the result has status `blocked`
-- AND its error chain ends in the worker's own link with the problem, what it tried, why it could not assess and its options
+- AND its [error chain](../../../glossary.json#concept.error-chain) ends in the worker's own link with the problem, what it tried, why it could not assess and its options
 
 ## Host checks
 
 ### scenario.understanding.unknown-module — An unknown Module fails the run
 
 - GIVEN a worker whose assessment names a Module identity the workspace's Specs do not define
-- WHEN the Operation checks the assessment
+- WHEN the [Operation](../../../glossary.json#concept.operation) checks the assessment
 - THEN the result has status `failed`
 - AND the unknown identity is listed as host evidence
 
@@ -54,7 +54,7 @@ is in the [contracts](contracts.md).
 
 ### scenario.understanding.change-detected — A change to the worktree fails the run
 
-- GIVEN an understand run whose write audit finds a changed or new file in the workspace
+- GIVEN an understand run whose [write audit](../../../glossary.json#concept.write-audit) finds a changed or new file in the workspace
 - WHEN the Operation evaluates the audit
 - THEN the result has status `failed` with the changed paths as host evidence
 - BUT the worker is not resumed

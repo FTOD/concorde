@@ -30,12 +30,16 @@ common format mistakes and writing judgments; the complete guidelines follow.
   integer), `schema`, `semantics` and `example`, where the example satisfies the schema. The
   schema uses only these keywords: `$schema`, `$id`, `$defs`, `$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and `format`. Say anything else, such as a
   constraint on keys (`propertyNames`), in `semantics`.
-- **A concept** is defined only in a `module` document: a metadata record
-  `{"id": "concept.<local>.<name>", "type": "concept", "title": "<Title>", "meaning": "#concept.<local>.<name>"}`,
-  exactly one row `| <Title, exactly the record's title> | <one sentence> |` in that document's
-  Terminology table, and an anchor `<a id="concept.<local>.<name>"></a>` before the prose that
-  explains it. A row of the table either defines a concept of the document or links to another
-  Module's concept with an empty definition cell; there are no other rows.
+- **A concept** is an entry of the project glossary (the JSON file the root Module's `glossary`
+  field names), never a record in document metadata: `{"id": "concept.<name>", "title": "<Title>",
+  "owner": "<the owning Module>", "definition": "<one sentence>", "explanation": "<module.md path of
+  the owner>#<anchor>"}`, kept sorted by `id`, with an anchor `<a id="<anchor>"></a>` before the
+  prose in that document that explains it. Titles are unique in the project: before adding a
+  concept, look for an existing term with that meaning and use it. A concept's `narrows`,
+  `supersedes`, `contrasts` and `relates` are fields of its entry. Change only entries your bound
+  Modules own.
+- **A term link** is how a document uses a term: `[text](<relative path to the glossary>#concept.<name>)`.
+  Link each term where a document first uses it; there are no Terminology tables.
 - **A realization** record has `id`, `type`, `title`, `meaning` and `entries` (exact paths or
   directories ending in `/`); keep the entries the Module already binds.
 - **Identities** are lowercase and project-wide unique; `<local>` is the Module identity without
@@ -45,7 +49,7 @@ common format mistakes and writing judgments; the complete guidelines follow.
   (`<a id="a"></a><a id="b"></a>`), because a blank line between two anchors leaves the first one
   empty.
 - **The entry** `module.md` has the level-2 sections Purpose (plain prose, no lists or tables),
-  Terminology, Usage and Design, each exactly once, and no `Relationships` section: Design holds
+  Usage and Design, each exactly once, and no `Relationships` section: Design holds
   how the Module is built inside and how it works with the Modules around it, and explains each
   child and provider at its `meaning` anchor.
 - **Diagrams** use D2 wherever they make relationships, order, branching, state or data clearer.

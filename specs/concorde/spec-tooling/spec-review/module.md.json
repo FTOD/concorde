@@ -20,44 +20,39 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.structural-check",
-          "concept.spec.grant",
-          "concept.spec.context-identity"
+          "concept.structural-check",
+          "concept.grant",
+          "concept.context-identity"
         ]
       },
       {
         "target": "module.workers",
         "meaning": "#uses-workers",
         "relies_on": [
-          "concept.workers.brief",
-          "concept.workers.worker-result",
-          "concept.workers.run-record"
+          "concept.brief",
+          "concept.worker-result",
+          "concept.run-record"
         ]
       },
       {
         "target": "module.operations",
         "meaning": "#uses-operations",
         "relies_on": [
-          "concept.operations.operation"
+          "concept.operation"
         ]
       },
       {
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.runner",
-          "concept.execution.run-result",
-          "concept.execution.workspace",
-          "concept.execution.unbound-run"
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.workspace",
+          "concept.unbound-run"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -77,42 +72,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.spec-review.review",
-      "type": "concept",
-      "title": "Spec review",
-      "meaning": "#concept.spec-review.review"
-    },
-    {
-      "id": "concept.spec-review.finding",
-      "type": "concept",
-      "title": "Review finding",
-      "meaning": "#concept.spec-review.finding"
-    },
-    {
-      "id": "concept.spec-review.verdict",
-      "type": "concept",
-      "title": "Review verdict",
-      "meaning": "#concept.spec-review.verdict"
-    },
-    {
-      "id": "concept.spec-review.memory",
-      "type": "concept",
-      "title": "Review memory",
-      "meaning": "#concept.spec-review.memory"
-    },
-    {
-      "id": "concept.spec-review.panel",
-      "type": "concept",
-      "title": "Spec panel",
-      "meaning": "#concept.spec-review.panel"
-    },
-    {
-      "id": "concept.spec-review.panel-report",
-      "type": "concept",
-      "title": "Panel report",
-      "meaning": "#concept.spec-review.panel-report"
-    },
     {
       "id": "realization.spec-review.operation",
       "type": "realization",
@@ -166,19 +125,13 @@
       "type": "relates",
       "source": "realization.spec-review.operation",
       "verb": "collects",
-      "target": "concept.spec-review.finding"
+      "target": "concept.review-finding"
     },
     {
       "type": "relates",
       "source": "realization.spec-review.operation",
       "verb": "derives",
-      "target": "concept.spec-review.verdict"
-    },
-    {
-      "type": "relates",
-      "source": "concept.spec-review.verdict",
-      "verb": "is derived from",
-      "target": "concept.spec-review.finding"
+      "target": "concept.review-verdict"
     },
     {
       "type": "relates",
@@ -196,7 +149,7 @@
       "type": "relates",
       "source": "realization.spec-review.operation",
       "verb": "checks the accounting of",
-      "target": "concept.spec-review.panel-report"
+      "target": "concept.panel-report"
     }
   ],
   "extensions": {}

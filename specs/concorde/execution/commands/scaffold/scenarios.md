@@ -8,14 +8,14 @@ shapes are in the [contracts](contracts.md).
 ### scenario.scaffold.creates — A scaffold creates the proposed Modules
 
 - GIVEN the workspace `adopt` with an `ok` survey proposing `module.checkout` bound to `src/checkout/` and `module.inventory` bound to `src/inventory/`, and a pytest check for checkout
-- WHEN the main agent runs `concorde scaffold --input <survey run>` in its worktree
+- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `concorde scaffold --input <survey run>` in its worktree
 - THEN `specs/shop/checkout/module.md` and `specs/shop/inventory/module.md` exist with their metadata, each stating its purpose and that its behaviour is not yet specified
 - AND the root's entry contains both with an explaining paragraph each and its realization no longer binds `src/checkout/` or `src/inventory/`
 - AND the root still binds every other file it bound under `src/`
 - AND the registry has both records
 - BUT the project configuration is unchanged, and the proposed check stays in the survey's proposal
 - AND the worktree validates with no new error
-- AND the result is `ok`, of kind `command` with no worker, with a scaffold record listing every file written
+- AND the result is `ok`, of kind `command` with no worker, with a [scaffold record](../../../glossary.json#concept.scaffold-record) listing every file written
 
 ### scenario.scaffold.stale — A proposal overtaken by the worktree
 
@@ -45,7 +45,7 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN a survey whose worker proposes `src/db.py` as vendored third-party code used by the proposed child `module.checkout`
 - WHEN the survey ends and the scaffold applies its proposal
-- THEN `src/db.py` is among no Module's entries and `module.checkout` includes it as external material with the worker's reason
+- THEN `src/db.py` is among no [Module](../../../glossary.json#concept.module)'s entries and `module.checkout` includes it as external material with the worker's reason
 - AND the project validates without errors
 - AND a vendored path inside a child's directory entry, such as `src/checkout/payment.py` inside `src/checkout/`, leaves that child binding the rest of the directory, `src/checkout/api.py`
 - BUT a vendored path that a child would bind itself, or part of it, fails the survey with `inconsistent_proposal`

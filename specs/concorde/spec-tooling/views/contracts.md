@@ -1,7 +1,9 @@
 # Views contracts
 
-The interfaces of [Views](module.md): the scaffold proposal exchanged with its caller, the site
-identity file, the build commands and the build manifest.
+The interfaces of [Views](module.md): the
+[scaffold proposal](../../glossary.json#concept.scaffold-proposal) exchanged with its caller, the
+site identity file, the build commands and the
+[site build manifest](../../glossary.json#concept.site-build-manifest).
 
 ## Scaffold proposal
 
@@ -141,15 +143,17 @@ same set plus `scaffold/`. `template_digest` is `sha256:` over the UTF-8 text ma
 template file, sorted by path, each `path`, a tab and the lowercase hex SHA-256 of its bytes,
 joined by newlines with a final newline.
 
-**Identity.** `identity` is a site identity (below) with `schema_version` 1, `title`, `url`,
-`baseUrl`, `organizationName`, `projectName` and, when known, `repository`. The title defaults to
-the root Module's title. A GitHub repository, given by `--repository` or read from the `origin`
-remote, supplies `https://<owner>.github.io` as `url`, `/<repo>/` as `baseUrl` (`/` for the
-`<owner>.github.io` repository) and the owner and repository names. Otherwise the defaults are
-`https://localhost`, `/`, and the lowercased title with every run of other characters replaced by
-one hyphen, trimmed, or `project` when empty; an info finding then asks the developer to set the
-final values. Explicit options override the defaults. The scaffold never adds user documents or
-custom docs.
+**Identity.** `identity` is a [site identity](../../glossary.json#concept.site-identity) (below)
+with `schema_version` 1, `title`, `url`, `baseUrl`, `organizationName`, `projectName` and, when
+known, `repository`. The title defaults to the root [Module](../../glossary.json#concept.module)'s
+title. A GitHub repository, given by `--repository` or read from the `origin` remote, supplies
+`https://<owner>.github.io` as `url`, `/<repo>/` as `baseUrl` (`/` for the `<owner>.github.io`
+repository) and the owner and repository names. Otherwise the defaults are `https://localhost`, `/`,
+and the lowercased title with every run of other characters replaced by one hyphen, trimmed, or
+`project` when empty; an info finding then asks the developer to set the final values. Explicit
+options override the defaults. The scaffold never adds
+[user documents](../../glossary.json#concept.user-documents) or
+[custom docs](../../glossary.json#concept.custom-docs).
 
 **Conflicts.** `conflicts` lists every proposed destination that already exists, with reason
 `target already exists`. It is information only and authorizes nothing.
@@ -163,19 +167,21 @@ package's template digest moved. Then:
 
 - every destination already has the proposed bytes: `unchanged`, nothing written;
 - any destination exists with other content: `conflict`, nothing written;
-- every destination is absent: the files are created through a file transaction that checks each
-  destination is still absent before staging and before each write, and removes the files it
-  created if one appears; the result is `success` with the created paths, or `failed` after a
-  rollback.
+- every destination is absent: the files are created through a
+  [file transaction](../../glossary.json#concept.file-transaction) that checks each destination is
+  still absent before staging and before each write, and removes the files it created if one
+  appears; the result is `success` with the created paths, or `failed` after a rollback.
 
-Apply never replaces or deletes a file, so it cannot update an existing site or touch a Spec.
+Apply never replaces or deletes a file, so it cannot update an existing site or touch a
+[Spec](../../glossary.json#concept.spec).
 
 <a id="scaffold-proposal-participation"></a>
 
 **Participation.** Views provides this contract, version 2, to external callers: the developer or
-main agent calling the command. Views keeps the proposal deterministic for unchanged inputs,
-refuses any proposal that differs from the exact current inventory, and never lets an accepted
-proposal replace, delete or reach outside the files listed above.
+[main agent](../../glossary.json#concept.main-agent) calling the command. Views keeps the proposal
+deterministic for unchanged inputs, refuses any proposal that differs from the exact current
+inventory, and never lets an accepted proposal replace, delete or reach outside the files listed
+above.
 
 ## Site identity {#site-identity}
 
@@ -237,7 +243,8 @@ first when the project has no Concorde configuration.
 
 ## Build manifest
 
-A successful build writes `build-manifest.json` at the root of the published site:
+A successful build writes `build-manifest.json` at the root of the
+[published site](../../glossary.json#concept.published-site):
 
 ```json
 {
@@ -264,9 +271,10 @@ A successful build writes `build-manifest.json` at the root of the published sit
 `schema_version` is 23. `pages` has one entry per registered document in registry order, with
 exactly the fields shown, in that order. `contentDigest` and `metadataDigest` hash the exact bytes
 of the reading and metadata files. `includedBy` lists, in registry order, each Module whose
-one-level Spec context selects the document, with its reasons sorted by `relation`, `kind` and
-`id`; `relation` is `owns`, `contains`, `uses` or `includes`, an `includes` reason also has `kind`
-`module` or `document`, and `id` is the Module or document that the relation names. This is the
-same reason shape as the Spec core's context records. `sourceDigest` is defined in the [pipeline](pipeline.md#source-digest). A manifest
-of any other version, or with any difference in these fields, is stale and requires a fresh build.
-The manifest records inputs only and makes no claim that code satisfies the Specs.
+one-level [Spec context](../../glossary.json#concept.spec-context) selects the document, with its
+reasons sorted by `relation`, `kind` and `id`; `relation` is `owns`, `contains`, `uses` or
+`includes`, an `includes` reason also has `kind` `module` or `document`, and `id` is the Module or
+document that the relation names. This is the same reason shape as the Spec core's context records.
+`sourceDigest` is defined in the [pipeline](pipeline.md#source-digest). A manifest of any other
+version, or with any difference in these fields, is stale and requires a fresh build. The manifest
+records inputs only and makes no claim that code satisfies the Specs.

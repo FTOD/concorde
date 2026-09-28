@@ -20,19 +20,13 @@
         "target": "module.spec",
         "meaning": "#uses-spec",
         "relies_on": [
-          "concept.spec.registry",
-          "concept.spec.impact-index",
-          "concept.spec.file-transaction"
+          "concept.registry",
+          "concept.impact-index",
+          "concept.file-transaction"
         ]
       }
     ],
-    "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      }
-    ],
+    "includes": [],
     "participates": [
       {
         "contract": "contract.views.scaffold-proposal",
@@ -44,66 +38,6 @@
     ]
   },
   "defines": [
-    {
-      "id": "concept.views.published-site",
-      "type": "concept",
-      "title": "Published site",
-      "meaning": "#concept.views.published-site"
-    },
-    {
-      "id": "concept.views.publication-candidate",
-      "type": "concept",
-      "title": "Publication candidate",
-      "meaning": "#concept.views.publication-candidate"
-    },
-    {
-      "id": "concept.views.promotion",
-      "type": "concept",
-      "title": "Promotion",
-      "meaning": "#concept.views.promotion"
-    },
-    {
-      "id": "concept.views.canonical-page",
-      "type": "concept",
-      "title": "Canonical page",
-      "meaning": "#concept.views.canonical-page"
-    },
-    {
-      "id": "concept.views.reading-collection",
-      "type": "concept",
-      "title": "Reading collection",
-      "meaning": "#concept.views.reading-collection"
-    },
-    {
-      "id": "concept.views.user-docs",
-      "type": "concept",
-      "title": "User documents",
-      "meaning": "#concept.views.user-docs"
-    },
-    {
-      "id": "concept.views.custom-docs",
-      "type": "concept",
-      "title": "Custom docs",
-      "meaning": "#concept.views.custom-docs"
-    },
-    {
-      "id": "concept.views.site-identity",
-      "type": "concept",
-      "title": "Site identity",
-      "meaning": "#concept.views.site-identity"
-    },
-    {
-      "id": "concept.views.scaffold-proposal",
-      "type": "concept",
-      "title": "Scaffold proposal",
-      "meaning": "#concept.views.scaffold-proposal"
-    },
-    {
-      "id": "concept.views.build-manifest",
-      "type": "concept",
-      "title": "Build manifest",
-      "meaning": "#concept.views.build-manifest"
-    },
     {
       "id": "realization.views.publisher",
       "type": "realization",
@@ -142,70 +76,52 @@
   ],
   "relations": [
     {
-      "type": "contrasts",
-      "source": "concept.views.build-manifest",
-      "target": "concept.distribution.build-manifest",
-      "reason": "the docsite build manifest lists the Spec pages and source digests of one published site; Distribution's build manifest records the sources and outputs of the Concorde build"
+      "type": "relates",
+      "source": "realization.views.publisher",
+      "verb": "reads",
+      "target": "concept.registry"
     },
     {
       "type": "relates",
       "source": "realization.views.publisher",
       "verb": "reads",
-      "target": "concept.spec.registry"
-    },
-    {
-      "type": "relates",
-      "source": "realization.views.publisher",
-      "verb": "reads",
-      "target": "concept.views.site-identity"
+      "target": "concept.site-identity"
     },
     {
       "type": "relates",
       "source": "realization.views.publisher",
       "verb": "publishes each document as",
-      "target": "concept.views.canonical-page"
-    },
-    {
-      "type": "relates",
-      "source": "concept.views.canonical-page",
-      "verb": "is listed in",
-      "target": "concept.views.reading-collection"
+      "target": "concept.canonical-page"
     },
     {
       "type": "relates",
       "source": "realization.views.publisher",
       "verb": "publishes first, as the home page",
-      "target": "concept.views.user-docs"
+      "target": "concept.user-documents"
     },
     {
       "type": "relates",
       "source": "realization.views.publisher",
       "verb": "publishes beside the Specs",
-      "target": "concept.views.custom-docs"
+      "target": "concept.custom-docs"
     },
     {
       "type": "relates",
       "source": "realization.views.publisher",
       "verb": "builds",
-      "target": "concept.views.publication-candidate"
-    },
-    {
-      "type": "relates",
-      "source": "concept.views.publication-candidate",
-      "verb": "replaces",
-      "target": "concept.views.published-site"
+      "target": "concept.publication-candidate"
     },
     {
       "type": "relates",
       "source": "realization.views.publisher",
       "verb": "writes",
-      "target": "concept.views.build-manifest"
+      "target": "concept.site-build-manifest"
     },
     {
       "type": "relates",
       "source": "realization.views.scaffold",
       "verb": "returns",
-      "target": "concept.views.scaffold-proposal"
+      "target": "concept.scaffold-proposal"
     },
     {
       "type": "relates",
@@ -217,7 +133,7 @@
       "type": "relates",
       "source": "realization.views.scaffold",
       "verb": "creates",
-      "target": "concept.views.site-identity"
+      "target": "concept.site-identity"
     },
     {
       "type": "relates",

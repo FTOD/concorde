@@ -60,16 +60,21 @@ def node_definitions(repository, path: str) -> dict[str, str]:
     """The canonical definition text of every node a document defines.
 
     Requirements, scenarios and contracts are defined by their section; a contract also by its
-    parsed fence. Concepts are defined by their metadata record, their Terminology row and the
-    explanation their anchor introduces, realizations by their metadata record. The entry's
-    ``module`` block defines the Module's own identity. Each value also names the document, so a
-    node that moves to another document counts as changed.
+    parsed fence. Realizations are defined by their metadata record, and the entry's ``module``
+    block defines the Module's own identity. Each value also names the document, so a node that
+    moves to another document counts as changed. Concepts are defined by their glossary entries:
+    ``path`` naming the glossary compares every entry.
     """
+    if path == repository.glossary_path:
+        return {
+            identity: canonical({"glossary": path, "entry": entry})
+            for identity, entry in repository.glossary_entries.items()
+        }
     unit = repository.unit(path)
     reading = repository.reading(path)
     result: dict[str, str] = {}
     for node in repository.nodes.values():
-        if node.document != path:
+        if node.document != path or node.type == "concept":
             continue
         anchor = reading.anchors.get(node.id)
         parts: dict = {"document": path, "type": node.type, "title": node.title}
@@ -89,10 +94,6 @@ def node_definitions(repository, path: str) -> dict[str, str]:
             )
         else:
             parts["record"] = _record(unit, node.id)
-            if node.type == "concept":
-                concept = repository.concept_nodes.get(node.id)
-                parts["definition"] = concept.definition if concept else None
-                parts["explanation"] = anchor.raw if anchor else None
         result[node.id] = canonical(parts)
     if unit.value.get("module") is not None:
         result[unit.owner] = canonical(
@@ -123,13 +124,14 @@ def changed_documents(old, new, paths=None) -> tuple[str, ...]:
 
 
 def changed_nodes(old, new, paths) -> tuple[str, ...]:
-    """Identities whose definition differs between two revisions of the given documents."""
+    """Identities whose definition differs between two revisions of the given documents and,
+    when ``paths`` names it, the glossary."""
     before: dict[str, str] = {}
     after: dict[str, str] = {}
     for path in paths:
-        if path in old.units:
+        if path in old.units or path == old.glossary_path:
             before.update(node_definitions(old, path))
-        if path in new.units:
+        if path in new.units or path == new.glossary_path:
             after.update(node_definitions(new, path))
     return tuple(
         sorted(

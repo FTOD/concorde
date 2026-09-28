@@ -49,7 +49,8 @@
       ],
       "uses": [],
       "includes": [],
-      "participates": []
+      "participates": [],
+      "glossary": "specs/concorde/glossary.json"
     },
     {
       "id": "module.spec-tooling",
@@ -77,13 +78,7 @@
         }
       ],
       "uses": [],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -100,13 +95,7 @@
       ],
       "contains": [],
       "uses": [],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -125,22 +114,16 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.grant",
-            "concept.spec.context-identity",
-            "concept.spec.boundary-set",
-            "concept.spec.impact-index",
-            "concept.spec.structural-check",
-            "concept.spec.registry"
+            "concept.grant",
+            "concept.context-identity",
+            "concept.boundary-set",
+            "concept.impact-index",
+            "concept.structural-check",
+            "concept.registry"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": [
         {
           "contract": "contract.spec-mcp.boundary-result",
@@ -168,44 +151,39 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.structural-check",
-            "concept.spec.grant",
-            "concept.spec.context-identity"
+            "concept.structural-check",
+            "concept.grant",
+            "concept.context-identity"
           ]
         },
         {
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.workers.brief",
-            "concept.workers.worker-result",
-            "concept.workers.run-record"
+            "concept.brief",
+            "concept.worker-result",
+            "concept.run-record"
           ]
         },
         {
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [
-            "concept.operations.operation"
+            "concept.operation"
           ]
         },
         {
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.run-result",
-            "concept.execution.workspace",
-            "concept.execution.unbound-run"
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.workspace",
+            "concept.unbound-run"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -241,19 +219,13 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.registry",
-            "concept.spec.impact-index",
-            "concept.spec.file-transaction"
+            "concept.registry",
+            "concept.impact-index",
+            "concept.file-transaction"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": [
         {
           "contract": "contract.views.scaffold-proposal",
@@ -279,16 +251,11 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.grant"
+            "concept.grant"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "external",
           "target": "references/pi/",
@@ -314,36 +281,36 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.grant",
-            "concept.spec.context-identity"
+            "concept.grant",
+            "concept.context-identity"
           ]
         },
         {
           "target": "module.harness",
           "meaning": "#uses-harness",
           "relies_on": [
-            "concept.harness.harness",
-            "concept.harness.worker-settings",
-            "concept.harness.deny-rules",
-            "concept.harness.write-hook",
-            "concept.harness.permission-extension"
+            "concept.agent-harness",
+            "concept.worker-settings",
+            "concept.deny-rules",
+            "concept.write-hook",
+            "concept.permission-extension"
           ]
         },
         {
           "target": "module.checks",
           "meaning": "#uses-checks",
           "relies_on": [
-            "concept.checks.configured-check",
-            "concept.checks.check-result"
+            "concept.configured-check",
+            "concept.check-result"
           ]
         },
         {
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.run-store",
-            "concept.execution.progress-file",
-            "concept.execution.unbound-run",
+            "concept.run-store",
+            "concept.run-progress-file",
+            "concept.unbound-run",
             "req.execution.unbound-read-only"
           ]
         },
@@ -351,16 +318,11 @@
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [
-            "concept.operations.catalog"
+            "concept.operation-catalog"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -405,17 +367,12 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.registry",
-            "concept.spec.boundary-set"
+            "concept.registry",
+            "concept.boundary-set"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -440,20 +397,20 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.workspace",
-            "concept.execution.workspace-binding",
+            "concept.workspace",
+            "concept.workspace-binding",
             "contract.execution.workspace-binding",
-            "concept.execution.run",
-            "concept.execution.run-result",
-            "concept.execution.run-store",
-            "concept.execution.workspace-lock"
+            "concept.run",
+            "concept.run-result",
+            "concept.run-store",
+            "concept.workspace-lock"
           ]
         },
         {
           "target": "module.delivery",
           "meaning": "#uses-delivery",
           "relies_on": [
-            "concept.delivery.delivery-commit"
+            "concept.delivery-commit"
           ]
         },
         {
@@ -464,23 +421,18 @@
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.workers.model-configuration"
+            "concept.worker-model-configuration"
           ]
         },
         {
           "target": "module.task-session",
           "meaning": "#uses-task-session",
           "relies_on": [
-            "concept.task-session.round"
+            "concept.session-round"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -542,18 +494,13 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.run-result",
-            "concept.execution.workspace"
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.workspace"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -582,10 +529,10 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.run-result",
-            "concept.execution.workspace",
-            "concept.execution.unbound-run"
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.workspace",
+            "concept.unbound-run"
           ]
         },
         {
@@ -598,11 +545,6 @@
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -631,9 +573,9 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.run-result",
-            "concept.execution.workspace"
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.workspace"
           ]
         },
         {
@@ -646,11 +588,6 @@
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -679,9 +616,9 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.run-result",
-            "concept.execution.workspace"
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.workspace"
           ]
         },
         {
@@ -698,11 +635,6 @@
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -731,10 +663,10 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.run-result",
-            "concept.execution.workspace",
-            "concept.execution.unbound-run"
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.workspace",
+            "concept.unbound-run"
           ]
         },
         {
@@ -751,11 +683,6 @@
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -780,9 +707,9 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.run-result",
-            "concept.execution.workspace-binding",
-            "concept.execution.workspace-lock",
+            "concept.run-result",
+            "concept.workspace-binding",
+            "concept.workspace-lock",
             "req.execution.binding-trusted",
             "req.execution.workspace-lock",
             "contract.execution.run-result",
@@ -801,16 +728,11 @@
           "target": "module.commands",
           "meaning": "#uses-commands",
           "relies_on": [
-            "concept.commands.execution-command"
+            "concept.execution-command"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -835,10 +757,10 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.run-result",
-            "concept.execution.run-store",
-            "concept.execution.workspace-binding",
-            "concept.execution.workspace-lock",
+            "concept.run-result",
+            "concept.run-store",
+            "concept.workspace-binding",
+            "concept.workspace-lock",
             "req.execution.workspace-lock",
             "contract.execution.run-result",
             "contract.execution.workspace-binding"
@@ -856,16 +778,11 @@
           "target": "module.commands",
           "meaning": "#uses-commands",
           "relies_on": [
-            "concept.commands.execution-command"
+            "concept.execution-command"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -890,18 +807,13 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.typed-value",
-            "concept.spec.file-transaction",
-            "concept.spec.registry"
+            "concept.typed-value",
+            "concept.file-transaction",
+            "concept.registry"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -930,41 +842,41 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.workspace-binding",
-            "concept.execution.run-result",
-            "concept.execution.unbound-run",
-            "concept.execution.progress-file",
-            "concept.execution.runner"
+            "concept.workspace-binding",
+            "concept.run-result",
+            "concept.unbound-run",
+            "concept.run-progress-file",
+            "concept.execution-runner"
           ]
         },
         {
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [
-            "concept.operations.operation"
+            "concept.operation"
           ]
         },
         {
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.workers.progress-file",
-            "concept.workers.model-configuration"
+            "concept.progress-file",
+            "concept.worker-model-configuration"
           ]
         },
         {
           "target": "module.tasks",
           "meaning": "#uses-tasks",
           "relies_on": [
-            "concept.tasks.task",
-            "concept.tasks.decision-log"
+            "concept.task",
+            "concept.decision-log"
           ]
         },
         {
           "target": "module.task-session",
           "meaning": "#uses-task-session",
           "relies_on": [
-            "concept.task-session.round"
+            "concept.session-round"
           ]
         },
         {
@@ -975,9 +887,9 @@
           "target": "module.issues",
           "meaning": "#uses-issues",
           "relies_on": [
-            "concept.issues.issue",
-            "concept.issues.status",
-            "concept.issues.revision",
+            "concept.issue",
+            "concept.issue-status",
+            "concept.issue-revision",
             "contract.issues.report",
             "contract.issues.receipt"
           ]
@@ -986,23 +898,18 @@
           "target": "module.spec-mcp",
           "meaning": "#uses-spec-mcp",
           "relies_on": [
-            "concept.spec-mcp.server"
+            "concept.spec-mcp-server"
           ]
         },
         {
           "target": "module.commands",
           "meaning": "#uses-commands",
           "relies_on": [
-            "concept.commands.execution-command"
+            "concept.execution-command"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -1036,38 +943,38 @@
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.structural-check",
-            "concept.spec.registry",
-            "concept.spec.protocol-binding"
+            "concept.structural-check",
+            "concept.registry",
+            "concept.protocol-binding"
           ]
         },
         {
           "target": "module.views",
           "meaning": "#uses-views",
           "relies_on": [
-            "concept.views.scaffold-proposal"
+            "concept.scaffold-proposal"
           ]
         },
         {
           "target": "module.main-session",
           "meaning": "#uses-main-session",
           "relies_on": [
-            "concept.main-session.guidance"
+            "concept.main-session-guidance"
           ]
         },
         {
           "target": "module.dogfooding",
           "meaning": "#uses-dogfooding",
           "relies_on": [
-            "concept.dogfooding.develop-install"
+            "concept.develop-install"
           ]
         },
         {
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.run",
-            "concept.execution.progress-file"
+            "concept.run",
+            "concept.run-progress-file"
           ]
         },
         {
@@ -1078,17 +985,11 @@
           "target": "module.commands",
           "meaning": "#uses-commands",
           "relies_on": [
-            "concept.commands.execution-command"
+            "concept.execution-command"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1107,13 +1008,13 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.run",
-            "concept.execution.run-result",
-            "concept.execution.workspace-binding",
-            "concept.execution.workspace-lock",
-            "concept.execution.detached-run",
-            "concept.execution.run-store",
+            "concept.execution-runner",
+            "concept.run",
+            "concept.run-result",
+            "concept.workspace-binding",
+            "concept.workspace-lock",
+            "concept.detached-run",
+            "concept.run-store",
             "req.execution.workspace-lock",
             "req.execution.no-chaining",
             "contract.execution.run-result"
@@ -1149,16 +1050,11 @@
           "target": "module.commands",
           "meaning": "#uses-commands",
           "relies_on": [
-            "concept.commands.execution-command"
+            "concept.execution-command"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -1183,10 +1079,10 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.workspace",
-            "concept.execution.run-result",
-            "concept.execution.unbound-run",
+            "concept.execution-runner",
+            "concept.workspace",
+            "concept.run-result",
+            "concept.unbound-run",
             "req.execution.inputs-same-workspace",
             "contract.execution.run-result"
           ]
@@ -1209,11 +1105,6 @@
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -1250,10 +1141,10 @@
           "target": "module.workflows",
           "meaning": "#uses-workflows",
           "relies_on": [
-            "concept.workflows.workflow",
-            "concept.workflows.result",
-            "concept.workflows.record",
-            "concept.workflows.script"
+            "concept.workflow",
+            "concept.workflow-result",
+            "concept.workflow-record",
+            "concept.workflow-script"
           ]
         },
         {
@@ -1264,18 +1155,13 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.workspace-binding",
-            "concept.execution.run-store",
-            "concept.execution.progress-file"
+            "concept.workspace-binding",
+            "concept.run-store",
+            "concept.run-progress-file"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "external",
           "target": "references/swe-bench/",
@@ -1299,21 +1185,15 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.run",
-            "concept.execution.progress-file",
-            "concept.execution.run-result",
-            "concept.execution.run-store",
-            "concept.execution.workspace-binding"
+            "concept.run",
+            "concept.run-progress-file",
+            "concept.run-result",
+            "concept.run-store",
+            "concept.workspace-binding"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1331,16 +1211,11 @@
           "target": "module.distribution",
           "meaning": "#uses-distribution",
           "relies_on": [
-            "concept.distribution.cli"
+            "concept.command-line-interface"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.e2e.module",
@@ -1364,40 +1239,34 @@
           "target": "module.headless-sessions",
           "meaning": "#uses-sessions",
           "relies_on": [
-            "concept.headless-sessions.session"
+            "concept.headless-session"
           ]
         },
         {
           "target": "module.dogfooding",
           "meaning": "#uses-dogfooding",
           "relies_on": [
-            "concept.dogfooding.develop-install",
-            "concept.dogfooding.boundary-case",
-            "concept.dogfooding.defect-report"
+            "concept.develop-install",
+            "concept.boundary-case",
+            "concept.defect-report"
           ]
         },
         {
           "target": "module.distribution",
           "meaning": "#uses-distribution",
           "relies_on": [
-            "concept.distribution.installer"
+            "concept.installer"
           ]
         },
         {
           "target": "module.issues",
           "meaning": "#uses-issues",
           "relies_on": [
-            "concept.issues.report"
+            "concept.issue-report"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1415,47 +1284,41 @@
           "target": "module.distribution",
           "meaning": "#uses-distribution",
           "relies_on": [
-            "concept.distribution.installer"
+            "concept.installer"
           ]
         },
         {
           "target": "module.main-session",
           "meaning": "#uses-main-session",
           "relies_on": [
-            "concept.main-session.guidance"
+            "concept.main-session-guidance"
           ]
         },
         {
           "target": "module.issues",
           "meaning": "#uses-issues",
           "relies_on": [
-            "concept.issues.issue",
-            "concept.issues.report"
+            "concept.issue",
+            "concept.issue-report"
           ]
         },
         {
           "target": "module.tasks",
           "meaning": "#uses-tasks",
           "relies_on": [
-            "concept.tasks.task",
-            "concept.tasks.decision-log"
+            "concept.task",
+            "concept.decision-log"
           ]
         },
         {
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
-            "concept.spec.grant"
+            "concept.grant"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1484,25 +1347,19 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.workspace-binding",
-            "concept.execution.run-store"
+            "concept.workspace-binding",
+            "concept.run-store"
           ]
         },
         {
           "target": "module.harness",
           "meaning": "#uses-harness",
           "relies_on": [
-            "concept.harness.harness"
+            "concept.agent-harness"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1521,69 +1378,64 @@
           "target": "module.tasks",
           "meaning": "#uses-tasks",
           "relies_on": [
-            "concept.tasks.task",
-            "concept.tasks.task-record",
-            "concept.tasks.decision-log"
+            "concept.task",
+            "concept.task-record",
+            "concept.decision-log"
           ]
         },
         {
           "target": "module.harness",
           "meaning": "#uses-harness",
           "relies_on": [
-            "concept.harness.session-boundary"
+            "concept.session-boundary"
           ]
         },
         {
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.workers.backend"
+            "concept.worker-backend"
           ]
         },
         {
           "target": "module.main-session",
           "meaning": "#uses-main-session",
           "relies_on": [
-            "concept.main-session.guidance"
+            "concept.main-session-guidance"
           ]
         },
         {
           "target": "module.workflows",
           "meaning": "#uses-workflows",
           "relies_on": [
-            "concept.workflows.workflow",
-            "concept.workflows.result"
+            "concept.workflow",
+            "concept.workflow-result"
           ]
         },
         {
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.workspace-binding",
-            "concept.execution.run-result"
+            "concept.workspace-binding",
+            "concept.run-result"
           ]
         },
         {
           "target": "module.operations",
           "meaning": "#uses-operations",
           "relies_on": [
-            "concept.operations.operation"
+            "concept.operation"
           ]
         },
         {
           "target": "module.delivery",
           "meaning": "#uses-delivery",
           "relies_on": [
-            "concept.delivery.delivery-commit"
+            "concept.delivery-commit"
           ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",
@@ -1639,11 +1491,6 @@
       "includes": [
         {
           "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
-        {
-          "kind": "document",
           "target": "document.concorde.contracts",
           "reason": "the Framework's error contract, which every run's errors follow"
         }
@@ -1676,19 +1523,13 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.run-result",
-            "concept.execution.workspace"
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.workspace"
           ]
         }
       ],
-      "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        }
-      ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1707,9 +1548,9 @@
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
-            "concept.execution.runner",
-            "concept.execution.workspace",
-            "concept.execution.run-result",
+            "concept.execution-runner",
+            "concept.workspace",
+            "concept.run-result",
             "req.execution.inputs-same-workspace",
             "contract.execution.run-result"
           ]
@@ -1718,15 +1559,15 @@
           "target": "module.commands",
           "meaning": "#uses-commands",
           "relies_on": [
-            "concept.commands.execution-command"
+            "concept.execution-command"
           ]
         },
         {
           "target": "module.adoption",
           "meaning": "#uses-adoption",
           "relies_on": [
-            "concept.adoption.survey",
-            "concept.adoption.decomposition",
+            "concept.survey",
+            "concept.decomposition-proposal",
             "contract.adoption.decomposition"
           ]
         },
@@ -1736,11 +1577,6 @@
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.concorde.vocabulary",
-          "reason": "shared Framework vocabulary"
-        },
         {
           "kind": "document",
           "target": "document.concorde.contracts",

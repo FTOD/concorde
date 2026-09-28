@@ -1,14 +1,15 @@
 # Issue interface
 
 The canonical contracts, provenance, record file, store operations and bookkeeping command of
-[Issues](module.md). All shapes are closed: unknown fields are refused. Both
-contracts below are registered as typed values with version 1 under the name given with them.
+[Issues](module.md). All shapes are closed: unknown fields are refused. Both contracts below are
+registered as [typed values](../glossary.json#concept.typed-value) with version 1 under the name
+given with them.
 
 ## Report
 
-A report is the content of the file the main agent passes to `report --file`, or what another
-caller passes to the store directly together with the provenance it vouches for. It is at most
-64 KiB as canonical JSON; large logs are referenced by path, not copied.
+A report is the content of the file the [main agent](../glossary.json#concept.main-agent) passes to
+`report --file`, or what another caller passes to the store directly together with the provenance it
+vouches for. It is at most 64 KiB as canonical JSON; large logs are referenced by path, not copied.
 
 ```concorde-contract
 {
@@ -112,16 +113,16 @@ command supplies these values:
 | --- | --- | --- |
 | `invocation_id` | the invocation that reported | `cli-` and a random UUID, new for every run |
 | `agent` | who reports | `main-agent` |
-| `operation` | the Operation or command that reported | `issues` |
+| `operation` | the [Operation](../glossary.json#concept.operation) or command that reported | `issues` |
 | `phase` | the step of that invocation | `report` |
-| `target_id` | the reporting Module | the report's `owner_target_id`, or the root Module when it is `null` |
+| `target_id` | the reporting [Module](../glossary.json#concept.module) | the report's `owner_target_id`, or the root Module when it is `null` |
 | `context_id` | digest of the reporter's context | SHA-256 digest of the configured registry file's bytes |
 | `change_id` | the task, nullable | the `--task` argument, or `null` |
 | `head` | the Git `HEAD`, nullable | `git rev-parse --verify HEAD` in the project, or `null` when that fails |
 
 The root Module is the one registered Module that no other Module contains. The fields are free
-strings apart from `context_id`; the store records them as given and derives the Issue identity
-from `invocation_id` and the report key.
+strings apart from `context_id`; the store records them as given and derives the
+[Issue](../glossary.json#concept.issue) identity from `invocation_id` and the report key.
 
 ## Record file
 
@@ -155,8 +156,9 @@ the owner is `null`. Its revision is the SHA-256 digest of the file's bytes.
 ## Store operations
 
 These are library operations in `concorde.issues.store`. None launches a model or runs Git. Every
-refusal is a Spec error carrying one of the codes under [Errors](#errors) and a message naming the
-Issue it concerns; a malformed value is refused with the field it concerns.
+refusal is a [Spec](../glossary.json#concept.spec) error carrying one of the codes under
+[Errors](#errors) and a message naming the Issue it concerns; a malformed value is refused with the
+field it concerns.
 
 | Operation | Behaviour |
 | --- | --- |
@@ -167,11 +169,11 @@ Issue it concerns; a malformed value is refused with the field it concerns.
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
 | `dispose_issue(root, id, expected_revision, ...)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when given, still has `duplicate_revision` (`stale_issue`); appends the disposition and returns the new revision. |
 
-Every write runs under the exclusive lock `.concorde/runs/issues.lock` of the worktree `root`
-names, which serializes the writes into that worktree; writes into different worktrees touch
-different files and take different locks. It checks the file's previous
-digest, publishes a staged file through a file transaction, and syncs the directory before
-returning. A failed write is never reported as success. No operation deletes a record file.
+Every write runs under the exclusive lock `.concorde/runs/issues.lock` of the worktree `root` names,
+which serializes the writes into that worktree; writes into different worktrees touch different
+files and take different locks. It checks the file's previous digest, publishes a staged file
+through a [file transaction](../glossary.json#concept.file-transaction), and syncs the directory
+before returning. A failed write is never reported as success. No operation deletes a record file.
 
 ## Bookkeeping command
 
@@ -194,13 +196,13 @@ writes. In the unified CLI, `python3 scripts/concorde.py issues` in a source che
 | `close <id> --reason resolved\|duplicate\|not-actionable --note <text> --evidence <item>... [--duplicate-of <id>]` | Closes the open Issue at its current revision and prints `{"issue_id", "status": "closed", "revision"}` |
 | `reopen <id> --note <text> --evidence <item>...` | Reopens the closed Issue at its current revision and prints `{"issue_id", "status": "open", "revision"}` |
 
-`report` reads the file as UTF-8 JSON and validates it as a
-[report](#contract.issues.report), including a given `error_chain` against the Framework's
+`report` reads the file as UTF-8 JSON and validates it as a [report](#contract.issues.report),
+including a given `error_chain` against the Framework's
 [error contract](../contracts.md#contract.concorde.error). Its `owner_target_id`, when not `null`,
 must be a registered Module, and each evidence path must exist in the project or, for a report with
-an `origin`, in the origin project, whose path the refusal then names. A report file may lie
-outside the project, such as a report another project wrote. When the owner is `null` the registry must
-have exactly one root Module, which becomes the reporting Module. A file with `issue_id` and
+an `origin`, in the origin project, whose path the refusal then names. A report file may lie outside
+the project, such as a report another project wrote. When the owner is `null` the registry must have
+exactly one root Module, which becomes the reporting Module. A file with `issue_id` and
 `expected_revision` appends to that Issue; the revision is the one `show`, `report`, `close` or
 `reopen` last printed for it.
 
@@ -226,8 +228,9 @@ refused (every other code).
 such as `.gitignore`. Each error names the file: an entry that is not a regular file named
 `I-<32 hex digits>.md`, a record that does not read as valid, or an open Issue whose owner is not a
 registered Module (`<id> names unknown owner <module>`). A closed Issue with an unknown owner
-produces the same text as a note, which does not change the exit status. An absent directory
-passes. Concorde's configuration registers it as the configured check `check.issues.store` of
+produces the same text as a note, which does not change the exit status. An absent directory passes.
+Concorde's configuration registers it as the
+[configured check](../glossary.json#concept.configured-check) `check.issues.store` of
 `module.issues`, with the argument vector `["{python}", "scripts/issues.py", "check"]` and a
 60-second timeout.
 

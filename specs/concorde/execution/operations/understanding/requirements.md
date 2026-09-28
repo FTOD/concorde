@@ -8,22 +8,25 @@ situations.
 
 ### req.understanding.names-only — Code is known by name only
 
-The understand worker's grant SHALL give read access only to Spec documents and included external
-material, never to the contents of an implementation file.
+The understand worker's grant SHALL give read access only to
+[Spec](../../../glossary.json#concept.spec) documents and included external material, never to the
+contents of an implementation file.
 
 Implementation files of the bound Modules appear in the brief by path only, so the worker can place
 a planned file without learning what existing code does.
 
 ### req.understanding.task-worktree — Assessments describe the workspace's Specs
 
-The understand Operation SHALL compute the grant from the Specs of the worktree the run starts in, which for a bound run is its workspace.
+The understand [Operation](../../../glossary.json#concept.operation) SHALL compute the grant from the Specs of the worktree the run starts in, which for a bound run is its workspace.
 
 ## Answers
 
 ### req.understanding.gaps-reported — Missing promises are gaps
 
-An assessment SHALL report every promise the stated goal needs and a bound Module's Spec does not
-state as a Spec gap rather than as a fact inferred from code or file names.
+An assessment SHALL report every promise the stated goal needs and a bound
+[Module](../../../glossary.json#concept.module)'s Spec does not state as a
+[Spec gap](../../../glossary.json#concept.spec-gap) rather than as a fact inferred from code or file
+names.
 
 ### req.understanding.insufficient-no-plan — No plan on an insufficient Spec
 
@@ -55,8 +58,9 @@ Each inconsistency is returned as host evidence. The run is not resumed to repai
 
 The understand Operation SHALL leave every file of the worktree it runs in unchanged.
 
-The worker has no Edit, Write or Bash tool, and the write audit confirms that nothing changed; a
-change it finds ends the run `failed` with the changed paths as host evidence.
+The worker has no Edit, Write or Bash tool, and the
+[write audit](../../../glossary.json#concept.write-audit) confirms that nothing changed; a change it
+finds ends the run `failed` with the changed paths as host evidence.
 
 ### req.understanding.single-round — No resume rounds
 

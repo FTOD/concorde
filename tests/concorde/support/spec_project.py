@@ -1,6 +1,7 @@
-"""Protocol 14 consumer fixture shared by the test suite."""
+"""Protocol 15 consumer fixture shared by the test suite."""
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -9,25 +10,88 @@ from concorde.spec.initialize import apply_project_proposal, project_proposal
 
 PACKAGE = Path(__file__).resolve().parents[3]
 MIRRORED = ("owns", "contains", "uses", "includes", "participates")
+# The fixture projects' glossary, declared by their first root Module (see ``sync_registry``).
+GLOSSARY = "specs/glossary.json"
+# Written in a fixture document where a term link addresses the glossary; ``write_document``
+# replaces it with the glossary's path relative to the document.
+GLOSSARY_LINK = "@glossary"
 
 
 class DocumentSource(str):
     """One fixture document: reading text plus its metadata, optionally with an obligations document.
 
     An entry's ``module`` block may leave ``owns`` as ``None``; ``write_document`` fills it with the
-    entry, its obligations document and the ``extra_owned`` siblings.
+    entry, its obligations document and the ``extra_owned`` siblings. ``concepts`` are the glossary
+    entries the document explains, without their ``explanation``: ``write_document`` adds it and
+    upserts them into the project glossary.
     """
 
     metadata: dict
     implementation: "DocumentSource | None"
     extra_owned: tuple[str, ...]
+    concepts: tuple[dict, ...]
 
-    def __new__(cls, reading, metadata, implementation=None, extra_owned=()):
+    def __new__(
+        cls, reading, metadata, implementation=None, extra_owned=(), concepts=()
+    ):
         value = super().__new__(cls, reading)
         value.metadata = metadata
         value.implementation = implementation
         value.extra_owned = tuple(extra_owned)
+        value.concepts = tuple(concepts)
         return value
+
+
+def glossary_link(path: str) -> str:
+    """The glossary's path relative to a document, as a term link addresses it."""
+    return os.path.relpath(GLOSSARY, os.path.dirname(path))
+
+
+def read_glossary(root) -> dict:
+    file = Path(root) / GLOSSARY
+    if not file.exists():
+        return {"schema_version": 1, "concepts": []}
+    return json.loads(file.read_text())
+
+
+def write_glossary(root, value: dict) -> None:
+    value["concepts"].sort(key=lambda entry: entry["id"])
+    file = Path(root) / GLOSSARY
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text(json.dumps(value, indent=2) + "\n")
+
+
+def upsert_concepts(root, path: str, concepts) -> None:
+    """Declare or replace glossary entries explained in the document at ``path``, and let the
+    root Module declare the glossary."""
+    _upsert(root, path, concepts)
+    sync_registry(root)
+
+
+def _upsert(root, path: str, concepts) -> None:
+    value = read_glossary(root)
+    entries = {entry["id"]: entry for entry in value["concepts"]}
+    for concept in concepts:
+        entry = {key: val for key, val in concept.items() if key != "anchor"}
+        entry["explanation"] = f"{path}#{concept.get('anchor', concept['id'])}"
+        entries[entry["id"]] = entry
+    value["concepts"] = list(entries.values())
+    write_glossary(root, value)
+
+
+def update_glossary_entry(root, identity: str, **changes) -> dict:
+    """Change fields of one glossary entry (a value of ``None`` removes the field)."""
+    value = read_glossary(root)
+    for entry in value["concepts"]:
+        if entry["id"] == identity:
+            for key, val in changes.items():
+                if val is None:
+                    entry.pop(key, None)
+                else:
+                    entry[key] = val
+            write_glossary(root, value)
+            return entry
+    raise KeyError(identity)
 
 
 def obligations_path(path: str) -> str:
@@ -50,11 +114,13 @@ def complete_metadata(path: str, source: "DocumentSource") -> dict:
 def write_document(root, path, source):
     file = root / path
     file.parent.mkdir(parents=True, exist_ok=True)
-    file.write_text(str(source))
+    file.write_text(str(source).replace(GLOSSARY_LINK, glossary_link(path)))
     if isinstance(source, DocumentSource):
         (root / (path + ".json")).write_text(
             json.dumps(complete_metadata(path, source), indent=2) + "\n"
         )
+        if source.concepts:
+            _upsert(root, path, source.concepts)
         if source.implementation is not None:
             write_document(root, obligations_path(path), source.implementation)
 
@@ -79,13 +145,51 @@ def entry_of(root, module_id: str) -> str:
     return next(m["entry"] for m in registry(root)["modules"] if m["id"] == module_id)
 
 
+def place_glossary(root) -> None:
+    """Let the first Module without a parent declare the glossary, and no other Module.
+
+    Fixtures change composition freely; the declaration follows the root so that
+    ``CHK.glossary.declared`` holds whenever a glossary file exists.
+    """
+    records = registry(root)["modules"]
+    blocks = {
+        record["id"]: read_json(root, record["entry"] + ".json") for record in records
+    }
+    children = {
+        item["target"]
+        for metadata in blocks.values()
+        for item in metadata["module"]["contains"]
+    }
+    roots = [record["id"] for record in records if record["id"] not in children]
+    declarer = roots[0] if roots and (Path(root) / GLOSSARY).exists() else None
+    for record in records:
+        metadata = blocks[record["id"]]
+        block = metadata["module"]
+        wanted = GLOSSARY if record["id"] == declarer else None
+        if block.get("glossary") != wanted:
+            if wanted is None:
+                block.pop("glossary", None)
+            else:
+                block["glossary"] = wanted
+            write_json(root, record["entry"] + ".json", metadata)
+
+
+def mirror(block: dict) -> dict:
+    return {name: block[name] for name in MIRRORED} | (
+        {"glossary": block["glossary"]} if "glossary" in block else {}
+    )
+
+
 def sync_registry(root) -> dict:
-    """Regenerate every record's mirrored fields (and title) from the entries."""
+    """Place the glossary declaration, then regenerate every record's mirrored fields (and
+    title) from the entries."""
+    place_glossary(root)
     value = registry(root)
     for record in value["modules"]:
         block = read_json(root, record["entry"] + ".json")["module"]
+        record.pop("glossary", None)
         record["title"] = block["title"]
-        record.update({name: block[name] for name in MIRRORED})
+        record.update(mirror(block))
     write_json(root, ".concorde/specs.json", value)
     return value
 
@@ -103,6 +207,7 @@ def register_module(root, module_id: str, entry: str) -> None:
         }
     )
     write_json(root, ".concorde/specs.json", value)
+    sync_registry(root)
 
 
 def update_module(root, module_id: str, **changes) -> dict:
@@ -144,8 +249,8 @@ def set_realization(root, realization_id: str, **fields) -> None:
 def clone_module(root, template_id: str, name: str, **changes) -> str:
     """Copy a Module's documents and bound files under a new short name and register the copy.
 
-    Every spelling of the template's short name is replaced, and the copy's concept titles are
-    qualified by the new name so that no two Modules own same-named concepts.
+    Every spelling of the template's short name is replaced, and the copy's glossary entries are
+    declared with qualified titles, so that no two concepts share a title.
     """
     template = next(m for m in registry(root)["modules"] if m["id"] == template_id)
     short = template_id.split(".")[-1]
@@ -153,28 +258,28 @@ def clone_module(root, template_id: str, name: str, **changes) -> str:
     def rename(text: str) -> str:
         return text.replace(short, name).replace(short.title(), name.title())
 
-    concepts: dict[str, str] = {}
     for path in template["owns"]:
         metadata = json.loads(rename((root / (path + ".json")).read_text()))
+        metadata.get("module", {}).pop("glossary", None)
         for record in metadata["defines"]:
-            if record["type"] == "concept":
-                concepts[record["title"]] = f"{record['title']} of {name}"
-                record["title"] = concepts[record["title"]]
-            else:
-                for entry in record["entries"]:
-                    source = root / entry.replace(name, short)
-                    if source.is_file() and not (root / entry).exists():
-                        (root / entry).parent.mkdir(parents=True, exist_ok=True)
-                        (root / entry).write_bytes(source.read_bytes())
+            for entry in record["entries"]:
+                source = root / entry.replace(name, short)
+                if source.is_file() and not (root / entry).exists():
+                    (root / entry).parent.mkdir(parents=True, exist_ok=True)
+                    (root / entry).write_bytes(source.read_bytes())
         reading = rename((root / path).read_text())
-        for old, new in concepts.items():
-            reading = reading.replace(f"| {old} |", f"| {new} |").replace(
-                f'["{old}"]', f'["{new}"]'
-            )
         target = root / rename(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(reading)
         write_json(root, rename(path) + ".json", metadata)
+    glossary = read_glossary(root)
+    for entry in list(glossary["concepts"]):
+        if entry["owner"] == template_id:
+            copy = json.loads(rename(json.dumps(entry)))
+            copy["title"] = f"{entry['title']} of {name}"
+            glossary["concepts"].append(copy)
+    if glossary["concepts"]:
+        write_glossary(root, glossary)
     module_id = rename(template_id)
     register_module(root, module_id, rename(template["entry"]))
     if changes:
@@ -240,12 +345,15 @@ def module_document(
     extra_owned=(),
     contracts="",
 ):
-    """A Protocol 14 Module entry and its obligations document.
+    """A Protocol 15 Module entry and its obligations document.
 
     ``nodes`` is ``(design prose, [node, ...])``; each node has ``id``, ``type`` (``concept`` or
     ``realization``), ``title``, ``meaning`` (explanatory prose), and ``definition`` (concepts) or
-    ``entries`` and optional ``pending`` (realizations). ``uses`` items have ``target``,
-    ``explanation`` and optional ``relies_on``. ``imports`` are ``(label, href)`` pairs.
+    ``entries`` and optional ``pending`` (realizations). A concept becomes a glossary entry owned
+    by the Module, explained at its anchor, whose prose links it; a ``relations`` item whose source
+    is a concept moves into that entry. ``uses`` items have ``target``, ``explanation`` and
+    optional ``relies_on``. ``imports`` are ``(label, concept identity)`` pairs: the Usage section
+    links each such term.
     """
     design, declared = nodes
     metadata = {
@@ -260,29 +368,56 @@ def module_document(
             "participates": [],
         },
         "defines": [],
-        "relations": [dict(item) for item in relations],
+        "relations": [],
     }
-    rows, prose = [], []
+    prose, concepts = [], {}
     for node in declared:
+        if node["type"] == "concept":
+            concepts[node["id"]] = {
+                "id": node["id"],
+                "title": node["title"],
+                "owner": target_id,
+                "definition": node["definition"],
+                "anchor": node["id"],
+            }
+            prose.append(
+                f'<a id="{node["id"]}"></a>\n\n'
+                f"[{node['title']}]({GLOSSARY_LINK}#{node['id']}): {node['meaning']}"
+            )
+            continue
         record = {
             "id": node["id"],
             "type": node["type"],
             "title": node["title"],
             "meaning": "#" + node["id"],
+            "entries": list(node["entries"]),
         }
-        if node["type"] == "concept":
-            rows.append(f"| {node['title']} | {node['definition']} |")
-        else:
-            record["entries"] = list(node["entries"])
-            if node.get("pending"):
-                record["pending"] = list(node["pending"])
+        if node.get("pending"):
+            record["pending"] = list(node["pending"])
         metadata["defines"].append(record)
         prose.append(f'<a id="{node["id"]}"></a>\n\n{node["meaning"]}')
-    rows.extend(f"| [{label}]({href}) | |" for label, href in imports)
-    terminology = (
-        "| Term | Definition |\n| --- | --- |\n" + "\n".join(rows)
-        if rows
-        else "This Module defines no terms of its own."
+    for item in relations:
+        relation = dict(item)
+        concept = concepts.get(relation["source"])
+        if concept is None:
+            metadata["relations"].append(relation)
+            continue
+        kind = relation.pop("type")
+        relation.pop("source")
+        if kind in {"narrows"}:
+            concept.setdefault("narrows", []).append(relation["target"])
+        elif kind == "supersedes":
+            concept["supersedes"] = relation["target"]
+        else:
+            concept.setdefault(kind, []).append(relation)
+    terms = (
+        "It uses the terms "
+        + ", ".join(
+            f"[{label}]({GLOSSARY_LINK}#{identity})" for label, identity in imports
+        )
+        + ".\n\n"
+        if imports
+        else ""
     )
     collaborations = []
     for kind, items in (("contains", contains), ("uses", uses)):
@@ -301,9 +436,10 @@ def module_document(
         )
         collaborations.append(f'<a id="{anchor}"></a>\n\n{item["explanation"]}')
     text = (
-        f"# {title}\n\n## Purpose\n\n{purpose}\n\n## Terminology\n\n{terminology}\n\n"
+        f"# {title}\n\n## Purpose\n\n{purpose}\n\n"
         "## Usage\n\n"
         "Use the declared boundary for the cases below; rejected input has no implicit retry.\n\n"
+        f"{terms}"
         f"## Design\n\n{design}\n\n{architecture}\n\n"
         + (f"```d2\n{diagram}\n```\n\n" if diagram else "")
         + "".join(item + "\n\n" for item in prose)
@@ -323,7 +459,13 @@ def module_document(
             "relations": [],
         },
     )
-    return DocumentSource(text.rstrip("\n") + "\n", metadata, precise, extra_owned)
+    return DocumentSource(
+        text.rstrip("\n") + "\n",
+        metadata,
+        precise,
+        extra_owned,
+        tuple(concepts.values()),
+    )
 
 
 def uses(target, explanation=None, relies_on=None):
@@ -469,7 +611,7 @@ TRANSFER = module_document(
             "target": "module.ledger",
         },
     ],
-    imports=[("Account", "../ledger/module.md#concept.ledger.account")],
+    imports=[("Account", "concept.ledger.account")],
     extra_owned=("promises.md",),
 )
 
@@ -559,7 +701,7 @@ WORKSPACE = module_document(
 
 
 class SpecProject:
-    """A small Protocol 14 project written from DocumentSource values, for checks tests."""
+    """A small Protocol 15 project written from DocumentSource values, for checks tests."""
 
     def __init__(self, root: Path, checks=()):
         from concorde.distribution.project_defaults import write_protocol_copy
@@ -643,7 +785,11 @@ def project(root):
         PACKAGE,
         project_proposal(root, PACKAGE, "Bank", "scope.bank"),
     )
-    for path in ("specs/project/module.md", "specs/project/module.md.json"):
+    for path in (
+        "specs/project/module.md",
+        "specs/project/module.md.json",
+        "specs/project/glossary.json",
+    ):
         (root / path).unlink()
     (root / "specs/project").rmdir()
     files = {
@@ -675,6 +821,7 @@ def project(root):
         write_document(root, path, content)
     value = {"schema_version": 3, "modules": records}
     write_json(root, ".concorde/specs.json", value)
+    value = sync_registry(root)
     config = read_json(root, ".concorde/config.json")
     config["checks"] = json.loads(json.dumps(CHECKS))
     write_json(root, ".concorde/config.json", config)

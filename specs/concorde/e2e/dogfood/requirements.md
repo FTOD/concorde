@@ -15,5 +15,6 @@ edit and file, before committing anything.
 
 ### req.dogfood-scenarios.judged-from-files — The evaluation reads files, not the session
 
-The evaluation SHALL decide every check from files and command results in the scenario directory,
-never from the session's messages.
+The evaluation SHALL decide every check from files and command results in the
+[scenario directory](../../glossary.json#concept.scenario-directory), never from the session's
+messages.

@@ -1,10 +1,11 @@
 # Framework scenarios
 
 These scenarios describe whole flows that cross several Modules, seen from the developer and the
-main agent. The precise behaviour of every step belongs to the Module that performs it; a scenario
-here promises only what the Modules achieve together. They are verified by end-to-end acceptance
-tests that drive the installer and the `concorde` command with a fake worker; what Claude Code
-itself enforces is verified by the live worker test of Workers.
+[main agent](glossary.json#concept.main-agent). The precise behaviour of every step belongs to the
+[Module](glossary.json#concept.module) that performs it; a scenario here promises only what the
+Modules achieve together. They are verified by end-to-end acceptance tests that drive the installer
+and the `concorde` command with a fake worker; what Claude Code itself enforces is verified by the
+live worker test of Workers.
 
 ## Adopting Concorde
 
@@ -12,8 +13,8 @@ itself enforces is verified by the live worker test of Workers.
 
 - GIVEN a project in which Concorde has never been installed
 - WHEN the developer runs the installer
-- AND initialization proposes a first Spec and then applies that exact proposal
-- THEN the project's configuration binds the Protocol copy the installer placed under `.concorde/protocol/`
+- AND initialization proposes a first [Spec](glossary.json#concept.spec) and then applies that exact proposal
+- THEN the project's configuration binds the [Protocol copy](glossary.json#concept.protocol-copy) the installer placed under `.concorde/protocol/`
 - AND the project validates without errors
 - AND its root Module entry states that the project's purpose and behaviour are not yet specified
 
@@ -25,7 +26,7 @@ itself enforces is verified by the live worker test of Workers.
 - THEN the workflow runs `survey`, `scaffold`, one `code_to_spec` per described Module, `spec_review`, `task-validation` and `delivery` in the task's worktree, one run at a time
 - AND the delivered task branch holds child Modules whose entries describe the code they bind
 - AND no implementation file changed
-- AND the workflow result lists every decision the workflow took and every open question about intent it did not write as a promise
+- AND the [workflow result](glossary.json#concept.workflow-result) lists every decision the workflow took and every [open question](glossary.json#concept.open-question) about intent it did not write as a promise
 - AND the main agent can merge the task branch into the primary branch
 
 ## Working on a task
@@ -36,18 +37,18 @@ itself enforces is verified by the live worker test of Workers.
 - WHEN the main agent opens a task for one Module
 - AND runs `implement` for that Module in the task worktree
 - AND runs `task-validation` and then `delivery` there
-- AND none of these runs names the task: each reads the worktree's workspace binding
-- THEN the task branch holds one delivery commit with the change and its evidence
-- AND `concorde task show` reports the task delivered, derived from that commit and the runs the run store holds, while its task record was never written by a run
+- AND none of these runs names the task: each reads the worktree's [workspace binding](glossary.json#concept.workspace-binding)
+- THEN the task branch holds one [delivery commit](glossary.json#concept.delivery-commit) with the change and its evidence
+- AND `concorde task show` reports the task delivered, derived from that commit and the runs the [run store](glossary.json#concept.run-store) holds, while its [task record](glossary.json#concept.task-record) was never written by a run
 - AND the main agent can merge the task branch into the primary branch
 - AND the primary worktree was never written by a worker
 
 ### scenario.concorde.worker-escalates — A worker that needs more than its grant
 
 - GIVEN a task whose worker needs to change a file outside its grant
-- WHEN the Operation runs
+- WHEN the [Operation](glossary.json#concept.operation) runs
 - THEN the write does not stand: the worker's settings refuse it, and a write that slips through fails the Operation's audit
-- AND the run result carries an error chain whose top link, the Operation's, names the file and gives `permission` as the reason it cannot handle the error
+- AND the [run result](glossary.json#concept.run-result) carries an [error chain](glossary.json#concept.error-chain) whose top link, the Operation's, names the file and gives `permission` as the reason it cannot handle the error
 - AND the link below it is Workers', with the audit as evidence
 - BUT the Operation does not retry the worker with a wider grant
 
@@ -70,4 +71,4 @@ itself enforces is verified by the live worker test of Workers.
 - THEN the escalation is one chain: the main agent's link, then the Operation's, then Workers', then the worker's own
 - AND every link gives its level, its actor, a detailed description and the reason that level could not handle the error
 - AND the worker's description, evidence and options arrive unchanged
-- AND the chain is recorded in the task record and the decision log and printed rendered for the developer
+- AND the chain is recorded in the task record and the [decision log](glossary.json#concept.decision-log) and printed rendered for the developer

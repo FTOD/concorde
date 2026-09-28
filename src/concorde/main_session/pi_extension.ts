@@ -30,6 +30,7 @@ import {
 import {
   alive,
   concordeCommand,
+  glossaryText,
   primaryRoot,
   recordedRuns,
   resultText,
@@ -45,6 +46,7 @@ import {
   taskWorktree,
   view,
   workersOf,
+  worktreeRoot,
 } from "./pi_runs.ts";
 import {
   type CommandOutcome,
@@ -175,6 +177,14 @@ export default function (pi: ExtensionAPI) {
   // Workers run on the main session's agent program; every command this session starts, through
   // bash or a tool, tells Concorde that it is pi.
   process.env.CONCORDE_CLIENT = "pi";
+  // Every session of the project, main or task session, works with the project's terms: the
+  // glossary of the session's own worktree is read afresh for each prompt, so a merged or task
+  // change of a definition reaches the session at once.
+  pi.on("before_agent_start", async (event, ctx) => {
+    const terms = glossaryText(worktreeRoot(ctx.cwd));
+    if (!terms) return;
+    return { systemPrompt: `${event.systemPrompt}\n\n${terms}` };
+  });
   // A task session is no main session: it neither launches background runs nor watches the
   // project's runs and rounds.
   if (process.env.CONCORDE_TASK_SESSION) return;

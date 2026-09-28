@@ -22,9 +22,9 @@ The build SHALL fail when a Markdown file under `prompts/` is included by no pro
 
 ### req.distribution.no-stale-copy — A stale build is never copied
 
-The Protocol copy writer SHALL refuse to copy the Protocol from a package whose build manifest
-records a source that is missing or changed, or whose rendered asset differs from the tracked
-manifest.
+The [Protocol copy](../glossary.json#concept.protocol-copy) writer SHALL refuse to copy the Protocol
+from a package whose [build manifest](../glossary.json#concept.build-manifest) records a source that
+is missing or changed, or whose rendered asset differs from the tracked manifest.
 
 ## Command line
 
@@ -36,6 +36,10 @@ The exit status follows the envelope's status, so a caller that only checks the 
 that reads the envelope reach the same conclusion.
 
 ## Installation
+
+### req.distribution.glossary-import — The CLAUDE.md block imports the glossary
+
+The installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.
 
 ### req.distribution.receipt-complete — The receipt names every owned file
 
@@ -54,9 +58,11 @@ The installed `concorde` command SHALL run Concorde only with the interpreter of
 
 ### req.distribution.idle-install — Concorde is never replaced while it runs
 
-The installer SHALL refuse, before writing anything, to install into a project in which the
-runner process of an Operation or execution command run or a pi task-session round's supervisor is
-still running, naming each.
+The installer SHALL refuse, before writing anything, to install into a project in which the runner
+process of an [Operation](../glossary.json#concept.operation) or
+[execution command](../glossary.json#concept.execution-command) run or a pi
+[task-session](../glossary.json#concept.task-session) round's supervisor is still running, naming
+each.
 
 The update runs the installer, so the same holds for `concorde update`.
 
@@ -67,8 +73,9 @@ Framework's error contract, naming the refusal's code and what is wrong.
 
 ### req.distribution.installer-no-specs — The installer never writes Specs
 
-The installer SHALL NOT create, modify or remove a registered Spec document, the registry or,
-except in update mode, the project configuration's Protocol binding.
+The installer SHALL NOT create, modify or remove a registered [Spec](../glossary.json#concept.spec)
+document, the registry or, except in update mode, the project configuration's
+[Protocol binding](../glossary.json#concept.protocol-binding).
 
 ### req.distribution.update-unvalidated — An update is validated before anything merges
 
@@ -76,8 +83,9 @@ except in update mode, the project configuration's Protocol binding.
 
 ### req.distribution.installer-fresh-guidance — Only current guidance is installed
 
-The installer SHALL refuse to install main-session guidance whose rendered output is missing or
-older than its sources.
+The installer SHALL refuse to install
+[main-session guidance](../glossary.json#concept.main-session-guidance) whose rendered output is
+missing or older than its sources.
 
 ### req.distribution.installer-locked-pi-runtime — Only the locked pi runtime is installed
 

@@ -130,6 +130,31 @@ class ValidateTests(unittest.TestCase):
         self.assertIn("check.a", [i["ref"] for i in readiness["blocking"]])
         self.assertEqual(readiness["checks"][0]["status"], "failed")
 
+    @verifies("scenario.validation.not-ready")
+    def test_a_changed_glossary_is_accounted_like_a_spec_document(self):
+        from tests.concorde.support.spec_project import upsert_concepts
+
+        upsert_concepts(
+            self.worktree,
+            "specs/a/module.md",
+            [
+                {
+                    "id": "concept.a.answer",
+                    "title": "A answer",
+                    "owner": "module.a",
+                    "definition": "What A returns.",
+                    "anchor": "realization.a.code",
+                }
+            ],
+        )
+        status, envelope = self.project.validate()
+        unbound = [
+            item["ref"]
+            for item in envelope["output"]["blocking"]
+            if item["kind"] == "unbound"
+        ]
+        self.assertNotIn("specs/glossary.json", unbound, envelope["output"])
+
     @verifies("scenario.validation.submodule-reference")
     def test_a_submodule_a_module_includes_is_accounted(self):
         from tests.concorde.support.spec_project import include_external

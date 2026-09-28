@@ -19,9 +19,9 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.run-result",
-          "concept.execution.workspace-binding",
-          "concept.execution.workspace-lock",
+          "concept.run-result",
+          "concept.workspace-binding",
+          "concept.workspace-lock",
           "req.execution.binding-trusted",
           "req.execution.workspace-lock",
           "contract.execution.run-result",
@@ -40,16 +40,11 @@
         "target": "module.commands",
         "meaning": "#uses-commands",
         "relies_on": [
-          "concept.commands.execution-command"
+          "concept.execution-command"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -59,12 +54,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.validation.readiness",
-      "type": "concept",
-      "title": "Readiness",
-      "meaning": "#concept.validation.readiness"
-    },
     {
       "id": "realization.validation.command",
       "type": "realization",
@@ -82,7 +71,7 @@
       "type": "relates",
       "source": "realization.validation.command",
       "verb": "produces",
-      "target": "concept.validation.readiness"
+      "target": "concept.readiness"
     }
   ],
   "extensions": {}

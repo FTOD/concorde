@@ -19,69 +19,64 @@
         "target": "module.tasks",
         "meaning": "#uses-tasks",
         "relies_on": [
-          "concept.tasks.task",
-          "concept.tasks.task-record",
-          "concept.tasks.decision-log"
+          "concept.task",
+          "concept.task-record",
+          "concept.decision-log"
         ]
       },
       {
         "target": "module.harness",
         "meaning": "#uses-harness",
         "relies_on": [
-          "concept.harness.session-boundary"
+          "concept.session-boundary"
         ]
       },
       {
         "target": "module.workers",
         "meaning": "#uses-workers",
         "relies_on": [
-          "concept.workers.backend"
+          "concept.worker-backend"
         ]
       },
       {
         "target": "module.main-session",
         "meaning": "#uses-main-session",
         "relies_on": [
-          "concept.main-session.guidance"
+          "concept.main-session-guidance"
         ]
       },
       {
         "target": "module.workflows",
         "meaning": "#uses-workflows",
         "relies_on": [
-          "concept.workflows.workflow",
-          "concept.workflows.result"
+          "concept.workflow",
+          "concept.workflow-result"
         ]
       },
       {
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.workspace-binding",
-          "concept.execution.run-result"
+          "concept.workspace-binding",
+          "concept.run-result"
         ]
       },
       {
         "target": "module.operations",
         "meaning": "#uses-operations",
         "relies_on": [
-          "concept.operations.operation"
+          "concept.operation"
         ]
       },
       {
         "target": "module.delivery",
         "meaning": "#uses-delivery",
         "relies_on": [
-          "concept.delivery.delivery-commit"
+          "concept.delivery-commit"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -96,18 +91,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.task-session.round",
-      "type": "concept",
-      "title": "Session round",
-      "meaning": "#concept.task-session.round"
-    },
-    {
-      "id": "concept.task-session.report",
-      "type": "concept",
-      "title": "Session report",
-      "meaning": "#concept.task-session.report"
-    },
     {
       "id": "realization.task-session.starter",
       "type": "realization",
@@ -128,49 +111,31 @@
       "type": "relates",
       "source": "realization.task-session.starter",
       "verb": "runs and records",
-      "target": "concept.task-session.round"
-    },
-    {
-      "type": "relates",
-      "source": "concept.task-session.round",
-      "verb": "ends with",
-      "target": "concept.task-session.report"
+      "target": "concept.session-round"
     },
     {
       "type": "relates",
       "source": "realization.task-session.starter",
       "verb": "prompts with",
-      "target": "concept.main-session.guidance"
+      "target": "concept.main-session-guidance"
     },
     {
       "type": "relates",
       "source": "realization.task-session.starter",
       "verb": "writes",
-      "target": "concept.harness.session-boundary"
+      "target": "concept.session-boundary"
     },
     {
       "type": "relates",
       "source": "realization.task-session.starter",
       "verb": "reads the program as",
-      "target": "concept.workers.backend"
+      "target": "concept.worker-backend"
     },
     {
       "type": "relates",
       "source": "realization.task-session.starter",
       "verb": "records rounds in",
-      "target": "concept.tasks.task-record"
-    },
-    {
-      "type": "relates",
-      "source": "concept.task-session.report",
-      "verb": "is checked against",
-      "target": "concept.tasks.task-record"
-    },
-    {
-      "type": "relates",
-      "source": "concept.task-session.report",
-      "verb": "is checked against",
-      "target": "concept.delivery.delivery-commit"
+      "target": "concept.task-record"
     }
   ],
   "extensions": {}

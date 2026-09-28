@@ -1,18 +1,18 @@
 # Execution scenarios
 
 Concrete situations that show the [requirements](requirements.md) of [Execution](module.md). The
-run result and the binding are defined in the [contracts](contracts.md) and the runner in
-[How a run is executed](runner.md).
+[run result](../glossary.json#concept.run-result) and the binding are defined in the
+[contracts](contracts.md) and the runner in [How a run is executed](runner.md).
 
 ## Bound and unbound runs
 
 ### scenario.execution.bound-run — A run works on the workspace its worktree binds
 
-- GIVEN a task worktree whose binding names the workspace `severity`, the Module `module.issues`, its branch and base commit and the primary worktree's `.concorde` as its records directory
+- GIVEN a task worktree whose binding names the workspace `severity`, the [Module](../glossary.json#concept.module) `module.issues`, its branch and base commit and the primary worktree's `.concorde` as its records directory
 - WHEN the task level runs `concorde run implement --goal "…"` in that worktree
 - THEN the run works on `module.issues` with the grant computed from that worktree's Specs
 - AND its result names the workspace `severity` and is saved under the primary worktree's `.concorde/runs/`
-- AND neither the binding nor any task record changes
+- AND neither the binding nor any [task record](../glossary.json#concept.task-record) changes
 
 ### scenario.execution.binding-refused — A broken or copied binding is refused
 
@@ -31,14 +31,14 @@ run result and the binding are defined in the [contracts](contracts.md) and the 
 ### scenario.execution.unbound-run — A reading Operation runs unbound
 
 - GIVEN a primary worktree with `module.a`
-- WHEN the main agent runs `concorde run spec_review --modules module.a` there
+- WHEN the [main agent](../glossary.json#concept.main-agent) runs `concorde run spec_review --modules module.a` there
 - THEN the reviewer runs on the primary worktree, with the grant computed from its Specs
 - AND the result has `workspace` null and is saved under the primary worktree's `.concorde/runs/`
-- AND a later unbound run may admit it with `--input`
+- AND a later [unbound run](../glossary.json#concept.unbound-run) may admit it with `--input`
 
 ### scenario.execution.unbound-read-only — An unbound run never launches a writing worker
 
-- GIVEN an Operation that allows unbound runs
+- GIVEN an [Operation](../glossary.json#concept.operation) that allows unbound runs
 - WHEN an unbound run of it asks Workers for an `implement` or `specify` worker
 - THEN no worker starts and the result is `failed` with `unbound_write`, its actor naming the run as unbound
 - AND an `--input` naming a run of a workspace is refused with `input_not_admissible`
@@ -48,7 +48,7 @@ run result and the binding are defined in the [contracts](contracts.md) and the 
 - GIVEN a bound workspace
 - WHEN the task level runs `concorde task-validation` there
 - THEN the result has `kind` `command`, `worker` null, an empty `worker_runs` and Validation's readiness as `output`
-- AND it is recorded in the run store like any Operation run, so a later `delivery` or workflow step can find it
+- AND it is recorded in the [run store](../glossary.json#concept.run-store) like any Operation run, so a later `delivery` or [workflow step](../glossary.json#concept.workflow-step) can find it
 - BUT `concorde run task-validation` is a command-line error naming `concorde task-validation`
 
 ## One run at a time
@@ -75,10 +75,10 @@ run result and the binding are defined in the [contracts](contracts.md) and the 
 ### scenario.execution.bad-command — A malformed command line
 
 - GIVEN a command line with an unknown Operation name, an unknown argument, or a directory outside every Git worktree
-- WHEN `concorde run` or an execution command is invoked
+- WHEN `concorde run` or an [execution command](../glossary.json#concept.execution-command) is invoked
 - THEN it exits with status 2
 - AND standard error names what is wrong, such as the unknown Operation or argument
-- AND no result and no run directory are written
+- AND no result and no [run directory](../glossary.json#concept.run-directory) are written
 
 ### scenario.execution.progress-file — A run shows its progress
 
@@ -86,7 +86,7 @@ run result and the binding are defined in the [contracts](contracts.md) and the 
 - WHEN it runs and finishes
 - THEN its `status.json` names the kind, the Operation, the workspace, the current step and the runner process while it runs
 - AND once finished it holds the result's status and summary
-- AND the worker run it launched records the same runner process in its own progress file
+- AND the worker run it launched records the same runner process in its own [progress file](../glossary.json#concept.progress-file)
 
 ### scenario.execution.host-error — A step raises an error
 
@@ -101,7 +101,7 @@ run result and the binding are defined in the [contracts](contracts.md) and the 
 - WHEN the task level runs `concorde run implement --detach` there
 - THEN the command prints the run identity and the path of its future result and exits with status 0 while the runner keeps running
 - AND the run's progress file exists when the command exits
-- AND the runner writes the same result and run record as a run started without `--detach`
+- AND the runner writes the same result and [run record](../glossary.json#concept.run-record) as a run started without `--detach`
 - BUT a workspace already running something still gets a `failed` result naming the refusal, written where the printed path says
 
 ### scenario.execution.cancelled — The run is cancelled

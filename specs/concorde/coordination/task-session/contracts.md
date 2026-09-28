@@ -1,11 +1,13 @@
 # Task session contracts
 
-The exact commands and session report of [Task session](module.md). The obligations they serve
-are in the [requirements](requirements.md).
+The exact commands and [session report](../../glossary.json#concept.session-report) of
+[Task session](module.md). The obligations they serve are in the [requirements](requirements.md).
 
 ## Session report
 
-The arguments of the `concorde_report` tool with which a pi task session ends a [session round](module.md#concept.task-session.round).
+The arguments of the `concorde_report` tool with which a pi
+[task session](../../glossary.json#concept.task-session) ends a
+[session round](../../glossary.json#concept.session-round).
 
 ```concorde-contract
 {
@@ -85,6 +87,6 @@ its refusals use these:
 
 | Command | Effect | Output |
 | --- | --- | --- |
-| `concorde task session <task-id> [--main <session>] [--model <model>] [--dry-run]` | Starts a task session on the main session's program. For Claude Code (`--main` required): writes `.concorde/tasks/<task-id>.session/settings.json` and its write hook, starts `claude --bg --name task-<task-id> --settings <file> --permission-mode auto [--model <model>]` in the task worktree with the rendered task-session guidance and the task's identity, goal, Modules, decision log and `--main` as first prompt, and appends the started session to the record. For pi: writes `boundary.ts` and the path decisions it imports into that directory, starts the detached supervisor of round 1, which runs `pi -p --mode json --approve -e <boundary.ts> --session-dir <directory>/pi --session-id <session id> [--model <model>]` in the task worktree with the rendered pi task-session guidance and the task's identity, goal, Modules and decision log as prompt, and appends the session with round 1 `running` to the record. `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>"}` (for pi, `"boundary"` instead of `"settings"`) |
+| `concorde task session <task-id> [--main <session>] [--model <model>] [--dry-run]` | Starts a task session on the main session's program. For Claude Code (`--main` required): writes `.concorde/tasks/<task-id>.session/settings.json` and its [write hook](../../glossary.json#concept.write-hook), starts `claude --bg --name task-<task-id> --settings <file> --permission-mode auto [--model <model>]` in the task worktree with the rendered task-session guidance and the task's identity, goal, Modules, [decision log](../../glossary.json#concept.decision-log) and `--main` as first prompt, and appends the started session to the record. For pi: writes `boundary.ts` and the path decisions it imports into that directory, starts the detached supervisor of round 1, which runs `pi -p --mode json --approve -e <boundary.ts> --session-dir <directory>/pi --session-id <session id> [--model <model>]` in the task worktree with the rendered pi task-session guidance and the task's identity, goal, Modules and decision log as prompt, and appends the session with round 1 `running` to the record. `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>"}` (for pi, `"boundary"` instead of `"settings"`) |
 | `concorde task session <task-id> --answer <text>` | pi only: starts the next round of the task's latest pi session on the same session file, with the answer as its prompt | The recorded session |
 | `concorde task session <task-id> --stop` | pi only: asks the running round's supervisor to stop, which sends the round's pi process group SIGTERM and SIGKILL 3 seconds later, and records the round as `stopped`; waits up to 15 seconds for that record | The recorded session |

@@ -1,4 +1,4 @@
-"""Shared constants, value types and path helpers of the Protocol 14 Spec tooling.
+"""Shared constants, value types and path helpers of the Protocol 15 Spec tooling.
 
 The Spec graph is loaded by ``content_repository``; this module holds what every part of the
 tooling shares: identities, errors, safe file reads, realization-entry path rules and the
@@ -25,7 +25,7 @@ from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode
 
 PROFILE_VERSION = 17
-PROTOCOL_VERSION = "14.0.0"
+PROTOCOL_VERSION = "15.0.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 # The installed Protocol copy the configuration binds; the installer places it there.
@@ -493,16 +493,30 @@ class Scenario:
 
 @dataclass(frozen=True)
 class Concept:
-    """One named meaning, declared in a module document's metadata and defined by a table row."""
+    """One named meaning: an entry of the project glossary.
+
+    ``document`` and ``anchor`` locate the explanation the entry names, in a document of the
+    owner; ``source`` is the glossary path. ``mentions`` are the concepts the definition links.
+    """
 
     id: str
     title: str
     owner: str
     document: str
-    meaning: str
+    anchor: str
     definition: str | None
     retired: dict | None = None
     external_conflict: str | None = None
+    source: str = ""
+    narrows: tuple[str, ...] = ()
+    supersedes: str | None = None
+    contrasts: tuple[dict, ...] = ()
+    relates: tuple[dict, ...] = ()
+    mentions: tuple[str, ...] = ()
+
+    @property
+    def explanation(self) -> str:
+        return f"{self.document}#{self.anchor}"
 
 
 @dataclass(frozen=True)

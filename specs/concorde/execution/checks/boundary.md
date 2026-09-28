@@ -1,8 +1,8 @@
 # The read-only check boundary
 
 The exact call, environment, mounts and limits of the check runner, and the requirements and
-scenarios of the boundary. The [entry](module.md#concept.checks.read-only-boundary) explains what
-the boundary is for and what it deliberately leaves out.
+scenarios of the boundary. The [entry](../../glossary.json#concept.read-only-check-boundary)
+explains what the boundary is for and what it deliberately leaves out.
 
 ## Running one command
 
@@ -35,7 +35,7 @@ before the scratch is removed, with the scratch path and the result or exception
 output stream keeps only its last 2 MiB while counting all bytes.
 
 `CHECK_POLICY = "project-read-only-v1"` names the boundary. The policy name is part of every
-configured check's measured digest.
+[configured check](../../glossary.json#concept.configured-check)'s measured digest.
 
 ## Scratch and environment
 

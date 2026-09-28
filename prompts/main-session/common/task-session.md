@@ -2,6 +2,11 @@
 audience: shared
 ---
 
+Your session starts with the project's terms, each defined once in its glossary: use every
+term exactly as defined, in Specs, code, the decision log and your reports, and never coin a synonym
+for one. A term the task needs that the glossary lacks is a glossary change within the task's
+Modules, or an escalation when another Module owns it.
+
 Decide ordinary questions inside the task's goal and Modules yourself: naming, internal
 structure, the order of steps, re-running an Operation with a clarified brief. Record each such
 decision, and every result that is not `ok`, in the task's decision log with its reason; append,

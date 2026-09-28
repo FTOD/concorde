@@ -2,38 +2,15 @@
 
 ## Purpose
 
-Understanding lets the main agent learn what one or more Modules promise before anything changes.
-It provides the `understand` Operation: a worker reads the bound Modules' Specs and only the names
-of their code files, and answers a stated goal with what the Modules promise, whether their Spec
-suffices, the Spec gaps if not, and, when asked, a plan. The main agent relies on it to plan work
-and confirm a Spec repair closed a gap. Understanding never changes a file, never reads code
-contents and never fills a missing promise by guessing from code; a plan is a proposal the main
-agent may follow, change or reject.
-
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Assessment | The result of one understand run: what the bound Modules promise, whether their Spec is sufficient for the stated goal, the Spec gaps found and, when requested and sufficient, a plan. |
-| Spec gap | A promise that the stated goal needs and that the Spec of a bound Module does not state, reported with where it belongs instead of being inferred. |
-| [Main agent](../../../vocabulary.md#concept.concorde.main-agent) | |
-| [Worker](../../../vocabulary.md#concept.concorde.worker) | |
-| [Task type](../../../vocabulary.md#concept.concorde.task-type) | |
-| [Spec context](../../../vocabulary.md#concept.concorde.spec-context) | |
-| [Implementation context](../../../vocabulary.md#concept.concorde.implementation-context) | |
-| [Error chain](../../../vocabulary.md#concept.concorde.error-chain) | |
-| [Operation](../module.md#concept.operations.operation) | |
-| [Execution runner](../../module.md#concept.execution.runner) | |
-| [Run result](../../module.md#concept.execution.run-result) | |
-| [Workspace](../../module.md#concept.execution.workspace) | |
-| [Unbound run](../../module.md#concept.execution.unbound-run) | |
-| [Grant](../../../spec-tooling/spec/module.md#concept.spec.grant) | |
-| [Brief](../../workers/module.md#concept.workers.brief) | |
-| [Worker result](../../workers/module.md#concept.workers.worker-result) | |
-| [Write audit](../../workers/module.md#concept.workers.audit) | |
-
-An assessment is the answer; Spec gaps are the part of it that says why the goal cannot proceed
-yet. The plan is optional and exists only inside a sufficient assessment.
+Understanding lets the [main agent](../../../glossary.json#concept.main-agent) learn what one or
+more Modules promise before anything changes. It provides the `understand`
+[Operation](../../../glossary.json#concept.operation): a worker reads the bound Modules' Specs and
+only the names of their code files, and answers a stated goal with what the Modules promise, whether
+their [Spec](../../../glossary.json#concept.spec) suffices, the
+[Spec gaps](../../../glossary.json#concept.spec-gap) if not, and, when asked, a plan. The main agent
+relies on it to plan work and confirm a Spec repair closed a gap. Understanding never changes a
+file, never reads code contents and never fills a missing promise by guessing from code; a plan is a
+proposal the main agent may follow, change or reject.
 
 ## Usage
 
@@ -43,10 +20,10 @@ The main agent runs the Operation in a task worktree, usually before specifying 
 concorde run understand [--modules <module-id>[,<module-id>…]] --goal "<text>" [--plan] [--input <run-id>]…
 ```
 
-The run works on the [workspace](../../module.md#concept.execution.workspace) whose binding lies in
+The run works on the [workspace](../../../glossary.json#concept.workspace) whose binding lies in
 the worktree it starts in, and briefs the worker with that workspace's goal beside the run's own.
 In a worktree without a binding, such as the primary worktree, it is an
-[unbound run](../../module.md#concept.execution.unbound-run) that answers a question before any
+[unbound run](../../../glossary.json#concept.unbound-run) that answers a question before any
 task exists; it then works on the Modules `--modules` names and admits only inputs of other
 unbound runs. `--modules` names the worker's bound Modules (default: the binding's), `--goal`
 states what the main agent wants to know or do, `--plan` also asks for a plan, and `--input` admits
@@ -54,18 +31,19 @@ an earlier `ok` run's output as material. For example, `--modules module.issues 
 carry a severity" --plan` has the worker answer with either a plan (`specify`, `implement`, `test`,
 `code_review`, `task-validation`, `delivery`) or the Spec gaps that block it.
 
-<a id="concept.understanding.assessment"></a>
+<a id="concept.assessment"></a>
 
-The Operation returns a [run result](../../module.md#concept.execution.run-result) whose `output`
-is an **assessment**, defined by the
-[assessment contract](contracts.md#contract.understanding.assessment): for each bound Module, what
-it promises that matters for the goal, and whether the Spec is **sufficient**. When it is and a
-plan was requested, the plan names the Modules to change, the files to declare as pending entries
-and where, the ordered next runs — Operations, and the execution commands `task-validation` and
-`delivery` that end a task's work — and the open decisions the main agent has to take. The
-plan has no separate Operation: breaking work into steps is one use of understanding.
+The Operation returns a [run result](../../../glossary.json#concept.run-result) whose `output` is an
+**assessment**, defined by the
+[assessment contract](contracts.md#contract.understanding.assessment): for each bound
+[Module](../../../glossary.json#concept.module), what it promises that matters for the goal, and
+whether the Spec is **sufficient**. When it is and a plan was requested, the plan names the Modules
+to change, the files to declare as pending entries and where, the ordered next runs — Operations,
+and the [execution commands](../../../glossary.json#concept.execution-command) `task-validation` and
+`delivery` that end a task's work — and the open decisions the main agent has to take. The plan has
+no separate Operation: breaking work into steps is one use of understanding.
 
-<a id="concept.understanding.spec-gap"></a>
+<a id="concept.spec-gap"></a>
 
 When not sufficient, the assessment lists each **Spec gap** instead of a plan: the Module and
 document where the promise belongs, what is missing, why the goal needs it and a suggested repair.
@@ -74,7 +52,7 @@ The usual next step is `specify` to close the gaps, then another `understand` to
 `status` is `ok` whenever the worker completed an assessment, sufficient or not; `sufficient` says
 whether work may proceed. It is `blocked` when the worker could not assess the goal at all — an
 ambiguous goal, or Modules not bound — and the
-[error chain](../../../vocabulary.md#concept.concorde.error-chain) ends in the worker's own link with
+[error chain](../../../glossary.json#concept.error-chain) ends in the worker's own link with
 what it tried and would need. It is `failed` when the worker could not be run, the worker
 changed a file, or the assessment names an unknown Module or is internally inconsistent (gaps and
 sufficiency, or plan and `--plan`, disagree; no entry for a bound Module): the Operation's own link
@@ -86,19 +64,19 @@ is safe.
 
 ## Design
 
-The Operation is worker-backed, run with task type `understand`, which gives the worker the bound
-Modules' [Spec context](../../../vocabulary.md#concept.concorde.spec-context) and external material to
-read, only the file names of their
-[implementation context](../../../vocabulary.md#concept.concorde.implementation-context), and nothing
-to write. Reading names but not contents is the point: the only promises the worker can report are
-ones the Spec states, so a thin Spec is a Spec gap, never inferred from code.
+The Operation is worker-backed, run with [task type](../../../glossary.json#concept.task-type)
+`understand`, which gives the worker the bound Modules'
+[Spec context](../../../glossary.json#concept.spec-context) and external material to read, only the
+file names of their [implementation context](../../../glossary.json#concept.implementation-context),
+and nothing to write. Reading names but not contents is the point: the only promises the worker can
+report are ones the Spec states, so a thin Spec is a Spec gap, never inferred from code.
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Compute and freeze the `understand` [grant](../../../spec-tooling/spec/module.md#concept.spec.grant) | Workers, Spec core | Specs cannot load, or unknown Module (`failed`) |
-| 2 | Generate settings, tools and the [brief](../../workers/module.md#concept.workers.brief) | Workers | — |
-| 3 | Launch the worker and wait for its [worker result](../../workers/module.md#concept.workers.worker-result) | Workers, worker | launch error or timeout (`failed`) |
-| 4 | [Audit](../../workers/module.md#concept.workers.audit): read-only grant, so any change is a violation; write the run record | Workers | any change (`failed`) |
+| 1 | Compute and freeze the `understand` [grant](../../../glossary.json#concept.grant) | Workers, Spec core | Specs cannot load, or unknown Module (`failed`) |
+| 2 | Generate settings, tools and the [brief](../../../glossary.json#concept.brief) | Workers | — |
+| 3 | Launch the worker and wait for its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error or timeout (`failed`) |
+| 4 | [Audit](../../../glossary.json#concept.write-audit): read-only grant, so any change is a violation; write the [run record](../../../glossary.json#concept.run-record) | Workers | any change (`failed`) |
 | 5 | Check every named Module exists in the workspace's Specs and the assessment is consistent | Operation | unknown Module or inconsistency (`failed`) |
 | 6 | Return the assessment as the run's output | Operation, Execution runner | — |
 
@@ -108,8 +86,8 @@ malformed assessment is not repaired either, so every accepted assessment is one
 frozen grant.
 
 The Operation treats the assessment as the worker's claim, verifying only what it can decide from
-declarations and the assessment's own shape, then adds its own evidence: grant, context identity,
-audit and transcript path.
+declarations and the assessment's own shape, then adds its own evidence: grant,
+[context identity](../../../glossary.json#concept.context-identity), audit and transcript path.
 Whether a plan is good is for the main agent and later Operations to find out. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
@@ -128,20 +106,21 @@ nothing, and names this Module as its provider; Understanding never calls anothe
 
 <a id="uses-execution"></a>
 
-**Execution**'s [runner](../../module.md#concept.execution.runner) runs the Operation's steps: it
-reads the workspace binding, settles the Modules and inputs, and wraps the assessment in the
-[run result](../../module.md#concept.execution.run-result). Understanding relies on it for the
+**Execution**'s [runner](../../../glossary.json#concept.execution-runner) runs the Operation's
+steps: it reads the [workspace binding](../../../glossary.json#concept.workspace-binding), settles
+the Modules and inputs, and wraps the assessment in the
+[run result](../../../glossary.json#concept.run-result). Understanding relies on it for the
 workspace's goal and Modules, and for refusing an input that is not an `ok` run of the same
 workspace, or, for an unbound run, of no workspace.
 
 <a id="uses-workers"></a>
 
 **Workers** turns the frozen grant into settings, launches the worker with this Module's brief,
-collects its [worker result](../../workers/module.md#concept.workers.worker-result), audits
+collects its [worker result](../../../glossary.json#concept.worker-result), audits
 the worktree and writes the run record. Any audit violation is a failed run.
 
 <a id="uses-spec"></a>
 
 **Spec core** computes the `understand`
-[grant](../../../spec-tooling/spec/module.md#concept.spec.grant) and resolves Module identities for
+[grant](../../../glossary.json#concept.grant) and resolves Module identities for
 step 5, always from the Specs of the worktree the run works on.

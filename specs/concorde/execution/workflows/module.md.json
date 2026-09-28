@@ -19,13 +19,13 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.runner",
-          "concept.execution.run",
-          "concept.execution.run-result",
-          "concept.execution.workspace-binding",
-          "concept.execution.workspace-lock",
-          "concept.execution.detached-run",
-          "concept.execution.run-store",
+          "concept.execution-runner",
+          "concept.run",
+          "concept.run-result",
+          "concept.workspace-binding",
+          "concept.workspace-lock",
+          "concept.detached-run",
+          "concept.run-store",
           "req.execution.workspace-lock",
           "req.execution.no-chaining",
           "contract.execution.run-result"
@@ -61,16 +61,11 @@
         "target": "module.commands",
         "meaning": "#uses-commands",
         "relies_on": [
-          "concept.commands.execution-command"
+          "concept.execution-command"
         ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
       {
         "kind": "document",
         "target": "document.concorde.contracts",
@@ -80,66 +75,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.workflows.workflow",
-      "type": "concept",
-      "title": "Workflow",
-      "meaning": "#concept.workflows.workflow"
-    },
-    {
-      "id": "concept.workflows.mode",
-      "type": "concept",
-      "title": "Workflow mode",
-      "meaning": "#concept.workflows.mode"
-    },
-    {
-      "id": "concept.workflows.decision-point",
-      "type": "concept",
-      "title": "Decision point",
-      "meaning": "#concept.workflows.decision-point"
-    },
-    {
-      "id": "concept.workflows.step",
-      "type": "concept",
-      "title": "Workflow step",
-      "meaning": "#concept.workflows.step"
-    },
-    {
-      "id": "concept.workflows.step-key",
-      "type": "concept",
-      "title": "Step key",
-      "meaning": "#concept.workflows.step-key"
-    },
-    {
-      "id": "concept.workflows.record",
-      "type": "concept",
-      "title": "Workflow record",
-      "meaning": "#concept.workflows.record"
-    },
-    {
-      "id": "concept.workflows.step-agent",
-      "type": "concept",
-      "title": "Step agent",
-      "meaning": "#concept.workflows.step-agent"
-    },
-    {
-      "id": "concept.workflows.script",
-      "type": "concept",
-      "title": "Workflow script",
-      "meaning": "#concept.workflows.script"
-    },
-    {
-      "id": "concept.workflows.result",
-      "type": "concept",
-      "title": "Workflow result",
-      "meaning": "#concept.workflows.result"
-    },
-    {
-      "id": "concept.workflows.brownfield",
-      "type": "concept",
-      "title": "Brownfield workflow",
-      "meaning": "#concept.workflows.brownfield"
-    },
     {
       "id": "realization.workflows.commands",
       "type": "realization",
@@ -177,69 +112,15 @@
   "relations": [
     {
       "type": "relates",
-      "source": "concept.workflows.workflow",
-      "verb": "runs",
-      "target": "concept.workflows.step"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workflows.workflow",
-      "verb": "runs in",
-      "target": "concept.workflows.mode"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workflows.step",
-      "verb": "is named by",
-      "target": "concept.workflows.step-key"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workflows.step-agent",
-      "verb": "runs",
-      "target": "concept.workflows.step"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workflows.script",
-      "verb": "defines",
-      "target": "concept.workflows.workflow"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workflows.workflow",
-      "verb": "ends with",
-      "target": "concept.workflows.result"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workflows.mode",
-      "verb": "decides what happens at",
-      "target": "concept.workflows.decision-point"
-    },
-    {
-      "type": "relates",
-      "source": "concept.workflows.brownfield",
-      "verb": "is a",
-      "target": "concept.workflows.workflow"
-    },
-    {
-      "type": "relates",
       "source": "realization.workflows.scripts",
       "verb": "runs steps through",
       "target": "realization.workflows.commands"
     },
     {
       "type": "relates",
-      "source": "concept.workflows.record",
-      "verb": "lists",
-      "target": "concept.workflows.step"
-    },
-    {
-      "type": "relates",
       "source": "realization.workflows.commands",
       "verb": "records steps in",
-      "target": "concept.workflows.record"
+      "target": "concept.workflow-record"
     },
     {
       "type": "relates",

@@ -1,10 +1,12 @@
 # pi harness mechanics
 
 The exact extensions the Harness generates to apply a harness to a pi agent: the worker's
-permission extension with its read and write tables, sandbox, limits and tool sets, and the
-task session's boundary extension. The [entry](module.md) explains why a harness is applied this
-way; the [Claude Code mechanics](claude-code.md) state what the Claude Code backend generates, and
-[the pi run mechanics](../execution/workers/pi.md) of Workers how a pi worker is launched with it.
+[permission extension](../glossary.json#concept.permission-extension) with its read and write
+tables, sandbox, limits and tool sets, and the
+[task session](../glossary.json#concept.task-session)'s boundary extension. The [entry](module.md)
+explains why a harness is applied this way; the [Claude Code mechanics](claude-code.md) state what
+the Claude Code backend generates, and [the pi run mechanics](../execution/workers/pi.md) of Workers
+how a pi worker is launched with it.
 
 ## Permission extension
 
@@ -12,8 +14,9 @@ way; the [Claude Code mechanics](claude-code.md) state what the Claude Code back
 policy holds, as absolute paths, the task worktree, the grant's `rw`, `ro` and `names` lists, the
 host-only directories (`control/`, `config/`), the run's own directories (`work/`, `home/`,
 `TMPDIR`), the runtime paths, the user's real home directory, the sandbox's filesystem
-configuration, the programs `rg` and `fd`, the limits and the worker result schema. The extension
-registers exactly these tools, replacing pi's built-ins of the same name:
+configuration, the programs `rg` and `fd`, the limits and the
+[worker result](../glossary.json#concept.worker-result) schema. The extension registers exactly
+these tools, replacing pi's built-ins of the same name:
 
 | Tool | Behaviour |
 | --- | --- |
@@ -52,19 +55,20 @@ The last row keeps system directories readable, as on the Claude Code backend.
 ### Write table
 
 A write or edit is judged on the resolved path with its directories' symbolic links resolved and a
-final symbolic link judged by its own name, exactly as [the write
-hook](claude-code.md#write-hook) judges it, with the same decisions and reasons.
+final symbolic link judged by its own name, exactly as
+[the write hook](claude-code.md#write-hook) judges it, with
+the same decisions and reasons.
 
 ### Sandbox
 
 `bash`, `grep`, `find` and `ls` run their command through `@anthropic-ai/sandbox-runtime`, the
-engine Claude Code's own sandbox uses. The extension initializes it once per process with no
-allowed network domain and a strict allowlist, and passes the filesystem configuration with every
-command: `denyRead` the task worktree, the user's home and the run's `control/` and `config/`;
-`allowRead` each `ro` and `rw` path, the runtime paths, the run's own directories and the
-sandbox-runtime's own helper programs; `allowWrite` each `rw` path and the run's own directories.
-These are the lists of the Claude Code backend's [sandbox](claude-code.md#worker-settings), computed by
-the same code. The extension resets the sandbox when the session ends, so the process exits.
+engine Claude Code's own sandbox uses. The extension initializes it once per process with no allowed
+network domain and a strict allowlist, and passes the filesystem configuration with every command:
+`denyRead` the task worktree, the user's home and the run's `control/` and `config/`; `allowRead`
+each `ro` and `rw` path, the runtime paths, the run's own directories and the sandbox-runtime's own
+helper programs; `allowWrite` each `rw` path and the run's own directories. These are the lists of
+the Claude Code backend's [sandbox](claude-code.md#worker-settings), computed by the same code. The
+extension resets the sandbox when the session ends, so the process exits.
 
 ### Limits
 
@@ -75,7 +79,7 @@ and aborts the run.
 
 ## Tool sets
 
-| Task type | `--tools` |
+| [Task type](../glossary.json#concept.task-type) | `--tools` |
 | --- | --- |
 | `understand`, `review-spec`, `review-code`, `test` | `read,grep,find,ls,concorde_result` |
 | `specify`, `code-to-spec` | `read,grep,find,ls,edit,write,concorde_result` |
@@ -87,14 +91,14 @@ A grant with no writable path gets the first row's set whatever its task type, a
 
 A pi task session's boundary is `.concorde/tasks/<task>.session/boundary.ts`, the source
 `pi_session.ts` with the session's policy embedded, beside `pi_session_policy.ts` and the
-`pi_policy.ts` it imports. The policy holds, as absolute paths, the task worktree, the decision
-log, the writable paths of the shell, the private temporary directory and the session report
-schema. Unlike the worker's extension it intercepts pi's tools instead of replacing them, so the
-developer's own extensions keep theirs:
+`pi_policy.ts` it imports. The policy holds, as absolute paths, the task worktree, the decision log,
+the writable paths of the shell, the private temporary directory and the
+[session report](../glossary.json#concept.session-report) schema. Unlike the worker's extension it
+intercepts pi's tools instead of replacing them, so the developer's own extensions keep theirs:
 
 | Tool | Behaviour |
 | --- | --- |
-| `write`, `edit` | Blocked, with a reason naming the task worktree, unless the path, resolved as pi resolves it, is inside the task worktree or is the decision log |
+| `write`, `edit` | Blocked, with a reason naming the task worktree, unless the path, resolved as pi resolves it, is inside the task worktree or is the [decision log](../glossary.json#concept.decision-log) |
 | `bash` | Rewritten to run inside sandbox-runtime, writing only the policy's writable paths and the temporary directory, with every network host allowed |
 | `concorde_report` | Takes the [session report](../coordination/task-session/contracts.md#contract.task-session.report) and ends the round |
 

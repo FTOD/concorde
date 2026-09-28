@@ -1,8 +1,9 @@
 # Implementation contracts
 
 The exact shapes of what [Implementation](module.md) returns. Each is the `output` of the
-[run result](../../module.md#concept.execution.run-result). Fields computed by the Operation are facts it observed; fields the worker supplies as
-the Operation-specific part of its answer are its claims and are passed on unchanged.
+[run result](../../../glossary.json#concept.run-result). Fields computed by the
+[Operation](../../../glossary.json#concept.operation) are facts it observed; fields the worker
+supplies as the Operation-specific part of its answer are its claims and are passed on unchanged.
 
 ## Code change
 

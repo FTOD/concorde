@@ -8,9 +8,9 @@ are defined in the [Issue interface](interface.md).
 ### scenario.issues.command-report — Record a report from a file
 
 - GIVEN an initialized project and a report file naming a registered owner and existing evidence
-- WHEN the main agent runs `report --file` with that file and a task identity
-- THEN a new open Issue holds exactly that report
-- AND its provenance names `main-agent`, `issues`, `report`, the owner as reporting Module, the registry digest, the task and the Git `HEAD` or `null` outside a Git repository
+- WHEN the [main agent](../glossary.json#concept.main-agent) runs `report --file` with that file and a task identity
+- THEN a new open [Issue](../glossary.json#concept.issue) holds exactly that report
+- AND its provenance names `main-agent`, `issues`, `report`, the owner as reporting [Module](../glossary.json#concept.module), the registry digest, the task and the Git `HEAD` or `null` outside a Git repository
 - AND the command prints the receipt and the revision that `show` reports for the Issue
 
 This illustrates [command attribution](requirements.md#req.issues.main-agent-actor) and the
@@ -26,7 +26,7 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 
 ### scenario.issues.command-report-origin — Record a report seen in another project
 
-- GIVEN an initialized project and a report file written in another project, naming that project as its `origin`, evidence paths relative to it and an error chain
+- GIVEN an initialized project and a report file written in another project, naming that project as its `origin`, evidence paths relative to it and an [error chain](../glossary.json#concept.error-chain)
 - WHEN the main agent runs `report --file` with that file
 - THEN the Issue holds the report with its origin and error chain unchanged, and its provenance is this project's
 - BUT a report whose evidence is absent from the origin project is refused with `missing_evidence` naming the origin project

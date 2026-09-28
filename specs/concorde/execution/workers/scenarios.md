@@ -7,11 +7,11 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.fenced-run — An implement worker changes only its writable files
 
-- GIVEN a worktree and an `implement` grant with a `rw` source file, a pending `rw` file, `ro` Specs and a `names` file of another Module
+- GIVEN a worktree and an `implement` grant with a `rw` source file, a pending `rw` file, `ro` Specs and a `names` file of another [Module](../../glossary.json#concept.module)
 - WHEN the host runs a worker that edits the source file and writes the pending file
 - THEN both changes reach the worktree
-- AND the audit is clean, the configured checks run on the worktree and the run ends `ok`
-- AND the run record holds the grant's context identity, the settings and brief digests, the tool set, the transcript path, the round with its audit and check results, and the worker result verbatim
+- AND the audit is clean, the [configured checks](../../glossary.json#concept.configured-check) run on the worktree and the run ends `ok`
+- AND the [run record](../../glossary.json#concept.run-record) holds the grant's [context identity](../../glossary.json#concept.context-identity), the settings and brief digests, the tool set, the transcript path, the round with its audit and [check results](../../glossary.json#concept.check-result), and the [worker result](../../glossary.json#concept.worker-result) verbatim
 
 ### scenario.workers.pending-precreated — Pending files exist before launch and vanish if unused
 
@@ -26,7 +26,15 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a `CLAUDE.md` in the worktree and in the working directory, and user settings, skills and MCP servers in the user's Claude Code configuration
 - WHEN the host launches a worker
 - THEN none of them reaches the worker
-- AND the worker's environment holds only the listed variables, with `HOME`, `TMPDIR` and `CLAUDE_CONFIG_DIR` inside its run directory
+- AND the worker's environment holds only the listed variables, with `HOME`, `TMPDIR` and `CLAUDE_CONFIG_DIR` inside its [run directory](../../glossary.json#concept.run-directory)
+
+### scenario.workers.brief-terms — The brief carries the definitions of the worker's terms
+
+- GIVEN a grant whose terms hold the glossary entries the bound Modules' documents link
+- WHEN the host launches the worker
+- THEN the brief lists each term with its identity, owner and definition
+- AND when the glossary is writable it says that only the bound Modules' entries may change
+- BUT it lists no entry outside the grant's terms
 
 ## The boundary
 
@@ -34,12 +42,12 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a running worker
 - WHEN it uses Write on a path in the worktree that is in no grant list
-- THEN the write hook denies it with a reason saying the file must first be declared pending through a `specify` task
+- THEN the [write hook](../../glossary.json#concept.write-hook) denies it with a reason saying the file must first be declared pending through a `specify` task
 - AND the file does not appear in the worktree
 
 ### scenario.workers.ro-edit-denied — A read-only file cannot be edited
 
-- GIVEN a running worker whose grant makes a Spec file `ro`
+- GIVEN a running worker whose grant makes a [Spec](../../glossary.json#concept.spec) file `ro`
 - WHEN it uses Edit on that file
 - THEN the edit is denied and the file is unchanged
 - BUT Read of the same file succeeds
@@ -67,7 +75,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.run-directory-denied — A run the deny rules would disable is refused
 
-- GIVEN a grant and a primary worktree whose generated deny rules would cover the run's working, home or temporary directory
+- GIVEN a grant and a primary worktree whose generated [deny rules](../../glossary.json#concept.deny-rules) would cover the run's working, home or temporary directory
 - WHEN the host is asked to start the worker
 - THEN it refuses before launch with `run_directory_denied`
 - AND it still writes the run record
@@ -79,8 +87,15 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worker round after which a file outside the grant's `rw` list has changed in the worktree
 - WHEN the host audits the worktree
 - THEN the run ends `failed` with `audit_violation` and every violating path as host evidence
-- AND no configured check runs and no resume round follows
+- AND no configured check runs and no [resume round](../../glossary.json#concept.resume-round) follows
 - BUT the host neither reverts nor commits the change
+
+### scenario.workers.glossary-entries — A worker changes only its Modules' glossary entries
+
+- GIVEN a `specify` worker bound to Module A, whose grant makes the project glossary writable
+- WHEN the worker changes the glossary entry of a concept A owns
+- THEN the audit accepts the change
+- BUT when it changes an entry Module B owns, the run ends `failed` with `audit_violation`, naming the glossary, the entry and its owner before and after as the violation
 
 ### scenario.workers.proposed-deletion — The host performs proposed deletions
 
@@ -129,7 +144,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worker run whose launcher is told the run identity as soon as the run exists
 - WHEN the run is interrupted from outside before it returns, such as by a signal
 - THEN its run record ends `failed` with the error `interrupted`, of reason `environment`, naming the interruption
-- AND its progress file is `finished` with status `failed`
+- AND its [progress file](../../glossary.json#concept.progress-file) is `finished` with status `failed`
 - AND the interruption travels on to the launcher
 
 ### scenario.workers.invalid-result — A worker without a valid result has failed
@@ -181,7 +196,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.pi-limit — A pi run over its turn limit stops
 
 - GIVEN a pi worker whose turns exceed `max_turns`
-- WHEN the permission extension counts the turn
+- WHEN the [permission extension](../../glossary.json#concept.permission-extension) counts the turn
 - THEN it aborts the run and records the limit reached
 - AND the run ends `failed` with `worker_limit_reached`
 
@@ -190,16 +205,16 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.backend-from-client — The main session's program is read from the environment
 
 - GIVEN a command started from a Claude Code session, one started from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and one started from neither
-- WHEN each reads the main session's program, as a task session does
+- WHEN each reads the main session's program, as a [task session](../../glossary.json#concept.task-session) does
 - THEN the first reads `claude` from `CLAUDECODE=1` and the second `pi` from `CONCORDE_CLIENT`
 - AND the third is refused with `client_unknown`, naming every variable it looked at and how to set one
 - BUT a `CONCORDE_CLIENT` naming neither program is refused with `invalid_client`
 
 ### scenario.workers.backend-configured — Workers run on pi unless their configuration chooses Claude Code
 
-- GIVEN a command started from a Claude Code session, both programs installed, and a worker model configuration whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a level
+- GIVEN a command started from a Claude Code session, both programs installed, and a [worker model configuration](../../glossary.json#concept.worker-model-configuration) whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a level
 - WHEN the choices of `implement`'s worker and of `spec_review`'s `reviewer` and `checker` are resolved
-- THEN a worker without an entry, in an empty configuration, runs on `pi` as Concorde's default worker backend
+- THEN a worker without an entry, in an empty configuration, runs on `pi` as Concorde's default [worker backend](../../glossary.json#concept.worker-backend)
 - AND the reviewer runs on pi with the default's model, and the checker on `claude` from its own entry, with its own level and Claude Code's own default model, since choosing Claude Code does not carry the pi model over
 - BUT when the `pi` command is not installed, a worker that runs on pi is refused with `backend_missing`, naming the worker, the command it looked for and how to choose Claude Code for it, and never runs on Claude Code instead, while the checker still resolves
 
@@ -215,7 +230,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a configuration with a default model and level, a model for `spec_panel`'s default, a model for its worker `reviewer2` and a level for its worker `chair`
 - WHEN the choices of `reviewer1`, `reviewer2`, `chair` and `implement`'s `worker` are resolved
-- THEN `reviewer1` gets the Operation's model and the default level, `reviewer2` its own model, the `chair` the Operation's model and its own level, and `implement` the default, each naming the entry it came from
+- THEN `reviewer1` gets the [Operation](../../glossary.json#concept.operation)'s model and the default level, `reviewer2` its own model, the `chair` the Operation's model and its own level, and `implement` the default, each naming the entry it came from
 - AND removing the entries of `reviewer2` and `chair` and then the Operation's default leaves only the default
 
 ### scenario.workers.model-refused — Validation admits custom models but rejects invalid entries
@@ -230,23 +245,23 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worktree whose `.concorde/worker-models.json` is not valid JSON or has a field the schema does not know
 - WHEN Workers reads it
 - THEN it is refused with `config_invalid`, naming the file and what is wrong with it
-- AND a file of an earlier schema version, keyed by backend and worker role, is refused the same way, saying that the configuration is now keyed by worker id
+- AND a file of an earlier schema version, keyed by backend and worker role, is refused the same way, saying that the configuration is now keyed by [worker id](../../glossary.json#concept.worker-id)
 
 ## Changing the configuration
 
 ### scenario.workers.configure-list — Read-only inspection shows every worker's choice
 
 - GIVEN a worktree without configuration and without installed agent programs
-- WHEN the main agent runs `concorde configure-workers --show --json`
+- WHEN the [main agent](../../glossary.json#concept.main-agent) runs `concorde configure-workers --show --json`
 - THEN it returns the validated source and every catalog worker's effective backend, model, reasoning and sources with status `ok`
-- AND execution commands are absent, discovery is not run and no file or run record is written
+- AND [execution commands](../../glossary.json#concept.execution-command) are absent, discovery is not run and no file or run record is written
 
 ### scenario.workers.configure-change — Save changes only the current worktree
 
 - GIVEN a primary worktree and a task that inherited its worker configuration
 - WHEN the developer edits and saves a draft in the task worktree
 - THEN only that task's copy changes, with unrelated entries preserved
-- AND neither a task record nor a run record changes
+- AND neither a [task record](../../glossary.json#concept.task-record) nor a run record changes
 - BUT edits discarded with Cancel never reach the file
 
 ### scenario.workers.configure-backend — A worker is put on Claude Code

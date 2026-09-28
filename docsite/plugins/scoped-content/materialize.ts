@@ -10,6 +10,7 @@ import {
   type ScopedRegistry,
 } from "./model";
 import { renderDiagrams } from "./diagrams";
+import { renderGlossaryPage } from "./glossary";
 import { renderPage } from "./render";
 interface SidebarItem {
   type: string;
@@ -32,6 +33,14 @@ export function scopedSidebar(
     id: id(page),
     label: posix.basename(page.sourcePath, ".md"),
   });
+  const glossaryItem: SidebarItem | undefined =
+    collection === "module" && registry.glossary
+      ? {
+          type: "doc",
+          id: registry.glossary.stagedPath.replace(/\.md$/, ""),
+          label: "Glossary",
+        }
+      : undefined;
   const item = (module: ModuleRecord, depth = 0): SidebarItem[] => {
     const entry = byPath.get(module.entry)!;
     const items = [
@@ -41,6 +50,9 @@ export function scopedSidebar(
         .filter((page) => page.readingCollection === collection)
         .map(document),
       ...children(registry, module).flatMap((child) => item(child, depth + 1)),
+      ...(glossaryItem && registry.glossary!.owner === module.id
+        ? [glossaryItem]
+        : []),
     ];
     // Implementation navigation keeps the composition path but never repeats the Module entry.
     if (collection === "implementation")
@@ -96,6 +108,25 @@ export async function materializeScoped(registry: ScopedRegistry) {
           toc_max_heading_level: 3,
         },
       ),
+    );
+  }
+  if (registry.glossary) {
+    const path = resolve(
+      generated,
+      "content/specs",
+      registry.glossary.stagedPath,
+    );
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(
+      path,
+      matter.stringify(renderGlossaryPage(registry), {
+        format: "md",
+        slug: registry.glossary.route.slice("/specs".length),
+        title: "Glossary",
+        sidebar_label: "Glossary",
+        displayed_sidebar: "moduleDocumentsSidebar",
+        toc_max_heading_level: 3,
+      }),
     );
   }
   await writeFile(

@@ -10,19 +10,21 @@ concorde run spec_panel [--modules <id>[,<id>...]] [--reviewers <2-5>]
 ```
 
 The panel works on the worktree it starts in, as [Spec review](operation.md#invocation) does: the
-bound [workspace](../../execution/module.md#concept.execution.workspace), whose Modules `--modules`
-defaults to, or, without a binding, an
-[unbound run](../../execution/module.md#concept.execution.unbound-run) that judges the Specs as
-merged there. `--modules` names one or more registered Modules of that worktree. `--reviewers` is
-the number of reviewers on each Module's panel, 3 by default. Each reviewer is the worker `reviewer<seat>`, `reviewer1` to `reviewer5`,
-and the chair the worker `chair`; by these [worker
-ids](../../execution/workers/module.md#concept.workers.worker-id) the worker model configuration gives
-each reviewer and the chair its own backend, model and thinking level, and three reviewers on
-three different models make their reviews more independent still. The Operation takes no other argument and needs no user consent.
+bound [workspace](../../glossary.json#concept.workspace), whose Modules `--modules` defaults to, or,
+without a binding, an [unbound run](../../glossary.json#concept.unbound-run) that judges the Specs
+as merged there. `--modules` names one or more registered Modules of that worktree. `--reviewers` is
+the number of reviewers on each [Module](../../glossary.json#concept.module)'s panel, 3 by default.
+Each reviewer is the worker `reviewer<seat>`, `reviewer1` to `reviewer5`, and the chair the worker
+`chair`; by these [worker ids](../../glossary.json#concept.worker-id) the
+[worker model configuration](../../glossary.json#concept.worker-model-configuration) gives each
+reviewer and the chair its own backend, model and thinking level, and three reviewers on three
+different models make their reviews more independent still. The
+[Operation](../../glossary.json#concept.operation) takes no other argument and needs no user
+consent.
 
 The panel runs as a LangGraph graph, one of Concorde's Python dependencies. An Execution runner
-whose interpreter cannot import it, such as an install made with `--without-dependencies`, fails the run
-with `langgraph_unavailable` before any worker is launched.
+whose interpreter cannot import it, such as an install made with `--without-dependencies`, fails the
+run with `langgraph_unavailable` before any worker is launched.
 
 ## Host sequence
 
@@ -33,8 +35,9 @@ with `langgraph_unavailable` before any worker is launched.
 | 3 | Derive every Module's outcome and the verdict from its report | Operation | none |
 
 Modules are paneled one after another; the reviewers of one Module run at the same time. A panel
-writes nothing: no Spec, and unlike `spec_review` no review memory. A Module whose panel stopped
-keeps the reviews it had and its **stop**: the status, summary and error link that stopped it.
+writes nothing: no [Spec](../../glossary.json#concept.spec), and unlike `spec_review` no
+[review memory](../../glossary.json#concept.review-memory). A Module whose panel stopped keeps the
+reviews it had and its **stop**: the status, summary and error link that stopped it.
 
 ## The panel graph
 
@@ -59,9 +62,9 @@ account -> chair: "a label unaccounted\nand an attempt remains"
 - **chair** receives every labelled finding, grouped by reviewer, and returns the report: merged
   findings, each with the labels it merges as `sources` and a `note`, and rejections, each with a
   label and a reason. The Operation normalizes the merged findings as well.
-- **accounting**, part of the chair node, is the Operation's check that the report accounts for every
-  label exactly once: in one finding's `sources` or as one rejection, and names no other label.
-  The result is host evidence of kind `panel-accounting`.
+- **accounting**, part of the chair node, is the Operation's check that the report accounts for
+  every label exactly once: in one finding's `sources` or as one rejection, and names no other
+  label. The result is host evidence of kind `panel-accounting`.
 
 Control moves by these rules:
 
@@ -73,14 +76,16 @@ Control moves by these rules:
    with `report_unaccounted`, whose detail names every problem.
 
 A Module's panel therefore takes `--reviewers` reviewer runs and one or two chair runs. The graph's
-state is the reviews, the host evidence, the Module's context identity, the chair's latest report,
-its accounting problems, the chair attempts and the Module's stop, all plain JSON values; the
-reviews and the evidence are appended to by the parallel reviewers in whatever order they end, and
-the Operation sorts the reviews by seat.
+state is the reviews, the host evidence, the Module's
+[context identity](../../glossary.json#concept.context-identity), the chair's latest report, its
+accounting problems, the chair attempts and the Module's stop, all plain JSON values; the reviews
+and the evidence are appended to by the parallel reviewers in whatever order they end, and the
+Operation sorts the reviews by seat.
 
 ## Panel result
 
-Every worker ends with the ordinary worker result, whose `output` depends on its role:
+Every worker ends with the ordinary [worker result](../../glossary.json#concept.worker-result),
+whose `output` depends on its role:
 
 | Role | `output` |
 | --- | --- |
@@ -94,8 +99,8 @@ not match its role's shape is an **invalid result** and stops the Module; a repo
 accounts badly goes back to the chair as rule 3 says.
 
 The chair may change a merged finding's wording, evidence, suggestion and severity. It may not add a
-problem that no reviewer reported: every report finding has sources. Each reviewer's findings stay in
-the payload as the Operation normalized them, so the chair's changes can be compared with them.
+problem that no reviewer reported: every report finding has sources. Each reviewer's findings stay
+in the payload as the Operation normalized them, so the chair's changes can be compared with them.
 
 ## Result status
 

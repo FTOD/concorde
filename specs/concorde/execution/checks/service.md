@@ -1,8 +1,9 @@
 # The check service
 
-The exact declaration of configured checks, the call that runs them and the check result, and the
-requirements and scenarios they serve. The [entry](module.md#concept.checks.configured-check)
-explains why it is shaped this way; [the boundary](boundary.md) gives the runner it uses.
+The exact declaration of configured checks, the call that runs them and the
+[check result](../../glossary.json#concept.check-result), and the requirements and scenarios they
+serve. The [entry](../../glossary.json#concept.configured-check) explains why it is shaped this way;
+[the boundary](boundary.md) gives the runner it uses.
 
 ## Declaring a configured check
 
@@ -11,7 +12,7 @@ The project configuration lists checks under `checks`. Each has:
 | Field | Meaning |
 | --- | --- |
 | `id` | The check's identity, unique in the project |
-| `module` | The Module the check belongs to |
+| `module` | The [Module](../../glossary.json#concept.module) the check belongs to |
 | `argv` | The command as an argument list; an element `{python}` is replaced by the project's interpreter, and an element `{tests}` by the tests that declare they verify a scenario of the Modules being checked, which makes the check selective |
 | `env` | Optional variables of the command, names to strings, such as `{"PYTHONPATH": "src"}` |
 | `when` | Optional: `always` (the default) runs the check wherever checks run; `readiness` runs it only when readiness is decided, by `task-validation` and `delivery`, for a full suite too slow for every round |
@@ -23,12 +24,14 @@ validates `argv`, `env` and `timeout_seconds` when it runs the check. An input t
 symbolic link or not a regular file stops the run before any command and names the check, its
 Module and the path.
 
-A **selective** check, one whose `argv` holds `{tests}`, runs once whenever checks run for a set
-of Modules, with the tests whose verification declarations name a scenario of any of them, and is
-skipped when there are none. Tests and scenarios are many-to-many: the tests a Module's change runs
-are those verifying its scenarios, wherever their files are bound, so the Module that owns a test
-file only decides who may change it. A Python test is passed as `path::Class::name`, a TypeScript
-test by its file, and the log of a selective check begins with the tests it selected.
+A **selective** check, one whose `argv` holds `{tests}`, runs once whenever checks run for a set of
+Modules, with the tests whose
+[verification declarations](../../glossary.json#concept.verification-declaration) name a scenario of
+any of them, and is skipped when there are none. Tests and scenarios are many-to-many: the tests a
+Module's change runs are those verifying its scenarios, wherever their files are bound, so the
+Module that owns a test file only decides who may change it. A Python test is passed as
+`path::Class::name`, a TypeScript test by its file, and the log of a selective check begins with the
+tests it selected.
 
 The project's interpreter is the configuration's `python`: an absolute path as it is, a relative
 one in the worktree the check runs in or, when that has none, in the primary worktree, since a
@@ -67,8 +70,8 @@ added to the command line or diagnostic messages.
    `CHECK_POLICY`;
 3. runs each of the Module's checks in order through `execute_check` with `worktree` as project root
    and the default boundary;
-4. writes `<stdout>\n<stderr>` to `<log_directory>/<check id>.log`, also when the boundary refused the
-   command, and then fails a refused run with `check_sandbox_unavailable`;
+4. writes `<stdout>\n<stderr>` to `<log_directory>/<check id>.log`, also when the boundary refused
+   the command, and then fails a refused run with `check_sandbox_unavailable`;
 5. computes `check_revision` again and fails the whole call with `stale_evidence` when it differs;
 6. returns one check result per check, in configuration order.
 
@@ -138,7 +141,7 @@ start.
 ### scenario.checks.service-run — The checks of changed Modules run and are logged
 
 - GIVEN a worktree whose Module A has one configured check and Module B none
-- WHEN the service runs with a changed path of A's realization or A's Spec
+- WHEN the service runs with a changed path of A's realization or A's [Spec](../../glossary.json#concept.spec)
 - THEN it selects A, runs its check read-only and returns one result with its status, exit code, source digest and log path
 - AND the log is written into the caller's log directory
 - BUT asked for Module B it returns no result

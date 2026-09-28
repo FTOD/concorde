@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 14.0.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 15.0.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -42,7 +42,6 @@ direction: right
 parent: Module {
   m: Module {
     d: Document {
-      c: Concept
       rz: Realization {
         f: Implementation files {shape: cylinder}
       }
@@ -51,17 +50,21 @@ parent: Module {
     }
   }
 }
+glossary: Glossary {
+  c: Concept
+}
 provider: Module
-foreign: Concept of another Module
 t: Test file {shape: cylinder}
 parent.m -> provider: uses / includes
-parent.m.d -> foreign: imports
+parent.m.d -> glossary.c: mentions
+glossary.c -> parent.m: owned by
 parent.m -> parent.m.d.k: participates
 t -> parent.m.d.rs: verifies
 ```
 
 Nesting shows composition: a Module contains Modules, owns documents, a document defines nodes and
-a realization binds files.
+a realization binds files. The project's one glossary declares every concept, and each concept
+names the Module that owns it.
 
 **Nodes.** Seven types, defined in [Node types](model.md):
 
@@ -69,7 +72,7 @@ a realization binds files.
 | --- | --- |
 | Module | One responsibility. The unit of ownership, of context and of task boundaries |
 | Document | A Markdown reading file paired with its JSON metadata; the unit a Module owns |
-| Concept | A named meaning a reader must understand; its title is a term |
+| Concept | A named meaning a reader must understand; its title is a term, declared in the glossary |
 | Realization | A binding of implementation files to the Module |
 | Requirement | One Module-wide `SHALL` obligation |
 | Scenario | One concrete situation in `GIVEN`/`WHEN`/`THEN` steps |
@@ -77,13 +80,15 @@ a realization binds files.
 
 **Edges.** Thirteen typed, directed relation types, defined in [Relations](relations.md): `owns`,
 `defines`, `contains` and `uses` state who is responsible for what; `includes` selects extra
-reading; `binds` joins the specification to code; `imports`, `narrows`, `supersedes`, `contrasts`
+reading; `binds` joins the specification to code; `mentions`, `narrows`, `supersedes`, `contrasts`
 and `relates` connect meanings and architecture; `participates` and `verifies` tie contracts and
 tests to promises.
 
-**Where the graph is written.** Every node and edge is declared exactly once, in a document owned
-by the Module responsible for it: in its reading, by a fixed syntax, or in its metadata. A Module's
-own relations are in its entry's metadata; the project registry mirrors them for a global view.
+**Where the graph is written.** Every node and edge is declared exactly once. Concepts, and the
+relations whose source is a concept, are entries of the project's one **glossary**, each naming its
+owning Module. Everything else is declared in a document owned by the Module responsible for it: in
+its reading, by a fixed syntax, or in its metadata. A Module's own relations are in its entry's
+metadata; the project registry mirrors them for a global view.
 
 **What is computed from the graph.** Nothing below is declared; all of it is derived:
 
@@ -106,13 +111,14 @@ A few more words are used throughout:
 | Reading | The Markdown member of a document, written for humans |
 | Metadata | The JSON member of a document, holding identities and declarations |
 | Registry | The project-wide index of Modules, a checked mirror of their entries |
+| Glossary | The project's one file of concept entries, each with its owner and one-sentence definition |
 
 ## Axioms
 
 ### A1. Every node has one identity, one owner and one explanation
 
 Every declared node MUST have a stable project-wide identity, exactly one owning Module, and
-nonempty explanatory prose in the document that defines it. A declaration without an explanation is
+nonempty explanatory prose in a document its owner owns. A declaration without an explanation is
 invalid, not merely incomplete. Identity survives title and path changes.
 
 *Serves both:* a reader always finds the explanation, and a harness always knows whose write set a
@@ -123,8 +129,9 @@ node lies in.
 A relation MUST have a registered type, an explicit source and target, and one declaration site
 fixed by its type. The same fact MUST NOT be declarable in two places; the only permitted copy is
 a mirror the Protocol names, the project registry, whose equality with the declarations is
-checked. A filename, path, title, link, prose sentence, unchecked diagram or directory
-neighbourhood MUST NOT create a relation.
+checked. A filename, path, title, prose sentence, unchecked diagram, directory neighbourhood or
+link MUST NOT create a relation; the one exception is a **term link**, a link to a glossary entry,
+which is the declaration of `mentions`.
 
 *Serves both:* nothing is promised by accident, and boundaries depend only on declarations.
 
@@ -157,8 +164,8 @@ claimed from inside the write set of the Module whose promises it covers.
 
 ### A6. Views are derived or checked
 
-A published diagram, index or navigation tree is derived from declared relations. A diagram
-written in reading is either **checked**, asserting only declared relations, or **illustrative**, explicitly
+A published diagram, index or navigation tree is derived from declared relations. A diagram written
+in reading is either **checked**, asserting only declared relations, or **illustrative**, explicitly
 marked and excluded from the model. See [Views](views.md).
 
 *Serves understanding:* pictures a human relies on cannot silently diverge from the model.
@@ -167,7 +174,9 @@ marked and excluded from the model. See [Views](views.md).
 
 The model is assertional. Every check operates on declared relations only. No relation is
 transitive, symmetric or invertible unless its type says so; derived indexes are never a source of
-obligations. Context expansion is one level and never recursive.
+obligations. Document selection is one level and never recursive. The only closure is over the
+glossary: a selected definition brings the definitions it links, which adds sentences, never
+documents.
 
 *Serves boundaries:* every set is computable and every member is attributable to a declaration.
 
@@ -188,15 +197,15 @@ substitute for one another:
 Passing structural checks MUST NOT be reported as either of the other two. Missing meaning is an
 attributed gap; a reader MUST NOT read outside its boundary, or infer a promise from source code, to
 repair it. The one sanctioned route from code to specification is a `code-to-spec` task (see
-[Boundaries](boundaries.md#task-types)), which describes an existing realization under its own rules and
-leaves every doubtful intent as a reported gap.
+[Boundaries](boundaries.md#task-types)), which describes an existing realization under its own rules
+and leaves every doubtful intent as a reported gap.
 
 ## What the Protocol does not define
 
-Which task type a harness assigns to a piece of work, and how it enforces the resulting boundary. Docsite pages, navigation,
-themes and interaction. The serialization and location of the project registry, tool
-configuration, worker wire formats and context delivery. These are separate agreements; a change
-in any of them is not a Protocol version change.
+Which task type a harness assigns to a piece of work, and how it enforces the resulting boundary.
+Docsite pages, navigation, themes and interaction. The serialization and location of the project
+registry, tool configuration, worker wire formats and context delivery. These are separate
+agreements; a change in any of them is not a Protocol version change.
 
 # Node types
 
@@ -217,16 +226,18 @@ owner and no explanation, because the specification makes no promise about it.
 | `id` | Stable, project-wide unique, matching `^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$` |
 | `type` | One of the seven node types below |
 | owner | Exactly one Module identity, derived from the defining document or declared for a document |
-| explanation | Nonempty prose in the defining document; where it lives depends on the node type |
+| explanation | Nonempty prose in a document the owner owns; where it lives depends on the node type |
 
 An ID prefix does not establish ownership. Titles and paths may change without changing identity.
 An explanation cannot be outsourced: it is never a URL or a path into another document.
 
-Nodes are declared at one of two sites. **Metadata-declared** nodes (`concept`, `realization`) are
-records in a document's metadata and point to their explanation with a local `meaning` anchor.
-**Reading-declared** nodes (`requirement`, `scenario`, `contract`) are located by reading syntax,
-and their defining section is their explanation. A Module and the documents it owns are declared
-in the `module` block of its entry's metadata, and mirrored in the project registry.
+Nodes are declared at one of three sites. A **concept** is an entry of the project
+[glossary](#the-glossary), which names its owner and points to its explanation in a document that
+owner owns. A **realization** is a record in a document's metadata and points to its explanation
+with a local `meaning` anchor. **Reading-declared** nodes (`requirement`, `scenario`, `contract`)
+are located by reading syntax, and their defining section is their explanation. A Module and the
+documents it owns are declared in the `module` block of its entry's metadata, and mirrored in the
+project registry.
 
 ## module
 
@@ -260,9 +271,9 @@ becomes a second, unreviewed specification.
 **Boundaries.** The pair is the unit of ownership, selection and writing. A boundary always
 contains both members or neither.
 
-**Fields.** `id`, `owner` and `role`, stated in the metadata and agreeing with the owner's `owns`. `role` is
-exactly `module` or `implementation`, with no default. A document explains itself; it has no
-separate explanation.
+**Fields.** `id`, `owner` and `role`, stated in the metadata and agreeing with the owner's `owns`.
+`role` is exactly `module` or `implementation`, with no default. A document explains itself; it has
+no separate explanation.
 
 - `module` — the entry and explanatory topics: the responsibility, its correct use, its design and
   its collaborations.
@@ -283,42 +294,62 @@ actor, an external standard, a participant in a collaboration. Its title is the 
 specification uses for it.
 
 **Understanding.** Meaning is what crosses Module boundaries. A concept gives a word one owner and
-one canonical sentence, so a reader finds one meaning per word, and importing, specializing,
-retiring and colliding are declarations a tool checks instead of prose conventions.
+one canonical sentence, and the whole project shares one list of them, so a reader finds one
+meaning per word everywhere, and specializing, retiring and colliding are declarations a tool checks
+instead of prose conventions.
 
-**Boundaries.** Importing or relating to a concept puts its defining document into the read set,
-and `referenced-by` makes the impact of changing its definition computable.
+**Boundaries.** A reader receives the definition of every concept its documents link and of every
+concept its declarations name, never the whole glossary; see [Context](context.md#term-selection).
+The definition is one sentence; the extended explanation lives in a document of the owner and is
+read only through a `uses` or `contains` of the owner, or an `includes`. `referenced-by` makes the
+impact of changing a definition computable.
 
-**Fields.** A metadata record with `id`, `type`, `title` and `meaning`, optional `retired` and
-`external_conflict`; and a **definition**, written as the concept's row in the defining document's
-Terminology table.
+**Fields.** One entry of the glossary:
 
-| Part | Meaning |
+| Field | Meaning |
 | --- | --- |
-| definition | One sentence in the Terminology table: the canonical meaning, written once |
-| `meaning` | Local anchor of the extended explanation in the defining document's reading |
+| `id` | Identity; a concept identity begins `concept.` |
+| `title` | The term, unique in the project under the normalization of `CHK.contrasts.required` |
+| `owner` | The Module entitled to change the meaning |
+| `definition` | One sentence: the canonical meaning, written once. It MAY link other concepts by term link |
+| `explanation` | `<reading path>#<anchor>`: the extended explanation, in a `module` document the owner owns |
 | `retired` | Optional object `{"reason": "..."}`; the term is kept only for migration readers |
 | `external_conflict` | Optional prose naming a conflicting usage outside this project |
 
-The definition is one sentence on purpose, and it lives in the Markdown so that a human opening the
-file reads it in place. Extended explanation belongs in reading prose at the `meaning` anchor.
+The entry also declares the relations whose source is the concept: `narrows`, `supersedes`,
+`contrasts` and `relates`; see [Relations](relations.md#meaning).
 
-**Constraints.** A concept is defined only in a `module` document. It MUST NOT bind implementation
-and MUST NOT stand for another Module; a collaboration with another Module is a `uses` or
-`contains` relation, and a naming collision with one is a `contrasts` relation.
+**Constraints.** A concept MUST NOT bind implementation and MUST NOT stand for another Module; a
+collaboration with another Module is a `uses` or `contains` relation, and a naming collision with
+one is a `contrasts` relation.
 
-**Who owns a word.** Owning a concept means being entitled to change its meaning: its definition
-lies in the owner's write set, and a change concerns every importer. Ownership does not mean having
-invented the word or using it most. Every concept has exactly one owner, chosen as follows:
+**Who owns a word.** Owning a concept means being entitled to change its meaning: its entry lies in
+the owner's write set, and a change concerns every Module whose context holds the definition.
+Ownership does not mean having invented the word or using it most. Every concept has exactly one
+owner, chosen as follows:
 
-- A word of a provider's own interface belongs to the provider; its consumers import it.
+- A word of a provider's own interface belongs to the provider.
 - A word several Modules use with one meaning belongs to their nearest common ancestor in the
   composition tree, or to the root. When the owner is hard to name, move the word one level up.
-- A word that means different things in different Modules is several concepts, each owned where
-  it is used, connected by `contrasts` or `narrows`.
+- A project has one meaning per term. A word two Modules use differently needs two terms, such as
+  `Session round` and `Headless round`, connected by `contrasts` or `narrows` when a reader could
+  confuse them.
 
-A composite that owns shared vocabulary SHOULD keep it in one small `module` document, so that its
-descendants select only that document when they import from it.
+## The glossary
+
+**What it is.** The project's one JSON file of concept entries. It is not a node and has no owner:
+each of its entries has one. A project declares it by the `glossary` field of its root Module's
+`module` block; see [Required format](format.md#glossary). A project without concepts needs no
+glossary.
+
+**Understanding.** A reader looks words up in one place and never meets two definitions of one
+term. A publisher renders the glossary as a page, and every term link leads there.
+
+**Boundaries.** The glossary is the declaration site of every concept, so it is a shared file with
+entry-level ownership: a task bound to a Module may change the entries that Module owns and add
+entries naming it as owner, and nothing else in the file. See
+[Boundaries](boundaries.md#the-glossary). Definitions reach a reader one by one, as
+[term selection](context.md#term-selection) chooses them, never as the whole file.
 
 ## realization
 
@@ -371,10 +402,10 @@ grammar keeps a situation from quietly growing into a Module-wide obligation.
 task focused on a scenario is bound to the scenario's owner and receives that owner's whole
 boundary.
 
-**Constraints.** Declared by a heading in an `implementation` document; the heading supplies `id` and
-title. Situations with different successful, failed, repeated or concurrent outcomes get their own
-scenarios. A Module-wide obligation is defined once as a requirement and linked, never restated in
-steps.
+**Constraints.** Declared by a heading in an `implementation` document; the heading supplies `id`
+and title. Situations with different successful, failed, repeated or concurrent outcomes get their
+own scenarios. A Module-wide obligation is defined once as a requirement and linked, never restated
+in steps.
 
 ## contract
 
@@ -392,9 +423,9 @@ is undetectable.
 `concorde-contract` fence in an `implementation` document. Its explanation is `semantics` together
 with the prose of the section containing the fence.
 
-**Constraints.** The schema vocabulary is explicit and offline: a schema MUST NOT load Spec documents
-or remote resources. The example MUST satisfy the schema. A behaviour or schema change increments
-`version`, and every participant is reconciled atomically.
+**Constraints.** The schema vocabulary is explicit and offline: a schema MUST NOT load Spec
+documents or remote resources. The example MUST satisfy the schema. A behaviour or schema change
+increments `version`, and every participant is reconciled atomically.
 
 ## Value types
 
@@ -403,7 +434,7 @@ These appear as relation targets or attributes but are not nodes.
 | Value | Where it appears | Why it is not a node |
 | --- | --- | --- |
 | **path literal** | `binds`, external `includes`, `verifies` | A path carries no promise and has no owner in the Spec's sense. |
-| **anchor** | `meaning` of nodes and reified relations | It has no identity of its own; only its declaration refers to it. |
+| **anchor** | `meaning` of realizations and reified relations, `explanation` of concepts | It has no identity of its own; only its declaration refers to it. |
 | **digest** | context identity | It is a measurement of a source member, not a declared thing. |
 
 # Relations
@@ -419,7 +450,7 @@ its own, and tool data in a metadata `extensions` object never creates a relatio
 | --- | --- |
 | `source` / `target` | Permitted node or value types |
 | `cardinality` | How many may exist, and any uniqueness rule |
-| `declared_in` | The single site where it is declared: `entry` (the entry's `module` block), `metadata`, `reading` or `implementation-source` |
+| `declared_in` | The single site where it is declared: `entry` (the entry's `module` block), `metadata`, `reading`, `glossary` (a concept's entry) or `implementation-source` |
 | `mirrored_in` | Where a checked copy is kept, if anywhere: only `registry` |
 | `reified` | Attributes the relation itself carries |
 | `symmetric` | Whether one declaration holds in both directions |
@@ -428,11 +459,11 @@ its own, and tool data in a metadata `extensions` object never creates a relatio
 | `checks` | Decidable rules, by identity, defined in [Checks](checks.md) |
 
 **Where a relation is declared** follows one rule: a relation whose source is a Module is declared
-in the `module` block of that Module's entry; a relation whose source is a document or a node
-defined in a document is declared in that document, in its metadata or by reading syntax. Either
-way the declaration lies in the source Module's own `SpecScope`: a Module changes its own
-collaborations without writing into another Module, and a task bound to it sees all of its
-relations in its own documents.
+in the `module` block of that Module's entry; a relation whose source is a concept is declared in
+that concept's glossary entry; a relation whose source is a document or a node defined in a
+document is declared in that document, in its metadata or by reading syntax. Either way the
+declaration lies in the source Module's own `SpecScope`: a Module changes its own collaborations
+and meanings without writing into another Module.
 
 Module-level relations are also **mirrored** in the project registry, which gives a project-wide
 view without opening every entry. The mirror is not a second declaration site: it MUST equal the
@@ -466,18 +497,18 @@ other Module's write set. A Module always reads its own promises.
 
 ```yaml
 source: document
-target: [concept, realization, requirement, scenario, contract]
+target: [realization, requirement, scenario, contract]
 cardinality: "0..N; a node is defined exactly once"
-declared_in: metadata (concept, realization) | reading (requirement, scenario, contract)
+declared_in: metadata (realization) | reading (requirement, scenario, contract)
 context_grants: none
 context_requires: []
 ```
 
 This document is the defining site of this node, so its owner is the node's owner and its
-explanation lives here. The declaration site is fixed by the target's node type: concepts and
-realizations are metadata records, while requirements, scenarios and contracts are located by their
-reading syntax. A concept's one-sentence definition is its defining row in the document's
-Terminology table.
+explanation lives here. The declaration site is fixed by the target's node type: realizations are
+metadata records, while requirements, scenarios and contracts are located by their reading syntax.
+Concepts are not defined by documents: each is an entry of the glossary, which names its owner and
+the document explaining it; see [Node types](model.md#concept).
 
 **Checks.** `CHK.defines.once`, `CHK.defines.role` — requirements, scenarios and contracts are
 defined only in `implementation` documents.
@@ -530,7 +561,8 @@ arrow. The consumer receives the provider's Specs.
 
 `relies_on` optionally lists the provider's promises this Module depends on: requirements,
 scenarios, contracts and concepts, by identity. When present, the consumer receives only the
-provider's entry and the documents defining those nodes, instead of every document the provider
+provider's entry and the documents defining those nodes, a concept's being the document its entry
+names as its explanation, instead of every document the provider
 owns. The list is exact and checkable, it turns the prose "promises relied upon" into links a reader
 can follow, and it makes the impact of changing one promise precise.
 
@@ -596,28 +628,28 @@ channel: **names only**. On the write side the covered files form the Module's
 
 ## Meaning
 
-### `imports`
+### `mentions`
 
 ```yaml
-source: document
+source: [document, concept]
 target: concept
-cardinality: "0..N; unique per target"
-declared_in: reading (an import row of a module document's Terminology table)
-context_grants: none
-context_requires: spec(definer(target))
+cardinality: "0..N; one per (source, target), however often the term is linked"
+declared_in: reading (a term link) | glossary (a term link in the source's definition)
+context_grants: term(target)
+context_requires: []
 ```
 
-This document uses a term whose canonical definition another Module owns. The import row links to
-the definition and never copies it. The document that defines the concept MUST be in the
-importer's context.
+This document, or this concept's definition, uses a term. The **term link** is an ordinary Markdown
+link whose fragment is the concept's identity and whose path addresses the glossary; it navigates
+to the definition and never copies it, because copies drift. The link text is free, so renaming a
+term breaks nothing.
 
-The owner of a shared word is the Module entitled to change its meaning; see
-[Node types](model.md#concept). An import from a Module that is neither a provider the importer
-uses, nor one of its ancestors or descendants, usually means the word belongs higher in the
-composition tree, which `CHK.imports.owner` reports.
+The grant is the definition, not the owner's explanation: a reader that must understand how the
+concept works needs the owner's documents, through `uses`, `contains` or `includes`. A document
+SHOULD link a term where it first uses it; `CHK.term.unlinked` reports a document that uses a term
+and never links it.
 
-**Checks.** `CHK.imports.foreign`, `CHK.imports.owner`, `CHK.terminology.import-row`,
-`CHK.context.reconciled`.
+**Checks.** `CHK.term.link`, `CHK.term.unlinked`.
 
 ### `narrows`
 
@@ -625,15 +657,15 @@ composition tree, which `CHK.imports.owner` reports.
 source: concept
 target: concept
 cardinality: "0..N"
-declared_in: metadata
-context_grants: none
-context_requires: spec(definer(target))
+declared_in: glossary
+context_grants: term(target)
+context_requires: []
 ```
 
 The source concept is a strictly more specific case of the target concept, so the two cannot drift
 apart unnoticed.
 
-**Checks.** `CHK.narrows.acyclic`, `CHK.context.reconciled`.
+**Checks.** `CHK.narrows.acyclic`.
 
 ### `supersedes`
 
@@ -641,15 +673,15 @@ apart unnoticed.
 source: concept
 target: concept
 cardinality: "0..1 per source"
-declared_in: metadata
-context_grants: none
-context_requires: spec(definer(target))
+declared_in: glossary
+context_grants: term(target)
+context_requires: []
 ```
 
 The source concept is retired and the target replaces it. A retired concept without a replacement
 states why in its `retired.reason`.
 
-**Checks.** `CHK.concept.retired`, `CHK.context.reconciled`.
+**Checks.** `CHK.concept.retired`.
 
 ### `contrasts`
 
@@ -657,7 +689,7 @@ states why in its `retired.reason`.
 source: concept
 target: [concept, module]
 cardinality: "0..N; at most one per unordered pair"
-declared_in: metadata
+declared_in: glossary
 reified: [reason]
 symmetric: true
 context_grants: none
@@ -665,9 +697,9 @@ context_requires: []
 ```
 
 These two are easily confused and are **not** the same thing. The `reason` states the difference,
-so a reader who has met only one of them is warned. It requires no context: the warning is the
-point, and forcing each side to read the other would couple unrelated Modules by an accident of
-naming.
+so a reader who has met only one of them is warned. It grants and requires no context: the warning
+is the point, and forcing each side to read the other would couple unrelated Modules by an accident
+of naming.
 
 **Checks.** `CHK.contrasts.required`, `CHK.contrasts.once`.
 
@@ -677,16 +709,18 @@ naming.
 source: [concept, realization, module]
 target: [concept, realization, module]
 cardinality: "0..N; unique per (source, verb, target)"
-declared_in: metadata
+declared_in: glossary (concept source) | metadata (realization or module source)
 reified: [verb]
-context_grants: none
-context_requires: spec(definer(target))
+context_grants: term(target) for a concept target; otherwise none
+context_requires: spec(definer(target)) for a realization or module target; otherwise none
 ```
 
 A named architectural relationship: the realization *saves* the record, the actor *submits* the
-request, the Module *publishes* the event. `verb` is free text, recommended as a verb phrase. The
-source is a node this document's owner owns, or that Module itself; the target may belong to any
-Module, whose defining document then MUST be in context.
+request, the Module *publishes* the event. `verb` is free text, recommended as a verb phrase. A
+concept's relations are in its glossary entry; a realization's in the metadata of the document
+defining it; a Module's in the metadata of any document it owns. The target may belong to any
+Module. A concept target brings its definition; a realization or Module target requires its
+defining document, or a document of that Module, to be in context.
 
 `relates` states structure for readers and for checked diagrams. It is not a dependency: relying on
 another Module's promises is still a `uses`.
@@ -746,34 +780,37 @@ of obligations, and never widen a boundary.
 
 | Derived | Computed from | Used for |
 | --- | --- | --- |
-| `selected-by` | inverting context selection | which Modules read a document, and so are concerned when it changes |
-| `referenced-by` | inverting `relies_on`, `imports`, `narrows`, `supersedes`, `relates` and `participates` | which declarations depend on a concept, node or contract |
+| `selected-by` | inverting context and term selection | which Modules read a document or a definition, and so are concerned when it changes |
+| `referenced-by` | inverting `relies_on`, `mentions`, `narrows`, `supersedes`, `relates` and `participates` | which declarations depend on a concept, node or contract |
 | `implemented-by` | inverting `binds` | which Modules a file change concerns |
 | `covered-by` | aggregating `verifies` | per-scenario coverage reports |
 
 # Context
 
 Context is the information explicitly made available to a reader of one Module. Knowing that a
-document exists does not make it available; neither does linking to it or naming a word it defines.
-Only declared relations grant context.
+document exists does not make it available; neither does linking to it or naming a word it
+explains. Only declared relations grant context, and a term link grants only the term's definition.
 
-This chapter defines the read side of the Protocol's boundary purpose: the three context
-channels, how a Module's context is selected, the reconciliation of what relations grant against
+This chapter defines the read side of the Protocol's boundary purpose: the four context
+channels, how a Module's context is selected, term selection, the reconciliation of what relations
+grant against
 what they require, and context identity. The write side is in [Boundaries](boundaries.md). Because
 the reconciliation guarantees that a Module's context holds every definition its own Spec relies
 on, the same selection is also what a human reader of the Module needs open beside it.
 
-## Three channels
+## Four channels
 
 | Channel | Granted by | Contains | Authority conveyed |
 | --- | --- | --- | --- |
 | `spec` | `owns`, `contains`, `uses`, `includes` of kind `module` or `document` | both members of each selected document | read only |
+| `term` | the concepts a Module owns, `mentions`, `narrows`, `supersedes`, concept-targeted `relates` and `relies_on` | the glossary entries of the selected concepts | read only |
 | `implementation` | `binds` | the **names** of bound paths | none |
 | `external` | `includes` of kind `external` | pinned third-party material | read only |
 
 The channels stay separate so that "may read this Module's promises" never implies "may read or
-change its code". Whether a task receives implementation contents, read-only or writable, is part
-of its task boundary; see [Boundaries](boundaries.md).
+change its code", and knowing what a word means never implies reading how its owner works. Whether a
+task receives implementation contents, read-only or writable, is part of its task boundary; see
+[Boundaries](boundaries.md).
 
 ## Expressions
 
@@ -786,6 +823,7 @@ spec(selection)          for a contains or uses with relies_on: the target's ent
                          target Module owns
 spec(definer(target))    the document that defines the target node; for a Module target,
                          that Module
+term(target)             the glossary entry of the target concept
 external(target)         the pinned material at the target path
 implementation(target)   the name of the target path
 none                     nothing
@@ -806,12 +844,14 @@ SpecContext(M) = ⋃ { members(U) : U ∈ Spec(M) }
 
 selection(r to Module N) = { entry(N) } ∪ { definer(x) : x ∈ r.relies_on }  if relies_on present
                          = D(N)                                               otherwise
+definer(concept c)       = the document c's entry names as its explanation
 selection(includes document U) = { U }
 ```
 
 Selection is one level. A selected Module contributes its owned documents, never the documents its
-own relations select. Parentage, dependency and inclusion of the target, term usage, participation,
-Markdown links, directory neighbourhood and implementation bindings add nothing further. Because
+own relations select. Parentage, dependency and inclusion of the target, term links,
+participation, other Markdown links, directory neighbourhood and implementation bindings add no
+document. Because
 expansion is not recursive, cycles among Modules are harmless, and every member of a read set is
 explained by the one declaration that selected it.
 
@@ -820,6 +860,34 @@ trims to the scenario, and never selects the consumer that happened to read it.
 
 Every selected document contributes **both** members whole. No excerpt, summary, rendered view or
 diagram export substitutes for a complete document.
+
+## Term selection
+
+A reader needs the meaning of every term the documents it reads use, and nothing more. Term
+selection gives it exactly those definitions:
+
+```text
+Seeds(M) = { c : owner(c) = M }
+         ∪ { c : a document in Spec(M) mentions c }
+         ∪ { c : c ∈ r.relies_on, r a contains or uses of M }
+         ∪ { c : a relates declared in a document in Spec(M) targets c }
+Terms(M) = the least set containing Seeds(M) and closed under
+           c ∈ Terms(M) mentions, narrows, supersedes or relates to concept d  ⇒  d ∈ Terms(M)
+TermContext(M) = { entry(c) : c ∈ Terms(M) }
+```
+
+Every selected document counts, including the provider documents a `uses` selects, because the
+reader reads them too. A Module always receives the definitions of its own concepts, since it is
+entitled to change them.
+
+The closure is the Protocol's only recursive selection. It runs inside the glossary, adds one
+sentence per concept and never adds a document, so a reader whose definitions use further terms
+understands them without widening what it reads. `contrasts` adds nothing: the warning is in the
+entry that declares it.
+
+Each selected entry is available whole: identity, title, owner, definition and explanation
+reference. The explanation it references stays a document of the owner, readable only when
+`Spec(M)` selects it.
 
 ## Reconciliation
 
@@ -830,10 +898,11 @@ Requires(M) = ⋃ { r.context_requires : r declared in the metadata or reading
 CONFORMANCE:  ∀ q ∈ Requires(M) :  satisfied(q, Spec(M))
 ```
 
-`imports`, `narrows`, `supersedes`, `relates` and `participates` each require the document that
-defines their target. A Module that declares one without having that document in its context fails
+A `relates` to a realization or a Module, and a `participates`, require the document that defines
+their target. A Module that declares one without having that document in its context fails
 `CHK.context.reconciled`. The repair is an explicit grant: a `uses` or `contains` that selects the
-document, or an `includes` that states a reason.
+document, or an `includes` that states a reason. Relations that target a concept require nothing,
+because they grant its definition themselves.
 
 The check is exact, because a node has exactly one defining document. A `uses` or `contains` that
 narrows its grant with `relies_on` selects the documents defining the listed promises, so the
@@ -871,15 +940,17 @@ material. External material supplies no promise absent from the Spec.
 
 ## Context identity
 
-A resolved context is identified by its selected sources and the declarations that selected them,
-so a harness can tell whether anything inside a boundary changed since a check.
+A resolved context is identified by its selected sources, its selected terms and the declarations
+that selected them, so a harness can tell whether anything inside a boundary changed since a check.
 Every source record carries document identity, owner, path, member role (`reading` or `metadata`),
-an exact-byte SHA-256 digest, and every relation that selected it. External entries carry one tree
+an exact-byte SHA-256 digest, and every relation that selected it. Every term record carries the
+concept's whole entry and every declaration that selected it. External entries carry one tree
 digest each.
 
 The identity changes, even when the set of paths is unchanged, on:
 
 - any byte change in either member of a selected document, including whitespace;
+- any change to a selected glossary entry, or a change of which entries are selected;
 - a change to the declarations that selected the context, including removing a redundant inclusion;
 - an ownership transfer;
 - a change to pinned external material.
@@ -888,11 +959,12 @@ What a tool does with evidence bound to a previous identity is the tool's policy
 
 ## Visibility
 
-The resolved context is the exact visibility scope of a bounded reader: every selected source is
-available whole and no unselected source is visible. How a tool makes it available is not part of
-the Protocol. A tool MAY also supply task material such as changes since a baseline; such material
-adds no source and replaces none. A reader that opened only some granted files still received the
-complete context: missing meaning is judged against the full granted scope.
+The resolved context is the exact visibility scope of a bounded reader: every selected source and
+every selected glossary entry is available whole, and no unselected source or entry is visible. The
+glossary file as a whole is not a source of any context. How a tool makes it available is not part
+of the Protocol. A tool MAY also supply task material such as changes since a baseline; such
+material adds no source and replaces none. A reader that opened only some granted files still
+received the complete context: missing meaning is judged against the full granted scope.
 
 ## Gaps
 
@@ -920,10 +992,10 @@ checkout get the same answer.
 
 | Set | Definition | Derived from |
 | --- | --- | --- |
-| `SpecContext(M)` | both members of every document M owns or selects | `owns`, `contains`, `uses`, `includes` |
+| `SpecContext(M)` | both members of every document M owns or selects, and the glossary entries of `Terms(M)` | `owns`, `contains`, `uses`, `includes`; term selection |
 | `ExternalContext(M)` | pinned material M includes | `includes` of kind `external` |
 | `ImplementationContext(M)` | the names of every file M's realizations bind | `binds` |
-| `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block | `owns` |
+| `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block, and the glossary entries M owns | `owns`, glossary `owner` |
 | `ImplementationScope(M)` | every file covered by M's realization entries, including pending entries not yet created | `binds` |
 | `ProjectImplementation` | every file any Module's realizations bind and all external material any Module includes; the same for every Module | `binds`, `includes` of kind `external` |
 
@@ -932,14 +1004,17 @@ sets, `SpecScope` and `ImplementationScope` are **write** sets. They are deliber
 M may read a provider's documents because it `uses` the provider, but those documents stay in the
 provider's `SpecScope`, never in M's. Reading never widens what may be written.
 
-Every declaration a Module makes, including its Module-level relations, lies in its own documents,
-so `SpecScope(M)` is a plain set of files and a harness can enforce it with file permissions.
+Every declaration a Module makes lies in its own documents or in its own glossary entries. The
+documents make `SpecScope(M)` a plain set of files that a harness can enforce with file
+permissions; the glossary entries are the one part it enforces by entry, as
+[The glossary](#the-glossary) describes.
 
 ## What no Module may write
 
 The following are outside every Module's write sets:
 
 - another Module's documents;
+- another Module's glossary entries, including their `owner`;
 - the project registry;
 - external material;
 - generated outputs and project-control records, which are owned by the tools that produce them;
@@ -959,6 +1034,20 @@ such a file, first bind it: add it to a realization as an entry, or as a `pendin
 does not exist yet. Declaring the file is a Spec change within `SpecScope(M)`; creating it is then
 within `ImplementationScope(M)`. This two-step shape is what lets a `specify` task decide where
 code may go before an `implement` task writes it.
+
+## The glossary
+
+The glossary is one file holding every Module's concepts, so file permissions alone cannot keep a
+task inside its own entries. A task whose type writes `SpecScope` MAY therefore be given the whole
+glossary file to change, and the harness MUST then compare the file before and after the task:
+every added, changed or removed entry MUST be owned, before and after the change, by a Module the
+task is bound to. Any other difference, including an entry moved to another owner by a task bound
+only to one of them, is a write outside the boundary. Moving a concept between owners is a change
+of both Modules and needs a task bound to both.
+
+Reading follows term selection, not the file: a task reads the entries its bound Modules' contexts
+select. A harness that makes the file readable for a writing task also shows other Modules'
+entries; that over-inclusion is accepted, because the task cannot change them.
 
 ## The project registry
 
@@ -982,7 +1071,8 @@ them, so that a harness can widen the task's read boundary, schedule review, or 
 | Written | Concerns |
 | --- | --- |
 | a document D | every Module whose `SpecContext` contains D |
-| a requirement, scenario or concept | every Module whose `relies_on` lists it, and every document that imports, narrows or relates to it |
+| a requirement or scenario | every Module whose `relies_on` lists it |
+| a concept's glossary entry | every Module whose `Terms` contains the concept |
 | a contract | every Module that participates in it |
 | a file F | every Module whose `ImplementationScope` contains F, and every Module that uses one of them, directly or through further `uses` |
 
@@ -995,7 +1085,7 @@ Two rules follow from the model:
   A task that only reads the file needs no such widening.
 - **Atomic reconciliation.** Some changes are only valid if other Modules change with them: a
   contract version increment requires every participant's `participates` version to move, and
-  retiring or re-owning a concept requires its importers to follow. Such a change is a
+  retiring a concept requires the documents that mention it to follow. Such a change is a
   multi-Module change, and its write boundary is the union of the write sets of every Module it
   edits. A single-Module task MUST NOT be given another Module's scope to complete it.
 
@@ -1058,9 +1148,9 @@ types that work on Specs alone never see code contents.
   its Specs. A diff since a baseline is task material (rule 4).
 - **`code-to-spec`** describes an existing realization in the Module's own documents. It exists for
   the uncommon project whose code came before its specification; a project that is specified first
-  never needs it. It is the only task type that reads code in order to write Specs, and it
-  never changes code. It records the behaviour it read as it is. Behaviour whose intent the code does
-  not settle, such as a probable defect or an unexplained special case, MUST NOT be written as a
+  never needs it. It is the only task type that reads code in order to write Specs, and it never
+  changes code. It records the behaviour it read as it is. Behaviour whose intent the code does not
+  settle, such as a probable defect or an unexplained special case, MUST NOT be written as a
   promise: the documents state it as an honest unknown and the task reports it as an open question
   for a human to decide.
 
@@ -1117,7 +1207,7 @@ writes it as part of its own documents, and learns who it relates to without any
     "contains": [],
     "uses": [
       {"target": "module.inventory", "meaning": "#uses-inventory",
-       "relies_on": ["req.inventory.hold-expiry", "concept.inventory.reservation",
+       "relies_on": ["req.inventory.hold-expiry", "concept.reservation",
                      "contract.inventory.reserve"]}
     ],
     "includes": [
@@ -1145,6 +1235,9 @@ writes it as part of its own documents, and learns who it relates to without any
   a document identity, or a project-relative path; a directory ends in `/`) and a nonempty `reason`.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
+- `glossary` is optional and appears only in the block of a Module without a parent: the
+  project-relative path of the project's [glossary](#glossary), a `.json` file. At most one Module
+  declares it.
 - `contains`, `uses`, `includes` and `participates` are explicit arrays and MAY be empty.
 - A relation `meaning` is a local `#anchor` into the entry, or a qualified `<reading path>#<anchor>`
   into another document the Module owns.
@@ -1161,7 +1254,7 @@ boundary, without opening every Module. It is not a declaration site.
     {"id": "module.checkout", "title": "Checkout", "entry": "checkout/module.md",
      "owns": ["checkout/module.md", "checkout/contracts.md"], "contains": [],
      "uses": [{"target": "module.inventory", "meaning": "#uses-inventory",
-               "relies_on": ["req.inventory.hold-expiry", "concept.inventory.reservation",
+               "relies_on": ["req.inventory.hold-expiry", "concept.reservation",
                              "contract.inventory.reserve"]}],
      "includes": ["..."], "participates": ["..."]}
   ]
@@ -1169,7 +1262,8 @@ boundary, without opening every Module. It is not a declaration site.
 ```
 
 - Every Module has exactly one registry record: `id`, `title`, `entry` (the entry's reading path)
-  and every field of its `module` block, equal to that block.
+  and every field of its `module` block, equal to that block; `glossary` appears in the record
+  exactly when it appears in the block.
 - The registry lists which Modules exist. A tool MAY regenerate the mirrored fields from the
   entries; adding or removing a Module is a deliberate registry change.
 - A disagreement between the registry and an entry is a structural error
@@ -1184,20 +1278,12 @@ The Protocol fixes the registry's content. Its serialization and location are a 
   "schema_version": 3,
   "document": {"id": "document.checkout.topic.holds", "owner": "module.checkout", "role": "module"},
   "defines": [
-    {"id": "concept.checkout.basket", "type": "concept", "title": "Basket",
-     "meaning": "#concept.checkout.basket"},
-    {"id": "concept.checkout.hold", "type": "concept", "title": "Hold",
-     "meaning": "#concept.checkout.hold"},
     {"id": "realization.checkout.service", "type": "realization", "title": "Checkout service",
      "meaning": "#realization.checkout.service", "entries": ["src/checkout/"], "pending": []}
   ],
   "relations": [
-    {"type": "narrows", "source": "concept.checkout.hold",
-     "target": "concept.inventory.reservation"},
-    {"type": "contrasts", "source": "concept.checkout.basket", "target": "concept.catalog.basket",
-     "reason": "a catalog basket is a saved wish list; this one is submitted immediately"},
     {"type": "relates", "source": "realization.checkout.service", "verb": "records",
-     "target": "concept.checkout.hold"}
+     "target": "concept.hold"}
   ],
   "extensions": {}
 }
@@ -1207,12 +1293,11 @@ The Protocol fixes the registry's content. Its serialization and location are a 
 - `document` has exactly `id`, `owner` and `role`, agreeing with the owner's `owns`. `role` is
   exactly `module` or `implementation` with no default; the entry `module.md` has role `module`.
 - `module` is present exactly in the entry; see [Module declaration](#module-declaration).
-- `defines` lists only `concept` and `realization` records. Concepts are defined only in `module`
-  documents, and each concept's definition is its row in the document's Terminology table.
-  Requirements, scenarios and contracts are located by their reading syntax below.
-- `relations` lists `narrows`, `supersedes`, `contrasts` and `relates`, each naming a `source` that
-  this document defines or, for `relates`, the owning Module itself. Imports are declared by
-  Terminology rows, not here.
+- `defines` lists only `realization` records. Concepts are glossary entries, and requirements,
+  scenarios and contracts are located by their reading syntax below.
+- `relations` lists only `relates`, each naming as `source` a realization this document defines
+  or the owning Module itself. A concept's relations are in its glossary entry; `mentions` is
+  declared by term links.
 - `defines` and `relations` are explicit arrays and MAY be empty.
 - `extensions`, if present, is an object keyed by stable names holding tool data. A tool MUST define
   and validate the extension vocabulary it uses. An extension MUST NOT create a relation, change
@@ -1227,9 +1312,9 @@ project-wide unique and match:
 ^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$
 ```
 
-Requirement identities begin `req.`; scenario identities begin `scenario.`. Prefixes do not
-establish ownership. Stable identities let links survive renames and moves, and let boundaries,
-reviews and tests name exactly one thing.
+Requirement identities begin `req.`; scenario identities begin `scenario.`; concept identities begin
+`concept.`. Prefixes do not establish ownership. Stable identities let links survive renames and
+moves, and let boundaries, reviews and tests name exactly one thing.
 
 A readable anchor is one of three forms:
 
@@ -1257,7 +1342,6 @@ An entry `module.md` has these level-2 sections, outside fences, each exactly on
 
 ```text
 Purpose
-Terminology
 Usage
 Design
 ```
@@ -1268,9 +1352,8 @@ the first of them. Purpose is nonempty plain prose: no lists, tables, nested hea
 Usage and Design contain explanatory prose, not only links, headings or diagrams. Honest unknowns
 are stated explicitly.
 
-A `module`-role topic begins with a short orienting introduction. When the topic defines or imports
-a concept, its first level-2 section is `## Terminology`. In the entry, Terminology may hold only
-prose when the entry defines and imports nothing.
+A `module`-role topic begins with a short orienting introduction. A document holds no table of
+term definitions: definitions live in the glossary, and a document links the terms it uses.
 
 `module` documents MUST NOT contain requirement or scenario definitions or canonical contract
 fences. `implementation` documents contain those definitions and MAY group them under headings
@@ -1281,33 +1364,52 @@ in `implementation` reading regardless of the syntax used to write them. Concept
 safe-use explanation stay in `module` reading. A `module` document MUST NOT hide destructive
 defaults, security limits or known unfulfilled guarantees behind a link.
 
-## Terminology
+## Glossary
 
-The Terminology section of a `module` document holds exactly one Markdown table with the columns
-`Term` and `Definition`, optionally followed by orienting prose. Every row is one of two kinds:
+The glossary is one UTF-8 JSON file with unique keys, at the path the root Module's `glossary`
+field declares:
 
-```markdown
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Hold | Stock withheld from other customers until a submission succeeds or expires. |
-| [Reservation](../inventory/module.md#concept.inventory.reservation) | |
+```json
+{
+  "schema_version": 1,
+  "concepts": [
+    {"id": "concept.hold", "title": "Hold", "owner": "module.checkout",
+     "definition": "Stock withheld from other customers until a submission succeeds or expires.",
+     "explanation": "checkout/module.md#concept.hold",
+     "narrows": ["concept.reservation"]},
+    {"id": "concept.basket", "title": "Basket", "owner": "module.checkout",
+     "definition": "The items a customer submits together as one [Hold](#concept.hold).",
+     "explanation": "checkout/module.md#concept.basket",
+     "contrasts": [{"target": "concept.wish-list",
+                    "reason": "a wish list is saved for later; a basket is submitted immediately"}]}
+  ]
+}
 ```
 
-- A **defining row** has the plain title of a concept this document defines and its definition: one
-  sentence. The row is the definition's only home; the metadata record holds the concept's identity,
-  title, explanation anchor and relations.
-- An **import row** has a link to another Module's concept, addressed by that concept's identity,
-  and an empty `Definition` cell. The row declares the `imports` relation. It never copies the
-  definition, because copies drift; the link text is free, so renaming the concept breaks nothing.
+- `schema_version` is the integer `1`; `concepts` is an array of entries sorted by `id`.
+- An entry has exactly `id`, `title`, `owner`, `definition` and `explanation`, and optionally
+  `retired`, `external_conflict`, `narrows`, `supersedes`, `contrasts` and `relates`.
+- `owner` is a registered Module identity. `definition` is one sentence; a term link inside it
+  addresses another entry by fragment alone, `#concept.<identity>`.
+- `explanation` is `<reading path>#<anchor>`, naming a `module` document the owner owns and an
+  anchor in it that resolves to nonempty prose.
+- `narrows` is an array of concept identities; `supersedes` is one concept identity; `contrasts`
+  is an array of `{target, reason}` with a concept or Module target; `relates` is an array of
+  `{verb, target}` with a concept, realization or Module target.
 
-The rows correspond one to one with the concepts the document defines and imports. A document with
-neither has no table. A publisher MAY show imported definitions inline; that enrichment is a
-[view](views.md) and never written into the file.
+## Term links
 
-Each definition is written once, in its owner's table. A change to it rewrites no document of an
-importer; the importer's context still changes, because the defining document is in it.
+A **term link** is a Markdown link whose fragment is a concept identity. In reading, its path
+addresses the glossary file, relative to the document like any other link:
+
+```markdown
+A [hold](../glossary.json#concept.hold) expires unless the submission succeeds.
+```
+
+A term link declares `mentions` of that concept. Its text is free: a plural, an inflection or a
+different letter case links the same term. A publisher sends every term link to the rendered
+glossary page. A document SHOULD link a term where it first uses it, so that a reader meets the
+definition before relying on it.
 
 ## Requirements
 
@@ -1353,8 +1455,12 @@ In an `implementation` document, a `concorde-contract` JSON fence defines exactl
 the example satisfies the schema. Schema references MUST NOT load Spec documents or remote
 resources. Publishers expose the contract identity as an anchor at the fence.
 
-A schema is checked offline and uses only these JSON Schema keywords: `$schema`, `$id`, `$defs`, `$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and `format`. Any other keyword, such as `propertyNames` or `patternProperties`, is an error;
-what it would express goes into `semantics`.
+A schema is checked offline and uses only these JSON Schema keywords: `$schema`, `$id`, `$defs`,
+`$ref` (only `#/$defs/<name>`), `title`, `description`, `examples`, `default`, `type`, `properties`,
+`required`, `additionalProperties`, `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`,
+`maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and
+`format`. Any other keyword, such as `propertyNames` or `patternProperties`, is an error; what it
+would express goes into `semantics`.
 
 No role or peer appears in a definition; those belong to `participates`. A behaviour or schema
 change increments the version, and every participant is reconciled in the same change. Editorial
@@ -1369,8 +1475,9 @@ other diagram language, such as Mermaid, is an error. The rules are in [Views](v
 ## Links
 
 Ordinary Markdown links navigate to readable definitions. A stable-identity fragment MUST name an
-actual definition in the addressed reading document; other fragments use the renderer's slug rules.
-A link never adds a document to context.
+actual definition in the addressed reading document; a concept fragment MUST address the glossary,
+as a [term link](#term-links). Other fragments use the renderer's slug rules. A link never adds a
+document to context; a term link adds the term's definition.
 
 ## Evidence declarations
 
@@ -1396,15 +1503,17 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | Identity | Statement | Severity |
 | --- | --- | --- |
 | `CHK.node.id` | Every node identity matches the grammar, is project-wide unique and, for requirements and scenarios, carries its prefix. | error |
-| `CHK.node.type` | Every `defines` record has type `concept` or `realization`. | error |
+| `CHK.node.type` | Every `defines` record has type `realization`. | error |
 | `CHK.node.owner` | Every node resolves to exactly one owning Module. | error |
-| `CHK.node.title` | Titles are nonempty. Module titles are unique in the project; concept and realization titles are unique among the concepts and realizations of their owner. | error |
-| `CHK.node.meaning` | A metadata-declared node's `meaning` is a local `#anchor` resolving to nonempty prose in the same document. | error |
+| `CHK.node.title` | Titles are nonempty. Module titles are unique in the project; concept titles are unique in the project under name normalization; realization titles are unique among the concepts and realizations of their owner. | error |
+| `CHK.node.meaning` | A realization's `meaning` is a local `#anchor` resolving to nonempty prose in the same document; a concept's `explanation` names a `module` document its owner owns and an anchor there resolving to nonempty prose. | error |
 | `CHK.node.explained` | An anchor group's prose is not empty and not only links, headings or fences. | warning |
-| `CHK.concept.definition` | Each concept has exactly one defining row in its document's Terminology table, whose definition is one nonempty sentence. | error |
+| `CHK.concept.definition` | Each concept's `definition` is one nonempty sentence. | error |
 | `CHK.concept.retired` | `retired`, when present, has a nonempty `reason`; only a retired concept is the source of `supersedes`. | error |
 | `CHK.requirement.statement` | The first paragraph is one sentence containing `SHALL` or `SHALL NOT` exactly once; the section has no nested heading. | error |
 | `CHK.scenario.steps` | Every list item is a step; the grammar of [Format](format.md) holds. | error |
+| `CHK.glossary.declared` | At most one Module declares a `glossary`, it has no parent, and the declared file exists; a project whose documents or declarations name a concept declares one. | error |
+| `CHK.glossary.schema` | The glossary is `schema_version` 1 with a `concepts` array sorted by `id`, and every entry has the fields of [Format](format.md#glossary) and no others; its `owner` is a registered Module. | error |
 | `CHK.contract.fence` | The fence has exactly the five fields, a positive version, nonempty semantics, an offline schema using only the keywords [Format](format.md#canonical-contracts) lists and an example that satisfies it. | error |
 
 ## Documents
@@ -1416,11 +1525,10 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.document.role` | `role` is exactly `module` or `implementation`, explicitly declared. | error |
 | `CHK.document.schema` | Metadata is `schema_version` 3 with the required fields and no unknown keys outside `extensions`. | error |
 | `CHK.document.entry` | Each Module owns exactly one `module`-role document whose reading path ends in `module.md`; its metadata, and no other, has the `module` block, whose `owns` includes the entry. | error |
-| `CHK.document.sections` | An entry has the level-2 sections Purpose, Terminology, Usage and Design, each exactly once, in any order, and no level-2 section `Relationships`. | error |
-| `CHK.document.topic-terminology` | A `module`-role topic that defines or imports a concept has `## Terminology` as its first level-2 section. | error |
+| `CHK.document.sections` | An entry has the level-2 sections Purpose, Usage and Design, each exactly once, in any order, and no level-2 section `Relationships`. | error |
 | `CHK.document.prose` | Purpose is plain prose; Usage and Design are not only links, headings or diagrams. | error |
-| `CHK.terminology.rows` | A Terminology section has at most one table, with columns `Term` and `Definition`, whose rows correspond one to one with the concepts the document defines and imports. | error |
-| `CHK.terminology.import-row` | An import row links to a concept anchor of another document by identity, and its `Definition` cell is empty. | error |
+| `CHK.term.link` | Every term link, in reading or in a definition, addresses the glossary and names a declared concept. | error |
+| `CHK.term.unlinked` | A document whose reading uses a concept's title outside code, headings, links and anchors links that concept somewhere. A one-word title counts only as written, a longer title in any letter case, each also with a plural `s`. | warning |
 
 ## Relations
 
@@ -1428,19 +1536,19 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | --- | --- | --- |
 | `CHK.relation.type` | Every relation has a registered type. | error |
 | `CHK.relation.endpoints` | Source and target resolve and have permitted types. | error |
-| `CHK.relation.site` | Every relation is declared at its site; a metadata relation's source is defined by that document, or is its owning Module for `relates`. | error |
+| `CHK.relation.site` | Every relation is declared at its site: a metadata relation is a `relates` whose source is a realization that document defines or its owning Module; a concept's relations are in its glossary entry. | error |
 | `CHK.relation.meaning` | A Module relation's `meaning` is a local anchor into the entry, or a qualified anchor into another document the source Module owns, resolving to nonempty prose. | error |
 | `CHK.registry.mirror` | The registry has exactly one record per Module, with the entry's path and every field of its `module` block, equal to that block. | error |
 | `CHK.owns.unique` | Each document is owned exactly once. | error |
 | `CHK.defines.once` | Each node has exactly one defining document. | error |
-| `CHK.defines.role` | Requirements, scenarios and contracts are defined only in `implementation` documents; concepts only in `module` documents. | error |
+| `CHK.defines.role` | Requirements, scenarios and contracts are defined only in `implementation` documents. | error |
 | `CHK.contains.acyclic` | Composition is acyclic. | error |
 | `CHK.contains.single-parent` | A Module has at most one parent. | error |
 | `CHK.contains.root` | Exactly one Module has no parent. | warning |
 | `CHK.uses.no-self` | A Module does not use itself. | error |
 | `CHK.uses.unique` | A Module uses each provider at most once. | error |
 | `CHK.relies-on.owned` | Every identity in `relies_on` names a requirement, scenario, contract or concept owned by the relation's target. | error |
-| `CHK.relies-on.linked` | When `relies_on` is present, every stable-identity link from the relation's `meaning` section to a node of the target names a listed node. | error |
+| `CHK.relies-on.linked` | When `relies_on` is present, every stable-identity link from the relation's `meaning` section to a requirement, scenario or contract of the target names a listed node; a term link names a word and needs no listing. | error |
 | `CHK.includes.no-self` | A Module does not include itself or a document it owns. | error |
 | `CHK.includes.unique` | No duplicate `(kind, target)` pairs. | error |
 | `CHK.includes.reason` | Each `includes` has a nonempty `reason`. | error |
@@ -1449,16 +1557,14 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.external.no-overlap` | External paths overlap no document member and no realization entry. | error |
 | `CHK.binds.exists` | Non-pending entries exist; exact entries are files and `/` entries are directories. | error |
 | `CHK.binds.disjoint` | No two realizations in one Module list the same entry. | error |
-| `CHK.binds.no-spec` | No document member, generated output or control record is bound; a bound directory contains no document member. | error |
+| `CHK.binds.no-spec` | No document member, the glossary, generated output or control record is bound; a bound directory contains no document member. | error |
 | `CHK.binds.installed` | No directory entry covers an installed file, which is bound only by its exact path. | error |
 | `CHK.binds.pending-subset` | `pending` is a subset of `entries`, and pending entries do not exist. | error |
-| `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, generated output, external material or a control record such as the project registry and configuration. | error |
-| `CHK.imports.foreign` | An imported concept is owned by a Module other than the importer's owner. | error |
-| `CHK.imports.owner` | An imported concept's owner is a Module the importer uses, an ancestor of the importer, or a descendant of it. | warning |
+| `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, the glossary, generated output, external material or a control record such as the project registry and configuration. | error |
 | `CHK.narrows.acyclic` | `narrows` never relates a concept to itself, directly or through other `narrows`. | error |
-| `CHK.contrasts.required` | Two nodes of different owners whose titles normalize equal have a `contrasts` between them. | error |
+| `CHK.contrasts.required` | A concept and a Module other than its owner whose titles normalize equal have a `contrasts` between them. | error |
 | `CHK.contrasts.once` | At most one `contrasts` is declared per unordered pair, and it has a nonempty `reason`. | error |
-| `CHK.relates.source` | A `relates` source is defined by the declaring document or is its owning Module. | error |
+| `CHK.relates.source` | A `relates` source is the concept whose entry declares it, a realization the declaring document defines, or the declaring document's owning Module. | error |
 | `CHK.relates.verb` | `verb` is nonempty; `(source, verb, target)` is unique. | error |
 | `CHK.participates.version` | The contract exists and the declared version is its current version. | error |
 | `CHK.participates.complementary` | Internal peers declare complementary roles for the same contract and version and name each other. | error |
@@ -1466,9 +1572,10 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.verifies.resolves` | Every verified scenario identity exists. | error |
 | `CHK.evidence.no-spec-coverage` | Reading content contains no test-declaration syntax outside fences. | error |
 
-**Name normalization** for `CHK.contrasts.required`: Unicode NFKC, case folding, and every run of
-whitespace, hyphens and underscores treated as one space, trimmed. The compared nodes are concepts
-and Modules; a concept is not compared with its own Module.
+**Name normalization** for `CHK.node.title` and `CHK.contrasts.required`: Unicode NFKC, case
+folding, and every run of whitespace, hyphens and underscores treated as one space, trimmed.
+`CHK.node.title` compares concepts with each other; `CHK.contrasts.required` compares concepts with
+Modules, never a concept with its own Module.
 
 ## Views
 
@@ -1493,6 +1600,7 @@ These checks are weaker than the obligations they serve:
 | Check | What it does not establish |
 | --- | --- |
 | `CHK.relies-on.linked` | That `relies_on` lists a relied-upon promise the explanation never links to. |
+| `CHK.term.unlinked` | That a term is linked where it is first used, or that a word matching a title is used in the term's sense; an ordinary word spelled like a one-word title in the same letter case is reported too, and linking or rephrasing it is the answer. |
 | `CHK.relation.meaning` | That a parent's or consumer's explanation of a collaboration is adequate. |
 | `CHK.node.explained` | That prose explains its node; it detects empty regions only. |
 | `CHK.contrasts.required` | Collisions that normalization misses. Unrelated same-named nodes also trigger it; declaring the `contrasts` with its reason is then the correct answer, not an escape. |
@@ -1507,7 +1615,8 @@ accurate.
 
 These are requirements on tools rather than checks of declarations:
 
-- Context selection is one level and never follows a selected Module's own relations.
+- Context selection is one level and never follows a selected Module's own relations; term
+  selection closes over the glossary only.
 - Documents are registered, never discovered from the filesystem or links.
 - Coverage is read from test declarations without executing tests.
 - Derived views are never written into reading files.
@@ -1517,7 +1626,7 @@ These are requirements on tools rather than checks of declarations:
 
 # Views
 
-A view is any rendering of the model: a diagram, a terminology table, an index, a navigation tree,
+A view is any rendering of the model: a diagram, the glossary page, an index, a navigation tree,
 a graph export, a documentation site. Views serve understanding: they are how most humans meet the
 specification. Axiom A6 governs all of them: **a view is derived or checked, and an unchecked
 picture is marked as such**, so that what a human sees cannot contradict what a harness computes
@@ -1536,8 +1645,9 @@ is not by itself a missing contract; an added edge is invalid output. Rendered v
 scope and the relation types they display, so a reader knows what the absence of an edge means.
 
 Derived views are rendered at publication or delivery time and are never written into reading
-files. A publisher MAY enrich a written table, for example by showing an imported term's
-definition next to its link; the enrichment is a view.
+files. A publisher renders the glossary as a page, sends every term link to its entry there and
+MAY enrich reading, for example by showing a term's definition when a reader points at its link,
+or by listing the terms a Module owns on its page; every such enrichment is a view.
 
 ## Checked diagrams
 
@@ -1560,8 +1670,8 @@ Nothing else is allowed: no D2 keyword (such as `style`, `shape`, `class`, `dire
 `label`, `icon`, `vars`), no imports, globs, filters, substitutions, block strings or arrays, and no
 edge other than `->`.
 
-**Shapes.** Every shape resolves by its label, or by its key when it has no label, to exactly one of:
-a concept or realization of the owning Module, by title; a Module, by title; a node of another
+**Shapes.** Every shape resolves by its label, or by its key when it has no label, to exactly one
+of: a concept or realization of the owning Module, by title; a Module, by title; a node of another
 Module, by the qualified form `Module title / node title`; or, only directly inside a realization
 shape, a **file** of that realization: a bound entry path, or a suffix of exactly one bound entry
 that begins after a `/`. An unresolved or ambiguous shape is an error. In a Module's own reading,
@@ -1589,12 +1699,12 @@ A checked diagram need not show every declared relation; like a derived view, it
 scope decisions. An entry's Design draws its structure in as many diagrams as it needs, each
 answering one question: typically the inside, where a Module whose function is carried by several
 realizations draws them with the files they bind and the edges between them, and the outside, where
-the Module stands among the Modules it uses and those that use it. An edge may join any two shapes whose
-relation is declared, whichever Module declares it, so the outside view may draw a consumer's
+the Module stands among the Modules it uses and those that use it. An edge may join any two shapes
+whose relation is declared, whichever Module declares it, so the outside view may draw a consumer's
 `uses` of this Module or a `relates` from one of its realizations to another Module. Realizations
 that only keep the repository running, such as project configuration, development tooling or test
-suites, are left to prose: a diagram shows architecture, not an inventory of files. See
-[Writing guidance](module.md#diagrams).
+suites, are left to prose: a diagram shows architecture, not an inventory of files. See [Writing
+guidance](module.md#diagrams).
 
 ````markdown
 ```d2

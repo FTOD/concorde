@@ -1,25 +1,27 @@
 # Workflows requirements
 
 The Module-wide obligations of [Workflows](module.md). The shapes are in the
-[contracts](contracts.md); the [scenarios](scenarios.md) show the obligations in concrete situations.
+[contracts](contracts.md); the [scenarios](scenarios.md) show the obligations in concrete
+situations.
 
 ## Steps
 
 ### req.workflows.bound-only — A workflow runs only in a bound workspace
 
-The workflow commands SHALL refuse to run a step or build a report in a worktree whose workspace binding is absent or refused, starting and recording nothing.
+The workflow commands SHALL refuse to run a step or build a report in a worktree whose [workspace binding](../../glossary.json#concept.workspace-binding) is absent or refused, starting and recording nothing.
 
 ### req.workflows.steps-are-runs — Every step is an ordinary run
 
-A workflow step SHALL start its run only as `concorde run <operation> --detach` or `concorde <command> --detach` of the workspace's own `concorde`, in the workspace the step runs in.
+A [workflow step](../../glossary.json#concept.workflow-step) SHALL start its run only as `concorde run <operation> --detach` or `concorde <command> --detach` of the workspace's own `concorde`, in the workspace the step runs in.
 
-The workflow leaves worker launches and service calls inside the run. Client step agents only
-relay the workflow commands; they do not perform the worker's job or bypass the run's grant, audit
-and result handling.
+The workflow leaves worker launches and service calls inside the run. Client
+[step agents](../../glossary.json#concept.step-agent) only relay the workflow commands; they do not
+perform the worker's job or bypass the run's grant, audit and result handling.
 
 ### req.workflows.one-at-a-time — One run at a time
 
-A workflow SHALL NOT start a step while another process holds the workspace lock of its workspace.
+A workflow SHALL NOT start a step while another process holds the
+[workspace lock](../../glossary.json#concept.workspace-lock) of its workspace.
 
 `concorde workflow step` waits for a running run of the workspace before starting its own, and the
 runner writes a run's result before it releases the lock, so a finished step always leaves the
@@ -27,7 +29,7 @@ workspace free.
 
 ### req.workflows.key-idempotent — A step key runs once
 
-`concorde workflow step` SHALL start a run only for a step key with no current step in the workspace's workflow record, or with `--retry` for a key whose current step did not end `ok`, reporting the current step's run otherwise.
+`concorde workflow step` SHALL start a run only for a [step key](../../glossary.json#concept.step-key) with no current step in the workspace's [workflow record](../../glossary.json#concept.workflow-record), or with `--retry` for a key whose current step did not end `ok`, reporting the current step's run otherwise.
 
 ### req.workflows.restart-generation — A restart runs a step once more
 
@@ -56,22 +58,22 @@ A step whose command line the runner rejected, or whose detached runner did not 
 
 A step given answers SHALL pass them to its run with `--answers`, add their digest to the step key and admit with `--input` the latest `ok` run of the same base key.
 
-The digest is taken over the answers list in canonical JSON, so the same answers always name the same
-step.
+The digest is taken over the answers list in canonical JSON, so the same answers always name the
+same step.
 
 ### req.workflows.one-workflow-per-workspace — A workspace runs one workflow
 
-`concorde workflow step` SHALL refuse a step naming a workflow other than the one already recorded for the workspace, and a key already recorded for another Operation or command.
+`concorde workflow step` SHALL refuse a step naming a workflow other than the one already recorded for the workspace, and a key already recorded for another [Operation](../../glossary.json#concept.operation) or command.
 
 ### req.workflows.no-task — Workflows knows no task
 
-No part of Workflows SHALL open, merge, close or escalate a task, or read or write a task record or a decision log.
+No part of Workflows SHALL open, merge, close or escalate a task, or read or write a [task record](../../glossary.json#concept.task-record) or a [decision log](../../glossary.json#concept.decision-log).
 
 ## Modes
 
 ### req.workflows.interactive-stops — Interactive runs stop at decision points
 
-A workflow in interactive mode SHALL end right after a step that did not end `ok` or whose output has decision points its answers did not settle, before starting another step.
+A workflow in interactive mode SHALL end right after a step that did not end `ok` or whose output has [decision points](../../glossary.json#concept.decision-point) its answers did not settle, before starting another step.
 
 ### req.workflows.no-ask-continues — No-ask runs never stop for a decision
 
@@ -81,11 +83,11 @@ A workflow in no-ask mode SHALL NOT end at a decision point, nor at a `code_to_s
 
 ### req.workflows.report-from-records — The result is built from what the runs recorded
 
-`concorde workflow report` SHALL build the workflow result only from the workspace's workflow record and the saved run results, never from values a step agent returned.
+`concorde workflow report` SHALL build the [workflow result](../../glossary.json#concept.workflow-result) only from the workspace's workflow record and the saved [run results](../../glossary.json#concept.run-result), never from values a step agent returned.
 
 ### req.workflows.complete-report — Nothing is left out of the report
 
-The workflow result SHALL list every recorded step, every decision, open question and deviation of every finished current step as its run reported it, every Spec review's verdict and findings, every check the survey proposed, and every current step that did not end `ok` as a problem with its error chain unchanged.
+The workflow result SHALL list every recorded step, every decision, [open question](../../glossary.json#concept.open-question) and deviation of every finished current step as its run reported it, every Spec review's verdict and findings, every check the survey proposed, and every current step that did not end `ok` as a problem with its [error chain](../../glossary.json#concept.error-chain) unchanged.
 
 ### req.workflows.chain-on-top — The workflow adds its own link
 

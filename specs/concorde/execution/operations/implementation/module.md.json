@@ -23,9 +23,9 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.runner",
-          "concept.execution.run-result",
-          "concept.execution.workspace"
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.workspace"
         ]
       },
       {
@@ -44,11 +44,6 @@
     "includes": [
       {
         "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "document",
         "target": "document.concorde.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
       }
@@ -56,18 +51,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.implementation.code-change",
-      "type": "concept",
-      "title": "Code change",
-      "meaning": "#concept.implementation.code-change"
-    },
-    {
-      "id": "concept.implementation.test-report",
-      "type": "concept",
-      "title": "Test report",
-      "meaning": "#concept.implementation.test-report"
-    },
     {
       "id": "realization.implementation.operations",
       "type": "realization",
@@ -86,13 +69,13 @@
       "type": "relates",
       "source": "realization.implementation.operations",
       "verb": "produces",
-      "target": "concept.implementation.code-change"
+      "target": "concept.code-change"
     },
     {
       "type": "relates",
       "source": "realization.implementation.operations",
       "verb": "produces",
-      "target": "concept.implementation.test-report"
+      "target": "concept.test-report"
     }
   ],
   "extensions": {}

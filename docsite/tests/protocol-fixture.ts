@@ -1,4 +1,4 @@
-/** Small Spec Protocol 11 projects for publication tests. */
+/** Small Spec Protocol 15 projects for publication tests. */
 import {
   existsSync,
   mkdirSync,
@@ -112,7 +112,6 @@ export function writeRegistry(project: Project): void {
 export function entryBody(
   title: string,
   parts: {
-    terminology?: string;
     usage?: string;
     design?: string;
     architecture?: string;
@@ -124,10 +123,6 @@ export function entryBody(
     "## Purpose",
     "",
     `${title} keeps one responsibility of the bank.`,
-    "",
-    "## Terminology",
-    "",
-    parts.terminology ?? "This Module defines no terms of its own.",
     "",
     "## Usage",
     "",
@@ -141,17 +136,25 @@ export function entryBody(
     "",
   ].join("\n");
 }
-export const table = (...rows: [string, string][]) =>
-  [
-    "| Term | Definition |",
-    "| --- | --- |",
-    ...rows.map(([t, d]) => `| ${t} | ${d} |`),
-  ].join("\n");
+/** The project glossary path in `bankProject`, next to Bank's own entry. */
+export const glossaryPath = "specs/bank/glossary.json";
+export function glossaryFile(
+  concepts: {
+    id: string;
+    title: string;
+    owner: string;
+    definition: string;
+    explanation: string;
+    [extra: string]: unknown;
+  }[],
+): string {
+  return JSON.stringify({ schema_version: 1, concepts }, null, 2);
+}
 
 /**
  * Bank (root) contains Transfer and Audit; Transfer contains Ledger; Audit uses Transfer,
- * relying on its Hold concept. Transfer owns an implementation document with a requirement, a
- * scenario and a contract.
+ * relying on its Hold concept, a glossary entry Transfer owns and explains. Transfer owns an
+ * implementation document with a requirement, a scenario and a contract.
  */
 export function bankProject(): Project {
   const project: Project = {
@@ -162,6 +165,7 @@ export function bankProject(): Project {
           { target: "module.transfer", meaning: "#contains-transfer" },
           { target: "module.audit", meaning: "#contains-audit" },
         ],
+        glossary: glossaryPath,
       }),
       module("module.transfer", "Transfer", "specs/transfer/module.md", {
         owns: ["specs/transfer/module.md", "specs/transfer/requirements.md"],
@@ -198,29 +202,35 @@ export function bankProject(): Project {
   );
   put(project, "src/ledger.ts", "export const ledger = true;\n");
   put(project, "src/transfer/index.ts", "export const transfer = true;\n");
+  put(
+    project,
+    glossaryPath,
+    glossaryFile([
+      {
+        id: "concept.transfer.hold",
+        title: "Hold",
+        owner: "module.transfer",
+        definition: "Money withheld until a transfer settles.",
+        explanation: "specs/transfer/module.md#concept.transfer.hold",
+      },
+    ]),
+  );
   putDocument(project, "specs/bank/module.md", {
     owner: "module.bank",
     body: entryBody("Bank", {
       architecture:
-        '```d2\nbank: Bank {\n  transfer: Transfer\n}\n```\n\n<a id="contains-transfer"></a><a id="contains-audit"></a>\n\nBank is composed of Transfer and Audit.',
+        '```d2\nbank: Bank {\n  transfer: Transfer\n}\n```\n\n<a id="contains-transfer"></a><a id="contains-audit"></a>\n\nBank is composed of Transfer and Audit. See the [glossary](glossary.json) for every term.',
     }),
   });
   putDocument(project, "specs/transfer/module.md", {
     owner: "module.transfer",
     body: entryBody("Transfer", {
-      terminology: table(["Hold", "Money withheld until a transfer settles."]),
       usage:
         'Submit a transfer.\n\n<a id="concept.transfer.hold"></a>\n\nA hold keeps money from being spent twice.',
       design:
         '<a id="transfer-service"></a>\n\nThe transfer service records holds.\n\n<a id="contains-ledger"></a>\n\nLedger books settled transfers.',
     }),
     defines: [
-      {
-        id: "concept.transfer.hold",
-        type: "concept",
-        title: "Hold",
-        meaning: "#concept.transfer.hold",
-      },
       {
         id: "realization.transfer.service",
         type: "realization",
@@ -287,12 +297,8 @@ export function bankProject(): Project {
   putDocument(project, "specs/audit/module.md", {
     owner: "module.audit",
     body: entryBody("Audit", {
-      terminology: table([
-        "[Hold](../transfer/module.md#concept.transfer.hold)",
-        "",
-      ]),
       architecture:
-        '<a id="uses-transfer"></a>\n\nAudit reads the holds Transfer places.',
+        '<a id="uses-transfer"></a>\n\nAudit reads the [holds](../bank/glossary.json#concept.transfer.hold) Transfer places.',
     }),
   });
   writeRegistry(project);

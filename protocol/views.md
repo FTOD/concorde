@@ -1,6 +1,6 @@
 # Views
 
-A view is any rendering of the model: a diagram, a terminology table, an index, a navigation tree,
+A view is any rendering of the model: a diagram, the glossary page, an index, a navigation tree,
 a graph export, a documentation site. Views serve understanding: they are how most humans meet the
 specification. Axiom A6 governs all of them: **a view is derived or checked, and an unchecked
 picture is marked as such**, so that what a human sees cannot contradict what a harness computes
@@ -19,8 +19,9 @@ is not by itself a missing contract; an added edge is invalid output. Rendered v
 scope and the relation types they display, so a reader knows what the absence of an edge means.
 
 Derived views are rendered at publication or delivery time and are never written into reading
-files. A publisher MAY enrich a written table, for example by showing an imported term's
-definition next to its link; the enrichment is a view.
+files. A publisher renders the glossary as a page, sends every term link to its entry there and
+MAY enrich reading, for example by showing a term's definition when a reader points at its link,
+or by listing the terms a Module owns on its page; every such enrichment is a view.
 
 ## Checked diagrams
 
@@ -43,8 +44,8 @@ Nothing else is allowed: no D2 keyword (such as `style`, `shape`, `class`, `dire
 `label`, `icon`, `vars`), no imports, globs, filters, substitutions, block strings or arrays, and no
 edge other than `->`.
 
-**Shapes.** Every shape resolves by its label, or by its key when it has no label, to exactly one of:
-a concept or realization of the owning Module, by title; a Module, by title; a node of another
+**Shapes.** Every shape resolves by its label, or by its key when it has no label, to exactly one
+of: a concept or realization of the owning Module, by title; a Module, by title; a node of another
 Module, by the qualified form `Module title / node title`; or, only directly inside a realization
 shape, a **file** of that realization: a bound entry path, or a suffix of exactly one bound entry
 that begins after a `/`. An unresolved or ambiguous shape is an error. In a Module's own reading,
@@ -72,12 +73,12 @@ A checked diagram need not show every declared relation; like a derived view, it
 scope decisions. An entry's Design draws its structure in as many diagrams as it needs, each
 answering one question: typically the inside, where a Module whose function is carried by several
 realizations draws them with the files they bind and the edges between them, and the outside, where
-the Module stands among the Modules it uses and those that use it. An edge may join any two shapes whose
-relation is declared, whichever Module declares it, so the outside view may draw a consumer's
+the Module stands among the Modules it uses and those that use it. An edge may join any two shapes
+whose relation is declared, whichever Module declares it, so the outside view may draw a consumer's
 `uses` of this Module or a `relates` from one of its realizations to another Module. Realizations
 that only keep the repository running, such as project configuration, development tooling or test
-suites, are left to prose: a diagram shows architecture, not an inventory of files. See
-[Writing guidance](module.md#diagrams).
+suites, are left to prose: a diagram shows architecture, not an inventory of files. See [Writing
+guidance](module.md#diagrams).
 
 ````markdown
 ```d2

@@ -17,10 +17,10 @@ checkout get the same answer.
 
 | Set | Definition | Derived from |
 | --- | --- | --- |
-| `SpecContext(M)` | both members of every document M owns or selects | `owns`, `contains`, `uses`, `includes` |
+| `SpecContext(M)` | both members of every document M owns or selects, and the glossary entries of `Terms(M)` | `owns`, `contains`, `uses`, `includes`; term selection |
 | `ExternalContext(M)` | pinned material M includes | `includes` of kind `external` |
 | `ImplementationContext(M)` | the names of every file M's realizations bind | `binds` |
-| `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block | `owns` |
+| `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block, and the glossary entries M owns | `owns`, glossary `owner` |
 | `ImplementationScope(M)` | every file covered by M's realization entries, including pending entries not yet created | `binds` |
 | `ProjectImplementation` | every file any Module's realizations bind and all external material any Module includes; the same for every Module | `binds`, `includes` of kind `external` |
 
@@ -29,14 +29,17 @@ sets, `SpecScope` and `ImplementationScope` are **write** sets. They are deliber
 M may read a provider's documents because it `uses` the provider, but those documents stay in the
 provider's `SpecScope`, never in M's. Reading never widens what may be written.
 
-Every declaration a Module makes, including its Module-level relations, lies in its own documents,
-so `SpecScope(M)` is a plain set of files and a harness can enforce it with file permissions.
+Every declaration a Module makes lies in its own documents or in its own glossary entries. The
+documents make `SpecScope(M)` a plain set of files that a harness can enforce with file
+permissions; the glossary entries are the one part it enforces by entry, as
+[The glossary](#the-glossary) describes.
 
 ## What no Module may write
 
 The following are outside every Module's write sets:
 
 - another Module's documents;
+- another Module's glossary entries, including their `owner`;
 - the project registry;
 - external material;
 - generated outputs and project-control records, which are owned by the tools that produce them;
@@ -56,6 +59,20 @@ such a file, first bind it: add it to a realization as an entry, or as a `pendin
 does not exist yet. Declaring the file is a Spec change within `SpecScope(M)`; creating it is then
 within `ImplementationScope(M)`. This two-step shape is what lets a `specify` task decide where
 code may go before an `implement` task writes it.
+
+## The glossary
+
+The glossary is one file holding every Module's concepts, so file permissions alone cannot keep a
+task inside its own entries. A task whose type writes `SpecScope` MAY therefore be given the whole
+glossary file to change, and the harness MUST then compare the file before and after the task:
+every added, changed or removed entry MUST be owned, before and after the change, by a Module the
+task is bound to. Any other difference, including an entry moved to another owner by a task bound
+only to one of them, is a write outside the boundary. Moving a concept between owners is a change
+of both Modules and needs a task bound to both.
+
+Reading follows term selection, not the file: a task reads the entries its bound Modules' contexts
+select. A harness that makes the file readable for a writing task also shows other Modules'
+entries; that over-inclusion is accepted, because the task cannot change them.
 
 ## The project registry
 
@@ -79,7 +96,8 @@ them, so that a harness can widen the task's read boundary, schedule review, or 
 | Written | Concerns |
 | --- | --- |
 | a document D | every Module whose `SpecContext` contains D |
-| a requirement, scenario or concept | every Module whose `relies_on` lists it, and every document that imports, narrows or relates to it |
+| a requirement or scenario | every Module whose `relies_on` lists it |
+| a concept's glossary entry | every Module whose `Terms` contains the concept |
 | a contract | every Module that participates in it |
 | a file F | every Module whose `ImplementationScope` contains F, and every Module that uses one of them, directly or through further `uses` |
 
@@ -92,7 +110,7 @@ Two rules follow from the model:
   A task that only reads the file needs no such widening.
 - **Atomic reconciliation.** Some changes are only valid if other Modules change with them: a
   contract version increment requires every participant's `participates` version to move, and
-  retiring or re-owning a concept requires its importers to follow. Such a change is a
+  retiring a concept requires the documents that mention it to follow. Such a change is a
   multi-Module change, and its write boundary is the union of the write sets of every Module it
   edits. A single-Module task MUST NOT be given another Module's scope to complete it.
 
@@ -155,9 +173,9 @@ types that work on Specs alone never see code contents.
   its Specs. A diff since a baseline is task material (rule 4).
 - **`code-to-spec`** describes an existing realization in the Module's own documents. It exists for
   the uncommon project whose code came before its specification; a project that is specified first
-  never needs it. It is the only task type that reads code in order to write Specs, and it
-  never changes code. It records the behaviour it read as it is. Behaviour whose intent the code does
-  not settle, such as a probable defect or an unexplained special case, MUST NOT be written as a
+  never needs it. It is the only task type that reads code in order to write Specs, and it never
+  changes code. It records the behaviour it read as it is. Behaviour whose intent the code does not
+  settle, such as a probable defect or an unexplained special case, MUST NOT be written as a
   promise: the documents state it as an honest unknown and the task reports it as an open question
   for a human to decide.
 

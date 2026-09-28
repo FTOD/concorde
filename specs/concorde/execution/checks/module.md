@@ -2,27 +2,15 @@
 
 ## Purpose
 
-Check execution is a deterministic service: it runs a project's configured checks, such as a test
-suite or linter, and returns their status and logs without model reasoning. It is called by the
-Workers host code between rounds, directly by Operations such as testing and
-code review, and by the execution commands `task-validation` and `delivery`. Checks read the
-worktree but cannot directly change its files; the boundary restricts filesystem writes only, not
-reads, network or credentials. The service records which inputs were checked and refuses a result
-if they changed during the run. It never decides whether a passing check means correct code or
-whether a workspace is ready to deliver.
-
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Configured check | A command that the project configuration assigns to one Module, with its arguments, time limit and the input paths its result depends on. |
-| Check result | The record of one configured check run: the check, its Module, the status, the exit code, the digest of what was measured and the saved log with its digest. |
-| Read-only check boundary | The Linux sandbox in which a check runs: the whole host filesystem read-only, one fresh writable scratch directory, private process and IPC namespaces, and the host's network. |
-| Check scratch | The fresh directory outside the project that one run may write, holding its temporary files, caches and reports, removed after the run. |
-| Diagnostic span | A bounded timing record of one named unit of host work, with its trace, parent, status and duration and never its arguments, output or messages. |
-| [Module](../../vocabulary.md#concept.concorde.module) | |
-| [Evidence](../../vocabulary.md#concept.concorde.evidence) | |
-| [Boundary set](../../spec-tooling/spec/module.md#concept.spec.boundary-set) | |
+Check execution is a deterministic service: it runs a project's
+[configured checks](../../glossary.json#concept.configured-check), such as a test suite or linter,
+and returns their status and logs without model reasoning. It is called by the Workers host code
+between rounds, directly by Operations such as testing and code review, and by the
+[execution commands](../../glossary.json#concept.execution-command) `task-validation` and
+`delivery`. Checks read the worktree but cannot directly change its files; the boundary restricts
+filesystem writes only, not reads, network or credentials. The service records which inputs were
+checked and refuses a result if they changed during the run. It never decides whether a passing
+check means correct code or whether a workspace is ready to deliver.
 
 ## Usage
 
@@ -43,7 +31,7 @@ These are ordinary service calls inside a run, not nested runs. Check execution 
 Concorde worker. Users configure commands and see the results through the runs that call it; there
 is no separate Check execution command to start.
 
-<a id="concept.checks.configured-check"></a><a id="concept.checks.check-result"></a>
+<a id="concept.configured-check"></a><a id="concept.check-result"></a>
 
 A **configured check** is declared in `.concorde/config.json` under `checks`, for example:
 
@@ -54,29 +42,32 @@ A **configured check** is declared in `.concorde/config.json` under `checks`, fo
  "inputs": ["pyproject.toml", "conftest.py", "tests/concorde/support", "src"]}
 ```
 
-The check service is called with a worktree, the Modules to run — or changed
-paths mapped to Modules via boundary sets — and a log directory: for each Module it digests the
-relevant input, runs each check in the boundary, saves logs, and returns one **check result** per
-check. A digest mismatch after the run fails with `stale_evidence`, because the result would vouch
-for input that changed; a stored result stays valid only while a fresh measurement matches it. Exact
-declaration and records: [the check service](service.md).
+The check service is called with a worktree, the Modules to run — or changed paths mapped to Modules
+via [boundary sets](../../glossary.json#concept.boundary-set) — and a log directory: for each
+[Module](../../glossary.json#concept.module) it digests the relevant input, runs each check in the
+boundary, saves logs, and returns one **check result** per check. A digest mismatch after the run
+fails with `stale_evidence`, because the result would vouch for input that changed; a stored result
+stays valid only while a fresh measurement matches it. Exact declaration and records:
+[the check service](service.md).
 
-<a id="concept.checks.read-only-boundary"></a><a id="concept.checks.scratch"></a>
+<a id="concept.read-only-check-boundary"></a><a id="concept.check-scratch"></a>
 
-Inside the **read-only check boundary**, any file create/change/rename/delete fails at the system
-call; a command writes only to its **check scratch**, pointed to by `TMPDIR`, `XDG_CACHE_HOME`,
-`CONCORDE_CHECK_TMPDIR` and `CONCORDE_CHECK_REPORT_DIR`, fresh each run. A check that hard-codes a
-cache or report path inside the project fails and must be pointed at the scratch; a source-rewriting
-tool, e.g. a fix-mode formatter, isn't a check. When the boundary cannot be established (only Linux
-with a root-owned bubblewrap and the needed namespaces is supported), the command does not start and
-the run is refused with a sandbox error; there is no subprocess fallback. Environment/mounts: [the
-boundary](boundary.md).
+Inside the **[read-only check boundary](../../glossary.json#concept.read-only-check-boundary)**, any
+file create/change/rename/delete fails at the system call; a command writes only to its
+**[check scratch](../../glossary.json#concept.check-scratch)**, pointed to by `TMPDIR`,
+`XDG_CACHE_HOME`, `CONCORDE_CHECK_TMPDIR` and `CONCORDE_CHECK_REPORT_DIR`, fresh each run. A check
+that hard-codes a cache or report path inside the project fails and must be pointed at the scratch;
+a source-rewriting tool, e.g. a fix-mode formatter, isn't a check. When the boundary cannot be
+established (only Linux with a root-owned bubblewrap and the needed namespaces is supported), the
+command does not start and the run is refused with a sandbox error; there is no subprocess fallback.
+Environment/mounts: [the boundary](boundary.md).
 
-<a id="concept.checks.diagnostic-span"></a>
+<a id="concept.diagnostic-span"></a>
 
-The runner marks sandbox setup and each command as a **diagnostic span**, kept only in a
-caller-opened trace or under `CONCORDE_DIAGNOSTIC_TIMING_DIR`; spans never change a run's outcome.
-Record/summary: [the timing spans](timing.md).
+The runner marks sandbox setup and each command as a
+**[diagnostic span](../../glossary.json#concept.diagnostic-span)**, kept only in a caller-opened
+trace or under `CONCORDE_DIAGNOSTIC_TIMING_DIR`; spans never change a run's outcome. Record/summary:
+[the timing spans](timing.md).
 
 ## Design
 
@@ -102,12 +93,13 @@ than false evidence.
 ### Its place in the levels of work
 
 Check execution is no level of the [levels of work](../../module.md#the-levels-of-work): it is a
-service the runs call in-process, like Spec core, and it cannot itself be a run, since the runs
-that call it hold their workspace's lock while it works. Only programs call it, never a model: runs
-at level 4, in steps of their own — the Operation providers' steps and the
-steps of the execution commands `task-validation` and `delivery`, which are Validation's — and the
-Workers host code, which manages a worker run on behalf of the Operation that launched it, between
-the worker's rounds. It calls nothing above it and starts no worker, run or agent.
+service the runs call in-process, like Spec core, and it cannot itself be a run, since the runs that
+call it hold their workspace's lock while it works. Only programs call it, never a model: runs at
+level 4, in steps of their own — the [Operation](../../glossary.json#concept.operation) providers'
+steps and the steps of the execution commands `task-validation` and `delivery`, which are
+Validation's — and the Workers host code, which manages a worker run on behalf of the Operation that
+launched it, between the worker's rounds. It calls nothing above it and starts no worker, run or
+agent.
 
 ```d2
 workers: Workers
@@ -126,23 +118,23 @@ validation -> checks
 ```
 
 Workers, Validation and the Operation providers use this Module; it knows none of them. They rely on
-the [check result](#concept.checks.check-result), the stale-measurement rule, and the boundary
-refusing to run rather than running a check unconfined. Every call returns to the caller's step:
-the check results go up as that caller's evidence, and a failure, such as `stale_evidence` or a
-boundary that cannot be established, goes up as this Module's own error link, which the caller
+the [check result](../../glossary.json#concept.check-result), the stale-measurement rule, and the
+boundary refusing to run rather than running a check unconfined. Every call returns to the caller's
+step: the check results go up as that caller's evidence, and a failure, such as `stale_evidence` or
+a boundary that cannot be established, goes up as this Module's own error link, which the caller
 keeps as a cause under its link. The check result is owned here, next to the runner that produces
-it, so Workers, Validation and Delivery consume one record and never run checks another way.
-Logs go only to the directory the caller names, usually the calling run's directory in the run
-store;
-a check's output reaches a worker only as the bounded log tail Workers puts into a resume round,
-and whether a worker needs more than its last 20,000 bytes is undecided.
+it, so Workers, Validation and Delivery consume one record and never run checks another way. Logs go
+only to the directory the caller names, usually the calling run's directory in the
+[run store](../../glossary.json#concept.run-store); a check's output reaches a worker only as the
+bounded log tail Workers puts into a [resume round](../../glossary.json#concept.resume-round), and
+whether a worker needs more than its last 20,000 bytes is undecided.
 
 <a id="uses-spec"></a>
 
 **Spec core** loads the configuration and
-[registry](../../spec-tooling/spec/module.md#concept.spec.registry), from which the check service
+[registry](../../glossary.json#concept.registry), from which the check service
 takes each Module's checks and resolves its `ImplementationScope` — a [boundary
-set](../../spec-tooling/spec/module.md#concept.spec.boundary-set) whose digest is part of what a
+set](../../glossary.json#concept.boundary-set) whose digest is part of what a
 check measures; changed paths map the same way. It also supplies safe relative-path rules for
 inputs. Check execution relies on a Module's boundary set resolving the same way from the same
 Specs before and after a run, so that a digest mismatch means the input changed; an invalid or

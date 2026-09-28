@@ -1,7 +1,8 @@
 # Validation contracts
 
-The readiness that the execution command `task-validation` of [Validation](module.md) returns as its
-output, and the exact input measurement it is bound to.
+The readiness that the [execution command](../../../glossary.json#concept.execution-command)
+`task-validation` of [Validation](module.md) returns as its output, and the exact input measurement
+it is bound to.
 
 ## Input measurement
 
@@ -28,7 +29,7 @@ the same workspace.
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -243,7 +244,7 @@ the same workspace.
       }
     }
   },
-  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its run directory. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or a binding Module the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for a Module whose checks could not be run (ref is the Module identity). warnings lists structural-check warnings in the same shape and never affects ready. confirmations lists every pending realization entry whose file exists, with the metadata document declaring it and that document's digest, for Delivery to clear; blocking and warnings are those of the Specs as they read with these markers cleared. checks lists one result per configured check run, in run order, with exit_code null on timeout and log the path of its saved log in the run directory, relative to the directory that holds the records directory. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. A behaviour or field change increments the version.",
+  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its run directory. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or a binding Module the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for a Module whose checks could not be run (ref is the Module identity). warnings lists structural-check warnings in the same shape and never affects ready. confirmations lists every pending realization entry whose file exists, with the metadata document declaring it and that document's digest, for Delivery to clear; blocking and warnings are those of the Specs as they read with these markers cleared. checks lists one result per configured check run, in run order, with exit_code null on timeout and log the path of its saved log in the run directory, relative to the directory that holds the records directory. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. A behaviour or field change increments the version.",
   "example": {
     "workspace": "severity",
     "ready": true,

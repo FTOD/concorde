@@ -1,4 +1,4 @@
-/** Module publication model for Spec Protocol 11. Registered documents are the only sources. */
+/** Module publication model for Spec Protocol 15. Registered documents are the only sources. */
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync } from "node:fs";
 import { posix, resolve } from "node:path";
@@ -6,6 +6,7 @@ import matter from "gray-matter";
 import {
   contracts,
   definitionHeadings,
+  fenceRanges,
   identityPattern,
   metadata,
   moduleBlock,
@@ -14,7 +15,7 @@ import {
   readingMeanings,
   requireReading,
   requireThat,
-  terminologyRows,
+  uniqueStrings,
   type DocumentMetadata,
   type ModuleBlock,
   type Selection,
@@ -49,15 +50,42 @@ export interface Page {
   primaryOf: string | null;
   readingCollection: ReadingCollection;
 }
-/** A metadata-declared node, with the definition its Terminology row gives a concept. */
+/** A metadata-declared realization. */
 export interface PublishedNode {
   id: string;
-  type: "concept" | "realization";
+  type: "realization";
   title: string;
   meaning: string;
   owner: string;
   document: string;
-  definition?: string;
+}
+/** One entry of the project glossary: a concept, owned by a registered Module and explained in a
+ * `module` document that owner owns. */
+export interface GlossaryConcept {
+  id: string;
+  title: string;
+  owner: string;
+  definition: string;
+  /** `<reading path>#<anchor>`, naming a `module` document the owner owns. */
+  explanation: string;
+  retired?: { reason: string };
+  external_conflict?: string;
+  narrows?: string[];
+  supersedes?: string;
+  contrasts?: { target: string; reason: string }[];
+  relates?: { verb: string; target: string }[];
+}
+/** The project's one glossary file, declared by the `glossary` field of a Module without a
+ * parent's `module` block. */
+export interface Glossary {
+  /** Project-relative path to the glossary JSON file. */
+  path: string;
+  /** The Module that declared it. */
+  owner: string;
+  /** The materialized page's staged Markdown path, relative to the staged `content/specs`. */
+  stagedPath: string;
+  route: string;
+  concepts: GlossaryConcept[];
 }
 export interface ScopedRegistry {
   schema_version: 23;
@@ -69,6 +97,8 @@ export interface ScopedRegistry {
   modules: ModuleRecord[];
   nodes: PublishedNode[];
   pages: Page[];
+  /** The project glossary, or `null` when no Module declares one. */
+  glossary: Glossary | null;
 }
 export const hash = (value: string | Buffer) =>
   "sha256:" + createHash("sha256").update(value).digest("hex");
@@ -130,6 +160,17 @@ const BLOCK_FIELDS = [
   "uses",
   "includes",
   "participates",
+  "glossary",
+] as const;
+const REQUIRED_RECORD_FIELDS = [
+  "contains",
+  "entry",
+  "id",
+  "includes",
+  "owns",
+  "participates",
+  "title",
+  "uses",
 ] as const;
 interface Loaded {
   raw: string;
@@ -167,8 +208,10 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     requireThat(
       m &&
         typeof m === "object" &&
-        Object.keys(m).sort().join(",") ===
-          "contains,entry,id,includes,owns,participates,title,uses",
+        REQUIRED_RECORD_FIELDS.every((k) => Object.hasOwn(m, k)) &&
+        Object.keys(m).every((k) =>
+          [...REQUIRED_RECORD_FIELDS, "glossary"].includes(k),
+        ),
       `Invalid registry record fields: ${String(m?.id)}`,
     );
     requireThat(
@@ -224,6 +267,17 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   }
   const rootModules = modules.filter((m) => !parent.has(m.id));
   requireThat(rootModules.length, "Module composition has no root");
+  const glossaryModules = modules.filter((m) => m.glossary !== undefined);
+  requireThat(
+    glossaryModules.length <= 1,
+    `At most one Module may declare a glossary: ${glossaryModules.map((m) => m.id).join(", ")}`,
+  );
+  const glossaryModule = glossaryModules[0];
+  if (glossaryModule)
+    requireThat(
+      !parent.has(glossaryModule.id),
+      `Only a Module without a parent may declare a glossary: ${glossaryModule.id}`,
+    );
 
   const cache = new Map<string, Loaded>();
   const physical = new Set<string>();
@@ -259,10 +313,6 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     byDocumentId.set(unit.document.id, path);
     for (const node of unit.defines) {
       requireThat(
-        node.type === "realization" || unit.document.role === "module",
-        `Concepts are defined only in module-role documents: ${path}`,
-      );
-      requireThat(
         meanings.get(node.meaning.slice(1))?.trim(),
         `Missing readable meaning ${node.meaning}: ${path}`,
       );
@@ -286,32 +336,202 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     });
     inputs.push([path, hash(raw)], [path + ".json", hash(metadataRaw)]);
   }
-  // A concept's definition is its defining row: the plain term equal to its title.
-  for (const [path, loaded] of cache) {
-    if (loaded.unit.document.role !== "module") continue;
-    const rows = terminologyRows(loaded.content);
-    for (const node of nodes.filter(
-      (n) => n.document === path && n.type === "concept",
-    )) {
-      const row = rows.find((r) => !r.link && r.term === node.title);
-      if (row?.definition) node.definition = row.definition;
-    }
-    for (const row of rows) {
-      if (!row.link || !row.link.fragment.startsWith("concept.")) continue;
-      const concept = nodes.find(
-        (n) => n.id === row.link!.fragment && n.type === "concept",
-      );
-      const location = row.link.href.split("#")[0].split("?")[0];
-      const linked = location
-        ? posix.normalize(
-            posix.join(posix.dirname(path), decodeURIComponent(location)),
-          )
-        : path;
+  const stripRoot = [...owner.keys()].every((path) =>
+    path.startsWith("specs/"),
+  );
+  const routes = new Set<string>();
+  // The project glossary: one JSON file of concept entries, declared by the `glossary` field of
+  // the Module without a parent. A project without concepts needs no glossary.
+  let glossary: Glossary | null = null;
+  if (glossaryModule) {
+    const glossaryPath = glossaryModule.glossary!;
+    const glossaryText = safeRead(root, glossaryPath);
+    inputs.push([glossaryPath, hash(glossaryText)]);
+    const parsed = parseJson(glossaryText, glossaryPath);
+    requireThat(
+      parsed &&
+        typeof parsed === "object" &&
+        Object.keys(parsed).sort().join(",") === "concepts,schema_version" &&
+        parsed.schema_version === 1 &&
+        Array.isArray(parsed.concepts),
+      `Invalid glossary schema: ${glossaryPath}`,
+    );
+    const concepts: GlossaryConcept[] = [];
+    const conceptTitles = new Set<string>();
+    let previousId: string | undefined;
+    for (const raw of parsed.concepts) {
       requireThat(
-        concept && concept.document === linked,
-        `Terminology import row does not link to its concept's defining document: ${path} -> ${row.link.href}`,
+        raw &&
+          typeof raw === "object" &&
+          !Array.isArray(raw) &&
+          ["id", "title", "owner", "definition", "explanation"].every((k) =>
+            Object.hasOwn(raw, k),
+          ) &&
+          Object.keys(raw).every((k) =>
+            [
+              "id",
+              "title",
+              "owner",
+              "definition",
+              "explanation",
+              "retired",
+              "external_conflict",
+              "narrows",
+              "supersedes",
+              "contrasts",
+              "relates",
+            ].includes(k),
+          ),
+        `Invalid glossary concept fields: ${String(raw?.id)} (${glossaryPath})`,
       );
+      requireThat(
+        typeof raw.id === "string" && identityPattern.test(raw.id),
+        `Invalid concept identity: ${String(raw.id)} (${glossaryPath})`,
+      );
+      define(raw.id, glossaryPath);
+      requireThat(
+        previousId === undefined || previousId < raw.id,
+        `Glossary concepts must be sorted by id: ${raw.id} (${glossaryPath})`,
+      );
+      previousId = raw.id;
+      requireThat(
+        typeof raw.title === "string" && raw.title.trim(),
+        `Concept title required: ${raw.id} (${glossaryPath})`,
+      );
+      requireThat(
+        !conceptTitles.has(raw.title),
+        `Duplicate concept title: ${raw.title} (${glossaryPath})`,
+      );
+      conceptTitles.add(raw.title);
+      requireThat(
+        typeof raw.owner === "string" && byId.has(raw.owner),
+        `Concept owner is not a registered Module: ${raw.id} -> ${String(raw.owner)} (${glossaryPath})`,
+      );
+      requireThat(
+        typeof raw.definition === "string" && raw.definition.trim(),
+        `Concept definition required: ${raw.id} (${glossaryPath})`,
+      );
+      const hashIndex =
+        typeof raw.explanation === "string" ? raw.explanation.indexOf("#") : -1;
+      requireThat(
+        hashIndex > 0,
+        `Invalid concept explanation: ${raw.id} -> ${String(raw.explanation)} (${glossaryPath})`,
+      );
+      const explanationPath = raw.explanation.slice(0, hashIndex);
+      const explanationAnchor = raw.explanation.slice(hashIndex + 1);
+      requireThat(
+        owner.get(explanationPath) === raw.owner,
+        `Concept explanation is not a module document owned by ${raw.owner}: ${raw.id} -> ${raw.explanation} (${glossaryPath})`,
+      );
+      const explained = cache.get(explanationPath)!;
+      requireThat(
+        explained.unit.document.role === "module",
+        `Concept explanation must address a module document: ${raw.id} -> ${raw.explanation} (${glossaryPath})`,
+      );
+      requireThat(
+        readingMeanings(explained.content, explanationPath)
+          .get(explanationAnchor)
+          ?.trim(),
+        `Missing readable meaning ${raw.explanation}: ${raw.id} (${glossaryPath})`,
+      );
+      if (raw.retired !== undefined)
+        requireThat(
+          raw.retired &&
+            typeof raw.retired === "object" &&
+            Object.keys(raw.retired).join(",") === "reason" &&
+            typeof raw.retired.reason === "string" &&
+            raw.retired.reason.trim(),
+          `Invalid retired reason: ${raw.id} (${glossaryPath})`,
+        );
+      if (raw.external_conflict !== undefined)
+        requireThat(
+          typeof raw.external_conflict === "string" &&
+            raw.external_conflict.trim(),
+          `Invalid external_conflict: ${raw.id} (${glossaryPath})`,
+        );
+      if (raw.narrows !== undefined)
+        requireThat(
+          uniqueStrings(raw.narrows) && raw.narrows.length,
+          `Invalid narrows: ${raw.id} (${glossaryPath})`,
+        );
+      if (raw.supersedes !== undefined)
+        requireThat(
+          typeof raw.supersedes === "string" && raw.supersedes.trim(),
+          `Invalid supersedes: ${raw.id} (${glossaryPath})`,
+        );
+      if (raw.contrasts !== undefined) {
+        requireThat(
+          Array.isArray(raw.contrasts) && raw.contrasts.length,
+          `Invalid contrasts: ${raw.id} (${glossaryPath})`,
+        );
+        for (const c of raw.contrasts)
+          requireThat(
+            c &&
+              typeof c === "object" &&
+              Object.keys(c).sort().join(",") === "reason,target" &&
+              typeof c.target === "string" &&
+              c.target.trim() &&
+              typeof c.reason === "string" &&
+              c.reason.trim(),
+            `Invalid contrasts entry: ${raw.id} (${glossaryPath})`,
+          );
+      }
+      if (raw.relates !== undefined) {
+        requireThat(
+          Array.isArray(raw.relates) && raw.relates.length,
+          `Invalid relates: ${raw.id} (${glossaryPath})`,
+        );
+        for (const r of raw.relates)
+          requireThat(
+            r &&
+              typeof r === "object" &&
+              Object.keys(r).sort().join(",") === "target,verb" &&
+              typeof r.verb === "string" &&
+              r.verb.trim() &&
+              typeof r.target === "string" &&
+              r.target.trim(),
+            `Invalid relates entry: ${raw.id} (${glossaryPath})`,
+          );
+      }
+      concepts.push({
+        id: raw.id,
+        title: raw.title,
+        owner: raw.owner,
+        definition: raw.definition,
+        explanation: raw.explanation,
+        ...(raw.retired !== undefined ? { retired: raw.retired } : {}),
+        ...(raw.external_conflict !== undefined
+          ? { external_conflict: raw.external_conflict }
+          : {}),
+        ...(raw.narrows !== undefined ? { narrows: raw.narrows } : {}),
+        ...(raw.supersedes !== undefined ? { supersedes: raw.supersedes } : {}),
+        ...(raw.contrasts !== undefined ? { contrasts: raw.contrasts } : {}),
+        ...(raw.relates !== undefined ? { relates: raw.relates } : {}),
+      });
     }
+    // A fragment-only term link inside a definition must name a declared concept.
+    for (const concept of concepts)
+      for (const match of concept.definition.matchAll(/\]\(#([^\s)]+)\)/g))
+        requireThat(
+          concepts.some((c) => c.id === match[1]),
+          `Unknown glossary term in the definition of ${concept.id}: #${match[1]} (${glossaryPath})`,
+        );
+    const glossaryStagedPath = (
+      stripRoot ? glossaryPath.slice("specs/".length) : glossaryPath
+    ).replace(/\.json$/, ".md");
+    const glossaryRoute = "/specs/" + glossaryStagedPath.replace(/\.md$/, "");
+    requireThat(
+      !routes.has(glossaryRoute),
+      `Duplicate page route: ${glossaryRoute}`,
+    );
+    routes.add(glossaryRoute);
+    glossary = {
+      path: glossaryPath,
+      owner: glossaryModule.id,
+      stagedPath: glossaryStagedPath,
+      route: glossaryRoute,
+      concepts,
+    };
   }
   // Spec context selection, one level: owns, contains, uses and spec includes.
   const selection = (from: ModuleRecord, r: Selection): string[] => {
@@ -324,6 +544,16 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     return [
       target.entry,
       ...r.relies_on.map((id) => {
+        // A concept relies_on names the document holding its extended explanation, since the
+        // concept itself is a glossary entry, not a node any Module's owned documents define.
+        const concept = glossary?.concepts.find((c) => c.id === id);
+        if (concept) {
+          requireThat(
+            concept.owner === target.id,
+            `relies_on names no node of ${target.id}: ${id}`,
+          );
+          return concept.explanation.slice(0, concept.explanation.indexOf("#"));
+        }
         const path = definer.get(id);
         requireThat(
           path && owner.get(path) === target.id,
@@ -381,11 +611,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       });
     contexts.set(m.id, context);
   }
-  const stripRoot = [...owner.keys()].every((path) =>
-    path.startsWith("specs/"),
-  );
   const pages: Page[] = [];
-  const routes = new Set<string>();
   for (const [path, moduleId] of owner) {
     const { raw, content, unit, metadataDigest } = cache.get(path)!;
     const module = byId.get(moduleId)!;
@@ -423,6 +649,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     modules,
     nodes,
     pages,
+    glossary,
   };
 }
 /** Children of a Module in declared `contains` order. */
@@ -457,8 +684,25 @@ function inlineCodeRanges(line: string): Array<[number, number]> {
   }
   return ranges;
 }
+/** The `[start, end)` ranges of `content` that a link rewrite must leave untouched: fenced code
+ * blocks (multi-line, from the authoritative `fenceRanges`) and inline code spans (computed per
+ * line, then placed at their absolute offset in `content`). Kept separate from line splitting so
+ * a link label that is soft-wrapped across lines is still one match. */
+function opaqueRanges(content: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = fenceRanges(content).map(
+    (f): [number, number] => [f.start, f.end],
+  );
+  let offset = 0;
+  for (const line of content.split("\n")) {
+    for (const [start, end] of inlineCodeRanges(line))
+      ranges.push([offset + start, offset + end]);
+    offset += line.length + 1;
+  }
+  return ranges;
+}
 /** Rewrite registered relative links of Markdown written at `sourcePath` to canonical routes.
- * Links inside fenced code and inline code spans are text and stay unchanged.
+ * Links inside fenced code and inline code spans are text and stay unchanged; a link label may
+ * itself be soft-wrapped across lines, since the match is against the whole document, not a line.
  * With `anchorFragments`, a bare `#fragment` is addressed to the source page too, for text
  * shown on another page. */
 export function rewriteMarkdownLinks(
@@ -467,46 +711,42 @@ export function rewriteMarkdownLinks(
   content: string,
   anchorFragments = false,
 ): string {
-  let fence: string | undefined;
-  return content
-    .split("\n")
-    .map((line) => {
-      const marker = /^\s*(```+|~~~+)/.exec(line)?.[1][0];
-      if (marker) {
-        fence = fence === marker ? undefined : (fence ?? marker);
-        return line;
-      }
-      if (fence) return line;
-      const code = inlineCodeRanges(line);
-      return line.replace(
-        /(!?\[[^\]]*\])\(([^\s)]+)\)/g,
-        (whole, label: string, url: string, offset: number) => {
-          if (code.some(([start, end]) => offset >= start && offset < end))
-            return whole;
-          if (/^(?:[a-z]+:|\/)/i.test(url)) return whole;
-          if (url.startsWith("#") && !anchorFragments) return whole;
-          const fragmentIndex = url.indexOf("#");
-          const beforeFragment =
-            fragmentIndex < 0 ? url : url.slice(0, fragmentIndex);
-          const queryIndex = beforeFragment.indexOf("?");
-          const path =
-            queryIndex < 0
-              ? beforeFragment
-              : beforeFragment.slice(0, queryIndex);
-          const suffix = url.slice(path.length);
-          const source = path
-            ? posix.normalize(posix.join(posix.dirname(sourcePath), path))
-            : sourcePath;
-          const target = registry.pages.find((p) => p.sourcePath === source);
+  const opaque = opaqueRanges(content);
+  return content.replace(
+    /(!?\[[^\]]*\])\(([^\s)]+)\)/g,
+    (whole, label: string, url: string, offset: number) => {
+      if (opaque.some(([start, end]) => offset >= start && offset < end))
+        return whole;
+      if (/^(?:[a-z]+:|\/)/i.test(url)) return whole;
+      if (url.startsWith("#") && !anchorFragments) return whole;
+      const fragmentIndex = url.indexOf("#");
+      const beforeFragment =
+        fragmentIndex < 0 ? url : url.slice(0, fragmentIndex);
+      const queryIndex = beforeFragment.indexOf("?");
+      const path =
+        queryIndex < 0 ? beforeFragment : beforeFragment.slice(0, queryIndex);
+      const suffix = url.slice(path.length);
+      const source = path
+        ? posix.normalize(posix.join(posix.dirname(sourcePath), path))
+        : sourcePath;
+      // A term link's path addresses the glossary file; its fragment, when present, is a
+      // concept identity the glossary must declare. A bare link to the glossary file, with no
+      // fragment, addresses the glossary page itself.
+      if (registry.glossary && source === registry.glossary.path) {
+        if (fragmentIndex >= 0) {
+          const fragment = url.slice(fragmentIndex + 1);
           requireThat(
-            target,
-            `Unregistered local link: ${sourcePath} -> ${url}`,
+            registry.glossary.concepts.some((c) => c.id === fragment),
+            `Unknown glossary term: ${sourcePath} -> ${url}`,
           );
-          return `${label}(${target.route}${suffix})`;
-        },
-      );
-    })
-    .join("\n");
+        }
+        return `${label}(${registry.glossary.route}${suffix})`;
+      }
+      const target = registry.pages.find((p) => p.sourcePath === source);
+      requireThat(target, `Unregistered local link: ${sourcePath} -> ${url}`);
+      return `${label}(${target.route}${suffix})`;
+    },
+  );
 }
 export function rewriteLinks(registry: ScopedRegistry, page: Page): string {
   return rewriteMarkdownLinks(registry, page.sourcePath, page.content);

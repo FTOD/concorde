@@ -3,21 +3,12 @@
 ## Purpose
 
 SWE-bench cases test Concorde's whole change flow on real issues: a case is prepared at its base
-commit, adopted, its Specs repaired, its issue worked through Concorde as a main agent would, and
-the merged change graded with the case's own tests, the way SWE-bench grades it. This Module holds
-the two steps that exist only for cases, repairing the adopted Specs in one bounded round and
+commit, adopted, its Specs repaired, its issue worked through Concorde as a
+[main agent](../../glossary.json#concept.main-agent) would, and the merged change graded with the
+case's own tests, the way SWE-bench grades it. This [Module](../../glossary.json#concept.module)
+holds the two steps that exist only for cases, repairing the adopted Specs in one bounded round and
 grading a delivered change, and the case itself. Preparing the project and running its workflows
 belong to [End-to-end testing](../module.md). It serves the people developing Concorde only.
-
-## Terminology
-
-| Term | Definition |
-| --- | --- |
-| Case | A SWE-bench task instance: an issue of one repository at its base commit, with a test patch and the tests that must pass once the issue is resolved. |
-| [Test project](../module.md#concept.e2e.test-project) | |
-| [Developer](../../vocabulary.md#concept.concorde.developer) | |
-
-A case is worked in a test project prepared at the case's base commit and named after it.
 
 ## Usage
 
@@ -26,7 +17,7 @@ python3 scripts/e2e/e2e.py repair-specs <project> [--modules <ids>] [--task repa
 python3 scripts/e2e/e2e.py grade <project> --instance <case.json> --python <interpreter> [--ref main] [--pythonpath <dir>]…
 ```
 
-<a id="concept.swe-bench-cases.case"></a>
+<a id="concept.case"></a>
 
 **Working a case.** The developer builds the case's own Python environment outside the project (its
 interpreter and pinned dependencies, never the project installed in it), prepares the case's
@@ -36,17 +27,19 @@ workflow, configures its checks, repairs the adopted Specs with `repair-specs`, 
 issue through Concorde as a main agent would, from `understand` to the merge.
 
 **Repairing the adopted Specs.** In a case the Specs are the test's own addition, describing code
-the test never changes, so the review findings adoption leaves are repaired before the issue:
-`repair-specs` opens a task over the adopted Modules, reviews them, runs `specify` once with that
-review as input and an intent to change only what the Specs say, keeping every promise true to
-the code and turning a repair that needs a decision about intent into an open question, reviews
-them once more, runs `task-validation` and `delivery`, and merges the task
+the test never changes, so the [review findings](../../glossary.json#concept.review-finding)
+adoption leaves are repaired before the issue: `repair-specs` opens a task over the adopted Modules,
+reviews them, runs `specify` once with that review as input and an intent to change only what the
+Specs say, keeping every promise true to the code and turning a repair that needs a decision about
+intent into an [open question](../../glossary.json#concept.open-question), reviews them once more,
+runs `task-validation` and `delivery`, and merges the task
 ([requirements](requirements.md#req.swe-bench-cases.repair-specs-only)). Every run is started in the
-task's worktree and names no task: the Operations with `concorde run`, the execution commands as
-`concorde task-validation` and `concorde delivery`, each working on the worktree's workspace
-binding. One round bounds it; what the second review still finds is reported. A review that
-accepts the Specs is followed by `task-validation` and `delivery` with no repair, and a step that
-does not end `ok` stops the repair with its result and leaves the task open.
+task's worktree and names no task: the Operations with `concorde run`, the
+[execution commands](../../glossary.json#concept.execution-command) as `concorde task-validation`
+and `concorde delivery`, each working on the worktree's workspace binding. One round bounds it; what
+the second review still finds is reported. A review that accepts the Specs is followed by
+`task-validation` and `delivery` with no repair, and a step that does not end `ok` stops the repair
+with its result and leaves the task open.
 
 **Grading a case.** `grade` decides whether the merged change resolves the issue the way SWE-bench
 does: in a throwaway worktree of `--ref` it puts every file the case's test patch touches back as
@@ -87,9 +80,10 @@ the [requirements](requirements.md) and [scenarios](scenarios.md).
 
 <a id="uses-distribution"></a>
 
-**Distribution** provides the project's `concorde` command, through which the repair round opens
-its task, runs its Operations and execution commands in the task's worktree and merges the task;
-the case steps never write the project's Specs, task records or workspace binding themselves.
+**Distribution** provides the project's `concorde` command, through which the repair round opens its
+task, runs its Operations and execution commands in the task's worktree and merges the task; the
+case steps never write the project's Specs, [task records](../../glossary.json#concept.task-record)
+or [workspace binding](../../glossary.json#concept.workspace-binding) themselves.
 
 SWE-bench is external material, included by [End-to-end testing](../module.md): its instances
 supply the base commit, test patch and test lists a case is graded with.

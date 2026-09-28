@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -127,10 +128,12 @@ class SpecErrorTests(unittest.TestCase):
         ).read_text()
         fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
         self.assertEqual(ERROR_SCHEMA, json.loads(fence)["schema"])
+        # A cell may link a term to the glossary; the code carries the plain words.
+        term = re.compile(r"\[([^\]]*)\]\([^)]*glossary\.json#[^)]*\)")
         table = {
             line.split("|")[1].strip().strip("`"): (
-                line.split("|")[2].strip(),
-                line.split("|")[3].strip(),
+                term.sub(r"\1", line.split("|")[2].strip()),
+                term.sub(r"\1", line.split("|")[3].strip()),
             )
             for line in text.split("## Codes", 1)[1].splitlines()
             if line.startswith("| `")

@@ -69,6 +69,20 @@ function classify(
   // enclosing Module already shows the owner.
   const titles = new Map<string, string>();
   const key = (path: string[]) => JSON.stringify(path);
+  // A shape resolves to a realization of the owner (metadata `defines`) or a concept of the
+  // owner (a glossary entry whose `owner` names it), by title.
+  const ownedNode = (
+    title: string,
+  ): { type: "realization" | "concept"; title: string } | undefined => {
+    const realization = registry.nodes.find(
+      (n) => n.owner === owner.id && n.title === title,
+    );
+    if (realization) return { type: "realization", title: realization.title };
+    const concept = registry.glossary?.concepts.find(
+      (c) => c.owner === owner.id && c.title === title,
+    );
+    return concept ? { type: "concept", title: concept.title } : undefined;
+  };
   for (const shape of [...shapes].sort(
     (a, b) => a.path.length - b.path.length,
   )) {
@@ -78,9 +92,7 @@ function classify(
       continue;
     }
     const module = registry.modules.find((m) => m.title === shape.label);
-    const node = registry.nodes.find(
-      (n) => n.owner === owner.id && n.title === shape.label,
-    );
+    const node = ownedNode(shape.label);
     if (module)
       kinds.set(
         key(shape.path),
@@ -97,11 +109,7 @@ function classify(
       const [moduleTitle, nodeTitle] = shape.label
         .split(" / ", 2)
         .map((t) => t.trim());
-      const own =
-        moduleTitle === owner.title &&
-        registry.nodes.find(
-          (n) => n.owner === owner.id && n.title === nodeTitle,
-        );
+      const own = moduleTitle === owner.title && ownedNode(nodeTitle);
       kinds.set(key(shape.path), own ? own.type : "foreign-node");
       if (own) titles.set(key(shape.path), own.title);
     }

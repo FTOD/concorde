@@ -23,10 +23,10 @@
         "target": "module.execution",
         "meaning": "#uses-execution",
         "relies_on": [
-          "concept.execution.runner",
-          "concept.execution.run-result",
-          "concept.execution.workspace",
-          "concept.execution.unbound-run"
+          "concept.execution-runner",
+          "concept.run-result",
+          "concept.workspace",
+          "concept.unbound-run"
         ]
       },
       {
@@ -45,11 +45,6 @@
     "includes": [
       {
         "kind": "document",
-        "target": "document.concorde.vocabulary",
-        "reason": "shared Framework vocabulary"
-      },
-      {
-        "kind": "document",
         "target": "document.concorde.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
       }
@@ -57,18 +52,6 @@
     "participates": []
   },
   "defines": [
-    {
-      "id": "concept.code-review.review",
-      "type": "concept",
-      "title": "Code review report",
-      "meaning": "#concept.code-review.review"
-    },
-    {
-      "id": "concept.code-review.finding",
-      "type": "concept",
-      "title": "Code review finding",
-      "meaning": "#concept.code-review.finding"
-    },
     {
       "id": "realization.code-review.operation",
       "type": "realization",
@@ -86,13 +69,7 @@
       "type": "relates",
       "source": "realization.code-review.operation",
       "verb": "produces",
-      "target": "concept.code-review.review"
-    },
-    {
-      "type": "relates",
-      "source": "concept.code-review.review",
-      "verb": "holds",
-      "target": "concept.code-review.finding"
+      "target": "concept.code-review-report"
     }
   ],
   "extensions": {}
