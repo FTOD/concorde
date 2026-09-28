@@ -90,12 +90,28 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 
 ### scenario.delivery.commit-refused — Git refuses the commit
 
-- GIVEN a workspace that is ready and a commit hook that rejects the commit
+- GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a commit hook that rejects the commit
 - WHEN the workspace is delivered
 - THEN the result has status `failed` with the hook's output as host evidence
-- AND the confirmed metadata is restored, the bundle removed and the index reset
+- AND the confirmed metadata is restored, the bundle removed and the index restored with the changes staged before, including a staged version the worktree changed since, the intent-to-add path and both flags
 - AND a fresh measurement yields the readiness's input digest again
 - AND the branch holds no delivery commit
+
+### scenario.delivery.stage-refused — Git refuses to stage the bundle
+
+- GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a Git clean filter that refuses the bundle's path
+- WHEN the workspace is delivered
+- THEN the result has status `failed` with `stage_failed` and a `git add` cause carrying Git's output
+- AND after every other change was staged, the index is again exactly as before the delivery, and the confirmed metadata and the bundle are undone
+- AND a fresh measurement yields the readiness's input digest again, and the branch holds no delivery commit
+
+### scenario.delivery.unmerged-index — An unmerged index is refused before anything changes
+
+- GIVEN a workspace that is ready while its index holds unmerged entries for `src/a/calc.py`
+- WHEN the workspace is delivered
+- THEN the result has status `failed` with `index_unrecorded`, reason `decision`, the unmerged path in its detail and options to resolve or abort the merge
+- AND its cause is the `git write-tree` link with Git's output
+- AND the index, the metadata and the branch are unchanged and no bundle is written
 
 ### scenario.delivery.recover — A delivery interrupted after its commit needs no repair
 
