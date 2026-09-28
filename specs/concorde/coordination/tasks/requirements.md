@@ -110,7 +110,8 @@ listed or shown.
 A `merging` task is shown as `merging`. Otherwise it is `delivered` when the branch head is a
 delivery commit of the task's workspace that verifies against its evidence bundle and the worktree
 is clean, `active` when the workspace has a run, the branch moved past its base commit or the
-worktree has uncommitted changes, and `open` otherwise.
+worktree has uncommitted changes, and `open` otherwise. A new path Git cannot version, such as a
+path a sandbox hides behind a `/dev/null` mount, is no uncommitted change, as for Delivery.
 
 ### req.tasks.delivery-verified — Only a delivery commit that verifies counts
 

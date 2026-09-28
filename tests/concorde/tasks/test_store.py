@@ -6,7 +6,9 @@ import contextlib
 import io
 import json
 import os
+import shutil
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -612,6 +614,43 @@ class TaskStoreTests(unittest.TestCase):
             [item["bundle"] for item in store.show_task(self.root, "t1")["deliveries"]],
         )
         self.assertEqual(second, git(self.root, "rev-parse", "concorde/t1"))
+
+    @verifies("scenario.tasks.sandbox-masks")
+    def test_a_path_a_sandbox_masks_is_no_change(self):
+        bwrap = shutil.which("bwrap")
+        sandbox = [bwrap, "--dev-bind", "/", "/"] if bwrap else []
+        if not bwrap or subprocess.run([*sandbox, "true"], check=False).returncode != 0:
+            self.skipTest("bubblewrap cannot create a sandbox here")
+        self.project.open_task("t1")
+        self.deliver()
+        worktree = self.project.worktree("t1")
+        concorde = [sys.executable, str(REPOSITORY_ROOT / "scripts/concorde.py")]
+
+        # Every call masks the same paths: bwrap leaves each mount point behind as an empty
+        # file, which a call that did not mask it would see as a real new file.
+        binds = [
+            item
+            for path in (".bashrc", ".mcp.json")
+            for item in ("--bind", "/dev/null", str(worktree / path))
+        ]
+
+        def shown() -> dict:
+            done = subprocess.run(
+                [*sandbox, *binds, *concorde, "task", "show", "t1"],
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+            self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+            return json.loads(done.stdout)
+
+        # Git lists the masked paths as untracked, but they are no content of the task.
+        self.assertEqual("delivered", shown()["record"]["state"])
+        # A real new file beside the masked paths still makes the task active.
+        (worktree / "notes.txt").write_text("a real change\n")
+        self.assertEqual("active", shown()["record"]["state"])
 
     @verifies("scenario.tasks.delivery-unverified")
     def test_a_delivery_commit_that_does_not_verify_is_not_delivered(self):

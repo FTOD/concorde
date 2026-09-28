@@ -794,15 +794,39 @@ def show_task(primary: Path, task_id: str) -> dict:
     }
 
 
-def _dirty(worktree: Path) -> bool:
+def _changes(worktree: Path) -> list[str]:
+    """The worktree's uncommitted changes as ``git status`` entries, changes inside a submodule
+    included, without the new paths Git cannot version: a sandbox's ``/dev/null`` mounts of paths
+    such as ``.bashrc`` are neither a file, a symbolic link nor a directory, are no content of the
+    task, and Delivery leaves them out as well."""
     if not worktree.exists():
-        return False
-    status = _git(worktree, "status", "--porcelain", check=False).stdout
-    return bool(status.strip())
+        return []
+    raw = _git(
+        worktree,
+        "status",
+        "--porcelain",
+        "-z",
+        "--no-renames",
+        "--untracked-files=all",
+        check=False,
+    ).stdout
+    entries = [entry for entry in raw.split("\0") if entry]
+    changes = []
+    for entry in entries:
+        if entry.startswith("?? "):
+            path = worktree / entry[3:]
+            if not (path.is_symlink() or path.is_file() or path.is_dir()):
+                continue
+        changes.append(entry)
+    return changes
+
+
+def _dirty(worktree: Path) -> bool:
+    return bool(_changes(worktree))
 
 
 def _dirty_detail(worktree: Path) -> str:
-    lines = _git(worktree, "status", "--porcelain", check=False).stdout.splitlines()
+    lines = _changes(worktree)
     shown = ", ".join(line[3:] for line in lines[:20])
     more = f" and {len(lines) - 20} more" if len(lines) > 20 else ""
     return f"{worktree} has {len(lines)} uncommitted change(s): {shown}{more}"

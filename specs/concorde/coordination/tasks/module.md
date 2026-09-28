@@ -166,7 +166,10 @@ clean; **active** when its workspace has a run in the run store, running or fini
 branch moved past the base commit, or its worktree has uncommitted changes; and **open** before any
 of these. A run that changes nothing, such as a review after delivery, leaves a delivered task
 delivered; a change after the delivery commit, committed or not, makes it active until the next
-delivery. A head that carries the subject and trailers of a delivery commit but does not verify
+delivery. A new path Git cannot version, neither a file, a symbolic link nor a directory, such as
+one a sandbox hides behind a `/dev/null` mount, is no change of the worktree, as Delivery leaves it
+out of what it commits; a change inside a submodule is one, since removing the worktree would lose
+it. A head that carries the subject and trailers of a delivery commit but does not verify
 leaves the task active: `task show` lists it among the deliveries with its mismatches, and it is
 never merged (below). A task ends in one of two states, and the record keeps the outcome:
 

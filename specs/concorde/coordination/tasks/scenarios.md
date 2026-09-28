@@ -114,6 +114,14 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - BUT an uncommitted change, or a commit after the delivery commit, makes it `active`
 - AND a second delivery commit makes it `delivered` again, with both deliveries listed in order
 
+### scenario.tasks.sandbox-masks — A path a sandbox masks is no change
+
+- GIVEN a task whose branch head is a delivery commit that verifies
+- AND a sandbox that hides paths of the task worktree, such as `.bashrc`, behind `/dev/null` mounts, which Git lists as untracked
+- WHEN the main agent shows the task inside that sandbox
+- THEN it is `delivered`, since a new path Git cannot version is no change of the worktree, as Delivery leaves it out
+- BUT a new file beside it makes the task `active`
+
 ### scenario.tasks.delivery-unverified — A delivery commit that does not verify is not delivered
 
 - GIVEN a task whose branch head has the subject and trailers of a delivery commit of its workspace
