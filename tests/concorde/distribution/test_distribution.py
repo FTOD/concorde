@@ -28,6 +28,7 @@ from concorde.errors import ERROR_SCHEMA
 from concorde.spec.repository_base import SpecError
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
+from concorde.views.docsite_template import adapter_files, template_files
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 COPIED = (
@@ -96,6 +97,10 @@ def package_copy(test) -> Path:
             shutil.copytree(source, root / name, ignore=ignore)
         else:
             shutil.copy2(source, root / name)
+    # The docsite template exactly as Views inventories it, without a working site's installs.
+    for path, content in template_files(REPOSITORY_ROOT).items():
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_bytes(content)
     write_build(root)
     return root
 
@@ -1049,6 +1054,74 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             "environment", refusal("concorde_busy", "busy")["unhandled"]["reason"]
         )
+
+    @verifies("scenario.distribution.install-docsite-template")
+    def test_an_installed_concorde_proposes_the_docsite_scaffold(self):
+        package = package_copy(self)
+        # Neither a working site's files nor a stray suffix is part of the template.
+        (package / "docsite/node_modules/left-over").mkdir(parents=True)
+        (package / "docsite/node_modules/left-over/index.ts").write_text("x\n")
+        (package / "docsite/notes.txt").write_text("not shipped\n")
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        framework = project / ".concorde/framework"
+        shipped = {
+            path.relative_to(framework).as_posix(): path.read_bytes()
+            for path in (framework / "docsite").rglob("*")
+            if path.is_file()
+        }
+        self.assertEqual(template_files(package), shipped)
+        self.assertIn("docsite/scaffold/deploy-docsite.yml", shipped)
+        concorde = str(project / ".concorde/bin/concorde")
+        proposed = subprocess.run(
+            [concorde, "init", "--propose", "--name", "Demo"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, proposed.returncode, proposed.stdout + proposed.stderr)
+        proposal = package.parent / "proposal.json"
+        proposal.write_text(json.dumps(json.loads(proposed.stdout)["result"]))
+        applied = subprocess.run(
+            [concorde, "init", "--apply", "--proposal", str(proposal)],
+            cwd=project,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, applied.returncode, applied.stdout + applied.stderr)
+        docsite = subprocess.run(
+            [concorde, "docsite", "--propose", "--github-pages"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, docsite.returncode, docsite.stdout + docsite.stderr)
+        envelope = json.loads(docsite.stdout)
+        self.assertEqual("proposal", envelope["status"], docsite.stdout)
+        paths = {entry["path"] for entry in envelope["result"]["proposal"]["files"]}
+        self.assertEqual(
+            set(adapter_files(package))
+            | {"docsite/site.json", ".github/workflows/deploy-docsite.yml"},
+            paths,
+        )
+
+    @verifies("scenario.distribution.install-docsite-template")
+    def test_an_unsafe_docsite_template_installs_nothing(self):
+        package = package_copy(self)
+        (package / "docsite/linked.md").symlink_to(package / "docsite/README.md")
+        project = package.parent / "project"
+        project.mkdir()
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        self.assertEqual("invalid_docsite_template", raised.exception.code)
+        self.assertIn("docsite/linked.md", str(raised.exception))
+        self.assertEqual(
+            "input",
+            refusal("invalid_docsite_template", "x")["unhandled"]["reason"],
+        )
+        self.assertEqual([], list(project.iterdir()))
 
     def test_install_refuses_stale_guidance(self):
         package = package_copy(self)

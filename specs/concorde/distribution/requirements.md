@@ -150,3 +150,14 @@ The installer SHALL create Concorde's own environment under `.concorde/framework
 
 uv chooses an interpreter that satisfies the requirement, downloading a uv-managed CPython when the
 machine has none, so the interpreter that runs the installer never decides Concorde's.
+
+### req.distribution.installer-docsite-template — The installer ships the docsite template
+
+The installer SHALL place under `.concorde/framework/docsite/` exactly the docsite template files that [Views](../spec-tooling/views/module.md)' template inventory selects from the package, including `scaffold/`.
+
+A project's `concorde docsite --propose` reads its template there, so an install without it could
+not scaffold a site.
+
+### req.distribution.installer-docsite-template-first — An unsafe docsite template installs nothing
+
+When Views' template inventory rejects the package's docsite template as missing or unsafe, the installer SHALL refuse with `invalid_docsite_template` before it writes anything into the project.

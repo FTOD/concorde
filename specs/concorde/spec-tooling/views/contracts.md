@@ -141,9 +141,10 @@ complete set is fixed:
 path with a directory component named `node_modules`, `build`, `.generated`, `.docusaurus` or
 `coverage`, the subtrees `tests/repository/`, `custom-docs/` and `scaffold/`, and the root
 `site.json`. A symbolic link anywhere in the traversed tree is an error. The installer ships the
-same set plus `scaffold/`. `template_digest` is `sha256:` over the UTF-8 text made of one line per
-template file, sorted by path, each `path`, a tab and the lowercase hex SHA-256 of its bytes,
-joined by newlines with a final newline.
+same set plus `scaffold/` into the project's `.concorde/framework/docsite/`, which is the installed
+package's `docsite/`, and refuses to install a template this rule rejects. `template_digest` is
+`sha256:` over the UTF-8 text made of one line per template file, sorted by path, each `path`, a
+tab and the lowercase hex SHA-256 of its bytes, joined by newlines with a final newline.
 
 **Identity.** `identity` is a [site identity](../../glossary.json#concept.site-identity) (below)
 with `schema_version` 1, `title`, `url`, `baseUrl`, `organizationName`, `projectName` and, when

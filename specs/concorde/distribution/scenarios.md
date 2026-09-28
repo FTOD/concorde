@@ -82,6 +82,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
 - BUT no Spec document, registry or [Protocol binding](../glossary.json#concept.protocol-binding) of the project changed
 
+### scenario.distribution.install-docsite-template — An installed Concorde can scaffold a docsite
+
+- GIVEN a fresh Concorde package whose `docsite/` holds the template beside files the template inventory leaves out
+- WHEN the developer installs it into a project, initializes the project's Specs and runs `concorde docsite --propose`
+- THEN `.concorde/framework/docsite/` holds exactly the template files [Views](../spec-tooling/views/module.md)' inventory selects, `scaffold/` included
+- AND the proposal succeeds, listing the template files, a new `docsite/site.json` and, with `--github-pages`, the deployment workflow
+- BUT a package whose template contains a symbolic link is refused with `invalid_docsite_template`, whose reason is `input`, and nothing is written into the project
+
 ### scenario.distribution.glossary-import — The CLAUDE.md block imports the project's glossary
 
 - GIVEN a project in which Concorde is installed

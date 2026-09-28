@@ -100,7 +100,12 @@ replacing the framework copy under them would change their code halfway; the
 [progress file](../glossary.json#concept.progress-file) of an Operation's worker, which lies beside
 the Operation's and names the same runner, is not a run of its own — then places the Framework
 runtime under `.concorde/framework/` (replacing an earlier copy, and leaving out `scripts/e2e/`,
-which only [End-to-end testing](../e2e/module.md) uses), Concorde's own Python environment, a venv
+which only [End-to-end testing](../e2e/module.md) uses) with the docsite template under
+`.concorde/framework/docsite/`, exactly the files [Views](../spec-tooling/views/module.md)' template
+inventory selects, `scaffold/` included, from which `concorde docsite --propose` scaffolds a
+project's site ([requirements](requirements.md#req.distribution.installer-docsite-template),
+[checked first](requirements.md#req.distribution.installer-docsite-template-first)),
+Concorde's own Python environment, a venv
 at `.concorde/framework/python/` that `uv venv` creates for the Python requirement `concorde.json`
 names under `runtime.python`, on an interpreter uv chooses — one of the machine's or a uv-managed
 CPython, which uv downloads when none fits — whatever interpreter runs the installer
@@ -233,7 +238,13 @@ and never interprets a Spec itself; a Spec core refusal prints unchanged.
 
 **Views** owns the docsite scaffold; `docsite` only routes `--propose`/`--apply` to it. The
 [scaffold proposal](../glossary.json#concept.scaffold-proposal) and every file
-it writes are Views' responsibility, and an `--apply` without `--proposal` is refused first.
+it writes are Views' responsibility, and an `--apply` without `--proposal` is refused first. Views
+also owns the template inventory, the rule selecting which files of the package's `docsite/` are
+the template; the installer ships exactly those files, `scaffold/` included, by calling that rule
+rather than repeating it, and refuses with `invalid_docsite_template` when the rule rejects the
+package's template, so a project's scaffold always finds the template it expects
+([one inventory](../spec-tooling/views/requirements.md#req.views.template-inventory),
+[the rule](../spec-tooling/views/contracts.md#contract.views.scaffold-proposal)).
 
 <a id="uses-main-session"></a>
 
@@ -325,14 +336,14 @@ Protocol the manifest names.
 
 <a id="realization.distribution.installer"></a>
 
-The **installer program** reuses the writer and the build's freshness check, and installs the
-rendered main-session guidance. Everything that can refuse an install before any program runs —
-the build's freshness, Dogfooding's develop source check, the running Concorde, the project's
-settings, the descriptor's Python requirement, `uv` on `PATH` and, when the pi runtime is still to be
-placed, `npm` — and then the pinned download are decided before the first write, so such a refusal
-leaves the project as it was. Only the steps that run those programs, `npm ci`, `uv venv` and the
-installation of the Python dependencies, can fail after something was written; an install run
-again repeats them.
+The **installer program** reuses the writer, the build's freshness check and Views' docsite
+template inventory, and installs the rendered main-session guidance. Everything that can refuse an
+install before any program runs — the build's freshness, the docsite template, Dogfooding's develop
+source check, the running Concorde, the project's settings, the descriptor's Python requirement,
+`uv` on `PATH` and, when the pi runtime is still to be placed, `npm` — and then the pinned download
+are decided before the first write, so such a refusal leaves the project as it was. Only the steps
+that run those programs, `npm ci`, `uv venv` and the installation of the Python dependencies, can
+fail after something was written; an install run again repeats them.
 
 In update mode the installer takes the choices to keep from the previous receipt and installs as
 before. It then rewrites the configuration's Protocol binding itself, since the project would

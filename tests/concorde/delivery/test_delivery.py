@@ -6,10 +6,13 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 
 from concorde.delivery.bundle import BUNDLE_SCHEMA, OUTPUT_SCHEMA
-from concorde.delivery.command import DELIVERY
+from concorde.delivery.command import DELIVERY, IndexRecord, State, undo
 from concorde.errors import codes
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate as check_schema
@@ -54,6 +57,55 @@ class DeliveryTests(unittest.TestCase):
             self.project.root / ".concorde/runs" / envelope["run_id"] / "readiness.json"
         )
         return json.loads(path.read_text())
+
+    def index_state(self) -> tuple[str, ...]:
+        """The index as Git shows it: status, entries, entry flags and staged content."""
+        return (
+            status_lines(self.worktree),
+            git(self.worktree, "ls-files", "-s"),
+            git(self.worktree, "ls-files", "-v"),
+            git(self.worktree, "diff", "--cached"),
+        )
+
+    def stage_before_delivery(self) -> tuple[str, ...]:
+        """Prepare the index as the task level may before delivering; return its state.
+
+        A staged new file, a staged version of calc.py that the worktree changed again since
+        (which only the index holds), an intent-to-add path, and skip-worktree and
+        assume-unchanged flags: none of which a reset to the head would keep.
+        """
+        (self.worktree / "src/new.py").write_text("NEW = 1\n")
+        (self.worktree / "src/a/calc.py").write_text(
+            "def add(a, b):\n    return b + a\n"
+        )
+        git(self.worktree, "add", "src/new.py", "src/a/calc.py")
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        (self.worktree / "src/a/later.py").write_text("LATER = 1\n")
+        git(self.worktree, "add", "-N", "src/a/later.py")
+        git(self.worktree, "update-index", "--skip-worktree", "src/bmod/secret.py")
+        git(self.worktree, "update-index", "--assume-unchanged", "checks/a_check.py")
+        state = self.index_state()
+        self.assertIn("MM src/a/calc.py", state[0])
+        self.assertIn(" A src/a/later.py", state[0])
+        self.assertIn("S src/bmod/secret.py", state[2])
+        self.assertIn("h checks/a_check.py", state[2])
+        return state
+
+    def assert_undone(self, envelope: dict, index: tuple[str, ...], metadata: bytes):
+        """Nothing was committed and the workspace is again what the readiness examined."""
+        self.assertIn(
+            "were restored as the readiness examined them", envelope["summary"]
+        )
+        self.assertEqual(self.index_state(), index)
+        self.assertEqual(self.head(), self.base)
+        self.assertEqual(
+            (self.worktree / "specs/a/module.md.json").read_bytes(), metadata
+        )
+        self.assertFalse((self.worktree / ".concorde/evidence").exists())
+        digest = self.saved_readiness(envelope)["inputs"]["digest"]
+        self.assertEqual(measure(self.worktree, self.base)["digest"], digest)
+        self.assertEqual(self.project.deliveries(), [])
+        self.assertEqual(self.project.state(), "active")
 
     def assert_inert(self, envelope: dict, code: str, deliveries: int = 0):
         self.assertEqual(envelope["status"], "blocked", envelope)
@@ -352,27 +404,99 @@ class DeliveryTests(unittest.TestCase):
         hook = self.project.root / ".git/hooks/pre-commit"
         hook.write_text("#!/bin/sh\necho 'hook says no' >&2\nexit 1\n")
         hook.chmod(0o755)
-        (self.worktree / "src/new.py").write_text("NEW = 1\n")
-        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        index = self.stage_before_delivery()
         metadata = (self.worktree / "specs/a/module.md.json").read_bytes()
-        before = (status_lines(self.worktree), git(self.worktree, "ls-files", "-s"))
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
         self.assertIn("hook says no", evidence_of(envelope, "git")[-1]["detail"])
         self.assertEqual(["commit_failed", "git_failed"], codes(envelope["error"]))
         self.assertIn("hook says no", envelope["error"]["causes"][0]["detail"])
-        self.assertEqual(self.head(), self.base)
+        self.assert_undone(envelope, index, metadata)
+
+    @verifies("scenario.delivery.stage-refused")
+    def test_git_refuses_to_stage_the_bundle(self):
+        # A required clean filter that fails refuses the bundle after every other change is
+        # staged, so the index must be given back, not merely left alone.
+        (self.project.root / ".git/info").mkdir(exist_ok=True)
+        (self.project.root / ".git/info/attributes").write_text(
+            ".concorde/evidence/** filter=refuse\n"
+        )
+        git(self.project.root, "config", "filter.refuse.clean", "false")
+        git(self.project.root, "config", "filter.refuse.required", "true")
+        index = self.stage_before_delivery()
+        metadata = (self.worktree / "specs/a/module.md.json").read_bytes()
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        self.assertEqual(["stage_failed", "git_failed"], codes(envelope["error"]))
+        self.assertIn("refuse", envelope["error"]["causes"][0]["detail"])
+        self.assert_undone(envelope, index, metadata)
+
+    def test_a_failed_undo_names_what_it_could_not_restore(self):
+        with tempfile.TemporaryDirectory() as directory:
+            worktree = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=worktree, check=True)
+            # Writing metadata back over a directory fails, as does reading a missing tree.
+            (worktree / "specs.json").mkdir()
+            ctx = SimpleNamespace(
+                worktree=worktree,
+                delivery=State(
+                    backups={"specs.json": b"{}"},
+                    index=IndexRecord("0" * 40, ["later.py"], [], []),
+                ),
+            )
+            undone = undo(ctx)
+        self.assertEqual(
+            [name for name, _ in undone.failed],
+            ["the metadata specs.json", "the index"],
+        )
+        self.assertEqual(
+            [(link["actor"], link["code"]) for link in undone.causes],
+            [
+                ("Delivery undo", "metadata_unrestored"),
+                (f"git read-tree {'0' * 40}", "git_failed"),
+            ],
+        )
+        self.assertIn("IsADirectoryError", undone.causes[0]["detail"])
+        self.assertIn(
+            "restoring the metadata specs.json and the index failed, so the workspace is not as "
+            "the readiness examined it",
+            str(undone),
+        )
+
+    @verifies("scenario.delivery.unmerged-index")
+    def test_an_unmerged_index_is_refused_before_anything_changes(self):
+        (self.worktree / "src/new.py").write_text("NEW = 1\n")
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        blob = git(self.worktree, "hash-object", "-w", "src/a/calc.py")
+        git(self.worktree, "update-index", "--force-remove", "src/a/calc.py")
+        subprocess.run(
+            ["git", "update-index", "--index-info"],
+            cwd=self.worktree,
+            input="".join(
+                f"100644 {blob} {stage}\tsrc/a/calc.py\n" for stage in (1, 2, 3)
+            ),
+            text=True,
+            check=True,
+        )
+        index = self.index_state()
+        metadata = (self.worktree / "specs/a/module.md.json").read_bytes()
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(["index_unrecorded", "git_failed"], codes(error))
+        self.assertEqual(error["unhandled"]["reason"], "decision")
+        self.assertIn("src/a/calc.py", error["detail"])
+        self.assertIn("abort the merge", " ".join(error["options"]))
+        cause = error["causes"][0]
+        self.assertEqual(cause["actor"], "git write-tree")
+        self.assertIn("unmerged", cause["detail"])
+        self.assertEqual(self.index_state(), index)
         self.assertEqual(
             (self.worktree / "specs/a/module.md.json").read_bytes(), metadata
         )
         self.assertFalse((self.worktree / ".concorde/evidence").exists())
-        self.assertEqual(
-            (status_lines(self.worktree), git(self.worktree, "ls-files", "-s")), before
-        )
-        digest = self.saved_readiness(envelope)["inputs"]["digest"]
-        self.assertEqual(measure(self.worktree, self.base)["digest"], digest)
+        self.assertEqual(self.head(), self.base)
         self.assertEqual(self.project.deliveries(), [])
-        self.assertEqual(self.project.state(), "active")
 
     @verifies("scenario.delivery.recover")
     def test_a_delivery_interrupted_after_its_commit_needs_no_repair(self):
