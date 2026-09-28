@@ -62,9 +62,11 @@ empty for a given task, but never all four.
 <a id="concept.spec-context"></a>
 
 The **[Spec context](glossary.json#concept.spec-context)** is what the Protocol calls the
-SpecContext of the bound Modules, the documents they own and the documents their `contains`, `uses`
-and `includes` select, one level deep, together with their ExternalContext, the pinned third-party
-material they include. It is read only. A provider's Specs arrive here instead of its code.
+SpecContext of the bound Modules: the documents they own and the documents their `contains`, `uses`
+and `includes` select, one level deep, and the glossary entries of the terms they use. It is read
+only. A provider's Specs arrive here instead of its code. The pinned third-party material the bound
+Modules include is not part of it: that is their ExternalContext, a read set of its own that every
+task type grants beside the Spec context.
 
 <a id="concept.implementation-context"></a>
 

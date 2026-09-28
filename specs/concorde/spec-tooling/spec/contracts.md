@@ -389,7 +389,9 @@ identities:
 paths and digests of the configuration, the registry, every assessed document member, the project
 glossary, the Protocol binding and the state of every configured-check input), `claims` (the kinds
 of structure the run checked) and `semantic_completeness: "not_proven"`. No other Module's records
-enter the digest.
+enter the digest, nor do the files Modules bind, the list of version-controlled files or the tests
+scanned for verification declarations, so a finding about bindings, unbound files or scenario
+coverage can change while `source_digest` stays the same.
 
 The command-line envelope is canonical JSON with `schema_version: 3`, the fields above and `error`:
 `null` when the command did its work, otherwise the [error record](errors.md) of its failure,
@@ -543,8 +545,25 @@ such changes with unique paths, every path in `allowed` and every content a stri
 `stale_proposal` when a file's current bytes do not match its `before_digest`, checked once before
 any write and again just before each write. Each file is written to a temporary file in its
 directory, flushed and renamed into place. After all writes, the optional `verify` callable runs;
-if it or any write raises, every written file is restored to its original bytes or removed if it
-did not exist, and the exception propagates. It returns the written paths in order.
+if it or any write raises, every written file is restored to its original bytes, through the same
+temporary file and rename, or removed if it did not exist. It returns the written paths in order.
+
+A failure then propagates as follows:
+
+- an operating-system error of a write becomes a `SpecError` with the code `system_error`, the
+  file's path and the message that every file written so far was restored, whose one cause is the
+  `system_error` record of the operating system's error;
+- a `SpecError` of a write, such as `stale_proposal`, and any exception `verify` raises propagate
+  unchanged, so a caller's own check error reaches the caller as the caller raised it;
+- when the operating system refuses a restore, the other restores are still attempted and the
+  transaction fails with a `SpecError` of code `system_error` that names every file not restored
+  and says each still holds the new content; its causes are the first failure (unchanged when it
+  is a `SpecError`, otherwise its `system_error` or `unexpected_error` record) followed by one
+  `system_error` record per refused restore.
+
+These guarantees hold for failures the process observes as an exception. A killed or interrupted
+process restores nothing: each file already renamed into place keeps its new content, every other
+file keeps its original bytes, and `.concorde-write-` temporary files may remain beside them.
 
 `confirm_pending_files` removes from every realization's `pending` the entries that now exist. It
 rewrites only the affected metadata members, in one file transaction whose final check requires the
@@ -608,7 +627,11 @@ not listed under `amended` are left out of that realization and bound instead by
 as the agents' configuration the installer replaces on every update. Without a receipt, or without
 such files, there is no such realization.
 
-Apply accepts only the exact proposal propose returned. It refuses, writing nothing: a
+Apply checks a proposal's shape, the integrity its digest gives and its freshness, not its
+provenance: the proposal digest is one any caller can compute, so apply cannot tell a proposal
+propose returned from one built to the same shape. Its guarantee is that an applied proposal had
+exactly that shape and digest, was computed from the project's current state, wrote only the
+allowed files, replaced none, and left a project that validates. It refuses, writing nothing: a
 `proposal_digest` that is not the digest of the given proposal; a proposal whose envelope is not
 exactly that shape, that lacks the configuration or the registry, whose configuration names another
 registry path or a Protocol binding other than the installed copy's, or that has a non-null

@@ -535,7 +535,16 @@ it("binds source identity to both members, the registry and the owns order", () 
   expect(metadataOnly.pages[2].contentDigest).toBe(page(path).contentDigest);
   record("module.transfer").owns.reverse();
   writeRegistry(project);
-  expect(load().sourceDigest).not.toBe(metadataOnly.sourceDigest);
+  const reordered = load();
+  expect(reordered.sourceDigest).not.toBe(metadataOnly.sourceDigest);
+  // The site identity is an input too: a changed title changes the digest.
+  const identity = readJson(project, "docsite/site.json");
+  put(
+    project,
+    "docsite/site.json",
+    JSON.stringify({ ...identity, title: "Bank 2" }),
+  );
+  expect(load().sourceDigest).not.toBe(reordered.sourceDigest);
 });
 
 it("rejects missing metadata, duplicate JSON keys, symlinks and malformed UTF-8", () => {

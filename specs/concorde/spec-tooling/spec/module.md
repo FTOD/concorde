@@ -112,14 +112,16 @@ enforces it.
 
 <a id="concept.typed-value"></a><a id="concept.file-transaction"></a><a id="concept.initial-proposal"></a>
 
-**Shared services.** Every structured value Modules exchange is a
-[typed value](../../glossary.json#concept.typed-value) `{type_id, schema_version, data}` whose owner
-registers its schema ([typed values](contracts.md#typed-values)). A
-[file transaction](../../glossary.json#concept.file-transaction) writes a set of files completely or
-not at all, each write bound to the digest it replaces. `initialize(root, package, data)` first
-proposes the exact first files and their digest, then applies exactly that proposal and keeps it
-only if the project validates; it refuses `already_initialized` and `not_installed`. Which command
-exposes it is Distribution's decision.
+**Shared services.** Every structured value Modules exchange is a [typed
+value](../../glossary.json#concept.typed-value) `{type_id, schema_version, data}` whose owner
+registers its schema ([typed values](contracts.md#typed-values)). A [file
+transaction](../../glossary.json#concept.file-transaction) writes a set of files completely or, when
+a write or its final check fails, restores every file it wrote, each write bound to the digest it
+replaces; an interrupted process or a refused restore can leave it partly applied, and the latter is
+reported file by file. `initialize(root, package, data)` first proposes the exact first files and
+their digest, then applies exactly that proposal and keeps it only if the project validates; it
+refuses `already_initialized` and `not_installed`. Which command exposes it is Distribution's
+decision.
 
 ## Design
 
@@ -240,16 +242,17 @@ type is resolved by name at check time, so an owner never imports the owner of a
 The registration table, the checker, the shared building blocks, strict JSON, the safe-path rules
 and the front-matter parser live together because they change together. Initialization, registry
 regeneration, pending-entry confirmation and other Modules' deterministic steps all write through
-file transactions, so none of them can leave half an update behind.
+file transactions, so a failure they observe never leaves half an update behind, and a restore that
+fails is named instead of hidden.
 
 **Initialization.** Describing a new project is separated from writing it: the proposal is the
-preview, and application accepts only that exact proposal while the project is still in the state
-it was computed from. The written result is validated inside the transaction, so a first Spec that
-does not validate is rolled back. Initialization creates only what the project owns, its
-configuration, registry and first Spec; everything that exists because Concorde is installed is
-the installer's. So that the project validates at once, the root Module binds every file the
-project already has in one realization that says only where the files are, and later Modules take
-files over from it.
+preview, and application checks the proposal's shape, its digest and that the project is still in
+the state it was computed from; the digest shows the proposal intact, not that propose made it. The
+written result is validated inside the transaction, so a first Spec that does not validate is rolled
+back. Initialization creates only what the project owns, its configuration, registry and first Spec;
+everything that exists because Concorde is installed is the installer's. So that the project
+validates at once, the root Module binds every file the project already has in one realization that
+says only where the files are, and later Modules take files over from it.
 
 **Protocol text and assets.** The bundle carries only the Protocol; Concorde's conventions, such as
 verification declarations, live in the Modules that own them. Keeping the text apart from its

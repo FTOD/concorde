@@ -65,8 +65,10 @@ class ScaffoldCreationTests(unittest.TestCase):
                 replace(source, destination)
 
             with patch.object(changes.os, "replace", side_effect=fail_second):
-                with self.assertRaises(OSError):
+                with self.assertRaises(changes.SpecError) as raised:
                     changes.apply_files(
                         root, proposal, {item["path"] for item in proposal}
                     )
+            self.assertEqual("system_error", raised.exception.code)
+            self.assertEqual("second.json", raised.exception.path)
             self.assertEqual(list(root.iterdir()), [])
