@@ -286,6 +286,9 @@ decided alone before it reports the task.
 uncommitted or untracked path, and a task that `close --merged` would refuse for any reason other
 than containment.
 
+A new path Git cannot version, such as a sandbox's `/dev/null` mount of `.bashrc`, is no untracked
+path here, by the same rule as a task worktree's changes.
+
 ### req.tasks.refusal-detail — A refusal is an error link
 
 Every refusal of a `concorde task` command SHALL print an error link that names what was refused, with the task, Module, path, run or Git output concerned, and why Tasks cannot handle it.

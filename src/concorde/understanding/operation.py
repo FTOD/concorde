@@ -141,8 +141,8 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def task_material(ctx: RunContext) -> str:
-    """The task's goal and the admitted inputs, as brief text."""
-    parts = [f"The task's own goal: {ctx.goal or '(none)'}\n"]
+    """The workspace's goal and the admitted inputs, as brief text."""
+    parts = [f"The workspace's goal: {ctx.goal or '(none)'}\n"]
     if ctx.inputs:
         parts.append(
             "\nAdmitted inputs (outputs of earlier ok runs of this task):\n\n```json\n"

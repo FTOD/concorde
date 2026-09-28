@@ -121,6 +121,13 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - THEN it is `delivered`, since a new path Git cannot version is no change of the worktree, as Delivery leaves it out
 - BUT a new file beside it makes the task `active`
 
+### scenario.tasks.merge-sandbox-masks — A path a sandbox masks does not block a merge
+
+- GIVEN a delivered task
+- AND a sandbox that hides paths of the primary worktree, such as `.bashrc`, behind `/dev/null` mounts, which Git lists as untracked
+- WHEN the main agent merges the task inside that sandbox
+- THEN the merge is not refused as `primary_dirty`, since a new path Git cannot version is no change of the primary worktree, and the task is closed as merged
+
 ### scenario.tasks.delivery-unverified — A delivery commit that does not verify is not delivered
 
 - GIVEN a task whose branch head has the subject and trailers of a delivery commit of its workspace

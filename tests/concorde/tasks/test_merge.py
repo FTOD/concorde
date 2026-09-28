@@ -7,6 +7,7 @@ import io
 import json
 import os
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -318,6 +319,37 @@ class MergeTests(unittest.TestCase):
         self.assertIn("src/bmod/extra.py", error["detail"])
         self.assertEqual(before, self.head())
         self.assertEqual("delivered", self.state())
+
+    @verifies("scenario.tasks.merge-sandbox-masks")
+    def test_a_path_a_sandbox_masks_in_the_primary_worktree_is_no_change(self):
+        bwrap = shutil.which("bwrap")
+        sandbox = [bwrap, "--dev-bind", "/", "/"] if bwrap else []
+        if not bwrap or subprocess.run([*sandbox, "true"], check=False).returncode != 0:
+            self.skipTest("bubblewrap cannot create a sandbox here")
+        self.project.open_task("t1")
+        self.deliver()
+        masked = (".bashrc", ".mcp.json")
+        # bwrap leaves each mount point behind as an empty file once the sandbox ends.
+        for path in masked:
+            self.addCleanup((self.root / path).unlink, missing_ok=True)
+        binds = [
+            item
+            for path in masked
+            for item in ("--bind", "/dev/null", str(self.root / path))
+        ]
+        environment = dict(os.environ, PYTHONPATH=str(REPOSITORY_ROOT / "src"))
+        merged = subprocess.run(
+            [*sandbox, *binds, sys.executable, "-m", "concorde", "task", "merge", "t1"]
+            + ["--check", python("pass")],
+            cwd=self.root,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+        self.assertEqual(0, merged.returncode, merged.stdout + merged.stderr)
+        self.assertEqual("closed", self.state())
 
     @verifies("scenario.tasks.merge-refused-early")
     def test_a_merge_that_cannot_close_is_refused_before_merging(self):

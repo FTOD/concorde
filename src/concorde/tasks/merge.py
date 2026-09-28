@@ -66,10 +66,9 @@ def _listed(paths: list[str]) -> str:
 
 
 def _status(primary: Path) -> list[str]:
-    lines = store._git(
-        primary, "status", "--porcelain", "--untracked-files=all"
-    ).stdout.splitlines()
-    return [line[3:] for line in lines if line.strip()]
+    """The primary worktree's changed paths, by the same rule as a task worktree's: new paths Git
+    cannot version, such as a sandbox's mounts of ``.bashrc``, are left out."""
+    return [entry[3:] for entry in store._changes(primary)]
 
 
 def _primary_branch(primary: Path) -> str:
