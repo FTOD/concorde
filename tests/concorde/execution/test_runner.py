@@ -547,11 +547,25 @@ class RunnerTests(unittest.TestCase):
         # The run released the workspace lock.
         self.assertIsNone(runs.lock_holder(self.records, "t1"))
 
-    @verifies("scenario.execution.progress-file")
+    @verifies("scenario.execution.progress-file", "scenario.execution.run-lock")
     def test_the_progress_file_follows_the_run(self):
-        status, envelope = self.implement([{}])
+        from concorde.execution import runner
+
+        # Whether the run lock is held at every progress write, probed as another reader would.
+        held = []
+        original = runner._progress
+
+        def progress(context, **fields):
+            held.append(runs.runner_alive(context.run_dir))
+            original(context, **fields)
+
+        with patch.object(runner, "_progress", side_effect=progress):
+            status, envelope = self.implement([{}])
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         run = self.records / "runs" / envelope["run_id"]
+        self.assertTrue(held and all(held), held)
+        self.assertFalse(runs.runner_alive(run))
+        self.assertEqual("finished", runs.run_state(self.records, envelope["run_id"]))
         progress = json.loads((run / "status.json").read_text())
         self.assertEqual(
             (
@@ -579,6 +593,7 @@ class RunnerTests(unittest.TestCase):
             (self.records / "runs" / worker / "status.json").read_text()
         )
         self.assertEqual(progress["host_pid"], worker_progress["host_pid"])
+        self.assertEqual(envelope["run_id"], worker_progress["operation_run_id"])
 
     @verifies("scenario.operations.worker-blocked")
     def test_a_blocked_worker_escalates(self):

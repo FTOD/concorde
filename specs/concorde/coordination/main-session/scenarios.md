@@ -19,10 +19,10 @@ Situations the [main-session guidance](module.md) prepares the
 - GIVEN a pi main session with the run view and an Operation run whose worker is in its second round
 - WHEN the run view reads the [progress files](../../glossary.json#concept.progress-file) of the [run store](../../glossary.json#concept.run-store)
 - THEN it shows the run with its workspace, Operation, step, the worker's round and latest tool call
-- AND a worker of another runner process or an earlier run is not attributed to it
+- AND a worker of another run is not attributed to it, even when that run's runner recorded the same process identifier in another PID namespace
 - AND an execution command's run is shown the same way without a worker, and an [unbound run](../../glossary.json#concept.unbound-run) with `unbound` in place of the workspace
 - AND a finished run shows `completed`, `stopped` or `failed` for `ok`, `blocked` or `failed` with the result's summary
-- AND a run whose runner process ended without finishing shows `failed`
+- AND a run whose runner ended without finishing, so that nobody holds its [run lock](../../glossary.json#concept.run-lock), shows `failed` and is not counted as running, even when the process identifier it recorded names a living process
 - AND the message the main agent is given for a finished run names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file, followed by the result's whole [error chain](../../glossary.json#concept.error-chain) when it carries one
 - AND a run started after the session started by a command run with bash or by another session, even one that already ended, is shown and reported the same way
 - BUT a run that had already ended before the session started is not reported, and a run whose runner `concorde_run` is still starting is left to that tool

@@ -38,6 +38,7 @@ from .runs import (
     new_run_id,
     now,
     run_directory,
+    run_lock,
     workspace_lock,
 )
 
@@ -358,57 +359,60 @@ def execute(
     )
     stop: Stop | None = None
     checkout: Checkout | None = None
-    _progress(context, phase="running", step=None)
-    previous = {
-        sig: signal.signal(sig, _cancel) for sig in (signal.SIGINT, signal.SIGTERM)
-    }
-    with contextlib.ExitStack() as held:
-        try:
+    # Held from before the first progress file until after the result: whoever reads the run
+    # store tells a running run from a dead one by this lock, from any PID namespace.
+    with run_lock(run_dir):
+        _progress(context, phase="running", step=None)
+        previous = {
+            sig: signal.signal(sig, _cancel) for sig in (signal.SIGINT, signal.SIGTERM)
+        }
+        with contextlib.ExitStack() as held:
             try:
-                if broken is not None:
-                    raise broken
-                if bound is not None:
-                    held.enter_context(
-                        workspace_lock(
-                            records,
-                            bound["workspace"],
-                            f"{chosen.name} run {identity}",
-                            wait=arguments.wait,
-                            waiting=lambda holder: _progress(
-                                context, step="workspace-lock", waiting_for=holder
-                            ),
+                try:
+                    if broken is not None:
+                        raise broken
+                    if bound is not None:
+                        held.enter_context(
+                            workspace_lock(
+                                records,
+                                bound["workspace"],
+                                f"{chosen.name} run {identity}",
+                                wait=arguments.wait,
+                                waiting=lambda holder: _progress(
+                                    context, step="workspace-lock", waiting_for=holder
+                                ),
+                            )
                         )
-                    )
-                    _progress(context, step=None, waiting_for=None)
-                else:
-                    checkout = _checkout(chosen, context)
-                    # However the runner leaves, the checkout does not outlive it.
-                    held.callback(checkout.close)
-                    _progress(context, step=None)
-                stop = _resolve(chosen, context, arguments)
-            except (RunError, binding_file.BindingError) as refusal:
-                stop = _refused(chosen, context, refusal)
-            if stop is None:
-                stop = _steps(chosen, context)
-        except Cancelled as cancelled:
-            stop = _cancelled(chosen, context, cancelled)
-        finally:
-            for sig, handler in previous.items():
-                signal.signal(sig, handler)
-        if checkout is not None:
-            context.evidence.extend(checkout.close())
-        envelope = _envelope(chosen, context, stop, started)
-        # The result is written while the lock is still held, so a run admitted after this one
-        # always finds it written. Seeing the result does not mean the lock is free: it is
-        # released only when this block ends.
-        (run_dir / "result.json").write_text(json.dumps(envelope, indent=2) + "\n")
-        _progress(
-            context,
-            phase="finished",
-            step=None,
-            status=envelope["status"],
-            summary=envelope["summary"],
-        )
+                        _progress(context, step=None, waiting_for=None)
+                    else:
+                        checkout = _checkout(chosen, context)
+                        # However the runner leaves, the checkout does not outlive it.
+                        held.callback(checkout.close)
+                        _progress(context, step=None)
+                    stop = _resolve(chosen, context, arguments)
+                except (RunError, binding_file.BindingError) as refusal:
+                    stop = _refused(chosen, context, refusal)
+                if stop is None:
+                    stop = _steps(chosen, context)
+            except Cancelled as cancelled:
+                stop = _cancelled(chosen, context, cancelled)
+            finally:
+                for sig, handler in previous.items():
+                    signal.signal(sig, handler)
+            if checkout is not None:
+                context.evidence.extend(checkout.close())
+            envelope = _envelope(chosen, context, stop, started)
+            # The result is written while the lock is still held, so a run admitted after this one
+            # always finds it written. Seeing the result does not mean the lock is free: it is
+            # released only when this block ends.
+            (run_dir / "result.json").write_text(json.dumps(envelope, indent=2) + "\n")
+            _progress(
+                context,
+                phase="finished",
+                step=None,
+                status=envelope["status"],
+                summary=envelope["summary"],
+            )
     return (0 if envelope["status"] == "ok" else 1), envelope
 
 

@@ -15,6 +15,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from concorde.execution.runs import run_lock
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -22,7 +23,7 @@ SOURCE = REPOSITORY_ROOT / "src/concorde/main_session/pi_runs.ts"
 PROBE = """
 import {
   recordedRuns, workersOf, view, concordeCommand, alive, taskWorktree, resultText, runError,
-  discoveredRuns,
+  discoveredRuns, runnerAlive, lockedInodes,
 } from %(source)s;
 const root = %(root)s;
 const out = {};
@@ -41,8 +42,12 @@ out.discovered = discoveredRuns(
   new Set(discovery.known),
   Date.parse(discovery.since),
   new Set(discovery.launching),
-  (pid) => !discovery.dead.includes(pid),
+  (run) => !discovery.dead.includes(run.host_pid),
 ).map((run) => run.run_id);
+out.runnerAlive = Object.fromEntries(
+  recordedRuns(root).map((run) => [run.run_id, runnerAlive(root, run)]),
+);
+out.lockTable = lockedInodes() !== null;
 out.command = concordeCommand(root);
 out.worktrees = ["t1", "gone", "missing", "../t1"].map((task) => taskWorktree(root, task));
 out.self = alive(process.pid);
@@ -72,6 +77,7 @@ def operation(run_id, **fields):
 def worker(run_id, **fields):
     value = {
         "run_id": run_id,
+        "operation_run_id": "r-1",
         "task_type": "implement",
         "backend": "pi",
         "phase": "worker",
@@ -135,8 +141,10 @@ class RunViewTests(unittest.TestCase):
     def test_a_running_operation_shows_its_worker_progress(self):
         self.status(operation("r-1"))
         self.status(worker("w-1"))
-        self.status(worker("w-other", host_pid=200))
-        self.status(worker("w-before", started_at="2026-09-25T09:00:00.000000Z"))
+        # Workers of other runs, even one whose runner recorded the same process identifier in
+        # its own PID namespace.
+        self.status(worker("w-other", operation_run_id="r-other", host_pid=200))
+        self.status(worker("w-same-pid", operation_run_id="r-0"))
         out = self.probe()
         run = out["r-1"]
         self.assertEqual(["w-1"], run["workers"])
@@ -253,13 +261,37 @@ class RunViewTests(unittest.TestCase):
             out["r-blocked"]["result"],
         )
         self.assertIn(
-            "finished failed. failed: the runner (process 103) ended without finishing",
+            "finished failed. failed: the runner ended without finishing the run: it no "
+            "longer holds its run lock",
             out["r-dead"]["result"],
         )
         self.assertTrue(out["r-dead"]["view"]["finished"])
-        self.assertIn("process 103", out["r-dead"]["view"]["preview"])
         self.assertTrue(out["self"])
         self.assertFalse(out["gone"])
+
+    @verifies("scenario.main-session.pi-run-view", "scenario.execution.run-lock")
+    def test_a_runner_lives_while_it_holds_its_run_lock(self):
+        # Held by its runner, as a live runner does.
+        self.status(operation("r-held", host_pid=2**22 + 12345))
+        self.enterContext(run_lock(self.runs / "r-held"))
+        # Started in a sandbox's PID namespace, where the runner was process 1 or 2: here those
+        # name live, unrelated processes, and nobody holds the run lock.
+        self.status(operation("r-sandboxed", host_pid=1))
+        self.status(operation("r-kthreadd", host_pid=2))
+        # Ended properly just after its progress file was read: not taken for a dead run.
+        self.status(operation("r-ended", host_pid=1))
+        (self.runs / "r-ended/result.json").write_text("{}")
+        out = self.probe()
+        self.assertTrue(out["lockTable"])
+        self.assertEqual(
+            {
+                "r-held": True,
+                "r-sandboxed": False,
+                "r-kthreadd": False,
+                "r-ended": True,
+            },
+            out["runnerAlive"],
+        )
 
     @verifies("scenario.main-session.pi-run-view")
     def test_runs_started_elsewhere_are_followed(self):

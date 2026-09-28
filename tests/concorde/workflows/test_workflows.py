@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
-import os
 import re
 import secrets
 import subprocess
@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 from concorde import errors
 from concorde.commands.catalog import COMMANDS
-from concorde.execution.runs import workspace_lock, workspace_runs
+from concorde.execution.runs import run_lock, workspace_lock, workspace_runs
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.workflows import catalog, store
@@ -33,7 +33,6 @@ from tests.concorde.support.brownfield_project import BrownfieldProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 HARNESS = Path(__file__).with_name("run_script.mjs")
-DEAD_PID = 2**22 + 12345
 
 
 def contract(path: str, identity: str) -> dict:
@@ -57,10 +56,13 @@ def run_link(name: str, run_id: str, code: str, reason: str = "decision") -> dic
 
 
 class Runs:
-    """Saved run results written by hand, standing in for finished or dying runners."""
+    """Saved run results written by hand, standing in for finished or dying runners.
+
+    A running run's run lock is held until ``held`` is closed, as its runner would hold it."""
 
     def __init__(self, records: Path):
         self.records = records
+        self.held = contextlib.ExitStack()
 
     def make(
         self,
@@ -69,13 +71,17 @@ class Runs:
         output: dict | None = None,
         error: dict | None = None,
         modules=("module.shop",),
-        pid: int = DEAD_PID,
+        running: bool = False,
     ) -> str:
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
         run_id = f"r-{stamp}-{name.replace('-', '_')}-{secrets.token_hex(4)}"
         directory = self.records / "runs" / run_id
         directory.mkdir(parents=True)
-        (directory / "status.json").write_text(json.dumps({"host_pid": pid}))
+        # A small process identifier, as a runner in a sandbox's PID namespace records, names
+        # a live process here; only the run lock tells whether the runner lives.
+        (directory / "status.json").write_text(json.dumps({"host_pid": 1}))
+        if running:
+            self.held.enter_context(run_lock(directory))
         if status is not None:
             if status != "ok" and error is None:
                 error = run_link(name, run_id, f"{name.replace('-', '_')}_{status}")
@@ -180,6 +186,7 @@ class StepTests(unittest.TestCase):
         self.space = store.workspace(self.project.worktree())
         self.records = self.space.records
         self.runs = Runs(self.records)
+        self.addCleanup(self.runs.held.close)
         self.started: list[list[str]] = []
 
     def request(
@@ -197,10 +204,10 @@ class StepTests(unittest.TestCase):
         value.update(changes)
         return value
 
-    def starter(self, status="ok", output=None, pid=DEAD_PID):
+    def starter(self, status="ok", output=None, running=False):
         def start(workflow, space, argv):
             self.started.append(list(argv))
-            return {"run_id": self.runs.make(argv[0], status, output, pid=pid)}
+            return {"run_id": self.runs.make(argv[0], status, output, running=running)}
 
         return patch.object(steps, "start_run", side_effect=start)
 
@@ -261,7 +268,7 @@ class StepTests(unittest.TestCase):
 
     @verifies("scenario.workflows.step-waits")
     def test_a_long_run_is_awaited_by_repeated_calls(self):
-        with self.starter(status=None, pid=os.getpid()):
+        with self.starter(status=None, running=True):
             before = time.monotonic()
             status, outcome = run_step(self.space, self.request(), wait=0.3)
             self.assertLess(time.monotonic() - before, 5)
@@ -352,7 +359,7 @@ class StepTests(unittest.TestCase):
 
     @verifies("scenario.workflows.lost")
     def test_a_step_whose_host_died_is_lost(self):
-        with self.starter(status=None, pid=DEAD_PID):
+        with self.starter(status=None):
             status, outcome = run_step(
                 self.space, self.request("describe:module.shop", ("code_to_spec",))
             )
@@ -470,7 +477,7 @@ class StepTests(unittest.TestCase):
     @verifies("scenario.workflows.lost")
     def test_a_lost_step_carries_its_host_output(self):
         validation = ("validate", ("task-validation",))
-        with self.starter(status=None, pid=DEAD_PID):
+        with self.starter(status=None):
             _, value = run_step(self.space, self.request(*validation), wait=0)
         (self.records / "runs" / value["run_id"] / "host.out").write_text(
             "Traceback: KeyError: 'modules'\n"
@@ -546,6 +553,7 @@ class ReportTests(unittest.TestCase):
         self.primary = self.project.root
         self.space = store.workspace(self.project.worktree())
         self.runs = Runs(self.space.records)
+        self.addCleanup(self.runs.held.close)
 
     def record(self, key, name, status="ok", output=None, mode="no-ask", error=None):
         run_id = self.runs.make(name, status, output, error=error)
@@ -662,7 +670,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual([cause], error["causes"])
 
     def test_a_report_during_a_running_step(self):
-        run_id = self.runs.make("survey", None, pid=os.getpid())
+        run_id = self.runs.make("survey", None, running=True)
         store.record_step(
             self.space, "brownfield", "survey", "survey", run_id, "no-ask", None
         )

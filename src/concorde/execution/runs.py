@@ -1,7 +1,12 @@
 """The run store: every Operation run and execution command run, and the workspace lock.
 
 A run lives in ``<records>/runs/<run_id>/``: its progress file ``status.json``, kept current by the
-process running it, and once it ended its run result ``result.json``. ``<records>`` is the
+process running it, and once it ended its run result ``result.json``. The runner holds the run lock,
+an exclusive ``flock`` on the run directory itself, from before its first progress file until its
+end, so whether a run still runs is read from that lock, which the kernel releases however the
+runner ends; never from the recorded process identifier, which is only meaningful in the PID
+namespace the runner ran in (a runner started in a sandboxed shell records a small number such as
+2, naming an unrelated process on the host). ``<records>`` is the
 binding's records directory, or an unbound worktree's own ``.concorde``. A bound run holds the
 workspace lock ``<records>/runs/locks/<workspace>.lock`` for its whole life, so one workspace runs one
 thing at a time; the kernel releases the lock however the run ends. The lock lies outside the
@@ -146,22 +151,55 @@ def pid_alive(pid: int) -> bool:
         return True
 
 
+@contextmanager
+def run_lock(run_dir: Path):
+    """Hold the run lock of the run in ``run_dir`` for the life of the block.
+
+    The descriptor is not inherited by the processes the runner starts, so a worker or check
+    that outlives the runner never keeps its run alive.
+    """
+    descriptor = os.open(run_dir, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        # Blocking: a reader probing the lock holds it shared only for an instant.
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(descriptor)
+
+
+def runner_alive(run_dir: Path) -> bool:
+    """Whether the runner of the run in ``run_dir`` still holds its run lock.
+
+    Works from any PID namespace that sees the run store, since the lock belongs to the run
+    directory, not to a process identifier.
+    """
+    try:
+        descriptor = os.open(run_dir, os.O_RDONLY | os.O_DIRECTORY)
+    except OSError:
+        return False
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return True
+    except OSError:
+        return False
+    finally:
+        # Closing the descriptor releases the probe's own shared lock.
+        os.close(descriptor)
+    return False
+
+
 def run_state(records: Path, run_id: str | None) -> str:
     """``finished``, ``running`` or ``lost`` for a run; ``refused`` without one.
 
-    The result is written last, so a run with a result has ended; one without a result whose
-    process no longer lives ended without writing it.
+    The result is written before the run lock is released, so a run with a result has ended;
+    one without a result whose lock nobody holds ended without writing it.
     """
     if not run_id:
         return "refused"
     if load_result(records, run_id) is not None:
         return "finished"
-    progress = load_progress(records, run_id) or {}
-    try:
-        alive = pid_alive(int(progress.get("host_pid") or 0))
-    except (TypeError, ValueError):
-        alive = False
-    if alive:
+    if runner_alive(run_directory(records, run_id)):
         return "running"
     # The run may have written its result between the two reads.
     return "finished" if load_result(records, run_id) is not None else "lost"
@@ -317,7 +355,9 @@ __all__ = [
     "now",
     "pid_alive",
     "run_directory",
+    "run_lock",
     "run_state",
+    "runner_alive",
     "runs_directory",
     "workspace_lock",
     "workspace_runs",

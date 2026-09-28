@@ -127,17 +127,23 @@ and `node_modules`, are linked from it into the checkout, so the checks a review
 them, and submodules it has checked out are checked out in the checkout too. However the run ends,
 the runner removes the checkout before it writes the result.
 
-<a id="concept.detached-run"></a><a id="concept.run-progress-file"></a>
+<a id="concept.detached-run"></a><a id="concept.run-progress-file"></a><a id="concept.run-lock"></a>
 
 **Long runs.** With `--detach` the command starts the runner as a
 **[detached run](../glossary.json#concept.detached-run)**, a process of its own that outlives the
 command, and prints the run identity and the path of its result as soon as the run's
 **[run progress file](../glossary.json#concept.run-progress-file)** exists. Everything else about
 the run is the same, including a refusal, which still becomes its result. While a run lives, its
-run progress file names what runs, in which workspace and step, with the runner's process identifier,
-which every worker run it launches records too, so an observer such as the main session's
-[run view](../glossary.json#concept.run-view) follows a run and its worker without asking the
-runner.
+run progress file names what runs, in which workspace and step, with the runner's process
+identifier, and every worker run it launches records the run's identity, so an observer such as the
+main session's [run view](../glossary.json#concept.run-view) follows a run and its worker without
+asking the runner. Whether the runner still lives is told by its
+**[run lock](../glossary.json#concept.run-lock)**, a file lock on the run's directory that the
+runner holds from before its first run progress file until after its result, and that the kernel
+releases however the runner ends: a run without a result whose run lock nobody holds ended without
+writing one. No observer decides it by the recorded process identifier, which is only meaningful in
+the PID namespace the runner ran in: a runner started in a sandboxed shell may record 2, a number
+that names an unrelated, living process on the host.
 
 <a id="concept.run-store"></a>
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 import json
@@ -25,6 +26,7 @@ from concorde.distribution.install import InstallError, install, refusal, update
 from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.distribution.tools import platform_key
 from concorde.errors import ERROR_SCHEMA
+from concorde.execution.runs import run_lock
 from concorde.spec.repository_base import SpecError
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
@@ -493,6 +495,10 @@ class InstallTests(unittest.TestCase):
                 }
             )
         )
+        # Its runner holds the run lock, as a live runner does.
+        held = contextlib.ExitStack()
+        self.addCleanup(held.close)
+        held.enter_context(run_lock(run.parent))
         round_ = project / ".concorde/tasks/t2.session/status.json"
         round_.parent.mkdir(parents=True)
         round_.write_text(
@@ -506,13 +512,14 @@ class InstallTests(unittest.TestCase):
                 }
             )
         )
-        # A finished run, a run whose host is gone and the progress file of the running
-        # Operation's own worker do not count as runs of their own.
+        # A finished run, a run whose runner is gone (its process identifier, recorded in a
+        # sandbox's PID namespace, names a live unrelated process here) and the progress file of
+        # the running Operation's own worker do not count as runs of their own.
         for name, state in (
             ("r-0", {"kind": "operation", "phase": "finished", "host_pid": live.pid}),
             (
                 "r-dead",
-                {"kind": "operation", "phase": "running", "host_pid": 999999999},
+                {"kind": "operation", "phase": "running", "host_pid": 1},
             ),
             ("w-1", {"phase": "worker", "host_pid": live.pid, "run_id": "w-1"}),
         ):
@@ -545,6 +552,7 @@ class InstallTests(unittest.TestCase):
             self.assertEqual(1, message.count("operation run"))
             self.assertEqual(receipt, (project / ".concorde/install.json").read_bytes())
             self.assertFalse((project / ".concorde/update.json").exists())
+        held.close()
         live.kill()
         live.wait()
         install(project, package, pi_runtime=False, d2=False, dependencies=False)

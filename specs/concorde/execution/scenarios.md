@@ -110,7 +110,15 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - WHEN it runs and finishes
 - THEN its `status.json` names the kind, the Operation, the workspace, the current step and the runner process while it runs
 - AND once finished it holds the result's status and summary
-- AND the worker run it launched records the same runner process in its own [progress file](../glossary.json#concept.progress-file)
+- AND the worker run it launched records the run's identity in its own [progress file](../glossary.json#concept.progress-file)
+- AND the run's [run lock](../glossary.json#concept.run-lock) is held from before its first `status.json` until after its result, and free once it ended
+
+### scenario.execution.run-lock — A dead runner is told by its run lock
+
+- GIVEN a run with a [run progress file](../glossary.json#concept.run-progress-file) still `running` and no result, whose runner ran in another PID namespace and recorded a process identifier that names a living, unrelated process where the run is observed
+- WHEN an observer, such as the run state of a task or workflow step, the installer or the main session's [run view](../glossary.json#concept.run-view), asks whether it still runs
+- THEN it is running only while its [run lock](../glossary.json#concept.run-lock) is held, from whichever PID namespace the observer looks
+- AND once the runner ended without writing a result, the run is lost, whatever process now has the recorded identifier
 
 ### scenario.execution.host-error — A step raises an error
 

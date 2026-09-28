@@ -476,6 +476,19 @@
       ]
     },
     {
+      "id": "concept.run-lock",
+      "title": "Run lock",
+      "owner": "module.execution",
+      "definition": "The file lock on a run's directory that its runner holds from before its first run progress file until after its result, by which any observer tells, from any PID namespace, whether the run still runs.",
+      "explanation": "specs/concorde/execution/module.md#concept.run-lock",
+      "contrasts": [
+        {
+          "target": "concept.workspace-lock",
+          "reason": "the workspace lock keeps one workspace running one thing at a time; the run lock tells whether one run's runner still lives"
+        }
+      ]
+    },
+    {
       "id": "concept.run-progress-file",
       "title": "Run progress file",
       "owner": "module.execution",
