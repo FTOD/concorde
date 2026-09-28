@@ -93,7 +93,9 @@ def main(argv=None) -> int:
         where = f"field {error.field}: " if error.field else ""
         return refuse("invalid_issue", f"{where}{error}", REFUSED, error)
     except SpecError as error:
-        return refuse(error.code, str(error), REFUSED, error)
+        # A file transaction reports a write the operating system refused as system_error.
+        code = "io_error" if error.code == "system_error" else error.code
+        return refuse(code, str(error), REFUSED, error)
     except OSError as error:
         return refuse(
             "io_error", f"{error.filename or 'file'}: {error.strerror}", REFUSED
