@@ -65,6 +65,14 @@ which task's goal, Modules, branch and base it works on, and one workspace runs 
 The guidance SHALL tell the main agent to record every result that is not `ok` and every decision
 made without the developer in the task's [decision log](../../glossary.json#concept.decision-log).
 
+### req.main-session.project-terms — Sessions use the project's terms exactly
+
+The guidance SHALL tell the main agent and every task session to use each project term exactly as its glossary entry defines it.
+
+### req.main-session.terms-in-context — Sessions start with the glossary
+
+Every Claude Code and pi session in a worktree of a project that declares a glossary SHALL hold every entry of that worktree's glossary in its context from its first prompt.
+
 ### req.main-session.merge-without-authorization — Delivered tasks are merged
 
 The guidance SHALL tell the main agent to merge a task branch that `delivery` committed without

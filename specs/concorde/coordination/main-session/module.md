@@ -62,6 +62,15 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   someone's change.
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
+- **Use the project's terms.** Every session of the project starts with all the terms of its
+  worktree's glossary: in Claude Code the Concorde block of `CLAUDE.md` imports the glossary file,
+  which Claude Code loads at launch, and in pi Concorde's extension adds the terms, read afresh, to
+  the system prompt of every prompt, in main and task sessions alike. The guidance tells the main
+  agent and every task session to use each term exactly as defined, with the developer and in task
+  goals, decision logs, escalations, commit messages and Specs; never to coin a synonym; and to
+  raise a missing or no longer fitting definition instead of working around it, changing the
+  glossary through a task. A SessionStart hook could not carry the terms: Claude Code cuts a hook's
+  output at 10,000 characters, while a project's glossary is usually longer.
 
 A representative flow, agreeing a payments retry limit:
 

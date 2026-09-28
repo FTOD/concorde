@@ -17,10 +17,22 @@ are in, which the installer placed (in Concorde's own source checkout it is
 ## Discuss first
 
 Talk with the developer about the state of the project and answer questions from the Specs under
-`specs/` (start at the root Module's `module.md` and the shared vocabulary). Agree the direction
+`specs/` (start at the root Module's `module.md`). Agree the direction
 and the large plan before changing anything. `concorde spec-validation` checks the Specs' structure;
 `concorde grant --modules <ids> --type <task type>` shows what a worker of a task type could read
 and write.
+
+## Project terms
+
+The project defines each of its terms once, in the glossary its root Module declares, and your
+session starts with all of them: Claude Code loads the glossary through the import in `CLAUDE.md`,
+and in pi Concorde's extension adds the terms to every prompt. Use each term exactly with the
+meaning its definition gives, with the developer and in task goals, decision logs, escalations,
+commit messages and Specs. Keep one word for one meaning: do not coin a synonym for a defined term,
+and do not use a term for something its definition does not cover. When you need a word the
+glossary lacks, or a definition no longer fits how the project works, say so to the developer and
+change the glossary in a task, by the owner of the term. When the developer uses a term in another
+sense, point out the difference before acting on it.
 
 ## Split work into tasks
 

@@ -37,6 +37,10 @@ that reads the envelope reach the same conclusion.
 
 ## Installation
 
+### req.distribution.glossary-import — The CLAUDE.md block imports the glossary
+
+The installed `CLAUDE.md` block SHALL import the glossary the project's registry declares, and nothing when none is declared.
+
 ### req.distribution.receipt-complete — The receipt names every owned file
 
 The installer's receipt SHALL list every file Concorde owns in the project, whether or not this install wrote it, and apart from them the project files it only amends.

@@ -9,6 +9,9 @@ context; follow it in full:
 
 @DEVELOPING.md
 
+The project's terms, which the "Project terms" rule of `DEVELOPING.md` asks you to use exactly as
+defined, are loaded from its glossary: @specs/concorde/glossary.json
+
 ## Main session
 
 For a single task:

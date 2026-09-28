@@ -82,6 +82,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
 - BUT no Spec document, registry or [Protocol binding](../glossary.json#concept.protocol-binding) of the project changed
 
+### scenario.distribution.glossary-import — The CLAUDE.md block imports the project's glossary
+
+- GIVEN a project in which Concorde is installed
+- WHEN `concorde init --apply` creates the project's first glossary, or an install or update finds one declared
+- THEN the Concorde block of `CLAUDE.md` imports that glossary with `@<path>`, once, so Claude Code loads every term at launch
+- BUT before any glossary is declared the block imports nothing, and the rest of `CLAUDE.md` is kept
+
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
 
 - GIVEN a project whose `.claude/settings.json` has its own permission rules, and a receipt recording a rule the new package no longer ships

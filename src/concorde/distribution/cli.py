@@ -231,9 +231,14 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                 "target_id": arguments.target,
                 **({"python": arguments.python} if arguments.python else {}),
             }
-        return ToolResult(
-            "init", ".", "success", result=initialize(root, package, data)
-        )
+        result = initialize(root, package, data)
+        if data["action"] == "apply":
+            # The first glossary now exists: the installed CLAUDE.md block imports it, so every
+            # Claude Code session starts with the project's terms.
+            from .install import refresh_glossary
+
+            refresh_glossary(root)
+        return ToolResult("init", ".", "success", result=result)
     if arguments.tool == "registry":
         from ..spec.registry import registry_command
 

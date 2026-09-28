@@ -87,6 +87,70 @@ export function primaryRoot(cwd: string): string {
   }
 }
 
+/** The worktree a session works in: Git's top level of its directory, or the directory itself. */
+export function worktreeRoot(cwd: string): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return cwd;
+  }
+}
+
+interface GlossaryEntry {
+  id: string;
+  title: string;
+  owner: string;
+  definition: string;
+}
+
+/**
+ * The project's terms as a system-prompt section: every entry of the glossary the root Module
+ * declares, sorted by title, with the rule to use each exactly as defined. `null` when the
+ * worktree declares no glossary or it cannot be read; a malformed Spec is Spec validation's to
+ * report, never a reason to stop a session.
+ */
+export function glossaryText(root: string): string | null {
+  try {
+    const config = JSON.parse(
+      readFileSync(join(root, ".concorde", "config.json"), "utf-8"),
+    );
+    const registry = JSON.parse(
+      readFileSync(join(root, config.registry ?? ".concorde/specs.json"), "utf-8"),
+    );
+    const declared = (registry.modules ?? []).find(
+      (record: Record<string, unknown>) => typeof record.glossary === "string",
+    );
+    if (!declared) return null;
+    const path: string = declared.glossary;
+    const concepts: GlossaryEntry[] = JSON.parse(
+      readFileSync(join(root, path), "utf-8"),
+    ).concepts;
+    const lines = [...concepts]
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .map(
+        (entry) =>
+          `- **${entry.title}** (\`${entry.id}\`, ${entry.owner}): ` +
+          entry.definition.replace(/\[([^\]]*)\]\(#[^)]*\)/g, "$1"),
+      );
+    return (
+      "## Project terms\n\n" +
+      `This project defines each of its terms once, in its glossary \`${path}\`. Use every ` +
+      "term exactly with the meaning given here, with the developer and in task goals, " +
+      "decision logs, escalations, commit messages and Specs. Do not coin a synonym for a " +
+      "defined term or use one in another sense; when a word you need is missing or its " +
+      "definition no longer fits, say so and change the glossary through a task.\n\n" +
+      lines.join("\n") +
+      "\n"
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function runsDirectory(root: string): string {
   return join(root, ".concorde", "runs");
 }

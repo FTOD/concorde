@@ -5,7 +5,9 @@ Claude Code follows `CLAUDE.md` for its host workflow.
 
 Read [DEVELOPING.md](DEVELOPING.md) in full before working on this source checkout; pi does not
 import files named in `AGENTS.md`, so open it with the read tool. It contains shared development
-rules, preparation, verification, delivery, merge checks and defect handling.
+rules, preparation, verification, delivery, merge checks and defect handling. Also read
+`specs/concorde/glossary.json`: the "Project terms" rule of `DEVELOPING.md` asks you to use every
+term exactly as the glossary defines it.
 
 ## Main session
 

@@ -404,5 +404,95 @@ class TaskSessionViewTests(unittest.TestCase):
         self.assertIn("ended without recording", gone["preview"])
 
 
+@unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_runs.ts")
+class ProjectTermsTests(unittest.TestCase):
+    """The project's terms the pi extension adds to every session's system prompt."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(os.path.realpath(directory.name))
+        (self.root / ".concorde").mkdir()
+        (self.root / ".concorde/config.json").write_text(
+            json.dumps({"registry": ".concorde/specs.json"})
+        )
+
+    def registry(self, **root_fields):
+        (self.root / ".concorde/specs.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "modules": [
+                        {"id": "module.child", "entry": "specs/child/module.md"},
+                        {
+                            "id": "module.root",
+                            "entry": "specs/root/module.md",
+                            **root_fields,
+                        },
+                    ],
+                }
+            )
+        )
+
+    def terms(self):
+        probe = self.root / "probe.mts"
+        probe.write_text(
+            f"import {{ glossaryText }} from {json.dumps(SOURCE.as_posix())};\n"
+            f"console.log(JSON.stringify(glossaryText({json.dumps(self.root.as_posix())})));\n"
+        )
+        completed = subprocess.run(
+            ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        return json.loads(completed.stdout)
+
+    @verifies("scenario.main-session.project-terms")
+    def test_every_term_is_given_with_the_rule_to_use_it_exactly(self):
+        self.registry(glossary="specs/root/glossary.json")
+        (self.root / "specs/root").mkdir(parents=True)
+        (self.root / "specs/root/glossary.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "concepts": [
+                        {
+                            "id": "concept.worker",
+                            "title": "Worker",
+                            "owner": "module.child",
+                            "definition": "One process under a [grant](#concept.grant).",
+                            "explanation": "specs/child/module.md#concept.worker",
+                        },
+                        {
+                            "id": "concept.grant",
+                            "title": "Grant",
+                            "owner": "module.root",
+                            "definition": "What a worker may read and write.",
+                            "explanation": "specs/root/module.md#concept.grant",
+                        },
+                    ],
+                }
+            )
+        )
+        text = self.terms()
+        self.assertIn("glossary `specs/root/glossary.json`", text)
+        self.assertIn("Use every term exactly with the meaning given here", text)
+        grant = text.index("- **Grant** (`concept.grant`, module.root): What a worker")
+        worker = text.index(
+            "- **Worker** (`concept.worker`, module.child): One process under a grant."
+        )
+        self.assertLess(grant, worker)
+
+    @verifies("scenario.main-session.project-terms")
+    def test_a_project_without_a_readable_glossary_adds_nothing(self):
+        self.registry()
+        self.assertIsNone(self.terms())
+        self.registry(glossary="specs/root/glossary.json")
+        self.assertIsNone(self.terms())
+
+
 if __name__ == "__main__":
     unittest.main()

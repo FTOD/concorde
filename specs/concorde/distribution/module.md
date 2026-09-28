@@ -106,7 +106,9 @@ Concorde-owned defaults only where absent, the
 [main-session guidance](../glossary.json#concept.main-session-guidance) as the project skill
 `.claude/skills/concorde/SKILL.md` and a block between `<!-- concorde:start -->` and
 `<!-- concorde:end -->` in the project's `CLAUDE.md` — replaced in place on a later install, leaving
-the rest of the file untouched — and the `d2` release `concorde.json` pins, placed at
+the rest of the file untouched, and ending with an `@<path>` import of the project's glossary once
+one is declared, which `concorde init --apply` also adds when it creates the first glossary — and
+the `d2` release `concorde.json` pins, placed at
 `.concorde/tools/d2`, checked against its SHA-256 before anything else is written and kept on a
 later install with the same pin
 ([requirements](requirements.md#req.distribution.installer-pinned-d2), `--without-d2` skips it);

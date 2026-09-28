@@ -26,6 +26,14 @@ Situations the [main-session guidance](module.md) prepares the
 - AND a run whose runner process ended without finishing shows `failed`
 - AND the message the main agent is given for a finished run names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file
 
+### scenario.main-session.project-terms — Every session starts with the project's terms
+
+- GIVEN a project whose root Module declares a glossary
+- WHEN a Claude Code or pi session starts in one of its worktrees
+- THEN the session holds every term of that worktree's glossary with its identity, owner and definition
+- AND the guidance tells it to use each term exactly as defined, with the developer and in task goals, decision logs, escalations, commit messages and Specs
+- BUT a project without a readable glossary starts the session without terms and without an error
+
 ### scenario.main-session.change-through-task — The guidance routes an agreed change through a task
 
 - GIVEN the rendered [main-session guidance](../../glossary.json#concept.main-session-guidance)
