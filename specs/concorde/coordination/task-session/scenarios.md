@@ -76,6 +76,14 @@ defined in the [contracts](contracts.md).
 - AND a pi that ignores SIGTERM is killed with its process group 3 seconds later, and the round is recorded `stopped` as well
 - BUT `--stop` when no round runs is refused with `session_idle`
 
+### scenario.task-session.pi-wait — Wait for a round without the run view
+
+- GIVEN a pi task session with a running round
+- WHEN the main agent runs `concorde task session severity --wait`
+- THEN the command returns once the round has ended, printing the session with the round's recorded outcome
+- AND with `--wait 1` it returns after a second, the round still `running`
+- BUT `--wait` for a task without a pi session is refused with `no_session`, and for a Claude Code session with `invalid_input`
+
 ### scenario.task-session.boundary — The session's boundary confines its writes
 
 - GIVEN the settings written for a task session

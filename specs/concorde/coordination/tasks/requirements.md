@@ -205,9 +205,11 @@ delivery commit.
 ### req.tasks.merge-workspace-locked — No run of a task changes it while it is merged or closed
 
 `concorde task merge` and `concorde task close` SHALL hold the task's
-[workspace lock](../../glossary.json#concept.workspace-lock), taken without waiting after the merge
-lock and held to the end, and refuse with `workspace_busy`, naming the lock's holder and changing
-nothing, when a run holds it.
+[workspace lock](../../glossary.json#concept.workspace-lock), taken before the merge lock and held
+to the end, waiting for it inside the command up to `--wait` seconds, and refuse with
+`workspace_busy`, naming the lock's holder and changing nothing, when a run still holds it then.
+
+Neither holds the merge lock while it waits for the workspace lock.
 
 ### req.tasks.merge-serialized — One merge into the primary at a time
 

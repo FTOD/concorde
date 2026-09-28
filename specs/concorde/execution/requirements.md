@@ -80,7 +80,15 @@ from before its first step until after its result is written.
 ### req.execution.workspace-busy — A busy workspace refuses a run
 
 The runner SHALL refuse with `workspace_busy` a run of a workspace whose lock another process
-holds.
+holds, at once or, with `--wait <seconds>`, once the lock is still held after that many seconds.
+
+### req.execution.workspace-wait — A waiting run waits in its own process
+
+With `--wait <seconds>`, the runner SHALL wait for a busy workspace's lock inside its own process
+and start the run's steps as soon as the lock is free within that time.
+
+While it waits, its run progress file names the step `workspace-lock` and, in `waiting_for`, the
+run holding the lock.
 
 ### req.execution.unbound-read-only — Only a definition that allows it runs unbound
 

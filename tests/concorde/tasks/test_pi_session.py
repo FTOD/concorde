@@ -380,6 +380,30 @@ class PiSessionTests(unittest.TestCase):
             pi_session.answer(self.root, "t2", "more")
         self.assertEqual("no_session", raised.exception.code)
 
+    @verifies("scenario.task-session.pi-wait")
+    def test_wait_returns_once_the_round_has_ended(self):
+        self.open("t1", {"sleep": 2})
+        self.start("t1")
+        # With a limit, the command returns while the round still runs.
+        limited = pi_session.wait(self.root, "t1", 0.2)
+        self.assertEqual("running", limited["rounds"][0]["status"])
+        status, value = self.command("session", "t1", "--wait", "0.2", client="pi")
+        self.assertEqual((0, "running"), (status, value["rounds"][0]["status"]))
+        # Without one, it returns the round's recorded outcome once the round has ended.
+        status, value = self.command("session", "t1", "--wait", client="pi")
+        self.assertEqual(0, status, value)
+        [ended] = value["rounds"]
+        self.assertEqual(
+            ("failed", "session_no_report"), (ended["status"], ended["error"]["code"])
+        )
+        self.assertEqual(value, pi_session.latest(store.load_task(self.root, "t1")))
+        # A task without a pi session has nothing to wait for.
+        self.open("t2", {})
+        status, value = self.command("session", "t2", "--wait", client="pi")
+        self.assertEqual((1, "no_session"), (status, value["error"]["code"]))
+        status, value = self.command("session", "t1", "--wait", "--stop", client="pi")
+        self.assertEqual((1, "invalid_input"), (status, value["error"]["code"]))
+
     @verifies("scenario.task-session.pi-stop")
     def test_stop_a_running_round(self):
         self.open("t1", {"actions": [["read", {"path": "README.md"}]], "sleep": 60})
@@ -545,7 +569,7 @@ class PiSessionTests(unittest.TestCase):
     @verifies("scenario.task-session.start")
     def test_a_claude_code_session_takes_no_answer_or_stop(self):
         self.open("t1", {})
-        for extra in (("--answer", "yes"), ("--stop",)):
+        for extra in (("--answer", "yes"), ("--stop",), ("--wait",)):
             status, value = self.command("session", "t1", *extra, client="claude")
             self.assertEqual(1, status)
             self.assertEqual("invalid_input", value["error"]["code"])

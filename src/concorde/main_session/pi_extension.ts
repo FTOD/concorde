@@ -401,7 +401,10 @@ export default function (pi: ExtensionAPI) {
       "runs unbound on this worktree and changes no Spec or code. " +
       "It returns at once with the run identity, or with the result when the run has already " +
       "finished; the run appears in the run view, and you are woken with its result when it " +
-      "finishes, within your current turn if you are still in one. Do not poll it. To block " +
+      "finishes, within your current turn if you are still in one. Do not poll it. When " +
+      "another run of the task still holds its workspace, add --wait <seconds> to the " +
+      "arguments to queue this run behind it instead of being refused with workspace_busy. " +
+      "To block " +
       "until every running Concorde run ends, call bg_wait without an id; bg_wait with an id " +
       "sees only subagent runs.",
     promptSnippet:

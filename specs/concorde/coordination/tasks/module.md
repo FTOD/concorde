@@ -199,11 +199,13 @@ primary checkout, so the main agent merges with one command:
 concorde task merge severity
 ```
 
-Tasks takes the **[merge lock](../../glossary.json#concept.merge-lock)** of the primary worktree,
-waiting for it up to `--wait` seconds (default 300), and holds it to the end. It then takes the
-task's [workspace lock](../../glossary.json#concept.workspace-lock) without waiting, so no run of
-the task commits on its branch or changes its worktree while it is merged; a run holding it refuses
-the merge with `workspace_busy`, naming the run. It refuses, before touching anything, a task that
+Tasks first takes the task's [workspace lock](../../glossary.json#concept.workspace-lock), so
+no run of the task commits on its branch or changes its worktree while it is merged, and then the
+**[merge lock](../../glossary.json#concept.merge-lock)** of the primary worktree, and holds both
+to the end. It waits for them inside its own process, up to `--wait` seconds in all (default
+300): a `delivery` of the task that is still finishing is waited for rather than refused, and a
+run still holding the workspace lock after that time refuses the merge with `workspace_busy`,
+naming the run. It refuses, before touching anything, a task that
 could not be closed as merged apart from not being merged yet (`not_merged`,
 `delivery_unverified`, `dirty_worktree`), reading the task's delivery commits from Git, and a
 primary worktree with uncommitted or untracked paths or a detached `HEAD` (`primary_dirty`). The
@@ -259,8 +261,8 @@ a waiting command wakes as soon as it is free. A command that gives up waiting f
 `merge_busy`, naming the holder's command, task, process and start time, which the holder writes
 into the lock file while it holds it. `concorde task open` and `concorde task close` take the same
 lock, so a task is never based on, or closed against, a merge that may still be undone; `close`
-takes the task's workspace lock after it too, refusing with `workspace_busy` while a run of the
-task could still write the worktree it removes.
+takes the task's workspace lock before it, as `merge` does, waiting up to its own `--wait` and then
+refusing with `workspace_busy` while a run of the task could still write the worktree it removes.
 
 Only the main agent opens, merges and closes tasks and starts task sessions, only from the primary
 worktree (`not_primary` otherwise); `concorde task session` is dispatched to
@@ -329,6 +331,12 @@ may belong to another main session with another task in mind. Merging the checke
 identity, and holding the task's workspace lock while merging or closing, keep the commit merged
 the one the checks accepted: a run of the task, such as a delivery started in the task worktree,
 cannot move the branch between the checks and the merge or write a worktree being removed.
+The workspace lock is taken before the merge lock and waited for without the merge
+lock, so that waiting for one task's run never holds up the merges of other tasks; `merge` and
+`close` are the only commands that take both, always in that order, so none waits on another in a
+cycle. The waits happen inside the command because its callers are agents: a refusal they must
+retry would have them poll, paying for every look, where a blocked command costs nothing until
+it returns.
 
 The decision log is free Markdown, since its readers are the main agent and the developer;
 Tasks gives it only a fixed place and lifetime. See the [requirements](requirements.md) and
@@ -411,7 +419,7 @@ relies on Execution only reading it, working on the Modules, branch and base it 
 every run of the workspace in the [run store](../../glossary.json#concept.run-store) of the records
 directory it names, under the workspace's name, and holding the
 [workspace lock](../../glossary.json#concept.workspace-lock) for every bound run, so that Tasks,
-taking the same lock without waiting while it merges or closes the task, knows no run of it is
+holding the same lock, after waiting for a running run to release it, while it merges or closes the task, knows no run of it is
 changing the branch or worktree meanwhile. It reads a run's
 [result](../../glossary.json#concept.run-result) for its status, Modules and error chain, and the
 run's [run progress file](../../glossary.json#concept.run-progress-file) while it runs, whose

@@ -39,10 +39,10 @@ wrong workspace.
 **Running work.** Inside a bound workspace, every run works on that workspace without naming it:
 
 ```text
-concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [operation arguments]
-concorde task-validation [--modules …] [--input …] [--detach]
-concorde delivery        [--adoption] [--detach]
-concorde scaffold        --input <survey run> [--detach]
+concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [operation arguments]
+concorde task-validation [--modules …] [--input …] [--detach] [--wait <s>]
+concorde delivery        [--adoption] [--detach] [--wait <s>]
+concorde scaffold        --input <survey run> [--detach] [--wait <s>]
 ```
 
 An [Operation](../glossary.json#concept.operation) launches AI workers under a
@@ -91,7 +91,12 @@ over the unchanged errors it received. The
 **One run at a time.** A bound run holds the **workspace lock** for its whole life. A second run
 started in the same workspace while the first holds it is refused with `workspace_busy`, naming the
 run that holds it, and a [workflow step](../glossary.json#concept.workflow-step) waits for the
-lock to be free before it starts its run. The lock is a file lock held by the runner's process, so
+lock to be free before it starts its run. `--wait <seconds>` queues a run instead: the runner
+waits for the lock inside its own process, its [run progress
+file](../glossary.json#concept.run-progress-file) naming the run it waits for, starts the moment
+that run ends, and is refused with `workspace_busy` only when the lock is still held after that
+many seconds. A caller that wants a `delivery` after an `implement` thus asks once, and never polls
+the lock. The lock is a file lock held by the runner's process, so
 the kernel releases it however the run ends. The runner writes a run's result before it releases
 the lock, so a run admitted after it always finds that result written; a result on disk, though,
 does not mean the lock is free yet. The lock lies in the run store, not in the workspace, so a run

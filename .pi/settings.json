@@ -1,0 +1,3 @@
+{
+  "extensions": ["../src/concorde/main_session/pi_extension.ts"]
+}

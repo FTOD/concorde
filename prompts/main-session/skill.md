@@ -70,9 +70,14 @@ from the worktree it starts in and never names the task, so run it inside the ta
 kinds of run work on a workspace: an **Operation** (`concorde run <operation>`) launches AI
 workers under a grant; an **execution command** (`concorde task-validation`, `concorde delivery`,
 `concorde scaffold`) is deterministic and launches none. Both are recorded the same way, and one
-workspace runs one of them at a time: a second is refused with `workspace_busy`.
+workspace runs one of them at a time: a second is refused with `workspace_busy`. To queue a run
+behind the one still going, such as a `delivery` after an `implement`, start it with
+`--wait <seconds>`: it waits for the workspace inside its own process and starts the moment the
+other run ends.
 
-Start each run in the background; you are woken when it ends:
+Never wait by polling, with `sleep` loops over status files, `concorde task show` or run results:
+every wait in Concorde either wakes you or is one command that returns when the thing it waits for
+is done. Start each run in the background; you are woken when it ends:
 
 - In Claude Code, run it from the task worktree in background Bash (`run_in_background`).
 - In pi, call the `concorde_run` tool with the Operation or command, the task and the further
@@ -243,7 +248,7 @@ session's boundary (its Edit and Write tools may change only the task worktree a
 and its Bash only the worktree, Git, Concorde's records and package caches; reads and the network
 stay open), starts `claude --bg` with the task's goal and records the session in the task.
 `claude agents` lists them, `claude logs <id>` shows one's recent output and `claude stop <id>`
-stops one. A task session runs in Claude Code's `auto` permission mode, since nobody answers its
+stops one; wait for its message rather than watching them. A task session runs in Claude Code's `auto` permission mode, since nobody answers its
 prompts: a classifier approves or refuses each action, inside the boundary above. Pass `--model`
 only with a model that has `auto` mode; without it the session would wait for answers nobody
 gives.
@@ -261,7 +266,10 @@ report, and you are woken with its outcome: `delivered` with the delivery commit
 the numbers of the escalations it recorded, whose chains `concorde task show <task>` holds, or
 `failed` with its error chain. Answer with the tool's `answer`, which starts the next round with
 your answer as its prompt and the session's whole context; `stop` ends a running round. The run
-view shows each running round with its latest tool call; do not poll it.
+view shows each running round with its latest tool call; do not poll it. If the tool is missing
+because Concorde's pi extension is not loaded, run the same command with bash and wait for each
+round with `concorde task session <task> --wait` in bash without a timeout: it returns the session
+once the round has ended, with its outcome.
 
 Either way, a task session decides ordinary questions within its task and escalates the rest with
 `concorde task escalate <task> --by task-session …`. Answer what you may decide yourself, and pass
@@ -276,10 +284,15 @@ without asking the developer for authorization. Never merge a task with `git mer
 other main sessions may be merging into the same primary worktree, and `concorde task merge` takes
 the merge lock that lets only one merge run at a time. It merges the branch, runs
 `concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first), undoes the
-merge if a check fails, and closes the task as merged. When it fails with `merge_busy`, another
-session is merging: run it again; the lock is free the moment that session's command ends. When
-`merge` or `close` fails with `workspace_busy`, a run of that task is still going: wait until it
-ends (`concorde task show <task>` names it) and run the command again. When it
+merge if a check fails, and closes the task as merged. It waits up to `--wait` seconds (300 by
+default) for the locks it needs: first for a run of the task that is still going, such as a
+`delivery` finishing, then for another session's merge. In Claude Code, run it in background Bash
+(`run_in_background`) like a run, since those waits and its checks can outlast a foreground Bash
+call, and a merge killed while its checks run leaves the task `merging`; in pi, run it with bash
+without a timeout. When it fails with `merge_busy`, another session's merge outlasted the wait:
+run it again. When `merge` or `close` fails with `workspace_busy`, a run of that task outlasted
+the wait (`concorde task show <task>` names it): run the command again with a longer `--wait`.
+When it
 fails with `merge_conflict`, go back into the task worktree, merge the primary branch into the task
 branch, resolve the conflicts, run `task-validation` and `delivery` again, and merge again. A check that
 fails after merging (`check_failed`) is new work, in the task or a new one, never a reason to

@@ -49,6 +49,8 @@ POLICY_MARKER = "const POLICY: SessionPolicy = {} as SessionPolicy;"
 REPORT_TOOL = "concorde_report"
 GO = b"go\n"
 STOP_WAIT = 15.0
+# How often `--wait` reads the task record again, inside its own process.
+WAIT_POLL = 1.0
 # How long a stopped round's pi may clean up after SIGTERM before its group is killed.
 STOP_GRACE = 3.0
 TEXT = 160
@@ -593,6 +595,33 @@ def stop(here: Path, task_id: str) -> dict:
     return next(item for item in record["sessions"] if item.get("id") == found["id"])
 
 
+def wait(here: Path, task_id: str, limit: float | None = None) -> dict:
+    """Wait until no round of the task's latest pi session runs; the session as it then stands.
+
+    The wait happens inside this process, reading the record the supervisor writes when the round
+    ends, so a main session without the run view asks once instead of polling. A round whose
+    supervisor ended without recording it is recorded ``failed`` with ``session_supervisor_lost``.
+    With ``limit``, the session is returned after that many seconds even if its round still runs.
+    """
+    primary = store.require_primary(here)
+    record = settle(primary, store.load_task(primary, task_id))
+    found = latest(record)
+    if found is None:
+        raise store.TaskError(
+            "no_session",
+            f"task {task_id} has no pi task session; start one with concorde task session "
+            f"{task_id}",
+        )
+    deadline = None if limit is None else time.monotonic() + limit
+    while running(found) and (deadline is None or time.monotonic() < deadline):
+        time.sleep(WAIT_POLL)
+        record = settle(primary, store.load_task(primary, task_id))
+        found = next(
+            item for item in record["sessions"] if item.get("id") == found["id"]
+        )
+    return found
+
+
 # The supervisor ---------------------------------------------------------------------------------
 
 
@@ -872,5 +901,6 @@ __all__ = [
     "start",
     "stop",
     "verify",
+    "wait",
     "write_boundary",
 ]

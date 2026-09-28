@@ -29,6 +29,7 @@ program and configuration.
 concorde task session severity --main concorde-7d      # start one
 concorde task session severity --answer "<answer>"     # pi: start the next round
 concorde task session severity --stop                  # pi: stop the running round
+concorde task session severity --wait                  # pi: wait until the running round ends
 ```
 
 The command belongs to the `concorde task` family, which [Tasks](../tasks/module.md) runs: its
@@ -58,9 +59,9 @@ as its first prompt, and appends the started session to the record. `--main` is 
 without it is refused with `invalid_input`. `--dry-run` writes the boundary and prints the command
 without starting anything. A task that is closed or failed, a missing worktree, or a Claude Code
 that does not report a started background session is refused (`task_closed`, `missing_worktree`,
-`session_failed`) with Claude Code's output in the detail. `--answer` and `--stop` are refused
-(`invalid_input`): a Claude Code task session receives the main agent's answers through SendMessage
-and is stopped with `claude stop`.
+`session_failed`) with Claude Code's output in the detail. `--answer`, `--stop` and `--wait` are
+refused (`invalid_input`): a Claude Code task session receives the main agent's answers and sends
+its reports through SendMessage and is stopped with `claude stop`.
 
 <a id="concept.session-round"></a><a id="concept.session-report"></a>
 
@@ -96,7 +97,15 @@ sessions starts the next round on the same session file, so the session continue
 context and the answer as its prompt. `--answer` is refused while a round runs (`session_busy`) or
 when the task has no pi session (`no_session`), and `--stop` when no round runs (`session_idle`). A
 start while a round runs is refused with `session_busy`; after the last round ended, a start begins
-a new session. `--dry-run` writes the boundary and prints the command without starting anything. A
+a new session. `--dry-run` writes the boundary and prints the command without starting anything.
+
+The main session's [run view](../../glossary.json#concept.run-view) wakes the main agent when a
+round ends. A main agent without it, such as a pi session that has not loaded Concorde's pi
+extension, waits with `--wait [<seconds>]` instead of polling: the command waits inside its own
+process until no round of the task's latest pi session runs and prints the session with the
+round's recorded outcome, at once when none runs. With `<seconds>` it returns after that time even
+while the round still runs, showing it `running`. Like `--answer` and `--stop`, it records a round
+whose supervisor was lost, and it is refused with `no_session` when the task has no pi session. A
 task that is closed or failed, a missing worktree, a missing program (`pi`, and on Linux `bwrap`
 and `socat`) or sandbox-runtime package, or a supervisor that does not start is refused
 (`task_closed`, `missing_worktree`, `session_failed`), naming everything that is missing, and

@@ -13,8 +13,8 @@ the [workspace binding contract](contracts.md#contract.execution.workspace-bindi
 ## Command lines
 
 ```text
-concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [operation arguments]
-concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [command arguments]
+concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [operation arguments]
+concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [command arguments]
 ```
 
 - `<operation>` is a name from the [Operation catalog](../glossary.json#concept.operation-catalog);
@@ -32,6 +32,9 @@ concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--det
 - Each `--input` names a run whose result is `ok` and whose workspace is this run's workspace, or,
   for an unbound run, a run without a workspace; its saved `output` is admitted, with its name, as
   material of the run. Any other run is refused with `input_not_admissible`.
+- `--wait <seconds>` (default 0) is how long a bound run waits for a busy workspace's lock before
+  it is refused with `workspace_busy`; a negative value is a command-line error. An unbound run
+  takes no lock and ignores it.
 - Operation and command arguments are defined by the definition and parsed with the rest; an
   unknown argument is a command-line error.
 - Without `--detach`, standard output receives exactly the
@@ -73,7 +76,7 @@ each worker launch's [run record](../glossary.json#concept.run-record) beside it
 | --- | --- | --- |
 | 1 | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity, the run's directory and its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
 | 2 | Refuse a binding that could not be read, breaks the binding contract or names another root | an unreadable, invalid or misplaced binding (`failed`) |
-| 3 | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock); for an unbound run, refuse a definition that needs a binding, then create the [unbound checkout](#unbound-checkout) and work in it from here on | `workspace_busy`, `binding_required`, `checkout_unavailable` (`failed`) |
+| 3 | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock), waiting for it up to `--wait` seconds (none by default); for an unbound run, refuse a definition that needs a binding, then create the [unbound checkout](#unbound-checkout) and work in it from here on | `workspace_busy`, `binding_required`, `checkout_unavailable` (`failed`) |
 | 4 | Admit the run: settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
 | 5 | Execute the definition's steps in order | a step stops the run with a status |
 | 6 | Remove an unbound run's checkout, then compose the run result from the step outcomes and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
@@ -173,7 +176,8 @@ created, before each step and when the result is written:
 | `run_id`, `name`, `workspace`, `worktree`, `modules` | the run's identity, definition, workspace (null when unbound), the worktree it works in (an unbound run's checkout once it exists) and Modules |
 | `commit` | the commit an unbound run examines once its checkout exists; null otherwise |
 | `phase` | `running`, then `finished` once `result.json` is written |
-| `step` | the step running now, or null |
+| `step` | the step running now, `workspace-lock` while the run waits for the workspace lock, or null |
+| `waiting_for` | the run holding the workspace lock while this run waits for it; null otherwise |
 | `status`, `summary` | null while running; the result's status and summary once finished |
 | `host_pid` | the runner's process identifier, which every worker run it launches records too |
 | `started_at`, `updated_at` | UTC times |

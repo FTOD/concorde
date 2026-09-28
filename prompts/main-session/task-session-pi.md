@@ -22,7 +22,10 @@ own source checkout it is `python3 scripts/concorde.py`).
 @prompts/main-session/common/in-task.md
 
 Run each `concorde` command, Operations included, in the foreground with bash and wait for its
-result: this session has no background runs, and a round ends only with your report.
+result: this session has no background runs, and a round ends only with your report. Give bash
+no timeout for them, since `task-validation` and `delivery` run every configured check and an
+Operation runs a worker, each of which may take many minutes; a timeout kills the run half done.
+Never wait for anything with `sleep` loops.
 
 Concorde's boundary is on: `write` and `edit` refuse any path outside the task worktree and its
 decision log, and bash commands may write only the worktree, the repository's Git directory,

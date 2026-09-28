@@ -46,6 +46,7 @@ FILES = (
     ".concorde/config.json",
     ".concorde/specs.json",
     ".github/workflows/deploy-docsite.yml",
+    ".pi/settings.json",
 )
 
 

@@ -55,7 +55,11 @@ REFUSALS = {
         "decision",
         "one workspace runs one Operation or command at a time; waiting for the running one or "
         "cancelling it is the caller's decision",
-        ["wait for the running run to finish", "cancel it, then run this one again"],
+        [
+            "start this run again with --wait <seconds>, which waits for the lock inside the "
+            "runner and starts as soon as the running run ends, instead of polling",
+            "cancel the running run, then run this one again",
+        ],
     ),
     "modules_removed": (
         "input",
@@ -168,9 +172,13 @@ def parse(kind: str, name: str, words) -> tuple[argparse.Namespace, Provider]:
     command.add_argument("--modules")
     command.add_argument("--input", action="append", default=[])
     command.add_argument("--detach", action="store_true")
+    command.add_argument("--wait", type=float, default=0.0)
     if chosen.add_arguments:
         chosen.add_arguments(command)
-    return command.parse_args(list(words)), chosen
+    arguments = command.parse_args(list(words))
+    if arguments.wait < 0:
+        raise UsageError(f"{command.prog}: --wait {arguments.wait:g} is negative")
+    return arguments, chosen
 
 
 def _named_modules(arguments) -> list[str] | None:
@@ -362,9 +370,16 @@ def execute(
                 if bound is not None:
                     held.enter_context(
                         workspace_lock(
-                            records, bound["workspace"], f"{chosen.name} run {identity}"
+                            records,
+                            bound["workspace"],
+                            f"{chosen.name} run {identity}",
+                            wait=arguments.wait,
+                            waiting=lambda holder: _progress(
+                                context, step="workspace-lock", waiting_for=holder
+                            ),
                         )
                     )
+                    _progress(context, step=None, waiting_for=None)
                 else:
                     checkout = _checkout(chosen, context)
                     # However the runner leaves, the checkout does not outlive it.
@@ -449,6 +464,7 @@ def _progress(context: RunContext, **fields) -> None:
     state.setdefault("started_at", state["updated_at"])
     state.setdefault("phase", "running")
     state.setdefault("status", None)
+    state.setdefault("waiting_for", None)
     temporary = path.with_suffix(".json.tmp")
     try:
         temporary.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
@@ -649,10 +665,14 @@ def _usage(kind: str, name: str | None) -> str:
         from ..operations.catalog import CATALOG
 
         return (
-            "usage: concorde run <operation> [--modules ids] [--input run-id]... [--detach]; "
+            "usage: concorde run <operation> [--modules ids] [--input run-id]... [--detach] "
+            "[--wait seconds]; "
             f"operations: {', '.join(CATALOG)}"
         )
-    return f"usage: concorde {name} [--modules ids] [--input run-id]... [--detach]"
+    return (
+        f"usage: concorde {name} [--modules ids] [--input run-id]... [--detach] "
+        "[--wait seconds]"
+    )
 
 
 def run_main(kind: str, name: str | None, words) -> int:

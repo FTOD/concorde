@@ -759,6 +759,58 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("ok", following["status"])
         self.assertEqual(envelope, self.saved(envelope))
 
+    @verifies("scenario.execution.workspace-wait")
+    def test_a_waiting_run_queues_behind_the_running_one(self):
+        taken, release = threading.Event(), threading.Event()
+
+        def hold():
+            with runs.workspace_lock(self.records, "t1", "implement run r-other"):
+                taken.set()
+                release.wait(60)
+
+        holder = threading.Thread(target=hold)
+        holder.start()
+        self.addCleanup(holder.join)
+        self.addCleanup(release.set)
+        self.assertTrue(taken.wait(10))
+        # A wait the holder outlasts is still refused, saying how long it waited.
+        status, envelope = self.project.run(
+            "task-validation", "--task", "t1", "--wait", "0.3"
+        )
+        self.assertEqual(
+            (1, ["refused", "workspace_busy"]), (status, codes(envelope["error"]))
+        )
+        self.assertIn("after waiting 0 s", json.dumps(envelope["error"]))
+        self.assertIn("--wait <seconds>", json.dumps(envelope["error"]["options"]))
+        # A detached run waits in its own process, naming the run it waits for.
+        status, announced = detach(
+            "command", "task-validation", ["--wait", "60"], cwd=self.worktree
+        )
+        self.assertEqual(0, status, announced)
+        progress = Path(announced["progress"])
+        deadline = time.monotonic() + 30
+        shown = {}
+        while time.monotonic() < deadline:
+            shown = json.loads(progress.read_text())
+            if shown.get("step") == "workspace-lock":
+                break
+            time.sleep(0.05)
+        self.assertEqual(
+            ("running", "workspace-lock", "implement run r-other"),
+            (shown["phase"], shown["step"], shown["waiting_for"].split(" (process")[0]),
+        )
+        self.assertFalse(Path(announced["result"]).exists())
+        release.set()
+        envelope = self.wait_for(Path(announced["result"]))
+        # Once the lock was free the run did its own work: a readiness, not a refusal.
+        self.assertIsNotNone(envelope["output"], envelope)
+        self.assertNotIn(
+            "workspace_busy", [item["ref"] for item in envelope["host_evidence"]]
+        )
+        self.assertIsNone(json.loads(progress.read_text())["waiting_for"])
+        with self.assertRaisesRegex(UsageError, "negative"):
+            execute("command", "task-validation", ["--wait", "-1"], cwd=self.worktree)
+
     @verifies("scenario.execution.binding-refused")
     def test_a_broken_binding_refuses_the_run(self):
         path = self.worktree / binding_file.BINDING

@@ -1,0 +1,213 @@
+{
+  "workspace": "wait-without-polling",
+  "goal": "Let waiting agents wait without polling: load Concorde's pi extension in the source checkout's pi sessions, add a blocking --wait to concorde task session for pi task session rounds, add --wait to runs so a busy workspace lock is waited for in-process instead of refused, and tell Claude Code main agents to run task merge in background Bash (or with a long timeout); update AGENTS.md, CLAUDE.md and the main-session guidance to forbid sleep polling.",
+  "modules": [
+    "module.concorde",
+    "module.task-session",
+    "module.tasks",
+    "module.execution",
+    "module.main-session"
+  ],
+  "sequence": 2,
+  "base_commit": "27453c0041ba6b1ab3afcf9b6f202f63f65d476a",
+  "parent_commit": "f2c4ed288772f4d2adc4ff285496550bba026aa1",
+  "readiness": {
+    "run_id": "r-20260928T175001-delivery-f341e72d",
+    "input_digest": "sha256:d5e9114aaf40f7c0577a592eb1f82d1dfad56e48129e26a90927790680befa9e",
+    "modules": [
+      "module.adoption",
+      "module.checks",
+      "module.code-review",
+      "module.commands",
+      "module.concorde",
+      "module.coordination",
+      "module.delivery",
+      "module.distribution",
+      "module.dogfood-scenarios",
+      "module.dogfooding",
+      "module.e2e",
+      "module.execution",
+      "module.harness",
+      "module.headless-sessions",
+      "module.implementation",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.scaffold",
+      "module.spec",
+      "module.spec-mcp",
+      "module.spec-review",
+      "module.spec-tooling",
+      "module.specification",
+      "module.swe-bench-cases",
+      "module.task-session",
+      "module.tasks",
+      "module.understanding",
+      "module.validation",
+      "module.views",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:0c323036a25dfe5de7b8f4e599a547992c37125f4402d6ea1bc2ce1f5dec0a57"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:27c4c7bc8e80c1623da07f2572a646febcf87ef7b793f83c8a2c739b9a2c1511"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:3626f51ed4d7832bf8add91e740f13a67617f39afe2bdc9c1cc3e25ad8bb8ab1"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:72ce883667dc4b3996c97bea7d4f0572f471edbbd6570c5e3be2e459c3b06758"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:b53309d5a57abd58cbec8772a9a2bc29f18fa73e049b668ffe623c97127171b5"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:2def497619ad9fb4f440ee701324911e276f70096adffb3a135e5852abbe712a"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:1ef126b9c9afadb644fd9044d42a49e77f92b70db4d379d9a75049f86a531a0f"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:b1c6fa5ac69e231819ab19465be60cd0087c531dd8cff590d3fe3ce5083be1aa"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:bf2640b7563ed875eb223371586f5b0a73ca9f5bf16896fa56a61ba1e091229d"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:bf2640b7563ed875eb223371586f5b0a73ca9f5bf16896fa56a61ba1e091229d"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:5b20245db714a0cc0a5daad135d245587411c81e66804b4344e1644084c302bc"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:63d6761f8da03357461eb7cda9dd16caa65e1362fc610bac57a6c333d4c1371d"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:33ea62c3f37bc104d80576cf3f65bc1cd14cd6dc5c388260765fb2aa210cd1f0"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:fef1d98982361dedd8748003288bb3ae323642fbc2ea9b6cb7ba57916f3a990a"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:f78abf340237e3af5519bdab7f0122ae601927d49768094ed8beca0325413d95"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:a2741a9e748deaa4bb16a4465ccf335134f3fec2d6a0e161a19f25c05d42d5fb"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d48d95c7fef583f9258de45995fdb1ebc8abbc53fbfdf8ad410016e6efa3cddc"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:f1133c038bd5f46896d9dfbf00ddfc14aa5e810bcd545b308fa48717b865635c"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:d36386e1ff6f4c3d178e54791d8dc9c5bdc705567b252af370c6af293cffa49e"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:9bac681c26680f6cc270313fb0a27db51303bd60df417968ba55b44bde29075e"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:9bac681c26680f6cc270313fb0a27db51303bd60df417968ba55b44bde29075e"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:9bac681c26680f6cc270313fb0a27db51303bd60df417968ba55b44bde29075e"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:f7fa521a09770645e5e90e4700235ca0f7da1e729fd646033d5ed104db99a7ac"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T174446-task_validation-1f2f870c",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.concorde",
+        "module.task-session",
+        "module.tasks",
+        "module.execution",
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:eb3deb24a8ce03f7d59598bd956fffac8afa0dafd884436810d6eaf7e59874d2"
+    }
+  ],
+  "created_at": "2026-09-28T17:55:27Z"
+}

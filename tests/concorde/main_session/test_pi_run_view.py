@@ -175,8 +175,23 @@ class RunViewTests(unittest.TestCase):
                 host_pid=301,
             )
         )
+        self.status(
+            operation(
+                "r-waiting",
+                kind="command",
+                name="delivery",
+                step="workspace-lock",
+                waiting_for="task-validation run r-command (process 300)",
+                host_pid=302,
+            )
+        )
         self.status(worker("w-1"))
         out = self.probe()
+        self.assertEqual(
+            "waiting for the workspace lock held by task-validation run r-command "
+            "(process 300)",
+            out["r-waiting"]["view"]["currentAction"],
+        )
         command = out["r-command"]
         self.assertEqual([], command["workers"])
         self.assertEqual(

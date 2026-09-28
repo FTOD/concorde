@@ -267,11 +267,18 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - THEN the primary branch holds the checked delivery commit and not the later commit
 - AND closing the task fails with `not_merged`, leaving the task `merging` and saying that `--resume` finishes it once the cause is fixed
 
+### scenario.tasks.merge-waits-for-run — A merge waits for the task's run to end
+
+- GIVEN a delivered task whose [workspace lock](../../glossary.json#concept.workspace-lock) a run that is finishing holds
+- WHEN the main agent runs `concorde task merge` for it
+- THEN the command waits inside its own process, without holding the merge lock, so other tasks can be merged meanwhile
+- AND once the run releases the workspace lock it merges the task, reporting in `waited_seconds` how long it waited
+
 ### scenario.tasks.merge-workspace-busy — A running task is neither merged nor closed
 
 - GIVEN a delivered task whose [workspace lock](../../glossary.json#concept.workspace-lock) a run holds
-- WHEN the main agent runs `concorde task merge` or `concorde task close --completed` for it
-- THEN the command fails at once with `workspace_busy`, naming the run holding the lock
+- WHEN the main agent runs `concorde task merge` or `concorde task close --completed` for it and the run outlasts its `--wait`
+- THEN the command fails with `workspace_busy`, naming the run holding the lock and how long it waited
 - AND the primary branch, the task record and the worktree are unchanged, and the merge lock is free again
 
 ### scenario.tasks.merge-interrupted — An interrupted merge stops the commands that would build on it

@@ -2,7 +2,8 @@
 
 The root [Module](glossary.json#concept.module) binds the files that set up development of this
 checkout: the Python project and lock, the pytest configuration and its evidence plugin, the
-reference initializer, the Claude Code documentation fetcher and the docsite type check. These
+reference initializer, the Claude Code documentation fetcher, the docsite type check and the pi
+project settings that load Concorde's own pi extension here. These
 promises concern how Concorde's own tests and checks run, not what Concorde offers a consumer
 project.
 
@@ -39,6 +40,24 @@ the LangGraph release `uv.lock` locks, and `langgraph-docs` the LangChain docume
 repository, whose LangGraph pages match that release; when the lock moves to another LangGraph
 release, both move with it. `scripts/development/init-references.py` checks them out,
 without their media, at exactly the recorded commits.
+
+## pi main sessions
+
+A pi session in this checkout is a [main agent](glossary.json#concept.main-agent) like one in an
+installed project, and needs the same [run view](glossary.json#concept.run-view) to be woken when a
+run or a [task session](glossary.json#concept.task-session)'s round ends instead of polling for it. This
+checkout has no installed copy of the extension, so `.pi/settings.json` loads the source,
+`src/concorde/main_session/pi_extension.ts` with the modules beside it, as a project extension of
+every worktree of the checkout once pi trusts the project. The extension runs the worktree's
+`python3 scripts/concorde.py` when no installed `concorde` exists, and leaves its run view off in
+a task session; workers run with `--no-extensions` and never load it.
+
+### scenario.concorde.pi-extension-in-checkout — pi sessions in this checkout get the run view
+
+- GIVEN this checkout, its primary worktree or a task worktree
+- WHEN a pi session starts there and trusts the project
+- THEN `.pi/settings.json` loads `src/concorde/main_session/pi_extension.ts`, the same source the installer copies into a project, with the modules it imports beside it
+- AND the session has the `concorde_run` and `concorde_task_session` tools, which wake it when a run or round ends
 
 ## Docsite type check
 

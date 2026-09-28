@@ -24,6 +24,7 @@ export interface RunStatus {
   step: string | null;
   status: "ok" | "blocked" | "failed" | null;
   summary?: string;
+  waiting_for?: string | null;
   host_pid: number;
   started_at: string;
   updated_at: string;
@@ -256,6 +257,9 @@ export function view(
     preview = `failed: the runner (process ${operation.host_pid}) ended without finishing the run`;
   }
   let action = operation.step ?? (finished ? "finished" : "starting");
+  if (!finished && operation.waiting_for) {
+    action = `waiting for the workspace lock held by ${operation.waiting_for}`;
+  }
   if (!finished && worker && worker.phase !== "finished") {
     action += ` · ${worker.task_type} worker (${worker.backend}) round ${worker.round} · ${worker.phase}`;
     if (worker.last_action) {
