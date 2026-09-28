@@ -181,6 +181,64 @@ class ScaffoldTests(AdoptionCase):
         self.assertEqual(before, git(worktree, "status", "--porcelain"))
         self.assertFalse((worktree / "specs/project/checkout").exists())
 
+    @verifies("scenario.scaffold.target-exists")
+    def test_an_existing_target_writes_nothing(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        existing = worktree / "specs/project/checkout/module.md"
+        existing.parent.mkdir()
+        existing.write_text("# Checkout\n")
+        before = git(worktree, "status", "--porcelain", "--untracked-files=all")
+        _status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual("blocked", envelope["status"])
+        self.assertEqual("stale_proposal", envelope["error"]["code"])
+        self.assertIn("specs/project/checkout/", envelope["error"]["detail"])
+        self.assertEqual(
+            before, git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
+        self.assertEqual("# Checkout\n", existing.read_text())
+        self.assertFalse((worktree / "specs/project/inventory").exists())
+
+    @verifies("scenario.scaffold.invalid-not-kept")
+    def test_a_scaffold_that_would_not_validate_keeps_nothing(self):
+        worktree = self.open()
+        broken = json.loads(json.dumps(PROPOSAL))
+        broken["children"][0]["purpose"] = (
+            "Checkout turns a basket into one order, as "
+            "[the missing scenario](module.md#scenario.checkout.missing) says."
+        )
+        status, survey = self.survey(broken)
+        self.assertEqual(0, status, survey)
+        before = git(worktree, "status", "--porcelain", "--untracked-files=all")
+        _status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual("failed", envelope["status"])
+        error = envelope["error"]
+        self.assertEqual("scaffold_invalid", error["code"])
+        # One cause per new structural error: the dangling link in the child's entry and in
+        # the paragraph that introduces the child in its parent's entry.
+        self.assertEqual(
+            [
+                ("spec_finding", "specs/project/checkout/module.md"),
+                ("spec_finding", "specs/project/module.md"),
+            ],
+            [
+                (cause["code"], cause["evidence"][0]["ref"].split(":")[0])
+                for cause in error["causes"]
+            ],
+        )
+        self.assertTrue(
+            all("CONCORDE-LINK-001" in cause["detail"] for cause in error["causes"])
+        )
+        self.assertEqual(
+            before, git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
+        self.assertFalse((worktree / "specs/project/checkout").exists())
+        self.assertFalse((worktree / "specs/project/inventory").exists())
+
     @verifies("scenario.scaffold.refused-input")
     def test_the_scaffold_needs_one_survey_of_its_task(self):
         worktree = self.open()
