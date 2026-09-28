@@ -13,7 +13,9 @@ keep the reasons behind choices made without the developer. Tasks binds each tas
 opens the task and learns what happened in it only from what Execution recorded, the workspace's
 runs and its delivery commits; nothing below the task level reads or writes a task record. When the
 main agent merges a delivered task, Tasks does the merge into the primary branch under a lock, so
-several main sessions never merge at once, and undoes it if the checks that follow fail. Tasks is
+several main sessions never merge at once, and undoes it if the checks that follow fail; it records
+the merge in the task until the checks decided, so a merge interrupted halfway stops every task
+command that would build on it until it is resumed or aborted. Tasks is
 independent of the sessions that work in its tasks: it does not start or follow them, which
 [Task sessions](../task-session/module.md) does, and it does not decide how work is split, which
 tasks run in parallel or when a task is merged. It never runs an
@@ -125,10 +127,11 @@ the reader gets one chain from the question down to where the error started.
 
 <a id="concept.task-state"></a>
 
-**[Task state](../../glossary.json#concept.task-state).** Only closing a task changes its stored
-state: the record says `open` from the open until the task ends, then `closed` or `failed`. Whether
-an open task is still **open**, **active** or **delivered** is derived each time the task is listed
-or shown:
+**[Task state](../../glossary.json#concept.task-state).** Only merging and closing a task change its
+stored state: the record says `open` from the open until the task ends, then `closed` or `failed`,
+and **merging** while `concorde task merge` has put, or is about to put, a merge of the task into
+the primary branch that its checks have not decided yet. Whether an open task is still **open**,
+**active** or **delivered** is derived each time the task is listed or shown:
 
 ```d2 illustrative
 start: "" {shape: circle; width: 16; height: 16; style.fill: black}
@@ -137,11 +140,15 @@ active
 delivered
 closed
 failed
+merging
 start -> open: task open
 open -> active: a run, a commit or a change in the workspace
 active -> delivered: head is a delivery commit, worktree clean
 delivered -> active: a change or a commit after it
-delivered -> closed: task merge, or task close --merged
+delivered -> merging: task merge
+merging -> closed: every check passed
+merging -> delivered: conflict, failed check, or --abort
+delivered -> closed: task close --merged
 open -> closed: task close --completed
 active -> closed: task close --completed
 delivered -> closed: task close --completed
@@ -189,28 +196,67 @@ concorde task merge severity
 ```
 
 Tasks takes the **[merge lock](../../glossary.json#concept.merge-lock)** of the primary worktree,
-waiting for it up to `--wait` seconds (default 300), and holds it to the end. It refuses, before
-touching anything, a task that could not be closed as merged apart from not being merged yet
-(`not_merged`, `dirty_worktree`), reading the task's delivery commits from Git, and a primary
-worktree with uncommitted or untracked paths or a detached `HEAD` (`primary_dirty`). It then runs
-`git merge` there. A conflict is aborted and refused with `merge_conflict`, naming the paths: the
-conflict is resolved in the task worktree by merging the primary branch into the task branch,
-validating and delivering again, never in the primary worktree. After the merge, Tasks runs the
-checks in the primary worktree: `concorde spec-validation` of the merged checkout by default, or
-exactly the `--check` commands given, such as a project that must build first. A failed check, or
-checks that leave uncommitted paths, returns the primary branch with `git reset --keep` to the
-commit it had and refuses with `check_failed`, naming the check, its exit status, its log,
-`.concorde/tasks/<task-id>.merge.log`, and any paths the checks created, which the reset leaves in
-the primary worktree. When everything passed, Tasks closes the task as merged and
-prints the record with the commits before and after, each check, how long it waited and its
-warnings, such as a decision log nobody wrote in.
+waiting for it up to `--wait` seconds (default 300), and holds it to the end. It then takes the
+task's [workspace lock](../../glossary.json#concept.workspace-lock) without waiting, so no run of
+the task commits on its branch or changes its worktree while it is merged; a run holding it refuses
+the merge with `workspace_busy`, naming the run. It refuses, before touching anything, a task that
+could not be closed as merged apart from not being merged yet (`not_merged`, `dirty_worktree`),
+reading the task's delivery commits from Git, and a primary worktree with uncommitted or untracked
+paths or a detached `HEAD` (`primary_dirty`). The branch head those checks accepted, the task's
+latest delivery commit, is the commit it merges: it records the task as **merging**, with the
+primary branch's commit before the merge, that checked commit and the checks it will run, and only
+then runs `git merge <checked commit>` there, never `git merge` of the branch name, which could
+take a commit nobody checked. A conflict is aborted and refused with `merge_conflict`, naming the
+paths: the conflict is resolved in the task worktree by merging the primary branch into the task
+branch, validating and delivering again, never in the primary worktree. After the merge, Tasks
+records the merge commit and runs the checks in the primary worktree: `concorde spec-validation`
+of the merged checkout by default, or exactly the `--check` commands given, such as a project that
+must build first. A failed check, or checks that leave uncommitted paths, returns the primary
+branch with `git reset --keep` to the commit it had and refuses with `check_failed`, naming the
+check, its exit status, its log, `.concorde/tasks/<task-id>.merge.log`, and any paths the checks
+created, which the reset leaves in the primary worktree. When everything passed, Tasks closes the
+task as merged and prints the record with the commits before and after, each check, how long it
+waited and its warnings, such as a decision log nobody wrote in. A merge thus ends with the task
+closed on a checked merge commit or delivered again on the commit the primary branch had; after a
+conflict or a failed check the task is delivered again.
+
+**An interrupted merge.** A merge whose process ends before its checks decided, killed or crashed,
+leaves the task `merging` and perhaps an unchecked merge commit at the head of the primary branch.
+The kernel has released the merge lock, so nothing but the record says that the primary branch is
+not to be built on. Every task command that changes something therefore looks for a `merging`
+task first: while no live process holds the merge lock, `open`, `merge`, `close`, `session` and
+`escalate`, in any main session and for any task, refuse with `merge_incomplete`, naming the task,
+the commit before the merge, the merge commit, where the primary branch is now and the two ways
+out; `task list` and `task show` still answer, showing the task as `merging`, and so does
+`session --stop`, which only ends a round. The main agent finishes the merge with one of:
+
+```text
+concorde task merge severity --resume
+concorde task merge severity --abort
+```
+
+`--resume` reruns the checks the merge recorded on the merge commit, when the primary branch's head
+is still that commit, then closes the task as merged or undoes the merge and refuses with
+`check_failed` exactly as an uninterrupted merge does; with any other head it refuses with
+`not_resumable`. `--abort` aborts a `git merge` left in progress, resets the primary branch to the
+commit before the merge when its head is the merge commit, leaving it alone when it already is
+that commit, and returns the task to delivered. Both take the merge lock and the workspace lock like
+a merge, and both refuse with `merge_diverged`, touching nothing, when the primary worktree is on
+another branch or its head is neither of those commits, since Tasks never resets commits it did
+not make. A merge that is still running is not interrupted: its process holds the merge lock, so
+`open`, `merge` and `close` wait for it and answer `merge_busy`, a `session` or `escalate` of the
+task being merged answers `merge_busy` at once, and those of other tasks go ahead. A reset that
+Git refuses (`rollback_failed`) and a close that fails after the checks passed also leave the task
+`merging`, and their refusals say to `--abort` or to `--resume` once the cause is fixed.
 
 The lock is a `flock` held by the command's own process, so no session has to release it or
 announce that it is done: the kernel releases it when the process ends, even when it is killed, and
 a waiting command wakes as soon as it is free. A command that gives up waiting fails with
 `merge_busy`, naming the holder's command, task, process and start time, which the holder writes
 into the lock file while it holds it. `concorde task open` and `concorde task close` take the same
-lock, so a task is never based on, or closed against, a merge that may still be undone.
+lock, so a task is never based on, or closed against, a merge that may still be undone; `close`
+takes the task's workspace lock after it too, refusing with `workspace_busy` while a run of the
+task could still write the worktree it removes.
 
 Only the main agent opens, merges and closes tasks and starts task sessions, only from the primary
 worktree (`not_primary` otherwise); `concorde task session` is dispatched to
@@ -267,7 +313,20 @@ process, which is why merging, checking, undoing and closing are one command ins
 main agent issues one by one, and why conflicts are resolved in the task worktree: the lock is then
 held for the seconds a merge and its checks take, not for however long a resolution takes. Holding
 it also for `open` and `close` keeps both from reading a primary branch whose merge might still be
-reset. The decision log is free Markdown, since its readers are the main agent and the developer;
+reset.
+
+The lock alone cannot cover a merge whose process dies: the kernel releases the lock at once, and
+the next command would build on a merge commit no check accepted. So the merge writes `merging`
+into the record before `git merge` runs, and that stored state, not the lock, is what the other
+commands read; together they tell a merge that is still running (the lock is held) from one that
+was interrupted (it is not). The recovery is left to the main agent rather than done by the next
+command that notices, because checking again and undoing are both legitimate and the next command
+may belong to another main session with another task in mind. Merging the checked commit by its
+identity, and holding the task's workspace lock while merging or closing, keep the commit merged
+the one the checks accepted: a run of the task, such as a delivery started in the task worktree,
+cannot move the branch between the checks and the merge or write a worktree being removed.
+
+The decision log is free Markdown, since its readers are the main agent and the developer;
 Tasks gives it only a fixed place and lifetime. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
@@ -332,7 +391,7 @@ lock: Execution / Workspace lock
 commits: Delivery / Delivery commit
 store -> binding: writes when a task opens
 store -> runstore: reads the workspace's runs from
-store -> lock: shows the holder of
+store -> lock: holds while merging or closing, shows the holder of
 store -> commits: reads from the task branch
 ```
 
@@ -344,7 +403,9 @@ store -> commits: reads from the task branch
 relies on Execution only reading it, working on the Modules, branch and base it names, recording
 every run of the workspace in the [run store](../../glossary.json#concept.run-store) of the records
 directory it names, under the workspace's name, and holding the
-[workspace lock](../../glossary.json#concept.workspace-lock) for every bound run. It reads a run's
+[workspace lock](../../glossary.json#concept.workspace-lock) for every bound run, so that Tasks,
+taking the same lock without waiting while it merges or closes the task, knows no run of it is
+changing the branch or worktree meanwhile. It reads a run's
 [result](../../glossary.json#concept.run-result) for its status, Modules and error chain, and the
 run's [run progress file](../../glossary.json#concept.run-progress-file) while it runs, whose
 runner liveness tells a `running` run from a `lost` one; it never writes either. A run that is

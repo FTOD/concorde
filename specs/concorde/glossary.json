@@ -1133,7 +1133,7 @@
       "id": "concept.task-state",
       "title": "Task state",
       "owner": "module.tasks",
-      "definition": "The stage of a task's life, open, active, delivered, then closed when the task reached its goal (merged or completed) or failed when it did not, of which only open, closed and failed are stored and active and delivered are derived from what Execution recorded.",
+      "definition": "The stage of a task's life, open, active, delivered, then closed when the task reached its goal (merged or completed) or failed when it did not, with merging between delivered and closed while a merge of the task is in the primary branch unchecked, of which only open, merging, closed and failed are stored and active and delivered are derived from what Execution recorded.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.task-state"
     },
     {

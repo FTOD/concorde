@@ -5,9 +5,10 @@ A task is a branch ``concorde/<id>``, a worktree checked out on it and bound as 
 ``.concorde/tasks/<id>.decisions.md``, all owned by the primary worktree. Only this module writes
 records, and nothing below the task level writes them: whether a task is active or delivered is
 derived each time from what the execution core recorded, its runs in the run store and its
-delivery commits on the branch. Every change is one read, a check of its preconditions and one
-atomic write bound to the bytes read; a concurrent change is retried and reported as
-``record_conflict`` after three attempts.
+delivery commits on the branch; ``merging`` is stored while ``concorde task merge`` has put a merge
+into the primary branch that its checks have not decided yet. Every change is one read, a check of
+its preconditions and one atomic write bound to the bytes read; a concurrent change is retried and
+reported as ``record_conflict`` after three attempts.
 """
 
 from __future__ import annotations
@@ -19,19 +20,19 @@ import re
 import subprocess
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
 from ..delivery.bundle import delivery_commits
 from ..execution import binding as workspace_binding
-from ..execution.runs import lock_holder, workspace_runs
+from ..execution.runs import RunError, lock_holder, workspace_lock, workspace_runs
 from ..harness.models import CONFIG, inherit
 
 TASK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
-# The stages of a task's life. Only open, closed and failed are stored; active and delivered are
-# derived from the workspace's runs and delivery commits whenever a task is read.
-STATES = ("open", "active", "delivered", "closed", "failed")
+# The stages of a task's life. Only open, merging, closed and failed are stored; active and
+# delivered are derived from the workspace's runs and delivery commits whenever a task is read.
+STATES = ("open", "active", "delivered", "merging", "closed", "failed")
 # How a task ended: closed when its goal was reached, merged or not; failed when it was not.
 OUTCOMES = ("merged", "completed", "failed")
 ENDED = ("closed", "failed")
@@ -231,6 +232,48 @@ def merge_lock(primary: Path, command: str, task_id: str, wait: float = MERGE_WA
             fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
+def merge_lock_held(primary: Path) -> bool:
+    """Whether a live process holds the merge lock now; never called while holding it."""
+    path = merge_lock_path(primary)
+    if not path.exists():
+        return False
+    with path.open("rb") as stream:
+        try:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+    return False
+
+
+@contextmanager
+def task_workspace_locked(primary: Path, task_id: str, command: str):
+    """Hold the task's workspace lock without waiting, or refuse with ``workspace_busy``.
+
+    ``merge`` and ``close`` take it after the merge lock, so that no run of the task's workspace
+    commits on its branch or changes its worktree while the task is merged or closed.
+    """
+    stack = ExitStack()
+    try:
+        stack.enter_context(
+            workspace_lock(
+                primary / ".concorde",
+                task_id,
+                f"`concorde task {command}` of task {task_id}",
+            )
+        )
+    except RunError as error:
+        raise TaskError(
+            "workspace_busy",
+            f"{error}; `concorde task {command}` takes the workspace lock of task {task_id} "
+            "without waiting, so that no run of its workspace changes the task branch or "
+            "worktree while the task is merged or closed, and `concorde task show "
+            f"{task_id}` names the run holding it",
+        ) from None
+    with stack:
+        yield
+
+
 def _write(path: Path, data: bytes) -> None:
     descriptor, temporary = tempfile.mkstemp(prefix=".task-", dir=path.parent)
     try:
@@ -264,6 +307,135 @@ def update(primary: Path, task_id: str, change) -> dict:
     raise TaskError(
         "record_conflict", f"task {task_id} changed concurrently {ATTEMPTS} times"
     )
+
+
+def _records(primary: Path) -> list[dict]:
+    """Every task record as stored, in file-name order."""
+    directory = tasks_directory(primary)
+    records = []
+    for path in sorted(directory.glob("*.json")) if directory.is_dir() else []:
+        try:
+            records.append(json.loads(path.read_text()))
+        except (OSError, ValueError) as error:
+            raise TaskError(
+                "record_unreadable", f"the task record {path} cannot be read: {error}"
+            ) from error
+    return records
+
+
+def unfinished_merge(primary: Path) -> dict | None:
+    """The record of the task stored as ``merging``, or None; merges run one at a time."""
+    for record in _records(primary):
+        if record["state"] == "merging":
+            return record
+    return None
+
+
+def merge_commit(primary: Path, merging: dict) -> str | None:
+    """The primary worktree's ``HEAD`` when it is the merge that ``merging`` began, else None.
+
+    Once the merge recorded its commit, only that commit counts. Before, ``HEAD`` counts when it
+    is a merge commit of exactly the commit before and the checked commit, or the checked commit
+    itself when the merge fast-forwarded to it.
+    """
+    head = _git(primary, "rev-parse", "HEAD").stdout.strip()
+    if merging.get("after"):
+        return head if head == merging["after"] else None
+    parents = _git(primary, "rev-list", "--parents", "-n", "1", "HEAD").stdout.split()
+    if parents[1:] == [merging["before"], merging["checked"]]:
+        return head
+    ancestor = _git(
+        primary, "merge-base", "--is-ancestor", merging["before"], head, check=False
+    )
+    if head == merging["checked"] and ancestor.returncode == 0:
+        return head
+    return None
+
+
+def incomplete_merge(primary: Path, record: dict) -> TaskError:
+    """``merge_incomplete``: the task's merge ended before its checks decided whether it stays."""
+    merging = record["merging"]
+    head = _git(primary, "rev-parse", "HEAD", check=False).stdout.strip()
+    if merge_commit(primary, merging) == head:
+        where = f"at {head}, the merge commit"
+    elif head == merging["before"]:
+        where = f"back at {head}, the commit before the merge"
+    else:
+        where = (
+            f"at {head}, which is neither the commit before the merge nor the merge "
+            f"commit {merging.get('after') or '(never recorded)'}"
+        )
+    return TaskError(
+        "merge_incomplete",
+        f"task {record['id']} was interrupted while being merged: `concorde task merge` "
+        f"(process {merging['pid']}, begun {merging['since']}) was merging its checked delivery "
+        f"commit {merging['checked']} into {merging['branch']} of {primary}, which was at "
+        f"{merging['before']}, and ended before its checks decided whether the merge stays; "
+        f"the primary branch is now {where}. No process holds the merge lock, and until the "
+        "merge is resumed or aborted every task open, merge, close, session and escalate is "
+        f"refused: `concorde task merge {record['id']} --resume` reruns its checks on the merge "
+        f"commit and closes the task or undoes the merge, and `concorde task merge "
+        f"{record['id']} --abort` resets {merging['branch']} to {merging['before']} and returns "
+        "the task to delivered",
+    )
+
+
+def guard_merges(primary: Path, task_id: str) -> None:
+    """Refuse a command that takes no merge lock while a merge is unfinished.
+
+    With no live holder of the merge lock, an unfinished merge is ``merge_incomplete`` for every
+    task; while its merge still runs, only a command on the task being merged is refused, with
+    ``merge_busy``.
+    """
+    record = unfinished_merge(primary)
+    if record is None:
+        return
+    if not merge_lock_held(primary):
+        raise incomplete_merge(primary, record)
+    if record["id"] == task_id:
+        raise TaskError(
+            "merge_busy",
+            f"task {task_id} is being merged by {_holder(merge_lock_path(primary))}; a task "
+            "session or escalation for it waits until that merge has closed it or returned "
+            "it to delivered",
+        )
+
+
+def begin_merge(primary: Path, task_id: str, merging: dict) -> dict:
+    """Store the task as ``merging`` with what its merge is about to do."""
+
+    def change(record):
+        if record["state"] != "open":
+            raise TaskError(
+                "invalid_transition",
+                f"task {task_id} is stored {record['state']}; only a delivered task is merged",
+            )
+        record["state"] = "merging"
+        record["merging"] = merging
+        return record
+
+    return update(primary, task_id, change)
+
+
+def merged_at(primary: Path, task_id: str, after: str) -> dict:
+    """Record the commit the task's merge produced."""
+
+    def change(record):
+        record["merging"]["after"] = after
+        return record
+
+    return update(primary, task_id, change)
+
+
+def end_merge(primary: Path, task_id: str) -> dict:
+    """Return a ``merging`` task to ``open``, from which it derives as delivered again."""
+
+    def change(record):
+        record["state"] = "open"
+        record["merging"] = None
+        return record
+
+    return update(primary, task_id, change)
 
 
 def _ignored_inside(primary: Path, worktree: Path) -> None:
@@ -387,6 +559,9 @@ def open_task(
     """
     primary = require_primary(primary)
     with merge_lock(primary, "open", task_id, wait):
+        unfinished = unfinished_merge(primary)
+        if unfinished is not None:
+            raise incomplete_merge(primary, unfinished)
         return _open_task(primary, task_id, goal, modules, base=base, path=path)
 
 
@@ -510,6 +685,7 @@ def _open_task(
         "updated_at": stamp,
         "escalations": [],
         "sessions": [],
+        "merging": None,
         "closed": None,
     }
     with _locked(primary):
@@ -531,10 +707,10 @@ def deliveries(primary: Path, record: dict) -> list[dict]:
 
 
 def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -> str:
-    """The task's state: closed or failed as stored; otherwise delivered when its branch head is
-    a delivery commit of its workspace and its worktree is clean, active when its workspace has
-    runs or its branch moved past the base, and open before either."""
-    if record["state"] in ENDED:
+    """The task's state: merging, closed or failed as stored; otherwise delivered when its branch
+    head is a delivery commit of its workspace and its worktree is clean, active when its
+    workspace has runs or its branch moved past the base, and open before either."""
+    if record["state"] in (*ENDED, "merging"):
         return record["state"]
     head = _git(
         primary, "rev-parse", "--verify", "--quiet", record["branch"], check=False
@@ -552,15 +728,7 @@ def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -
 
 def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
     """Every task record with its derived state, oldest first; ``state`` filters on it."""
-    directory = tasks_directory(primary)
-    records = []
-    for path in sorted(directory.glob("*.json")) if directory.is_dir() else []:
-        try:
-            records.append(json.loads(path.read_text()))
-        except (OSError, ValueError) as error:
-            raise TaskError(
-                "record_unreadable", f"the task record {path} cannot be read: {error}"
-            ) from error
+    records = _records(primary)
     records.sort(key=lambda item: (item["created_at"], item["id"]))
     for record in records:
         record["state"] = derived_state(primary, record)
@@ -679,9 +847,14 @@ def close_task(
     if problems:
         raise TaskError("invalid_input", "; ".join(problems))
     with merge_lock(primary, "close", task_id, wait):
-        return close_locked(
-            primary, task_id, outcome, note=note, errors=errors, force=force
-        )
+        unfinished = unfinished_merge(primary)
+        if unfinished is not None:
+            raise incomplete_merge(primary, unfinished)
+        load_task(primary, task_id)
+        with task_workspace_locked(primary, task_id, "close"):
+            return close_locked(
+                primary, task_id, outcome, note=note, errors=errors, force=force
+            )
 
 
 def close_locked(
@@ -693,7 +866,7 @@ def close_locked(
     errors: list[dict] | None = None,
     force: bool = False,
 ) -> dict:
-    """``close_task`` for a caller that already holds the merge lock."""
+    """``close_task`` for a caller already holding the merge lock and the workspace lock."""
     errors = list(errors or [])
     record = load_task(primary, task_id)
     worktree = Path(record["worktree"])
@@ -747,6 +920,7 @@ def close_locked(
 
     def change(record):
         record["state"] = state
+        record["merging"] = None
         record["closed"] = {
             "state": state,
             "outcome": outcome,
@@ -785,21 +959,30 @@ __all__ = [
     "OUTCOMES",
     "STATES",
     "TaskError",
+    "begin_merge",
     "close_locked",
     "close_task",
     "decision_log_path",
-    "unwritten_decision_log",
     "deliveries",
     "derived_state",
+    "end_merge",
     "escalate",
+    "guard_merges",
+    "incomplete_merge",
     "list_tasks",
     "load_task",
+    "merge_commit",
     "merge_lock",
+    "merge_lock_held",
     "merge_lock_path",
     "mergeable",
+    "merged_at",
     "open_task",
     "primary_of",
     "record_session",
     "require_primary",
     "show_task",
+    "task_workspace_locked",
+    "unfinished_merge",
+    "unwritten_decision_log",
 ]
