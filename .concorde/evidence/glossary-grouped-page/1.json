@@ -1,0 +1,66 @@
+{
+  "workspace": "glossary-grouped-page",
+  "goal": "Render the glossary page grouped: core terms of the root Module first, then one section per top-level area of the Module tree, with an A-Z index of every term for lookup by name",
+  "modules": [
+    "module.views"
+  ],
+  "sequence": 1,
+  "base_commit": "8d0d5d9a12d9fb135351aac29646661c97105c63",
+  "parent_commit": "093e4563113869e8cb902e005e7c473523e9d44f",
+  "readiness": {
+    "run_id": "r-20260928T185500-delivery-99d46373",
+    "input_digest": "sha256:1d7d08bcb3403ea7e761c0c00e6b853cf33fe034e71ba1a24699ccabd1fa1765",
+    "modules": [
+      "module.views"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:351c175783e23178b31d90c2099661c2644e8045be9facc422af888ba57d4420"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:642383b3a2b093dee86006c6f823d2399f7ff75ffc1f506688197b206a57799c"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:686a845d4b77bf2d4e30a98ef72fe02da9ed1be9228ce49039b85530ddd67e95"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:686a845d4b77bf2d4e30a98ef72fe02da9ed1be9228ce49039b85530ddd67e95"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:686a845d4b77bf2d4e30a98ef72fe02da9ed1be9228ce49039b85530ddd67e95"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T185110-task_validation-8fcbcb7b",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.views"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:286099cd26d84f4cda35b08820a00f74327e9758a0c379d30fc869c79c2b7d80"
+    }
+  ],
+  "created_at": "2026-09-28T18:58:54Z"
+}
