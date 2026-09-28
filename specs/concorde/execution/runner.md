@@ -72,6 +72,40 @@ each worker launch's [run record](../glossary.json#concept.run-record) beside it
 
 ## Runner
 
+The runner's activity, with the hand-off of a [detached run](#detached-runs), whose command does
+the parsing and then starts the runner with the run identity it announces:
+
+```d2 illustrative
+direction: down
+exit2: "exit 2: the reason on standard error, no result, no run directory"
+launcher: "Detaching command" {
+  check: "check the command line; read the binding; create the run identity and directory"
+  wait: "wait up to 60 s for the run progress file"
+  announce: "print the announcement, exit 0"
+  kill: "kill the runner, print detach_failed, exit 1"
+  check -> wait
+  wait -> announce: progress file written
+  wait -> kill: runner ended or 60 s passed
+}
+runner: "Execution runner" {
+  parse: "parse: command line, definition, binding, records directory; run directory, run lock, run progress file"
+  binding: "binding check"
+  lock: "lock: workspace lock (bound) or unbound checkout"
+  admission: "admission: Modules, registry, inputs"
+  execution: "execution: the definition's steps in order"
+  composition: "composition: remove the checkout; compose and check the result"
+  finish: "finish: write result.json, mark finished, release the locks, print, exit"
+  parse -> binding -> lock -> admission -> execution -> composition -> finish
+  binding -> composition: refused
+  lock -> composition: refused
+  admission -> composition: refused
+  execution -> composition: a step stops or raises, or a signal
+}
+runner.parse -> exit2: malformed, unknown or outside Git
+launcher.check -> exit2: malformed
+launcher.check -> runner.parse: start in a new session with the run identity and directory
+```
+
 | # | Step | Stops the run when |
 | --- | --- | --- |
 | 1 | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity, the run's directory and its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
