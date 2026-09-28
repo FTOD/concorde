@@ -73,7 +73,12 @@ A survey or code_to_spec worker SHALL list every choice it took between options 
 
 ### req.adoption.answers-followed — Answers are followed
 
-A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a decision answer as a decision `decided_by` developer with the answered choice, a question answer in a survey by no longer listing the question, and in a code_to_spec run as a promise with source `answer` or as a deviation.
+A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a decision answer as a decision `decided_by` developer with the answered choice, a question answer in a survey by no longer listing the question, and in a code_to_spec run as a promise with source `answer` naming the question.
+
+A deviation never replaces that promise. When the code does otherwise, the run lists the promise
+and, by [req.adoption.deviation-reported](#req.adoption.deviation-reported), a deviation as well:
+the Spec states the intent, and the deviation tells later `implement` work that the code does not
+follow it yet.
 
 ### req.adoption.deviation-reported — Intent that the code misses is reported
 
