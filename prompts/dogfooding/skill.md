@@ -73,8 +73,15 @@ else:
   task, `concorde task escalate <task> --code concorde_defect --detail "<what failed>"
   --reason scope --explanation "the fix lies in the Concorde repository, which this project never
   changes" --run <run-id>` records that link with the run's chain as its cause and prints it as
-  `escalated`; use that value. Without a task, write your link in the same shape by hand, with the
-  refusal's `error` as its only cause.
+  `escalated`; use that value. Otherwise write your link by hand, in the shape of the error
+  contract: `level` `main-agent`, an `actor` naming you and the task (or `no task`), `code`
+  `concorde_defect`, a `detail` saying what went wrong, `evidence` as a list of
+  `{"kind": ..., "ref": ..., "detail": ...}`, `attempts`, `unhandled` with the reason `scope` and
+  that explanation, `options`, a `recommendation` and `causes`. Without a task, its only cause is
+  the failure's `error`: the refusal's, or the `error` of the run's `result.json`. When the run
+  ended `ok` and still did something wrong, there is no error to extend and `task escalate` has
+  nothing to name: your link, with `causes` empty, is the whole chain, and its `evidence` cites
+  the run, its `result.json` and what shows the fault.
 
 For example, with the error chain shortened:
 
@@ -102,10 +109,12 @@ Then check it with `concorde issues report --check --file <path>`, which runs ev
 Concorde repository will run when it records the report and records nothing; repair the report
 until the check passes.
 
-Keep the runs the evidence names. Record the checked report in the task's decision log and
-tell the developer where it is: the developer takes it to a session in the Concorde repository, which
-records it as an Issue there and fixes it in its own task. Leave the work the defect blocks open
-and turn to other work; do not close its task as failed for Concorde's sake.
+Keep the runs the evidence names. In a task, record the checked report in the task's decision log
+and tell the developer where it is: the developer takes it to a session in the Concorde repository,
+which records it as an Issue there and fixes it in its own task. Leave the work the defect blocks
+open and turn to other work; do not close its task as failed for Concorde's sake. A defect you
+saw outside a task, such as in an unbound run or a refused command, opens no task: keep its report
+only under `.concorde/runs/defects/` and name that file to the developer.
 
 ### Take the fix
 

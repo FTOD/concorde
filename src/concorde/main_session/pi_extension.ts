@@ -4,7 +4,8 @@
  * It lets the main agent run Operations and execution commands the way Concorde expects in pi:
  * `concorde_run` starts `concorde run <operation>` or `concorde <command>` as a detached process in
  * the task's worktree, whose workspace binding the run reads, and returns at once; every run of the
- * project is followed through its progress files and shown in pi-subagents' FleetView as an
+ * project, whoever started it (this tool, a command run with bash, another session), is found in
+ * the run store and followed through its progress files, shown in pi-subagents' FleetView as an
  * external job, counted by `bg_wait`, and reported back with a message that wakes the main agent
  * when it finishes. `/concorde` lists the runs. The extension only launches and observes: the
  * Execution runner, not this extension, runs and records every run. Without pi-subagents it still launches, wakes
@@ -30,12 +31,14 @@ import {
 import {
   alive,
   concordeCommand,
+  discoveredRuns,
   glossaryText,
   primaryRoot,
   recordedRuns,
   resultText,
   roundId,
   roundOutcome,
+  runError,
   runsDirectory,
   type RunStatus,
   type RunView,
@@ -191,7 +194,13 @@ export default function (pi: ExtensionAPI) {
   if (process.env.CONCORDE_TASK_SESSION) return;
   const tracked = new Map<string, Tracked>();
   const rounds = new Map<string, TrackedRound>();
+  // The runner processes `concorde_run` is starting: their runs are its to answer until it has
+  // found them.
+  const launching = new Set<number>();
   let root = process.cwd();
+  // When the view began following: a run started since then is reported even if it ended
+  // between two looks, one finished before it only listed.
+  let since = Date.now();
   let sessionId = "";
   let subagents: Subagents = {};
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -277,6 +286,15 @@ export default function (pi: ExtensionAPI) {
     const operations = new Map(
       recordedRuns(root).map((item) => [item.run_id, item]),
     );
+    // Runs started elsewhere, by bash or another session, are followed like the tool's own.
+    for (const operation of discoveredRuns(
+      [...operations.values()],
+      new Set(tracked.keys()),
+      since,
+      launching,
+      alive,
+    ))
+      track(operation);
     for (const [id, entry] of tracked) {
       const operation = operations.get(id) ?? entry.operation;
       entry.operation = operation;
@@ -322,7 +340,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   function report(shown: RunView): void {
-    wake("concorde-run", resultText(shown), {
+    wake("concorde-run", resultText(shown, runError(root, shown.id)), {
       runId: shown.id,
       status: shown.status,
       result: shown.reportPath,
@@ -342,6 +360,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     root = primaryRoot(ctx.cwd);
+    since = Date.now();
     // pi-subagents names a session by its file, or by its identity when it is not persisted;
     // FleetView and bg_wait show only records under that same name.
     sessionId =
@@ -435,51 +454,57 @@ export default function (pi: ExtensionAPI) {
       let exited: number | null = null;
       child.on("exit", (code) => (exited = code ?? -1));
       child.unref();
-      const deadline = Date.now() + START_WAIT_MS;
-      while (Date.now() < deadline && !signal?.aborted) {
-        const operation = recordedRuns(root).find(
-          (item) => item.host_pid === child.pid,
-        );
-        if (operation) {
-          // A run that has already finished, such as one refused at once, is answered here and
-          // never reported again.
-          const shown = view(
-            root,
-            operation,
-            workersOf(root, operation),
-            operation.phase === "finished" || alive(operation.host_pid),
+      const pid = child.pid;
+      if (pid !== undefined) launching.add(pid);
+      try {
+        const deadline = Date.now() + START_WAIT_MS;
+        while (Date.now() < deadline && !signal?.aborted) {
+          const operation = recordedRuns(root).find(
+            (item) => item.host_pid === child.pid,
           );
-          track(operation, shown.finished);
-          refresh(ctx);
-          const started = `Started ${params.operation} ${params.task ? `in the worktree of task ${params.task}` : "unbound"} as run ${operation.run_id} (runner process ${child.pid}).`;
-          return {
-            content: [
-              {
-                type: "text",
-                text: shown.finished
-                  ? `${started} It has already finished; there is nothing to wait for.\n${resultText(shown)}`
-                  : `${started} You will be woken with its result; its result will be ` +
-                    `${shown.reportPath}.`,
+          if (operation) {
+            // A run that has already finished, such as one refused at once, is answered here and
+            // never reported again.
+            const shown = view(
+              root,
+              operation,
+              workersOf(root, operation),
+              operation.phase === "finished" || alive(operation.host_pid),
+            );
+            track(operation, shown.finished);
+            refresh(ctx);
+            const started = `Started ${params.operation} ${params.task ? `in the worktree of task ${params.task}` : "unbound"} as run ${operation.run_id} (runner process ${child.pid}).`;
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: shown.finished
+                    ? `${started} It has already finished; there is nothing to wait for.\n${resultText(shown, runError(root, operation.run_id))}`
+                    : `${started} You will be woken with its result; its result will be ` +
+                      `${shown.reportPath}.`,
+                },
+              ],
+              details: {
+                runId: operation.run_id,
+                pid: child.pid,
+                finished: shown.finished,
               },
-            ],
-            details: {
-              runId: operation.run_id,
-              pid: child.pid,
-              finished: shown.finished,
-            },
-          };
+            };
+          }
+          if (exited !== null) break;
+          await new Promise((resolve) => setTimeout(resolve, 200));
         }
-        if (exited !== null) break;
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        const text = existsSync(log)
+          ? readFileSync(log, "utf-8").slice(-4000)
+          : "";
+        throw new Error(
+          exited !== null
+            ? `concorde ${params.operation} exited with status ${exited} before its run began: ${text || "(no output)"}`
+            : `concorde ${params.operation} (process ${child.pid}) wrote no progress file within ${START_WAIT_MS / 1000}s; see ${log}`,
+        );
+      } finally {
+        if (pid !== undefined) launching.delete(pid);
       }
-      const text = existsSync(log)
-        ? readFileSync(log, "utf-8").slice(-4000)
-        : "";
-      throw new Error(
-        exited !== null
-          ? `concorde ${params.operation} exited with status ${exited} before its run began: ${text || "(no output)"}`
-          : `concorde ${params.operation} (process ${child.pid}) wrote no progress file within ${START_WAIT_MS / 1000}s; see ${log}`,
-      );
     },
   });
 

@@ -96,8 +96,13 @@ The guidance SHALL tell the main agent to act on the
 
 ### req.main-session.decision-log — Decisions are recorded
 
-The guidance SHALL tell the main agent to record every result that is not `ok` and every decision
-made without the developer in the task's [decision log](../../glossary.json#concept.decision-log).
+The guidance SHALL tell the main agent to record every result of a task's runs that is not `ok` and
+every decision made without the developer in the task's
+[decision log](../../glossary.json#concept.decision-log).
+
+An [unbound run](../../glossary.json#concept.unbound-run) belongs to no task and so to no decision
+log; [A failed unbound run reaches the developer whole](#req.main-session.unbound-failure) says
+what becomes of its result.
 
 ### req.main-session.workflow-report-logged — A workflow's report reaches the decision log
 
@@ -158,13 +163,24 @@ its glossary entry defines it.
 
 ## The pi extension and session context
 
+### req.main-session.pi-run-follow — pi follows every run, wherever it started
+
+In pi, the run view SHALL follow every run of the project that is running when the session starts
+or starts afterwards, whoever started it: the `concorde_run` tool, a command run with bash, or
+another session.
+
+It finds them in the primary worktree's [run store](../../glossary.json#concept.run-store), where
+every task worktree's binding records its runs; a run that started and ended between two looks is
+followed too, and a run that had ended before the session started is not.
+
 ### req.main-session.pi-run-wake — pi reports every run's end once
 
 In pi, the run view SHALL give the main agent the result of every run it follows once, when the run
 ends.
 
 A run that has already finished when `concorde_run` finds it is answered in the tool's own result;
-every other run wakes the main agent with a message.
+every other run wakes the main agent with a message. Either way a result that carries an
+[error chain](../../glossary.json#concept.error-chain) is given with the whole chain.
 
 ### req.main-session.pi-task-session-view — pi shows every running task-session round
 
@@ -227,8 +243,18 @@ before deciding.
 
 ### req.main-session.extend-chain — An escalation extends the chain
 
-The guidance SHALL tell the main agent to escalate an error it cannot handle with
+The guidance SHALL tell the main agent to escalate an error of a task's runs it cannot handle with
 `concorde task escalate`, adding its own link on top of the chain instead of summarizing it.
+
+### req.main-session.unbound-failure — A failed unbound run reaches the developer whole
+
+The guidance SHALL tell the main agent to show the developer the whole rendered
+[error chain](../../glossary.json#concept.error-chain) of an unbound run that is not `ok` and, when
+the failure leads to work, to open a task for it and escalate there with `concorde task escalate`
+naming the run's result file, `.concorde/runs/<run-id>/result.json`, with `--error-file`.
+
+`--run` names only runs of the task's own [workspace](../../glossary.json#concept.workspace), and an
+unbound run has none.
 
 ## Task sessions
 
@@ -248,6 +274,19 @@ agent with its own link on top of the [error chain](../../glossary.json#concept.
 
 A Claude Code task session sends the escalation with SendMessage; a pi task session names the
 escalation's number in its round's report.
+
+### req.main-session.task-session-no-ask — A task session runs workflows without asking
+
+The task-session guidance SHALL tell a task session to run a
+[workflow](../../glossary.json#concept.workflow) only in no-ask
+[mode](../../glossary.json#concept.workflow-mode), to give the decisions of the workflow's report in
+its own report, and to escalate to the main agent what needs the developer.
+
+Nobody answers a task session at a [decision point](../../glossary.json#concept.decision-point), so
+an interactive workflow would stop there with no one to settle it. A
+[workflow result](../../glossary.json#concept.workflow-result) that is not `ok` is escalated with the report as `--error-file`; a decision of major impact the workflow took,
+which carries no error, is named in the session's report for the main agent to put to the
+developer.
 
 ### req.main-session.task-session-reports — A task session reports its end
 

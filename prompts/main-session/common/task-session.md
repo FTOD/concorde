@@ -12,6 +12,19 @@ structure, the order of steps, re-running an Operation with a clarified brief. R
 decision, and every result that is not `ok`, in the task's decision log with its reason; append,
 never rewrite.
 
+A task that follows a known procedure may run as its workflow, started in your task worktree as
+the main agent would start it (the installed `/concorde-<name>` workflow in Claude Code, the
+`subagent` tool with the primary worktree's `.concorde/workflows/pi/<name>.js` in pi), but only in
+`no-ask` mode (`"mode": "no-ask"` in its `args`): nobody answers you at a decision point, so the
+workflow decides those points itself and reports every decision at the end. Read its report,
+`.concorde/runs/workflows/<task>/reports/<n>.json` of the primary worktree, like a run result: copy
+its decisions and problems into the decision log, since they were taken without the developer, and
+give its decisions in your report to the main agent. Escalate to the main agent what needs the
+developer: a result that is not `ok` and that you cannot repair within the task, with
+`--error-file` naming that report; and a decision of major impact among those the workflow took,
+which carries no error to escalate, named in your report with its step, its options and your
+recommendation, for the main agent to put to the developer.
+
 Escalate to the main agent instead of acting when a step would go beyond the task's goal or its
 Modules, when the goal needs a Spec change it does not already call for, or when a decision has
 a major impact: it changes what a Module promises or the project's direction, discards work or
