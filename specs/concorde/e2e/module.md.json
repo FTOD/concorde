@@ -68,7 +68,8 @@
       "meaning": "#realization.e2e.tool",
       "entries": [
         "scripts/e2e/e2e.py",
-        "scripts/e2e/common.py"
+        "scripts/e2e/common.py",
+        "tests/concorde/workflows/run_script.mjs"
       ]
     },
     {

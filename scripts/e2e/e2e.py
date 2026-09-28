@@ -262,13 +262,12 @@ def task_worktree(project: Path, task: str) -> Path:
     return Path(record["worktree"])
 
 
-def latest_report(project: Path, task: str) -> Path | None:
-    """The newest saved workflow result of the task's workspace, if any."""
+def saved_reports(project: Path, task: str) -> list[dict]:
+    """The saved workflow results of the task's workspace, oldest first."""
     record = project / f".concorde/runs/workflows/{task}/record.json"
     if not record.is_file():
-        return None
-    reports = json.loads(record.read_text()).get("reports") or []
-    return Path(reports[-1]["path"]) if reports else None
+        return []
+    return json.loads(record.read_text()).get("reports") or []
 
 
 def run_workflow(
@@ -279,6 +278,8 @@ def run_workflow(
     ``log``."""
     log.parent.mkdir(parents=True, exist_ok=True)
     worktree = task_worktree(project, task)
+    # A result saved by an earlier run of the task is not this run's.
+    before = len(saved_reports(project, task))
     if via == "claude":
         command, _ = claude_command(workflow, args, task)
         session = sessions.start(
@@ -317,15 +318,23 @@ def run_workflow(
             stderr=completed.stderr[-3000:],
             log=str(log),
         )
-    result = latest_report(project, task)
-    if result is None or not result.is_file():
-        raise E2EError(
-            "no_result",
-            f"the {via} run ended without a workflow result at {result}",
-            stderr=completed.stderr[-3000:],
-            log=str(log),
+    reports = saved_reports(project, task)
+    if len(reports) <= before:
+        missing = (
+            f"saved no new workflow result: the workflow record held {before} before "
+            f"the run and {len(reports)} after it"
         )
-    return json.loads(result.read_text())
+    else:
+        result = Path(reports[-1]["path"])
+        if result.is_file():
+            return json.loads(result.read_text())
+        missing = f"saved a workflow result at {result} that does not exist"
+    raise E2EError(
+        "no_result",
+        f"the {via} run {missing}",
+        stderr=completed.stderr[-3000:],
+        log=str(log),
+    )
 
 
 def watch(project: Path) -> dict:

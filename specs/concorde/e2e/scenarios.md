@@ -37,3 +37,10 @@ Concrete situations that show the [requirements](requirements.md) of
 - AND the workflow's arguments, the restart label `2` of `scaffold` included, reach the session's prompt
 - AND the prompt places the session in the task's worktree and has it report with `concorde workflow report`
 - BUT the workflow's arguments name no task
+
+### scenario.e2e.stale-result — A result an earlier run saved is not the run's
+
+- GIVEN a test project whose task's [workflow record](../glossary.json#concept.workflow-record) already holds a result an earlier run saved
+- WHEN a `run` ends without its workflow saving a result
+- THEN `run` fails with `no_result`, naming how many results the record held before and after the run
+- BUT when the workflow saves results during the run, `run` prints the newest of them
