@@ -72,7 +72,22 @@ class E2ETests(unittest.TestCase):
             self.assertEqual({"a": 1}, saved["projects"]["/x"])
             self.assertTrue(saved["projects"][root]["hasTrustDialogAccepted"])
             self.assertTrue((base / ".claude.json.concorde-e2e.bak").is_file())
-            self.assertEqual([], e2e.trust([project], config)["trusted"])
+
+    @verifies("scenario.e2e.trust-again")
+    def test_trusting_a_trusted_project_again_changes_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            project = base / "requests"
+            project.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+            config = base / ".claude.json"
+            config.write_text(json.dumps({"theme": "dark"}))
+            e2e.trust([project], config)
+            before = config.read_bytes()
+            value = e2e.trust([project], config)
+            self.assertEqual(before, config.read_bytes())
+            self.assertEqual([], value["trusted"])
+            self.assertEqual([str(project.resolve())], value["already"])
 
     @verifies("scenario.e2e.headless")
     def test_a_headless_session_waits_for_the_workflow_and_needs_no_trust(self):
