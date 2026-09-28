@@ -73,15 +73,15 @@ else:
   task, `concorde task escalate <task> --code concorde_defect --detail "<what failed>"
   --reason scope --explanation "the fix lies in the Concorde repository, which this project never
   changes" --run <run-id>` records that link with the run's chain as its cause and prints it as
-  `escalated`; use that value. Otherwise write your link by hand, in the shape of the error
-  contract: `level` `main-agent`, an `actor` naming you and the task (or `no task`), `code`
-  `concorde_defect`, a `detail` saying what went wrong, `evidence` as a list of
-  `{"kind": ..., "ref": ..., "detail": ...}`, `attempts`, `unhandled` with the reason `scope` and
-  that explanation, `options`, a `recommendation` and `causes`. Without a task, its only cause is
-  the failure's `error`: the refusal's, or the `error` of the run's `result.json`. When the run
-  ended `ok` and still did something wrong, there is no error to extend and `task escalate` has
-  nothing to name: your link, with `causes` empty, is the whole chain, and its `evidence` cites
-  the run, its `result.json` and what shows the fault.
+  `escalated`; use that value. When the run ended `ok` and still did something wrong, there is no
+  error to extend: run the same command without `--run`, with a `--detail` that names the run, its
+  `result.json` and what shows the fault, and your link, with no causes, is the whole chain.
+  Without a task, write your link by hand, in the shape of the error contract: `level`
+  `main-agent`, an `actor` naming you and `no task`, `code` `concorde_defect`, a `detail` saying
+  what went wrong, `evidence` as a list of `{"kind": ..., "ref": ..., "detail": ...}` citing the
+  run and what shows the fault, `attempts`, `unhandled` with the reason `scope` and that
+  explanation, `options`, a `recommendation` and `causes`: the failure's `error`, the refusal's or
+  the `error` of the run's `result.json`, as its only cause, and none when the run ended `ok`.
 
 For example, with the error chain shortened:
 

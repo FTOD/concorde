@@ -141,7 +141,10 @@ class GuidanceTests(unittest.TestCase):
                     session,
                 )
                 self.assertIn(
-                    "a decision of major impact among those the workflow took", session
+                    "a decision of major impact among those the workflow took, which carries "
+                    "no error, escalated naming no run or file, so that your link, with its "
+                    "step, its options and your recommendation, is the whole chain",
+                    session,
                 )
         self.assertIn("with every decision of a workflow you ran", self.session)
         self.assertIn("with every decision of a workflow you ran", self.pi_session)
@@ -281,7 +284,16 @@ class GuidanceTests(unittest.TestCase):
             "never replace the chain with your own summary: add your link on top of it",
             self.skill,
         )
-        self.assertIn("concorde task escalate <task> --run <run-id>", self.skill)
+        self.assertIn(
+            "concorde task escalate <task> [--run <run-id>…] [--error-file <json>…]",
+            self.skill,
+        )
+        self.assertIn(
+            "A decision with major impact that no error carries, such as one a no-ask workflow "
+            "that ended `ok` took, is escalated the same way naming no run, file or "
+            "escalation: your link alone is then the whole chain.",
+            self.skill,
+        )
 
     @verifies("scenario.main-session.read-error-chain")
     def test_the_main_agent_reads_the_whole_error_chain(self):

@@ -190,7 +190,7 @@ decision, discarding work or data, doing something an ordinary revert cannot und
 or credentials, or needing more resources than the developer set; in doubt it records its reasoning
 and asks. An escalation is never a summary: `concorde task escalate` adds its own link, with the
 reason it may not decide, on top of the chain, records it in the task and prints it rendered for the
-developer. The decision log and the escalation both belong to a task, so they cover the runs of a
+developer; a decision of major impact that no error carries is escalated as that link alone. The decision log and the escalation both belong to a task, so they cover the runs of a
 task. An [unbound run](../../glossary.json#concept.unbound-run) belongs to none: when one is not
 `ok`, the guidance tells the main agent to show the developer its whole chain as rendered, on the
 command's standard error or in the pi run view's message, and, when the failure leads to work, to

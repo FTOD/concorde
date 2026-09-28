@@ -10,7 +10,8 @@ why it cannot handle it, and what the caller can do. ``session`` starts a task s
 worktree on the main session's program, and in pi answers or stops its running round.
 ``escalate`` records the escalating session's own link of an error chain (the main agent's, or a
 task session's to the main agent), with the errors of the named runs, files or earlier escalations
-as its causes.
+as its causes; naming none records that link alone as the whole chain, as for a decision an ok run
+took that the session may not keep alone.
 """
 
 from __future__ import annotations
@@ -472,11 +473,6 @@ def escalate(here: Path, arguments) -> dict:
     causes = [_run_error(primary, task, run) for run in arguments.run]
     causes += [_file_error(path) for path in arguments.error_file]
     causes += [_escalated_error(task, number) for number in arguments.escalation]
-    if not causes:
-        raise store.TaskError(
-            "nothing_to_escalate",
-            "name the errors being escalated with --run, --error-file or --escalation",
-        )
     actor = "main agent" if arguments.by == "main-agent" else "task session"
     try:
         link = errors.link(

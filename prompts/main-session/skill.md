@@ -202,8 +202,7 @@ When you cannot handle an error yourself, never replace the chain with your own 
 link on top of it and pass all of it on.
 
 ```bash
-concorde task escalate <task> --run <run-id> [--run <run-id>…] [--error-file <json>…] \
-  [--escalation <n>…] \
+concorde task escalate <task> [--run <run-id>…] [--error-file <json>…] [--escalation <n>…] \
   --code <snake_case> --detail "<what you need decided, and what you already know>" \
   --reason decision --explanation "<why you may not decide this yourself>" \
   [--attempt "<what you tried>"…] [--option "<choice>"…] [--recommendation "<yours>"]
@@ -211,7 +210,9 @@ concorde task escalate <task> --run <run-id> [--run <run-id>…] [--error-file <
 
 It records your link, with the named runs' chains, the errors saved from other commands or a task
 session's recorded escalations as its causes, in the task record and the decision log, and prints
-the chain rendered for the developer. Show the developer that rendered chain, with your question,
+the chain rendered for the developer. A decision with major impact that no error carries, such as
+one a no-ask workflow that ended `ok` took, is escalated the same way naming no run, file or
+escalation: your link alone is then the whole chain. Show the developer that rendered chain, with your question,
 instead of a paraphrase.
 
 The decision log and `concorde task escalate` belong to a task, so they cover the runs of a task.

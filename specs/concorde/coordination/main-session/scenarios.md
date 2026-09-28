@@ -95,6 +95,7 @@ Situations the [main-session guidance](module.md) prepares the
 - AND to read the [workflow result](../../glossary.json#concept.workflow-result) like a run result, copying its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log)
 - AND to give the workflow's decisions in its own report to the main agent, naming those of major impact for the developer
 - AND to escalate a workflow result that is not `ok` and that it cannot repair within the task with `concorde task escalate --by task-session` and the report as `--error-file`
+- AND to escalate a decision of major impact the workflow took, which carries no error, with `concorde task escalate --by task-session` naming no run or file
 
 ### scenario.main-session.pi-task-session-view — pi shows task-session rounds and wakes on their end
 

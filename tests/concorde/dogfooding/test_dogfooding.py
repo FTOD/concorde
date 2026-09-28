@@ -224,11 +224,14 @@ class GuidanceTests(unittest.TestCase):
             "`subtype`: `null` for a bug or a limitation",
             "concorde issues report --check --file <path>",
             "run `concorde update`",
-            # A run that ended ok reported no error: the hand-written link is the whole chain.
-            "write your link by hand, in the shape of the error contract",
+            # A run that ended ok reported no error: the link alone is the whole chain, built by
+            # task escalate naming no run in a task and written by hand outside one.
             "When the run ended `ok` and still did something wrong",
-            "your link, with `causes` empty, is the whole chain",
-            "its `evidence` cites the run",
+            "run the same command without `--run`, with a `--detail` that names the run",
+            "your link, with no causes, is the whole chain",
+            "Without a task, write your link by hand, in the shape of the error contract",
+            "citing the run and what shows the fault",
+            "and none when the run ended `ok`",
             # Outside a task the report stays in the run store and no task is opened.
             "A defect you saw outside a task",
             "opens no task: keep its report only under `.concorde/runs/defects/`",

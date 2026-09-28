@@ -123,7 +123,10 @@ developer and may name a task session's escalation as a cause with `--escalation
 each named run's error from its run result, refusing a run of another workspace or an unbound one
 with `unknown_run`, puts those errors unchanged under that link as its causes, appends the resulting
 chain to the record's escalations and to the decision log (rendered and as JSON), and prints it, so
-the reader gets one chain from the question down to where the error started.
+the reader gets one chain from the question down to where the error started. A session that names
+no error, because what needs deciding is no failure but a decision it may not keep alone, such as
+one a run that ended `ok` took without the developer, escalates its own link with no causes as the
+whole chain.
 
 <a id="concept.task-state"></a>
 

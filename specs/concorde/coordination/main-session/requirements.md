@@ -301,8 +301,8 @@ its own report, and to escalate to the main agent what needs the developer.
 Nobody answers a task session at a [decision point](../../glossary.json#concept.decision-point), so
 an interactive workflow would stop there with no one to settle it. A
 [workflow result](../../glossary.json#concept.workflow-result) that is not `ok` is escalated with the report as `--error-file`; a decision of major impact the workflow took,
-which carries no error, is named in the session's report for the main agent to put to the
-developer.
+which carries no error, is escalated naming no run or file, so that the session's own link is the
+whole chain the main agent puts to the developer.
 
 ### req.main-session.task-session-reports — A task session reports its end
 

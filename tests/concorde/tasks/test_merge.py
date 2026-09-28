@@ -673,11 +673,9 @@ class MergeTests(unittest.TestCase):
                 error = self.refusal(*argv)
                 self.assertEqual("merge_busy", error["code"], argv)
                 self.assertIn("`concorde task merge` of task t1", error["detail"])
-            # Another task's escalation passes the guard and is refused only for its own input.
-            self.assertEqual(
-                "nothing_to_escalate",
-                self.refusal("escalate", "t2", *escalation)["code"],
-            )
+            # Another task's escalation passes the guard and is recorded.
+            status, value = self.command("escalate", "t2", *escalation)
+            self.assertEqual((0, 1), (status, value.get("number")), value)
         finally:
             release.set()
             holder.join()

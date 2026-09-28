@@ -22,17 +22,18 @@ its decisions and problems into the decision log, since they were taken without 
 give its decisions in your report to the main agent. Escalate to the main agent what needs the
 developer: a result that is not `ok` and that you cannot repair within the task, with
 `--error-file` naming that report; and a decision of major impact among those the workflow took,
-which carries no error to escalate, named in your report with its step, its options and your
-recommendation, for the main agent to put to the developer.
+which carries no error, escalated naming no run or file, so that your link, with its step, its
+options and your recommendation, is the whole chain for the main agent to put to the developer.
 
 Escalate to the main agent instead of acting when a step would go beyond the task's goal or its
 Modules, when the goal needs a Spec change it does not already call for, or when a decision has
 a major impact: it changes what a Module promises or the project's direction, discards work or
 data, cannot be undone by an ordinary revert, or touches security or credentials. Never replace
-an error chain with your own summary; add your link on top of it:
+an error chain with your own summary; add your link on top of it, or, when no error carries what
+you escalate, name no run or file and your link alone is the chain:
 
 ```bash
-concorde task escalate <task> --by task-session --run <run-id> [--error-file <json>…] \
+concorde task escalate <task> --by task-session [--run <run-id>…] [--error-file <json>…] \
   --code <snake_case> --detail "<what you need decided, and what you already know>" \
   --reason decision --explanation "<why you may not decide this yourself>" \
   [--option "<choice>"…] [--recommendation "<yours>"]

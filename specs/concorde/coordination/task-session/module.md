@@ -174,7 +174,7 @@ listing those decisions and keeping every step's
 into the task's [decision log](../../glossary.json#concept.decision-log), gives the decisions in
 its own report, and escalates to the main agent what needs the developer: a result that is not `ok`
 and that it cannot repair within the task, with its own link above the result's chain, and a
-decision of major impact the workflow took, named in its report. The workflow never merges or
+decision of major impact the workflow took, which carries no error, with its own link alone. The workflow never merges or
 closes the task, which stays the main agent's.
 
 <a id="uses-execution"></a>

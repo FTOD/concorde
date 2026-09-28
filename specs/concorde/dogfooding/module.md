@@ -88,13 +88,14 @@ the project; its `origin` names the project's absolute path, the project's `HEAD
 `source_commit` of the receipt and the task; and its `error_chain` is the failure's whole
 [error chain](../glossary.json#concept.error-chain) with the main agent's own link on
 top, whose reason is `scope`: the fix lies in a repository it never changes. In a task,
-`concorde task escalate … --reason scope --run <run>` builds and records exactly that link.
-Otherwise the main agent writes its link by hand in the shape of the Framework's
-[error contract](../contracts.md#contract.concorde.error): outside a task with the failure's own
-error, the refusal's or that of the run's result, as its only cause; and for a run that ended `ok`
-and still did something wrong, which reported no error and so gives `task escalate` nothing to
-name, without causes, so that its link is the whole chain and its evidence cites the run
-([requirements](requirements.md#req.dogfooding.ok-run-defect)). The
+`concorde task escalate … --reason scope --run <run>` builds and records exactly that link. A run
+that ended `ok` and still did something wrong reported no error, so there is no chain to extend:
+the main agent's link, without causes, is the whole chain and cites the run, which in a task
+`concorde task escalate` records when it names no run
+([requirements](requirements.md#req.dogfooding.ok-run-defect)). Outside a task the main agent
+writes its link by hand in the shape of the Framework's
+[error contract](../contracts.md#contract.concorde.error), with the failure's own error, the
+refusal's or that of the run's result, as its only cause, and none for an `ok` run. The
 guidance lists every field the
 [Issue report contract](../issues/interface.md#contract.issues.report) requires, with an example,
 and has the main agent check the report with `concorde issues report --check --file <path>`

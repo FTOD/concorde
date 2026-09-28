@@ -73,11 +73,11 @@ an [Issue report](../glossary.json#concept.issue-report) with every field its co
 
 The develop guidance SHALL require the defect report of a run that ended `ok` and still did
 something wrong to carry, as its whole error chain, the main agent's own link without causes,
-written by hand in the shape of the Framework's
-[error contract](../contracts.md#contract.concorde.error), whose evidence cites the run.
+citing the run: in a task the link `concorde task escalate` records when it names no run, file or
+escalation, and outside a task one written by hand in the shape of the Framework's
+[error contract](../contracts.md#contract.concorde.error).
 
-Such a run reported no error, so there is no chain to extend and `concorde task escalate` has no
-run error to name.
+Such a run reported no error, so there is no chain to extend.
 
 ### req.dogfooding.defect-outside-task — A defect outside a task opens no task
 

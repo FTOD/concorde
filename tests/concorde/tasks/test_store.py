@@ -245,19 +245,43 @@ class TaskStoreTests(unittest.TestCase):
         self.assertIn("Not handled here (decision)", log)
         self.assertIn("src/bmod/secret.py", value["rendered"])
         self.assertEqual(len(self.record()["escalations"]), value["number"])
+        self.assert_contract(self.record())
+
+    @verifies("scenario.tasks.escalate-decision")
+    def test_a_decision_without_an_error_is_escalated_as_a_link_alone(self):
+        self.project.open_task("t1")
         status, value = self.command(
             "escalate",
             "t1",
+            "--by",
+            "task-session",
             "--code",
-            "x",
+            "workflow_decision",
             "--detail",
-            "x",
+            "the no-ask survey split module.a in two without the developer",
             "--reason",
             "decision",
             "--explanation",
-            "x",
+            "the split changes what module.a promises; the developer decides",
+            "--option",
+            "keep the split",
+            "--recommendation",
+            "keep the split",
         )
-        self.assertEqual((1, "nothing_to_escalate"), (status, value["error"]["code"]))
+        self.assertEqual(0, status, value)
+        link = value["escalated"]
+        validate(link, ERROR_SCHEMA)
+        self.assertEqual(
+            ("task-session", "workflow_decision", []),
+            (link["level"], link["code"], link["causes"]),
+        )
+        self.assertEqual(
+            [{"at": self.record()["escalations"][0]["at"], "error": link}],
+            self.record()["escalations"],
+        )
+        log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
+        self.assertIn("workflow_decision", log)
+        self.assertIn("the no-ask survey split module.a", log)
         self.assert_contract(self.record())
 
     @verifies("scenario.tasks.escalate")

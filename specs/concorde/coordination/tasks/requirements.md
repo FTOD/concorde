@@ -292,5 +292,5 @@ Every refusal of a `concorde task` command SHALL print an error link that names 
 
 ### req.tasks.escalation-kept — Escalations keep their whole chain
 
-An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task record and the decision log.
+An escalation SHALL record the escalated errors unchanged as the causes of the escalating session's link, in the task record and the decision log, and an escalation that names no error that link alone, with no causes.
 

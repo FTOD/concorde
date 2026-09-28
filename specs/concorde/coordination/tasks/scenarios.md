@@ -321,7 +321,14 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent runs `concorde task escalate` naming that run with its own code, detail, reason and options
 - THEN the printed chain's top link has the level `main-agent` and the run's error, unchanged, as its cause
 - AND the chain is appended to the task record's escalations and to the decision log, rendered and as JSON
-- BUT an escalation that names no run, no file and no earlier escalation is refused with `nothing_to_escalate`, and one naming a run of another workspace or an unbound run with `unknown_run`, and neither records anything
+- BUT an escalation naming a run of another workspace or an unbound run is refused with `unknown_run`, and one naming a run that ended without an error with `nothing_to_escalate`, and neither records anything
+
+### scenario.tasks.escalate-decision — A decision without an error is escalated as a link alone
+
+- GIVEN a task whose no-ask workflow ended `ok` after a worker took a decision of major impact
+- WHEN the task session runs `concorde task escalate --by task-session` naming no run, no file and no earlier escalation, with its code, detail, reason `decision`, options and recommendation
+- THEN the recorded chain is the task session's link alone, with no causes
+- AND it is appended to the task record's escalations and to the decision log like any escalation
 
 ### scenario.tasks.session-escalates — A task session escalates to the main agent
 
