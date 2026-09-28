@@ -43,7 +43,7 @@ class CheckServiceTests(unittest.TestCase):
     def repository(self):
         return SpecRepository(self.root, REPOSITORY_ROOT)
 
-    @verifies("scenario.checks.service-run")
+    @verifies("scenario.checks.service-run", "scenario.checks.service-no-checks")
     def test_the_checks_of_changed_modules_run_and_log(self):
         self.assertEqual(
             ["module.a"],
@@ -87,7 +87,11 @@ class CheckServiceTests(unittest.TestCase):
         checks[0].update(changes)
         write_checks(self.root, checks)
 
-    @verifies("scenario.checks.project-python")
+    @verifies(
+        "scenario.checks.project-python",
+        "scenario.checks.project-python-missing",
+        "scenario.checks.check-env-invalid",
+    )
     def test_python_is_the_projects_interpreter_and_env_is_the_checks(self):
         probe = (
             "import os; print('mark=' + str(os.environ.get('MARK')), "
@@ -263,7 +267,7 @@ assert result['status'] == 'passed', result
         )
         self.assertIn("def add", (self.root / "src/a/calc.py").read_text())
 
-    @verifies("scenario.checks.project-python")
+    @verifies("scenario.checks.project-python-primary")
     def test_a_task_worktree_uses_the_primary_interpreter(self):
         def git(cwd, *argv):
             subprocess.run(
@@ -305,7 +309,11 @@ assert result['status'] == 'passed', result
         )
         self.assertEqual(["module.a"], checked_modules(self.repository(), ["module.a"]))
 
-    @verifies("scenario.checks.selective")
+    @verifies(
+        "scenario.checks.selective",
+        "scenario.checks.selective-none",
+        "scenario.checks.readiness-only",
+    )
     def test_a_selective_check_runs_the_tests_verifying_the_checked_modules(self):
         (self.root / "src/a/test_answer.py").write_text(
             "def verifies(*scenarios):\n    return lambda test: test\n\n\n"

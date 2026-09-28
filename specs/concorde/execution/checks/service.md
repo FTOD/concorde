@@ -204,16 +204,39 @@ start.
 - WHEN the service runs with a changed path of A's realization or A's [Spec](../../glossary.json#concept.spec)
 - THEN it selects A, runs its check read-only and returns one result with its status, exit code, source digest and log path
 - AND the log is written into the caller's log directory
-- BUT asked for Module B it returns no result
+
+### scenario.checks.service-no-checks — A Module without checks gets no result
+
+- GIVEN a worktree whose Module B has no configured check
+- WHEN the service runs for Module B
+- THEN it returns no result
 
 ### scenario.checks.project-python — A check runs with the project's interpreter and its own env
 
 - GIVEN a check `["{python}", "-c", …]` with `env` `{"MARK": "yes"}` and a configuration whose `python` is `env/bin/python`
-- WHEN the check runs while `env/bin/python` does not exist
+- AND `env/bin/python` exists in the worktree
+- WHEN the check runs
+- THEN it runs with `env/bin/python`, sees `MARK` and has no `PYTHONPATH`
+
+### scenario.checks.project-python-missing — A missing project interpreter stops the run
+
+- GIVEN a check `["{python}", "-c", …]` and a configuration whose `python` is `env/bin/python`
+- AND `env/bin/python` does not exist
+- WHEN the check runs
 - THEN the run stops with `project_python_missing` naming the path it looked at
-- AND once `env/bin/python` exists, the check runs with it, sees `MARK` and has no `PYTHONPATH`
-- AND in a task worktree without its own `env/bin/python`, the primary worktree's is used
-- BUT an `env` whose names are not variable names is refused with `invalid_check`
+
+### scenario.checks.project-python-primary — A task worktree uses the primary worktree's interpreter
+
+- GIVEN a configuration whose `python` is `.venv/bin/python`, which the primary worktree has
+- AND a task worktree without its own `.venv/bin/python`
+- WHEN a check of the task worktree uses `{python}`
+- THEN the primary worktree's interpreter is used
+
+### scenario.checks.check-env-invalid — A check env with invalid names is refused
+
+- GIVEN a check whose `env` has a name that is not a variable name, such as `not a name`
+- WHEN the check runs
+- THEN it is refused with `invalid_check`
 
 ### scenario.checks.transport-environment — A nested check keeps its transport configuration
 
@@ -225,12 +248,23 @@ start.
 
 ### scenario.checks.selective — A selective check runs the tests that verify the checked Modules
 
-- GIVEN a test in `src/a/` that declares it verifies a scenario of Module A, a check whose argv holds `{tests}`, and a check of A marked `"when": "readiness"`
-- WHEN the checks of Module B run, and no test verifies a scenario of B
-- THEN the selective check is skipped
-- AND when the checks of Module A run, the selective check runs once with `src/a/test_answer.py::test_answer` in place of `{tests}`, its log naming the selected tests
-- AND the readiness check runs only when readiness is decided
+- GIVEN a test in `src/a/` that declares it verifies a scenario of Module A, and a check whose argv holds `{tests}`
+- WHEN the checks of Module A run
+- THEN the selective check runs once with `src/a/test_answer.py::test_answer` in place of `{tests}`, its log naming the selected tests
 - AND the selective check's measured digest for Module A differs from its measured digest for Modules A and B, and from its digest once the selected test file changes
+
+### scenario.checks.selective-none — A selective check with nothing to select is skipped
+
+- GIVEN a check whose argv holds `{tests}`, and no test that verifies a scenario of Module B
+- WHEN the checks of Module B run
+- THEN the selective check is skipped and returns no result
+
+### scenario.checks.readiness-only — A readiness check runs only when readiness is decided
+
+- GIVEN a check of Module A marked `"when": "readiness"`
+- WHEN the checks of Module A run with a `stage` other than `readiness`
+- THEN that check does not run and returns no result
+- AND the same call with `stage` `readiness` runs it
 
 ### scenario.checks.service-read-only — A check cannot change the worktree
 
