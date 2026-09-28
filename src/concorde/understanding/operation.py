@@ -7,7 +7,7 @@ Steps (the step table of the Understanding Module Spec):
    any change to the task worktree fails the run.
 2. ``check_assessment``: every Module the assessment names must exist in the task worktree's
    Specs, and the assessment must be consistent (gaps exactly when insufficient, a plan exactly
-   when requested and sufficient, one entry per bound Module).
+   when requested and sufficient, exactly one entry per bound Module and none for another).
 """
 
 from __future__ import annotations
@@ -39,7 +39,8 @@ RUNS = [
     "delivery",
 ]
 
-# contract.understanding.assessment, version 2 (specs/concorde/operations/understanding/contracts.md)
+# contract.understanding.assessment, version 3
+# (specs/concorde/execution/operations/understanding/contracts.md)
 ASSESSMENT_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -213,11 +214,21 @@ def inconsistencies(
         problems.append(
             "a plan was requested and the Spec is sufficient, but no plan was given"
         )
-    assessed = {item["module"] for item in assessment["modules"]}
-    missing = [module for module in modules if module not in assessed]
+    entries = [item["module"] for item in assessment["modules"]]
+    missing = [module for module in modules if module not in entries]
     if missing:
         problems.append(
             f"no assessment entry for the bound Module(s) {', '.join(missing)}"
+        )
+    extra = sorted({module for module in entries if module not in modules})
+    if extra:
+        problems.append(
+            f"assessment entries for Module(s) {', '.join(extra)}, which are not bound"
+        )
+    duplicated = sorted({module for module in entries if entries.count(module) > 1})
+    if duplicated:
+        problems.append(
+            f"more than one assessment entry for the Module(s) {', '.join(duplicated)}"
         )
     return problems
 

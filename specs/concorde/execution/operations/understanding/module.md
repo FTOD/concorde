@@ -46,11 +46,19 @@ Operations `understand`, `specify`, `implement`, `test`, `spec_review` and `code
 `delivery` that end a task's work — and the open decisions left to the task level. The plan has
 no separate Operation: breaking work into steps is one use of understanding.
 
+The Spec is sufficient when it states every promise the goal relies on. For a goal that asks what
+the Modules promise, that is every promise the answer needs. For a goal that changes them, the
+existing Specs must state every promise the change relies on and say where each new promise it
+adds belongs, so that the change can be planned: the new promises become the plan's `specify`
+steps and are never Spec gaps.
+
 <a id="concept.spec-gap"></a>
 
-When not sufficient, the assessment lists each **Spec gap** instead of a plan: the Module and
-document where the promise belongs, what is missing, why the goal needs it and a suggested repair.
-The usual next step is `specify` to close the gaps, then another `understand` to confirm it.
+When not sufficient, the assessment lists each **Spec gap** instead of a plan: a promise the goal
+relies on that the Specs do not state, including where a new promise belongs when no bound Module's
+Spec says so. Each names the Module and document where the promise belongs, what is missing, why the
+goal needs it and a suggested repair. The usual next step is `specify` to close the gaps, then
+another `understand` to confirm it.
 
 `status` is `ok` whenever the worker completed an assessment, sufficient or not; `sufficient` says
 whether work may proceed. It is `blocked` when the worker could not assess the goal at all — an
@@ -60,12 +68,12 @@ what it tried and would need. It is `failed` when the worker could not be run or
 with Workers' launch, timeout or audit error as the cause of the Operation's link, as for every
 [standard worker sequence](../../../glossary.json#concept.standard-worker-sequence). It is also
 `failed` when the assessment names an unknown Module or is internally inconsistent (gaps and
-sufficiency, or plan and `--plan`, disagree; no entry for a bound Module): the Operation's own link
-then has the code `unknown_modules` or `inconsistent_assessment`, lists every unknown Module or
-every inconsistency, and gives `capability` as its reason — the Operation checks the assessment
-but never corrects it or relaunches the worker. A failed or blocked result carries no `output`; the
-worker's own answer stays in the `worker` field. Running the Operation again with the same inputs
-is safe.
+sufficiency, or plan and `--plan`, disagree; a bound Module has no entry or more than one; an entry
+names a Module that is not bound): the Operation's own link then has the code `unknown_modules` or
+`inconsistent_assessment`, lists every unknown Module or every inconsistency, and gives
+`capability` as its reason — the Operation checks the assessment but never corrects it or
+relaunches the worker. A failed or blocked result carries no `output`; the worker's own answer
+stays in the `worker` field. Running the Operation again with the same inputs is safe.
 
 ## Design
 

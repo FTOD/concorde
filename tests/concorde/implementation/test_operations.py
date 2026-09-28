@@ -79,6 +79,10 @@ class ImplementTests(unittest.TestCase):
         work = Path(record["run_directory"]) / "work"
         prompt = json.loads((work / "fake-round-1.json").read_text())["prompt"]
         self.assertIn(f"The project's own interpreter is {sys.executable}", prompt)
+        # The run's own goal is the task; the workspace's goal is context beside it.
+        self.assertIn("## Goal\n\nDo the task.", prompt)
+        self.assertIn("## The workspace's goal\n", prompt)
+        self.assertIn("Fix A.", prompt.split("## The workspace's goal")[1])
         settings = json.loads(
             (Path(record["run_directory"]) / "control/settings.json").read_text()
         )
@@ -373,6 +377,8 @@ class TestOperationTests(unittest.TestCase):
         self.assertIn(envelope["run_id"], output["checks"][0]["log"])
         record, round_one = self.worker_round(envelope)
         self.assertIn("check.a (module.a): passed", round_one["prompt"])
+        self.assertIn("## Focus\n\nDo the task.", round_one["prompt"])
+        self.assertIn("Fix A.", round_one["prompt"].split("## The workspace's goal")[1])
         self.assertEqual(1, len(record["rounds"]))
         self.assertEqual("", status_lines(self.worktree))
         # The worker may read the log of a check that passed, to see what actually ran.

@@ -26,13 +26,15 @@ concorde run test [--modules <module-id>[,<module-id>…]] [--focus "<text>"]
 
 Both work on the [workspace](../../../glossary.json#concept.workspace) whose binding lies in the
 worktree they start in and need one: an [unbound run](../../../glossary.json#concept.unbound-run) of
-either is refused. `--modules` defaults to the binding's Modules, and the worker is briefed with the
-workspace's goal. `implement` takes `--goal`, admits earlier `ok` outputs via `--input`, and
-`--rounds` sets the resume-round limit (0 or more); without it the limit is the configuration's
-`workers.rounds`, and three when that is not set. For example, after `specify` declares
-`src/concorde/issues/severity.py` pending, `implement --goal "accept and store the report severity"`
-lets the worker create it and change the other Issues files, returning once the checks pass or the
-rounds run out.
+either is refused. `--modules` defaults to the binding's Modules. Each worker's brief carries the
+workspace's goal as context, as `specify`'s does, beside the run's own argument: `implement`'s
+`--goal` states the run's own task, which may be one step of the workspace's goal, and `test`'s
+`--focus` narrows what its worker looks at. `implement` also admits earlier `ok` outputs via
+`--input`, and `--rounds` sets the resume-round limit (0 or more); without it the limit is the
+configuration's `workers.rounds`, and three when that is not set. For example, after `specify`
+declares `src/concorde/issues/severity.py` pending, `implement --goal "accept and store the report
+severity"` lets the worker create it and change the other Issues files, returning once the checks
+pass or the rounds run out.
 
 <a id="concept.code-change"></a>
 
