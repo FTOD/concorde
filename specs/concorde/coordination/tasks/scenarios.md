@@ -114,6 +114,16 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - BUT an uncommitted change, or a commit after the delivery commit, makes it `active`
 - AND a second delivery commit makes it `delivered` again, with both deliveries listed in order
 
+### scenario.tasks.delivery-unverified — A delivery commit that does not verify is not delivered
+
+- GIVEN a task whose branch head has the subject and trailers of a delivery commit of its workspace
+- AND the commit does not add the [evidence bundle](../../glossary.json#concept.evidence-bundle) its `Concorde-Evidence` trailer names, or that bundle's readiness run is not its `Concorde-Readiness` trailer
+- WHEN the main agent lists or shows it, merges it, or closes it with `--merged` after merging its branch by hand
+- THEN list and show give it as `active`, and show lists that commit among its deliveries with each mismatch
+- AND merge and close fail with `delivery_unverified` and the reason `decision`, naming the head, its bundle and each mismatch
+- AND the primary branch, the task record and the worktree are unchanged
+- AND a later delivery commit that verifies makes the task `delivered` again
+
 ## Closing
 
 ### scenario.tasks.close-merged — Close a merged task
@@ -246,7 +256,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a task that is not delivered, or whose branch moved past its latest delivery commit, or whose worktree has uncommitted changes, or a primary worktree with an uncommitted or untracked path or a detached `HEAD`
 - WHEN the main agent runs `concorde task merge` for it
-- THEN the command fails with `not_merged`, `dirty_worktree` or `primary_dirty` before merging
+- THEN the command fails with `not_merged`, `delivery_unverified`, `dirty_worktree` or `primary_dirty` before merging
 - AND the primary branch, the task record and the worktree are unchanged
 
 ### scenario.tasks.merge-exact-commit — A merge takes the commit it checked

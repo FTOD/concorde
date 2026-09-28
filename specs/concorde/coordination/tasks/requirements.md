@@ -108,8 +108,22 @@ from its workspace's runs in the run store, its branch and its worktree each tim
 listed or shown.
 
 A `merging` task is shown as `merging`. Otherwise it is `delivered` when the branch head is a
-delivery commit of the task's workspace and the worktree is clean, `active` when the workspace has a run, the branch moved past its base commit or the
+delivery commit of the task's workspace that verifies against its evidence bundle and the worktree
+is clean, `active` when the workspace has a run, the branch moved past its base commit or the
 worktree has uncommitted changes, and `open` otherwise.
+
+### req.tasks.delivery-verified — Only a delivery commit that verifies counts
+
+Tasks SHALL count a task as delivered, and merge it or close it as merged, only when its branch
+head is a [delivery commit](../../glossary.json#concept.delivery-commit) of its workspace that
+verifies by Delivery's own check: its only parent is its
+[evidence bundle](../../glossary.json#concept.evidence-bundle)'s `parent_commit`, it adds the
+bundle its `Concorde-Evidence` trailer names, and the bundle's `readiness.run_id` is its
+`Concorde-Readiness` trailer.
+
+A head that does not verify is shown `active`, `task show` lists each mismatch with that delivery,
+and `merge` and `close --merged` refuse it with `delivery_unverified`, naming each mismatch, as
+[scenario.tasks.delivery-unverified](scenarios.md#scenario.tasks.delivery-unverified) shows.
 
 ### req.tasks.failure-explained — A failed task says why
 
@@ -138,8 +152,8 @@ for a closed task, so the outcome of a round that was running when the task clos
 ### req.tasks.merge-verified — Merged means contained in the primary branch
 
 Closing a task as merged SHALL succeed only when the task branch holds a delivery commit of the
-task's workspace since its base, the latest one is the head of the branch, that head is contained
-in the primary branch and the worktree has no uncommitted change.
+task's workspace since its base, the latest one is the head of the branch and verifies, that head
+is contained in the primary branch and the worktree has no uncommitted change.
 
 ### req.tasks.no-silent-discard — Uncommitted work is never discarded silently
 

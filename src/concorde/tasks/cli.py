@@ -55,6 +55,11 @@ HANDLING = {
         "closing a task as merged requires its last delivery to be contained in the primary "
         "branch; merging is the main agent's step",
     ),
+    "delivery_unverified": (
+        "decision",
+        "Tasks merges only a delivery commit that holds what its evidence bundle says was "
+        "validated, and repairing the task branch is work for the task",
+    ),
     "config_copy_failed": (
         "environment",
         "the file system refused the copy, and Tasks does not remove a worktree it just created",
@@ -133,6 +138,10 @@ OPTIONS = {
     "not_merged": [
         "merge the task with concorde task merge, which closes it",
         "deliver the task again if its branch moved past the last delivery",
+    ],
+    "delivery_unverified": [
+        "inspect the task branch's head and its evidence bundle in the task worktree",
+        "revert or remove the commit that does not verify, then run delivery again",
     ],
     "merge_busy": [
         "run the command again, or merge with a longer --wait; the holder's lock is released "

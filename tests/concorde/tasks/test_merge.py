@@ -344,6 +344,27 @@ class MergeTests(unittest.TestCase):
         self.assert_untouched(before)
         self.assertFalse((self.root / ".concorde/tasks/t1.merge.log").exists())
 
+    @verifies("scenario.tasks.delivery-unverified")
+    def test_a_delivery_commit_that_does_not_verify_is_not_merged(self):
+        self.project.open_task("t1")
+        head = deliver(self.project.worktree("t1"), bundle_run="r-other")
+        before = self.head()
+        record = store.load_task(self.root, "t1")
+        error = self.refusal("merge", "t1", "--check", python("pass"))
+        self.assertEqual(
+            ("delivery_unverified", "decision"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertIn(head, error["detail"])
+        self.assertIn(".concorde/evidence/t1/1.json", error["detail"])
+        self.assertIn("readiness run r-other", error["detail"])
+        self.assertTrue(error["options"])
+        self.assertEqual(before, self.head())
+        self.assertEqual("", git(self.root, "status", "--porcelain"))
+        self.assertEqual(record, store.load_task(self.root, "t1"))
+        self.assertEqual("active", self.state())
+        self.assertFalse((self.root / ".concorde/tasks/t1.merge.log").exists())
+
     @verifies("scenario.tasks.merge-exact-commit")
     def test_the_merge_merges_the_commit_it_checked(self):
         self.project.open_task("t1")

@@ -5,7 +5,8 @@ A task is a branch ``concorde/<id>``, a worktree checked out on it and bound as 
 ``.concorde/tasks/<id>.decisions.md``, all owned by the primary worktree. Only this module writes
 records, and nothing below the task level writes them: whether a task is active or delivered is
 derived each time from what the execution core recorded, its runs in the run store and its
-delivery commits on the branch; ``merging`` is stored while ``concorde task merge`` has put a merge
+delivery commits on the branch, a delivery counting only when its commit verifies against its
+evidence bundle; ``merging`` is stored while ``concorde task merge`` has put a merge
 into the primary branch that its checks have not decided yet. Every change is one read, a check of
 its preconditions and one atomic write bound to the bytes read; a concurrent change is retried and
 reported as ``record_conflict`` after three attempts.
@@ -24,7 +25,7 @@ from contextlib import ExitStack, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..delivery.bundle import delivery_commits
+from ..delivery.bundle import delivery_commits, delivery_mismatches
 from ..execution import binding as workspace_binding
 from ..execution.runs import RunError, lock_holder, workspace_lock, workspace_runs
 from ..harness.models import CONFIG, inherit
@@ -718,7 +719,9 @@ def _open_task(
 
 
 def deliveries(primary: Path, record: dict) -> list[dict]:
-    """The delivery commits of the task's workspace on its branch, oldest first."""
+    """The delivery commits of the task's workspace on its branch, oldest first, as Delivery's
+    reader recognises them by subject and trailers alone; ``verified`` adds whether each holds
+    what its bundle says was validated."""
     head = _git(
         primary, "rev-parse", "--verify", "--quiet", record["branch"], check=False
     ).stdout.strip()
@@ -727,10 +730,17 @@ def deliveries(primary: Path, record: dict) -> list[dict]:
     return delivery_commits(primary, record["base_commit"], head, record["id"])
 
 
+def verified(primary: Path, delivery: dict) -> dict:
+    """The delivery commit with ``mismatches``: how it disagrees with its evidence bundle by
+    Delivery's own check, empty when it verifies."""
+    return {**delivery, "mismatches": delivery_mismatches(primary, delivery)}
+
+
 def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -> str:
     """The task's state: merging, closed or failed as stored; otherwise delivered when its branch
-    head is a delivery commit of its workspace and its worktree is clean, active when its
-    workspace has runs or its branch moved past the base, and open before either."""
+    head is a delivery commit of its workspace that verifies against its bundle and its worktree
+    is clean, active when its workspace has runs or its branch moved past the base, and open
+    before either."""
     if record["state"] in (*ENDED, "merging"):
         return record["state"]
     head = _git(
@@ -738,7 +748,12 @@ def derived_state(primary: Path, record: dict, runs: list[dict] | None = None) -
     ).stdout.strip()
     delivered = deliveries(primary, record)
     worktree = Path(record["worktree"])
-    if delivered and delivered[-1]["commit"] == head and not _dirty(worktree):
+    if (
+        delivered
+        and delivered[-1]["commit"] == head
+        and not _dirty(worktree)
+        and not delivery_mismatches(primary, delivered[-1])
+    ):
         return "delivered"
     if runs is None:
         runs = workspace_runs(primary / ".concorde", record["id"])
@@ -757,15 +772,16 @@ def list_tasks(primary: Path, state: str | None = None) -> list[dict]:
 
 
 def show_task(primary: Path, task_id: str) -> dict:
-    """The record with its derived state, the workspace's runs and delivery commits, who holds
-    the workspace lock, and the decision log's path."""
+    """The record with its derived state, the workspace's runs and delivery commits, each with
+    how it disagrees with its bundle, who holds the workspace lock, and the decision log's
+    path."""
     record = load_task(primary, task_id)
     runs = workspace_runs(primary / ".concorde", task_id)
     record["state"] = derived_state(primary, record, runs)
     return {
         "record": record,
         "runs": runs,
-        "deliveries": deliveries(primary, record),
+        "deliveries": [verified(primary, item) for item in deliveries(primary, record)],
         "busy": lock_holder(primary / ".concorde", task_id),
         "decision_log": decision_log_path(primary, task_id).as_posix(),
     }
@@ -822,7 +838,8 @@ def escalate(primary: Path, task_id: str, error: dict) -> dict:
 
 
 def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
-    """The record and branch head of a task ``close --merged`` accepts once the head is merged."""
+    """The record and branch head of a task ``close --merged`` accepts once the head is merged:
+    the head is the latest delivery commit, which verifies, and the worktree is clean."""
     record = load_task(primary, task_id)
     if record["state"] in ENDED:
         raise TaskError(
@@ -841,6 +858,15 @@ def mergeable(primary: Path, task_id: str) -> tuple[dict, str]:
             "not_merged",
             f"{record['branch']} is at {head}, not at its last delivery commit "
             f"{delivered[-1]['commit']}; deliver again, or close it completed or failed",
+        )
+    mismatches = delivery_mismatches(primary, delivered[-1])
+    if mismatches:
+        raise TaskError(
+            "delivery_unverified",
+            f"the head {head} of {record['branch']} of task {task_id} has the subject and "
+            f"trailers of a delivery commit of its workspace but does not verify against its "
+            f"evidence bundle {delivered[-1]['bundle']}, so it may not hold what was validated: "
+            + "; ".join(mismatches),
         )
     worktree = Path(record["worktree"])
     if _dirty(worktree):
@@ -1087,4 +1113,5 @@ __all__ = [
     "task_workspace_locked",
     "unfinished_merge",
     "unwritten_decision_log",
+    "verified",
 ]
