@@ -173,7 +173,7 @@ tool: "concorde_run: an Operation or execution command, with or without a task"
 worktree: "Find the task worktree through the task record"
 refused: "Refused before anything starts, naming the task"
 launch: "Start the worktree's own concorde as a detached process\n(the session's own worktree without a task)"
-elsewhere: "A run started with bash or by another session"
+elsewhere: "A run still running when the session started,\nor started since with bash or by another session"
 store: "Find the run in the primary worktree's run store"
 done: "Answered in the tool's own result; no message follows"
 follow: "Follow its run progress file and, for an Operation,\nits worker's progress file"
@@ -190,8 +190,8 @@ launch -> done: already finished, such as refused at once
 launch -> follow: still running
 elsewhere -> store
 store -> follow
-follow -> fleet
-fleet -> ended
+follow -> fleet: with pi-subagents
+follow -> ended
 ended -> wake
 wake -> steer: in a turn
 wake -> next: between turns

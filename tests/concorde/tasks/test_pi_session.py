@@ -717,14 +717,24 @@ class PiSessionTests(unittest.TestCase):
             "decisions": [],
             "open": [],
         }
-        directory = self.root / ".concorde/tasks/t1.session"
-        ended = {
-            **pi_session._round(1, directory, os.getpid(), None),
-            "status": "delivered",
-            "ended_at": store.now(),
-            "report": old_report,
-            "error": None,
+        old_escalation = {
+            "status": "escalated",
+            "summary": "Historical question.",
+            "escalations": [1],
+            "decisions": [],
+            "open": [],
         }
+        directory = self.root / ".concorde/tasks/t1.session"
+        rounds = [
+            {
+                **pi_session._round(number, directory, os.getpid(), None),
+                "status": report["status"],
+                "ended_at": store.now(),
+                "report": report,
+                "error": None,
+            }
+            for number, report in ((1, old_escalation), (2, old_report))
+        ]
         store.record_session(
             self.root,
             "t1",
@@ -736,10 +746,14 @@ class PiSessionTests(unittest.TestCase):
                 "directory": str(directory),
                 "model": None,
                 "started_at": store.now(),
-                "rounds": [ended],
+                "rounds": rounds,
             },
         )
         before = store.load_task(self.root, "t1")
+        self.assertEqual(
+            [old_escalation, old_report],
+            [ended["report"] for ended in before["sessions"][0]["rounds"]],
+        )
         self.assertEqual(before, pi_session.settle(self.root, before))
         self.assertEqual(before, store.load_task(self.root, "t1"))
         validate(before, contract("")["schema"])

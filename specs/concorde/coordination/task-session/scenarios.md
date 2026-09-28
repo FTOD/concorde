@@ -78,7 +78,7 @@ defined in the [contracts](contracts.md).
 
 ### scenario.task-session.pi-report-v1 — Earlier reports stay as they were recorded
 
-- GIVEN a task record whose pi session holds a round recorded with a version 1 report, which has no `escalations` field
+- GIVEN a task record whose pi session holds rounds recorded with version 1 reports, which have only the fields of their status: no `escalations` when delivered, no `commit` when escalated
 - WHEN the task record is read or its rounds are settled
 - THEN the report is neither validated again nor rewritten, and the record stays unchanged
 
