@@ -12,7 +12,7 @@ The arguments of the `concorde_report` tool with which a pi
 ```concorde-contract
 {
   "id": "contract.task-session.report",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -49,7 +49,7 @@ The arguments of the `concorde_report` tool with which a pi
       }
     ]
   },
-  "semantics": "The arguments a pi task session passes to concorde_report to end a session round, which the supervisor records as the round's report. All six fields are required. status is delivered when delivery committed the task on its branch, with commit the full delivery commit and escalations an empty array, or escalated when the session cannot go further without the main agent, with commit null and escalations a nonempty unique array of positive numbers (from 1, in record order) of the escalations it recorded with concorde task escalate --by task-session, which carry the error chains. summary says what the round did; decisions lists each decision the session made without the main agent, with its reason; open lists what is still open. The supervisor records delivered only when the task branch holds commit as a delivery commit of the task's workspace, read from Git, and escalated only when the task record holds those task-session escalations, and a failed round otherwise. Version 2 governs admission of new tool reports only; already persisted version 1 reports remain unchanged and are not revalidated. Version 1 required only the fields of its status: a delivered report had status, summary, commit, decisions and open, with no escalations, and an escalated report had status, summary, escalations, decisions and open, with no commit. A behaviour or field change increments the version.",
+  "semantics": "The arguments a pi task session passes to concorde_report to end a session round, which the supervisor records as the round's report. All six fields are required. status is delivered when delivery committed the task on its branch, with commit the full delivery commit and escalations an empty array, or escalated when the session cannot go further without the main agent, with commit null and escalations a nonempty unique array of positive numbers (from 1, in record order) of the escalations it recorded with concorde task escalate --by task-session, which carry the error chains. summary says what the round did; decisions lists each decision the session made without the main agent, with its reason; open lists what is still open. The supervisor records delivered only when the task branch holds commit as a delivery commit of the task's workspace, read from Git, that verifies against its evidence bundle as Delivery checks it (contract.delivery.evidence-bundle), and escalated only when the task record holds those task-session escalations, and a failed round otherwise. Version 3 governs admission of new tool reports only; already persisted reports of earlier versions remain unchanged and are not revalidated. Version 2 had the same fields and accepted a delivered report whose commit was a delivery commit by its subject and trailers alone, without verifying it against its evidence bundle. Version 1 required only the fields of its status: a delivered report had status, summary, commit, decisions and open, with no escalations, and an escalated report had status, summary, escalations, decisions and open, with no commit. A behaviour or field change increments the version.",
   "example": {
     "status": "escalated",
     "summary": "Implemented the severity levels; the Spec does not say whether warnings block delivery.",
@@ -90,7 +90,7 @@ A pi round recorded `failed` carries, as its `error`, a link of one of these cod
 | Error code | Raised when |
 | --- | --- |
 | `session_no_report` | pi ended the round without calling `concorde_report`; the link names pi's exit code, stop reason and error message and the paths of the event stream and standard error. |
-| `session_report_unverified` | the report does not follow the [session report](#contract.task-session.report) contract, names a commit that is no [delivery commit](../../glossary.json#concept.delivery-commit) of the task's workspace on its branch, or names an escalation the [task record](../../glossary.json#concept.task-record) does not hold at the level `task-session`; the link names each mismatch, and the round keeps the report. |
+| `session_report_unverified` | the report does not follow the [session report](#contract.task-session.report) contract, names a commit that is no [delivery commit](../../glossary.json#concept.delivery-commit) of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), as Delivery checks it, or names an escalation the [task record](../../glossary.json#concept.task-record) does not hold at the level `task-session`; the link names each mismatch, and the round keeps the report. |
 | `session_supervisor_lost` | the round's supervisor ended without recording the round; the next start, `--answer`, `--stop` or `--wait` of the task records it, and the link names the supervisor's process and the round's logs. |
 
 | Command | Effect | Output |

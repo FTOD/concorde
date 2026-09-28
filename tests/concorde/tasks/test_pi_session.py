@@ -481,6 +481,24 @@ class PiSessionTests(unittest.TestCase):
             1,
             len(pi_session.verify({"status": "delivered", "commit": COMMIT}, record)),
         )
+        # A delivery commit by subject and trailers alone holds only when it also verifies
+        # against its evidence bundle, as a delivered task state requires.
+        forged = deliveries.deliver(
+            self.project.worktree("t1"), text="SECOND = 2\n", bundle_run="r-other"
+        )
+        record = pi_session.delivered_record(self.root, "t1")
+        self.assertEqual(
+            [delivered, forged], [item["commit"] for item in record["deliveries"]]
+        )
+        mismatches = pi_session.verify(
+            {"status": "delivered", "commit": forged}, record
+        )
+        self.assertTrue(mismatches)
+        self.assertIn(
+            f"the delivery commit {forged} does not verify against its evidence bundle",
+            mismatches[0],
+        )
+        self.assertIn("r-other", " ".join(mismatches))
 
     @verifies("scenario.task-session.pi-failed")
     def test_a_round_without_a_report_fails_with_its_evidence(self):
@@ -706,7 +724,7 @@ class PiSessionTests(unittest.TestCase):
     def test_the_report_schema_is_the_contract(self):
         found = contract("## Session report", SESSION_CONTRACTS)
         self.assertEqual("contract.task-session.report", found["id"])
-        self.assertEqual(2, found["version"])
+        self.assertEqual(3, found["version"])
         self.assertEqual(pi_session.REPORT_SCHEMA, found["schema"])
         validate(found["example"], pi_session.REPORT_SCHEMA)
 

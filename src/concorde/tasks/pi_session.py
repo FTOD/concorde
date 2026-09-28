@@ -11,7 +11,8 @@ The supervisor (``main``, run as its own process) runs ``pi -p --mode json --app
 worktree with the developer's own pi configuration and the boundary loaded with ``-e``, keeps the
 round's progress file ``status.json`` current, writes pi's event stream and standard error beside
 it, and records the round's outcome in the task record: ``delivered`` or ``escalated`` only when the
-task's branch holds the delivery commit or its record the escalations the session report names,
+task's branch holds the delivery commit the session report names and that commit verifies against
+its evidence bundle, or its record holds the escalations the report names,
 ``failed`` with an error link otherwise, ``stopped`` after ``stop``. A round whose supervisor ended without recording
 it is settled as ``failed`` the next time Tasks looks at the session.
 """
@@ -643,15 +644,23 @@ def verify(report: dict, record: dict) -> list[str]:
     """What the task contradicts in a session report; empty when it holds everything.
 
     ``record`` is the task record with its ``deliveries``, the delivery commits read from the
-    task's branch (``store.deliveries``), since no record holds them."""
+    task's branch, each with its ``mismatches`` against its evidence bundle (``store.verified``),
+    since no record holds them. A delivered report holds only when its commit is one of them and
+    verifies."""
     if report["status"] == "delivered":
-        commits = [item["commit"] for item in record.get("deliveries") or []]
-        if report["commit"] not in commits:
+        deliveries = record.get("deliveries") or []
+        named = [item for item in deliveries if item["commit"] == report["commit"]]
+        if not named:
+            commits = [item["commit"] for item in deliveries]
             return [
                 f"the report names the delivery commit {report['commit']}, but the task's "
                 f"deliveries are {', '.join(commits) or 'none'}"
             ]
-        return []
+        return [
+            f"the delivery commit {report['commit']} does not verify against its evidence "
+            f"bundle: {mismatch}"
+            for mismatch in named[-1].get("mismatches") or []
+        ]
     held = record.get("escalations") or []
     mismatches = []
     for number in report["escalations"]:
@@ -668,9 +677,12 @@ def verify(report: dict, record: dict) -> list[str]:
 
 
 def delivered_record(primary: Path, task_id: str) -> dict:
-    """The task record with the delivery commits its branch holds, for ``verify``."""
+    """The task record with the delivery commits its branch holds, each verified against its
+    evidence bundle, for ``verify``."""
     record = store.load_task(primary, task_id)
-    record["deliveries"] = store.deliveries(primary, record)
+    record["deliveries"] = [
+        store.verified(primary, item) for item in store.deliveries(primary, record)
+    ]
     return record
 
 

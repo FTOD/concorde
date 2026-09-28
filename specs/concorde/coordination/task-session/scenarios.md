@@ -49,7 +49,7 @@ defined in the [contracts](contracts.md).
 
 ### scenario.task-session.pi-report-verified — A report the record contradicts fails the round
 
-- GIVEN a pi session round whose report says `delivered` with a commit that is no delivery commit of the task's workspace on its branch, or `escalated` naming an escalation the task record does not have
+- GIVEN a pi session round whose report says `delivered` with a commit that is no delivery commit of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), or `escalated` naming an escalation the task record does not have
 - WHEN the supervisor records the round
 - THEN the round is `failed` with a `session_report_unverified` link naming each mismatch, and the round's entry in the task record keeps the report beside that link
 

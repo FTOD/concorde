@@ -89,7 +89,7 @@ error beside it. It then records the round's outcome in the task record:
 | --- | --- |
 | `delivered` | the report says delivered and names a commit that the task branch holds as a [delivery commit](../../glossary.json#concept.delivery-commit) of the task's workspace, read from Git |
 | `escalated` | the report says escalated and names escalations the task record holds with the level `task-session` |
-| `failed` | pi exited without a report, or the report names a commit that is no delivery commit of the task's workspace on its branch, or an escalation the record does not hold; the round's `error` is a link naming pi's exit code, stop reason and error message, the logs, and each mismatch |
+| `failed` | pi exited without a report, or the report names a commit that is no delivery commit of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), or an escalation the record does not hold; the round's `error` is a link naming pi's exit code, stop reason and error message, the logs, and each mismatch |
 | `stopped` | `--stop` ended the round |
 
 The main agent answers an escalation, or asks for more after a delivery, with `--answer`: Task
@@ -253,7 +253,8 @@ Rounds stand in for messages because pi sessions share no channel and a headless
 its agent stops: the session reports once per round through a tool whose arguments follow a
 contract, and the main agent's answer starts the next round with `--session-id` on the same session
 file. The report is checked rather than trusted: its delivery commit against the delivery commits
-of the task's workspace that Git shows on the task branch, its escalations against the task record,
+of the task's workspace that Git shows on the task branch, which must also verify against its
+evidence bundle as for a delivered task, its escalations against the task record,
 so a delivery or an escalation that did not happen makes the round `failed`. No record copies the
 delivery, so the check reads the one place it is recorded. The supervisor is detached from the
 command that started it, so closing the main session never ends a round, and a main session that
@@ -317,8 +318,8 @@ worktree, [record](../../glossary.json#concept.task-record) and
 that dispatches `session` here after checking that it runs in the primary worktree. Task sessions
 records a started session and each round's start and end only through Tasks' record updates, and
 relies on the record holding every escalation and on Tasks reading the delivery commits of the
-task's workspace from the task branch, which together are what it checks a session report
-against. Tasks refusing an update refuses the start or ends the round `failed` with Tasks'
+task's workspace from the task branch, each verified against its evidence bundle, which together
+are what it checks a session report against. Tasks refusing an update refuses the start or ends the round `failed` with Tasks'
 link as its cause.
 
 <a id="uses-harness"></a>
@@ -353,8 +354,9 @@ inside a task that the main agent follows. A missing rendered guidance refuses t
 **Delivery** commits a delivered task as a
 [delivery commit](../../glossary.json#concept.delivery-commit) of its
 workspace on the task branch, the only record of a delivery. A pi session report that says
-`delivered` must name one of those commits; the supervisor reads them through Tasks when it records
-the round, never from the session's own claim.
+`delivered` must name one of those commits, and one that verifies against its evidence bundle by
+Delivery's own check; the supervisor reads them through Tasks when it records the round, never from
+the session's own claim.
 
 Two Modules call this one, both from level 1's side: the Main session's guidance and pi run view
 start, answer and follow task sessions, and Tasks dispatches `concorde task session` here after its
