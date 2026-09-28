@@ -1,0 +1,126 @@
+{
+  "workspace": "operation-caller-wording",
+  "goal": "Rewrite all Operation Specs so invocation, result handling and task-level decisions are not incorrectly restricted to the main agent. Audit Operations and all providers, including Understanding, Specification, Implementation, Code review, Adoption and Spec review (spec_review/spec_panel), across module prose, requirements, scenarios and contracts. Use caller, task level, workspace or actor-neutral wording as appropriate; make clear main agents and task sessions can invoke Operations directly or through workflows. Preserve actual main-agent-only coordination responsibilities and existing runtime behavior, grants and escalation policy. Read complete affected Specs, record decisions, validate, commit and deliver under DEVELOPING.md. This is editorial alignment with the existing Operations and Task sessions contracts, not a design change.",
+  "modules": [
+    "module.operations",
+    "module.understanding",
+    "module.specification",
+    "module.implementation",
+    "module.code-review",
+    "module.adoption",
+    "module.spec-review"
+  ],
+  "sequence": 1,
+  "base_commit": "b33ebdd94d35231aee4d3845a98d206182b06bfe",
+  "parent_commit": "2d520b31a0f869f47addb459530ec16edfe4daf6",
+  "readiness": {
+    "run_id": "r-20260928T165844-delivery-d5ac3d41",
+    "input_digest": "sha256:4a0e27b0c257e1132f632cef01fecc370c458aafff4e852e143aacc04b804ca4",
+    "modules": [
+      "module.adoption",
+      "module.code-review",
+      "module.implementation",
+      "module.operations",
+      "module.spec-review",
+      "module.specification",
+      "module.understanding"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:95d3baee81c0b7dcc56926e2b2b9b2d6fb808b8c1ba530c0c9127d9594a78af1"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:e7af2c5e25d7cd0e81ea2611147851da0f5acd849433ed5bd752d47e5d59acf7"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:5222ffc86a5716011f64ba7c1a6808374aa8fe8fdbae82fd8f38f45bb8c152b3"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:abfcb58019772d8d3ca43c043a8a1d2ca53f4e69b545ddf6b4c35949bb88335f"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:e033f32bf69563af5470ca704aaeb4122d96b0e2c2c64cb2e1c086ffea849aee"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:13eb714befe13b632c4ea01e1ad312cd5ef22335752e58b0e342dedb5ea43f08"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:cbd6924652c9c31bc05bed36d67e946205f9068e4dfca6067931576cdb711507"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:6def0e3c056fa06bf936c3f5eaceac257e3574b3a51db7b872b8857f775411ae"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:76ba2799dac4f81dc060a4adfc0bb248b30848e0471991fe50847aac969013c4"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:9c587ecee366911b1feb1e8c74156989e21e63ed297225984bfb9f0ab7045b91"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:5283ad903b4cf6cae1f435fed664d7ca0580f9cbc6857b3358a9e83fba3cbff1"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:2eaac73bf8555c6c29ddae30a068c966269da48fc8633e4a538e565a121ec849"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T165723-task_validation-110ca659",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.operations",
+        "module.understanding",
+        "module.specification",
+        "module.implementation",
+        "module.code-review",
+        "module.adoption",
+        "module.spec-review"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:bbcf5ffd83b77016ec1746c78af2446c7510d25e88ce35b4eb950368aafab2a9"
+    }
+  ],
+  "created_at": "2026-09-28T16:59:53Z"
+}
