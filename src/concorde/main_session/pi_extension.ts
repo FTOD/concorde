@@ -35,6 +35,7 @@ import {
   concordeCommand,
   discoveredRuns,
   glossaryText,
+  lockedInodes,
   ownedWork,
   primaryRoot,
   recordedRuns,
@@ -42,6 +43,7 @@ import {
   roundId,
   roundOutcome,
   runError,
+  runnerAlive,
   runsDirectory,
   type RunStatus,
   type RunView,
@@ -289,13 +291,15 @@ export default function (pi: ExtensionAPI) {
     const operations = new Map(
       recordedRuns(root).map((item) => [item.run_id, item]),
     );
+    // One look at the kernel's lock table serves every run of this refresh.
+    const locked = lockedInodes();
     // Runs started elsewhere, by bash or another session, are followed like the tool's own.
     for (const operation of discoveredRuns(
       [...operations.values()],
       new Set(tracked.keys()),
       since,
       launching,
-      alive,
+      (run) => runnerAlive(root, run, locked),
     ))
       track(operation);
     for (const [id, entry] of tracked) {
@@ -305,7 +309,7 @@ export default function (pi: ExtensionAPI) {
         root,
         operation,
         workersOf(root, operation),
-        operation.phase === "finished" || alive(operation.host_pid),
+        operation.phase === "finished" || runnerAlive(root, operation, locked),
       );
       publish(id, entry, shown);
       entry.shown = shown;
@@ -374,7 +378,7 @@ export default function (pi: ExtensionAPI) {
       ctx.sessionManager.getSessionFile() ?? ctx.sessionManager.getSessionId();
     subagents = await loadSubagents();
     for (const operation of recordedRuns(root)) {
-      if (operation.phase !== "finished" && alive(operation.host_pid))
+      if (operation.phase !== "finished" && runnerAlive(root, operation))
         track(operation);
     }
     disposeProvider = subagents.registerBackgroundWorkProvider?.({
@@ -490,7 +494,7 @@ export default function (pi: ExtensionAPI) {
               root,
               operation,
               workersOf(root, operation),
-              operation.phase === "finished" || alive(operation.host_pid),
+              operation.phase === "finished" || runnerAlive(root, operation),
             );
             track(operation, shown.finished, true);
             refresh(ctx);
@@ -655,7 +659,7 @@ export default function (pi: ExtensionAPI) {
             root,
             operation,
             workersOf(root, operation),
-            operation.phase === "finished" || alive(operation.host_pid),
+            operation.phase === "finished" || runnerAlive(root, operation),
           );
           return `${shown.state.padEnd(9)} ${shown.label} (${shown.id}) — ${shown.finished ? (shown.preview ?? "") : shown.currentAction}`;
         });

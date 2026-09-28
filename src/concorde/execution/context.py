@@ -432,6 +432,7 @@ class RunContext:
                 reasoning=model["reasoning"],
                 operation=self.name,
                 worker=worker,
+                operation_run=self.run_id,
                 after_round=after_round,
                 project_python=interpreter,
                 started=self.worker_started,

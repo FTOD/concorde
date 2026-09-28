@@ -167,6 +167,15 @@ never starts its run later.
 
 ## Run progress file
 
+Before it writes anything in the run's directory, the runner takes the [run
+lock](../glossary.json#concept.run-lock): an exclusive `flock` on the run's directory itself, held
+until after the result and the finished progress file are written, through a descriptor the
+processes it starts do not inherit, so a worker or check that outlives the runner never keeps its
+run alive. An observer tells a running run from a dead one by
+trying the lock for an instant, shared and without waiting (`runner_alive`); the kernel's lock table
+`/proc/locks` shows the same, whichever PID namespace holds it. A run without `result.json` whose
+lock nobody holds is `lost`.
+
 The runner writes `<records>/runs/<run-id>/status.json` atomically when the run's directory is
 created, before each step and when the result is written:
 
@@ -179,7 +188,7 @@ created, before each step and when the result is written:
 | `step` | the step running now, `workspace-lock` while the run waits for the workspace lock, or null |
 | `waiting_for` | the run holding the workspace lock while this run waits for it; null otherwise |
 | `status`, `summary` | null while running; the result's status and summary once finished |
-| `host_pid` | the runner's process identifier, which every worker run it launches records too |
+| `host_pid` | the runner's process identifier in its own PID namespace, for display and for the process that started it; never a sign that the run still runs |
 | `started_at`, `updated_at` | UTC times |
 
 A failed write never changes the run.

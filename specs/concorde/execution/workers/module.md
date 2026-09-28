@@ -87,9 +87,10 @@ run record.
 
 Throughout, the host keeps the worker run's
 **[progress file](../../glossary.json#concept.progress-file)** `status.json` current: the phase, the
-round, the worker's latest tool call and the process identifier of the Execution runner it runs in,
-which the Operation run's own [run progress file](../../glossary.json#concept.run-progress-file)
-names too, so an observer pairs the two. The main session's
+round, the worker's latest tool call, the process identifier of the Execution runner it runs in and
+the identity of the Operation run that launched it, by which an observer pairs it with that run's
+own [run progress file](../../glossary.json#concept.run-progress-file); process identifiers are
+not unique across PID namespaces, so they never pair the two. The main session's
 [run view](../../glossary.json#concept.run-view) reads it; the run record, not the progress file, is
 the run's evidence. Every run ends both, however it ends: a run interrupted from outside, such as by
 the cancellation of the Operation that launched it, is recorded as `failed` with `interrupted` and
@@ -381,8 +382,9 @@ as its cause, and no further round.
 **Execution** gives every worker run its place: the Operation's step passes the records directory
 of its run, and Workers creates the run directory in that [run
 store](../../glossary.json#concept.run-store), beside the Operation run, and records the
-runner's process identifier in the progress file, as the runner's own [run progress
-file](../../glossary.json#concept.run-progress-file) does. Workers relies on the runner refusing an
+Operation run's identity, which the step passes, and the runner's process identifier in the
+progress file, beside the runner's own [run progress
+file](../../glossary.json#concept.run-progress-file). Workers relies on the runner refusing an
 unbound run's writing worker before it reaches Workers, and never reads a workspace binding itself.
 For an unbound run the step passes the run's checkout as the worktree and reads the backend,
 model and limits from the worker configuration committed in that checkout, as every other input of

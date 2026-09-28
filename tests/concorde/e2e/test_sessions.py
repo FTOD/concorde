@@ -10,6 +10,7 @@ import time
 import unittest
 from pathlib import Path
 
+from concorde.execution.runs import run_lock
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -23,7 +24,7 @@ sessions = e2e.sessions
 # A stand-in for `claude -p`: the first round starts a detached "Operation host" that lives for
 # a second and leaves its run running; a resumed round records the message it was woken with.
 FAKE = """#!/usr/bin/env python3
-import json, os, subprocess, sys, time
+import fcntl, json, os, subprocess, sys, time
 from pathlib import Path
 argv = sys.argv[1:]
 prompt = argv[argv.index("-p") + 1]
@@ -38,9 +39,20 @@ if "--resume" in argv:
     say({"type": "result", "subtype": "success", "num_turns": 3, "total_cost_usd": 0.2,
          "result": "done after: " + prompt})
     sys.exit(0)
-host = subprocess.Popen(["sleep", "1"], start_new_session=True)
 run = Path(".concorde/runs/r-1")
 run.mkdir(parents=True)
+HOLD = "import fcntl, os, sys, time; d = os.open(sys.argv[1], os.O_RDONLY); " \\
+    "fcntl.flock(d, fcntl.LOCK_EX); time.sleep(float(sys.argv[2]))"
+host = subprocess.Popen([sys.executable, "-c", HOLD, str(run), "1"], start_new_session=True)
+while True:
+    probe = os.open(run, os.O_RDONLY)
+    try:
+        fcntl.flock(probe, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except BlockingIOError:
+        break
+    finally:
+        os.close(probe)
+    time.sleep(0.01)
 stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 (run / "status.json").write_text(json.dumps({
     "kind": "operation", "run_id": "r-1", "name": "implement", "workspace": "t1",
@@ -56,7 +68,7 @@ say({"type": "result", "subtype": "success", "num_turns": 2, "total_cost_usd": 0
 # session starts a detached "Operation host" that lives for a second and leaves its run running,
 # a later round of the same session identity records the message it was woken with.
 FAKE_PI = """#!/usr/bin/env python3
-import json, subprocess, sys, time
+import fcntl, json, os, subprocess, sys, time
 from pathlib import Path
 argv = sys.argv[1:]
 prompt = sys.stdin.read()
@@ -77,9 +89,20 @@ def reply(text, cost):
 if round_ > 1:
     reply("done after: " + prompt, 0.2)
     sys.exit(0)
-host = subprocess.Popen(["sleep", "1"], start_new_session=True)
 run = Path(".concorde/runs/r-1")
 run.mkdir(parents=True)
+HOLD = "import fcntl, os, sys, time; d = os.open(sys.argv[1], os.O_RDONLY); " \\
+    "fcntl.flock(d, fcntl.LOCK_EX); time.sleep(float(sys.argv[2]))"
+host = subprocess.Popen([sys.executable, "-c", HOLD, str(run), "1"], start_new_session=True)
+while True:
+    probe = os.open(run, os.O_RDONLY)
+    try:
+        fcntl.flock(probe, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except BlockingIOError:
+        break
+    finally:
+        os.close(probe)
+    time.sleep(0.01)
 stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 (run / "status.json").write_text(json.dumps({
     "kind": "operation", "run_id": "r-1", "name": "implement", "workspace": "t1",
@@ -190,7 +213,11 @@ class HeadlessSessionTests(unittest.TestCase):
         make("r-stopped", "2026-09-27T10:05:00Z", "finished", 0, "cancelled")
         make("r-failed", "2026-09-27T10:05:00Z", "finished", 0, "not_deliverable")
         make("r-earlier", "2026-09-27T09:00:00Z", "running", live.pid)
-        make("r-gone", "2026-09-27T10:05:00Z", "running", 999999999)
+        # Its runner ran in a sandbox's PID namespace as process 1, a live process here; it no
+        # longer holds its run lock.
+        make("r-gone", "2026-09-27T10:05:00Z", "running", 1)
+        for name in ("r-running", "r-earlier"):
+            self.enterContext(run_lock(runs / name))
         (runs / "w-1").mkdir()
         (runs / "w-1/status.json").write_text(
             json.dumps({"phase": "worker", "host_pid": live.pid})
@@ -254,7 +281,7 @@ class HeadlessSessionTests(unittest.TestCase):
     def test_a_run_that_outlives_the_wait_fails_a_kept_session(self):
         fake = self.base / "claude"
         # The run's host outlives the wait, so the session fails after its first round.
-        fake.write_text(FAKE.replace('["sleep", "1"]', '["sleep", "5"]'))
+        fake.write_text(FAKE.replace('str(run), "1"]', 'str(run), "5"]'))
         fake.chmod(0o755)
         directory = self.base / "session"
         with self.assertRaises(e2e.E2EError) as raised:

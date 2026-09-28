@@ -68,11 +68,12 @@ rewrites it atomically at every phase change and at most once a second for worke
 | Field | Content |
 | --- | --- |
 | `run_id`, `task_type`, `backend`, `worktree` | the run's identity, task type, backend and worktree |
+| `operation_run_id` | the identity of the Operation run that launched it, by which an observer pairs the two; null for a worker launched outside a run |
 | `phase` | `preparing`, `worker`, `audit`, `checks` or `finished` |
 | `round` | the current round, from 1 |
 | `last_action` | the worker's latest tool call as `tool` and `target` (a path, pattern or the first line of a command, at most 200 characters) with its time, or null |
 | `status` | null while running; the final status once `phase` is `finished` |
-| `host_pid` | the process identifier of the process running the run: the Execution runner of the Operation run that launched it |
+| `host_pid` | the process identifier, in its own PID namespace, of the process running the run: the Execution runner of the Operation run that launched it |
 | `started_at`, `updated_at` | UTC times |
 
 It is an observation aid only: the run record, not the progress file, is the run's evidence.

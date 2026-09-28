@@ -114,10 +114,10 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.install-busy — Concorde is not replaced while it runs
 
-- GIVEN an installed project in which the runner process of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run, or a pi [task-session](../glossary.json#concept.task-session) round's supervisor, is still running
+- GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock), or a pi [task-session](../glossary.json#concept.task-session) round's supervisor is still running
 - WHEN the developer installs Concorde again or runs `concorde update`
 - THEN the install is refused with `concorde_busy`, naming each running run or round with its process and [progress file](../glossary.json#concept.progress-file)
-- BUT the progress file of the running Operation's worker is not named as a run of its own
+- BUT the progress file of the running Operation's worker is not named as a run of its own, nor a run whose run lock nobody holds, whatever process its recorded identifier names
 - BUT nothing in the project changes
 - AND once the run has finished, the same install succeeds
 

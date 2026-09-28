@@ -41,7 +41,7 @@ from pathlib import Path
 
 from ..dogfooding.develop import DevelopError, develop_source, guidance
 from ..errors import link
-from ..execution.runs import pid_alive
+from ..execution.runs import pid_alive, runner_alive
 from ..views.docsite_template import (
     DocsiteTemplateError,
     template_files,
@@ -187,7 +187,9 @@ def active_runs(project: Path) -> list[str]:
         # only the Operation's is a run.
         if state.get("kind") not in ("operation", "command"):
             continue
-        if state.get("phase") != "finished" and pid_alive(pid):
+        # The run lock, not the process identifier, which a runner in another PID namespace
+        # records meaninglessly.
+        if state.get("phase") != "finished" and runner_alive(path.parent):
             found.append(
                 f"{state.get('kind')} run {state.get('run_id') or path.parent.name} "
                 f"({state.get('name')}, workspace {state.get('workspace') or 'none'}, runner "

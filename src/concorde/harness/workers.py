@@ -87,6 +87,9 @@ class WorkerRequest:
     # The Operation and worker id the model was chosen for, recorded only.
     operation: str | None = None
     worker: str | None = None
+    # The identity of the Operation run that launched the worker, by which an observer pairs
+    # the worker with its run.
+    operation_run: str | None = None
     pi: str | None = None
     pi_config: Path | None = None
     sandbox_runtime: Path | None = None
@@ -410,6 +413,7 @@ def run_worker(request: WorkerRequest) -> dict:
         task_type=request.task_type,
         backend=request.backend,
         worktree=worktree.as_posix(),
+        operation_run_id=request.operation_run,
     )
     record: dict = {
         "run_id": run_id,

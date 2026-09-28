@@ -5,7 +5,6 @@ from __future__ import annotations
 import contextlib
 import io
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -16,7 +15,7 @@ from unittest.mock import patch
 from concorde import errors
 from concorde.errors import ERROR_SCHEMA, codes
 from concorde.execution import binding
-from concorde.execution.runs import workspace_lock
+from concorde.execution.runs import run_lock, workspace_lock
 from concorde.harness import models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
@@ -463,14 +462,15 @@ class TaskStoreTests(unittest.TestCase):
         write_run(self.root, "r-20260927T000000-understand-00000001", "t2")
         write_run(self.root, "r-20260927T000000-understand-00000002", None)
         self.assertEqual("open", self.state())
-        write_run(
+        running = write_run(
             self.root,
             "r-20260927T000001-implement-00000003",
             "t1",
             name="implement",
             status=None,
-            host_pid=os.getpid(),
         )
+        # Its runner holds the run lock, as a live runner does.
+        self.enterContext(run_lock(running.parent))
         shown = store.show_task(self.root, "t1")
         self.assertEqual("active", shown["record"]["state"])
         self.assertEqual(
@@ -521,18 +521,18 @@ class TaskStoreTests(unittest.TestCase):
         status, value = self.project.run("task-validation", "--task", "t1")
         self.assertNotEqual("refused", (value["error"] or {}).get("code"), value)
 
-    @verifies("scenario.tasks.interrupted")
+    @verifies("scenario.tasks.interrupted", "scenario.execution.run-lock")
     def test_a_dead_host_leaves_an_interrupted_run(self):
         self.project.open_task("t1")
-        dead = subprocess.Popen(["true"])
-        dead.wait()
+        # The runner ran in a sandbox's PID namespace, where it was process 2; on the host that
+        # number names a live, unrelated process, which must not make the run look alive.
         write_run(
             self.root,
             "r-20260927T000000-implement-00000001",
             "t1",
             name="implement",
             status=None,
-            host_pid=dead.pid,
+            host_pid=1,
         )
         shown = store.show_task(self.root, "t1")
         self.assertEqual(["lost"], [run["status"] for run in shown["runs"]])

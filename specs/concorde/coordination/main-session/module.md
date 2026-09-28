@@ -141,7 +141,7 @@ that ended between two looks; a run that had already ended when the session star
 by `/concorde` ([requirements](requirements.md#req.main-session.pi-run-follow)). It follows each
 through its [run progress file](../../glossary.json#concept.run-progress-file) there and through
 the [progress file](../../glossary.json#concept.progress-file) of the worker an
-Operation launched, paired by the runner's process identifier; an execution command has no worker.
+Operation launched, paired by the Operation run's identity; an execution command has no worker.
 It shows each run as an external job in pi-subagents' FleetView — its workspace (or `unbound`) and
 name, its step, the worker's round and latest tool call, and on its end `completed`, `stopped` or
 `failed` for a result of `ok`, `blocked` or `failed`, with the result's summary; a run whose runner
@@ -503,11 +503,14 @@ that the main session is pi, so that `concorde task session` starts pi task sess
 backend a worker runs on is not affected, since Workers takes it from the worktree's worker
 configuration. It tells an execution command from an Operation by name and starts the first as
 `concorde <command>`, the second as `concorde run <operation>`. It pairs a worker's progress file
-with a run by the runner's process identifier and a start no earlier than the run's, so a worker of
-another runner, or of an earlier run whose process identifier was reused, is never attributed to
-it; a run still marked running whose runner process no longer exists is shown `failed`. It looks
-for runs it does not follow yet on every refresh, leaving a run whose runner process `concorde_run`
-is still starting to that tool, which answers a run that ended at once in its own result, so that
+with a run by the Operation run's identity the worker records, never by a process identifier, which
+runners in different PID namespaces, such as sandboxed shells, share. It tells whether a runner
+still lives by its [run lock](../../glossary.json#concept.run-lock), which it finds in the kernel's
+lock table `/proc/locks` by the inode of the run's directory, whichever PID namespace holds it, and
+by the recorded process identifier only where the kernel shows no lock table; a run still marked
+running without a result whose run lock nobody holds is shown `failed`. It looks for runs it does
+not follow yet on every refresh, leaving a run whose runner process `concorde_run` is still
+starting to that tool, which answers a run that ended at once in its own result, so that
 no run is reported twice. `pi_runs.ts` also reads the status files of task-session rounds. The
 tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi session
 and is exercised in one.
@@ -528,7 +531,7 @@ view -> rprogress: reads
 <a id="uses-workers"></a>
 
 **Workers** keeps each worker run's [progress file](../../glossary.json#concept.progress-file). The
-run view relies on it recording the phase, round and latest tool call, and the runner process that
+run view relies on it recording the phase, round and latest tool call, and the Operation run that
 launched the worker, and on it being an observation only: the
 [run record](../../glossary.json#concept.run-record), not the progress file, is the evidence, so the
 view shows but never judges a run from it. Workers also owns the

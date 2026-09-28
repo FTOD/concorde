@@ -156,8 +156,8 @@ woken once, verifying the [requirements](requirements.md) and [scenarios](scenar
 file](../../glossary.json#concept.run-progress-file) and the [run
 result](../../glossary.json#concept.run-result) of every run a session starts, and
 the run store that holds them. The driver relies on the run progress file naming the run's kind,
-name, workspace, phase, runner process and start time, on the result carrying the status, summary
-and error code, and on a workspace binding naming the records directory of its runs, to decide
+name, workspace, phase and start time, on the [run lock](../../glossary.json#concept.run-lock)
+telling whether its runner still lives, on the result carrying the status, summary and error code, and on a workspace binding naming the records directory of its runs, to decide
 which runs are unsettled and to write the wake message; it never changes any of them.
 
 Claude Code and pi are external: the driver relies on `claude -p` with `--resume`,

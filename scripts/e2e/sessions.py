@@ -23,6 +23,7 @@ session directory, with ``session.json`` summarizing the rounds, the wakes and t
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import subprocess
@@ -247,20 +248,23 @@ def read_pi_log(path: Path) -> dict:
     }
 
 
-def _alive(pid: int) -> bool:
-    if pid < 1:
-        return False
+def _alive(directory: Path) -> bool:
+    """Whether the runner of the run in ``directory`` still holds its run lock, a ``flock`` on
+    the run directory; its recorded process identifier is only meaningful in the PID namespace
+    it ran in."""
     try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    try:
-        state = Path(f"/proc/{pid}/stat").read_text()
+        descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
     except OSError:
+        return False
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except BlockingIOError:
         return True
-    return state.rsplit(")", 1)[-1].split()[0] != "Z"
+    except OSError:
+        return False
+    finally:
+        os.close(descriptor)
+    return False
 
 
 def runs_of(project: Path) -> Path:
@@ -306,7 +310,7 @@ def unsettled_runs(
         if str(state.get("started_at") or "") < since:
             continue
         if state.get("phase") != "finished":
-            if _alive(int(state.get("host_pid") or 0)):
+            if _alive(directory):
                 found.append({"run": directory.name, "why": "running"})
             continue
         result = _result(directory)
@@ -326,9 +330,7 @@ def wait_for(
         directory = runs_of(project) / item["run"]
         while item["why"] == "running":
             state = _state(directory) or {}
-            if state.get("phase") == "finished" or not _alive(
-                int(state.get("host_pid") or 0)
-            ):
+            if state.get("phase") == "finished" or not _alive(directory):
                 break
             if time.monotonic() > deadline:
                 raise E2EError(

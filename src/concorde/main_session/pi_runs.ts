@@ -4,14 +4,22 @@
  * describe each run for pi-subagents' FleetView; and the same for the rounds of pi task sessions.
  *
  * A run's `status.json` is written by the Execution runner; each worker run an Operation launches
- * writes its own `status.json` with the same `host_pid`, which is how a worker is found for its
- * run. A task session's round is described by the `status.json` its supervisor keeps under
+ * writes its own `status.json` naming the Operation run in `operation_run_id`, which is how a
+ * worker is found for its run. Whether a runner still lives is read from its run lock, an
+ * exclusive `flock` on the run directory, never from `host_pid`, which is only meaningful in the
+ * PID namespace the runner ran in. A task session's round is described by the `status.json` its supervisor keeps under
  * `.concorde/tasks/<task>.session/`, and its outcome by the task record. This module imports only
  * Node's own modules so the host's tests can run it under Node.
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 
 export interface RunStatus {
@@ -32,6 +40,7 @@ export interface RunStatus {
 
 export interface WorkerStatus {
   run_id: string;
+  operation_run_id: string | null;
   task_type: string;
   backend: string;
   phase: string;
@@ -187,13 +196,13 @@ export function discoveredRuns(
   known: Set<string>,
   since: number,
   launching: Set<number>,
-  isAlive: (pid: number) => boolean,
+  isAlive: (run: RunStatus) => boolean,
 ): RunStatus[] {
   return runs.filter(
     (run) =>
       !known.has(run.run_id) &&
       !launching.has(run.host_pid) &&
-      ((run.phase === "running" && isAlive(run.host_pid)) ||
+      ((run.phase === "running" && isAlive(run)) ||
         Date.parse(run.started_at) >= since),
   );
 }
@@ -222,17 +231,62 @@ export function ownedWork(
     .map((entry) => ({ id: entry.id, sessionId }));
 }
 
-/** The worker runs a run launched: same runner process, started after it; oldest first. */
+/** The worker runs a run launched, which name it as their Operation run; oldest first. */
 export function workersOf(root: string, operation: RunStatus): WorkerStatus[] {
   return (
     statuses(root).filter((value) => !isRun(value)) as unknown as WorkerStatus[]
   )
-    .filter(
-      (worker) =>
-        worker.host_pid === operation.host_pid &&
-        worker.started_at >= operation.started_at,
-    )
+    .filter((worker) => worker.operation_run_id === operation.run_id)
     .sort((a, b) => a.started_at.localeCompare(b.started_at));
+}
+
+/**
+ * The inode numbers of the files and directories on which some process holds an exclusive
+ * `flock`, from the kernel's lock table `/proc/locks`, whichever PID namespace the holder runs
+ * in; null where the kernel offers no such table. Shared locks are left out: they are readers
+ * probing a lock for an instant, never a runner. Only the inode number is compared, since the
+ * device the table names differs from the one `stat` reports on some file systems, such as btrfs
+ * subvolumes.
+ */
+export function lockedInodes(): Set<string> | null {
+  let table: string;
+  try {
+    table = readFileSync("/proc/locks", "utf-8");
+  } catch {
+    return null;
+  }
+  const found = new Set<string>();
+  for (const line of table.split("\n")) {
+    // `1: FLOCK  ADVISORY  WRITE 4242 08:02:5767891 0 EOF`; a waiter's line has `->` after the
+    // number and holds nothing.
+    const fields = line.trim().split(/\s+/);
+    if (fields[1] !== "FLOCK" || fields[3] !== "WRITE") continue;
+    const inode = fields[5]?.split(":")[2];
+    if (inode) found.add(inode);
+  }
+  return found;
+}
+
+/**
+ * Whether the runner of `run` still lives: it holds its run lock, an exclusive `flock` on the
+ * run directory, from before its first progress file until after its result. A run whose result
+ * is already written counts as alive, so a run that ended properly after its progress file was
+ * read is not taken for one that died; its finished progress file is read on the next look.
+ * Where the kernel shows no lock table, the recorded process identifier is the only sign left.
+ */
+export function runnerAlive(
+  root: string,
+  run: RunStatus,
+  locked: Set<string> | null = lockedInodes(),
+): boolean {
+  const directory = join(runsDirectory(root), run.run_id);
+  if (existsSync(join(directory, "result.json"))) return true;
+  if (locked === null) return alive(run.host_pid);
+  try {
+    return locked.has(statSync(directory, { bigint: true }).ino.toString());
+  } catch {
+    return false;
+  }
 }
 
 /** Whether a process is alive; a process owned by another user counts as alive. */
@@ -272,7 +326,9 @@ export function view(
   } else if (!hostAlive) {
     state = "failed";
     status = "failed";
-    preview = `failed: the runner (process ${operation.host_pid}) ended without finishing the run`;
+    preview =
+      "failed: the runner ended without finishing the run: it no longer holds its run lock " +
+      "and wrote no result";
   }
   let action = operation.step ?? (finished ? "finished" : "starting");
   if (!finished && operation.waiting_for) {
