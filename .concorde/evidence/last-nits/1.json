@@ -1,0 +1,75 @@
+{
+  "workspace": "last-nits",
+  "goal": "Two small leftovers: (1) task merge's primary-worktree clean check (merge.py primary_dirty) ignores untracked paths Git cannot version (sandbox mount stubs), with the same rule Tasks' _changes now applies, so a main agent in a sandbox is not refused a merge by them; (2) the understand brief (src/concorde/understanding/operation.py) labels the workspace's goal 'The workspace's goal', as specify, implement and test do.",
+  "modules": [
+    "module.tasks",
+    "module.understanding"
+  ],
+  "sequence": 1,
+  "base_commit": "9c8d4e17d0fb40c0dbb585d038f03a156de10f61",
+  "parent_commit": "bf92c75989e9267996319fb5f722dfa7bf12d521",
+  "readiness": {
+    "run_id": "r-20260928T185025-delivery-841c68a7",
+    "input_digest": "sha256:97b1c6b340483e8d2a0b68b3274179d2bc0bd0948efb4338abd4744d99c9a198",
+    "modules": [
+      "module.tasks",
+      "module.understanding"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:89e44fee52a9936076ea0224164f5293b27a3044b42d827fad73d02fc44cf049"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:e057a06129caa685cb88b5b85b60d41a534e616f7b92f1ad7b2d36dc272c4caf"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:8276de106588c199ee183abd359ea54ce4d87a92e74795e26d788602fc2e87d5"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:bba4539ed49d3571f3e3b75cebbe839ab6bd3d58edde98352e32f4c0d135b888"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:480d695a2ae8daa33009afa469c4b8ecbb29a0277b2cfd3e4d4f56a08db1eb72"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:fe01de87c6951da23f8678834428629a8cc0795bbd2577bb1481c2ebf25e605f"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T184941-task_validation-023cdd9a",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.tasks",
+        "module.understanding"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:61456c3cddbd4352c818e025759eec5cad7600b34784eaad020962b278f9dc1f"
+    }
+  ],
+  "created_at": "2026-09-28T18:51:19Z"
+}
