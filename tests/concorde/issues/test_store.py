@@ -41,8 +41,8 @@ def refused_record_writes():
 
 @contextmanager
 def racing_writer():
-    """Another program changes the record after the store read it and before it publishes;
-    yields the list of bytes that program left."""
+    """Another program creates or changes the record after the store read it and before it
+    publishes; yields the list of bytes that program left."""
     from concorde.issues import store
 
     publish = store.apply_files
@@ -50,7 +50,9 @@ def racing_writer():
 
     def racing(root, changes, allowed, **kwargs):
         target = Path(root) / changes[0]["path"]
-        target.write_bytes(target.read_bytes() + b"\n")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        before = target.read_bytes() if target.exists() else b"# another program\n"
+        target.write_bytes(before + b"\n")
         left.append(target.read_bytes())
         return publish(root, changes, allowed, **kwargs)
 
@@ -400,6 +402,16 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual(before, self.issue_files())
         self.assertEqual(report(), resolve_report(self.root, receipt)["report"])
 
+    def assert_stale_publication(self, raised, identifier, happened):
+        error = raised.exception
+        self.assertEqual("stale_issue", error.code)
+        self.assertIn(f"Issue {identifier} {happened}", str(error))
+        self.assertEqual(f".concorde/issues/{identifier}.md", error.path)
+        self.assertEqual(["stale_proposal"], [cause.code for cause in error.causes])
+        record = error.record()
+        self.assertEqual("stale_proposal", record["causes"][0]["code"])
+        self.assertIn(f".concorde/issues/{identifier}.md", error.where())
+
     @verifies("scenario.issues.store-publication-stale")
     def test_a_record_changed_during_publication_is_refused_as_stale(self):
         receipt = report_issue(self.root, report(), source())
@@ -412,7 +424,7 @@ class IssueStoreTests(unittest.TestCase):
             with (
                 self.subTest(action=action),
                 racing_writer() as left,
-                self.assertRaisesRegex(IssueError, "changed while") as raised,
+                self.assertRaises(IssueError) as raised,
             ):
                 if action == "append":
                     report_issue(
@@ -426,9 +438,22 @@ class IssueStoreTests(unittest.TestCase):
                     )
                 else:
                     self.close(identifier, revision)
-            self.assertEqual("stale_issue", raised.exception.code)
-            self.assertIn(identifier, str(raised.exception))
+            self.assert_stale_publication(
+                raised, identifier, "was changed by another program"
+            )
             self.assertEqual(left[-1], path.read_bytes())
+
+    @verifies("scenario.issues.store-publication-stale")
+    def test_a_record_created_during_publication_is_refused_as_stale(self):
+        with racing_writer() as left, self.assertRaises(IssueError) as raised:
+            report_issue(self.root, report(), source())
+        identifier = raised.exception.path.rsplit("/", 1)[-1].removesuffix(".md")
+        self.assert_stale_publication(
+            raised, identifier, "was created by another program"
+        )
+        self.assertEqual(
+            left[-1], (self.root / f".concorde/issues/{identifier}.md").read_bytes()
+        )
 
     def test_a_receipt_whose_path_is_not_its_issues_is_refused(self):
         receipt = report_issue(self.root, report(), source())

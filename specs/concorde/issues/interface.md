@@ -171,10 +171,12 @@ These are library operations in `concorde.issues.store`. None launches a model o
 fail in these ways:
 
 - a refusal by an Issue rule is an `IssueError` carrying one of the codes under [Errors](#errors)
-  and a message naming the Issue it concerns; this includes a record that another program changed
-  between the store's read and its publication, which the
-  [file transaction](../spec-tooling/spec/contracts.md#file-transactions) refuses as
-  `stale_proposal` and the store reports as `stale_issue`;
+  and a message that states what is wrong; a refusal that concerns one stored Issue, such as a
+  read, an append, a disposition or a publication, also names that Issue; this includes a record
+  that another program created or changed between the store's read and its publication, which
+  the [file transaction](../spec-tooling/spec/contracts.md#file-transactions) refuses as
+  `stale_proposal` and the store reports as `stale_issue`, naming the record file and keeping the
+  `stale_proposal` as its cause;
 - a value that Spec core's [typed-value](../spec-tooling/spec/contracts.md#typed-values) checks
   refuse, such as a report or disposition that breaks its schema or an evidence path that is not a
   canonical project-relative POSIX path, is refused by Spec core with `TypedDataError` and its

@@ -390,11 +390,12 @@ This illustrates [status derived from history](requirements.md#req.issues.status
 
 This illustrates [durable receipts](requirements.md#req.issues.durable-receipt).
 
-### scenario.issues.store-publication-stale — A record changed during publication is refused
+### scenario.issues.store-publication-stale — A record created or changed during publication is refused
 
-- GIVEN an open Issue and another program that changes its record file after the store read it and before the store publishes
-- WHEN the store appends a report to it or disposes it at the revision it read
-- THEN the store refuses with `stale_issue`, naming the Issue, instead of the file transaction's `stale_proposal`
+- GIVEN another program that creates or changes an Issue's record file after the store read it and before the store publishes
+- WHEN the store creates that Issue, appends a report to it or disposes it
+- THEN the store refuses with `stale_issue`, naming the Issue and whether its record was created or changed, and naming the record file
+- AND the file transaction's `stale_proposal` is its cause
 - BUT the record keeps the other program's bytes
 
 This illustrates [revision-checked writes](requirements.md#req.issues.revision-checked).

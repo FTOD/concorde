@@ -276,19 +276,28 @@ def _publish(root: Path, record: dict, before: str | None) -> None:
 def _publish_text(root: Path, identifier: str, text: str, before: str | None) -> None:
     path = issue_path(identifier)
     if len(text.encode()) > MAX_RECORD_BYTES:
-        raise IssueError("issue record exceeds the admitted size", "invalid_issue")
+        raise IssueError(
+            f"Issue {identifier}: the record would exceed the admitted size of 16 MiB",
+            "invalid_issue",
+        )
     try:
         apply_files(
             root, [{"path": path, "before_digest": before, "content": text}], {path}
         )
     except SpecError as error:
-        # Another program changed the record after this write read it.
+        # Another program created or changed the record after this write read it.
         if error.code != "stale_proposal":
             raise
+        happened = (
+            "was created by another program while this write was creating it"
+            if before is None
+            else "was changed by another program after this write read it"
+        )
         raise IssueError(
-            f"Issue {identifier} changed while it was being written, so nothing was "
-            f"written: {error}",
+            f"Issue {identifier} {happened}, so nothing was written",
             "stale_issue",
+            path=path,
+            causes=(error,),
         ) from error
     # apply_files fsyncs the staged contents; persist the rename before acknowledging the report.
     descriptor = os.open(checked_path(root, DIRECTORY), os.O_RDONLY | os.O_DIRECTORY)
