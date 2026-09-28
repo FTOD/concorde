@@ -295,7 +295,9 @@ decision log: the log is the task level's, and it decides what to copy into it.
 on each run reading the same [workspace binding](../../glossary.json#concept.workspace-binding) as
 the workflow, holding the [workspace lock](../../glossary.json#concept.workspace-lock) for its whole
 life, writing exactly one result before releasing it and starting no other run, so the order of the
-runs is the procedure's alone and a finished step always leaves the workspace free for the next. It
+runs is the procedure's alone and each step, which waits for the lock before it starts its run,
+finds the results of the earlier steps written; a result on disk does not mean the lock is free yet.
+It
 relies on a [detached run](../../glossary.json#concept.detached-run) being announced only once its
 [run progress file](../../glossary.json#concept.run-progress-file) exists, and on the
 [run store](../../glossary.json#concept.run-store) keeping every run's result and progress by its
