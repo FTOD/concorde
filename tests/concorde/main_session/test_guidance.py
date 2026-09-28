@@ -370,42 +370,32 @@ class GuidanceTests(unittest.TestCase):
     @verifies("scenario.main-session.choose-models")
     def test_the_developer_chooses_worker_models(self):
         self.assertIn("Workers run on pi, whatever program you are", self.skill)
-        self.assertIn("`.concorde/worker-models.json`", self.skill)
-        self.assertIn(
-            "copies the primary worktree's file into the new task worktree", self.skill
-        )
-        self.assertIn("Change worker models only when the developer asks.", self.skill)
-        self.assertIn("call the `concorde_configure_workers` tool", self.skill)
-        self.assertIn(
-            "For AI-driven changes, edit `.concorde/worker-models.json` directly",
-            self.skill,
-        )
-        self.assertIn("Edits stay in a draft until Save", self.skill)
-        self.assertIn("dirty exits offer Keep editing or Discard changes", self.skill)
-        self.assertIn("including Ctrl-C", self.skill)
-        self.assertIn("concorde configure-workers --show --json", self.skill)
-        self.assertIn("concorde configure-workers --check", self.skill)
+        self.assertIn("unless the worktree's `.concorde/workers.json`", self.skill)
+        self.assertIn("The file is tracked by Git", self.skill)
+        self.assertIn("A task carries the file of its base commit", self.skill)
+        self.assertIn("Change worker models only when the developer asks", self.skill)
+        self.assertIn("commit that file alone on the primary branch", self.skill)
+        self.assertIn("reaches the primary branch when the task merges", self.skill)
+        self.assertIn("there is no editor", self.skill)
         self.assertIn("scripts/available_models.py --backend pi", self.skill)
         self.assertIn("custom/offline model names", self.skill)
-        self.assertIn(
-            "run it in a task worktree only when the developer asks to change a task that "
-            "already exists",
-            self.skill,
-        )
-        self.assertIn("`concorde configure-workers` command", self.block)
-        self.assertNotIn("concorde run configure_workers", self.skill)
         self.assertIn("keyed by **worker id**", self.skill)
         self.assertIn("`reviewer1` to `reviewer5` and `chair`", self.skill)
+        self.assertIn("`limits` of every worker launch", self.skill)
         self.assertIn(
             "change the models workers use only when the developer asks", self.block
         )
-        self.assertIn(
-            "unless the worktree's `.concorde/worker-models.json`", self.skill
-        )
+        self.assertIn("tracked `.concorde/workers.json`", self.block)
         self.assertIn('Set `backend: "claude"`', self.skill)
-        self.assertIn(
-            "chosen backend must be installed when a worker launches", self.skill
-        )
+        self.assertIn("The chosen backend must be installed then", self.skill)
+        for old in (
+            "configure-workers",
+            "concorde_configure_workers",
+            "/concorde-models",
+            "worker-models.json",
+        ):
+            self.assertNotIn(old, self.skill)
+            self.assertNotIn(old, self.block)
         for old in ("--allow-unlisted", "--candidates", "--unset", "--operation <op>"):
             self.assertNotIn(old, self.skill)
 

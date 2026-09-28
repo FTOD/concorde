@@ -20,7 +20,7 @@ registered Modules of that worktree. `--check-findings` adds the checker, and `-
 [context identity](../../glossary.json#concept.context-identity). The reviewer and the checker are
 the Operation's two workers, with the [worker ids](../../glossary.json#concept.worker-id) `reviewer`
 and `checker`, so the
-[worker model configuration](../../glossary.json#concept.worker-model-configuration) may give each
+[worker configuration](../../glossary.json#concept.worker-configuration) may give each
 its own backend, model and level. The Operation takes no other argument and needs no user consent.
 
 ## Step sequence {#host-sequence}

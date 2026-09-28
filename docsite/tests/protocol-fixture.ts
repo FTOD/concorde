@@ -186,7 +186,7 @@ export function bankProject(): Project {
   put(
     project,
     ".concorde/config.json",
-    JSON.stringify({ profile_version: 16, registry: ".concorde/specs.json" }),
+    JSON.stringify({ profile_version: 19 }),
   );
   put(
     project,

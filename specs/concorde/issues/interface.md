@@ -119,7 +119,7 @@ command supplies these values:
 | `operation` | the [Operation](../glossary.json#concept.operation) or command that reported | `issues` |
 | `phase` | the step of that invocation | `report` |
 | `target_id` | the reporting [Module](../glossary.json#concept.module) | the report's `owner_target_id`, or the root Module when it is `null` |
-| `context_id` | digest of the reporter's context | SHA-256 digest of the configured registry file's bytes |
+| `context_id` | digest of the reporter's context | SHA-256 digest of the registry file's bytes |
 | `change_id` | the task, nullable | the `--task` argument, or `null` |
 | `head` | the Git `HEAD`, nullable | `git rev-parse --verify HEAD` in the project, or `null` when that fails |
 
@@ -190,8 +190,8 @@ before returning. A failed write is never reported as success. No operation dele
 ## Bookkeeping command
 
 `python3 scripts/issues.py <action> ... [--root <path>]` works on the project at `--root` (default
-the current directory), which must contain `.concorde/config.json`. The command reads the registry
-that configuration names whenever an action needs the registered Modules. The main-session
+the current directory), which must contain `.concorde/config.json`. The command reads the registry `.concorde/specs.json`
+whenever an action needs the registered Modules. The main-session
 workflow puts writes in a task worktree and passes `--task` on reports; the CLI itself does not
 require or look up that task. `--task` supplies provenance only and does not select a worktree.
 `--root`, or the current directory when omitted, selects the records that every action reads or
@@ -239,7 +239,7 @@ it breaks, and its option is the error's remediation. The exit status is 2 when 
 request is unusable (codes `usage`, `not_a_project`, `unreadable_file`) and 1 when the request is
 refused (every other code).
 
-`check` reads the configured registry and every entry of `.concorde/issues/` except hidden files
+`check` reads the registry and every entry of `.concorde/issues/` except hidden files
 such as `.gitignore`. Each error names the file: an entry that is not a regular file named
 `I-<32 hex digits>.md`, a record that does not read as valid, or an open Issue whose owner is not a
 registered Module (`<id> names unknown owner <module>`). A closed Issue with an unknown owner
@@ -262,7 +262,7 @@ Concorde's configuration registers it as the
 | `unknown_owner` | a report's `owner_target_id` is not a registered Module |
 | `no_reporting_module` | a report names no owner and the registry has no single root Module |
 | `missing_evidence` | a report's evidence path does not exist in the project |
-| `unreadable_registry` | the configured registry cannot be read |
+| `unreadable_registry` | the registry `.concorde/specs.json` cannot be read |
 | `io_error` | a file operation failed |
 | `usage` | the arguments do not form a request of the command |
 | `not_a_project` | `--root` has no `.concorde/config.json` |

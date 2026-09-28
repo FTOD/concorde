@@ -56,7 +56,6 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `run <operation>` | runs one [Operation](../glossary.json#concept.operation) in the workspace of the current worktree or, when the Operation allows it, unbound; prints the [run result](../glossary.json#concept.run-result) | [Execution](../execution/module.md), with the catalog of [Operations](../execution/operations/module.md) |
 | `task-validation`, `delivery` or `scaffold` | runs one execution command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with the catalog of [Commands](../execution/commands/module.md) |
 | `workflow step` or `report` | runs one [workflow step](../glossary.json#concept.workflow-step), or reports a workflow's result; prints its own JSON | [Workflows](../execution/workflows/module.md) |
-| `configure-workers [--show [--json] \| --check [--json]]` | opens the terminal draft editor by default; read-only options inspect or validate without discovery | [Workers](../execution/workers/module.md) |
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
@@ -70,11 +69,10 @@ commands, `issues` the Issues commands, and `build`, `protocol-manifest` and `up
 **[distribution commands](../glossary.json#concept.distribution-command)**, the only ones
 Distribution owns itself. Of Execution's, `task-validation`, `delivery` and `scaffold` are the
 [execution commands](../glossary.json#concept.execution-command), runs without a worker; `run`
-starts an Operation, `workflow` a workflow step and `configure-workers` changes the worker
-configuration.
+starts an Operation and `workflow` a workflow step.
 
-Every command but `spec-mcp`, `task`, `run`, the execution commands, `workflow`,
-`configure-workers`, `issues` and `update` prints exactly one JSON envelope and exits with its
+Every command but `spec-mcp`, `task`, `run`, the execution commands, `workflow`, `issues` and
+`update` prints exactly one JSON envelope and exits with its
 status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)); those
 route to their owners, which define their own output and exit codes, except `update`, which prints
 the installer's result or its
@@ -132,7 +130,7 @@ later install with the same pin
 [checked first](requirements.md#req.distribution.installer-d2-first), `--without-d2` skips it);
 plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, the
 [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json` that each
-task worktree gets, `.concorde/worker-models.json`, `.concorde/framework/`, `.concorde/tools/` and
+task worktree gets, `.concorde/framework/`, `.concorde/tools/` and
 `.claude/worktrees/`, where task worktrees go, and a receipt `.concorde/install.json`. The receipt
 names Concorde's own environment under `python` (its path, the requirement it was created for, the
 interpreter uv chose and that interpreter's version), the installed dependencies under
@@ -177,7 +175,7 @@ and, when the Protocol copy changed, asks for the primary branch to be merged in
 worktrees keep the previous copy until then.
 
 <a id="concept.pi-runtime"></a>Workers run on pi unless the
-[worker model configuration](../glossary.json#concept.worker-model-configuration) chooses Claude
+[worker configuration](../glossary.json#concept.worker-configuration) chooses Claude
 Code for them, whatever program the main session is, so every install places the
 **[pi runtime](../glossary.json#concept.pi-runtime)** — the sandbox engine
 `@anthropic-ai/sandbox-runtime` that pi workers run their commands in — under
@@ -194,8 +192,7 @@ Code; the receipt records that choice (`pi_runtime`) so that an update keeps it,
 then fails with `pi_runtime_missing`, naming the command that installs the runtime.
 
 With `--pi` the installer also prepares the project for a pi main session: it places the
-[run view](../glossary.json#concept.run-view), with its
-[model picker](../glossary.json#concept.model-picker), as `.pi/extensions/concorde/`; the skill a
+[run view](../glossary.json#concept.run-view) as `.pi/extensions/concorde/`; the skill a
 second time as `.pi/skills/concorde/SKILL.md`; every rendered pi workflow script under
 `.concorde/workflows/pi/`; and the command-runner agents `concorde-step` and `concorde-report` under
 `.pi/agents/`, where pi-subagents finds the project's agents. The receipt records the choice (`pi`),
@@ -285,9 +282,6 @@ supervisor's process, and never starts, stops or answers a task session.
 **Commands** lists the [execution commands](../glossary.json#concept.execution-command)
 in its catalog. The entry point routes each name the catalog lists to the Execution runner, so a
 new execution command is one more catalog entry and no change here.
-
-The same entry point hands `configure-workers` to [Workers](../execution/workers/module.md), which
-owns the worker model configuration and prints the command's own result.
 
 <a id="uses-workflows"></a>
 

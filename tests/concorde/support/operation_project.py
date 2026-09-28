@@ -71,16 +71,34 @@ def commit(root: Path, message: str = "change") -> str:
 
 def claude_workers(root: Path) -> Path:
     """Choose Claude Code for every worker of ``root``, whose workers would otherwise run on pi, so
-    that the fake ``claude`` answers them; the file is ignored by the fixture's Git."""
-    path = root / ".concorde/worker-models.json"
+    that the fake ``claude`` answers them. The worker configuration is tracked, so when ``root``
+    already has a commit the choice is committed, for the tasks opened from it to carry."""
+    path = root / ".concorde/workers.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text('{"schema_version": 3, "default": {"backend": "claude"}}\n')
+    path.write_text('{"schema_version": 1, "default": {"backend": "claude"}}\n')
+    head = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", "HEAD"],
+        cwd=root,
+        capture_output=True,
+        check=False,
+    )
+    if head.returncode == 0:
+        subprocess.run(["git", "add", ".concorde/workers.json"], cwd=root, check=True)
+        subprocess.run(
+            [
+                *("git", "-c", "user.name=t", "-c", "user.email=t@t"),
+                *("commit", "-qm", "run the workers on Claude Code"),
+            ],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        )
     return path
 
 
 class OperationProject(WorkerProject):
     """``WorkerProject`` plus task and Operation helpers; ``home`` isolates deny rules. Its
-    workers run on the fake ``claude``: the project's worker model configuration chooses Claude
+    workers run on the fake ``claude``: the project's worker configuration chooses Claude
     Code for every worker."""
 
     def __init__(self, test, **options):

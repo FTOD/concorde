@@ -128,15 +128,15 @@ here called its origin:
    the origin's checkout is sparse; `submodule` evidence names each. A submodule the origin has not
    checked out, or that Git cannot check out, stays empty, as in a fresh clone, with
    `submodule-absent` evidence naming why.
-3. Each relative path of the checked-out project configuration's `workers.runtime` (default
-   `.venv` and `node_modules`) that exists in the origin and that Git ignores is linked into the
+3. Each relative path of the checked-out worker configuration's `runtime` (default `.venv` and
+   `node_modules`) that exists in the origin and that Git ignores is linked into the
    checkout as a symbolic link to the origin's, with `environment` evidence; the run's checks and
    workers only read it, the checks inside their read-only boundary. A runtime path Git does not
    ignore is not linked, with `environment-not-linked` evidence, since the commit holds it.
 4. From here on the run context's worktree is the checkout: the Specs, the grant, the workers,
    Workers' audit and the steps all work there. The run context keeps the origin, whose `.concorde`
    remains the records directory and whose
-   [worker model configuration](../glossary.json#concept.worker-model-configuration) chooses the
+   [worker configuration](../glossary.json#concept.worker-configuration) chooses the
    workers' backends and models, and the commit, which the result names as `commit` and the run's
    error link as `… (unbound, <origin> at <commit>)`. `checkout` evidence names the commit and the
    checkout's path.

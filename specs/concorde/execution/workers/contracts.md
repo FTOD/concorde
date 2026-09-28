@@ -1,6 +1,6 @@
 # Workers contracts
 
-The exact answer every worker ends with, and what `concorde configure-workers` prints.
+The exact answer every worker ends with, and the worker configuration file.
 
 ## Worker result
 
@@ -183,422 +183,216 @@ Framework's [error chain](../../contracts.md#contract.concorde.error).
 
 ## Worker configuration
 
-The output of [`concorde configure-workers`](../../glossary.json#concept.configure-workers), inside
-its [command result](#contract.workers.configure-workers-result).
+The file the [worker configuration](../../glossary.json#concept.worker-configuration) is, which
+[Choosing worker models](module.md#choosing-worker-models) explains.
 
 ```concorde-contract
 {
   "id": "contract.workers.worker-configuration",
-  "version": 7,
+  "version": 8,
   "schema": {
     "type": "object",
     "additionalProperties": false,
     "required": [
-      "action",
-      "worktree",
-      "config",
-      "configured",
-      "effective"
+      "schema_version"
     ],
     "properties": {
-      "action": {
-        "enum": [
-          "show",
-          "check"
+      "schema_version": {
+        "const": 1
+      },
+      "default": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "enum": [
+              "claude",
+              "pi"
+            ]
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+          },
+          "reasoning": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "backend"
+            ]
+          },
+          {
+            "required": [
+              "model"
+            ]
+          },
+          {
+            "required": [
+              "reasoning"
+            ]
+          }
         ]
       },
-      "worktree": {
-        "type": "string",
-        "minLength": 1
-      },
-      "config": {
-        "type": "string",
-        "minLength": 1
-      },
-      "configured": {
-        "type": "object"
-      },
-      "effective": {
+      "operations": {
         "type": "object",
         "additionalProperties": {
           "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "backend",
-              "backend_source",
-              "model",
-              "reasoning",
-              "model_source",
-              "reasoning_source"
-            ],
-            "properties": {
-              "backend": {
-                "enum": [
-                  "claude",
-                  "pi"
-                ]
+          "additionalProperties": false,
+          "properties": {
+            "default": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "backend": {
+                  "enum": [
+                    "claude",
+                    "pi"
+                  ]
+                },
+                "model": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+                },
+                "reasoning": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+                }
               },
-              "backend_source": {
-                "type": "string",
-                "minLength": 1
-              },
-              "model": {
+              "anyOf": [
+                {
+                  "required": [
+                    "backend"
+                  ]
+                },
+                {
+                  "required": [
+                    "model"
+                  ]
+                },
+                {
+                  "required": [
+                    "reasoning"
+                  ]
+                }
+              ]
+            },
+            "workers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "backend": {
+                    "enum": [
+                      "claude",
+                      "pi"
+                    ]
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+                  },
+                  "reasoning": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+                  }
+                },
                 "anyOf": [
                   {
-                    "type": "null"
+                    "required": [
+                      "backend"
+                    ]
                   },
                   {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                ]
-              },
-              "reasoning": {
-                "anyOf": [
-                  {
-                    "type": "null"
+                    "required": [
+                      "model"
+                    ]
                   },
                   {
-                    "type": "string",
-                    "minLength": 1
+                    "required": [
+                      "reasoning"
+                    ]
                   }
                 ]
-              },
-              "model_source": {
-                "type": "string",
-                "minLength": 1
-              },
-              "reasoning_source": {
-                "type": "string",
-                "minLength": 1
               }
             }
           }
         }
-      }
-    }
-  },
-  "semantics": "Read-only output of configure-workers --show or --check. action names the inspection. worktree and config identify the current Git worktree and its source file. configured is the validated JSON file (schema_version 3 when absent). effective maps every catalog Operation and worker id to its resolved backend, model and reasoning with each source. Resolution is sparse and field by field; an explicit backend resets inherited model and reasoning. No discovery, backend installation or credentials are required. No file, task or run record is written. Model names are accepted without discovery; structural, catalog and backend reasoning vocabulary errors fail validation. A behaviour or field change increments the version.",
-  "example": {
-    "worktree": "/work/shop",
-    "config": "/work/shop/.concorde/worker-models.json",
-    "configured": {
-      "schema_version": 3,
-      "default": {
-        "model": "anthropic/claude-sonnet-5",
-        "reasoning": "medium"
       },
-      "operations": {
-        "spec_panel": {
-          "workers": {
-            "reviewer2": {
-              "model": "local-openai/gpt-6",
-              "reasoning": "high"
-            },
-            "chair": {
-              "backend": "claude",
-              "model": "opus"
-            }
-          }
-        }
-      }
-    },
-    "effective": {
-      "implement": {
-        "worker": {
-          "backend": "pi",
-          "backend_source": "Concorde's default worker backend",
-          "model": "anthropic/claude-sonnet-5",
-          "reasoning": "medium",
-          "model_source": "default",
-          "reasoning_source": "default"
-        }
-      },
-      "spec_review": {
-        "reviewer": {
-          "backend": "pi",
-          "backend_source": "Concorde's default worker backend",
-          "model": "anthropic/claude-sonnet-5",
-          "reasoning": "medium",
-          "model_source": "default",
-          "reasoning_source": "default"
-        },
-        "checker": {
-          "backend": "pi",
-          "backend_source": "Concorde's default worker backend",
-          "model": "anthropic/claude-sonnet-5",
-          "reasoning": "medium",
-          "model_source": "default",
-          "reasoning_source": "default"
-        }
-      },
-      "spec_panel": {
-        "reviewer1": {
-          "backend": "pi",
-          "backend_source": "Concorde's default worker backend",
-          "model": "anthropic/claude-sonnet-5",
-          "reasoning": "medium",
-          "model_source": "default",
-          "reasoning_source": "default"
-        },
-        "reviewer2": {
-          "backend": "pi",
-          "backend_source": "Concorde's default worker backend",
-          "model": "local-openai/gpt-6",
-          "reasoning": "high",
-          "model_source": "operations.spec_panel.workers.reviewer2",
-          "reasoning_source": "operations.spec_panel.workers.reviewer2"
-        },
-        "chair": {
-          "backend": "claude",
-          "backend_source": "operations.spec_panel.workers.chair",
-          "model": "opus",
-          "reasoning": null,
-          "model_source": "operations.spec_panel.workers.chair",
-          "reasoning_source": "the backend's own default"
-        }
-      }
-    },
-    "action": "show"
-  }
-}
-```
-
-## Command result of configure-workers
-
-What read-only inspection prints with `--json`, including a refused validation.
-The interactive editor uses a terminal screen and writes only on Save.
-
-```concorde-contract
-{
-  "id": "contract.workers.configure-workers-result",
-  "version": 2,
-  "schema": {
-    "type": "object",
-    "additionalProperties": false,
-    "required": [
-      "command",
-      "status",
-      "output",
-      "evidence",
-      "error"
-    ],
-    "properties": {
-      "command": {
-        "const": "configure-workers"
-      },
-      "status": {
-        "enum": [
-          "ok",
-          "failed"
-        ]
-      },
-      "output": {
-        "anyOf": [
-          {
-            "type": "null"
+      "limits": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "timeout_seconds": {
+            "type": "number",
+            "minimum": 1
           },
-          {
-            "type": "object"
+          "max_turns": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_budget_usd": {
+            "type": "number",
+            "minimum": 0.01
+          },
+          "rounds": {
+            "type": "integer",
+            "minimum": 0
           }
-        ]
+        }
       },
-      "evidence": {
+      "runtime": {
         "type": "array",
         "items": {
-          "$ref": "#/$defs/evidence"
-        }
-      },
-      "error": {
-        "anyOf": [
-          {
-            "type": "null"
-          },
-          {
-            "$ref": "#/$defs/error"
-          }
-        ]
-      }
-    },
-    "$defs": {
-      "error": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "level",
-          "actor",
-          "code",
-          "detail",
-          "evidence",
-          "attempts",
-          "unhandled",
-          "options",
-          "recommendation",
-          "causes"
-        ],
-        "properties": {
-          "level": {
-            "enum": [
-              "main-agent",
-              "task-session",
-              "workflow",
-              "operation",
-              "command",
-              "workers",
-              "worker",
-              "check",
-              "component"
-            ]
-          },
-          "actor": {
-            "type": "string",
-            "minLength": 1
-          },
-          "code": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*$"
-          },
-          "detail": {
-            "type": "string",
-            "minLength": 1
-          },
-          "evidence": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/evidence"
-            }
-          },
-          "attempts": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "unhandled": {
-            "$ref": "#/$defs/unhandled"
-          },
-          "options": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "recommendation": {
-            "type": "string"
-          },
-          "causes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/error"
-            }
-          }
-        }
-      },
-      "evidence": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "kind",
-          "ref",
-          "detail"
-        ],
-        "properties": {
-          "kind": {
-            "type": "string",
-            "minLength": 1
-          },
-          "ref": {
-            "type": "string"
-          },
-          "detail": {
-            "type": "string"
-          }
-        }
-      },
-      "unhandled": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "reason",
-          "explanation"
-        ],
-        "properties": {
-          "reason": {
-            "enum": [
-              "permission",
-              "decision",
-              "scope",
-              "capability",
-              "exhausted",
-              "environment",
-              "input"
-            ]
-          },
-          "explanation": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+        },
+        "uniqueItems": true
       }
     }
   },
-  "semantics": "JSON result printed only for --show --json or --check --json. command is configure-workers. status ok returns contract.workers.worker-configuration in output and exit status 0; failed returns output null and the full command error chain with exit status 1. Error configuration_refused carries the Workers component cause, including config_invalid for bad structure or catalog names. The file remains unchanged. Malformed options, a nonterminal editor invocation or a directory outside Git print {\"error\": <link>} and exit 2. With no flags an interactive terminal opens a draft editor, not JSON output; Save validates and atomically writes; a dirty Cancel, q, Escape or Ctrl-C offers Keep editing by default or explicit Discard changes, while a clean exit needs no prompt. Scope and model search uses / and returning from Edit preserves the selected scope and filter. --show and --check without --json print human-readable inspection. No run is recorded. A behaviour or field change increments the version.",
+  "semantics": "The worker configuration .concorde/workers.json of a worktree, tracked by Git and edited directly. schema_version is 1. default, operations.<operation>.default and operations.<operation>.workers.<worker id> each may set backend (pi or claude), model and reasoning; operation and worker names are those of the Operation catalog, and reasoning must be a level of the effective backend. For each field the most specific entry that sets it wins, except that an entry setting backend starts that program afresh, so model and reasoning come only from that entry or a more specific one. A backend no entry sets is pi, and a model or level no entry sets is the program's own default. limits sets timeout_seconds per round (default 1800), max_turns (default 200), max_budget_usd (default none) and rounds of resume (default 3) for every worker launch; runtime lists the paths Bash may read besides the grant, relative to the workspace or absolute (default .venv and node_modules, each only when it exists). A missing file means every default. Duplicate keys, unknown fields, unknown Operations or workers and levels the backend does not know are refused with config_invalid when a worker launches; so is a worktree without this file that still has the retired untracked .concorde/worker-models.json.",
   "example": {
-    "command": "configure-workers",
-    "status": "failed",
-    "output": null,
-    "evidence": [
-      {
-        "kind": "worker-models",
-        "ref": "/home/dev/shop/.concorde/worker-models.json",
-        "detail": "config_invalid: unknown worker reviewer6 of spec_panel"
-      }
-    ],
-    "error": {
-      "level": "command",
-      "actor": "concorde configure-workers (/home/dev/shop)",
-      "code": "configuration_refused",
-      "detail": "configure-workers could not complete for /home/dev/shop/.concorde/worker-models.json: config_invalid: unknown worker reviewer6 of spec_panel",
-      "evidence": [
-        {
-          "kind": "worker-models",
-          "ref": "/home/dev/shop/.concorde/worker-models.json",
-          "detail": "config_invalid: unknown worker reviewer6 of spec_panel"
-        }
-      ],
-      "attempts": [],
-      "unhandled": {
-        "reason": "input",
-        "explanation": "the command neither guesses a program or model nor repairs the configuration or the installed program"
-      },
-      "options": [
-        "edit .concorde/worker-models.json and run concorde configure-workers --check"
-      ],
-      "recommendation": "edit .concorde/worker-models.json and run concorde configure-workers --check",
-      "causes": [
-        {
-          "level": "component",
-          "actor": "Workers (worker model configuration)",
-          "code": "config_invalid",
-          "detail": "unknown worker reviewer6 of spec_panel",
-          "evidence": [],
-          "attempts": [],
-          "unhandled": {
-            "reason": "input",
-            "explanation": "the file must name a catalog worker"
+    "schema_version": 1,
+    "default": {
+      "model": "anthropic/claude-sonnet-5",
+      "reasoning": "medium"
+    },
+    "operations": {
+      "spec_panel": {
+        "workers": {
+          "reviewer2": {
+            "model": "local-openai/gpt-6",
+            "reasoning": "high"
           },
-          "options": [
-            "edit .concorde/worker-models.json and run concorde configure-workers --check"
-          ],
-          "recommendation": "",
-          "causes": []
+          "chair": {
+            "backend": "claude",
+            "model": "opus"
+          }
         }
-      ]
-    }
+      }
+    },
+    "limits": {
+      "timeout_seconds": 1800,
+      "max_turns": 200,
+      "rounds": 3
+    },
+    "runtime": [
+      ".venv",
+      "node_modules",
+      "docsite/node_modules"
+    ]
   }
 }
 ```

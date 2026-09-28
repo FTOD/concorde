@@ -1369,10 +1369,10 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
             "explanation": "the Operation passes the configured limits to Workers and does not raise them"
           },
           "options": [
-            "raise workers.timeout_seconds",
+            "raise limits.timeout_seconds in .concorde/workers.json",
             "run the Operation with a narrower goal"
           ],
-          "recommendation": "raise workers.timeout_seconds",
+          "recommendation": "raise limits.timeout_seconds in .concorde/workers.json",
           "causes": [
             {
               "level": "workers",

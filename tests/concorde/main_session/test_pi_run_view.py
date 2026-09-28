@@ -540,7 +540,7 @@ class ProjectTermsTests(unittest.TestCase):
         self.root = Path(os.path.realpath(directory.name))
         (self.root / ".concorde").mkdir()
         (self.root / ".concorde/config.json").write_text(
-            json.dumps({"registry": ".concorde/specs.json"})
+            json.dumps({"profile_version": 19})
         )
 
     def registry(self, **root_fields):

@@ -7,8 +7,8 @@ project never receives Concorde's user documents, Protocol chapters or repositor
 
 ## What it publishes
 
-The publisher reads `.concorde/config.json`, the registry it names and the documents the registry's
-Modules own, each as a reading file plus its `.md.json` metadata. Nothing else is a source: it never
+The publisher reads `.concorde/config.json`, the registry `.concorde/specs.json` and the documents
+the registry's Modules own, each as a reading file plus its `.md.json` metadata. Nothing else is a source: it never
 scans directories for Markdown or follows links to find documents.
 
 - **One page per document.** Every owned document is published once, at a route derived from its

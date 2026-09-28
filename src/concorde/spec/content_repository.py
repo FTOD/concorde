@@ -30,6 +30,7 @@ from .glossary import problems as glossary_problems
 from .model import Finding
 from .repository_base import (
     REFERENCE_SKIPPED_SUFFIXES,
+    REGISTRY_PATH,
     REGISTRY_SCHEMA,
     Concept,
     Module,
@@ -219,7 +220,6 @@ class DocumentUnitRepository:
         self,
         project_root: Path | str,
         *,
-        registry_path: str = ".concorde/specs.json",
         registry_bytes: bytes | None = None,
         document_overrides: dict[str, bytes] | None = None,
         configured_checks: list | None = None,
@@ -235,7 +235,7 @@ class DocumentUnitRepository:
                 remediation="pass the real path of the project's worktree",
             )
         self.root = root.resolve()
-        self.registry_path = safe_path(registry_path)
+        self.registry_path = REGISTRY_PATH
         self._registry_override = (
             bytes(registry_bytes) if registry_bytes is not None else None
         )
@@ -1432,7 +1432,6 @@ class DocumentUnitRepository:
     def fresh(self):
         return type(self)(
             self.root,
-            registry_path=self.registry_path,
             registry_bytes=self._registry_override,
             document_overrides=self.document_overrides,
             configured_checks=list(self.checks.values()),

@@ -1,4 +1,4 @@
-"""The worker model configuration: client detection, candidates, resolution and changes."""
+"""The worker configuration: client detection, candidates, resolution, limits and refusals."""
 
 from __future__ import annotations
 
@@ -30,6 +30,11 @@ class WorkerModelTests(unittest.TestCase):
         (self.home / ".claude").mkdir(parents=True)
         self.environ = fake_agents(self.base / "bin", self.home)
 
+    def save(self, config: dict) -> None:
+        path = models.config_path(self.base)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(config))
+
     @verifies("scenario.workers.backend-from-client")
     def test_the_backend_is_the_main_sessions_program(self):
         self.assertEqual(
@@ -57,13 +62,13 @@ class WorkerModelTests(unittest.TestCase):
     @verifies("scenario.workers.backend-configured")
     def test_workers_run_on_pi_unless_their_configuration_chooses_claude_code(self):
         session = dict(self.environ, CLAUDECODE="1")
-        empty = {"schema_version": 3}
+        empty = {"schema_version": 1}
         self.assertEqual(
             ("pi", "Concorde's default worker backend"),
             _backend(models.worker_choice(empty, "implement", "worker", session)),
         )
         config = {
-            "schema_version": 3,
+            "schema_version": 1,
             "default": {"model": "a/pi"},
             "operations": {
                 "spec_review": {
@@ -71,7 +76,7 @@ class WorkerModelTests(unittest.TestCase):
                 }
             },
         }
-        models.save(self.base, config)
+        self.save(config)
         self.assertEqual(config, models.load(self.base))
         reviewer = models.worker_choice(config, "spec_review", "reviewer", session)
         checker = models.worker_choice(config, "spec_review", "checker", session)
@@ -146,11 +151,19 @@ class WorkerModelTests(unittest.TestCase):
 
     @verifies("scenario.workers.model-resolution")
     def test_the_most_specific_entry_wins_field_by_field(self):
-        config: dict = {"schema_version": 3}
-        models.set_choice(config, None, None, None, "a/default", "medium")
-        models.set_choice(config, "spec_panel", None, None, "a/panel", None)
-        models.set_choice(config, "spec_panel", "reviewer2", None, "a/second", None)
-        models.set_choice(config, "spec_panel", "chair", None, None, "high")
+        config = {
+            "schema_version": 1,
+            "default": {"model": "a/default", "reasoning": "medium"},
+            "operations": {
+                "spec_panel": {
+                    "default": {"model": "a/panel"},
+                    "workers": {
+                        "reviewer2": {"model": "a/second"},
+                        "chair": {"reasoning": "high"},
+                    },
+                }
+            },
+        }
         first = models.choice(config, "spec_panel", "reviewer1")
         second = models.choice(config, "spec_panel", "reviewer2")
         chair = models.choice(config, "spec_panel", "chair")
@@ -175,35 +188,30 @@ class WorkerModelTests(unittest.TestCase):
         self.assertEqual(
             ("a/default", "default"), (other["model"], other["model_source"])
         )
-        self.assertTrue(models.unset_choice(config, "spec_panel", "reviewer2"))
-        self.assertTrue(models.unset_choice(config, "spec_panel", "chair"))
-        self.assertEqual(
-            {"default": {"model": "a/panel"}}, config["operations"]["spec_panel"]
-        )
-        self.assertTrue(models.unset_choice(config, "spec_panel", None))
-        self.assertFalse(models.unset_choice(config, "spec_panel", None))
-        self.assertNotIn("operations", config)
 
     @verifies("scenario.workers.model-refused")
     def test_validation_accepts_custom_models_and_rejects_invalid_structure(self):
         config = {
-            "schema_version": 3,
+            "schema_version": 1,
             "default": {"model": "offline/custom", "reasoning": "high"},
         }
         models.validate_config(config)
-        models.save(self.base, config)
+        self.save(config)
         self.assertEqual(
             "offline/custom",
             models.worker_choice(config, "implement", "worker", self.environ)["model"],
         )
         for invalid in (
-            {"schema_version": 3, "default": {"model": " "}},
-            {"schema_version": 3, "default": {"model": "\x00"}},
-            {"schema_version": 3, "default": {"model": "custom\n"}},
-            {"schema_version": 3, "default": {"reasoning": "bogus"}},
-            {"schema_version": 3, "default": {"backend": "claude", "reasoning": "off"}},
-            {"schema_version": 3, "operations": {"typo": {"default": {"model": "x"}}}},
-            {"schema_version": 3, "operations": {"delivery": {}}},
+            {"schema_version": 1, "default": {"model": " "}},
+            {"schema_version": 1, "default": {"model": "\x00"}},
+            {"schema_version": 1, "default": {"model": "custom\n"}},
+            {"schema_version": 1, "default": {"reasoning": "bogus"}},
+            {"schema_version": 1, "default": {"backend": "claude", "reasoning": "off"}},
+            {"schema_version": 1, "operations": {"typo": {"default": {"model": "x"}}}},
+            {"schema_version": 1, "operations": {"delivery": {}}},
+            {"schema_version": 1, "limits": {"max_turns": 0}},
+            {"schema_version": 1, "limits": {"timeout": 60}},
+            {"schema_version": 1, "runtime": [".venv", ".venv"]},
         ):
             with (
                 self.subTest(config=invalid),
@@ -238,11 +246,42 @@ class WorkerModelTests(unittest.TestCase):
         self.assertEqual(1, done.returncode)
         self.assertEqual("backend_missing", json.loads(done.stdout)["error"]["code"])
 
+    @verifies("scenario.workers.limits-configured")
+    def test_limits_and_runtime_come_from_the_worker_configuration(self):
+        empty = models.load(self.base)
+        self.assertEqual(models.LIMITS, models.limits(empty))
+        self.assertEqual((".venv", "node_modules"), models.runtime(empty))
+        self.save(
+            {
+                "schema_version": 1,
+                "limits": {"max_turns": 50, "rounds": 1},
+                "runtime": ["env"],
+            }
+        )
+        config = models.load(self.base)
+        self.assertEqual(
+            {**models.LIMITS, "max_turns": 50, "rounds": 1}, models.limits(config)
+        )
+        self.assertEqual(("env",), models.runtime(config))
+
+    @verifies("scenario.workers.retired-configuration")
+    def test_the_retired_untracked_file_is_refused_not_ignored(self):
+        retired = self.base / models.RETIRED
+        retired.parent.mkdir(parents=True)
+        retired.write_text('{"schema_version": 3, "default": {"model": "x"}}')
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(self.base)
+        self.assertEqual("config_invalid", raised.exception.code)
+        for part in (models.RETIRED, models.CONFIG, "commit it"):
+            self.assertIn(part, str(raised.exception))
+        self.save({"schema_version": 1, "default": {"model": "y"}})
+        self.assertEqual({"model": "y"}, models.load(self.base)["default"])
+
     def test_duplicate_json_keys_are_refused(self):
         path = models.config_path(self.base)
         path.parent.mkdir()
         path.write_text(
-            '{"schema_version": 3, "default": {"model": "x", "model": "y"}}'
+            '{"schema_version": 1, "default": {"model": "x", "model": "y"}}'
         )
         with self.assertRaisesRegex(models.ModelConfigError, "duplicate key"):
             models.load(self.base)
@@ -260,7 +299,7 @@ class WorkerModelTests(unittest.TestCase):
         path.write_text(
             json.dumps(
                 {
-                    "schema_version": 3,
+                    "schema_version": 1,
                     "operations": {
                         "understand": {
                             "workers": {"worker": {"model": "x", "modle": "y"}}
@@ -280,7 +319,7 @@ class WorkerModelTests(unittest.TestCase):
             models.load(worktree)
         self.assertEqual("config_invalid", raised.exception.code)
         self.assertIn("schema_version 2", str(raised.exception))
-        self.assertIn("keyed by worker id", str(raised.exception))
+        self.assertIn("expected 1", str(raised.exception))
 
 
 if __name__ == "__main__":

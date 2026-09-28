@@ -108,7 +108,6 @@ print one JSON result. Run them inside a task's worktree, whose workspace bindin
 | `concorde task escalate`                                | Add the main agent's link on top of an error chain and record it.            |
 | `concorde run <operation>`                              | Run one Operation in the current workspace and print its result.             |
 | `concorde task-validation\|delivery\|scaffold`          | Run one execution command in the current workspace and print its result.     |
-| `concorde configure-workers`                            | List and change the worker models of the current worktree.                   |
 | `concorde issues report\|list\|show\|close`             | Record problems a task will not fix, so they survive it.                     |
 | `concorde init --propose\|--apply`                      | Propose and apply a project's first Spec.                                    |
 | `concorde docsite --propose\|--apply`                   | Scaffold a documentation site for the project's Specs.                       |

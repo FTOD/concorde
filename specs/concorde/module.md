@@ -138,7 +138,6 @@ and validates the result and delivers it.
 | `concorde run` | run one Operation in the workspace of the current worktree | [Execution](execution/module.md) with [Operations](execution/operations/module.md) |
 | `concorde task-validation`, `concorde delivery`, `concorde scaffold` | decide readiness, deliver, create surveyed Modules, in the current workspace | [Commands](execution/commands/module.md), with [Validation](execution/commands/validation/module.md), [Delivery](execution/commands/delivery/module.md) and [Scaffold](execution/commands/scaffold/module.md) |
 | `concorde workflow` | run the steps of a workflow in the current workspace and report its result | [Workflows](execution/workflows/module.md) |
-| `concorde configure-workers` | list and change the [worker model configuration](glossary.json#concept.worker-model-configuration) of the current worktree | [Workers](execution/workers/module.md) |
 
 ### Errors
 

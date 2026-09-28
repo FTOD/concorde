@@ -47,7 +47,7 @@
         "target": "module.workers",
         "meaning": "#uses-workers",
         "relies_on": [
-          "concept.worker-model-configuration"
+          "concept.worker-backend"
         ]
       },
       {

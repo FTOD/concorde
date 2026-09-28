@@ -11,27 +11,27 @@ document does not repeat it and adds only what Concorde fixes on top of it.
 
 ```json
 {
-  "profile_version": 18,
-  "registry": ".concorde/specs.json",
+  "profile_version": 19,
   "protocol": {"version": "13.2.0", "digest": "sha256:<64 hex digits>"},
   "python": ".venv/bin/python"
 }
 ```
 
-- `profile_version` is the Framework's configuration profile; the loader supports exactly `18` and
+- `profile_version` is the Framework's configuration profile; the loader supports exactly `19` and
   refuses others with `unsupported_profile`. It is a compatibility number of this file, of the
   checks files and of the registry, not a Protocol version.
-- `registry` is the project-relative path of the registry.
 - `protocol` is the [Protocol binding](../../glossary.json#concept.protocol-binding): the `version`
   from the installed copy's manifest and the SHA-256 digest of that manifest's exact bytes.
-- `workers` is optional. It holds the [worker settings](../../glossary.json#concept.worker-settings)
-  that the Harness reads; Spec core accepts it without interpreting it.
 - `python` is optional. It names the project's own interpreter, which Check execution substitutes
   for `{python}` in a check's `argv`; Spec core accepts it without interpreting it, and
   [initialization](#initialization) records it.
 
-No other field is allowed; a `checks` field is refused with an error naming the checks files below.
-Spec core only verifies the binding; changing it is an explicit step of Distribution, such as
+No other field is allowed. The settings earlier profiles kept here live elsewhere, and a field
+left from them is refused with an error naming where its setting lives now: the registry is
+always `.concorde/specs.json` ([registry file](#registry-file)), the configured checks are the
+[checks files](#checks-files), and the worker limits and runtime paths are part of the
+[worker configuration](../../glossary.json#concept.worker-configuration)
+`.concorde/workers.json`, which Workers owns. Spec core only verifies the binding; changing it is an explicit step of Distribution, such as
 rebinding a Concorde checkout to its freshly built Protocol.
 
 ### Checks files {#checks-files}
@@ -69,7 +69,8 @@ fall within the writable scope of the Module it verifies.
 
 ## Registry file {#registry-file}
 
-The registry file is JSON with exactly two fields:
+The registry file is always `.concorde/specs.json`, a place no setting changes. It is JSON with
+exactly two fields:
 
 ```json
 {
@@ -152,9 +153,9 @@ problems. When the [Spec](../../glossary.json#concept.spec) structure is at faul
 the fatal problems and carries every one of them as a cause, each with its path and the statement of
 the check it fails:
 
-- an unreadable configuration or registry, a configuration without `profile_version`, `registry`
-  or `protocol` or with a field other than those and `workers` and `python`, or a registry with
-  malformed or duplicate records;
+- an unreadable configuration or registry, a configuration without `profile_version` or `protocol`
+  or with a field other than those and `python`, a field of an earlier profile (`registry`,
+  `checks` or `workers`), or a registry with malformed or duplicate records;
 - a Protocol binding that does not match the installed copy (`protocol_mismatch`) or an
   unsupported profile (`unsupported_profile`);
 - a [checks file](#checks-files) that is not named after a registered Module, an entry of
@@ -630,9 +631,9 @@ its digest and its ordered paths. Apply returns `{status: "applied", proposal: n
 proposal_digest: null, files}` with the written paths.
 
 The proposal contains four files, each with `before_digest: null`: `.concorde/config.json` with
-profile 18, the registry path, the binding of the installed Protocol copy and `python`, which is
-the interpreter named on propose as given, otherwise the first of `.venv/bin/python` and
-`venv/bin/python` that exists, and absent when there is none;
+profile 19, the binding of the installed Protocol copy and `python`, which is the interpreter named
+on propose as given, otherwise the first of `.venv/bin/python` and `venv/bin/python` that exists,
+and absent when there is none;
 `.concorde/specs.json` with one record for the root Module; and `specs/project/module.md` with its
 metadata. The entry has the five required sections and says that the project's responsibility,
 behaviour and architecture are not yet specified. Its metadata declares the `module` block with the
@@ -660,8 +661,8 @@ propose returned from one built to the same shape. Its guarantee is that an appl
 exactly that shape and digest, was computed from the project's current state, wrote only the
 allowed files, replaced none, and left a project that validates. It refuses, writing nothing: a
 `proposal_digest` that is not the digest of the given proposal; a proposal whose envelope is not
-exactly that shape, that lacks the configuration or the registry, whose configuration names another
-registry path or a Protocol binding other than the installed copy's, or that has a non-null
+exactly that shape, that lacks the configuration or the registry, whose configuration names a
+Protocol binding other than the installed copy's, or that has a non-null
 before-digest (all `invalid_proposal`); and a proposal whose `source_digest` differs from the
 project's current one, because the project's files changed so that propose would now return a
 different proposal (`stale_proposal`). It writes only the configuration, the registry and the

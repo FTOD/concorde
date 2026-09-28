@@ -385,20 +385,8 @@ class InstallTests(unittest.TestCase):
         )
         self.assertEqual(0, discovered.returncode, discovered.stderr)
         self.assertIn("--backend", discovered.stdout)
-        inspected = subprocess.run(
-            [
-                str(project / ".concorde/bin/concorde"),
-                "configure-workers",
-                "--show",
-                "--json",
-            ],
-            cwd=project,
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(0, inspected.returncode, inspected.stderr)
-        self.assertEqual("show", json.loads(inspected.stdout)["output"]["action"])
-        self.assertFalse((project / ".concorde/worker-models.json").exists())
+        # The worker configuration is the project's to write and track; none is installed.
+        self.assertFalse((project / ".concorde/workers.json").exists())
         # End-to-end testing serves Concorde's developers only.
         self.assertFalse((project / ".concorde/framework/scripts/e2e").exists())
         skill = (project / ".claude/skills/concorde/SKILL.md").read_text()
@@ -414,9 +402,7 @@ class InstallTests(unittest.TestCase):
         self.assertIn(".concorde/runs/", (project / ".gitignore").read_text())
         self.assertIn(".concorde/workspace.json", (project / ".gitignore").read_text())
         self.assertIn(".claude/worktrees/", (project / ".gitignore").read_text())
-        self.assertIn(
-            ".concorde/worker-models.json", (project / ".gitignore").read_text()
-        )
+        self.assertNotIn(".concorde/workers.json", (project / ".gitignore").read_text())
         self.assertFalse((project / ".concorde/config.json").exists())
         self.assertFalse((project / ".concorde/specs.json").exists())
         self.assertFalse((project / "specs").exists())
@@ -853,8 +839,8 @@ class InstallTests(unittest.TestCase):
         extension = project / ".pi/extensions/concorde"
         self.assertIn("concorde_run", (extension / "index.ts").read_text())
         self.assertTrue((extension / "pi_runs.ts").is_file())
-        self.assertTrue((extension / "pi_models.ts").is_file())
-        self.assertIn(
+        self.assertFalse((extension / "pi_models.ts").exists())
+        self.assertNotIn(
             "concorde_configure_workers", (extension / "index.ts").read_text()
         )
         skill = (project / ".pi/skills/concorde/SKILL.md").read_text()

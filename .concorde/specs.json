@@ -425,7 +425,7 @@
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
-            "concept.worker-model-configuration"
+            "concept.worker-backend"
           ]
         },
         {
@@ -874,7 +874,7 @@
           "meaning": "#uses-workers",
           "relies_on": [
             "concept.progress-file",
-            "concept.worker-model-configuration"
+            "concept.worker-configuration"
           ]
         },
         {

@@ -116,14 +116,8 @@ interface GlossaryEntry {
  */
 export function glossaryText(root: string): string | null {
   try {
-    const config = JSON.parse(
-      readFileSync(join(root, ".concorde", "config.json"), "utf-8"),
-    );
     const registry = JSON.parse(
-      readFileSync(
-        join(root, config.registry ?? ".concorde/specs.json"),
-        "utf-8",
-      ),
+      readFileSync(join(root, ".concorde", "specs.json"), "utf-8"),
     );
     const declared = (registry.modules ?? []).find(
       (record: Record<string, unknown>) => typeof record.glossary === "string",

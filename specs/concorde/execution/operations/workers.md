@@ -7,29 +7,30 @@ program and model, the
 and the error links that sequence adds. The runner's own steps, refusals and errors are in
 [How a run is executed](../runner.md).
 
-## Worker limits in the project configuration
+## Worker limits {#worker-limits}
 
-The optional `workers` object of `.concorde/config.json`, read from the worktree the run works in,
-sets the limits of every worker launch: `timeout_seconds` per round (default 1800), `max_turns`
-(default 200), `max_budget_usd` (default none), `rounds` of resume (default 3) and `runtime`, the
-paths Bash may read besides the grant, relative to the workspace or absolute (default `.venv` and
+The [worker configuration](../../glossary.json#concept.worker-configuration)
+`.concorde/workers.json`, read from the worktree the run works in, sets under `limits` the limits of
+every worker launch: `timeout_seconds` per round (default 1800), `max_turns` (default 200),
+`max_budget_usd` (default none) and `rounds` of resume (default 3); and under `runtime` the paths
+Bash may read besides the grant, relative to the workspace or absolute (default `.venv` and
 `node_modules`, each only when it exists). An unbound run's checkout links each relative runtime
 path Git ignores from the worktree the run started in, as
 [How a run is executed](../runner.md#unbound-checkout) describes.
 
 ## Worker backend and model
 
-No tracked project setting chooses the agent program or the model of a worker. Before each worker
-launch the step resolves, for the worker the provider names by its id — or, when it names none, the
-first id its catalog entry lists — the [worker backend](../../glossary.json#concept.worker-backend), the model and the reasoning level
-from the [worker model configuration](../../glossary.json#concept.worker-model-configuration) of the
-worktree the run started in, which for an [unbound run](../../glossary.json#concept.unbound-run) is
-not the [unbound checkout](../../glossary.json#concept.unbound-checkout) it works in; the backend is pi unless
-the configuration chooses Claude Code for that worker, its Operation or every worker.
-The shared validator checks the file's structure and every configured Operation and worker name
-against the catalog before resolving any worker. It does not discover models or require
-credentials; custom/offline model names remain valid. A malformed or unknown-name entry fails
-even when it is for a different Operation, so runtime and editor validation agree.
+Before each worker launch the step resolves, for the worker the provider names by its id — or, when
+it names none, the first id its catalog entry lists — the
+[worker backend](../../glossary.json#concept.worker-backend), the model and the reasoning level from
+the same worker configuration of the worktree the run works in, which for an
+[unbound run](../../glossary.json#concept.unbound-run) is the
+[unbound checkout](../../glossary.json#concept.unbound-checkout) of the examined commit, so an
+unbound run uses the committed file; the backend is pi unless the configuration chooses Claude Code
+for that worker, its Operation or every worker. The validator checks the whole file's structure,
+limits and every configured Operation and worker name against the catalog before resolving any
+worker. It does not discover models or require credentials; custom/offline model names remain
+valid. A malformed or unknown-name entry fails even when it is for a different Operation.
 
 Workers records the Operation, [worker id](../../glossary.json#concept.worker-id), backend and where
 it came from, model and level in the run record, and the step adds `worker-model` evidence naming

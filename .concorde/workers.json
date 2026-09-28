@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "operations": {
+    "spec_panel": {
+      "workers": {
+        "reviewer1": {
+          "model": "anthropic/claude-opus-5-5"
+        },
+        "reviewer2": {
+          "model": "local-openai/gpt-6",
+          "reasoning": "high"
+        },
+        "reviewer3": {
+          "model": "local-openai/gpt-6",
+          "reasoning": "medium"
+        }
+      }
+    }
+  },
+  "runtime": [
+    ".venv",
+    "node_modules",
+    "docsite/node_modules"
+  ]
+}

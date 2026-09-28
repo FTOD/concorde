@@ -627,7 +627,7 @@ def run_worker(request: WorkerRequest) -> dict:
                     f"group was killed{outside}",
                     "exhausted",
                     f"Workers stops every round at the configured timeout ({request.timeout}s, "
-                    "workers.timeout_seconds) and does not extend it",
+                    "limits.timeout_seconds of .concorde/workers.json) and does not extend it",
                     attempts=attempts,
                 )
             failure = concluded.failure

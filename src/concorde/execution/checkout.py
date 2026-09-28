@@ -19,7 +19,6 @@ Nothing here writes a file of the starting worktree or its index: ``git worktree
 
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import subprocess
@@ -28,7 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..errors import evidence
-from .context import DEFAULT_RUNTIME
+from ..harness.models import DEFAULT_RUNTIME, ModelConfigError, load, runtime
 from .runs import RunError
 
 # Git never runs a hook of the repository for the checkout: it is the runner's, not a checkout a
@@ -109,8 +108,8 @@ def _remove(repository: Path, path: Path) -> list[dict]:
 def open_checkout(origin: Path, run_id: str) -> Checkout:
     """Check out ``origin``'s ``HEAD`` detached in a new private temporary directory.
 
-    Each relative runtime path of the checked-out project configuration (``workers.runtime``, by
-    default ``.venv`` and ``node_modules``) that exists in ``origin`` and that Git ignores is linked
+    Each relative runtime path of the checked-out worker configuration (``runtime`` of
+    ``.concorde/workers.json``, by default ``.venv`` and ``node_modules``) that exists in ``origin`` and that Git ignores is linked
     into the checkout. ``RunError`` ``checkout_unavailable`` when ``HEAD`` names no commit or Git
     refuses the checkout, which is then left nowhere.
     """
@@ -237,11 +236,14 @@ def _submodules(checkout: Checkout) -> None:
 
 
 def _runtime(checkout: Path) -> list:
-    """``workers.runtime`` of the checkout's project configuration, or the default."""
+    """``runtime`` of the checkout's worker configuration, or the default.
+
+    An unreadable or invalid configuration links the default here; the run's first worker launch
+    reports it in full.
+    """
     try:
-        config = json.loads((checkout / ".concorde/config.json").read_text())
-        return list((config.get("workers") or {}).get("runtime", DEFAULT_RUNTIME))
-    except (OSError, ValueError, AttributeError, TypeError):
+        return list(runtime(load(checkout)))
+    except ModelConfigError:
         return list(DEFAULT_RUNTIME)
 
 

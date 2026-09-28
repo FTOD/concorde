@@ -7,7 +7,7 @@ publisher's mechanics in the [pipeline](pipeline.md).
 
 ### scenario.views.load-registry — Loading the registered Specs
 
-- GIVEN `.concorde/config.json` names a registry whose Modules list their entries and owned documents
+- GIVEN a project whose registry `.concorde/specs.json` lists Modules with their entries and owned documents
 - WHEN the publisher loads the project
 - THEN it returns one model of the Modules, their `contains` tree, the root [Module](../../glossary.json#concept.module) and one page per owned document
 - AND loading the same unchanged inputs again gives the same model and the same source digest

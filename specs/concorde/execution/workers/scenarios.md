@@ -220,7 +220,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.backend-configured — Workers run on pi unless their configuration chooses Claude Code
 
-- GIVEN a command started from a Claude Code session, both programs installed, and a [worker model configuration](../../glossary.json#concept.worker-model-configuration) whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a level
+- GIVEN a command started from a Claude Code session, both programs installed, and a [worker configuration](../../glossary.json#concept.worker-configuration) whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a level
 - WHEN the choices of `implement`'s worker and of `spec_review`'s `reviewer` and `checker` are resolved
 - THEN a worker without an entry, in an empty configuration, runs on `pi` as Concorde's default [worker backend](../../glossary.json#concept.worker-backend)
 - AND the reviewer runs on pi with the default's model, and the checker on `claude` from its own entry, with its own level and Claude Code's own default model, since choosing Claude Code does not carry the pi model over
@@ -239,7 +239,6 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a configuration with a default model and level, a model for `spec_panel`'s default, a model for its worker `reviewer2` and a level for its worker `chair`
 - WHEN the choices of `reviewer1`, `reviewer2`, `chair` and `implement`'s `worker` are resolved
 - THEN `reviewer1` gets the [Operation](../../glossary.json#concept.operation)'s model and the default level, `reviewer2` its own model, the `chair` the Operation's model and its own level, and `implement` the default, each naming the entry it came from
-- AND removing the entries of `reviewer2` and `chair` and then the Operation's default leaves only the default
 
 ### scenario.workers.model-refused — Validation admits custom models but rejects invalid entries
 
@@ -250,66 +249,26 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.model-config-invalid — An unreadable configuration is reported, never ignored
 
-- GIVEN a worktree whose `.concorde/worker-models.json` is not valid JSON or has a field the schema does not know
+- GIVEN a worktree whose `.concorde/workers.json` is not valid JSON or has a field the schema does not know
 - WHEN Workers reads it
 - THEN it is refused with `config_invalid`, naming the file and what is wrong with it
-- AND a file of an earlier schema version, keyed by backend and worker role, is refused the same way, saying that the configuration is now keyed by [worker id](../../glossary.json#concept.worker-id)
+- AND a file of another schema version is refused the same way, naming the version it expects
 
-## Changing the configuration
+### scenario.workers.limits-configured — Limits and runtime paths come from the worker configuration
 
-### scenario.workers.configure-list — Read-only inspection shows every worker's choice
+- GIVEN a worktree without a worker configuration, and then one whose `.concorde/workers.json` sets `limits.max_turns` and `limits.rounds` and a `runtime` list
+- WHEN Workers reads the limits and runtime paths of a launch
+- THEN the first gets the default limits and the runtime paths `.venv` and `node_modules`
+- AND the second gets its own `max_turns`, `rounds` and runtime paths, with the default for every limit it does not set
 
-- GIVEN a worktree without configuration and without installed agent programs
-- WHEN the [main agent](../../glossary.json#concept.main-agent) runs `concorde configure-workers --show --json`
-- THEN it returns the validated source and every catalog worker's effective backend, model, reasoning and sources with status `ok`
-- AND [execution commands](../../glossary.json#concept.execution-command) are absent, discovery is not run and no file or run record is written
+### scenario.workers.retired-configuration — The untracked configuration of earlier versions is refused, not ignored
 
-### scenario.workers.configure-change — Save changes only the current worktree
+- GIVEN a worktree that has the untracked `.concorde/worker-models.json` of earlier versions and no `.concorde/workers.json`
+- WHEN Workers reads the worker configuration
+- THEN it is refused with `config_invalid`, naming both files and saying to move the models into `.concorde/workers.json`, commit it and delete the old file
+- BUT once `.concorde/workers.json` exists, it is the configuration read
 
-- GIVEN a primary worktree and a task that inherited its worker configuration
-- WHEN the developer edits and saves a draft in the task worktree
-- THEN only that task's copy changes, with unrelated entries preserved
-- AND neither a [task record](../../glossary.json#concept.task-record) nor a run record changes
-- BUT edits discarded with Cancel never reach the file
-
-### scenario.workers.configure-backend — A worker is put on Claude Code
-
-- GIVEN a default pi model and reasoning level
-- WHEN the developer selects Claude Code for the panel's chair in the draft and saves
-- THEN the chair runs on Claude Code, with no inherited pi model or reasoning, while reviewers stay on pi
-- AND selecting a new backend clears the chosen entry's own model and reasoning
-- AND no discovery or credential check is required to save
-
-### scenario.workers.configure-worker — Each worker and field may inherit
-
-- GIVEN an Operation default and separate overrides for two panel reviewers
-- WHEN the developer removes one field or the whole entry of one reviewer and saves
-- THEN that reviewer inherits the removed fields from the more general entries
-- AND the other reviewer's override remains, with each effective field's source displayed
-- AND sections emptied by removal are pruned
-
-### scenario.workers.configure-refused — Refused edits leave the file alone
-
-- GIVEN a draft with invalid structure or catalog names, or a file changed externally since the editor opened
-- WHEN the developer chooses Save
-- THEN saving is refused and the file stays unchanged
-- AND the draft remains available for correction or cancellation
-- BUT obsolete mutation or candidate flags, a bare invocation without a terminal, and a directory outside Git are refused with `invalid_request` and exit 2
-
-### scenario.workers.configure-terminal — A terminal session saves only deliberately
-
-- GIVEN a worktree without a worker configuration
-- WHEN the developer opens the terminal editor and enters a custom model
-- THEN the file stays absent until Save, which writes the validated draft atomically
-- BUT Cancel, q, Escape at the top screen or Ctrl-C offers Keep editing by default or explicit Discard changes when the draft is dirty
-- AND Keep editing, Escape or a second Ctrl-C at the confirmation preserves the draft, while a clean exit needs no prompt
-
-### scenario.workers.configure-search — Search retains the selected scope
-
-- GIVEN a terminal editor with many worker scopes and a discovered list of models
-- WHEN the developer filters scopes and candidate models with `/`, chooses a model and returns from Edit
-- THEN the selected scope and its filter remain, and only the intended worker's draft entry changes
-- AND an empty search restores all rows while Save and Cancel remain available
+## Discovering models
 
 ### scenario.workers.models-standalone — Discovery works outside a worktree
 

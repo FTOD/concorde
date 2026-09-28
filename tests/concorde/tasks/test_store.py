@@ -15,7 +15,7 @@ from concorde import errors
 from concorde.errors import ERROR_SCHEMA, codes
 from concorde.execution import binding
 from concorde.execution.runs import workspace_lock
-from concorde.harness import configure, models
+from concorde.harness import models
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import cli, store
@@ -108,46 +108,48 @@ class TaskStoreTests(unittest.TestCase):
         self.assertIsNone(binding.load(self.root))
         self.assertEqual("open", self.state())
 
-    @verifies("scenario.tasks.open-inherits-worker-models")
-    def test_a_new_task_keeps_its_own_worker_models(self):
-        primary_config = self.root / models.CONFIG
-        primary_config.write_text(
-            json.dumps({"schema_version": 3, "default": {"model": "anthropic/a"}})
-        )
+    @verifies("scenario.tasks.open-carries-worker-configuration")
+    def test_a_new_task_carries_the_worker_configuration_of_its_base_commit(self):
+        def commit_models(root: Path, model: str) -> None:
+            (root / models.CONFIG).write_text(
+                json.dumps({"schema_version": 1, "default": {"model": model}})
+            )
+            git(root, "add", models.CONFIG)
+            git(
+                root,
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "commit",
+                "-qm",
+                model,
+            )
+
+        commit_models(self.root, "anthropic/a")
         worktree = Path(self.project.open_task("t1")["worktree"])
         task_config = worktree / models.CONFIG
-        inherited = task_config.read_text()
-        self.assertEqual(primary_config.read_text(), inherited)
-        self.assertEqual("", git(worktree, "status", "--porcelain"))
-        primary_config.write_text(
-            json.dumps({"schema_version": 3, "default": {"model": "anthropic/b"}})
-        )
-        self.assertEqual(inherited, task_config.read_text())
-        # AI edits the task's source file directly; validation is read-only and offline.
-        task_config.write_text(
-            json.dumps({"schema_version": 3, "default": {"model": "anthropic/c"}})
-        )
-        edited = task_config.read_bytes()
-        output = io.StringIO()
-        with (
-            contextlib.redirect_stdout(output),
-            contextlib.redirect_stderr(io.StringIO()),
-        ):
-            status = configure.main(["--check", "--json"], cwd=worktree)
-        self.assertEqual(edited, task_config.read_bytes())
-        value = json.loads(output.getvalue())
-        self.assertEqual((0, "ok"), (status, value["status"]), value)
-        self.assertEqual(str(task_config), value["output"]["config"])
         self.assertEqual(
-            "anthropic/c", json.loads(task_config.read_text())["default"]["model"]
+            "anthropic/a", json.loads(task_config.read_text())["default"]["model"]
         )
+        self.assertEqual("", git(worktree, "status", "--porcelain"))
+        # A models-only change committed on the primary branch reaches only later tasks.
+        commit_models(self.root, "anthropic/b")
+        self.assertEqual("", git(self.root, "status", "--porcelain", models.CONFIG))
+        self.assertEqual(
+            "anthropic/a", json.loads(task_config.read_text())["default"]["model"]
+        )
+        # The task changes its own models as any tracked file of its branch.
+        commit_models(worktree, "anthropic/c")
         self.assertEqual(
             "anthropic/b",
-            json.loads(primary_config.read_text())["default"]["model"],
+            json.loads((self.root / models.CONFIG).read_text())["default"]["model"],
         )
-        primary_config.unlink()
         second = Path(self.project.open_task("t2")["worktree"])
-        self.assertFalse((second / models.CONFIG).exists())
+        self.assertEqual(
+            "anthropic/b",
+            json.loads((second / models.CONFIG).read_text())["default"]["model"],
+        )
 
     @verifies("scenario.tasks.open-taken")
     def test_a_taken_identity_is_refused(self):

@@ -10,8 +10,7 @@
         "no:cacheprovider",
         "-n",
         "4",
-        "tests/concorde/harness/workers",
-        "tests/concorde/harness/test_configure.py"
+        "tests/concorde/harness/workers"
       ],
       "timeout_seconds": 300,
       "inputs": [
@@ -19,7 +18,6 @@
         "prompts",
         "pyproject.toml",
         "src",
-        "tests/concorde/harness/test_configure.py",
         "tests/concorde/harness/workers",
         "tests/concorde/spec/test_grants.py",
         "tests/concorde/support"

@@ -54,13 +54,6 @@ import {
   workersOf,
   worktreeRoot,
 } from "./pi_runs.ts";
-import {
-  type CommandOutcome,
-  editorCommand,
-  runEditor,
-  listingCommand,
-  refusalText,
-} from "./pi_models.ts";
 
 const SOURCE = "concorde";
 const POLL_MS = 2000;
@@ -130,6 +123,34 @@ interface TrackedRound {
   owned: boolean;
 }
 
+interface CommandOutcome {
+  code: number;
+  value: Record<string, unknown> | null;
+  text: string;
+}
+
+/** Preserve every command error link in the text shown to the main agent. */
+export function refusalText(outcome: CommandOutcome): string {
+  const error = outcome.value?.error as Record<string, unknown> | undefined;
+  if (!error) return outcome.text || `exit status ${outcome.code}`;
+  const lines: string[] = [];
+  const walk = (link: Record<string, unknown>, depth: number) => {
+    const unhandled = link.unhandled as Record<string, string> | undefined;
+    lines.push(
+      `${"  ".repeat(depth)}${link.actor}: ${link.code}: ${link.detail}` +
+        (unhandled
+          ? ` (not handled: ${unhandled.reason}: ${unhandled.explanation})`
+          : ""),
+    );
+    for (const option of (link.options as string[]) ?? [])
+      lines.push(`${"  ".repeat(depth + 1)}option: ${option}`);
+    for (const cause of (link.causes as Record<string, unknown>[]) ?? [])
+      walk(cause, depth + 1);
+  };
+  walk(error, 0);
+  return lines.join("\n");
+}
+
 /** Run a `concorde` command of the worktree and read the one JSON value it prints. */
 function concorde(cwd: string, args: string[]): Promise<CommandOutcome> {
   const [command, ...prefix] = concordeCommand(cwd);
@@ -157,36 +178,10 @@ function concorde(cwd: string, args: string[]): Promise<CommandOutcome> {
   });
 }
 
-/** Open the shared terminal editor in exactly the requested worktree. */
-async function pickWorkerModels(
-  ctx: ExtensionContext,
-  task: string | null,
-): Promise<string[]> {
-  if (ctx.mode !== "tui")
-    throw new Error(
-      "The worker editor needs a terminal. Edit .concorde/worker-models.json directly and run configure-workers --check; use --show --json to inspect it.",
-    );
-  const cwd = task ? taskWorktree(primaryRoot(ctx.cwd), task) : ctx.cwd;
-  if (!cwd) throw new Error(`Task ${task} has no worktree`);
-  const before = await concorde(cwd, listingCommand());
-  if (before.code !== 0) throw new Error(refusalText(before));
-  const code = await ctx.ui.custom<number>((tui, _theme, _keys, done) => {
-    done(runEditor(tui, [...concordeCommand(cwd), ...editorCommand()], cwd));
-    return { render: () => [], invalidate: () => {} };
-  });
-  const after = await concorde(cwd, listingCommand());
-  if (after.code !== 0) throw new Error(refusalText(after));
-  if (code !== 0) throw new Error(`Worker editor exited with status ${code}`);
-  return JSON.stringify(before.value?.output) ===
-    JSON.stringify(after.value?.output)
-    ? []
-    : [`saved configuration in ${cwd}`];
-}
-
 export default function (pi: ExtensionAPI) {
   // Every command this session starts, through bash or a tool, tells Concorde that the main
   // session is pi, so task sessions start on pi; workers take their backend from the worktree's
-  // worker model configuration.
+  // worker configuration.
   process.env.CONCORDE_CLIENT = "pi";
   // Every session of the project, main or task session, works with the project's terms: the
   // glossary of the session's own worktree is read afresh for each prompt, so a merged or task
@@ -638,63 +633,6 @@ export default function (pi: ExtensionAPI) {
         ],
         details: { session: value.id, round: last.round },
       };
-    },
-  });
-
-  pi.registerTool({
-    name: "concorde_configure_workers",
-    label: "Configure worker models",
-    description:
-      "Open the terminal draft editor for worker backends, models and reasoning, with inheritance, " +
-      "Save and Cancel. Use when the developer asks to choose worker models. Without a task it " +
-      "edits this worktree's file, which new tasks inherit; with a task only that task's copy. " +
-      "Requires interactive terminal mode; for AI edits, edit the JSON directly and run --check.",
-    promptSnippet:
-      "Let the developer edit Concorde worker models in the terminal",
-    parameters: Type.Object({
-      task: Type.Optional(
-        Type.String({
-          description:
-            "A task whose own configuration to change; only when the developer asks for it",
-        }),
-      ),
-    }),
-    async execute(_id, params, _signal, _onUpdate, ctx) {
-      if (ctx.mode !== "tui")
-        throw new Error(
-          "the worker model editor needs a terminal; edit .concorde/worker-models.json directly " +
-            "and run configure-workers --check",
-        );
-      const changes = await pickWorkerModels(ctx, params.task ?? null);
-      return {
-        content: [
-          {
-            type: "text",
-            text: changes.length
-              ? `The developer changed the worker models: ${changes.join("; ")}. Run concorde configure-workers --show --json for the result.`
-              : "The developer changed nothing.",
-          },
-        ],
-        details: { changes },
-      };
-    },
-  });
-
-  pi.registerCommand("concorde-models", {
-    description:
-      "Choose the models Concorde's workers use (optionally a task identity, to change only that task)",
-    handler: async (args, ctx) => {
-      try {
-        const changes = await pickWorkerModels(ctx, args.trim() || null);
-        ctx.ui.notify(
-          changes.length
-            ? `Worker models changed: ${changes.join("; ")}`
-            : "Worker models unchanged.",
-          "info",
-        );
-      } catch (error) {
-        ctx.ui.notify(String((error as Error).message ?? error), "error");
-      }
     },
   });
 

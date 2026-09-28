@@ -310,11 +310,6 @@ class InitialModuleTests(unittest.TestCase):
                     mutated(lambda p: p["files"].pop(1)),
                 ),
                 (
-                    "registry rebound",
-                    "invalid_proposal",
-                    reconfigured(lambda c: {**c, "registry": ".concorde/other.json"}),
-                ),
-                (
                     "Protocol rebound",
                     "invalid_proposal",
                     reconfigured(

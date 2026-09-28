@@ -48,6 +48,13 @@ to it.
 - THEN construction fails with `unsupported_profile`
 - AND the configuration is not reinterpreted
 
+### scenario.spec.config-fields-moved — A field of an earlier profile names where its setting lives
+
+- GIVEN a configuration of profile 18 that still has `registry`, `checks` and `workers`
+- WHEN a repository is constructed
+- THEN construction fails with `invalid_spec` naming each of the three fields and where its setting lives now: the registry always at `.concorde/specs.json`, the checks in `.concorde/checks/<module id>.json` and the worker limits and runtime paths in `.concorde/workers.json`
+- AND the remediation says to move them, remove the fields and set the current `profile_version`
+
 ### scenario.spec.checks-files — Configured checks are read from one file per Module
 
 - GIVEN a project whose `.concorde/checks/` holds `module.b.json` with two checks and `module.a.json` with one

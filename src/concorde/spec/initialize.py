@@ -309,7 +309,6 @@ def project_proposal(
     installed = installed_files(root)
     config = {
         "profile_version": PROFILE_VERSION,
-        "registry": ".concorde/specs.json",
         "protocol": installed_protocol_binding(root),
     }
     # The project's own interpreter, for its checks' {python}; Concorde runs in its own.
@@ -409,13 +408,10 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         )
     config = decode(proposed[".concorde/config.json"]["content"])
     registry = decode(proposed[".concorde/specs.json"]["content"])
-    if config.get("registry") != ".concorde/specs.json" or config.get(
-        "protocol"
-    ) != installed_protocol_binding(root):
+    if config.get("protocol") != installed_protocol_binding(root):
         raise SpecError(
-            f"the proposed configuration names the registry {config.get('registry')!r} and "
-            f"the Protocol {config.get('protocol')!r}, but initialization needs "
-            "'.concorde/specs.json' and the installed Protocol copy "
+            f"the proposed configuration names the Protocol {config.get('protocol')!r}, but "
+            "initialization needs the installed Protocol copy "
             f"{installed_protocol_binding(root)!r}",
             "invalid_proposal",
             "/proposal/files",

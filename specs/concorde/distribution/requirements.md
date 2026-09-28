@@ -31,7 +31,7 @@ is missing or changed, or whose rendered asset differs from the tracked manifest
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `configure-workers`, `issues` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `issues` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help`.
 
 The exit status is the one Spec core's shared envelope assigns to the envelope's status, so it
 follows from this requirement rather than being a separate one: a caller that only checks the status

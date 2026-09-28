@@ -16,14 +16,13 @@ records and error codes are defined in the [contracts](contracts.md).
 - AND `.concorde/tasks/severity.decisions.md` holds the heading and the goal
 - AND the command prints the record and the [decision log](../../glossary.json#concept.decision-log)'s absolute path
 
-### scenario.tasks.open-inherits-worker-models — A new task keeps its own copy of the worker models
+### scenario.tasks.open-carries-worker-configuration — A new task carries the worker configuration of its base commit
 
-- GIVEN a primary worktree whose `.concorde/worker-models.json` chooses a default model
-- WHEN the main agent opens a task and then changes the primary worktree's default model
-- THEN the task worktree holds the configuration as it was when the task opened, untracked by Git
-- AND direct JSON edits or a saved `concorde configure-workers` draft in the task worktree change only the task's copy, leaving the primary worktree's file as it is
-- AND read-only inspection and validation never change either file
-- BUT a task opened from a primary worktree without the file gets none, and its workers use the program's default
+- GIVEN a primary branch whose committed `.concorde/workers.json` chooses a default model
+- WHEN the main agent opens a task and then commits another default model on the primary branch
+- THEN the task worktree holds the configuration of the task's base commit, with nothing left for Git to report
+- AND a change the task commits to its own copy leaves the primary branch's file as it is until the task merges
+- AND a task opened after the change carries the new default model
 
 ### scenario.tasks.open-taken — Refuse a taken identity
 

@@ -18,8 +18,7 @@ Commands never chooses the next run, asks the developer anything or reads a
 [task record](../../glossary.json#concept.task-record): whoever works the workspace, directly or
 through a [workflow](../workflows/module.md), decides what runs. The other `concorde` commands are
 not execution commands, even those of Execution: `run` starts an Operation, `workflow` a
-[workflow step](../../glossary.json#concept.workflow-step), `configure-workers` changes the worker
-configuration, and the rest belong to Coordination, Spec tooling, Issues or Distribution, as the
+[workflow step](../../glossary.json#concept.workflow-step), and the rest belong to Coordination, Spec tooling, Issues or Distribution, as the
 table of subcommands of the
 [command-line interface](../../glossary.json#concept.command-line-interface) shows.
 

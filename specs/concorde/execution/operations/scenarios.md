@@ -21,7 +21,7 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 
 ### scenario.operations.worker-model — A worker runs with the worktree's model for its id
 
-- GIVEN a task worktree whose [worker model configuration](../../glossary.json#concept.worker-model-configuration) chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker`
+- GIVEN a task worktree whose [worker configuration](../../glossary.json#concept.worker-configuration) chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker`
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree
 - THEN the run launches `claude -p` with the worker's model and the default's level as `--effort`
 - AND the [run record](../../glossary.json#concept.run-record) and the result's `worker-model` host evidence name the backend, the [worker id](../../glossary.json#concept.worker-id), the model and the level
@@ -29,14 +29,14 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 
 ### scenario.operations.worker-backend-configured — Workers run on pi, whatever the main session
 
-- GIVEN a Claude Code main session, pi installed, and a task worktree whose worker model configuration gives `implement`'s worker a pi model and puts another Operation's worker on Claude Code
+- GIVEN a Claude Code main session, pi installed, and a task worktree whose worker configuration gives `implement`'s worker a pi model and puts another Operation's worker on Claude Code
 - WHEN the task level runs `implement` and then that Operation in the task worktree
 - THEN the run launches `implement`'s worker with `pi -p` and that model, under the same grant a Claude Code worker would get, and the run record and `worker-model` evidence name `pi` as Concorde's default [worker backend](../../glossary.json#concept.worker-backend)
 - AND it launches the other Operation's worker with `claude -p`, naming the entry of its worker id that chose it
 
 ### scenario.operations.worker-model-unavailable — A run whose worker backend or model cannot be settled fails before launch
 
-- GIVEN a task whose worktree's worker model configuration either is not valid JSON or chooses nothing for `implement`'s worker on a machine without pi
+- GIVEN a task whose worktree's worker configuration either is not valid JSON or chooses nothing for `implement`'s worker on a machine without pi
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree and the run reaches the worker step
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
 - AND when the file is not valid JSON, its cause is the `component` link of Workers' model configuration with `config_invalid`, naming the file

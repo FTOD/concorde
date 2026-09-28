@@ -605,13 +605,13 @@ task, [Module](../../glossary.json#concept.module), path, run or Git command con
 message (for an unknown task, the known tasks; for a dirty worktree, the uncommitted paths; for a
 busy [merge lock](../../glossary.json#concept.merge-lock), its holder), and whose reason is
 `environment` for `git_failed`, `worktree_failed`, `record_conflict`, `record_unreadable`,
-`record_unwritable`, `decision_log_failed`, `config_copy_failed`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed` and the
+`record_unwritable`, `decision_log_failed`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed` and the
 session codes `session_failed` and `missing_worktree`, `decision` for `dirty_worktree`,
 `not_merged`, `primary_dirty`, `merge_conflict`, `check_failed`, `merge_incomplete`,
 `not_resumable`, `merge_diverged` and `session_busy`, and `input` otherwise. A
 refusal exits with status 1 and changes nothing, apart from the refusals that
 [req.tasks.refusal-inert](requirements.md#req.tasks.refusal-inert) names, each of which says what
-it left behind: `open`'s `config_copy_failed` and `binding_failed`, and `merge`'s
+it left behind: `open`'s `binding_failed`, and `merge`'s
 `rollback_failed`, a `check_failed` whose checks created paths, and a close that failed after the
 merge, and the refusals of `close` and `escalate` after a step they could not undo (below). A malformed command line prints the same shape with the code `invalid_command` and
 exits with status 2.
@@ -626,7 +626,7 @@ for it. `list` and `show` are never refused for a merge.
 
 | Command | Effect | Output |
 | --- | --- | --- |
-| `concorde task open <task-id> --goal <text> --modules <id>[,<id>…] [--base <ref>] [--path <dir>]` | Holding the merge lock, creates branch `concorde/<task-id>` at `--base` (default: the primary worktree's `HEAD`), adds a worktree for it at `--path` (default: `.claude/worktrees/<task-id>` of the primary worktree, which Git must ignore there), copies the primary worktree's [worker model configuration](../../glossary.json#concept.worker-model-configuration) into it when there is one, writes the worktree's [workspace binding](../../execution/contracts.md#contract.execution.workspace-binding) (workspace `<task-id>`, the worktree's real path as root, the branch, base commit, goal and Modules, and the primary worktree's `.concorde` as records directory), then the record in state `open` with no sessions, and the [decision log](../../glossary.json#concept.decision-log) | `{"record": <the new record>, "decision_log": "<absolute path>"}` |
+| `concorde task open <task-id> --goal <text> --modules <id>[,<id>…] [--base <ref>] [--path <dir>]` | Holding the merge lock, creates branch `concorde/<task-id>` at `--base` (default: the primary worktree's `HEAD`), adds a worktree for it at `--path` (default: `.claude/worktrees/<task-id>` of the primary worktree, which Git must ignore there), writes the worktree's [workspace binding](../../execution/contracts.md#contract.execution.workspace-binding) (workspace `<task-id>`, the worktree's real path as root, the branch, base commit, goal and Modules, and the primary worktree's `.concorde` as records directory), then the record in state `open` with no sessions, and the [decision log](../../glossary.json#concept.decision-log) | `{"record": <the new record>, "decision_log": "<absolute path>"}` |
 | `concorde task list [--state <state>]` | None; `--state` filters on the derived state | An array of records with their derived state, oldest first |
 | `concorde task show <task-id>` | None; each delivery's `mismatches` lists how it disagrees with its [evidence bundle](../../glossary.json#concept.evidence-bundle) by Delivery's check, and is empty when it verifies | `{"record": <record with its derived state>, "runs": [{"run_id": "<id>", "kind": "operation\|command", "name": "<Operation or command>", "modules": ["<id>", …], "status": "running\|lost\|ok\|blocked\|failed", "started_at": "<time>", "finished_at": "<time>\|null"}, …], "deliveries": [{"commit": "<commit>", "bundle": "<project-relative path>", "readiness_run": "<run id>", "mismatches": ["<how the commit disagrees with its evidence bundle>", …]}, …], "busy": "<holder of the workspace lock>\|null", "decision_log": "<absolute path>"}` |
 | `concorde task session <task-id> …` | Starts, answers or stops a [task session](../../glossary.json#concept.task-session); see [Task session](../task-session/contracts.md#commands) | As stated there |
@@ -689,7 +689,6 @@ waiting and name themselves in it as `` `concorde task <command>` of task <task-
 | `worktree_not_ignored` | The worktree path lies inside the primary worktree and Git does not ignore it there; the message names the path and how to ignore it. |
 | `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--check` accompanies `--resume` or `--abort`, or `--wait` is negative, or `session` combines two of `--answer`, `--stop` and `--wait`, gives `--wait` a negative value, gives `--answer`, `--stop` or `--wait` for a Claude Code session or together with `--main`, `--model` or `--dry-run`, or starts a Claude Code session without `--main`. |
 | `worktree_failed` | Git refused to add or remove the worktree; the message carries Git's error. |
-| `config_copy_failed` | `open` added the worktree but the file system refused the copy of the worker model configuration; the message names the worktree and branch left behind and how to remove them. |
 | `binding_failed` | `open` added the worktree but could not write its [workspace binding](../../glossary.json#concept.workspace-binding); the message names the file, the worktree and branch left behind and how to remove them. |
 | `invalid_task_id` | The identity does not match the record's `id` pattern. |
 | `task_exists` | A record with that identity exists, whatever its state. |

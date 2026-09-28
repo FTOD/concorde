@@ -198,35 +198,21 @@ open a task for that work and escalate there with the run's result file,
 `--error-file .concorde/runs/<run-id>/result.json`, since `--run` names only runs of the task's own
 workspace ([requirements](requirements.md#req.main-session.unbound-failure)).
 
-<a id="concept.model-picker"></a>
-
 **[Worker](../../glossary.json#concept.worker) models.** Workers run on pi, whatever program the
 main agent runs on, unless the worktree's
-[worker model configuration](../../glossary.json#concept.worker-model-configuration) chooses Claude
-Code for some of them, and take their model and level from it, per
-[worker id](../../glossary.json#concept.worker-id). The guidance tells the main agent to change it
-only when the developer asks. The human-facing `concorde configure-workers` opens Workers' terminal
-draft editor; the pi **[model picker](../../glossary.json#concept.model-picker)**,
-`/concorde-models` or the `concorde_configure_workers` tool, opens that same editor after releasing
-pi's terminal, and restores the terminal on success, cancellation or failure. It shows all backends,
-global and Operation defaults and every worker, each field's effective source, custom input and
-optional discovery. Only Save writes; dirty exits offer Keep editing by default or explicit Discard
-changes, including Ctrl-C. Scope and model search use `/`, and returning from Edit keeps the
-selected scope and filter. Without a task the picker edits the session's own worktree; with a task
-it edits exactly that task's worktree, which must exist: the picker never falls back to the primary
-worktree. It requires pi's terminal mode, and reports that requirement to RPC and headless
-callers.
-
-For AI-driven changes the guidance tells the agent to edit the worktree's JSON directly,
-preserving unrelated entries, then use `configure-workers --check` and `--show --json`. It chooses
-Claude Code for a worker by setting that entry's `backend` to `claude` when the developer asks; the
-chosen program must be installed when a worker launches, not when the configuration is edited or
-validated.
-The separate `scripts/available_models.py --backend pi|claude [--json]` supplies optional
-suggestions without Git or inference API calls. Discovery does not gate custom/offline
-configuration or impose an extra question flow when the developer already chose a model.
-Primary edits affect future tasks; a task's existing copy changes only when the developer
-asks for that task. No worker is launched and no run is recorded.
+[worker configuration](../../glossary.json#concept.worker-configuration), the tracked
+`.concorde/workers.json`, chooses Claude Code for some of them, and take their model, level and
+limits from it, per [worker id](../../glossary.json#concept.worker-id). The guidance tells the main
+agent to change it only when the developer asks, by editing the JSON directly and preserving
+unrelated entries; there is no editor. It chooses Claude Code for a worker by setting that entry's
+`backend` to `claude`; the chosen program must be installed when a worker launches, not when the
+file is edited. A change meant for future tasks is committed alone directly on the primary branch,
+the one change the main agent makes in the primary worktree, never while a merge is unfinished; a
+task may change its own copy, which reaches the primary branch when the task merges
+([requirements](requirements.md#req.main-session.model-change-method)). The separate
+`scripts/available_models.py --backend pi|claude [--json]` supplies optional suggestions without
+Git or inference API calls. Discovery does not gate custom/offline configuration or impose an extra
+question flow when the developer already chose a model.
 
 <a id="concept.questions-without-a-task"></a>
 
@@ -344,8 +330,8 @@ skill and `CLAUDE.md` block are Concorde's only way to reach a session at all. I
 downward. At level 2 it opens a task and either works it itself or delegates it to a task session;
 from inside a task, its own or a task session's, workflows (level 3) and runs (level 4), Operations
 and execution commands, are started in the task worktree; and it reaches workers (level 5) only
-through an Operation, touching Workers otherwise only to watch a run and to configure worker
-models. What comes back up is structured: run results, workflow results, and task-session reports
+through an Operation, touching Workers otherwise only to watch a run and to edit the worker
+configuration. What comes back up is structured: run results, workflow results, and task-session reports
 and escalations, each failure carrying its
 [error chain](../../glossary.json#concept.error-chain). The chain ends here: the main agent
 decides what the escalation policy lets it decide, records and reports it, and otherwise adds its
@@ -491,12 +477,8 @@ mainsession: Main session {
     "pi_extension.ts"
     "pi_runs.ts"
   }
-  picker: pi model picker {
-    "pi_models.ts"
-  }
   sources -> guidance: authors
   guidance -> policy: includes
-  view -> picker: opens the editor through
 }
 ```
 
@@ -518,7 +500,7 @@ The **pi run view** is `src/concorde/main_session/pi_extension.ts`, installed as
 `.pi/extensions/concorde/index.ts`, with the pure reading of progress files in `pi_runs.ts` beside
 it. It also sets `CONCORDE_CLIENT=pi` for every command the session starts, which tells Concorde
 that the main session is pi, so that `concorde task session` starts pi task sessions; which
-backend a worker runs on is not affected, since Workers takes it from the worktree's worker model
+backend a worker runs on is not affected, since Workers takes it from the worktree's worker
 configuration. It tells an execution command from an Operation by name and starts the first as
 `concorde <command>`, the second as `concorde run <operation>`. It pairs a worker's progress file
 with a run by the runner's process identifier and a start no earlier than the run's, so a worker of
@@ -530,28 +512,17 @@ no run is reported twice. `pi_runs.ts` also reads the status files of task-sessi
 tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi session
 and is exercised in one.
 
-<a id="realization.main-session.pi-model-picker"></a>
-
-The **pi model picker** adapter lives in `pi_models.ts`, installed beside the extension. It
-suspends pi's terminal while Workers' editor runs, restores it even after a spawn failure,
-and uses read-only inspection before and after to report saved changes. The extension
-chooses the worktree; there is no second mutation protocol or duplicated configuration
-validator. Tests run the adapter under Node and the editor through a pseudo-terminal.
-
 The pi extension is the only part of this Module that is code meeting other Modules directly. It
 observes what they record and starts their commands, and the records it reads stay theirs:
 
 ```d2
 view: pi run view
-picker: pi model picker
 round: Task sessions / Session round
 wprogress: Workers / Progress file
 rprogress: Execution / Run progress file
-configuration: Workers / Worker model configuration
 view -> round: follows
 view -> wprogress: reads
 view -> rprogress: reads
-picker -> configuration: applies choices to
 ```
 
 <a id="uses-workers"></a>
@@ -561,12 +532,10 @@ run view relies on it recording the phase, round and latest tool call, and the r
 launched the worker, and on it being an observation only: the
 [run record](../../glossary.json#concept.run-record), not the progress file, is the evidence, so the
 view shows but never judges a run from it. Workers also owns the
-[worker model configuration](../../glossary.json#concept.worker-model-configuration) and the
-`concorde configure-workers` command. The picker opens its terminal editor; the guidance instructs
-AI agents to edit the JSON directly and validate with `--check`. Both depend on Workers' shared
-structural and catalog validation, and preserve per-worktree configuration. The separate discovery
-helper supplies suggestions without proving API access or gating edits. Inspection refusals retain
-their full error chain for display.
+[worker configuration](../../glossary.json#concept.worker-configuration), which the guidance tells
+the main agent to edit directly; the guidance relies on Workers validating the whole file when a
+worker launches and reporting a malformed one with `config_invalid`. The separate discovery helper
+supplies suggestions without proving API access or gating edits.
 
 ### Who relies on it
 

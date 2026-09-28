@@ -93,7 +93,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 
 ### scenario.spec-review.panel-worker-models — Each reviewer runs on the model of its worker id
 
-- GIVEN a [worker model configuration](../../glossary.json#concept.worker-model-configuration) putting every worker on Claude Code, giving `spec_panel`'s default a model and level, `reviewer2` another model, and the `chair` its own model and level
+- GIVEN a [worker configuration](../../glossary.json#concept.worker-configuration) putting every worker on Claude Code, giving `spec_panel`'s default a model and level, `reviewer2` another model, and the `chair` its own model and level
 - WHEN the caller runs `spec_panel` with two reviewers
 - THEN `reviewer1` runs on the Operation's model, `reviewer2` on its own model at the Operation's level, and the `chair` on its own
 - AND each worker's [run record](../../glossary.json#concept.run-record) names its [worker id](../../glossary.json#concept.worker-id), and the host evidence names the model each worker used

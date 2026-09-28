@@ -6,11 +6,11 @@ code lives in `docsite/plugins/scoped-content/` and `docsite/scripts/`.
 
 ## Loading and admission {#loading-and-admission}
 
-`requireScoped(root)` only checks that `.concorde/config.json` is readable and names the registry;
+`requireScoped(root)` only checks that `.concorde/config.json` is readable as a JSON object;
 without it every command fails with a message asking to initialize the project first.
 
-`loadScopedRegistry(root)` reads the configuration, the registry it names and, for every
-[Module](../../glossary.json#concept.module), the documents the registry record lists in `owns`:
+`loadScopedRegistry(root)` reads the configuration, the registry `.concorde/specs.json` and, for
+every [Module](../../glossary.json#concept.module), the documents the registry record lists in `owns`:
 both the reading file and its `.md.json` metadata. The registry must be
 `{"schema_version": 3, "modules": [...]}` with a nonempty list of records having exactly `id`,
 `title`, `entry`, `owns`, `contains`, `uses`, `includes` and `participates`. The publisher reads the

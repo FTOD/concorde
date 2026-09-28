@@ -63,7 +63,9 @@ ends in the worker's own link.
 ### req.implementation.round-limit — Resume rounds are bounded
 
 The implement Operation SHALL run at most the configured number of resume rounds: the number
-`--rounds` gives, or else the configuration's `workers.rounds`, or else three.
+`--rounds` gives, or else the
+[worker configuration](../../../glossary.json#concept.worker-configuration)'s `limits.rounds`, or
+else three.
 
 ### req.implementation.pending-markers — Pending markers follow the files
 

@@ -73,7 +73,7 @@ it. Unbound, started in the primary worktree, `understand` or a review answers a
 Every worker an Operation may launch has a stable [worker
 id](../../glossary.json#concept.worker-id), which the catalog lists: `spec_review` has a
 `reviewer` and a `checker`, `spec_panel` a `reviewer1` to `reviewer5`, one per seat its panel may
-have, and a `chair`, and every other Operation a single `worker`. The same id keys the worker model
+have, and a `chair`, and every other Operation a single `worker`. The same id keys the worker
 configuration, names the worker in its run record and labels the run's `worker-model` evidence,
 so each worker may have its own backend, model and level.
 
@@ -94,9 +94,10 @@ op -> caller: failed - chain: Operation (rounds used up, decide) < Workers (roun
 caller -> caller: reads the claim as a claim, the evidence as fact; decides the next step
 ```
 
-A plan is one answer `understand` gives, not a separate Operation; readiness, delivery, scaffolding
-and the [worker model configuration](../../glossary.json#concept.worker-model-configuration) are
-commands of their own Modules, not Operations.
+A plan is one answer `understand` gives, not a separate Operation; readiness, delivery and
+scaffolding are commands of their own Modules, not Operations, and the
+[worker configuration](../../glossary.json#concept.worker-configuration) is a tracked file edited
+directly.
 
 ## Design
 

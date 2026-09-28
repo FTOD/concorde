@@ -493,10 +493,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         from ..execution.runner import run_main
 
         return run_main("command", words[0], words[1:])
-    if words and words[0] == "configure-workers":
-        from ..harness.configure import main as configure_main
-
-        return configure_main(words[1:])
     if words and words[0] == "update":
         return update_main(words[1:])
     requested = next((word for word in words if word in TOOLS), "spec-validation")

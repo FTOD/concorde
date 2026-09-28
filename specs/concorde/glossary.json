@@ -194,7 +194,7 @@
       "id": "concept.command-line-interface",
       "title": "Command-line interface",
       "owner": "module.distribution",
-      "definition": "The `concorde` command, which routes requests to their owning Modules and prints their results or opens the worker configuration terminal editor.",
+      "definition": "The `concorde` command, which routes requests to their owning Modules and prints their results.",
       "explanation": "specs/concorde/distribution/module.md#concept.command-line-interface"
     },
     {
@@ -217,13 +217,6 @@
       "owner": "module.distribution",
       "definition": "The state `concorde update` marks a project with by writing `.concorde/update.json`, in which `spec-validation` in the primary worktree reports an error until a validation first passes and removes the mark.",
       "explanation": "specs/concorde/distribution/module.md#concept.concorde-unvalidated"
-    },
-    {
-      "id": "concept.configure-workers",
-      "title": "configure-workers",
-      "owner": "module.workers",
-      "definition": "The command that opens a draft terminal editor of the current worktree's worker configuration, or inspects and validates it read-only, without launching a worker or recording a run.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.configure-workers"
     },
     {
       "id": "concept.configured-check",
@@ -588,13 +581,6 @@
       "owner": "module.tasks",
       "definition": "The lock of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task or closes one; the kernel releases it when that process ends.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.merge-lock"
-    },
-    {
-      "id": "concept.model-picker",
-      "title": "Model picker",
-      "owner": "module.main-session",
-      "definition": "The pi command `/concorde-models` and tool `concorde_configure_workers` that open Workers' shared terminal draft editor for backend, model, reasoning and inheritance choices with Save and Cancel.",
-      "explanation": "specs/concorde/coordination/main-session/module.md#concept.model-picker"
     },
     {
       "id": "concept.module",
@@ -1216,7 +1202,7 @@
       "id": "concept.worker-backend",
       "title": "Worker backend",
       "owner": "module.workers",
-      "definition": "The agent program a worker runs on, Claude Code or pi: the one the worktree's worker model configuration chooses for the worker or its Operation, otherwise pi; both enforce the same grant.",
+      "definition": "The agent program a worker runs on, Claude Code or pi: the one the worktree's worker configuration chooses for the worker or its Operation, otherwise pi; both enforce the same grant.",
       "explanation": "specs/concorde/execution/workers/module.md#concept.worker-backend",
       "relates": [
         {
@@ -1230,18 +1216,18 @@
       ]
     },
     {
+      "id": "concept.worker-configuration",
+      "title": "Worker configuration",
+      "owner": "module.workers",
+      "definition": "A worktree's Git-tracked `.concorde/workers.json`, which gives a backend, a model and a reasoning level for every worker, for an Operation's workers and for one worker by its id, the most specific entry winning field by field, together with the limits of every worker launch and the runtime paths workers may read.",
+      "explanation": "specs/concorde/execution/workers/module.md#concept.worker-configuration"
+    },
+    {
       "id": "concept.worker-id",
       "title": "Worker id",
       "owner": "module.workers",
-      "definition": "The stable name an Operation gives one worker it may launch, such as `spec_panel`'s `reviewer2` or `chair`, used alike in the worker model configuration, the run record and the evidence.",
+      "definition": "The stable name an Operation gives one worker it may launch, such as `spec_panel`'s `reviewer2` or `chair`, used alike in the worker configuration, the run record and the evidence.",
       "explanation": "specs/concorde/execution/workers/module.md#concept.worker-id"
-    },
-    {
-      "id": "concept.worker-model-configuration",
-      "title": "Worker model configuration",
-      "owner": "module.workers",
-      "definition": "A worktree's untracked `.concorde/worker-models.json`, which gives a backend, a model and a reasoning level for every worker, for an Operation's workers and for one worker by its id, the most specific entry winning field by field.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.worker-model-configuration"
     },
     {
       "id": "concept.worker-result",

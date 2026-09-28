@@ -2,8 +2,7 @@
 
 Situations the [main-session guidance](module.md) prepares the
 [main agent](../../glossary.json#concept.main-agent) for, and what the pi
-[run view](../../glossary.json#concept.run-view) and
-[model picker](../../glossary.json#concept.model-picker) do in them.
+[run view](../../glossary.json#concept.run-view) does in them.
 
 ## Working method
 
@@ -133,25 +132,17 @@ Situations the [main-session guidance](module.md) prepares the
 
 ## Worker models
 
-### scenario.main-session.pi-model-picker — pi's picker applies the developer's choice
-
-- GIVEN a pi terminal main session, and optionally a task with a worktree
-- WHEN the developer opens `/concorde-models` or the main agent calls `concorde_configure_workers`
-- THEN the picker opens Workers' shared terminal editor in exactly the named task's worktree, or in the session's own worktree when no task is named, with backend, model, reasoning, inheritance and Save/Cancel
-- AND it restores pi's terminal after normal exit, cancellation or a launch failure
-- AND read-only `configure-workers --show --json` inspection reports saved changes and preserves refusal chains
-- BUT RPC and headless modes are told to use direct JSON edits and read-only validation, and a missing task worktree is refused without primary fallback
-
 ### scenario.main-session.choose-models — The guidance lets the developer choose worker models
 
 - GIVEN the rendered main-session guidance
 - WHEN a developer asks the main agent to change the models workers use
-- THEN it is told that workers run on pi unless the worktree's configuration chooses Claude Code for them, and take their models from that configuration by [worker id](../../glossary.json#concept.worker-id), which new tasks inherit
-- AND that the human-facing `concorde configure-workers` editor keeps drafts until Save and changes only the current worktree, launching no worker and recording no run
-- AND to edit JSON directly for AI-driven changes, preserve unrelated overrides and validate with `--check`, inspecting sources with `--show --json`
+- THEN it is told that workers run on pi unless the tracked `.concorde/workers.json` chooses Claude Code for them, and take their models and limits from that file by [worker id](../../glossary.json#concept.worker-id), which a task carries from its base commit
+- AND to edit the JSON directly, preserving unrelated overrides, since there is no editor
+- AND to commit a change of that file alone directly on the primary branch for future tasks, never while a merge is unfinished
+- AND that a task may change its own copy, which reaches the primary branch when the task merges
 - AND that separate `scripts/available_models.py` discovery supplies advisory configured candidates without inference API probes, while custom/offline names require no discovery
 - AND to set the JSON backend to `claude` when asked, with program installation required at launch rather than at configuration time
-- BUT to edit the configuration in an existing task's worktree only when the developer asks to change that task
+- BUT to change worker models only when the developer asks
 
 ### scenario.main-session.no-task-operations — The guidance runs questions and reviews without a task
 

@@ -12,7 +12,7 @@ The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in 
 
 ### req.concorde.worker-program — Workers run on the configured program
 
-Every worker SHALL run on the agent program the worktree's [worker model configuration](glossary.json#concept.worker-model-configuration) chooses for it, and on pi when it chooses none, whatever program the main agent runs on.
+Every worker SHALL run on the agent program the worktree's [worker configuration](glossary.json#concept.worker-configuration) chooses for it, and on pi when it chooses none, whatever program the main agent runs on.
 
 A worker whose chosen program is not installed is refused, never moved to the other program.
 
@@ -26,15 +26,15 @@ a Claude Code main agent may run pi workers and a pi main agent Claude Code work
 
 ### req.concorde.worker-models-per-worktree — Worker models belong to the worktree
 
-The model and reasoning level of every worker SHALL come from the worker model configuration of the worktree it works on.
+The model and reasoning level of every worker SHALL come from the worker configuration of the worktree it works on.
 
-### req.concorde.worker-models-inherited — A task worktree inherits the worker models
+### req.concorde.worker-models-tracked — The worker models are tracked with the project
 
-A new task worktree SHALL inherit the worker model configuration of the primary worktree when the task opens.
+The worker configuration SHALL be a file tracked by Git, so that a task carries the configuration of its base commit and a change the task makes to it merges with the task.
 
 ### req.concorde.worker-models-explicit — Worker models change only on request
 
-After the task opens, a worktree's worker model configuration SHALL change only by an explicit request made in that worktree.
+A worktree's worker configuration SHALL change only by an explicit request of the developer.
 
 ## The two halves
 
