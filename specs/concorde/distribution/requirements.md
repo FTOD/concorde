@@ -136,3 +136,14 @@ The docsite renders the Specs' diagrams with it.
 When it installs `d2`, the installer SHALL fetch and check the pinned archive before it writes anything else into the project.
 
 A failed or tampered download therefore leaves the project untouched.
+
+### req.distribution.installer-docsite-template — The installer ships the docsite template
+
+The installer SHALL place under `.concorde/framework/docsite/` exactly the docsite template files that [Views](../spec-tooling/views/module.md)' template inventory selects from the package, including `scaffold/`.
+
+A project's `concorde docsite --propose` reads its template there, so an install without it could
+not scaffold a site.
+
+### req.distribution.installer-docsite-template-first — An unsafe docsite template installs nothing
+
+When Views' template inventory rejects the package's docsite template as missing or unsafe, the installer SHALL refuse with `invalid_docsite_template` before it writes anything into the project.

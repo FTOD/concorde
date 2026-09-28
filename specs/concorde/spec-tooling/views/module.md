@@ -139,9 +139,12 @@ from the same sources.
 
 <a id="realization.views.scaffold"></a>
 
-**Docsite scaffold** computes the template inventory with the rule the installer uses to ship
-`docsite/`, so a project receives exactly the adapter Concorde runs itself, and the proposal binds
-that inventory by digest. Applying goes through Spec core's
+**Docsite scaffold** owns the template inventory, the one rule selecting the template files of the
+package's `docsite/`: the scaffold proposes those files without `scaffold/`, and Distribution's
+installer calls the same rule to ship them, `scaffold/` included, into a project's
+`.concorde/framework/docsite/`, where an installed scaffold reads them. A project therefore
+receives exactly the adapter Concorde runs itself, and the proposal binds that inventory by
+digest. Applying goes through Spec core's
 [file transactions](../../glossary.json#concept.file-transaction): every destination must be
 absent before staging and again before each write, and a concurrent change rolls back what was
 written. Because the scaffold can neither replace nor delete, accepting a proposal can never damage
@@ -185,6 +188,7 @@ Distribution calls the scaffold and packages it — `distribution -> views` abov
 declared there. Its CLI dispatches `concorde docsite` to the scaffold, which reads templates from
 the installed package, returning `invalid` (asking for a reinstall) if `concorde.json`, the
 descriptor of the [package](../../glossary.json#concept.package), omits `docsite` as a package root
-or lists it unsafely; its installer ships `docsite/` by the inventory rule Views defines, so the two
-cannot disagree on the template. Its [build manifest](../../glossary.json#concept.build-manifest),
-unrelated to the docsite's, records Concorde's own build outputs.
+or the template is missing or unsafe; its installer ships the template files by calling the
+inventory rule Views defines rather than repeating it, so the two cannot disagree on the template.
+Its [build manifest](../../glossary.json#concept.build-manifest), unrelated to the docsite's,
+records Concorde's own build outputs.

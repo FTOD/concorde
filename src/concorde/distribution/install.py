@@ -1,8 +1,9 @@
 """The installer: place Concorde into a project without touching its Specs.
 
 It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol`` and the rendered
-``generated`` outputs) to ``.concorde/framework/``, writes the ``.concorde/bin/concorde`` command,
-the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
+``generated`` outputs) to ``.concorde/framework/``, with the docsite template under
+``.concorde/framework/docsite/`` selected by Views' template inventory rule, writes the
+``.concorde/bin/concorde`` command, the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
 ``.claude/skills/concorde/SKILL.md`` and a delimited block in ``CLAUDE.md``, Concorde-owned
 defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
 state and task worktrees, and a receipt ``.concorde/install.json``. Concorde's own Python
@@ -37,6 +38,11 @@ from pathlib import Path
 from ..dogfooding.develop import DevelopError, develop_source, guidance
 from ..errors import link
 from ..execution.runs import pid_alive
+from ..views.docsite_template import (
+    DocsiteTemplateError,
+    template_files,
+    verify_package_root,
+)
 from .build import BuildError, verify_fresh
 from .project_defaults import install_project_defaults, project_default_files
 from .tools import TOOLS, ToolError, install_d2, install_pi_runtime
@@ -109,6 +115,7 @@ INPUT_CODES = frozenset(
         "invalid_project",
         "invalid_descriptor",
         "stale_build",
+        "invalid_docsite_template",
         "settings_invalid",
         "not_installed",
         "python_unusable",
@@ -201,7 +208,16 @@ def active_runs(project: Path) -> list[str]:
     return found
 
 
-def _copy_runtime(package: Path, target: Path) -> None:
+def _docsite_template(package: Path) -> dict[str, bytes]:
+    """The docsite template the package ships, by Views' inventory rule, refused if unsafe."""
+    try:
+        verify_package_root(package)
+        return template_files(package)
+    except DocsiteTemplateError as error:
+        raise InstallError("invalid_docsite_template", str(error)) from error
+
+
+def _copy_runtime(package: Path, target: Path, docsite: dict[str, bytes]) -> None:
     if target.exists():
         shutil.rmtree(target)
     ignore = shutil.ignore_patterns(
@@ -222,6 +238,11 @@ def _copy_runtime(package: Path, target: Path) -> None:
                 source, target / name, ignore=runtime_ignore, symlinks=False
             )
     shutil.copy2(package / "concorde.json", target / "concorde.json")
+    # Only the inventoried template files: the scaffold reads them from here, and a project's
+    # `concorde docsite --propose` fails without them.
+    for path, content in docsite.items():
+        (target / path).parent.mkdir(parents=True, exist_ok=True)
+        (target / path).write_bytes(content)
 
 
 # Marks the part of the CLAUDE.md block that imports the project's glossary. Claude Code loads
@@ -395,6 +416,7 @@ def install(
         verify_fresh(package)
     except BuildError as error:
         raise InstallError("stale_build", str(error)) from error
+    docsite = _docsite_template(package)
     skill = _guidance(package, "skill")
     block = _guidance(package, "claude-md")
     try:
@@ -443,7 +465,7 @@ def install(
         except ToolError as error:
             raise InstallError(error.code, str(error)) from error
     written = install_project_defaults(project, package)
-    _copy_runtime(package, project / FRAMEWORK)
+    _copy_runtime(package, project / FRAMEWORK, docsite)
     own_python = _own_python(project, Path(python or sys.executable))
     installed = (
         _python_dependencies(project, package, run or subprocess.run)
