@@ -1,0 +1,66 @@
+{
+  "workspace": "task-session-bg-output",
+  "goal": "concorde task session reports session_failed and records no session although claude --bg started it: Claude Code now colours the session id in its 'backgrounded \u00b7 <id> \u00b7 <name>' line with ANSI escapes, which the STARTED pattern in tasks/session.py does not match; recognise the line with the escapes removed, record the session, and test it with the exact current output",
+  "modules": [
+    "module.task-session"
+  ],
+  "sequence": 1,
+  "base_commit": "fee38b9ef5f99d70769dc82fd351552f2a1cbe7b",
+  "parent_commit": "6774b1a9993ebf1c36cbee69fb090f86cee7e03d",
+  "readiness": {
+    "run_id": "r-20260928T162919-delivery-b96ca253",
+    "input_digest": "sha256:b542d4c108996c43d0bbc5a821386afba3e4aa4237b5788abd289c6218245b3b",
+    "modules": [
+      "module.task-session"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:7f81e977a8db6070bc3e54a23525f9c7375c273962aa3ee6bb6d01ce02dd27a8"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:14451673317f89db90109032cb9840e7136f01462aabaf1457be22a74b21d619"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:c20bfb6fd7a962dda0c14251928ba1c017295205247c4f6f3e905815b7b529b4"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:59b0594cc12c279bf452a8b0df300089054078deb2d5311dde12bbc11e559e39"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:a103c622099ff29e009b708d280b270ab88cc871942c47326c14832e3479b3bc"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T162844-task_validation-86b00c04",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.task-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:7519206a8284607b7cf64b43ec79a98413b7fab1a5feef05640f9efe326b38f6"
+    }
+  ],
+  "created_at": "2026-09-28T16:30:05Z"
+}
