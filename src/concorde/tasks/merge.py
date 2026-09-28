@@ -229,21 +229,27 @@ def merge_task(
     commands = parse_checks(list(checks or []))
     if wait < 0:
         raise TaskError("invalid_input", f"--wait {wait:g} is negative")
-    with store.merge_lock(primary, "merge", task_id, wait) as waited:
-        unfinished = store.unfinished_merge(primary)
-        if unfinished is not None and not (
-            (resume or abort) and unfinished["id"] == task_id
-        ):
-            raise store.incomplete_merge(primary, unfinished)
-        record = store.load_task(primary, task_id)
-        if (resume or abort) and record["state"] != "merging":
-            raise TaskError(
-                "not_merging",
-                f"task {task_id} is {store.derived_state(primary, record)}, not merging; "
-                "--resume and --abort finish only a merge whose process ended before its "
-                "checks decided",
-            )
-        with store.task_workspace_locked(primary, task_id, "merge"):
+    store.load_task(primary, task_id)
+    started = time.monotonic()
+    # The task's own runs are waited for first, without the merge lock, so that a delivery still
+    # finishing in the task never holds up the merges of other tasks.
+    with store.task_workspace_locked(primary, task_id, "merge", wait):
+        remaining = max(0.0, wait - (time.monotonic() - started))
+        with store.merge_lock(primary, "merge", task_id, remaining):
+            waited = round(time.monotonic() - started, 3)
+            unfinished = store.unfinished_merge(primary)
+            if unfinished is not None and not (
+                (resume or abort) and unfinished["id"] == task_id
+            ):
+                raise store.incomplete_merge(primary, unfinished)
+            record = store.load_task(primary, task_id)
+            if (resume or abort) and record["state"] != "merging":
+                raise TaskError(
+                    "not_merging",
+                    f"task {task_id} is {store.derived_state(primary, record)}, not merging; "
+                    "--resume and --abort finish only a merge whose process ended before its "
+                    "checks decided",
+                )
             if abort:
                 return _abort(primary, record, waited)
             if resume:

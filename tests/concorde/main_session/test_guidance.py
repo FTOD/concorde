@@ -137,6 +137,28 @@ class GuidanceTests(unittest.TestCase):
             self.skill,
         )
         self.assertIn("merge delivered task branches without asking", self.block)
+        self.assertIn(
+            "In Claude Code, run it in background Bash (`run_in_background`) like a run",
+            self.skill,
+        )
+        self.assertIn("in pi, run it with bash without a timeout", self.skill)
+
+    @verifies("scenario.main-session.no-polling")
+    def test_every_wait_wakes_or_blocks_once(self):
+        self.assertIn("Never wait by polling, with `sleep` loops", self.skill)
+        self.assertIn("start it with `--wait <seconds>`", self.skill)
+        self.assertIn(
+            "`concorde task session <task> --wait` in bash without a timeout",
+            self.skill,
+        )
+        self.assertIn("never polling with `sleep`", self.block)
+        self.assertIn(
+            "Run Operations, `task-validation` and `delivery` in background Bash",
+            self.session,
+        )
+        self.assertIn("Give bash no timeout for them", self.pi_session)
+        for session in (self.session, self.pi_session):
+            self.assertIn("Never wait for anything with `sleep` loops.", session)
 
     @verifies("scenario.main-session.merge-interrupted")
     def test_an_interrupted_merge_is_finished_first(self):
@@ -157,8 +179,9 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("discarding them is the developer's decision", skill)
         self.assertIn(
-            "fails with `workspace_busy`, a run of that task is still going", skill
+            "fails with `workspace_busy`, a run of that task outlasted the wait", skill
         )
+        self.assertIn("run the command again with a longer `--wait`", skill)
         self.assertIn(
             "`concorde task merge <task> --resume`", " ".join(self.block.split())
         )

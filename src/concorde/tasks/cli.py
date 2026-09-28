@@ -148,8 +148,8 @@ OPTIONS = {
         "--abort to restore the primary branch to the commit named",
     ],
     "workspace_busy": [
-        "wait until the run named ends (concorde task show <task> shows it), then run the "
-        "command again",
+        "run the command again with a longer --wait, which waits for the run named inside "
+        "the command instead of polling (concorde task show <task> shows the run)",
         "stop that run if it must not finish",
     ],
     "merge_incomplete": [
@@ -180,7 +180,8 @@ OPTIONS = {
         "run the command from the Claude Code or pi main session, or set CONCORDE_CLIENT",
     ],
     "session_busy": [
-        "wait until the running round reports",
+        "wait until the running round reports: the run view wakes you in pi, or run "
+        "concorde task session <task> --wait, which returns when the round ends",
         "stop it with concorde task session <task> --stop",
     ],
 }
@@ -230,6 +231,9 @@ def parser() -> argparse.ArgumentParser:
     starting.add_argument("--dry-run", action="store_true")
     starting.add_argument("--answer")
     starting.add_argument("--stop", action="store_true")
+    starting.add_argument(
+        "--wait", nargs="?", type=float, const=float("inf"), default=None
+    )
     closing = commands.add_parser("close")
     closing.add_argument("task_id")
     mode = closing.add_mutually_exclusive_group(required=True)
@@ -242,6 +246,7 @@ def parser() -> argparse.ArgumentParser:
     closing.add_argument("--error-file", action="append", default=[])
     closing.add_argument("--no-error", action="store_true")
     closing.add_argument("--force", action="store_true")
+    closing.add_argument("--wait", type=float, default=store.MERGE_WAIT)
     merging = commands.add_parser("merge")
     merging.add_argument("task_id")
     merging.add_argument("--check", action="append", default=[])
@@ -362,6 +367,7 @@ def close(here: Path, arguments) -> dict:
         note=arguments.reason if outcome == "failed" else arguments.note,
         errors=errors,
         force=arguments.force,
+        wait=arguments.wait,
     )
 
 
@@ -370,9 +376,10 @@ def start_session(here: Path, arguments) -> dict:
     from ..harness.models import ModelConfigError, detect_client
 
     primary = store.require_primary(here)
-    if not arguments.stop:
-        # Stopping a round never builds on the primary branch, so an unfinished merge does
-        # not keep a runaway round alive.
+    waiting = arguments.wait is not None
+    if not arguments.stop and not waiting:
+        # Stopping or waiting for a round never builds on the primary branch, so an unfinished
+        # merge does not keep a runaway round alive or its outcome unseen.
         store.guard_merges(primary, arguments.task_id)
     try:
         program, _ = detect_client()
@@ -382,21 +389,26 @@ def start_session(here: Path, arguments) -> dict:
             f"a task session runs on the main session's own program, which cannot be read "
             f"from the environment: {error}",
         ) from error
-    follow = arguments.answer is not None or arguments.stop
-    if arguments.answer is not None and arguments.stop:
-        raise store.TaskError("invalid_input", "--answer and --stop exclude each other")
+    follow = arguments.answer is not None or arguments.stop or waiting
+    if sum((arguments.answer is not None, arguments.stop, waiting)) > 1:
+        raise store.TaskError(
+            "invalid_input", "--answer, --stop and --wait exclude each other"
+        )
+    if waiting and arguments.wait < 0:
+        raise store.TaskError("invalid_input", f"--wait {arguments.wait:g} is negative")
     if follow and (arguments.model or arguments.dry_run or arguments.main):
         raise store.TaskError(
             "invalid_input",
-            "--answer and --stop take no --main, --model or --dry-run: they act on the "
-            "session already started",
+            "--answer, --stop and --wait take no --main, --model or --dry-run: they act on "
+            "the session already started",
         )
     if program == "claude":
         if follow:
             raise store.TaskError(
                 "invalid_input",
-                "--answer and --stop are for a pi task session: a Claude Code task session "
-                "receives answers through SendMessage and is stopped with claude stop",
+                "--answer, --stop and --wait are for a pi task session: a Claude Code task "
+                "session receives answers and reports through SendMessage and is stopped with "
+                "claude stop",
             )
         if not arguments.main or not arguments.main.strip():
             raise store.TaskError(
@@ -412,6 +424,12 @@ def start_session(here: Path, arguments) -> dict:
         )
     if arguments.stop:
         return pi_session.stop(here, arguments.task_id)
+    if waiting:
+        return pi_session.wait(
+            here,
+            arguments.task_id,
+            None if arguments.wait == float("inf") else arguments.wait,
+        )
     if arguments.answer is not None:
         return pi_session.answer(here, arguments.task_id, arguments.answer)
     return pi_session.start(

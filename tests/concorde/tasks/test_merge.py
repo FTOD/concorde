@@ -375,20 +375,53 @@ class MergeTests(unittest.TestCase):
         )
         self.assertEqual("merging", self.state())
 
+    @verifies("scenario.tasks.merge-waits-for-run")
+    def test_a_merge_waits_for_the_tasks_run_without_the_merge_lock(self):
+        self.project.open_task("t1")
+        self.deliver()
+        taken, release = threading.Event(), threading.Event()
+        held_during_wait = []
+
+        def hold():
+            with workspace_lock(self.root / ".concorde", "t1", "run r-1 (delivery)"):
+                taken.set()
+                release.wait(10)
+                # The merge is waiting now; other tasks' merges could take the merge lock.
+                held_during_wait.append(store.merge_lock_held(self.root))
+
+        holder = threading.Thread(target=hold)
+        holder.start()
+        self.assertTrue(taken.wait(10))
+        threading.Timer(0.5, release.set).start()
+        status, value = self.command(
+            "merge", "t1", "--wait", "10", "--check", python("pass")
+        )
+        holder.join()
+        self.assertEqual(0, status, value)
+        self.assertEqual([False], held_during_wait)
+        self.assertGreaterEqual(value["merge"]["waited_seconds"], 0.4)
+        self.assertEqual("closed", value["record"]["state"])
+
     @verifies("scenario.tasks.merge-workspace-busy")
     def test_merge_and_close_refuse_a_busy_workspace(self):
         self.project.open_task("t1")
         self.deliver()
         before, record = self.head(), store.load_task(self.root, "t1")
         with workspace_lock(self.root / ".concorde", "t1", "run r-1 (delivery)"):
-            merged = self.refusal("merge", "t1", "--check", python("pass"))
-            closed = self.refusal("close", "t1", "--completed", "--note", "n")
+            merged = self.refusal(
+                "merge", "t1", "--wait", "0.3", "--check", python("pass")
+            )
+            closed = self.refusal(
+                "close", "t1", "--completed", "--note", "n", "--wait", "0.3"
+            )
         for error in (merged, closed):
             self.assertEqual(
                 ("workspace_busy", "environment"),
                 (error["code"], error["unhandled"]["reason"]),
             )
             self.assertIn("run r-1 (delivery)", error["detail"])
+            self.assertIn("after waiting 0 s", error["detail"])
+            self.assertIn("longer --wait", " ".join(error["options"]))
         self.assertEqual(record, store.load_task(self.root, "t1"))
         self.assert_untouched(before)
         self.assertFalse(store.merge_lock_held(self.root))

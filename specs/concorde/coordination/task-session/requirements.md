@@ -60,7 +60,12 @@ A round recorded as `failed` carries an error link with one of the codes in the
 message and the paths of the round's logs; for a report the record contradicts, each mismatch. A
 round whose supervisor ended without recording it is recorded `failed` with
 `session_supervisor_lost`, naming the supervisor's process and the round's logs, by the next start,
-`--answer` or `--stop` of the task.
+`--answer`, `--stop` or `--wait` of the task.
+
+### req.task-session.wait — A main agent waits for a round without polling
+
+`concorde task session <task> --wait` SHALL return only once no round of the task's latest pi
+session runs, or once the seconds it names have passed, waiting inside its own process.
 
 ### req.task-session.delivered-verified — Delivered only with the delivery commit
 

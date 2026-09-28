@@ -25,20 +25,22 @@ For a single task:
 4. Append to the task's decision log (the path `task open` printed) every decision you took
    without the developer, with its options and reason, and every non-`ok` result with what you
    did about it; reporting them to the developer does not replace the log. Then run validation
-   and delivery.
+   and delivery, in background Bash (`run_in_background`) like every long command.
 5. Leave with ExitWorktree (`action: "keep"`). From the primary worktree, merge with the command
-   and both merge checks in `DEVELOPING.md`, and act on every warning the merge prints.
+   and both merge checks in `DEVELOPING.md`, in background Bash, since its lock waits and checks
+   can outlast a foreground call, and act on every warning the merge prints.
 
 For work split into several tasks, stay in the primary worktree. Before starting each task
 session, run `python3 scripts/development/init-references.py` from that task's worktree. Then run
 `python3 scripts/concorde.py task session <task> --main <its session name>` from the primary
-worktree. Monitor each session's result, read complete error chains, answer escalations within
+worktree. Each session reports with SendMessage; wait for it instead of polling. Read complete error chains, answer escalations within
 your authority, and merge delivered tasks with the shared merge checks.
 
 On `merge_busy`, retry. On `merge_conflict`, re-enter the task worktree, merge main into the task
 branch, resolve, verify and deliver again; leave with ExitWorktree (`action: "keep"`) before
-retrying the checked merge from the primary worktree. On `workspace_busy`, wait for the task's run
-to end and retry. On `merge_incomplete`, finish the interrupted merge the refusal names first, with
+retrying the checked merge from the primary worktree. The merge already waits up to `--wait`
+seconds for a run of the task, such as a delivery finishing; on `workspace_busy`, retry with a
+longer `--wait`. On `merge_incomplete`, finish the interrupted merge the refusal names first, with
 `task merge <task> --resume` (or `--abort` when the primary branch is no longer at its merge
 commit); bring `merge_diverged` to the developer.
 

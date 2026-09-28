@@ -92,6 +92,7 @@ Situations the [main-session guidance](module.md) prepares the
 - THEN it is told to leave the task worktree if it is in it and merge the task with `concorde task merge <task>` without asking the developer
 - AND never to merge with `git merge` itself, because other main sessions may be merging, and that the merge runs `concorde spec-validation` unless it names other checks
 - AND to run the command again on `merge_busy`, and to resolve a `merge_conflict` in the task worktree and deliver again
+- AND that the merge waits for the task's run and other merges itself, so that in Claude Code it runs in background Bash and in pi in bash without a timeout
 
 ### scenario.main-session.merge-interrupted — The guidance finishes an interrupted merge first
 
@@ -99,8 +100,17 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN a main agent reads what to do when a task command is refused with `merge_incomplete`
 - THEN it is told to finish that merge before anything else with `concorde task merge <task> --resume`, without asking the developer
 - AND to use `--abort` when the merge commit is no longer the primary branch's head or `--resume` answers `not_resumable`, and to bring `merge_diverged` to the developer
-- AND to wait for a task's run to end on `workspace_busy`
+- AND to run `merge` or `close` again with a longer `--wait` on `workspace_busy`
 - AND a task session is told to send a `merge_incomplete` or `merge_busy` refusal of its escalation to the main agent
+
+### scenario.main-session.no-polling — Every wait wakes the agent or blocks once
+
+- GIVEN the rendered main-session and task-session guidance
+- WHEN an agent reads how to wait for a run, a busy workspace, a task session or a merge
+- THEN it is told never to wait by polling with `sleep` loops
+- AND to queue a run behind a running one with `--wait <seconds>`
+- AND in pi without the run view to wait for a task-session round with `concorde task session <task> --wait`
+- AND a task session is told to run long `concorde` commands in background Bash in Claude Code, and in pi in bash without a timeout
 
 ## Worker models
 

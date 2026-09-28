@@ -12,7 +12,8 @@ and agree direction with the developer, using every project term exactly as its 
 task (`concorde task open`), never in the primary worktree; carry a single task out inside its
 worktree (in Claude Code EnterWorktree, then ExitWorktree after delivery), running every
 `concorde` command there with that worktree's own copy and starting Operations in the background
-(background Bash in Claude Code, the `concorde_run` tool in pi), or start task sessions for work
+(background Bash in Claude Code, the `concorde_run` tool in pi) and waiting to be woken, never
+polling with `sleep`, or start task sessions for work
 split into several tasks (`concorde task session` in Claude Code, the `concorde_task_session` tool
 in pi); record every result that is
 not `ok` and every decision you made alone in the task's decision log; read the whole error chain

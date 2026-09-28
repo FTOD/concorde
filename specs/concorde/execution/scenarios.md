@@ -71,6 +71,14 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - AND its error gives `decision` as the reason, with the options to wait for the running run or cancel it
 - AND once the first run has written its result, a new run is admitted
 
+### scenario.execution.workspace-wait — A run started with --wait queues behind the running one
+
+- GIVEN a bound workspace whose lock a running `implement` run holds
+- WHEN `concorde delivery --wait 600` is started in the same workspace
+- THEN its run progress file shows the step `workspace-lock` and names the `implement` run in `waiting_for`
+- AND once the `implement` run releases the lock, the delivery runs its steps and ends with its own result
+- BUT a run whose `--wait` ends while the lock is still held is refused with `workspace_busy`, saying how long it waited
+
 ### scenario.execution.removed-module — A Module the workspace removed is left out
 
 - GIVEN a binding that names `module.a` and a Module the workspace has since removed or renamed

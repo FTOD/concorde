@@ -56,8 +56,11 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    branch into main, runs the build and `spec-validation` on main as a cross-check of the branch's
    self-validation, undoes the merge if either fails, and closes the task; its `warnings` name a
    decision log nobody wrote in. Never merge with `git merge` directly: other main sessions may be
-   merging at the same time. On `merge_busy`, run it again; on `workspace_busy`, wait until the
-   task's run ends and run it again; on `merge_conflict`, the main agent arranges resolution in the
+   merging at the same time. The merge waits up to `--wait` seconds (300 by default) for a run of
+   the task still going, such as a delivery finishing, and then for other merges. On `merge_busy`,
+   run it again; on `workspace_busy`, run it again with a longer `--wait`. Never wait for a run, a
+   lock or a task session by polling with `sleep`: runs and task sessions wake the main agent, and
+   `--wait` waits inside the command; on `merge_conflict`, the main agent arranges resolution in the
    task worktree by merging main into the task branch, resolving, and repeating steps 4 and 5. On
    `merge_incomplete`, an earlier merge was interrupted before its checks decided: finish it first
    with `task merge <task> --resume`, or `--abort` when the refusal says the primary branch has

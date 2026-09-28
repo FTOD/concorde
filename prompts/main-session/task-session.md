@@ -17,6 +17,10 @@ own source checkout it is `python3 scripts/concorde.py`).
 
 @prompts/main-session/common/in-task.md
 
+Run Operations, `task-validation` and `delivery` in background Bash (`run_in_background`), which
+wakes you when the command ends: they may take longer than a foreground Bash call is allowed, and
+a timeout kills the run half done. Never wait for anything with `sleep` loops.
+
 Your settings enforce this boundary: Edit and Write refuse any path outside the task worktree and
 its decision log, and Bash commands may write only the worktree, the repository's Git directory,
 Concorde's run and task records and package caches. A refusal is a sign you left your task, not an

@@ -151,6 +151,13 @@ bring a `merge_diverged` refusal to the developer.
 The task-session guidance tells a task session whose escalation is refused with `merge_incomplete`
 or `merge_busy` to send that refusal to the main agent instead.
 
+### req.main-session.no-polling — Waiting never polls
+
+The guidance SHALL tell the main agent and every task session never to wait for a run, a lock, a
+task session or a merge by polling, and give each wait a way that costs no model turns while it
+lasts: being woken by a background run, the run view or a SendMessage, or one command that blocks
+until it is done (`--wait` of a run, of `concorde task session` and of `concorde task merge`).
+
 ### req.main-session.project-terms — Sessions use the project's terms exactly
 
 The guidance SHALL tell the main agent and every task session to use each project term exactly as

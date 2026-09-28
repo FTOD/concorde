@@ -247,12 +247,18 @@ def merge_lock_held(primary: Path) -> bool:
 
 
 @contextmanager
-def task_workspace_locked(primary: Path, task_id: str, command: str):
-    """Hold the task's workspace lock without waiting, or refuse with ``workspace_busy``.
+def task_workspace_locked(
+    primary: Path, task_id: str, command: str, wait: float = MERGE_WAIT
+):
+    """Hold the task's workspace lock, waiting for it up to ``wait`` seconds, or refuse with
+    ``workspace_busy``; yield the seconds spent waiting.
 
-    ``merge`` and ``close`` take it after the merge lock, so that no run of the task's workspace
-    commits on its branch or changes its worktree while the task is merged or closed.
+    ``merge`` and ``close`` take it before the merge lock, so that no run of the task's workspace
+    commits on its branch or changes its worktree while the task is merged or closed, and so that
+    waiting for a run of this task, such as a delivery still finishing, never holds up the merges
+    of other tasks. The wait happens inside this process: a caller asks once and never polls.
     """
+    started = time.monotonic()
     stack = ExitStack()
     try:
         stack.enter_context(
@@ -260,18 +266,19 @@ def task_workspace_locked(primary: Path, task_id: str, command: str):
                 primary / ".concorde",
                 task_id,
                 f"`concorde task {command}` of task {task_id}",
+                wait=wait,
             )
         )
     except RunError as error:
         raise TaskError(
             "workspace_busy",
-            f"{error}; `concorde task {command}` takes the workspace lock of task {task_id} "
-            "without waiting, so that no run of its workspace changes the task branch or "
-            "worktree while the task is merged or closed, and `concorde task show "
+            f"{error}; `concorde task {command}` waits up to {wait:g} s for the workspace "
+            f"lock of task {task_id}, so that no run of its workspace changes the task branch "
+            "or worktree while the task is merged or closed, and `concorde task show "
             f"{task_id}` names the run holding it",
         ) from None
     with stack:
-        yield
+        yield round(time.monotonic() - started, 3)
 
 
 def _write(path: Path, data: bytes) -> None:
@@ -842,16 +849,20 @@ def close_task(
         )
     if errors and outcome != "failed":
         problems.append("only a failed task records the errors that caused it")
+    if wait < 0:
+        problems.append(f"--wait {wait:g} is negative")
     if force and outcome == "merged":
         problems.append("--force applies only to closing without a merge")
     if problems:
         raise TaskError("invalid_input", "; ".join(problems))
-    with merge_lock(primary, "close", task_id, wait):
-        unfinished = unfinished_merge(primary)
-        if unfinished is not None:
-            raise incomplete_merge(primary, unfinished)
-        load_task(primary, task_id)
-        with task_workspace_locked(primary, task_id, "close"):
+    load_task(primary, task_id)
+    started = time.monotonic()
+    with task_workspace_locked(primary, task_id, "close", wait):
+        remaining = max(0.0, wait - (time.monotonic() - started))
+        with merge_lock(primary, "close", task_id, remaining):
+            unfinished = unfinished_merge(primary)
+            if unfinished is not None:
+                raise incomplete_merge(primary, unfinished)
             return close_locked(
                 primary, task_id, outcome, note=note, errors=errors, force=force
             )
