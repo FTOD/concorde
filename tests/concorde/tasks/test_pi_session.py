@@ -365,20 +365,33 @@ class PiSessionTests(unittest.TestCase):
         self.assertNotIn("You work in rounds", again["prompt"])
         validate(store.load_task(self.root, "t1"), contract("")["schema"])
 
-    @verifies("scenario.task-session.pi-rounds")
+    @verifies("scenario.task-session.pi-busy")
     def test_one_round_runs_at_a_time(self):
         self.open("t1", {"sleep": 30})
-        self.start("t1")
-        with self.assertRaises(store.TaskError) as raised:
-            pi_session.answer(self.root, "t1", "more")
-        self.assertEqual("session_busy", raised.exception.code)
-        with self.assertRaises(store.TaskError) as raised:
-            self.start("t1")
-        self.assertEqual("session_busy", raised.exception.code)
+        started = self.start("t1")
+        [running] = started["rounds"]
+        for refused_call in (
+            lambda: pi_session.answer(self.root, "t1", "more"),
+            lambda: self.start("t1"),
+        ):
+            with self.assertRaises(store.TaskError) as raised:
+                refused_call()
+            self.assertEqual("session_busy", raised.exception.code)
+            self.assertIn("round 1", str(raised.exception))
+            self.assertIn(
+                f"supervisor process {running['supervisor_pid']}", str(raised.exception)
+            )
+        self.assertEqual(
+            [started], store.load_task(self.root, "t1")["sessions"], "no round started"
+        )
+
+    @verifies("scenario.task-session.pi-no-session")
+    def test_an_answer_needs_a_pi_session(self):
         self.open("t2", {})
         with self.assertRaises(store.TaskError) as raised:
             pi_session.answer(self.root, "t2", "more")
         self.assertEqual("no_session", raised.exception.code)
+        self.assertEqual([], store.load_task(self.root, "t2")["sessions"])
 
     @verifies("scenario.task-session.pi-wait")
     def test_wait_returns_once_the_round_has_ended(self):
@@ -421,9 +434,19 @@ class PiSessionTests(unittest.TestCase):
         while pi_session._alive(pid) and time.monotonic() < deadline:
             time.sleep(0.1)
         self.assertFalse(pi_session._alive(pid))
+
+    @verifies("scenario.task-session.pi-stop-idle")
+    def test_stop_without_a_running_round_is_refused(self):
+        self.open("t1", {})
+        self.start("t1")
+        self.wait("t1", 1)
+        before = store.load_task(self.root, "t1")
         with self.assertRaises(store.TaskError) as raised:
             pi_session.stop(self.root, "t1")
         self.assertEqual("session_idle", raised.exception.code)
+        self.assertEqual(
+            before["sessions"], store.load_task(self.root, "t1")["sessions"]
+        )
 
     @verifies("scenario.task-session.pi-stop")
     def test_a_pi_that_ignores_sigterm_is_killed_after_the_grace_period(self):
@@ -584,7 +607,7 @@ class PiSessionTests(unittest.TestCase):
             self.assertIn(name, value["error"]["detail"])
         self.assertEqual([], store.load_task(self.root, "t1")["sessions"])
 
-    @verifies("scenario.task-session.start")
+    @verifies("scenario.task-session.claude-no-rounds")
     def test_a_claude_code_session_takes_no_answer_or_stop(self):
         self.open("t1", {})
         for extra in (("--answer", "yes"), ("--stop",), ("--wait",)):
@@ -684,7 +707,7 @@ class PiSessionTests(unittest.TestCase):
                         "session_report_unverified", result["error"]["code"]
                     )
 
-    @verifies("scenario.task-session.pi-report-shape")
+    @verifies("scenario.task-session.pi-report-v1")
     def test_persisted_v1_reports_are_not_revalidated_or_rewritten(self):
         self.open("t1", {})
         old_report = {
