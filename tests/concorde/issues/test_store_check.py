@@ -23,9 +23,9 @@ class StoreCheckTests(unittest.TestCase):
         project(self.root)
         self.check = next(
             item
-            for item in json.loads((PACKAGE / ".concorde/config.json").read_text())[
-                "checks"
-            ]
+            for item in json.loads(
+                (PACKAGE / ".concorde/checks/module.issues.json").read_text()
+            )["checks"]
             if item["id"] == "check.issues.store"
         )
 

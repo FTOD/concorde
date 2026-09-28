@@ -29,7 +29,7 @@ class CheckError(SpecError):
     CODES = {
         "invalid_check": (
             "a configured check needs a nonempty argv and a positive timeout_seconds",
-            "correct the check's entry in .concorde/config.json",
+            "correct the check's entry in .concorde/checks/<its module>.json",
         ),
         "check_input_missing": (
             "every declared input of a configured check must exist as a regular file or "

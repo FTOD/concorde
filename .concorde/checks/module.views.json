@@ -1,0 +1,88 @@
+{
+  "checks": [
+    {
+      "id": "check.views.publication-types",
+      "argv": [
+        "{python}",
+        "scripts/development/check-docsite-types.py"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "docsite/tsconfig.json",
+        "docsite/plugins/scoped-content",
+        "docsite/src",
+        "docsite/package.json",
+        "docsite/package-lock.json",
+        "scripts/development/check-docsite-types.py"
+      ]
+    },
+    {
+      "id": "check.views.repository-regressions",
+      "argv": [
+        ".venv/bin/python",
+        "docsite/tests/repository/run-checks.py"
+      ],
+      "timeout_seconds": 600,
+      "inputs": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "DEVELOPING.md",
+        "prompts",
+        "src",
+        "protocol",
+        "specs",
+        "docs",
+        "scripts",
+        "tests",
+        "concorde.json",
+        "pyproject.toml",
+        "README.md",
+        ".concorde/config.json",
+        ".concorde/checks",
+        ".concorde/specs.json",
+        ".github/workflows/deploy-docsite.yml",
+        "docsite/README.md",
+        "docsite/docusaurus.config.ts",
+        "docsite/package.json",
+        "docsite/package-lock.json",
+        "docsite/plugins",
+        "docsite/scaffold",
+        "docsite/scripts",
+        "docsite/custom-docs",
+        "docsite/sidebars.specs.ts",
+        "docsite/site.json",
+        "docsite/src",
+        "docsite/static",
+        "docsite/tests",
+        "docsite/tsconfig.json",
+        "docsite/vitest.config.ts"
+      ]
+    },
+    {
+      "id": "check.views.tests",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/views"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        "conftest.py",
+        "docsite/plugins",
+        "docsite/src",
+        "docsite/tests",
+        "protocol",
+        "pyproject.toml",
+        "specs",
+        "src",
+        "tests/concorde/support",
+        "tests/concorde/views"
+      ]
+    }
+  ]
+}

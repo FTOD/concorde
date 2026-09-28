@@ -64,6 +64,13 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the file's entry records the mode `100755` instead of `100644`, with the same content digest
 - AND the input digest differs from the one measured before
 
+### scenario.validation.checks-configuration — A changed check command changes the configuration digest
+
+- GIVEN a workspace whose Module A has a checks file `.concorde/checks/module.a.json`
+- WHEN the check's `argv` in that file changes and the inputs are measured again
+- THEN the configuration digest differs from the one measured before, as it would for a changed `.concorde/config.json`
+- AND so does the input digest
+
 ### scenario.validation.confirmation — A filled pending entry becomes a confirmation
 
 - GIVEN a realization entry marked pending whose file an `implement` run created

@@ -48,6 +48,14 @@ to it.
 - THEN construction fails with `unsupported_profile`
 - AND the configuration is not reinterpreted
 
+### scenario.spec.checks-files — Configured checks are read from one file per Module
+
+- GIVEN a project whose `.concorde/checks/` holds `module.b.json` with two checks and `module.a.json` with one
+- WHEN a repository is constructed
+- THEN it holds the check of `module.a` first and then those of `module.b` in file order, each carrying the Module its file is named after
+- AND each Module's descriptor lists the identities of its own checks
+- BUT a check entry with a `module` field, an `id` another file already uses, a file named after an unregistered Module (`unknown_module`), a file not named `<module id>.json`, or a `checks` field left in `.concorde/config.json` refuses the project with an error naming the file and what to change
+
 ### scenario.spec.document-roles — Explanation and precise definitions in different roles
 
 - GIVEN a Module whose entry and topics have role `module` and whose requirements, scenarios and contracts are in documents with role `implementation`

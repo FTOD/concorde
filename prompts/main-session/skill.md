@@ -154,7 +154,8 @@ Module. It surveys the code, scaffolds child Modules, describes each Module's co
 `code_to_spec`, reviews, validates and delivers. Its workers write down behaviour as it is and
 report doubtful intent as open questions instead of promises; show the developer the open
 questions, the decisions and the checks the survey proposed, which are never configured
-automatically: add the ones the developer accepts to `.concorde/config.json` in a task. Splitting a
+automatically: in a task, add each one the developer accepts to the checks file of the Module it
+checks, `.concorde/checks/<module id>.json`, without its `module` and `reason`. Splitting a
 created Module further is a new task running the workflow on that Module. Never use `code_to_spec`
 for a project that is already specified: there, a missing promise is a Spec gap for `specify`.
 

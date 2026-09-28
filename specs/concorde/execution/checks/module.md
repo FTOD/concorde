@@ -16,8 +16,10 @@ a passing check means correct code or whether a workspace is ready to deliver.
 
 For a project checked with `pytest tests/`, this service starts that command, waits for it and
 returns its exit status and captured output. Pytest performs the assertions; Check execution
-manages the command, its boundary, timeout and result. A configured command can itself depend on
-external services, so its output need not be identical on every run.
+manages the command, its boundary, timeout and result. A test answers whether the code is right; a
+check answers what one command produced on exactly this input, and whether that result can be
+trusted. A configured command can itself depend on external services, so its output need not be
+identical on every run.
 
 The calling code, not an AI worker, decides when to run checks:
 
@@ -33,14 +35,21 @@ is no separate Check execution command to start.
 
 <a id="concept.configured-check"></a><a id="concept.check-result"></a>
 
-A **configured check** is declared in `.concorde/config.json` under `checks`, for example:
+A **configured check** is declared in its Module's own checks file,
+`.concorde/checks/<module id>.json`, for example in `.concorde/checks/module.checks.json`:
 
 ```json
-{"id": "check.checks.runtime", "module": "module.checks",
- "argv": ["{python}", "-m", "pytest", "-p", "no:cacheprovider", "tests/concorde/harness/checks"],
- "timeout_seconds": 300,
- "inputs": ["pyproject.toml", "conftest.py", "tests/concorde/support", "src"]}
+{"checks": [
+  {"id": "check.checks.runtime",
+   "argv": ["{python}", "-m", "pytest", "-p", "no:cacheprovider", "tests/concorde/harness/checks"],
+   "timeout_seconds": 300,
+   "inputs": ["pyproject.toml", "conftest.py", "tests/concorde/support", "src"]}
+]}
 ```
+
+One file per Module keeps parallel changes to different Modules' checks apart, and the files stay
+under `.concorde/` with the project configuration rather than beside the Module: a check command is
+trusted host input, which the work it verifies must not be able to rewrite.
 
 The check service is called with a worktree, the Modules to run — or changed paths mapped to Modules
 via [boundary sets](../../glossary.json#concept.boundary-set) — and a log directory: for each
@@ -133,7 +142,7 @@ whether a worker needs more than its last 20,000 bytes is undecided.
 
 <a id="uses-spec"></a>
 
-**Spec core** loads the configuration and
+**Spec core** loads the configuration, the checks files and the
 [registry](../../glossary.json#concept.registry), from which the check service
 takes each Module's checks and resolves its `ImplementationScope` — a [boundary
 set](../../glossary.json#concept.boundary-set) whose digest is part of what a

@@ -93,7 +93,8 @@ class InitialModuleTests(unittest.TestCase):
                 registry,
             )
             config = json.loads((root / ".concorde/config.json").read_text())
-            self.assertEqual([], config["checks"])
+            self.assertNotIn("checks", config)
+            self.assertFalse((root / ".concorde/checks").exists())
             self.assertEqual(
                 "success", validate_repository(root, package_root=PACKAGE).status
             )

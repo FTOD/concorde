@@ -106,9 +106,18 @@ Validation SHALL report as an error every
 [configured-check](../../glossary.json#concept.configured-check) input that is missing, is not a
 canonical project-relative path, or is reached through a symbolic link.
 
+### req.spec.checks-files — Each Module's configured checks are a file of their own
+
+Spec core SHALL read the [configured checks](../../glossary.json#concept.configured-check) only
+from the [checks files](contracts.md#checks-files) `.concorde/checks/<module id>.json`, giving each
+check the Module its file is named after.
+
+A `checks` field in the configuration, a `module` field in a check entry and a checks file not
+named after a registered Module each refuse the project.
+
 ### req.spec.digest-per-assessment — Every result names what it assessed
 
-Every validation result SHALL carry a digest of the exact configuration, registry, document members, glossary,
+Every validation result SHALL carry a digest of the exact configuration, checks files, registry, document members, glossary,
 [Protocol binding](../../glossary.json#concept.protocol-binding) and configured-check input states
 it assessed.
 

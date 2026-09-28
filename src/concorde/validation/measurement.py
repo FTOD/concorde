@@ -6,7 +6,8 @@ when its checked-out commit differs, never for changes inside its own worktree: 
 only the submodule's commit, and looking inside may need objects a partial clone has to fetch
 over a network the caller may not have. Each gets its Git file mode and the SHA-256 digest of
 its bytes, both ``None`` when it no longer exists. The input digest covers the head and base
-commits, the changed paths and the digest of ``.concorde/config.json``. Delivery measures through
+commits, the changed paths and the digest of ``.concorde/config.json`` with the configured checks
+under ``.concorde/checks/``. Delivery measures through
 this module too, so both sides compute the same digest for the same worktree.
 """
 
@@ -157,13 +158,7 @@ def measure(worktree: Path, base: str) -> dict:
         }
         for path in changed_paths(worktree, base_commit)
     ]
-    config = worktree / ".concorde/config.json"
-    try:
-        config_digest = sha256(config.read_bytes())
-    except OSError as error:
-        raise MeasurementError(
-            "config_unreadable", f".concorde/config.json cannot be read: {error}"
-        ) from error
+    config_digest = configuration_digest(worktree)
     value = {
         "head": head,
         "base": base_commit,
@@ -171,6 +166,38 @@ def measure(worktree: Path, base: str) -> dict:
         "config_digest": config_digest,
     }
     return {**value, "digest": sha256(canonical(value))}
+
+
+def configuration_digest(worktree: Path) -> str:
+    """The digest of the configuration and every entry of the checks directory.
+
+    It is the digest of the canonical JSON object that maps ``.concorde/config.json`` and each
+    entry of ``.concorde/checks/`` to the digest of its bytes (a symbolic link's by its link
+    text, any other non-file entry as ``null``), so a changed check command changes it as a
+    changed configuration does.
+    """
+    files = {}
+    try:
+        files[".concorde/config.json"] = sha256(
+            (worktree / ".concorde/config.json").read_bytes()
+        )
+        checks = worktree / ".concorde/checks"
+        if checks.is_dir() and not checks.is_symlink():
+            for name in sorted(os.listdir(checks)):
+                entry = checks / name
+                files[f".concorde/checks/{name}"] = (
+                    sha256(b"symlink:" + os.fsencode(os.readlink(entry)))
+                    if entry.is_symlink()
+                    else sha256(entry.read_bytes())
+                    if entry.is_file()
+                    else None
+                )
+    except OSError as error:
+        raise MeasurementError(
+            "config_unreadable",
+            f"the configuration or its checks cannot be read: {error}",
+        ) from error
+    return sha256(canonical(files))
 
 
 def has_uncommitted(worktree: Path) -> bool:

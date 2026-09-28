@@ -157,7 +157,8 @@ jq .result /tmp/proposal.json > /tmp/accepted.json   # read it first
 
 Keep the proposal file outside the project. Applying it writes:
 
-- `.concorde/config.json`, the project configuration: the Protocol binding and your checks;
+- `.concorde/config.json`, the project configuration: the Protocol binding and your project's
+  interpreter;
 - `.concorde/specs.json`, the **registry** that lists every Module;
 - `specs/project/module.md` with its metadata `module.md.json`, the root Module `module.project`.
 
@@ -220,24 +221,32 @@ the ones you trust to your checks yourself (see below).
 
 **Checks** are your project's own commands, such as a test suite or a linter, each assigned to one
 Module. Concorde runs them itself, never the worker, and records each result as evidence.
-Declare them in `.concorde/config.json` under `checks`:
+Each Module's checks have a file of their own, named after the Module: declare the checks of
+`module.payments` in `.concorde/checks/module.payments.json`:
 
 ```json
 {
-  "id": "check.payments.tests",
-  "module": "module.payments",
-  "argv": [
-    "{python}",
-    "-m",
-    "pytest",
-    "-p",
-    "no:cacheprovider",
-    "tests/payments"
-  ],
-  "timeout_seconds": 300,
-  "inputs": ["pyproject.toml", "src/payments", "tests/payments"]
+  "checks": [
+    {
+      "id": "check.payments.tests",
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/payments"
+      ],
+      "timeout_seconds": 300,
+      "inputs": ["pyproject.toml", "src/payments", "tests/payments"]
+    }
+  ]
 }
 ```
+
+A test answers whether the code is right; a check answers what one command produced on exactly
+this input, and whether that result can be trusted: Concorde runs it where it cannot change your
+files and refuses a result when its inputs changed while it ran.
 
 `{python}` is your project's own interpreter, which `.concorde/config.json` names in `python`.
 `concorde init` records `.venv/bin/python` (or `venv/bin/python`) when your project has one, or the
@@ -657,7 +666,8 @@ Neither user documents nor custom docs may contain a registered Spec document.
 | Path                                       | What it holds                                                                |
 | ------------------------------------------ | ---------------------------------------------------------------------------- |
 | `specs/`                                   | Your Specs: each Module's documents and their `.md.json` metadata.           |
-| `.concorde/config.json`                    | The Protocol binding and your checks.                                        |
+| `.concorde/config.json`                    | The Protocol binding and your project's interpreter.                         |
+| `.concorde/checks/`                        | Your checks, one `<module id>.json` file per Module.                         |
 | `.concorde/specs.json`                     | The registry of Modules.                                                     |
 | `.concorde/protocol/`                      | The installed Spec Protocol.                                                 |
 | `.concorde/bin/concorde`                   | The `concorde` command.                                                      |

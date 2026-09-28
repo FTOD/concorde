@@ -8,13 +8,16 @@ base commit has no unbound file, the repository has an author identity for deliv
 
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
 
 from concorde.tasks import store
 from tests.concorde.support.operation_project import OperationProject, commit
-from tests.concorde.support.spec_project import set_realization
+from tests.concorde.support.spec_project import (
+    read_checks,
+    set_realization,
+    write_checks,
+)
 
 
 def git(root: Path, *arguments: str) -> str:
@@ -41,18 +44,18 @@ class ValidationProject(OperationProject):
             set_realization(
                 root, "realization.b.code", entries=["src/bmod/", "src/shared.py"]
             )
-            config = json.loads((root / ".concorde/config.json").read_text())
-            config["checks"].append(
-                {
-                    "id": "check.b",
-                    "module": "module.b",
-                    "argv": ["{python}", "checks/b_check.py"],
-                    "timeout_seconds": 30,
-                    "inputs": ["checks/b_check.py"],
-                }
-            )
-            (root / ".concorde/config.json").write_text(
-                json.dumps(config, indent=2) + "\n"
+            write_checks(
+                root,
+                [
+                    *read_checks(root),
+                    {
+                        "id": "check.b",
+                        "module": "module.b",
+                        "argv": ["{python}", "checks/b_check.py"],
+                        "timeout_seconds": 30,
+                        "inputs": ["checks/b_check.py"],
+                    },
+                ],
             )
         git(root, "config", "user.name", "Delivery Test")
         git(root, "config", "user.email", "delivery@test")

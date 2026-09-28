@@ -24,7 +24,10 @@ it is bound to.
   a symbolic link and `160000` for a directory, which is a submodule; it is `null` when the path no
   longer exists. Setting or clearing a file's execute bit therefore changes the input digest even
   when its bytes stay the same.
-- The **configuration digest** is the digest of `.concorde/config.json` in the workspace.
+- The **configuration digest** is the digest of the canonical JSON object that maps
+  `.concorde/config.json` and every entry of `.concorde/checks/` in the workspace to the digest of
+  its bytes (a symbolic link's by its link text, any other entry that is not a file as `null`), so
+  a changed check command changes it as a changed configuration does.
 - The **input digest** is the digest of the canonical JSON (sorted keys, no insignificant
   whitespace, UTF-8) of the object `{"head", "base", "changed", "config_digest"}` with the values
   recorded in `inputs`.

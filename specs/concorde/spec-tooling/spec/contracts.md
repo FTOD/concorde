@@ -11,36 +11,61 @@ document does not repeat it and adds only what Concorde fixes on top of it.
 
 ```json
 {
-  "profile_version": 17,
+  "profile_version": 18,
   "registry": ".concorde/specs.json",
   "protocol": {"version": "13.2.0", "digest": "sha256:<64 hex digits>"},
-  "checks": [
-    {"id": "check.spec.model", "module": "module.spec",
-     "argv": ["{python}", "-m", "pytest", "tests/concorde/spec"],
-     "timeout_seconds": 120, "inputs": ["src", "tests/concorde/spec"]}
-  ]
+  "python": ".venv/bin/python"
 }
 ```
 
-- `profile_version` is the Framework's configuration profile; the loader supports exactly `17` and
-  refuses others with `unsupported_profile`. It is a compatibility number of this file and of the
-  registry, not a Protocol version.
+- `profile_version` is the Framework's configuration profile; the loader supports exactly `18` and
+  refuses others with `unsupported_profile`. It is a compatibility number of this file, of the
+  checks files and of the registry, not a Protocol version.
 - `registry` is the project-relative path of the registry.
 - `protocol` is the [Protocol binding](../../glossary.json#concept.protocol-binding): the `version`
   from the installed copy's manifest and the SHA-256 digest of that manifest's exact bytes.
-- `checks` is optional. Each entry is an object with a unique `id`, a `module` that names a
-  registered Module, and optional unique `inputs`, each a canonical project-relative path. Its other
-  fields, `argv` and `timeout_seconds`, belong to Check execution, which validates them when it
-  runs the check. Spec core only reads the entries, reports unsafe or missing inputs, and lists
-  each Module's check identities in its descriptor.
 - `workers` is optional. It holds the [worker settings](../../glossary.json#concept.worker-settings)
   that the Harness reads; Spec core accepts it without interpreting it.
 - `python` is optional. It names the project's own interpreter, which Check execution substitutes
   for `{python}` in a check's `argv`; Spec core accepts it without interpreting it, and
   [initialization](#initialization) records it.
 
-No other field is allowed. Spec core only verifies the binding; changing it is an explicit step of
-Distribution, such as rebinding a Concorde checkout to its freshly built Protocol.
+No other field is allowed; a `checks` field is refused with an error naming the checks files below.
+Spec core only verifies the binding; changing it is an explicit step of Distribution, such as
+rebinding a Concorde checkout to its freshly built Protocol.
+
+### Checks files {#checks-files}
+
+The [configured checks](../../glossary.json#concept.configured-check) are not part of
+`.concorde/config.json`: each Module's checks are a file of their own,
+`.concorde/checks/<module id>.json`, so that changes to different Modules' checks never meet in one
+file. A project without the `.concorde/checks/` directory configures no checks.
+
+```json
+{
+  "checks": [
+    {"id": "check.spec.model",
+     "argv": ["{python}", "-m", "pytest", "tests/concorde/spec"],
+     "timeout_seconds": 120, "inputs": ["src", "tests/concorde/spec"]}
+  ]
+}
+```
+
+- The directory holds only regular files named after a registered Module's identity with the
+  suffix `.json`; any other entry, and a file named after an unregistered Module
+  (`unknown_module`), refuses the project.
+- A file is an object with exactly the field `checks`, an array of entries. Each entry has an `id`,
+  unique across all the files, and optional unique `inputs`, each a canonical project-relative
+  path. An entry has no `module`: the file's name is its Module, and a `module` field is refused.
+  The entry's other fields belong to Check execution, which validates them when it runs the check
+  ([the check service](../../execution/checks/service.md#declaring-a-configured-check)).
+- The configuration order of the checks is the byte order of the file names, then the order of the
+  entries in each file. A loaded check carries its Module as `module`, placed after its `id`.
+
+Spec core only reads the entries, reports unsafe or missing inputs, and lists each Module's check
+identities in its descriptor. The checks files stay under `.concorde/` beside the configuration,
+never beside a Module's documents or code: a check command is trusted host input and must never
+fall within the writable scope of the Module it verifies.
 
 ## Registry file {#registry-file}
 
@@ -128,12 +153,14 @@ the fatal problems and carries every one of them as a cause, each with its path 
 the check it fails:
 
 - an unreadable configuration or registry, a configuration without `profile_version`, `registry`
-  or `protocol` or with a field other than those and `checks`, `workers` and `python`, or a
-  registry with malformed or duplicate records;
+  or `protocol` or with a field other than those and `workers` and `python`, or a registry with
+  malformed or duplicate records;
 - a Protocol binding that does not match the installed copy (`protocol_mismatch`) or an
   unsupported profile (`unsupported_profile`);
-- a configured check entry without an `id` or `module`, with a duplicate `id`, naming an
-  unregistered Module, or with an input that is not a canonical project-relative path;
+- a [checks file](#checks-files) that is not named after a registered Module, an entry of
+  `.concorde/checks/` that is not such a file, or a configured check entry without an `id`, with
+  a `module`, with an `id` another entry uses, or with an input that is not a canonical
+  project-relative path;
 - an entry whose metadata owner differs from its registry record;
 - a failure of `CHK.document.entry`, `CHK.document.pair` or `CHK.document.path`;
 - a metadata envelope with the wrong schema version, missing fields or an invalid role;
@@ -584,9 +611,9 @@ its digest and its ordered paths. Apply returns `{status: "applied", proposal: n
 proposal_digest: null, files}` with the written paths.
 
 The proposal contains four files, each with `before_digest: null`: `.concorde/config.json` with
-profile 17, the registry path, the binding of the installed Protocol copy, an empty `checks` list
-and `python`, which is the interpreter named on propose as given, otherwise the first of
-`.venv/bin/python` and `venv/bin/python` that exists, and absent when there is none;
+profile 18, the registry path, the binding of the installed Protocol copy and `python`, which is
+the interpreter named on propose as given, otherwise the first of `.venv/bin/python` and
+`venv/bin/python` that exists, and absent when there is none;
 `.concorde/specs.json` with one record for the root Module; and `specs/project/module.md` with its
 metadata. The entry has the five required sections and says that the project's responsibility,
 behaviour and architecture are not yet specified. Its metadata declares the `module` block with the

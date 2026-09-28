@@ -268,7 +268,7 @@ def measurement_failed(ctx: RunContext, error: MeasurementError) -> Stop:
             )
         ],
         options=(
-            ["restore .concorde/config.json"]
+            ["restore .concorde/config.json and the files under .concorde/checks/"]
             if error.code == "config_unreadable"
             else ["repair the worktree's Git state"]
         ),

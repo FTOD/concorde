@@ -59,7 +59,9 @@ The commands named below are `concorde` commands; in the Concorde checkout itsel
 <a id="concept.registry"></a><a id="concept.document"></a><a id="concept.protocol-binding"></a>
 
 **Loading.** Every program that needs the Specs loads the configuration `.concorde/config.json`, the
-[Protocol binding](../../glossary.json#concept.protocol-binding), the registry
+[Protocol binding](../../glossary.json#concept.protocol-binding), the
+[configured checks](../../glossary.json#concept.configured-check), one file per Module under
+`.concorde/checks/`, the registry
 `.concorde/specs.json`, the documents each entry registers and the project glossary the root
 entry declares, which holds every concept with its owner and one-sentence definition. The registry
 only mirrors each entry's `module` block; the entry is where relations are declared. Nothing

@@ -24,13 +24,15 @@ from .schema import admit as admit
 from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode
 
-PROFILE_VERSION = 17
+PROFILE_VERSION = 18
 PROTOCOL_VERSION = "15.0.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 # The installed Protocol copy the configuration binds; the installer places it there.
 PROTOCOL_DIR = ".concorde/protocol"
 PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
+# The configured checks, one file per Module named by its identity.
+CHECKS_DIR = ".concorde/checks"
 RENDERED_PROTOCOL_PREFIX = "generated/protocol/"
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 HEADING = re.compile(r"^(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")

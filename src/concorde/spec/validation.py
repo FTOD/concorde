@@ -20,7 +20,7 @@ from .content_repository import DocumentUnitRepository, severity
 from .errors import system_cause
 from .glossary import plain_definition
 from .model import Finding, ToolResult
-from .repository import SpecRepository
+from .repository import SpecRepository, checks_files
 from .repository_base import (
     GENERATED_PREFIXES,
     INSTALL_RECORD,
@@ -1450,6 +1450,10 @@ def validate_repository(
             _defer_document_admission=True,
         )
         config_digest = digest(read_file(repository.root, ".concorde/config.json"))
+        checks_digests = [
+            (path, digest(read_file(repository.root, path)))
+            for path, _ in checks_files(repository.root)
+        ]
     except (SpecError, TypedDataError, OSError, UnicodeError) as problem:
         repository = None
         load_error = (
@@ -1489,6 +1493,7 @@ def validate_repository(
             inputs.append((repository.glossary_path, digest(repository.glossary_bytes)))
         findings.extend(spec_findings(repository))
         inputs.append((".concorde/config.json", config_digest))
+        inputs.extend(checks_digests)
         inputs.append((repository.registry_path, digest(repository.registry_bytes)))
         inputs.append(("protocol", repository.config["protocol"]["digest"]))
     counts = Counter(f.severity for f in findings)

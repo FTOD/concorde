@@ -311,7 +311,6 @@ def project_proposal(
         "profile_version": PROFILE_VERSION,
         "registry": ".concorde/specs.json",
         "protocol": installed_protocol_binding(root),
-        "checks": [],
     }
     # The project's own interpreter, for its checks' {python}; Concorde runs in its own.
     interpreter = project_python(root, python)

@@ -31,6 +31,7 @@ from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import WorkerProject
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
+from tests.concorde.support.spec_project import read_checks, write_checks
 
 
 class CheckServiceTests(unittest.TestCase):
@@ -82,10 +83,9 @@ class CheckServiceTests(unittest.TestCase):
         path.write_text(json.dumps(config))
 
     def change_check(self, **changes) -> None:
-        path = self.root / ".concorde/config.json"
-        config = json.loads(path.read_text())
-        config["checks"][0].update(changes)
-        path.write_text(json.dumps(config))
+        checks = read_checks(self.root)
+        checks[0].update(changes)
+        write_checks(self.root, checks)
 
     @verifies("scenario.checks.project-python")
     def test_python_is_the_projects_interpreter_and_env_is_the_checks(self):
@@ -311,9 +311,7 @@ assert result['status'] == 'passed', result
             "def verifies(*scenarios):\n    return lambda test: test\n\n\n"
             '@verifies("scenario.a.answer")\ndef test_answer():\n    pass\n'
         )
-        path = self.root / ".concorde/config.json"
-        config = json.loads(path.read_text())
-        config["checks"] = [
+        checks = [
             {
                 "id": "check.a.selected",
                 "module": "module.b",
@@ -333,7 +331,7 @@ assert result['status'] == 'passed', result
                 "when": "readiness",
             },
         ]
-        path.write_text(json.dumps(config))
+        write_checks(self.root, checks)
         # No test verifies a scenario of B: the selective check is skipped.
         self.assertEqual(
             [], run_checks(self.root, modules=["module.b"], log_directory=self.logs)
@@ -347,7 +345,9 @@ assert result['status'] == 'passed', result
         self.assertIn("['src/a/test_answer.py::test_answer']", log)
         # Its measured digest names the selection: other Modules or a changed test file are
         # other input, although the check's own Module is unchanged.
-        check = config["checks"][0]
+        [check] = [
+            item for item in read_checks(self.root) if item["id"] == checks[0]["id"]
+        ]
         alone = measured_digest(self.repository(), check, ["module.a"])
         self.assertEqual(alone, result["source_digest"])
         self.assertNotEqual(check_revision(self.repository(), "module.b"), alone)
@@ -372,7 +372,7 @@ assert result['status'] == 'passed', result
             stage="readiness",
         )
         self.assertEqual(
-            ["check.a.selected", "check.a.full"], [item["check_id"] for item in results]
+            ["check.a.full", "check.a.selected"], [item["check_id"] for item in results]
         )
 
     @verifies("scenario.checks.service-read-only")
@@ -433,9 +433,7 @@ assert result['status'] == 'passed', result
 
     @verifies("scenario.checks.service-input-missing")
     def test_a_missing_input_stops_before_any_command(self):
-        config = json.loads((self.root / ".concorde/config.json").read_text())
-        config["checks"][0]["inputs"] = ["checks/missing.py"]
-        (self.root / ".concorde/config.json").write_text(json.dumps(config))
+        self.change_check(inputs=["checks/missing.py"])
         with self.assertRaises(SpecError) as raised:
             run_checks(self.root, modules=["module.a"], log_directory=self.logs)
         self.assertIn("checks/missing.py", str(raised.exception))

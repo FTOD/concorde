@@ -14,7 +14,7 @@ shapes are in the [contracts](contracts.md).
 - AND the root's entry contains both with an explaining paragraph each and its realization no longer binds `src/checkout/` or `src/inventory/`
 - AND the root still binds every other file it bound under `src/`, here `src/db.py`
 - AND the registry has both records
-- BUT the project configuration is unchanged, and the proposed check stays in the survey's proposal
+- BUT the project configuration and the checks files are unchanged, and the proposed check stays in the survey's proposal
 - AND the worktree validates with no new error
 - AND the result is `ok`, of kind `command` with no worker, with a [scaffold record](../../../glossary.json#concept.scaffold-record) listing every file written
 

@@ -19,6 +19,7 @@ from concorde.spec.schema import validate as check_schema
 from concorde.spec.verification import verifies
 from concorde.validation.measurement import measure, sha256
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.spec_project import write_checks
 from tests.concorde.validation.project import (
     ValidationProject,
     evidence_of,
@@ -130,10 +131,7 @@ class DeliveryTests(unittest.TestCase):
             self.skipTest("bubblewrap cannot create a sandbox here")
         # The check boundary would need a second sandbox inside this one; what is under test is
         # the measurement and the staging, so the task runs without configured checks.
-        config = self.worktree / ".concorde/config.json"
-        value = json.loads(config.read_text())
-        value["checks"] = []
-        config.write_text(json.dumps(value, indent=2) + "\n")
+        write_checks(self.worktree, [])
         (self.worktree / "src/a/calc.py").write_text(FIXED)
         masked = self.worktree / ".bashrc"
         done = subprocess.run(
@@ -157,7 +155,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual("ok", envelope["status"], envelope)
         readiness = self.saved_readiness(envelope)
         changed = [item["path"] for item in readiness["inputs"]["changed"]]
-        self.assertEqual([".concorde/config.json", "src/a/calc.py"], changed)
+        self.assertEqual([".concorde/checks/module.a.json", "src/a/calc.py"], changed)
         committed = git(self.worktree, "show", "--name-only", "--format=", "HEAD")
         self.assertIn("src/a/calc.py", committed.splitlines())
         self.assertNotIn(".bashrc", committed.splitlines())

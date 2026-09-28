@@ -1,0 +1,26 @@
+{
+  "checks": [
+    {
+      "id": "check.delivery.tests",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/delivery"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        "conftest.py",
+        "pyproject.toml",
+        "src",
+        "tests/concorde/delivery",
+        "tests/concorde/support",
+        "tests/concorde/validation/project.py"
+      ]
+    }
+  ]
+}
