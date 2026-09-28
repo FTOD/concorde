@@ -26,20 +26,42 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 
 ### scenario.issues.command-report-origin — Record a report seen in another project
 
-- GIVEN an initialized project and a report file written in another project, naming that project as its `origin`, evidence paths relative to it and an [error chain](../glossary.json#concept.error-chain)
+- GIVEN an initialized project and a report file written in another project, naming that project as its `origin`, evidence paths that exist relative to it and an [error chain](../glossary.json#concept.error-chain)
 - WHEN the main agent runs `report --file` with that file
-- THEN the Issue holds the report with its origin and error chain unchanged, and its provenance is this project's
-- BUT a report whose evidence is absent from the origin project is refused with `missing_evidence` naming the origin project
-- AND a report whose error chain breaks the Framework's error contract is refused with `invalid_issue` naming the field
-- AND nothing is written for either
+- THEN the Issue holds the report with its origin and error chain unchanged
+- AND its provenance is this project's, with the root Module as reporting Module when the owner is `null`
+
+### scenario.issues.command-report-origin-missing-evidence — Evidence absent from the origin project is refused
+
+- GIVEN a report file with an `origin` whose evidence path does not exist in that origin project
+- WHEN the main agent runs `report --file` with that file
+- THEN the command refuses it with `missing_evidence`, naming the report file, the evidence path and the origin project
+- AND exits with status 1
+- BUT writes nothing
+
+### scenario.issues.command-report-invalid-error-chain — An error chain outside the error contract is refused
+
+- GIVEN a report file whose `error_chain` is not an error of the Framework's error contract
+- WHEN the main agent runs `report --file` with that file
+- THEN the command refuses it with `invalid_issue`, naming the report file and the field `error_chain`
+- AND exits with status 1
+- BUT writes nothing
+
+This illustrates [checked reports](requirements.md#req.issues.report-checked).
 
 ### scenario.issues.command-report-check — Check a report without recording it
 
-- GIVEN an initialized project and a report file
+- GIVEN an initialized project and a report file that passes every check of `report`
 - WHEN the main agent runs `report --file` with that file and `--check`
-- THEN a report that passes every check of `report` is answered with `valid`, its report key and reporting Module
-- AND a report that fails one is refused exactly as `report` would refuse it, with the code and field
-- BUT no Issue is recorded either way
+- THEN the command answers `valid` with the file, its report key and its reporting Module
+- BUT no Issue is recorded
+
+### scenario.issues.command-report-check-refused — Checking a failing report refuses it as recording would
+
+- GIVEN an initialized project and a report file that fails a check of `report`, such as a missing required field or an evidence path absent from the project
+- WHEN the main agent runs `report --file` with that file and `--check`
+- THEN the command refuses it exactly as `report` would, with the same code and a message naming the file and field
+- BUT no Issue is recorded
 
 ### scenario.issues.command-report-unknown-owner — A report without an owner is filed under the root Module
 
@@ -50,23 +72,45 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 
 ### scenario.issues.command-append — Append a later observation from a file
 
-- GIVEN an open Issue and a report file naming it with its current revision
+- GIVEN an open Issue and a report file naming it with its current revision and another classification
 - WHEN the main agent runs `report --file` with that file
 - THEN the Issue holds both reports and the command prints the new revision
 - AND its status stays open while its summary follows the latest report's title, classification and owner
-- BUT a report file naming the old revision is refused with `stale_issue`, naming the Issue and both revisions
-- AND nothing is written for it
+
+### scenario.issues.command-append-stale — Appending at an old revision is refused
+
+- GIVEN an open Issue that changed after the revision a report file names for it
+- WHEN the main agent runs `report --file` with that file
+- THEN the command refuses it with `stale_issue`, naming the Issue, the revision the file gives and the current revision
+- AND exits with status 1
+- BUT the Issue keeps only the reports it had
+
+This illustrates [revision-checked writes](requirements.md#req.issues.revision-checked).
 
 ### scenario.issues.command-close — Close an Issue with evidence
 
 - GIVEN an open Issue
-- WHEN the main agent runs `close` with a reason, a note and evidence items, or with `duplicate` and another open Issue
-- THEN the Issue is closed with a disposition whose actor is `main-agent`
-- AND the command prints the Issue, its status and its new revision
-- BUT a duplicate naming a closed Issue is refused and the Issue stays open
+- WHEN the main agent runs `close` with the reason `resolved`, a note and evidence items
+- THEN the Issue is closed with a disposition of that reason, whose actor is `main-agent` and whose evidence is those items
+- AND the command prints the Issue, its status `closed` and its new revision
 
 This illustrates [command attribution](requirements.md#req.issues.main-agent-actor) and
 [legal transitions](requirements.md#req.issues.legal-transitions).
+
+### scenario.issues.command-close-duplicate — Close an Issue as a duplicate of another
+
+- GIVEN two open Issues
+- WHEN the main agent runs `close` on one with the reason `duplicate`, `--duplicate-of` naming the other, a note and evidence
+- THEN the first Issue is closed with a disposition whose `duplicate_of` names the other
+- AND the other Issue stays open
+
+### scenario.issues.command-close-duplicate-of-closed — A duplicate of a closed Issue is refused
+
+- GIVEN an open Issue and a closed one
+- WHEN the main agent runs `close` on the open Issue with the reason `duplicate` and `--duplicate-of` naming the closed one
+- THEN the command refuses it with `invalid_issue`, naming the closed Issue
+- AND exits with status 1
+- BUT the open Issue stays open
 
 ### scenario.issues.command-reopen — Reopen a closed Issue
 
@@ -75,21 +119,102 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 - THEN the Issue is open again with every report unchanged
 - AND the command prints its status and new revision
 
-### scenario.issues.command-usage — An unusable request exits with status 2
+### scenario.issues.command-usage — An unusable argument exits with status 2
 
-- GIVEN a missing argument, an unknown reason, a `duplicate` without `--duplicate-of`, a blank note, a repeated evidence item, an unreadable report file or a directory that is not a Concorde project
+- GIVEN a missing argument, an unknown reason, a `duplicate` without `--duplicate-of`, a blank note or a repeated evidence item
 - WHEN the command runs
-- THEN it prints the error code `usage` for an argument, `unreadable_file` for the report file or `not_a_project` for the directory, and a message naming it
+- THEN it prints the error code `usage` and a message naming the argument
 - AND exits with status 2
 - BUT writes nothing
 
-### scenario.issues.command-refused — A refused request exits with status 1
+This illustrates [specific refusals](requirements.md#req.issues.specific-refusals) and
+[refusals that write nothing](requirements.md#req.issues.refusal-writes-nothing).
 
-- GIVEN a report file with an invalid field, an unregistered owner, missing evidence or half of an append, or an unknown, malformed, open or closed Issue for an action that needs the other state, or an Issue named as its own duplicate
-- WHEN the command runs
-- THEN it prints the error code and a message naming the report file and field or the Issue
+### scenario.issues.command-unreadable-file — An unreadable report file exits with status 2
+
+- GIVEN a report file path that does not exist or does not hold UTF-8 text
+- WHEN the main agent runs `report --file` with it
+- THEN the command prints the error code `unreadable_file` and a message naming the file
+- AND exits with status 2
+- BUT writes nothing
+
+### scenario.issues.command-not-a-project — A directory that is not a Concorde project exits with status 2
+
+- GIVEN a `--root` directory without `.concorde/config.json`
+- WHEN any action of the command runs on it
+- THEN the command prints the error code `not_a_project` and a message naming the directory
+- AND exits with status 2
+
+### scenario.issues.command-refused — A report file with an invalid field is refused
+
+- GIVEN a report file with a malformed field, such as a blank title or an `issue_id` without an `expected_revision`
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `invalid_issue` and a message naming the report file and the field
 - AND exits with status 1
 - BUT writes nothing
+
+### scenario.issues.command-report-unregistered-owner — A report naming an unregistered owner is refused
+
+- GIVEN a report file whose `owner_target_id` is not a registered Module
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `unknown_owner` and a message naming the report file, the field `owner_target_id` and the owner
+- AND exits with status 1
+- BUT writes nothing
+
+### scenario.issues.command-report-missing-evidence — A report naming absent evidence is refused
+
+- GIVEN a report file without an `origin` whose evidence path does not exist in the project
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `missing_evidence` and a message naming the report file, the field `evidence/<index>/path` and the path
+- AND exits with status 1
+- BUT writes nothing
+
+### scenario.issues.command-unknown-issue — Naming an absent Issue is refused
+
+- GIVEN a well-formed Issue identity that names no record
+- WHEN the main agent runs `show` with it, or `close` with it as `--duplicate-of`
+- THEN the command prints the error code `unknown_issue` and a message naming that identity
+- AND exits with status 1
+- BUT writes nothing
+
+### scenario.issues.command-malformed-identity — A malformed Issue identity is refused
+
+- GIVEN a string that is not `I-` followed by 32 lowercase hex digits
+- WHEN the main agent runs `show` with it
+- THEN the command prints the error code `invalid_issue` and a message naming that string
+- AND exits with status 1
+
+### scenario.issues.command-close-closed — Closing a closed Issue is refused
+
+- GIVEN a closed Issue
+- WHEN the main agent runs `close` on it
+- THEN the command prints the error code `closed_issue` and a message naming the Issue
+- AND exits with status 1
+- BUT the Issue keeps only the disposition it had
+
+### scenario.issues.command-reopen-open — Reopening an open Issue is refused
+
+- GIVEN an open Issue
+- WHEN the main agent runs `reopen` on it
+- THEN the command prints the error code `open_issue` and a message naming the Issue
+- AND exits with status 1
+- BUT the Issue gets no disposition
+
+### scenario.issues.command-close-self-duplicate — An Issue named as its own duplicate is refused
+
+- GIVEN an open Issue
+- WHEN the main agent runs `close` on it with the reason `duplicate` and `--duplicate-of` naming the same Issue
+- THEN the command prints the error code `invalid_issue` and a message naming the Issue and saying it cannot be its own duplicate
+- AND exits with status 1
+- BUT the Issue stays open
+
+### scenario.issues.command-write-failed — A failed write is an environment error
+
+- GIVEN a valid report file and a project whose file system refuses to write the record
+- WHEN the main agent runs `report --file` with that file
+- THEN the command prints the error code `io_error` with the reason `environment` and a message naming the file it could not write
+- AND exits with status 1
+- BUT no Issue is recorded
 
 ## Records
 
@@ -121,7 +246,13 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 - WHEN a new report appends to it with that revision and a different classification
 - THEN the Issue holds both reports and is listed with the new classification
 - BUT the first report is unchanged
-- AND a later append naming the old revision is refused with `stale_issue`
+
+### scenario.issues.store-append-stale — An append at an old revision is refused
+
+- GIVEN an open Issue that changed after a caller read its revision
+- WHEN a report appends to it naming that old revision
+- THEN the store refuses with `stale_issue`, naming the Issue, the old and the current revision
+- BUT the record is unchanged
 
 ### scenario.issues.store-concurrency — Concurrent writers never lose a report
 
@@ -140,10 +271,23 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 ### scenario.issues.store-disposition — Close with evidence
 
 - GIVEN an open Issue and its current revision
-- WHEN the store receives a disposition with a note, evidence and actor, or a duplicate disposition naming another open Issue
-- THEN the Issue gets the disposition and its status follows it
+- WHEN the store receives a closing disposition at that revision with a note, evidence and actor
+- THEN the Issue gets the disposition and its status is `closed`
+- AND the store returns the new revision
 - AND every report stays unchanged
-- AND a later reopening at the new revision opens it again
+
+### scenario.issues.store-disposition-duplicate — Close as a duplicate of another open Issue
+
+- GIVEN two open Issues and the current revision of the first
+- WHEN the store receives a `duplicate` disposition of the first naming the second
+- THEN the first Issue is closed with a disposition whose `duplicate_of` names the second
+
+### scenario.issues.store-reopen — Reopen at the current revision
+
+- GIVEN a closed Issue and its current revision
+- WHEN the store receives a `reopened` disposition at that revision
+- THEN the Issue is open again
+- AND every report stays unchanged
 
 ### scenario.issues.store-status-mismatch — A status cannot contradict its history
 
@@ -156,24 +300,78 @@ This illustrates [status derived from history](requirements.md#req.issues.status
 
 ### scenario.issues.store-disposition-stale — A disposition over a changed record is refused
 
-- GIVEN an Issue whose record changed after its revision was read, or the Issue a duplicate disposition would name, whose record changed after the revision the disposition gives for it as `duplicate_revision`
+- GIVEN an Issue whose record changed after its revision was read
 - WHEN a disposition names the old revision
-- THEN the store refuses with `stale_issue`
+- THEN the store refuses with `stale_issue`, naming the Issue, the old and the current revision
 - BUT the record is unchanged
 
-### scenario.issues.store-disposition-invalid — An invalid disposition is refused
+### scenario.issues.store-duplicate-stale — A duplicate of a changed Issue is refused
 
-- GIVEN an Issue and its current revision
-- WHEN a disposition has no evidence or names the Issue itself as its duplicate
-- THEN the store refuses it
+- GIVEN two open Issues, the second of which changed after a caller read its revision
+- WHEN a `duplicate` disposition of the first names the second with that old revision as `duplicate_revision`
+- THEN the store refuses with `stale_issue`, naming the second Issue and both of its revisions
+- BUT the first Issue stays open and unchanged
+
+### scenario.issues.store-disposition-invalid — A disposition without evidence is refused
+
+- GIVEN an open Issue and its current revision
+- WHEN a disposition at that revision has an empty evidence list
+- THEN Spec core's [typed-value](../glossary.json#concept.typed-value) check refuses it with `invalid_field`, naming the disposition's `evidence` field
 - BUT the record is unchanged
 
-### scenario.issues.store-boundary — Refuse malformed or unsafe records
+### scenario.issues.store-self-duplicate — An Issue cannot be its own duplicate
 
-- GIVEN a malformed report, an unsafe evidence path, an Issue directory that is a symbolic link, a corrupted report digest or a failed file publication
-- WHEN the store tries to accept, save or read it
-- THEN it does not report success
-- AND existing valid records stay readable and unchanged
+- GIVEN an open Issue and its current revision
+- WHEN a `duplicate` disposition names the Issue itself
+- THEN the store refuses with `invalid_issue`, naming the Issue
+- BUT the record is unchanged
+
+## Refusing unsafe input
+
+### scenario.issues.store-boundary — A report that breaks the report schema is refused
+
+- GIVEN a report with an unknown type, a blank title or a field the report contract does not define
+- WHEN the store is asked to save it
+- THEN Spec core's typed-value check refuses it with `invalid_field`, naming the field
+- BUT no Issue is written
+
+### scenario.issues.store-report-inconsistent — A report that breaks an Issue rule is refused
+
+- GIVEN a report that satisfies the report schema but has a subtype that does not match its type, only one of `issue_id` and `expected_revision`, or more than 64 KiB as canonical JSON
+- WHEN the store is asked to save it
+- THEN the store refuses it with `invalid_issue`, naming the rule it breaks
+- BUT no Issue is written
+
+### scenario.issues.store-unsafe-evidence-path — An evidence path outside the project is refused
+
+- GIVEN a report whose evidence path is not a canonical project-relative POSIX path, such as `../outside`
+- WHEN the store is asked to save it
+- THEN Spec core's typed-value check refuses it with `invalid_field`, naming the evidence path's field
+- BUT no Issue is written
+
+### scenario.issues.store-symlinked-directory — An Issue directory that is a symbolic link is refused
+
+- GIVEN a project whose `.concorde/issues` is a symbolic link to another directory
+- WHEN the store is asked to save a valid report
+- THEN Spec core's path check refuses it with `invalid_field`, because symbolic links are forbidden
+- BUT nothing is written into the linked directory
+
+### scenario.issues.store-corrupted-record — A record whose report no longer matches its digest is refused
+
+- GIVEN a record file whose report text was edited after it was accepted, so the report's `id` no longer matches its content
+- WHEN the store reads that Issue
+- THEN it refuses with `invalid_issue`, naming the Issue and saying the digest differs from the content
+- BUT it leaves the file as it found it
+
+### scenario.issues.store-failed-publication — A failed publication is not reported as success
+
+- GIVEN a project with one valid Issue and a file system that refuses to write the next record
+- WHEN the store is asked to save another report
+- THEN it fails with the [file transaction](../glossary.json#concept.file-transaction)'s `system_error` instead of returning a receipt
+- AND the valid Issue stays readable and unchanged
+- BUT no other Issue is written
+
+This illustrates [durable receipts](requirements.md#req.issues.durable-receipt).
 
 ## The store check
 

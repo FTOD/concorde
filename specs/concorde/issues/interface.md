@@ -168,9 +168,19 @@ the owner is `null`. Its revision is the SHA-256 digest of the file's bytes.
 ## Store operations
 
 These are library operations in `concorde.issues.store`. None launches a model or runs Git. Every
-refusal is a [Spec](../glossary.json#concept.spec) error carrying one of the codes under
-[Errors](#errors) and a message naming the Issue it concerns; a malformed value is refused with the
-field it concerns.
+refusal is a [Spec](../glossary.json#concept.spec) error of one of three kinds:
+
+- a refusal by an Issue rule is an `IssueError` carrying one of the codes under [Errors](#errors)
+  and a message naming the Issue it concerns;
+- a value or path that Spec core's [typed-value](../spec-tooling/spec/contracts.md#typed-values)
+  checks refuse, such as a report or disposition that breaks its schema, an evidence path that is
+  not a canonical project-relative POSIX path, or a record path through a symbolic link, is
+  refused by Spec core with `TypedDataError` and its code `invalid_field`, naming the field it
+  concerns;
+- a write the operating system refuses fails with the
+  [file transaction](../spec-tooling/spec/contracts.md#file-transactions)'s `system_error`.
+
+The bookkeeping command reports the second kind as `invalid_issue` and the third as `io_error`.
 
 | Operation | Behaviour |
 | --- | --- |
