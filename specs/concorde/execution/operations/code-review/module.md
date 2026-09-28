@@ -72,7 +72,7 @@ cuts it to what the grant already makes readable.
 | --- | --- | --- | --- |
 | 1 | Freeze the bound Modules' `review-code` [grant](../../../glossary.json#concept.grant) | Operation, Spec core | Specs won't load / [Module](../../../glossary.json#concept.module) unknown (`failed`) |
 | 2 | Diff base→worktree, untracked included; keep readable paths' contents, list rest by name | Operation, Spec core | base unresolved (`failed`) |
-| 3 | Run the [configured checks](../../../glossary.json#concept.configured-check) of the bound Modules and of every Module that uses one of them outside the worker | Operation, Check execution | a check won't start (`failed`) |
+| 3 | Run the [configured checks](../../../glossary.json#concept.configured-check) of the bound Modules and of every Module that uses one of them outside the worker | Operation, Check execution | a check won't start (`failed`); a check that fails goes on to the reviewer |
 | 4 | Build [worker settings](../../../glossary.json#concept.worker-settings), tools and [brief](../../../glossary.json#concept.brief): focus, diff, named-only paths, [check results](../../../glossary.json#concept.check-result) with every log's path and the last part of every log that did not pass, grant's read/names; the run's check logs stay readable to the reviewer besides its grant | Workers | — |
 | 5 | Launch reviewer, await its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error/timeout (`failed`); `blocked` passed on |
 | 6 | [Audit](../../../glossary.json#concept.write-audit) the worktree (no writable path, so any change is a violation); write [run record](../../../glossary.json#concept.run-record) | Workers | any change (`failed`) |

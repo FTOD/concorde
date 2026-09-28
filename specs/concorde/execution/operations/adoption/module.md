@@ -35,6 +35,26 @@ in, whose binding names it, and each is recorded in the
 [run store](../../../glossary.json#concept.run-store) like any run, so that the scaffold can admit
 the survey and a later survey or code_to_spec the run whose questions it answers.
 
+The path through the three steps, with the reruns that answers lead to, each described below:
+
+```d2 illustrative
+direction: down
+survey: "concorde run survey"
+inspect: "The task level inspects\nthe decomposition proposal"
+scaffold: "concorde scaffold --input <survey run>"
+describe: "concorde run code_to_spec\n(the brownfield workflow: one Module at a time,\ncreated Modules providers first, the surveyed Module last)"
+review: "The task level inspects\neach Spec description"
+implement: "implement, for each deviation"
+survey -> inspect
+survey <- inspect: "developer's answers:\n--answers, --input <survey run>" {style.stroke-dash: 3}
+inspect -> scaffold: proposal accepted
+scaffold -> describe -> review
+describe <- review: "developer's answers:\n--answers, --input <code_to_spec run>" {style.stroke-dash: 3}
+review -> implement: an answered intent differs from the code {style.stroke-dash: 3}
+```
+
+The records the runs produce, and what answers settle in them:
+
 ```d2 illustrative
 survey: Survey
 proposal: Decomposition proposal

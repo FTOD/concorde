@@ -73,6 +73,30 @@ names a Module that is not bound): the Operation's own link then has the code `u
 relaunches the worker. A failed or blocked result carries no `output`; the worker's own answer
 stays in the `worker` field. Running the Operation again with the same inputs is safe.
 
+The statuses and what the task level usually does next:
+
+```d2 illustrative
+direction: down
+worker: The worker assesses the goal
+host: "The Operation checks launch, timeout, audit,\nknown Modules and consistency"
+blocked: "blocked: goal not assessable" {shape: oval}
+failed: "failed: not run, changed a file,\nunknown Module or inconsistent assessment" {shape: oval}
+ok: "ok: an assessment" {shape: oval}
+plan: "Follow the plan's runs,\nwhich may start with specify"
+answer: "Use the answer"
+gaps: "Read the Spec gaps"
+specify: "specify closes the gaps"
+worker -> host
+worker -> blocked: "ambiguous goal, Modules not bound" {style.stroke-dash: 3}
+host -> failed {style.stroke-dash: 3}
+host -> ok
+ok -> plan: "sufficient, --plan"
+ok -> answer: "sufficient, no --plan"
+ok -> gaps: not sufficient
+gaps -> specify
+worker <- specify: "understand again to confirm" {style.stroke-dash: 3}
+```
+
 ## Design
 
 The Operation is worker-backed, run with [task type](../../../glossary.json#concept.task-type)

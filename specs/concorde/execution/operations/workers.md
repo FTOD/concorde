@@ -80,6 +80,41 @@ The step's outcome maps to the result status as follows; the first matching row 
 | Checks still failing after the last round | `failed` |
 | Worker result status `ok`, audit clean, every check passed | `ok`, unless a later provider step stops the run |
 
+The steps and the statuses their exits give, as one flow:
+
+```d2 illustrative
+direction: down
+step: Provider step {
+  grant: 1 Compute and freeze the grant
+  model: 2 Resolve backend, model and level
+  grant -> model
+}
+workers: Workers {
+  prepare: 3 Settings, tools, brief and pending files
+  launch: 4 Launch or resume the worker
+  audit: 5 Audit against the grant
+  checks: "6 Configured checks, when asked; then the step's own validation, when it has one"
+  record: 8 Write the run record
+  prepare -> launch -> audit
+  audit -> checks: worker ok, audit clean
+  checks -> launch: "7 a check fails, or validation reports a repair; rounds left"
+  checks -> record: "checks pass or none ran; nothing to repair, or validation rounds used up"
+  checks -> record: "a check still fails, rounds used up" {style.stroke-dash: 3}
+  launch -> record: launch error {style.stroke-dash: 3}
+  audit -> record: "violation, timeout, limit reached, invalid result, worker blocked or failed" {style.stroke-dash: 3}
+  prepare -> record: a pending file cannot be created {style.stroke-dash: 3}
+}
+ok: ok {shape: oval}
+blocked: blocked {shape: oval}
+failed: failed {shape: oval}
+step.model -> workers.prepare
+step.grant -> failed: Specs not loaded, Module unknown {style.stroke-dash: 3}
+step.model -> failed: configuration invalid, backend missing {style.stroke-dash: 3}
+workers.record -> ok: "worker ok, audit clean, no check failing"
+workers.record -> blocked: worker blocked {style.stroke-dash: 3}
+workers.record -> failed: "checks still failing, audit violation, launch error, timeout,\nlimit reached, invalid result, worker failed" {style.stroke-dash: 3}
+```
+
 A provider may withhold every writable level of a task type's grant, as the Protocol lets a harness
 give less than a type assigns; the frozen grant then has no writable path, the worker gets its
 backend's read-only tool set, and the `grant` evidence says the writes were withheld. Spec core
