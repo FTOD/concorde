@@ -96,7 +96,7 @@ document, the registry or, except in update mode, the project configuration's
 
 ### req.distribution.update-unvalidated — An update marks the project Concorde unvalidated
 
-`concorde update` SHALL mark the project Concorde unvalidated.
+`concorde update` SHALL mark the project [Concorde unvalidated](../glossary.json#concept.concorde-unvalidated).
 
 The mark is the file `.concorde/update.json`, which the project ignores; only an update writes it.
 
@@ -120,7 +120,7 @@ missing or older than its sources.
 
 ### req.distribution.installer-locked-pi-runtime — Only the locked pi runtime is installed
 
-The installer SHALL install the pi runtime only with `npm ci --ignore-scripts` from the `package-lock.json` the package ships.
+The installer SHALL install the [pi runtime](../glossary.json#concept.pi-runtime) only with `npm ci --ignore-scripts` from the `package-lock.json` the package ships.
 
 `npm ci` installs exactly the versions the lockfile names and refuses a package whose integrity
 hash differs, and no install script of a dependency runs on the developer's machine.

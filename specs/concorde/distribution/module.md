@@ -151,7 +151,8 @@ pi runtime unless the first install left it out with `--without-pi-runtime` (so 
 an install made before the runtime was placed by default), keeping Concorde's own environment's
 interpreter unless `--python` names another, and refusing like an install while Concorde runs in the
 project; binds the new Protocol copy in the configuration itself, the one write of the project
-configuration an installer makes; and marks the project **Concorde unvalidated** by writing
+configuration an installer makes; and marks the project
+**[Concorde unvalidated](../glossary.json#concept.concorde-unvalidated)** by writing
 `.concorde/update.json`, which Git ignores, with the versions, installed commits and Protocol
 bindings before and after; the validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002`
 described next name the commits too, since between two commits of a
@@ -165,14 +166,16 @@ worktrees keep the previous copy until then.
 
 <a id="concept.pi-runtime"></a>Workers run on pi unless the
 [worker model configuration](../glossary.json#concept.worker-model-configuration) chooses Claude
-Code for them, whatever program the main session is, so every install places the **pi runtime** —
-the sandbox engine `@anthropic-ai/sandbox-runtime` that pi workers run their commands in — under
+Code for them, whatever program the main session is, so every install places the
+**[pi runtime](../glossary.json#concept.pi-runtime)** — the sandbox engine
+`@anthropic-ai/sandbox-runtime` that pi workers run their commands in — under
 `.concorde/tools/pi-runtime/` by copying the package's
 `src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
 `npm ci --ignore-scripts`, which installs exactly the locked versions after checking each npm
-package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime)). A
-later install with the same lockfile keeps the runtime it placed. Without npm the install refuses
-before writing anything else. `--without-pi-runtime` leaves the runtime out, for a machine where
+package's integrity hash
+([requirements](requirements.md#req.distribution.installer-locked-pi-runtime)). A later install
+with the same lockfile keeps the runtime it placed. Without npm the install refuses before writing
+anything else. `--without-pi-runtime` leaves the runtime out, for a machine where
 every worker runs on Claude Code; the receipt records that choice (`pi_runtime`) so that an update
 keeps it, and a pi worker then fails with `pi_runtime_missing`, naming the command that installs the
 runtime.
@@ -249,6 +252,14 @@ codes. Distribution names no Operation or command's meaning and passes no task. 
 reads the [run store](../glossary.json#concept.run-store)'s
 [run progress files](../glossary.json#concept.run-progress-file) to refuse while a run of either
 kind lives, relying on each naming its kind, its runner's process and its phase.
+
+<a id="uses-task-session"></a>
+
+**Task session** owns the pi task session's
+[session rounds](../glossary.json#concept.session-round) and the progress file `status.json` its
+supervisor keeps for each round under `.concorde/tasks/<task>.session/`. The installer reads those
+files to refuse while a round runs, relying on each naming its task, its round, its phase and its
+supervisor's process, and never starts, stops or answers a task session.
 
 <a id="uses-commands"></a>
 

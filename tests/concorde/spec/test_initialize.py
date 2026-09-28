@@ -98,7 +98,11 @@ class InitialModuleTests(unittest.TestCase):
                 "success", validate_repository(root, package_root=PACKAGE).status
             )
 
-    @verifies("scenario.spec.project-python")
+    @verifies(
+        "scenario.spec.project-python",
+        "scenario.spec.project-python-found",
+        "scenario.spec.project-python-named",
+    )
     def test_the_configuration_records_the_projects_own_interpreter(self):
         def config(root, **options) -> dict:
             proposal = project_proposal(root, PACKAGE, "New project", **options)

@@ -402,6 +402,7 @@
             "contract.execution.workspace-binding",
             "concept.run",
             "concept.run-result",
+            "concept.run-progress-file",
             "concept.run-store",
             "concept.workspace-lock"
           ]
@@ -780,6 +781,10 @@
           "relies_on": [
             "concept.execution-command"
           ]
+        },
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec"
         }
       ],
       "includes": [
@@ -975,6 +980,13 @@
           "relies_on": [
             "concept.run",
             "concept.run-progress-file"
+          ]
+        },
+        {
+          "target": "module.task-session",
+          "meaning": "#uses-task-session",
+          "relies_on": [
+            "concept.session-round"
           ]
         },
         {

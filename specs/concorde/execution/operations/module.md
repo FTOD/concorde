@@ -229,10 +229,10 @@ the task level's decision.
 <a id="contains-adoption"></a>
 
 **Adoption** provides `survey` and `code_to_spec`, the Operations that describe existing code in
-Specs for a project whose code came before them, and the execution command `scaffold` between them:
-a read-only survey proposes child Modules, the scaffold creates them, and `code-to-spec` workers
-describe each Module's code. The [brownfield workflow](../workflows/module.md) usually runs them in
-that order.
+Specs for a project whose code came before them: a read-only survey proposes child Modules, the
+execution command `scaffold` of [Scaffold](../commands/scaffold/module.md) creates them between the
+two, and `code-to-spec` workers describe each Module's code. The
+[brownfield workflow](../workflows/module.md) usually runs them in that order.
 
 <a id="uses-spec-review"></a>
 

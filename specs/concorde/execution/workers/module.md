@@ -244,12 +244,14 @@ The **brief** is the worker's only instruction — `CLAUDE.md`, auto memory and 
 disabled — the Operation's task instructions plus the boundary Workers appends: `rw`/`ro`/`names` as
 absolute paths (its working directory isn't the worktree); the definitions of the terms its grant
 carries, and, when the glossary is writable, that only the bound Modules' entries may change; that
-it can't delete, only propose
-deletions; that a Bash-created file outside `rw` is silently lost; that a read denial means the path
-is outside its grant; and, for every task type but `code-to-spec`, that a promise the
-[Spec](../../glossary.json#concept.spec) does not state is never inferred from code but returned as
-`blocked`. A `code-to-spec` worker is told instead that describing the code it reads is its task,
-and that doubtful intent is reported, never promised.
+it can't delete, only propose deletions; that a Bash-created file outside `rw` is silently lost;
+that a read denial means the path is outside its grant; and that a promise the
+[Spec](../../glossary.json#concept.spec) does not state is never inferred from code. What the worker
+does instead depends on its task type: a `review-code` worker reports such behaviour as a
+`spec-gap` finding, an `understand` worker reports the missing promise as a
+[Spec gap](../../glossary.json#concept.spec-gap) and ends `ok`, and a `code-to-spec` worker is told
+that describing the code it reads is its task and that doubtful intent is reported, never promised;
+every other worker returns `blocked`.
 
 <a id="concept.worker-result"></a>
 

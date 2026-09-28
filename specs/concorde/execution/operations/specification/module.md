@@ -76,7 +76,7 @@ it.
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Validate the workspace's Specs as a baseline | Operation, Spec core | Specs cannot load (`failed`) |
-| 2 | Compute and freeze the `specify` [grant](../../../glossary.json#concept.grant) | Workers, Spec core | unknown Module (`failed`) |
+| 2 | Compute and freeze the `specify` [grant](../../../glossary.json#concept.grant) | Operation, Spec core | unknown Module (`failed`) |
 | 3 | Generate settings, tools and the [brief](../../../glossary.json#concept.brief) | Workers | — |
 | 4 | Launch the worker and wait for its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
 | 5 | [Audit](../../../glossary.json#concept.write-audit), perform proposed deletions, write the [run record](../../../glossary.json#concept.run-record) | Workers | a write outside the grant (`failed`) |

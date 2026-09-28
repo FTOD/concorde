@@ -74,11 +74,12 @@ file or directory reached without symbolic links; a missing or unsafe input is a
 `CONCORDE-CHECK-001` error naming the check. Validation reads no input's content and runs no check.
 
 **Pending entries.** A pending entry whose file now exists fails `CHK.binds.pending-subset`. A
-caller that is allowed to change the Specs, such as the
-[execution command](../../glossary.json#concept.execution-command) `task-validation` when it
-validates a workspace, first confirms such entries through a
-[file transaction](../../glossary.json#concept.file-transaction), so a task that created a declared
-file is not blocked by its own progress.
+caller that decides readiness, such as the
+[execution command](../../glossary.json#concept.execution-command) `task-validation`, validates the
+Specs as they read with such entries confirmed, without writing them, and lists them as
+confirmations; the execution command `delivery`, which may change the Specs, then clears exactly
+those markers through a [file transaction](../../glossary.json#concept.file-transaction), so a task
+that created a declared file is not blocked by its own progress.
 
 ## What validation leaves to configured checks
 

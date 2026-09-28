@@ -202,7 +202,7 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 ### scenario.views.preview-restart — A running preview follows the Specs
 
 - GIVEN a running `npm run start` preview
-- WHEN a registered document or its metadata, the registry, the configuration or `docsite/site.json` changes, including a change that adds, moves or removes a document
+- WHEN a registered document or its metadata, the glossary, the registry, the configuration or `docsite/site.json` changes, including a change that adds, moves or removes a document
 - THEN the preview stops, the Specs are staged again, and the preview starts again from the new staging without opening another browser window
 - AND changes made together cause one restart
 

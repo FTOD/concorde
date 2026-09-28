@@ -334,7 +334,44 @@ them is in [How a run is executed](runner.md).
     "run_id": "r-20260927T101500-task_validation-3f2a9c1b",
     "status": "blocked",
     "summary": "Not deliverable: 1 blocking finding(s). check check.http.tests: module.http check failed (exit 1); log .concorde/runs/r-20260927T101500-task_validation-3f2a9c1b/checks/check.http.tests.log",
-    "output": null,
+    "output": {
+      "workspace": "retry",
+      "ready": false,
+      "inputs": {
+        "head": "4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9",
+        "base": "4be1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9",
+        "changed": [
+          {
+            "path": "src/http/retry.py",
+            "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          }
+        ],
+        "config_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "modules": [
+        "module.http"
+      ],
+      "blocking": [
+        {
+          "kind": "check",
+          "ref": "check.http.tests",
+          "detail": "module.http check failed (exit 1); log .concorde/runs/r-20260927T101500-task_validation-3f2a9c1b/checks/check.http.tests.log"
+        }
+      ],
+      "warnings": [],
+      "confirmations": [],
+      "checks": [
+        {
+          "check": "check.http.tests",
+          "module": "module.http",
+          "status": "failed",
+          "exit_code": 1,
+          "measured_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+          "log": ".concorde/runs/r-20260927T101500-task_validation-3f2a9c1b/checks/check.http.tests.log"
+        }
+      ]
+    },
     "worker": null,
     "worker_runs": [],
     "host_evidence": [
@@ -353,7 +390,7 @@ them is in [How a run is executed](runner.md).
         {
           "kind": "blocking",
           "ref": "check.http.tests",
-          "detail": "module.http check failed (exit 1)"
+          "detail": "module.http check failed (exit 1); log .concorde/runs/r-20260927T101500-task_validation-3f2a9c1b/checks/check.http.tests.log"
         }
       ],
       "attempts": [],
@@ -365,7 +402,7 @@ them is in [How a run is executed](runner.md).
         "repair each blocking finding in the workspace and run task-validation again",
         "run specify for a Spec finding, implement for a code or check finding"
       ],
-      "recommendation": "repair the first blocking finding: check check.http.tests: module.http check failed (exit 1)",
+      "recommendation": "repair the first blocking finding: check check.http.tests: module.http check failed (exit 1); log .concorde/runs/r-20260927T101500-task_validation-3f2a9c1b/checks/check.http.tests.log",
       "causes": [
         {
           "level": "check",

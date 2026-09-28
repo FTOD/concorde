@@ -208,12 +208,13 @@ staging runs. `npm run start` therefore supervises the preview instead of relyin
 own watching, and the content plugin watches nothing.
 
 The supervisor stages with `preparePublication(root)` and starts `docusaurus start` with the
-command's arguments. Its inputs are `docsite/site.json`, the configuration, the registry and both
-members of every registered document. It watches their directories, not the files, so an editor
-that saves by replacing a file is still seen. Changes within 300 ms form one restart: it stops
-Docusaurus (`SIGTERM`, then `SIGKILL` after ten seconds), stages again, recomputes the inputs and
-their watched directories, and starts Docusaurus again with `--no-open` added so that no further
-browser window opens. A change that arrives during a restart causes one more restart after it.
+command's arguments. Its inputs are `docsite/site.json`, the configuration, the registry, both
+members of every registered document and the glossary the root Module declares. It watches their
+directories, not the files, so an editor that saves by replacing a file is still seen. Changes
+within 300 ms form one restart: it stops Docusaurus (`SIGTERM`, then `SIGKILL` after ten seconds),
+stages again, recomputes the inputs and their watched directories, and starts Docusaurus again with
+`--no-open` added so that no further browser window opens. A change that arrives during a restart
+causes one more restart after it.
 
 When staging fails, no preview runs. The supervisor reports the error in full, keeps its last
 watched directories, and retries on the next change to an input or to any `.md` or `.md.json` file

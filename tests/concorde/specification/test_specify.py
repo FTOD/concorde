@@ -326,7 +326,7 @@ class SpecifyTests(unittest.TestCase):
         brief = (Path(second["run_directory"]) / "control/brief.md").read_text()
         self.assertIn("Documents the host created for you", brief)
 
-    @verifies("scenario.specification.new-document")
+    @verifies("scenario.specification.document-refused")
     def test_a_document_outside_the_bound_modules_is_not_created(self):
         worktree = self.open()
         for path, module in (

@@ -627,13 +627,23 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ## Initialization
 
-### scenario.spec.project-python — Initialization records the project's interpreter
+### scenario.spec.project-python — No interpreter found, none recorded
 
-- GIVEN a project where the installer has placed the Protocol copy but no configuration exists
-- WHEN it is initialized without an interpreter, while it has no `.venv/bin/python`
+- GIVEN a project where the installer has placed the Protocol copy, no configuration exists and neither `.venv/bin/python` nor `venv/bin/python` exists
+- WHEN initialization is proposed without an interpreter
 - THEN the proposed configuration has no `python`
-- AND once `.venv/bin/python` exists, the proposed configuration's `python` is `.venv/bin/python`
-- AND an interpreter named on initialization is recorded as it was given
+
+### scenario.spec.project-python-found — The project's environment is recorded
+
+- GIVEN a project where the installer has placed the Protocol copy, no configuration exists and `.venv/bin/python` exists
+- WHEN initialization is proposed without an interpreter
+- THEN the proposed configuration's `python` is `.venv/bin/python`
+
+### scenario.spec.project-python-named — A named interpreter is recorded as given
+
+- GIVEN a project where the installer has placed the Protocol copy and no configuration exists
+- WHEN initialization is proposed with the interpreter `/opt/env/bin/python`
+- THEN the proposed configuration's `python` is `/opt/env/bin/python`
 
 ### scenario.spec.propose-initialization — Proposing a new project
 

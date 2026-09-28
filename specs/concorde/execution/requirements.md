@@ -84,7 +84,7 @@ A run started with `--detach` SHALL check, record and report exactly as the same
 
 ### req.execution.detached-announced — A detached run is announced once it exists
 
-A command started with `--detach` SHALL print the run identity and result path only once the run's [progress file](../glossary.json#concept.progress-file) exists.
+A command started with `--detach` SHALL print the run identity and result path only once the run's [run progress file](../glossary.json#concept.run-progress-file) exists.
 
 ### req.execution.fixed-order — Steps run in their declared order
 

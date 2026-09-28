@@ -80,15 +80,15 @@ mirror (`CHK.registry.mirror`). Success is evidence about structure only; see
 
 <a id="concept.boundary-set"></a><a id="concept.impact-index"></a>
 
-**Boundaries and impact.** For the Modules a task is bound to, Spec core returns the five boundary
-sets, selected one level deep. A Module's [Spec context](../../glossary.json#concept.spec-context)
-also holds its terms: the glossary entries of the concepts it owns, of the concepts its selected
-documents link or relate to and of those its `relies_on` names, closed over the terms those
-definitions link and their `narrows`, `supersedes` and `relates` targets, so a reader knows every
-word its documents use without reading the owners' documents. The impact indexes (`selected-by`,
-`referenced-by`, `implemented-by`, `covered-by`, binding Modules, changed definitions) say whom a
-change concerns and never widen a boundary. Which Modules a task may edit or must re-review is the
-Operations' policy.
+**Boundaries and impact.** For the Modules a task is bound to, Spec core returns the six boundary
+sets: each Module's five, selected one level deep, and the project-wide ProjectImplementation. A
+Module's [Spec context](../../glossary.json#concept.spec-context) also holds its terms: the glossary
+entries of the concepts it owns, of the concepts its selected documents link or relate to and of
+those its `relies_on` names, closed over the terms those definitions link and their `narrows`,
+`supersedes` and `relates` targets, so a reader knows every word its documents use without reading
+the owners' documents. The impact indexes (`selected-by`, `referenced-by`, `implemented-by`,
+`covered-by`, binding Modules, changed definitions) say whom a change concerns and never widen a
+boundary. Which Modules a task may edit or must re-review is the Operations' policy.
 
 <a id="concept.grant"></a><a id="concept.context-identity"></a>
 

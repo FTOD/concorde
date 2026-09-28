@@ -175,9 +175,15 @@ path, so every commit carries it.
 - <a id="uses-validation"></a>**Validation** provides the readiness steps and the confirmations.
   Delivery runs those steps as its own, so its readiness is decided exactly as a `task-validation`
   run's, relies on their final remeasurement to prove that the measured inputs at the end are
-  those the readiness records, and on confirmations applying exactly or not at all; it never changes a finding, treating a
-  readiness that is not ready as blocking.
+  those the readiness records, and on confirmations applying exactly or not at all; it never
+  changes a finding, treating a readiness that is not ready as blocking.
 - <a id="uses-workers"></a>**Workers** keeps a
   [run record](../../../glossary.json#concept.run-record) for every launch.
   Delivery lists each run's worker run identities in the bundle so evidence can be matched locally,
   relying on those identities being unique and stable; it never reads a transcript.
+- <a id="uses-spec"></a>**Spec core** answers step 6 on the workspace's Specs as they read now:
+  which changed paths a Module's realization binds and, through its structural validation's
+  coverage findings, which scenarios no test declares that it verifies. Delivery reads the base
+  commit's text of each changed reading document itself, with read-only Git, to find the scenarios
+  the workspace added or changed; it relies on Spec core loading the Specs completely or refusing,
+  and never changes them in this step.

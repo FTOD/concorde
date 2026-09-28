@@ -51,3 +51,9 @@ in the [contracts](contracts.md).
 - GIVEN a reviewer whose finding cites a requirement identity the bound Modules' [Spec context](../../../glossary.json#concept.spec-context) does not define
 - WHEN the Operation checks the findings
 - THEN the result has status `failed` with the unresolved identity as host evidence
+
+### scenario.code-review.reviewer-change — A reviewer that changes a file fails the run
+
+- GIVEN a reviewer that changes a file of the workspace
+- WHEN the Operation audits the worktree
+- THEN the result has status `failed` with the changed path in its `audit` host evidence

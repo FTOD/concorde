@@ -56,7 +56,7 @@
       "id": "concept.boundary-set",
       "title": "Boundary set",
       "owner": "module.spec",
-      "definition": "One of the five sets the Protocol derives for a Module: its Spec context, external context, implementation context, Spec scope or implementation scope.",
+      "definition": "One of the six sets the Protocol derives for a Module: its Spec context, external context, implementation context, Spec scope or implementation scope, or the project-wide ProjectImplementation shared by every Module.",
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.boundary-set"
     },
     {
@@ -83,7 +83,7 @@
       "id": "concept.build",
       "title": "Build",
       "owner": "module.distribution",
-      "definition": "The deterministic rendering of every registered prompt root under `prompts/` into plain files under `generated/`.",
+      "definition": "The deterministic rendering of every prompt root under `prompts/` and of every workflow script of the workflow catalog into plain files under `generated/`, recorded in the build manifest.",
       "explanation": "specs/concorde/distribution/module.md#concept.build"
     },
     {
@@ -212,6 +212,13 @@
       "explanation": "specs/concorde/dogfooding/module.md#concept.concorde-repository"
     },
     {
+      "id": "concept.concorde-unvalidated",
+      "title": "Concorde unvalidated",
+      "owner": "module.distribution",
+      "definition": "The state `concorde update` marks a project with by writing `.concorde/update.json`, in which `spec-validation` in the primary worktree reports an error until a validation first passes and removes the mark.",
+      "explanation": "specs/concorde/distribution/module.md#concept.concorde-unvalidated"
+    },
+    {
       "id": "concept.configure-workers",
       "title": "configure-workers",
       "owner": "module.workers",
@@ -276,7 +283,7 @@
       "id": "concept.decision-point",
       "title": "Decision point",
       "owner": "module.workflows",
-      "definition": "A decision or open question in a run's output that the workflow treats as the developer's to settle: every open question, and every decision of a survey.",
+      "definition": "A decision or open question in a run's output that the workflow treats as the developer's to settle: every open question, and every decision of a survey that the worker took rather than the developer.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.decision-point"
     },
     {
@@ -371,7 +378,7 @@
       "id": "concept.distribution-command",
       "title": "Distribution command",
       "owner": "module.distribution",
-      "definition": "A `concorde` command Distribution owns itself rather than routing to another Module: `build` and `protocol-manifest`.",
+      "definition": "A `concorde` command Distribution owns itself rather than routing to another Module: `build`, `protocol-manifest` and `update`.",
       "explanation": "specs/concorde/distribution/module.md#concept.distribution-command"
     },
     {
@@ -559,7 +566,7 @@
       "id": "concept.main-agent",
       "title": "Main agent",
       "owner": "module.concorde",
-      "definition": "The developer-facing Claude Code or pi session in the primary worktree that discusses the project, splits work into tasks, carries them out or hands them to task sessions, and merges their results.",
+      "definition": "The developer-facing Claude Code or pi session, started in the primary worktree, that discusses the project, splits work into tasks, carries them out or hands them to task sessions, and merges their results.",
       "explanation": "specs/concorde/vocabulary.md#concept.main-agent"
     },
     {
@@ -586,7 +593,7 @@
       "id": "concept.model-picker",
       "title": "Model picker",
       "owner": "module.main-session",
-      "definition": "The pi entry point that opens Workers' shared terminal draft editor for backend, model, reasoning and inheritance choices with Save and Cancel.",
+      "definition": "The pi command `/concorde-models` and tool `concorde_configure_workers` that open Workers' shared terminal draft editor for backend, model, reasoning and inheritance choices with Save and Cancel.",
       "explanation": "specs/concorde/coordination/main-session/module.md#concept.model-picker"
     },
     {
@@ -653,6 +660,13 @@
       "owner": "module.harness",
       "definition": "The pi extension the Harness generates from a grant, which checks every file tool against it, runs every command in the sandbox and receives the worker result.",
       "explanation": "specs/concorde/harness/module.md#concept.permission-extension"
+    },
+    {
+      "id": "concept.pi-runtime",
+      "title": "pi runtime",
+      "owner": "module.distribution",
+      "definition": "The sandbox engine `@anthropic-ai/sandbox-runtime` in which pi workers run their commands, which every install places under `.concorde/tools/pi-runtime/` from the package's lockfile unless `--without-pi-runtime` leaves it out.",
+      "explanation": "specs/concorde/distribution/module.md#concept.pi-runtime"
     },
     {
       "id": "concept.progress-file",
@@ -753,7 +767,7 @@
       "id": "concept.resume-round",
       "title": "Resume round",
       "owner": "module.workers",
-      "definition": "One continuation of the same worker session with the failures of the configured checks.",
+      "definition": "One continuation of the same worker session with the failures of the configured checks or, once they pass, with what the caller's own validation of the round reports to repair.",
       "explanation": "specs/concorde/execution/workers/module.md#concept.resume-round"
     },
     {
@@ -942,7 +956,7 @@
       "id": "concept.site-build-manifest",
       "title": "Site build manifest",
       "owner": "module.views",
-      "definition": "The record a build writes beside its pages, listing every published document with its route and source digests.",
+      "definition": "The record a build writes beside its pages, listing every registered Spec document with its route and source digests.",
       "explanation": "specs/concorde/spec-tooling/views/module.md#concept.site-build-manifest",
       "contrasts": [
         {
@@ -1022,24 +1036,30 @@
       "title": "Spec review",
       "owner": "module.spec-review",
       "definition": "One run of the `spec_review` Operation, which judges the Specs of the named Modules of one worktree and returns findings and a verdict.",
-      "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.spec-review"
+      "explanation": "specs/concorde/spec-tooling/spec-review/module.md#concept.spec-review",
+      "contrasts": [
+        {
+          "target": "module.spec-review",
+          "reason": "the Module Spec review provides both the spec_review and the spec_panel Operations; a Spec review is one run of spec_review"
+        }
+      ]
     },
     {
       "id": "concept.standard-worker-sequence",
       "title": "Standard worker sequence",
       "owner": "module.operations",
-      "definition": "The fixed sequence by which an Operation's step launches one worker: freeze the grant, prepare the brief and settings, launch through Workers, audit, run checks with resume rounds and record the worker run.",
+      "definition": "The fixed sequence by which an Operation's step launches one worker: the step computes and freezes the grant and settles the worker's backend and model, and Workers prepares the settings and brief, launches the worker, audits it, runs checks with resume rounds and records the worker run.",
       "explanation": "specs/concorde/execution/operations/module.md#concept.standard-worker-sequence"
     },
     {
       "id": "concept.step-agent",
       "title": "Step agent",
       "owner": "module.workflows",
-      "definition": "The client-side runner of a workflow step: on Claude Code a small subagent that runs `concorde workflow step` until the run has finished, on pi a command-runner agent that runs it once.",
+      "definition": "The client-side relay of a workflow step: on Claude Code a small subagent that runs `concorde workflow step` once, waiting at most 100 seconds, while the step function asks again until the run has finished; on pi a command-runner agent that runs it once with `--stdin`, waiting until the run has finished.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.step-agent",
       "relates": [
         {
-          "verb": "runs",
+          "verb": "relays",
           "target": "concept.workflow-step"
         }
       ]
@@ -1259,7 +1279,7 @@
       "id": "concept.workflow-mode",
       "title": "Workflow mode",
       "owner": "module.workflows",
-      "definition": "Whether a workflow run is interactive, ending at the first decision point so the developer can decide, or no-ask, taking every decision itself and reporting it at the end.",
+      "definition": "Whether a workflow run is interactive, ending at the first decision point or the first step that did not end ok so the developer can act, or no-ask, keeping every decision its workers took and reporting it at the end.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-mode",
       "relates": [
         {
@@ -1346,7 +1366,7 @@
       "id": "concept.write-hook",
       "title": "Write hook",
       "owner": "module.harness",
-      "definition": "A small PreToolUse hook on Edit and Write that denies every path outside the grant's `rw` list and explains the denial.",
+      "definition": "A small PreToolUse hook on Edit and Write that allows only the paths its policy names, a worker's grant's `rw` list or a task session's task worktree and decision log, and explains every denial.",
       "explanation": "specs/concorde/harness/module.md#concept.write-hook"
     }
   ]

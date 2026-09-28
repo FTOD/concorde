@@ -191,7 +191,7 @@ The **Survey Operation** realization declares the `SURVEY` provider and its step
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Check the answers; compute the inventory of the surveyed Module's bound files | host, Spec core | invalid answers (`failed`, `invalid_answers`); not exactly one Module (`failed`, `invalid_request`); Specs cannot load (`failed`, `specs_unloadable`) |
-| 2 | Compute and freeze the `code-to-spec` grant with every writable level withheld | Workers, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`) |
+| 2 | Compute and freeze the `code-to-spec` grant with every writable level withheld | Operation, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`) |
 | 3 | Generate settings, tools and the brief with inventory, answers and inputs | Workers | — |
 | 4 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on) |
 | 5 | Audit: nothing is writable, so any change is a violation | Workers | any change (`failed`) |
@@ -206,7 +206,7 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 | --- | --- | --- | --- |
 | 1 | Check the answers; validate the workspace's Specs as a baseline | host, Spec core | invalid answers (`failed`, `invalid_answers`); Specs cannot load (`failed`, `specs_unloadable`) |
 | 2 | Create the missing implementation document stubs of each bound Module and reconcile the registry mirror | host, Spec core | unknown Module (`failed`, `unknown_modules`) |
-| 3 | Compute and freeze the `code-to-spec` grant | Workers, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`, after step 7) |
+| 3 | Compute and freeze the `code-to-spec` grant | Operation, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`, after step 7) |
 | 4 | Generate settings, tools and the brief with the registered Modules, the structural errors already in the described Modules' documents, answers and inputs | Workers | — |
 | 5 | Launch the worker and wait for its result; after each round validate and, at most twice, resume it with the errors the run is judged by | Workers, worker, host | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on, after step 7) |
 | 6 | Audit and write the [run record](../../../glossary.json#concept.run-record) | Workers | a write outside the grant (`failed`, after step 7) |

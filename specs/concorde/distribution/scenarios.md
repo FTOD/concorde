@@ -100,7 +100,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN an initialized project with an open task, installed from a checkout whose Protocol has since changed
 - WHEN the developer runs `concorde update`
-- THEN the configuration binds the new Protocol copy, the result names the bindings, versions and installed commits before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
+- THEN the configuration binds the new Protocol copy, the result names the bindings, versions and installed commits before and after and the open task, and `.concorde/update.json` marks the project [Concorde unvalidated](../glossary.json#concept.concorde-unvalidated)
 - AND while a Spec is broken, `concorde spec-validation` also reports `CONCORDE-UPDATE-001` and the mark stays
 - AND the first validation that passes reports `CONCORDE-UPDATE-002` and removes the mark
 
@@ -156,7 +156,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN a project and a machine with npm
 - WHEN the developer installs Concorde with `--pi`
-- THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile, as in every install
+- THEN the locked [pi runtime](../glossary.json#concept.pi-runtime) is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile, as in every install
 - AND the [run view](../glossary.json#concept.run-view) is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
 - AND every rendered pi [workflow script](../glossary.json#concept.workflow-script) is under `.concorde/workflows/pi/` and the command-runner agents `concorde-step` and `concorde-report` under `.pi/agents/`
 - AND a second install with the same lockfile does not run npm again

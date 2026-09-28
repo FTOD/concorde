@@ -163,7 +163,7 @@ A production build SHALL NOT clear or overwrite the generated files of the devel
 
 ### req.views.preview-follows-specs — The preview follows the Specs
 
-While `npm run start` runs, a change to the [site identity](../../glossary.json#concept.site-identity), the configuration, the registry or either member of a registered document SHALL stage the Specs again.
+While `npm run start` runs, a change to the [site identity](../../glossary.json#concept.site-identity), the configuration, the registry, either member of a registered document or the project's glossary SHALL stage the Specs again.
 
 A staging that fails during the preview reports its error in full, no preview runs, and the
 command keeps waiting for the next change instead of exiting.

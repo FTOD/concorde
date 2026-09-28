@@ -187,6 +187,7 @@ class CodeReviewTests(unittest.TestCase):
         _, envelope = self.review([finding(1, basis="specs/elsewhere.md#x")])
         self.assertEqual("failed", envelope["status"])
 
+    @verifies("scenario.code-review.reviewer-change")
     def test_a_changing_reviewer_fails_the_run(self):
         plan = [
             {

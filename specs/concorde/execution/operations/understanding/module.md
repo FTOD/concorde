@@ -125,11 +125,10 @@ workspace, or, for an unbound run, of no workspace.
 **Workers** turns the frozen grant into settings, launches the worker with this Module's brief,
 collects its [worker result](../../../glossary.json#concept.worker-result), audits
 the worktree and writes the run record. Any audit violation is a failed run. The brief Workers
-appends tells every worker but a `code-to-spec` one to return `blocked` rather than infer a promise
-the Spec does not state; this Module's instructions narrow that for the understand worker, for whom
-a missing promise is the finding itself: it reports the promise as a Spec gap in an `ok`,
-insufficient assessment, which infers nothing, and returns `blocked` only when it cannot assess the
-goal at all.
+appends tells the understand worker never to infer a promise the Spec does not state but to report
+it as a Spec gap and end `ok`; this Module's instructions say the same, since for this worker a
+missing promise is the finding itself: it reports the promise in an `ok`, insufficient assessment,
+which infers nothing, and returns `blocked` only when it cannot assess the goal at all.
 
 <a id="uses-spec"></a>
 

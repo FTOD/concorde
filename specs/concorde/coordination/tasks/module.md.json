@@ -24,6 +24,7 @@
           "contract.execution.workspace-binding",
           "concept.run",
           "concept.run-result",
+          "concept.run-progress-file",
           "concept.run-store",
           "concept.workspace-lock"
         ]

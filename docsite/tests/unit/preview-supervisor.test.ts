@@ -92,6 +92,22 @@ it("watches the site identity, configuration, registry and both members of every
 });
 
 // verifies: scenario.views.preview-restart
+it("watches the glossary when the project declares one", () => {
+  const declared = {
+    ...registry(["specs/a/module.md"]),
+    glossary: { path: "specs/glossary.json" },
+  } as unknown as ScopedRegistry;
+  expect(previewInputs(declared, siteDir)).toEqual([
+    "/project/docsite/site.json",
+    "/project/.concorde/config.json",
+    "/project/.concorde/specs.json",
+    "/project/specs/a/module.md",
+    "/project/specs/a/module.md.json",
+    "/project/specs/glossary.json",
+  ]);
+});
+
+// verifies: scenario.views.preview-restart
 it("stages again and restarts the preview when a registered input changes", async () => {
   const { supervisor, state, change } = harness(
     registry(["specs/a/module.md"]),

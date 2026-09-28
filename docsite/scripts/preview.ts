@@ -26,7 +26,7 @@ export interface PreviewDependencies {
 
 /**
  * Every file whose change makes the staged pages stale: the site identity, the configuration, the
- * registry and both members of every registered document.
+ * registry, both members of every registered document and the glossary, when one is declared.
  */
 export function previewInputs(
   registry: ScopedRegistry,
@@ -41,6 +41,7 @@ export function previewInputs(
       resolve(root, page.sourcePath),
       resolve(root, page.metadataPath),
     ]),
+    ...(registry.glossary ? [resolve(root, registry.glossary.path)] : []),
   ];
 }
 

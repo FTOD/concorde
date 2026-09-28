@@ -174,8 +174,9 @@ async function pickWorkerModels(
 }
 
 export default function (pi: ExtensionAPI) {
-  // Workers run on the main session's agent program; every command this session starts, through
-  // bash or a tool, tells Concorde that it is pi.
+  // Every command this session starts, through bash or a tool, tells Concorde that the main
+  // session is pi, so task sessions start on pi; workers take their backend from the worktree's
+  // worker model configuration.
   process.env.CONCORDE_CLIENT = "pi";
   // Every session of the project, main or task session, works with the project's terms: the
   // glossary of the session's own worktree is read afresh for each prompt, so a merged or task

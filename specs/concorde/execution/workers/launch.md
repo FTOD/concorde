@@ -41,7 +41,7 @@ request names, so that a worker run lies beside the Operation run that launched 
 | `record.json` | The [run record](../../glossary.json#concept.run-record) | none |
 | `status.json` | The progress file | none |
 | `control/settings.json` | The worker settings (Claude Code backend) | none |
-| `control/write_hook.py` | The [write hook](../../glossary.json#concept.write-hook) with the `rw` list embedded (Claude Code backend) | none |
+| `control/write_hook.py` | The [write hook](../../glossary.json#concept.write-hook) with the task worktree and the grant's `rw`, `ro` and `names` lists embedded (Claude Code backend) | none |
 | `control/grant.json` | The frozen grant and its context identity | none |
 | `control/brief.md` | The brief as sent | none |
 | `control/result.schema.json` | The [worker result](../../glossary.json#concept.worker-result) schema | none |
@@ -128,9 +128,9 @@ compares.
 | a changed `HEAD`, index or branch | violation |
 | a change under a path Git ignores | not observed |
 
-When the run ends, however it ends, the host removes each pre-created pending file that is still
-empty. After the last round, and only when its audit was clean, it deletes each path in
-`proposed_deletions` that is in the `rw` list; a proposed deletion outside `rw` is refused and
+When the run ends, however it ends, the host removes each pre-created pending file or directory
+that is still empty. After the last round, and only when its audit was clean, it deletes each path
+in `proposed_deletions` that is in the `rw` list; a proposed deletion outside `rw` is refused and
 recorded. Both happen after the last round's checks, so the recorded check results describe the
 worktree before these removals.
 
@@ -273,11 +273,11 @@ Every run that does not end `ok` SHALL carry Workers' error link with the worker
 
 ### req.workers.host-deletes — Only the host deletes
 
-Apart from the pending files it pre-created, the host SHALL delete a file only when the worker proposed it, the file is in the `rw` list and the audit was clean.
+Apart from the pending files and directories it pre-created, the host SHALL delete a file only when the worker proposed it, the file is in the `rw` list and the audit was clean.
 
-### req.workers.pending-cleanup — Unused pending files are removed
+### req.workers.pending-cleanup — Unused pending paths are removed
 
-When a run ends, however it ends, the host SHALL remove each pending file it pre-created that is still empty.
+When a run ends, however it ends, the host SHALL remove each pending file or directory it pre-created that is still empty.
 
 ### req.workers.process-group — No worker process outlives its round
 

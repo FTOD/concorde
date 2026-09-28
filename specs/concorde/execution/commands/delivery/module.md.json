@@ -42,6 +42,10 @@
         "relies_on": [
           "concept.execution-command"
         ]
+      },
+      {
+        "target": "module.spec",
+        "meaning": "#uses-spec"
       }
     ],
     "includes": [

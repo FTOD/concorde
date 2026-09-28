@@ -117,6 +117,17 @@ def spec_rule(task_type: str) -> str:
             "behaviour as it is; behaviour whose intent the code does not settle is reported as "
             "an open question, never written as a promise.\n"
         )
+    if task_type == "review-code":
+        return (
+            "- When the Spec neither requires nor forbids behaviour you see, do not infer a "
+            "promise from code: report it as a `spec-gap` finding whose basis is the passage that "
+            "would have to settle it.\n"
+        )
+    if task_type == "understand":
+        return (
+            "- When the Spec does not state a promise the goal needs, do not infer it from code: "
+            "report it as a Spec gap in your assessment and end `ok`.\n"
+        )
     return (
         "- When the Spec does not state a promise you need, do not infer it from code: return "
         "`blocked` and describe the missing promise.\n"

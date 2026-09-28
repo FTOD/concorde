@@ -354,7 +354,8 @@ the canonical JSON of `{"modules": [...]}`, one item per bound Module in sorted 
 `concorde grant --root <worktree> --modules <id>[,<id>...] --type <task type>` loads the
 repository at the given root, computes the grant and prints the common command-line envelope with
 `tool: "grant"`, `status` `success` with the grant value as `result`, or `invalid` with the
-failure's [error record](errors.md) as `error`. The exit code is 0 for `success` and 1 otherwise.
+failure's [error record](errors.md) as `error`. The exit code is 0 for `success`, 1 for `invalid`
+and 3 for `failed`, the status of a command line that could not run, as for `spec-validation`.
 
 ## Validation result {#validation-result}
 
@@ -365,10 +366,10 @@ validate_repository(root, target_id=None, package_root=None, *, registry_bytes=N
 
 `concorde spec-validation [target]` prints the same result as JSON. The result has
 `tool: "spec-validation"`, `target` (the requested Module or `.`), `status` (`success` or
-`invalid`), `artifacts` (the assessed Spec member paths and the project glossary), `findings` and
-`result`. A target must name a registered Module, otherwise the call fails with `unknown_target`;
-it does not narrow the run, which checks the whole project and reports every finding whatever the
-target.
+`invalid`, or `failed` when the command could not do its work), `artifacts` (the assessed Spec
+member paths and the project glossary), `findings` and `result`. A target must name a registered
+Module, otherwise the call fails with `unknown_target`; it does not narrow the run, which checks the
+whole project and reports every finding whatever the target.
 
 A finding has `rule_id`, `severity` (`error` or `warning`), `source` (a project-relative path),
 `message` and `remediation`, and optionally `line`, `column` and `subject_id` (the node identity
@@ -394,7 +395,8 @@ The command-line envelope is canonical JSON with `schema_version: 3`, the fields
 `null` when the command did its work, otherwise the [error record](errors.md) of its failure,
 including a malformed command line (`invalid_input`) and an unexpected failure
 (`unexpected_error`). Findings are sorted by rule, source, line, column and message, and artifacts
-are sorted. The exit code is 0 for `success` and 1 for `invalid`.
+are sorted. The exit code follows the status, as for every command that prints this envelope: 0
+for `success`, `proposal` and `unchanged`, 1 for `invalid`, 2 for `conflict` and 3 for `failed`.
 
 
 ## Registry command {#registry-command}

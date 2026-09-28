@@ -24,6 +24,7 @@ from concorde.harness.workers import (
     WORKER_RESULT_SCHEMA,
     WorkerRequest,
     run_worker,
+    spec_rule,
 )
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
@@ -299,6 +300,31 @@ class SettingsTests(unittest.TestCase):
             "Edit|Write|MultiEdit|NotebookEdit",
             settings["hooks"]["PreToolUse"][0]["matcher"],
         )
+
+
+class SpecRuleTests(unittest.TestCase):
+    """The brief's rule about a promise the Spec does not state follows the task type."""
+
+    def test_a_code_reviewer_reports_a_spec_gap_finding(self):
+        rule = spec_rule("review-code")
+        self.assertIn("`spec-gap` finding", rule)
+        self.assertNotIn("`blocked`", rule)
+
+    def test_an_understand_worker_reports_a_spec_gap_and_ends_ok(self):
+        rule = spec_rule("understand")
+        self.assertIn("Spec gap", rule)
+        self.assertIn("end `ok`", rule)
+        self.assertNotIn("`blocked`", rule)
+
+    def test_a_code_to_spec_worker_describes_the_code(self):
+        self.assertIn("Describing the code you read", spec_rule("code-to-spec"))
+
+    def test_other_workers_return_blocked(self):
+        for task_type in ("specify", "implement", "test", "review-spec"):
+            with self.subTest(task_type=task_type):
+                rule = spec_rule(task_type)
+                self.assertIn("do not infer it from code", rule)
+                self.assertIn("return `blocked`", rule)
 
 
 class WorkerRunTests(unittest.TestCase):
