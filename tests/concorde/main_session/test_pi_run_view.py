@@ -620,5 +620,55 @@ class ProjectTermsTests(unittest.TestCase):
         self.assertIsNone(self.terms())
 
 
+OWNED_PROBE = """
+import { ownedWork } from %(source)s;
+console.log(JSON.stringify(ownedWork(%(followed)s, "session-file")));
+"""
+
+
+@unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_runs.ts")
+class OwnedWorkTests(unittest.TestCase):
+    @verifies("scenario.main-session.pi-owned-work")
+    def test_only_the_sessions_own_unfinished_work_is_drained(self):
+        followed = [
+            {"id": "r-mine", "owned": True, "finished": False},
+            {"id": "r-mine-done", "owned": True, "finished": True},
+            {"id": "r-other-session", "owned": False, "finished": False},
+            {"id": "r-by-bash", "owned": False, "finished": False},
+            {"id": "t1/round-2", "owned": True, "finished": False},
+            {"id": "t2/round-1", "owned": False, "finished": False},
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            probe = Path(directory) / "owned.mts"
+            probe.write_text(
+                OWNED_PROBE
+                % {
+                    "source": json.dumps(SOURCE.as_posix()),
+                    "followed": json.dumps(followed),
+                }
+            )
+            completed = subprocess.run(
+                ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual(
+            [
+                {"id": "r-mine", "sessionId": "session-file"},
+                {"id": "t1/round-2", "sessionId": "session-file"},
+            ],
+            json.loads(completed.stdout),
+        )
+        # The extension feeds every followed run and round through this rule, marking as owned
+        # only what its own tools started.
+        extension = (SOURCE.parent / "pi_extension.ts").read_text()
+        self.assertIn("listActiveWork: () =>\n        ownedWork(", extension)
+        self.assertIn("track(operation, shown.finished, true);", extension)
+        self.assertIn("owned: true,", extension)
+
+
 if __name__ == "__main__":
     unittest.main()

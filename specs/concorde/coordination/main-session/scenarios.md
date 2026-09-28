@@ -28,6 +28,14 @@ Situations the [main-session guidance](module.md) prepares the
 - AND a run started after the session started by a command run with bash or by another session, even one that already ended, is shown and reported the same way
 - BUT a run that had already ended before the session started is not reported, and a run whose runner `concorde_run` is still starting is left to that tool
 
+### scenario.main-session.pi-owned-work — A `pi -p` session waits only for its own runs
+
+- GIVEN a pi main session with the run view that started one run with `concorde_run` and one round with `concorde_task_session`, while another session's run and a run started with bash are running
+- WHEN pi-subagents asks the run view for the session's background work, as `bg_wait` and `pi -p` do before the session ends
+- THEN it lists the unfinished run and round the session started with its tools
+- AND it lists neither the other session's run nor the run started with bash, which the view still shows and reports
+- AND a finished run of the session is no longer listed
+
 ### scenario.main-session.project-terms — Every session starts with the project's terms
 
 - GIVEN a project whose root Module declares a glossary that can be read

@@ -180,6 +180,15 @@ It finds them in the primary worktree's [run store](../../glossary.json#concept.
 every task worktree's binding records its runs; a run that started and ended between two looks is
 followed too, and a run that had ended before the session started is not.
 
+### req.main-session.pi-owned-work — Only its own runs are a pi session's background work
+
+In pi, the run view SHALL report to pi-subagents as the session's background work only the
+unfinished runs and task-session rounds the session started with its `concorde_run` and
+`concorde_task_session` tools.
+
+The runs and rounds it only follows, started with bash or by another session, are still shown and
+reported, but neither `bg_wait` nor the drain of a `pi -p` session before it exits waits for them.
+
 ### req.main-session.pi-run-wake — pi reports every run's end once
 
 In pi, the run view SHALL give the main agent the result of every run it follows once, when the run

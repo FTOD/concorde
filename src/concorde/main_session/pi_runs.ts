@@ -204,6 +204,30 @@ export function discoveredRuns(
   );
 }
 
+/** One run or task-session round the view follows, as far as its background work goes. */
+export interface Followed {
+  id: string;
+  /** Started by this session's own `concorde_run` or `concorde_task_session` tool. */
+  owned: boolean;
+  finished: boolean;
+}
+
+/**
+ * The background work this session owns, which pi-subagents' `bg_wait` and the auto-drain of a
+ * `pi -p` session wait for: the runs and task-session rounds the session started with its own tools
+ * that have not finished. A run or round it only follows, started with bash or by another session,
+ * is shown and reported but never its work, so a `pi -p` session never waits for another
+ * session's runs before it exits.
+ */
+export function ownedWork(
+  followed: Followed[],
+  sessionId: string,
+): { id: string; sessionId: string }[] {
+  return followed
+    .filter((entry) => entry.owned && !entry.finished)
+    .map((entry) => ({ id: entry.id, sessionId }));
+}
+
 /** The worker runs a run launched: same runner process, started after it; oldest first. */
 export function workersOf(root: string, operation: RunStatus): WorkerStatus[] {
   return (
