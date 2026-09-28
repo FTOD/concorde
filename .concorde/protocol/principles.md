@@ -72,7 +72,7 @@ names the Module that owns it.
 | --- | --- |
 | Module | One responsibility. The unit of ownership, of context and of task boundaries |
 | Document | A Markdown reading file paired with its JSON metadata; the unit a Module owns |
-| Concept | A named meaning a reader must understand; its title is a term, declared in the glossary |
+| Concept | A named meaning a reader would get wrong without its definition, shared by more than one Module; its title is a term, declared in the glossary |
 | Realization | A binding of implementation files to the Module |
 | Requirement | One Module-wide `SHALL` obligation |
 | Scenario | One concrete situation in `GIVEN`/`WHEN`/`THEN` steps |
@@ -289,9 +289,9 @@ obligations are not diluted into prose.
 
 ## concept
 
-**What it is.** One named meaning a reader must understand: a domain word, a record, a boundary
-actor, an external standard, a participant in a collaboration. Its title is the **term** the
-specification uses for it.
+**What it is.** One named meaning a reader would get wrong without its definition, shared by more
+than one Module: a domain word, a boundary actor, an external standard, a participant in a
+collaboration. Its title is the **term** the specification uses for it.
 
 **Understanding.** Meaning is what crosses Module boundaries. A concept gives a word one owner and
 one canonical sentence, and the whole project shares one list of them, so a reader finds one
@@ -318,6 +318,19 @@ impact of changing a definition computable.
 
 The entry also declares the relations whose source is the concept: `narrows`, `supersedes`,
 `contrasts` and `relates`; see [Relations](relations.md#meaning).
+
+**Which words are concepts.** A word earns a glossary entry only when both hold:
+
+- **It is not common sense.** Its meaning in the project is narrower than, or different from,
+  ordinary usage, so a reader who takes the word in its ordinary sense would misread it.
+- **It crosses a Module boundary.** A Module other than its owner uses it. The words of the Module
+  that declares the glossary are the project's core terms and are exempt from this condition.
+
+Any other word is written in its ordinary sense, or, when the owner needs it in a narrower one,
+explained in the owner's own document where it is first used. The name of an operation, a command,
+a rule or a component is not a concept, and neither is a record whose shape a contract already
+gives, unless other Modules reason about it. `CHK.concept.local` reports a concept no other Module
+uses; whether a word is common sense no check decides.
 
 **Constraints.** A concept MUST NOT bind implementation and MUST NOT stand for another Module; a
 collaboration with another Module is a `uses` or `contains` relation, and a naming collision with
@@ -1509,6 +1522,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.node.meaning` | A realization's `meaning` is a local `#anchor` resolving to nonempty prose in the same document; a concept's `explanation` names a `module` document its owner owns and an anchor there resolving to nonempty prose. | error |
 | `CHK.node.explained` | An anchor group's prose is not empty and not only links, headings or fences. | warning |
 | `CHK.concept.definition` | Each concept's `definition` is one nonempty sentence. | error |
+| `CHK.concept.local` | A concept not owned by the Module that declares the glossary is used by another Module: a document another Module owns links it, another Module's `relies_on` or `relates` names it, or a concept another Module owns links or relates to it. | warning |
 | `CHK.concept.retired` | `retired`, when present, has a nonempty `reason`; only a retired concept is the source of `supersedes`. | error |
 | `CHK.requirement.statement` | The first paragraph is one sentence containing `SHALL` or `SHALL NOT` exactly once; the section has no nested heading. | error |
 | `CHK.scenario.steps` | Every list item is a step; the grammar of [Format](format.md) holds. | error |
@@ -1601,6 +1615,7 @@ These checks are weaker than the obligations they serve:
 | --- | --- |
 | `CHK.relies-on.linked` | That `relies_on` lists a relied-upon promise the explanation never links to. |
 | `CHK.term.unlinked` | That a term is linked where it is first used, or that a word matching a title is used in the term's sense; an ordinary word spelled like a one-word title in the same letter case is reported too, and linking or rephrasing it is the answer. |
+| `CHK.concept.local` | That a concept's meaning departs from ordinary usage; a shared concept that is common sense is not reported, and a concept only its owner uses is reported however specific it is. |
 | `CHK.relation.meaning` | That a parent's or consumer's explanation of a collaboration is adequate. |
 | `CHK.node.explained` | That prose explains its node; it detects empty regions only. |
 | `CHK.contrasts.required` | Collisions that normalization misses. Unrelated same-named nodes also trigger it; declaring the `contrasts` with its reason is then the correct answer, not an escape. |

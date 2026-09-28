@@ -35,7 +35,12 @@ common format mistakes and writing judgments; the complete guidelines follow.
   "owner": "<the owning Module>", "definition": "<one sentence>", "explanation": "<module.md path of
   the owner>#<anchor>"}`, kept sorted by `id`, with an anchor `<a id="<anchor>"></a>` before the
   prose in that document that explains it. Titles are unique in the project: before adding a
-  concept, look for an existing term with that meaning and use it. A concept's `narrows`,
+  concept, look for an existing term with that meaning and use it. Add a concept only for a word
+  that is not common sense (its meaning here is narrower than or different from ordinary usage)
+  and that a Module other than its owner uses; the root Module's own terms are exempt from the
+  second condition. Explain any other word in its owner's document where it is first used, or use
+  it in its ordinary sense; a name of an Operation, a command, a rule or a component is not a
+  concept, nor is an output record no other Module reasons about. A concept's `narrows`,
   `supersedes`, `contrasts` and `relates` are fields of its entry. Change only entries your bound
   Modules own.
 - **A term link** is how a document uses a term: `[text](<relative path to the glossary>#concept.<name>)`.

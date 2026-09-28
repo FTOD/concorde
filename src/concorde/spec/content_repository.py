@@ -75,6 +75,7 @@ WARNING_CHECKS = frozenset(
         "CHK.contains.root",
         "CHK.includes.redundant",
         "CHK.term.unlinked",
+        "CHK.concept.local",
     }
 )
 

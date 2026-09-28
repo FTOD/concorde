@@ -66,6 +66,11 @@ REMEDIATION = {
         "Link the term where the document first uses it, or rephrase a word that only looks "
         "like the term."
     ),
+    "CHK.concept.local": (
+        "Remove the glossary entry and explain the word in its owner's own document where it is "
+        "first used, or move the entry to the Module that declares the glossary when it is a core "
+        "term."
+    ),
 }
 
 
@@ -343,6 +348,52 @@ class Checks:
                     line=line,
                     subject=concept.id,
                 )
+        self.local_concepts()
+
+    def local_concepts(self) -> None:
+        """CHK.concept.local: a concept the glossary's declaring Module does not own is used by
+        some Module other than its owner, through a term link in reading, a `relies_on`, a
+        `relates`, or a link or relation of a concept that other Module owns."""
+        repository = self.repository
+        declaring = {
+            module.id
+            for module in repository.declarations.values()
+            if module.glossary == repository.glossary_path
+        }
+        users: dict[str, set[str]] = {}
+        for item in repository.mentions:
+            users.setdefault(item["concept"], set()).add(item["owner"])
+        for module in repository.declarations.values():
+            for kind in ("contains", "uses"):
+                for item in module.relations(kind):
+                    for identity in item.get("relies_on", ()):
+                        users.setdefault(identity, set()).add(module.id)
+        for relation in repository.metadata_relations:
+            users.setdefault(str(relation.get("target", "")), set()).add(
+                relation["owner"]
+            )
+        for concept in repository.concept_nodes.values():
+            reached = (
+                set(concept.mentions)
+                | set(concept.narrows)
+                | ({concept.supersedes} if concept.supersedes else set())
+                | {str(item.get("target")) for item in concept.contrasts}
+                | {str(item.get("target")) for item in concept.relates}
+            )
+            for identity in reached:
+                users.setdefault(identity, set()).add(concept.owner)
+        for concept in sorted(repository.concept_nodes.values(), key=lambda c: c.id):
+            if concept.owner in declaring or users.get(concept.id, set()) - {
+                concept.owner
+            }:
+                continue
+            self.add(
+                "CHK.concept.local",
+                repository.glossary_path,
+                f"concept {concept.id} ({concept.title!r}) is used by no Module other than its "
+                f"owner {concept.owner}",
+                subject=concept.id,
+            )
 
     def ancestors(self, module_id: str) -> set[str]:
         result, current = set(), self.repository.modules[module_id].parent

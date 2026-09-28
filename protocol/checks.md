@@ -21,6 +21,7 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.node.meaning` | A realization's `meaning` is a local `#anchor` resolving to nonempty prose in the same document; a concept's `explanation` names a `module` document its owner owns and an anchor there resolving to nonempty prose. | error |
 | `CHK.node.explained` | An anchor group's prose is not empty and not only links, headings or fences. | warning |
 | `CHK.concept.definition` | Each concept's `definition` is one nonempty sentence. | error |
+| `CHK.concept.local` | A concept not owned by the Module that declares the glossary is used by another Module: a document another Module owns links it, another Module's `relies_on` or `relates` names it, or a concept another Module owns links or relates to it. | warning |
 | `CHK.concept.retired` | `retired`, when present, has a nonempty `reason`; only a retired concept is the source of `supersedes`. | error |
 | `CHK.requirement.statement` | The first paragraph is one sentence containing `SHALL` or `SHALL NOT` exactly once; the section has no nested heading. | error |
 | `CHK.scenario.steps` | Every list item is a step; the grammar of [Format](format.md) holds. | error |
@@ -113,6 +114,7 @@ These checks are weaker than the obligations they serve:
 | --- | --- |
 | `CHK.relies-on.linked` | That `relies_on` lists a relied-upon promise the explanation never links to. |
 | `CHK.term.unlinked` | That a term is linked where it is first used, or that a word matching a title is used in the term's sense; an ordinary word spelled like a one-word title in the same letter case is reported too, and linking or rephrasing it is the answer. |
+| `CHK.concept.local` | That a concept's meaning departs from ordinary usage; a shared concept that is common sense is not reported, and a concept only its owner uses is reported however specific it is. |
 | `CHK.relation.meaning` | That a parent's or consumer's explanation of a collaboration is adequate. |
 | `CHK.node.explained` | That prose explains its node; it detects empty regions only. |
 | `CHK.contrasts.required` | Collisions that normalization misses. Unrelated same-named nodes also trigger it; declaring the `contrasts` with its reason is then the correct answer, not an escape. |

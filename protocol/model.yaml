@@ -105,6 +105,7 @@ node_types:
       - CHK.node.meaning
       - CHK.node.explained
       - CHK.concept.definition
+      - CHK.concept.local
       - CHK.concept.retired
       - CHK.contrasts.required
       - CHK.glossary.declared

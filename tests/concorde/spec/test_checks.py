@@ -716,6 +716,50 @@ class CheckTests(unittest.TestCase):
         )
         self.assertIn("CHK.node.title", self.rules())
 
+    @verifies("scenario.spec.concept-local")
+    def test_a_concept_only_its_owner_uses_is_a_warning(self):
+        upsert_concepts(
+            self.root,
+            self.entry("provider"),
+            [
+                {
+                    "id": "concept.provider.shelf",
+                    "title": "Shelf",
+                    "owner": "module.provider",
+                    "definition": "The part of the store that holds one kind of thing.",
+                    "anchor": "realization.provider.store",
+                }
+            ],
+        )
+        upsert_concepts(
+            self.root,
+            self.entry("app"),
+            [
+                {
+                    "id": "concept.app.catalogue",
+                    "title": "Catalogue",
+                    "owner": "module.app",
+                    "definition": "Every thing the app can show.",
+                    "anchor": "contains-module-provider",
+                }
+            ],
+        )
+        # Thing is linked by the consumer; the root's own Catalogue is a core term; Shelf is
+        # used by no other Module.
+        findings = self.project.findings("CHK.concept.local")
+        self.assertEqual(
+            [("warning", "specs/glossary.json", "concept.provider.shelf")],
+            [(f.severity, f.source, f.subject_id) for f in findings],
+        )
+        self.assertIn("module.provider", findings[0].message)
+        self.assertEqual("success", self.project.validate().status)
+        # A concept another Module owns relating to it settles the warning.
+        self.glossary(
+            "concept.app.catalogue",
+            relates=[{"verb": "is sorted by", "target": "concept.provider.shelf"}],
+        )
+        self.assertEqual([], self.project.findings("CHK.concept.local"))
+
     @verifies("scenario.spec.participation")
     def test_contract_participation(self):
         contract = {

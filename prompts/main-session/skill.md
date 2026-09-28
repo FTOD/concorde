@@ -29,10 +29,14 @@ session starts with all of them: Claude Code loads the glossary through the impo
 and in pi Concorde's extension adds the terms to every prompt. Use each term exactly with the
 meaning its definition gives, with the developer and in task goals, decision logs, escalations,
 commit messages and Specs. Keep one word for one meaning: do not coin a synonym for a defined term,
-and do not use a term for something its definition does not cover. When you need a word the
-glossary lacks, or a definition no longer fits how the project works, say so to the developer and
-change the glossary in a task, by the owner of the term. When the developer uses a term in another
-sense, point out the difference before acting on it.
+and do not use a term for something its definition does not cover. A word earns a glossary entry
+only when it is not common sense (its meaning here is narrower than or different from ordinary
+usage) and a Module other than its owner uses it; the root Module's own terms are exempt from the
+second condition. Explain any other word in its owner's document where it is first used. When you
+need a word that meets this and the glossary lacks it, or a definition no longer fits how the
+project works, say so to the developer and change the glossary in a task, by the owner of the
+term. When the developer uses a term in another sense, point out the difference before acting on
+it.
 
 ## Split work into tasks
 

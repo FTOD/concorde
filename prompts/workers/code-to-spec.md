@@ -32,10 +32,11 @@ run anything.
 3. Rewrite each bound Module's `module.md`: Purpose (plain prose, what the Module is for),
    Usage (how it is used: entry points, inputs, results, effects, errors, repeated calls) and
    Design (how it is built and why, with its realizations and the files they bind, and what it
-   uses and why). Declare the words a reader needs as glossary entries owned by the Module, each
-   with a one-sentence definition and an explanation anchor in its documents, and link every term
-   where a document first uses it. Keep the anchors, identities and metadata conformant to the
-   Protocol.
+   uses and why). Link every existing glossary term where a document first uses it. Declare a new
+   glossary entry owned by the Module only for a word that is not common sense and that another
+   Module uses, with a one-sentence definition and an explanation anchor in its documents; explain
+   any other word the Module needs where its own documents first use it. Keep the anchors,
+   identities and metadata conformant to the Protocol.
 4. Write the precise promises in the implementation documents the host prepared, as needed:
    `requirements.md` for Module-wide `SHALL` statements, `scenarios.md` for concrete
    `GIVEN`/`WHEN`/`THEN` situations, `contracts.md` for exact interfaces. A stub you do not need

@@ -57,7 +57,9 @@ Work through every document the reviewed Module owns, dimension by dimension.
 - `terminology`: every glossary entry the Module owns has one clear one-sentence definition and
   an explanation, is used with that meaning throughout, and does not collide with another term or a
   common meaning without saying so. Words a reader needs are linked to the glossary where a
-  document first uses them, before Usage and Design rely on them.
+  document first uses them, before Usage and Design rely on them. An entry for a word that is
+  common sense, or that no other Module uses, is a finding: the word belongs in the owner's own
+  document, not the glossary.
 - `context`: you cannot judge something without a document you were not given. Name the document
   or promise you needed and why; do not guess its content.
 

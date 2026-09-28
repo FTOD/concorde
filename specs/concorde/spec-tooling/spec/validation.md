@@ -31,9 +31,9 @@ registry mirror covers every field of a Module's `module` block, its title inclu
 A finding names the rule that failed, for example `CHK.context.reconciled`, its severity, the file
 it concerns and, where known, a line, the node identity involved and a remediation. An error means
 the Specs are not structurally conformant; the result status is `invalid`. A warning is reported
-and does not change the status. `CHK.contains.root`, `CHK.node.explained`, `CHK.term.unlinked` and
-`CHK.includes.redundant` are the Protocol's warnings; Concorde adds one, the coverage warning
-`CONCORDE-COVERAGE-001`.
+and does not change the status. `CHK.contains.root`, `CHK.node.explained`, `CHK.term.unlinked`,
+`CHK.concept.local` and `CHK.includes.redundant` are the Protocol's warnings; Concorde adds one, the
+coverage warning `CONCORDE-COVERAGE-001`.
 
 Validation reports every finding it can establish in one run. When a document cannot be read at all,
 for example because its metadata is not valid JSON, the checks that need it are skipped and the

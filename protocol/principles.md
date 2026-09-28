@@ -72,7 +72,7 @@ names the Module that owns it.
 | --- | --- |
 | Module | One responsibility. The unit of ownership, of context and of task boundaries |
 | Document | A Markdown reading file paired with its JSON metadata; the unit a Module owns |
-| Concept | A named meaning a reader must understand; its title is a term, declared in the glossary |
+| Concept | A named meaning a reader would get wrong without its definition, shared by more than one Module; its title is a term, declared in the glossary |
 | Realization | A binding of implementation files to the Module |
 | Requirement | One Module-wide `SHALL` obligation |
 | Scenario | One concrete situation in `GIVEN`/`WHEN`/`THEN` steps |

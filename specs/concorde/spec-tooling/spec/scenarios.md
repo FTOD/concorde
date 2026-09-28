@@ -145,6 +145,14 @@ to it.
 - THEN it reports a `CHK.term.unlinked` warning naming the term, the line and the link to write
 - BUT a Module's title, a shorter title inside a longer one, and a one-word title as the first word of a sentence or table cell are no use of a term
 
+### scenario.spec.concept-local — A concept only its owner uses
+
+- GIVEN a glossary entry that the Module declaring the glossary does not own
+- AND no other Module links it in reading, names it in `relies_on` or a `relates`, or reaches it from a concept it owns
+- WHEN the validator runs
+- THEN it reports a `CHK.concept.local` warning naming the concept and its owner
+- BUT a concept the declaring Module owns is never reported, and one use by any other Module settles the warning
+
 ### scenario.spec.glossary-invalid — A malformed glossary
 
 - GIVEN a glossary entry without an owner or with an unknown field, two concepts whose titles normalize equal, entries not sorted by identity, a glossary declared by a Module that has a parent or by two Modules, or a concept record left in document metadata

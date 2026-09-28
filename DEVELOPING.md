@@ -9,8 +9,12 @@ sources. Specs and their paired metadata use English.
 Every term of this project is defined once, in `specs/concorde/glossary.json`. Use each term
 exactly as its entry defines it, when you talk with the developer and in task goals, decision logs,
 escalations, commit messages, Specs and code; never coin a synonym for a defined term or use one in
-another sense. When a word you need is missing, or a definition no longer fits, say so and change
-the glossary in a task, by the Module that owns the term. When the developer uses a term in another
+another sense. A word earns a glossary entry only when it is not common sense (its meaning here is
+narrower than or different from ordinary usage) and a Module other than its owner uses it; the root
+Module's own terms are exempt from the second condition, and `CHK.concept.local` reports an entry
+no other Module uses. Explain any other word in its owner's document where it is first used. When a
+word you need meets this and is missing, or a definition no longer fits, say so and change the
+glossary in a task, by the Module that owns the term. When the developer uses a term in another
 sense, point out the difference before acting on it.
 
 ## How work is organized
