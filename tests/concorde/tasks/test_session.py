@@ -64,6 +64,20 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual([started], store.load_task(self.root, "t1")["sessions"])
 
     @verifies("scenario.task-session.start")
+    def test_a_coloured_start_line_is_recognised(self):
+        # Claude Code 2.1.283 colours the id and adds dimmed help lines.
+        claude = FakeClaude(
+            stdout="backgrounded \u00b7 \x1b[36me3b90936\x1b[39m \u00b7 task-t1\n"
+            "\x1b[2m  claude agents             list sessions\x1b[22m\n"
+            "\x1b[2m  claude attach e3b90936    open in this terminal\x1b[22m\n"
+        )
+        started = session.start(
+            self.root, "t1", "m", run=claude, home=self.project.home
+        )
+        self.assertEqual("e3b90936", started["id"])
+        self.assertEqual([started], store.load_task(self.root, "t1")["sessions"])
+
+    @verifies("scenario.task-session.start")
     def test_a_session_claude_code_did_not_start_is_refused(self):
         claude = FakeClaude(
             returncode=1, stdout="Workspace not trusted. Run `claude` in ... once."

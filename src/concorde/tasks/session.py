@@ -42,6 +42,8 @@ CACHES = (".cache", ".npm")
 # Every host: the sandbox's proxy otherwise admits only hosts a command names.
 ALL_HOSTS = ("*",)
 STARTED = re.compile(r"backgrounded\s+·\s+(?P<id>[0-9A-Za-z-]+)\s+·")
+# The terminal escapes (colour, dimming) Claude Code puts around parts of that line.
+ESCAPES = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 
 def session_name(task_id: str) -> str:
@@ -221,8 +223,8 @@ def start(
             "session_failed",
             f"{shown} could not be started in {worktree}: {error}",
         ) from error
-    output = f"{launched.stdout}\n{launched.stderr}".strip()
-    found = STARTED.search(launched.stdout or "")
+    output = ESCAPES.sub("", f"{launched.stdout}\n{launched.stderr}").strip()
+    found = STARTED.search(ESCAPES.sub("", launched.stdout or ""))
     if launched.returncode != 0 or found is None:
         raise store.TaskError(
             "session_failed",
