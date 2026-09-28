@@ -212,8 +212,11 @@ asks for that task. No worker is launched and no run is recorded.
 **[Questions without a task](../../glossary.json#concept.questions-without-a-task).** The guidance
 tells the main agent that `understand`, `survey`, `spec_review`, `spec_panel` and `code_review`
 (with `--base`) also run [unbound](../../glossary.json#concept.unbound-run), in a worktree without a
-workspace binding such as the primary worktree, on the Modules `--modules` names; their result has
-`workspace` null, an `--input` of such a run must be unbound too, and they change no
+workspace binding such as the primary worktree, on the Modules `--modules` names. Such a run works
+on an [unbound checkout](../../glossary.json#concept.unbound-checkout) of that worktree's `HEAD`, so
+a task merged there meanwhile does not disturb it and uncommitted changes are not examined; its
+result has `workspace` null and names the examined commit as `commit`, an `--input` of such a run
+must be unbound too, and they change no
 [Spec](../../glossary.json#concept.spec) or code, since an unbound run launches only reading
 workers. It uses them for a question or a review that does not justify a task, such as understanding
 a Module before a change is agreed. In pi `concorde_run` takes the task as optional for them.

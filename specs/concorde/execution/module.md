@@ -99,11 +99,26 @@ so a run that only reads the workspace leaves it untouched.
 
 **[Unbound runs](../glossary.json#concept.unbound-run).** An Operation whose catalog entry allows it
 may also run **unbound**, in a worktree without a binding such as the primary worktree:
-`understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`). It works on
-that worktree with the Modules `--modules` names, records `workspace` null, admits only unbound
-inputs, takes no lock, having no workspace to lock, and may launch only reading workers, so it
-changes no [Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution
-command is refused unbound with `binding_required`.
+`understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`). It works with
+the Modules `--modules` names, records `workspace` null, admits only unbound inputs, takes no lock,
+having no workspace to lock, and may launch only reading workers, so it changes no
+[Spec](../glossary.json#concept.spec) or code. Every other Operation and every execution command is
+refused unbound with `binding_required`.
+
+<a id="concept.unbound-checkout"></a>
+
+An unbound run never works in the worktree it starts in. The runner checks out that worktree's
+`HEAD` detached in a private temporary directory, the
+**[unbound checkout](../glossary.json#concept.unbound-checkout)**, and the run's steps and workers
+read, and Workers audits, that checkout; the result's `commit` names the commit it examined. Main sessions
+merge tasks into the primary worktree while such a run lasts, and a merge there can therefore
+neither change what the run reads nor make a worker's audit fail. What the run examines is the
+commit, not uncommitted changes of the worktree it started in. The run is still recorded in that
+worktree's run store and uses its [worker model configuration](../glossary.json#concept.worker-model-configuration);
+the environments the project configuration names as runtime paths and Git ignores, such as `.venv`
+and `node_modules`, are linked from it into the checkout, so the checks a review runs there find
+them, and submodules it has checked out are checked out in the checkout too. However the run ends,
+the runner removes the checkout before it writes the result.
 
 <a id="concept.detached-run"></a><a id="concept.run-progress-file"></a>
 
@@ -123,7 +138,8 @@ runner.
 run's directory with its [run progress file](../glossary.json#concept.run-progress-file) and
 result, the [run records](../glossary.json#concept.run-record) of the workers it launched, and
 [Workflows](workflows/module.md)' own records under `runs/workflows/`. A bound run records in the
-directory its binding names; an unbound run in its own worktree's `.concorde`. The store is ignored
+directory its binding names; an unbound run in the `.concorde` of the worktree it started in, never
+in its checkout. The store is ignored
 by Git. Whoever prepared a workspace reads its runs there, by the workspace's name, to know what
 happened in it.
 
@@ -166,20 +182,38 @@ difference a caller sees is the result's `kind` and the error link's level, `com
 as [Check execution](checks/module.md): a service is called by a run's step and answers it, while an
 execution command is itself the run, with a workspace, a lock and a recorded result.
 
+### Why an unbound run works in a checkout
+
+The primary worktree is where main sessions merge delivered tasks, and several may do so while an
+unbound review of it is still running. A run that read the primary worktree directly would see the
+Specs and the code it reads change under its workers, and Workers' audit, which compares `HEAD` and the index
+before and after each round, would report the merge as the worker's own write. Locking the primary
+worktree against merges for a review's whole life would stall every other session, and tolerating
+changes would make the audit meaningless. A checkout of one commit gives the run a fixed input that
+no other session touches, and naming that commit in the result tells the caller exactly what was
+examined. The checkout is Git's own linked worktree (`git worktree add --detach`), which shares the
+repository's objects, so it costs no clone and needs no copying code; it lives outside the project
+in a private temporary directory, and the runner removes it through Git again. What a commit never
+holds, the environments Git ignores and the checkouts of submodules, comes from the worktree the run
+started in: the environments linked, since the run only reads them, and each submodule checked out
+from its own repository at the commit the checkout records.
+
 ### The runner
 
 <a id="concept.execution-runner"></a><a id="realization.execution.runner"></a>
 
 The **Execution runner** runs one run per process. It parses the command line, reads the binding,
-takes the workspace lock for a bound run, checks the Modules and inputs, runs the definition's
-steps in their declared order until one stops the run, composes the run result, checks it against
+takes the workspace lock for a bound run or checks out the worktree's `HEAD` for an unbound one,
+checks the Modules and inputs, runs the definition's steps in their declared order until one stops
+the run, removes an unbound run's checkout, composes the run result, checks it against
 its contract and, when it is `ok`, the definition's output contract, and writes it while it still
 holds the lock, so that whoever sees the result never finds the workspace busy with that run. A
 refusal before the steps, a step that raises, a signal or an invalid result each still end in a
 written result with the runner's link on top. Its exact behaviour is in [How a run is executed](runner.md).
 
-The **Runner and run store** realization binds the binding reader, the run store, the run context
-and definitions that steps work with and the runner itself, with their tests; the runner finds an
+The **Runner and run store** realization binds the binding reader, the run store, the unbound
+checkout, the run context and definitions that steps work with and the runner itself, with their
+tests; the runner finds an
 execution command by name in the catalog of [Commands](commands/module.md). The `concorde` command
 belongs to [Distribution](../distribution/module.md), which hands `run`, the execution commands and
 `workflow` to this Module's parts.
@@ -194,8 +228,10 @@ execution: Execution {
   result: Run result
   lock: Workspace lock
   store: Run store
+  checkout: Unbound checkout
   runner -> binding: reads
   runner -> lock: holds for each bound run
+  runner -> checkout: works in for each unbound run
   runner -> result: writes
   store -> result: keeps
 }

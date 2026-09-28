@@ -81,6 +81,12 @@
     {
       "type": "relates",
       "source": "realization.execution.runner",
+      "verb": "works in for each unbound run",
+      "target": "concept.unbound-checkout"
+    },
+    {
+      "type": "relates",
+      "source": "realization.execution.runner",
       "verb": "writes",
       "target": "concept.run-result"
     },

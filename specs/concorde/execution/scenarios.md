@@ -32,10 +32,20 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 - GIVEN a primary worktree with `module.a`
 - WHEN the [main agent](../glossary.json#concept.main-agent) runs `concorde run spec_review --modules module.a` there
-- THEN the reviewer runs on the primary worktree, with the grant computed from its Specs
-- AND the result has `workspace` null and is saved under the primary worktree's `.concorde/runs/`
+- THEN the reviewer runs in an [unbound checkout](../glossary.json#concept.unbound-checkout) of the primary worktree's `HEAD`, with the grant computed from its Specs
+- AND the result has `workspace` null, names that `HEAD` as `commit` and is saved under the primary worktree's `.concorde/runs/`
 - AND a later [unbound run](../glossary.json#concept.unbound-run) may admit it with `--input`
 - BUT an `--input` naming a run of a workspace is refused with `input_not_admissible`
+
+### scenario.execution.unbound-checkout — A merge during an unbound run changes nothing it examines
+
+- GIVEN a primary worktree at commit `C` with an uncommitted change, a `.venv` Git ignores and a submodule it has checked out sparsely
+- WHEN an unbound `understand` run is started there and a main session commits a merge in the primary worktree while its worker works
+- THEN the run's steps and worker work in a detached checkout of `C` in a private temporary directory, reading `C`'s files without the uncommitted change, the primary worktree's `.venv` through a link, and the submodule with the same sparse patterns
+- AND the worker's audit of the checkout is clean, and its model is the one the primary worktree's [worker model configuration](../glossary.json#concept.worker-model-configuration) chooses
+- AND the result is `ok`, names `C` as `commit`, has `checkout` evidence and is saved in the primary worktree's run store
+- AND the checkout and its temporary directory are gone once the result is written, also when a step raised an error, and the primary worktree keeps its uncommitted change, its `.venv` and the merge
+- BUT in a worktree whose `HEAD` names no commit the run is refused with `checkout_unavailable`, reason `environment`, and leaves nothing behind
 
 ### scenario.execution.unbound-read-only — An unbound run never launches a writing worker
 

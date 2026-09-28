@@ -4,10 +4,11 @@ One runner executes both kinds of run definition in the worktree it is started i
 
 1. Parse the command line and look up the definition; only then create the run.
 2. Read the workspace binding of the worktree. A bound run takes the workspace lock and works on
-   the binding's Modules; an unbound run works on the worktree alone, for a definition that
-   allows it. Check ``--modules`` and ``--input``.
+   the binding's Modules; an unbound run, for a definition that allows it, works in a throwaway
+   detached checkout of the worktree's ``HEAD``. Check ``--modules`` and ``--input``.
 3. Execute the definition's steps in order.
-4. Compose and check the run result, write ``result.json``, release the lock, print the result.
+4. Remove an unbound run's checkout, compose and check the run result, write ``result.json``,
+   release the lock, print the result.
 
 ``--detach`` starts the same runner as a process of its own and announces the run at once.
 """
@@ -27,6 +28,7 @@ from pathlib import Path
 from .. import errors
 from ..spec.schema import ContractError, validate
 from . import binding as binding_file
+from .checkout import Checkout, open_checkout
 from .context import Continue, Provider, RunContext, Stop, component, evidence
 from .runs import (
     RESULT_SCHEMA,
@@ -92,7 +94,18 @@ REFUSALS = {
         "a binding copied from another worktree would bind the wrong workspace",
         ["remove the copied .concorde/workspace.json"],
     ),
+    "checkout_unavailable": (
+        "environment",
+        "an unbound run works only in a throwaway checkout of the commit it examines, which Git "
+        "could not create, and never falls back to working in the worktree it started in",
+        [
+            "repair what Git reports in the cause and run it again",
+            "run it in a bound workspace, such as a task worktree (concorde task open)",
+        ],
+    ),
 }
+# The component of the runner that refused, by refusal code; the run store otherwise.
+REFUSING = {"checkout_unavailable": "Execution (unbound checkout)"}
 INPUT_REFUSAL = (
     "input",
     "the Modules or inputs named on the command line are refused and only the caller can "
@@ -224,14 +237,31 @@ def _bound_modules(chosen: Provider, context: RunContext) -> list[str]:
     return kept
 
 
-def _resolve(chosen: Provider, context: RunContext, arguments) -> Stop | None:
-    """Step 2 after the lock: the Modules and inputs of a bound or an unbound run."""
-    if context.workspace is None and chosen.binding == "required":
+def _checkout(chosen: Provider, context: RunContext) -> Checkout:
+    """Admit an unbound run and move it into a throwaway checkout of its worktree's ``HEAD``."""
+    if chosen.binding == "required":
         raise RunError(
             "binding_required",
             f"{chosen.name} works only in a bound workspace, and {context.worktree} has no "
             f"workspace binding ({binding_file.BINDING})",
         )
+    checkout = open_checkout(context.worktree, context.run_id)
+    context.origin, context.worktree = context.worktree, checkout.path
+    context.commit = checkout.commit
+    context.evidence.append(
+        evidence(
+            "checkout",
+            checkout.commit,
+            f"the run works in {checkout.path}, a detached checkout of {checkout.commit}, the "
+            f"HEAD of {checkout.origin}, removed when the run ends",
+        )
+    )
+    context.evidence.extend(checkout.evidence)
+    return checkout
+
+
+def _resolve(chosen: Provider, context: RunContext, arguments) -> Stop | None:
+    """The Modules and inputs of a bound or an unbound run, once it is admitted."""
     if context.workspace is not None:
         context.modules = _named_modules(arguments) or _bound_modules(chosen, context)
     else:
@@ -249,7 +279,7 @@ def _refused(chosen: Provider, context: RunContext, refusal) -> Stop:
     actor = (
         "Execution (workspace binding)"
         if isinstance(refusal, binding_file.BindingError)
-        else "Execution (run store)"
+        else REFUSING.get(refusal.code, "Execution (run store)")
     )
     return context.fail(
         "failed",
@@ -319,6 +349,7 @@ def execute(
         kind=chosen.kind,
     )
     stop: Stop | None = None
+    checkout: Checkout | None = None
     _progress(context, phase="running", step=None)
     previous = {
         sig: signal.signal(sig, _cancel) for sig in (signal.SIGINT, signal.SIGTERM)
@@ -334,6 +365,11 @@ def execute(
                             records, bound["workspace"], f"{chosen.name} run {identity}"
                         )
                     )
+                else:
+                    checkout = _checkout(chosen, context)
+                    # However the runner leaves, the checkout does not outlive it.
+                    held.callback(checkout.close)
+                    _progress(context, step=None)
                 stop = _resolve(chosen, context, arguments)
             except (RunError, binding_file.BindingError) as refusal:
                 stop = _refused(chosen, context, refusal)
@@ -344,6 +380,8 @@ def execute(
         finally:
             for sig, handler in previous.items():
                 signal.signal(sig, handler)
+        if checkout is not None:
+            context.evidence.extend(checkout.close())
         envelope = _envelope(chosen, context, stop, started)
         # The result is written while the lock is still held, so whoever sees the result (a
         # workflow step waiting for it) never finds the workspace busy with this run.
@@ -401,6 +439,7 @@ def _progress(context: RunContext, **fields) -> None:
         name=context.name,
         workspace=context.workspace_name,
         worktree=context.worktree.as_posix(),
+        commit=context.commit,
         modules=context.modules,
         host_pid=os.getpid(),
         updated_at=now(),
@@ -472,6 +511,7 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
         "kind": chosen.kind,
         "name": chosen.name,
         "workspace": context.workspace_name,
+        "commit": context.commit,
         "modules": context.modules,
         "run_id": context.run_id,
         "status": status,

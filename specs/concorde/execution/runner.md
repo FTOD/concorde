@@ -22,7 +22,9 @@ concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--det
   `task-validation`, `delivery` and `scaffold`. `concorde run` naming an execution command is a
   command-line error that names the command to use instead.
 - The run works on the worktree the command starts in: the Git worktree containing the current
-  directory. A directory outside every Git worktree is a command-line error.
+  directory, or for an [unbound run](../glossary.json#concept.unbound-run) its
+  [unbound checkout](#unbound-checkout). A directory outside every Git worktree is a command-line
+  error.
 - `--modules` names the Modules the run works on. Without it a bound run works on the binding's
   Modules that the workspace still registers, and an
   [unbound run](../glossary.json#concept.unbound-run) on none. Every named
@@ -45,7 +47,8 @@ The runner reads `.concorde/workspace.json` at the root of the worktree it start
 
 - When the file is absent, the run is **unbound**: its records directory is that worktree's own
   `.concorde`, its workspace is null, it takes no lock, and it is admitted only when its
-  definition allows unbound runs; otherwise it is refused with `binding_required`.
+  definition allows unbound runs; otherwise it is refused with `binding_required`. An admitted
+  unbound run works in its [unbound checkout](#unbound-checkout).
 - When the file is present, it must satisfy the binding contract and name as `root` the worktree
   it lies in; otherwise the run is refused with `binding_unreadable`, `binding_invalid` or
   `binding_misplaced`, and its result is written in the worktree's own `.concorde`.
@@ -70,15 +73,16 @@ each worker launch's [run record](../glossary.json#concept.run-record) beside it
 | --- | --- | --- |
 | 1 | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity, the run's directory and its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
 | 2 | Refuse a binding that could not be read, breaks the binding contract or names another root | an unreadable, invalid or misplaced binding (`failed`) |
-| 3 | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock) | `workspace_busy` (`failed`) |
-| 4 | Admit the run: refuse an unbound run of a definition that needs a binding; settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `binding_required`, `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
+| 3 | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock); for an unbound run, refuse a definition that needs a binding, then create the [unbound checkout](#unbound-checkout) and work in it from here on | `workspace_busy`, `binding_required`, `checkout_unavailable` (`failed`) |
+| 4 | Admit the run: settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
 | 5 | Execute the definition's steps in order | a step stops the run with a status |
-| 6 | Compose the run result from the step outcomes and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
+| 6 | Remove an unbound run's checkout, then compose the run result from the step outcomes and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
 | 7 | Write `result.json`, mark the run progress file finished, release the lock, print the result and exit | — |
 
 - Each step returns either "continue", with any output and evidence it produced, or "stop", with a
   status, a summary and evidence. Steps of one run share the run context: the workspace binding, the
-  worktree, the records directory, the Modules, the admitted inputs, the output so far, a state the
+  worktree the run works in, for an unbound run also the worktree it started in and the commit it
+  examines, the records directory, the Modules, the admitted inputs, the output so far, a state the
   definition owns, and the run record of the latest worker launch. The runner never skips, repeats
   or reorders steps; any repetition, such as [resume rounds](../glossary.json#concept.resume-round),
   happens inside one step.
@@ -94,12 +98,54 @@ each worker launch's [run record](../glossary.json#concept.run-record) beside it
   runner learns each worker run's identity when the worker run starts, not when it returns.
 - Steps 6 and 7 run whatever happened before them. A refusal in steps 2 to 4 still writes and
   prints a result, with the refusal code as `refused` evidence and an error whose cause is the
-  refusal of the workspace binding or the run store with its message, such as the run holding the
-  lock of a busy workspace or the registered Modules for an unknown one.
+  refusal of the workspace binding, the unbound checkout or the run store with its message, such
+  as Git's output for a checkout it refused, the run holding the lock of a busy workspace or the
+  registered Modules for an unknown one.
 - The result is written before the lock is released, so a result always means a workspace free
   for its next run.
 - Whenever the status is not `ok`, the runner also writes the
   [error chain](../glossary.json#concept.error-chain), rendered as indented text, to standard error.
+
+## Unbound checkout
+
+An admitted [unbound run](../glossary.json#concept.unbound-run) works in its
+[unbound checkout](../glossary.json#concept.unbound-checkout), never in the worktree it started in,
+here called its origin:
+
+1. The runner resolves the origin's `HEAD` to a commit and creates a new private directory in the
+   system's temporary directory, named `concorde-unbound-…`, holding the checkout
+   `<directory>/<run-id>`, made with `git worktree add --detach` of that commit from the origin's
+   repository, with none of the repository's Git hooks run. Only Git's administrative files of the
+   repository change; no file of the origin and not its index.
+2. Each submodule the commit records that the origin has checked out, and whose repository holds
+   the recorded commit, is checked out in the checkout the same way, `git worktree add --detach` of
+   that commit from the submodule's repository, with the origin's sparse-checkout patterns when
+   the origin's checkout is sparse; `submodule` evidence names each. A submodule the origin has not
+   checked out, or that Git cannot check out, stays empty, as in a fresh clone, with
+   `submodule-absent` evidence naming why.
+3. Each relative path of the checked-out project configuration's `workers.runtime` (default
+   `.venv` and `node_modules`) that exists in the origin and that Git ignores is linked into the
+   checkout as a symbolic link to the origin's, with `environment` evidence; the run's checks and
+   workers only read it, the checks inside their read-only boundary. A runtime path Git does not
+   ignore is not linked, with `environment-not-linked` evidence, since the commit holds it.
+4. From here on the run context's worktree is the checkout: the Specs, the grant, the workers,
+   Workers' audit and the steps all work there. The run context keeps the origin, whose `.concorde`
+   remains the records directory and whose
+   [worker model configuration](../glossary.json#concept.worker-model-configuration) chooses the
+   workers' backends and models, and the commit, which the result names as `commit` and the run's
+   error link as `… (unbound, <origin> at <commit>)`. `checkout` evidence names the commit and the
+   checkout's path.
+5. Before the result is composed, however the steps ended, including a refusal, a raised error or
+   a cancellation, the runner removes the links, the submodule checkouts and the checkout with
+   `git worktree remove --force`, then the temporary directory. A removal Git refuses is done
+   directly, deleting the directory and pruning Git's worktree list, and reported with
+   `checkout-not-removed` evidence; it never changes the result's status. A runner killed outside
+   its control, by `SIGKILL`, leaves the directory to the system's temporary-file cleaning and its
+   worktree entry to Git's own pruning.
+
+When the origin's `HEAD` names no commit, or Git refuses the checkout, the run is refused at step 3
+with `checkout_unavailable`, whose cause is the `Execution (unbound checkout)` link with Git's
+output, and nothing is left behind; the runner never falls back to working in the origin.
 
 ## Detached runs
 
@@ -122,7 +168,8 @@ created, before each step and when the result is written:
 | Field | Content |
 | --- | --- |
 | `kind` | `operation` or `command` |
-| `run_id`, `name`, `workspace`, `worktree`, `modules` | the run's identity, definition, workspace (null when unbound), worktree and Modules |
+| `run_id`, `name`, `workspace`, `worktree`, `modules` | the run's identity, definition, workspace (null when unbound), the worktree it works in (an unbound run's checkout once it exists) and Modules |
+| `commit` | the commit an unbound run examines once its checkout exists; null otherwise |
 | `phase` | `running`, then `finished` once `result.json` is written |
 | `step` | the step running now, or null |
 | `status`, `summary` | null while running; the result's status and summary once finished |
@@ -136,7 +183,8 @@ A failed write never changes the run.
 When a run does not end `ok`, the result's `error` is the run's own link of the
 [error chain](../contracts.md#contract.concorde.error): the level `operation` for an Operation and
 `command` for an execution command, the actor `Operation <name> <run-id> (workspace <workspace>)`,
-`Command <name> <run-id> (workspace <workspace>)` or, unbound, `… (unbound, <worktree>)`, a code, a
+`Command <name> <run-id> (workspace <workspace>)` or, unbound, `… (unbound, <worktree> at <commit>)`,
+without ` at <commit>` when the run was refused before its checkout existed, a code, a
 detail naming the workspace, the Modules, the run, the paths and the messages concerned, the reason
 the run cannot handle the error, the options it offers with a recommendation, and as causes the
 errors it received, unchanged. A step that stops the run builds that link itself; the runner builds
@@ -144,7 +192,7 @@ it as follows.
 
 | Error | Code | Reason | Causes |
 | --- | --- | --- | --- |
-| Refusal before the steps began | `refused` | `decision` for `workspace_busy`; `scope` for `binding_required` and `specs_unloadable`; `environment` for `binding_unreadable`; `input` otherwise | the `component` link of `Execution (workspace binding)` or `Execution (run store)` with the refusal's code and message |
+| Refusal before the steps began | `refused` | `decision` for `workspace_busy`; `scope` for `binding_required` and `specs_unloadable`; `environment` for `binding_unreadable` and `checkout_unavailable`; `input` otherwise | the `component` link of `Execution (workspace binding)`, `Execution (unbound checkout)` or `Execution (run store)` with the refusal's code and message |
 | A step raised | `host_error` | `capability` | the exception's `component` link |
 | Cancelled | `cancelled` | `environment` | none |
 | Invalid result or output | `invalid_result` | `capability` | the error the run had, if any |

@@ -102,8 +102,9 @@ primary worktree and merges. For work split into several tasks, it starts a
 [task session](glossary.json#concept.task-session) per task with `concorde task session`, which does
 the same inside its task and reports back, so several tasks run at once. Before any change, a
 read-only Operation such as `understand` or a review may also run in the primary worktree itself, as
-an [unbound run](glossary.json#concept.unbound-run) that reads that worktree as it stands and
-changes nothing.
+an [unbound run](glossary.json#concept.unbound-run) that reads an
+[unbound checkout](glossary.json#concept.unbound-checkout) of that worktree's `HEAD` and changes
+nothing.
 
 The normal path moves from opening a task to work in its bound workspace, then back to the main
 agent for merge. Operations, validation and delivery run through Execution in the task worktree;

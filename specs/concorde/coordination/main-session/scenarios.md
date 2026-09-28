@@ -120,6 +120,7 @@ Situations the [main-session guidance](module.md) prepares the
 - GIVEN the rendered main-session guidance
 - WHEN a main agent needs to understand or review a Module without changing it
 - THEN it is told that `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` also run unbound, in a worktree without a [workspace binding](../../glossary.json#concept.workspace-binding) such as the primary worktree, with `workspace` null in their result
+- AND that such a run examines an [unbound checkout](../../glossary.json#concept.unbound-checkout) of that worktree's `HEAD`, not its uncommitted changes, and names that commit as `commit` in its result
 - AND that such a run changes no [Spec](../../glossary.json#concept.spec) or code, since it launches only reading workers
 - BUT every change still runs in a task, and an `--input` of an unbound run must be unbound too
 

@@ -80,6 +80,8 @@ def command(name: str, steps, **fields) -> Provider:
 
 # Task types whose workers may change files; an unbound run never launches one.
 WRITING_TASK_TYPES = ("specify", "implement", "code-to-spec")
+# The runtime paths of ``workers.runtime`` when the project configuration names none.
+DEFAULT_RUNTIME = (".venv", "node_modules")
 
 
 def component(
@@ -271,6 +273,7 @@ class RunContext:
     records: Path
     # The workspace binding, or None for an unbound run.
     workspace: dict | None
+    # The worktree the run works in: the bound workspace, or an unbound run's checkout.
     worktree: Path
     modules: list[str]
     run_id: str
@@ -288,11 +291,21 @@ class RunContext:
     # The worker ids the provider declares; the first is the default.
     workers: tuple[str, ...] = ("worker",)
     kind: str = "operation"
+    # The worktree an unbound run started in, once it works in its checkout; None otherwise.
+    origin: Path | None = None
+    # The commit an unbound run's checkout holds; None for a bound run.
+    commit: str | None = None
 
     @property
     def unbound(self) -> bool:
-        """Whether the run works without a workspace binding, on the worktree it started in."""
+        """Whether the run works without a workspace binding, on a checkout of the worktree it
+        started in."""
         return self.workspace is None
+
+    @property
+    def started_in(self) -> Path:
+        """The worktree the run started in, whose worker model configuration it uses."""
+        return self.origin or self.worktree
 
     @property
     def workspace_name(self) -> str | None:
@@ -355,9 +368,9 @@ class RunContext:
                 "failed",
                 "unbound_write",
                 f"A {task_type} worker needs a bound workspace.",
-                f"{self.name} ran in {self.worktree}, which has no workspace binding, and asked "
-                f"for a {task_type} worker, which may change files; an unbound run launches only "
-                "read-only workers",
+                f"{self.name} ran unbound in a checkout of {self.started_in}, which has no "
+                f"workspace binding, and asked for a {task_type} worker, which may change "
+                "files; an unbound run launches only read-only workers",
                 reason="scope",
                 explanation="changing Specs or code happens only in a bound workspace, which "
                 "this run does not have",
@@ -386,7 +399,7 @@ class RunContext:
         config = self.workers_config()
         runtime = tuple(
             Path(path) if os.path.isabs(path) else self.worktree / path
-            for path in config.get("runtime", [".venv", "node_modules"])
+            for path in config.get("runtime", DEFAULT_RUNTIME)
             if (Path(path) if os.path.isabs(path) else self.worktree / path).exists()
         ) + tuple(Path(path) for path in readable if Path(path).exists())
         interpreter = self.project_interpreter()
@@ -448,18 +461,18 @@ class RunContext:
     def worker_model(self, worker: str) -> tuple[str, dict]:
         """The backend of this Operation's worker ``worker`` — the one the worktree's
         configuration chooses, otherwise pi — and the model and level chosen for it there."""
-        chosen = worker_choice(load(self.worktree), self.name, worker)
+        chosen = worker_choice(load(self.started_in), self.name, worker)
         return chosen["backend"], chosen
 
     def model_failure(self, worker: str, error) -> Stop:
         """Stop ``failed``: the backend or the worker model configuration cannot be settled."""
-        path = config_path(self.worktree).as_posix()
+        path = config_path(self.started_in).as_posix()
         reason = HANDLING.get(error.code, ("input",))[0]
         return self.fail(
             "failed",
             "worker_model_unavailable",
             f"The {worker} worker could not be configured ({error.code}).",
-            f"the backend and model of the {worker} worker of {self.name} in {self.worktree} "
+            f"the backend and model of the {worker} worker of {self.name} in {self.started_in} "
             f"cannot be settled: {error.code}: {error} (configuration file {path})",
             reason=reason,
             explanation="an Operation runs a worker on the program the worktree's configuration "
@@ -481,7 +494,7 @@ class RunContext:
                     "install the program the worker runs on, or edit the backend of "
                     f"operations.{self.name}.workers.{worker} in {path}"
                 ),
-                f"inspect with concorde configure-workers --show --json in {self.worktree}; "
+                f"inspect with concorde configure-workers --show --json in {self.started_in}; "
                 "edit the JSON directly or use the terminal editor, then run "
                 "concorde configure-workers --check",
             ],
@@ -491,7 +504,8 @@ class RunContext:
     def actor(self) -> str:
         what = "Operation" if self.kind == "operation" else "Command"
         if self.unbound:
-            return f"{what} {self.name} {self.run_id} (unbound, {self.worktree})"
+            at = f" at {self.commit}" if self.commit else ""
+            return f"{what} {self.name} {self.run_id} (unbound, {self.started_in}{at})"
         return f"{what} {self.name} {self.run_id} (workspace {self.workspace_name})"
 
     def fail(

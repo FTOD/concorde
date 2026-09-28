@@ -34,7 +34,8 @@ writes the result when it ends. In a task worktree it reviews the
 defaults to the binding's Modules; each named Module is reviewed on its own from that worktree's
 Specs, so what gets judged is the branch's own change, committed or not. In a worktree without a
 binding, such as the primary worktree, it is an
-[unbound run](../../glossary.json#concept.unbound-run) that judges the Specs as they stand there.
+[unbound run](../../glossary.json#concept.unbound-run) that judges the Specs of that worktree's
+`HEAD`, read from its [unbound checkout](../../glossary.json#concept.unbound-checkout).
 Status is `ok` whenever every Module could be reviewed, `blocked`/`failed` only when the verdict is
 `incomplete` — still carrying every reviewed Module's findings.
 

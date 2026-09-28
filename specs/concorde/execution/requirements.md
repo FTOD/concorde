@@ -91,11 +91,28 @@ allows unbound runs.
 
 An unbound run SHALL NOT launch a worker whose grant would keep a writable path.
 
+### req.execution.unbound-checkout — An unbound run works in a checkout of HEAD
+
+The runner SHALL run every step of an admitted unbound run, and every worker it launches, in an
+[unbound checkout](../glossary.json#concept.unbound-checkout) of the commit at `HEAD` of the
+worktree the run started in, changing no file of that worktree outside its records directory and
+not its index.
+
+### req.execution.checkout-removed — The checkout does not outlive the run
+
+The runner SHALL remove an unbound run's checkout, whatever ended its steps, before it writes the
+run's result.
+
+### req.execution.commit-named — The result names the commit examined
+
+The result of an unbound run whose checkout was created SHALL name as `commit` the commit that
+checkout held.
+
 ### req.execution.records-directory — Runs are recorded where the binding says
 
 The runner SHALL write every run's directory and result under `runs/` of the binding's records
-directory, or of the worktree's own `.concorde` for an unbound run or a run whose binding it
-refused.
+directory, or of the `.concorde` of the worktree it started in for an unbound run or a run whose
+binding it refused.
 
 ### req.execution.inputs-same-workspace — Inputs come from the same workspace
 
