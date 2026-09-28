@@ -125,7 +125,7 @@ export async function materializeScoped(registry: ScopedRegistry) {
         title: "Glossary",
         sidebar_label: "Glossary",
         displayed_sidebar: "moduleDocumentsSidebar",
-        toc_max_heading_level: 3,
+        toc_max_heading_level: 2,
       }),
     );
   }
