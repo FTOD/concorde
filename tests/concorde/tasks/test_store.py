@@ -287,9 +287,10 @@ class TaskStoreTests(unittest.TestCase):
         self.assertIn("the no-ask survey split module.a", log)
         self.assert_contract(self.record())
 
-    @verifies("scenario.tasks.escalate")
+    @verifies("scenario.tasks.escalate-refused")
     def test_only_a_run_of_the_tasks_workspace_is_escalated(self):
         self.project.open_task("t1")
+        log = self.log()
         for run_id, workspace in (
             ("r-20260927T000000-understand-00000001", "t2"),
             ("r-20260927T000000-understand-00000002", None),
@@ -313,7 +314,26 @@ class TaskStoreTests(unittest.TestCase):
             self.assertIn(
                 f"a run of {workspace or 'no workspace'}", value["error"]["detail"]
             )
+        run_id = "r-20260927T000000-understand-00000003"
+        write_run(self.root, run_id, "t1", status="ok")
+        status, value = self.command(
+            "escalate",
+            "t1",
+            "--run",
+            run_id,
+            "--code",
+            "x",
+            "--detail",
+            "x",
+            "--reason",
+            "decision",
+            "--explanation",
+            "x",
+        )
+        self.assertEqual((1, "nothing_to_escalate"), (status, value["error"]["code"]))
+        self.assertIn(f"{run_id} ended ok without an error", value["error"]["detail"])
         self.assertEqual([], self.record()["escalations"])
+        self.assertEqual(log, self.log())
 
     @verifies("scenario.tasks.session-escalates")
     def test_a_task_session_escalates_to_the_main_agent(self):
@@ -712,7 +732,9 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(head, git(self.root, "rev-parse", "concorde/t1"))
         self.assertTrue((self.root / ".concorde/tasks/t1.decisions.md").exists())
 
-    @verifies("scenario.tasks.close-submodules")
+    @verifies(
+        "scenario.tasks.close-submodules", "scenario.tasks.close-submodules-dirty"
+    )
     def test_close_removes_a_worktree_with_checked_out_submodules(self):
         library = self.root.parent / "library"
         library.mkdir()
@@ -738,8 +760,10 @@ class TaskStoreTests(unittest.TestCase):
         self.assertTrue((worktree / "vendor/lib/README.md").is_file())
         (worktree / "vendor/lib/README.md").write_text("changed inside the submodule\n")
         git(self.root, "merge", "--ff-only", "concorde/t1")
+        before = self.record()
         self.assertEqual((1, "dirty_worktree"), self.refusal("close", "t1", "--merged"))
         self.assertTrue(worktree.exists())
+        self.assertEqual(before, self.record())
         git(worktree / "vendor/lib", "checkout", "--", "README.md")
         status, value = self.command("close", "t1", "--merged")
         self.assertEqual(0, status, value)
@@ -762,19 +786,34 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(before, self.record())
         self.assertTrue(worktree.exists())
 
-    @verifies("scenario.tasks.close-completed")
-    def test_close_a_task_that_reached_its_goal_without_merging(self):
+    @verifies("scenario.tasks.close-completed-no-note")
+    def test_closing_as_completed_needs_a_note(self):
         self.project.open_task("t1")
-        worktree = self.project.worktree("t1")
+        before = self.record()
         self.assertEqual(
             (1, "invalid_input"), self.refusal("close", "t1", "--completed")
         )
+        self.assertTrue(self.project.worktree("t1").exists())
+        self.assertEqual(before, self.record())
+
+    @verifies("scenario.tasks.close-completed-dirty")
+    def test_closing_as_completed_keeps_uncommitted_changes_without_force(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
         (worktree / "src/a/calc.py").write_text("dirty = True\n")
+        before = self.record()
         self.assertEqual(
             (1, "dirty_worktree"),
             self.refusal("close", "t1", "--completed", "--note", "tried it"),
         )
-        self.assertTrue(worktree.exists())
+        self.assertEqual("dirty = True\n", (worktree / "src/a/calc.py").read_text())
+        self.assertEqual(before, self.record())
+
+    @verifies("scenario.tasks.close-completed")
+    def test_close_a_task_that_reached_its_goal_without_merging(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        (worktree / "src/a/calc.py").write_text("dirty = True\n")
         status, value = self.command(
             "close", "t1", "--completed", "--note", "the probe answered", "--force"
         )
@@ -816,19 +855,6 @@ class TaskStoreTests(unittest.TestCase):
             ),
         )
         reason = ["--reason", "the change needs module.b, which is out of scope"]
-        self.assertEqual(
-            (1, "invalid_input"), self.refusal("close", "t1", "--failed", *reason)
-        )
-        self.assertEqual(
-            (1, "invalid_input"),
-            self.refusal(
-                "close", "t1", "--failed", *reason, "--no-error", "--run", "r-x"
-            ),
-        )
-        self.assertEqual(
-            (1, "invalid_input"),
-            self.refusal("close", "t1", "--failed", "--run", failed["run_id"]),
-        )
         status, value = self.command(
             "close", "t1", "--failed", *reason, "--run", failed["run_id"], "--force"
         )
@@ -841,18 +867,52 @@ class TaskStoreTests(unittest.TestCase):
         log = (self.root / ".concorde/tasks/t1.decisions.md").read_text()
         self.assertIn("## Closed: failed", log)
         self.assertIn(failed["error"]["code"], log)
-        self.project.open_task("t2")
+        self.assert_contract(self.record())
+
+    @verifies("scenario.tasks.close-failed-no-error")
+    def test_a_task_that_failed_for_no_error_closes_without_errors(self):
+        self.project.open_task("t1")
         status, value = self.command(
             "close",
-            "t2",
+            "t1",
             "--failed",
             "--reason",
             "the direction was wrong",
             "--no-error",
         )
         self.assertEqual(0, status, value)
-        self.assertEqual([], value["closed"]["errors"])
+        self.assertEqual(
+            ("failed", "the direction was wrong", []),
+            (value["state"], value["closed"]["note"], value["closed"]["errors"]),
+        )
         self.assert_contract(self.record())
+
+    @verifies("scenario.tasks.close-failed-invalid")
+    def test_a_failed_close_needs_a_reason_and_one_error_choice(self):
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        _, failed = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan(
+                [{"writes": {f"{worktree}/src/bmod/secret.py": "SECRET = 2\n"}}]
+            ),
+        )
+        run_id = failed["run_id"]
+        before = self.record()
+        reason = ["--reason", "the change needs module.b, which is out of scope"]
+        for argv in (
+            reason,
+            (*reason, "--no-error", "--run", run_id),
+            ("--run", run_id),
+        ):
+            self.assertEqual(
+                (1, "invalid_input"), self.refusal("close", "t1", "--failed", *argv)
+            )
+        self.assertTrue(self.project.worktree("t1").exists())
+        self.assertEqual(before, self.record())
 
     @verifies("scenario.tasks.closed-inert")
     def test_a_closed_task_accepts_no_run(self):
@@ -923,7 +983,7 @@ class TaskStoreTests(unittest.TestCase):
         self.addCleanup(log.chmod, 0o644)
         return log
 
-    @verifies("scenario.tasks.close-rerun")
+    @verifies("scenario.tasks.close-rerun", "scenario.tasks.close-other-outcome")
     def test_running_a_close_again_finishes_it(self):
         self.project.open_task("t1")
         worktree = self.project.worktree("t1")
@@ -995,10 +1055,15 @@ class TaskStoreTests(unittest.TestCase):
         heading = f"## Closed: failed, {stored['closed']['at']}"
         self.assertEqual(1, self.log("t2").splitlines().count(heading))
         self.assertIn("\nno\n", self.log("t2"))
-        self.assertEqual(
-            (1, "invalid_transition"),
-            self.refusal("close", "t2", "--failed", "--reason", "no", "--no-error"),
-        )
+        closing = self.log("t2")
+        for argv in (
+            ("--failed", "--reason", "no", "--no-error"),
+            ("--completed", "--note", "other"),
+        ):
+            self.assertEqual(
+                (1, "invalid_transition"), self.refusal("close", "t2", *argv)
+            )
+        self.assertEqual((stored, closing), (self.record("t2"), self.log("t2")))
         self.assert_contract(self.record("t2"))
 
     def log(self, task_id="t1"):

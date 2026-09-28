@@ -31,6 +31,24 @@ directly or through [runs](../glossary.json#concept.run) of Execution, validates
 The main agent then merges the delivered task from the primary worktree and reports to the
 developer.
 
+```d2 illustrative
+direction: right
+primary: Primary worktree, main agent {
+  open: Open the task
+  merge: Merge the delivered task
+  report: Report to the developer
+}
+task: Task worktree, main agent or task session {
+  work: Change Specs and code, directly or through runs
+  validate: Validate
+  deliver: Deliver
+  work -> validate -> deliver
+}
+primary.open -> task.work: enter it, or start a task session
+task.deliver -> primary.merge: leave it, or the task session reports
+primary.merge -> primary.report
+```
+
 Work does not always go that way. A result that is not `ok` is read with its whole [error
 chain](../glossary.json#concept.error-chain), then repaired within the task or escalated with a link
 of its own: a task session escalates to the main agent, which decides ordinary questions itself

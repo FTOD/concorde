@@ -1,0 +1,82 @@
+{
+  "workspace": "panel-larger-tasks",
+  "goal": "Finish the 2026-09-28 panel review's larger items for Coordination and Tasks: split Tasks' bundled scenarios with their tests' @verifies, and add the normal-path and task merge flow diagrams",
+  "modules": [
+    "module.coordination",
+    "module.tasks"
+  ],
+  "sequence": 1,
+  "base_commit": "0b3008636dbdb04c40e3f233bc5aeb01eed56c76",
+  "parent_commit": "3bb9f2b9a0be2595673d1691f179870bb3923c3f",
+  "readiness": {
+    "run_id": "r-20260928T195141-delivery-02c38237",
+    "input_digest": "sha256:0eed8cc2d2ea51b8d91e62074c428367bdbc86d1880a84f8f94765aef8d795ac",
+    "modules": [
+      "module.coordination",
+      "module.tasks"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:110c209a220c1a27dd4d9637ec51e2b6fa5005c2e404283446701dfef3a6b9dc"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:10f9a774d21f451c59332b71640344226f4848fdb062ddb30a6b05b865ba0bbe"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:9e5e768105c9e6326d48073ae0bdda931b44c95ce94ccd66fb83a19489548890"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:8ba4c2a40b7cfce53fcc42777b2cf757ae1f1516ca10683ec232bb46802361f9"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:c52d6602410d978afdea01401e7d084458bf6c4c74f7b345ae0cda35e1d493ae"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T194956-task_validation-eafe3ac5",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.coordination",
+        "module.tasks"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:eb3fdc0d4054971766303611836a8cb413d6a932098ce92cdc954f5d180a0a60"
+    },
+    {
+      "run_id": "r-20260928T195050-task_validation-aed93340",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.coordination",
+        "module.tasks"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:e7169f5b11b809dd3846150bdeeb5b61cba80801ea5c6400f5ee2fccd60ccca0"
+    }
+  ],
+  "created_at": "2026-09-28T19:52:29Z"
+}
