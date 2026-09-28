@@ -224,7 +224,18 @@ def grade(
             environment["PYTHONPATH"] = os.pathsep.join(
                 str(tree / item) for item in pythonpath
             )
-        command = [str(python), "-m", "pytest", "-rA", "-p", "no:cacheprovider", *files]
+        # The summary lines are parsed, so colour is off whatever the caller's environment asks
+        # for (FORCE_COLOR would otherwise wrap every status in escapes).
+        command = [
+            str(python),
+            "-m",
+            "pytest",
+            "-rA",
+            "--color=no",
+            "-p",
+            "no:cacheprovider",
+            *files,
+        ]
         try:
             completed = subprocess.run(
                 command,

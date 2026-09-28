@@ -56,10 +56,13 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    branch into main, runs the build and `spec-validation` on main as a cross-check of the branch's
    self-validation, undoes the merge if either fails, and closes the task; its `warnings` name a
    decision log nobody wrote in. Never merge with `git merge` directly: other main sessions may be
-   merging at the same time. On `merge_busy`, run
-   it again; on `merge_conflict`, the main agent arranges resolution in the task worktree by
-   merging main into the task branch, resolving, and repeating steps 4 and 5. A task session
-   reports the conflict to the main agent; it never merges, rebases or switches branches.
+   merging at the same time. On `merge_busy`, run it again; on `workspace_busy`, wait until the
+   task's run ends and run it again; on `merge_conflict`, the main agent arranges resolution in the
+   task worktree by merging main into the task branch, resolving, and repeating steps 4 and 5. On
+   `merge_incomplete`, an earlier merge was interrupted before its checks decided: finish it first
+   with `task merge <task> --resume`, or `--abort` when the refusal says the primary branch has
+   moved past the merge commit, and bring `merge_diverged` to the developer. A task session
+   reports these to the main agent; it never merges, rebases or switches branches.
 
 For work delegated to task sessions, the main agent stays in the primary worktree and starts one
 session per task using its host workflow; each works through steps 3 to 5 in its own worktree and

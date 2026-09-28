@@ -61,6 +61,15 @@ work split into several tasks.
 In pi the main agent starts it with the `concorde_task_session` tool, which runs that command from
 the primary worktree.
 
+### req.main-session.dispatched-named — Dispatched tasks are named to the developer
+
+The guidance SHALL tell the main agent to show the developer the name and a one-line goal of every
+[task](../../glossary.json#concept.task) it dispatched to a task session, and to use those names
+when it reports on them.
+
+With several task sessions running, the names are what the developer follows, asks about or stops a
+task by.
+
 ### req.main-session.stay-in-primary — The main agent stays in the primary worktree
 
 The guidance SHALL tell the main agent to stay in the primary worktree while any task session runs.

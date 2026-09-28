@@ -564,5 +564,12 @@
         "tests/concorde/support"
       ]
     }
-  ]
+  ],
+  "workers": {
+    "runtime": [
+      ".venv",
+      "node_modules",
+      "docsite/node_modules"
+    ]
+  }
 }
