@@ -248,7 +248,10 @@ class BuildTests(unittest.TestCase):
             write_build(root)
         self.assertEqual(before, (root / "generated/build-manifest.json").read_bytes())
 
-    @verifies("scenario.distribution.build-removes-own-leftover")
+    @verifies(
+        "scenario.distribution.build-removes-own-leftover",
+        "scenario.distribution.build-keeps-edited-leftover",
+    )
     def test_an_output_the_build_no_longer_produces_is_removed(self):
         root = package_copy(self)
         (root / "prompts/workers").mkdir(exist_ok=True)
@@ -266,15 +269,19 @@ class BuildTests(unittest.TestCase):
         write_build(root)
         (root / "prompts/workers/edited.md").unlink()
         (root / "generated/workers/edited.md").write_text("changed by hand\n")
-        with self.assertRaises(BuildError):
+        with self.assertRaises(BuildError) as raised:
             write_build(root)
+        self.assertIn("generated/workers/edited.md", str(raised.exception))
         self.assertEqual(
             "changed by hand\n", (root / "generated/workers/edited.md").read_text()
         )
 
 
 class ProtocolTests(unittest.TestCase):
-    @verifies("scenario.distribution.protocol-manifest-bind")
+    @verifies(
+        "scenario.distribution.protocol-manifest-bind",
+        "scenario.distribution.protocol-manifest-report",
+    )
     def test_a_changed_protocol_is_accepted_explicitly(self):
         root = package_copy(self)
         subprocess.run(["git", "init", "-q", str(root)], check=True)
@@ -350,7 +357,12 @@ class RoutingTests(unittest.TestCase):
 
 
 class InstallTests(unittest.TestCase):
-    @verifies("scenario.distribution.install", "scenario.distribution.glossary-import")
+    @verifies(
+        "scenario.distribution.install",
+        "scenario.distribution.install-repeat",
+        "scenario.distribution.glossary-import",
+        "scenario.distribution.glossary-import-none",
+    )
     def test_install_places_concorde_without_touching_specs(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -470,7 +482,10 @@ class InstallTests(unittest.TestCase):
             1, (project / "CLAUDE.md").read_text().count("@specs/project/glossary.json")
         )
 
-    @verifies("scenario.distribution.install-busy")
+    @verifies(
+        "scenario.distribution.install-busy",
+        "scenario.distribution.install-after-runs-end",
+    )
     def test_install_and_update_wait_until_concorde_is_idle(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -557,7 +572,10 @@ class InstallTests(unittest.TestCase):
         live.wait()
         install(project, package, pi_runtime=False, d2=False, dependencies=False)
 
-    @verifies("scenario.distribution.own-python")
+    @verifies(
+        "scenario.distribution.own-python",
+        "scenario.distribution.install-python-env-failed",
+    )
     def test_concorde_runs_in_its_own_python_whatever_the_caller_uses(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -612,8 +630,7 @@ class InstallTests(unittest.TestCase):
         self.assertIn("==3.2.1", str(raised.exception))
         self.assertIn("venv", str(raised.exception))
 
-    @verifies("scenario.distribution.own-python")
-    @verifies("scenario.distribution.install-pi")
+    @verifies("scenario.distribution.install-programs-missing")
     def test_missing_programs_refuse_the_install_before_anything_is_written(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -637,7 +654,11 @@ class InstallTests(unittest.TestCase):
         # Not even the pinned d2 was fetched.
         self.assertEqual([], fetch.urls)
 
-    @verifies("scenario.distribution.update")
+    @verifies(
+        "scenario.distribution.update",
+        "scenario.distribution.update-unvalidated-reported",
+        "scenario.distribution.update-unvalidated-cleared",
+    )
     def test_update_rebinds_the_protocol_and_waits_for_a_validation(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -743,9 +764,11 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(0, listed.returncode, listed.stdout + listed.stderr)
         self.assertEqual([], json.loads(listed.stdout))
 
-    @verifies("scenario.distribution.install")
-    @verifies("scenario.distribution.install-pi")
-    @verifies("scenario.distribution.python-dependencies")
+    @verifies(
+        "scenario.distribution.python-dependencies",
+        "scenario.distribution.python-dependencies-failed",
+        "scenario.distribution.python-dependencies-skipped",
+    )
     def test_install_places_the_locked_python_dependencies_in_its_own_environment(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -807,6 +830,9 @@ class InstallTests(unittest.TestCase):
             ]
         )
 
+    @verifies(
+        "scenario.distribution.install-pi", "scenario.distribution.install-repeat"
+    )
     def test_install_with_pi_places_the_locked_runtime_extension_and_skill(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -855,8 +881,11 @@ class InstallTests(unittest.TestCase):
         self.assertEqual({"name", "description"}, set(strict_frontmatter(self, skill)))
         self.assertIn(".pi/extensions/concorde/index.ts", receipt["files"])
 
-    @verifies("scenario.distribution.install")
-    @verifies("scenario.distribution.install-settings-kept")
+    @verifies(
+        "scenario.distribution.install",
+        "scenario.distribution.install-settings-kept",
+        "scenario.distribution.install-settings-invalid",
+    )
     def test_install_places_workflows_and_only_its_own_permission_rules(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -938,6 +967,7 @@ class InstallTests(unittest.TestCase):
             self.assertIn("type: external-cli", agent)
             self.assertIn(f".pi/agents/{name}.md", receipt["files"])
 
+    @verifies("scenario.distribution.install-programs-missing")
     def test_install_with_pi_without_npm_installs_nothing(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -970,7 +1000,25 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("pi-runtime", left_out["tools"])
         self.assertFalse(left_out["pi_runtime"])
 
-    @verifies("scenario.distribution.update-pi")
+    @verifies("scenario.distribution.install-without-pi-runtime")
+    def test_an_install_without_the_pi_runtime_needs_no_npm(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        # A machine without npm, and a project that never had the runtime.
+        with which():
+            receipt = install(
+                project, package, d2=False, pi_runtime=False, dependencies=False
+            )
+        self.assertFalse((project / ".concorde/tools/pi-runtime").exists())
+        self.assertNotIn("pi-runtime", receipt["tools"])
+        self.assertFalse(receipt["pi_runtime"])
+
+    @verifies(
+        "scenario.distribution.update-pi",
+        "scenario.distribution.update-add-pi",
+        "scenario.distribution.update-keeps-pi-choices",
+    )
     def test_an_update_adds_the_pi_runtime_and_on_request_the_pi_files(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -998,6 +1046,7 @@ class InstallTests(unittest.TestCase):
         self.assertEqual((True, True), (kept["pi"], kept["pi_runtime"]))
         self.assertEqual(1, len(calls), "the locked runtime is installed once")
 
+    @verifies("scenario.distribution.update-keeps-pi-choices")
     def test_an_update_keeps_a_runtime_that_was_left_out(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -1101,7 +1150,7 @@ class InstallTests(unittest.TestCase):
             paths,
         )
 
-    @verifies("scenario.distribution.install-docsite-template")
+    @verifies("scenario.distribution.install-docsite-template-refused")
     def test_an_unsafe_docsite_template_installs_nothing(self):
         package = package_copy(self)
         (package / "docsite/linked.md").symlink_to(package / "docsite/README.md")
@@ -1167,7 +1216,7 @@ class D2InstallTests(unittest.TestCase):
         self.assertIn("network is unreachable", str(raised.exception))
         self.assertEqual([], list(project.iterdir()))
 
-    @verifies("scenario.distribution.install-d2-refused")
+    @verifies("scenario.distribution.install-without-d2")
     def test_install_without_d2_leaves_the_program_to_the_developer(self):
         package = package_copy(self)
         project = package.parent / "project"

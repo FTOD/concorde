@@ -40,16 +40,28 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN an output the previous build wrote and whose prompt root was removed since
 - WHEN the developer runs `build`
 - THEN the leftover output is removed because its bytes match the previous manifest
-- BUT a leftover whose bytes were edited stops the build instead
+
+### scenario.distribution.build-keeps-edited-leftover — Keep a leftover output edited by hand
+
+- GIVEN an output the previous build wrote, whose prompt root was removed since and whose bytes were edited after that build
+- WHEN the developer runs `build`
+- THEN the build stops with an error naming the edited output
+- BUT the edited output is kept as it is
 
 ## Protocol manifest and copy
 
 ### scenario.distribution.protocol-manifest-bind — Accept a changed Protocol into this checkout
 
 - GIVEN a Protocol chapter that changed and a fresh build
+- WHEN the developer runs `protocol-manifest --write --bind-project`
+- THEN the tracked manifest is rewritten with the new digests
+- AND the configuration is bound to it and `.concorde/protocol/` is refreshed
+
+### scenario.distribution.protocol-manifest-report — Report a changed Protocol
+
+- GIVEN a Protocol chapter that changed and a fresh build
 - WHEN the developer runs `protocol-manifest` without flags
 - THEN the result is `invalid` and names the assets whose digests differ
-- AND running it with `--write --bind-project` rewrites the tracked manifest, binds the configuration to it and refreshes `.concorde/protocol/`
 
 ### scenario.distribution.stale-copy-refused — Refuse to copy from a stale build
 
@@ -75,12 +87,18 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer runs the installer on the project
 - THEN the project has the Protocol copy under `.concorde/protocol/`, the `concorde` command and the [main-session guidance](../glossary.json#concept.main-session-guidance) as a project skill and a `CLAUDE.md` block
 - AND the `d2` release pinned in `concorde.json` for this platform is at `.concorde/tools/d2`, ignored by Git and named in the receipt
-- AND installing again with the same pin downloads nothing
 - AND `.gitignore` ignores `.claude/worktrees/`, where task worktrees go, and `.concorde/workspace.json`, their [workspace binding](../glossary.json#concept.workspace-binding)
 - AND every rendered Claude Code workflow is at `.claude/workflows/concorde-<name>.js`
 - AND `.claude/settings.json` allows `Workflow(concorde-brownfield)` and the two `concorde workflow` commands, keeps every setting it had, and the receipt records the added rules
 - AND the receipt records the package as `source`, mode `normal`, and `source_commit` `null` for a package outside a Git checkout
 - BUT no Spec document, registry or [Protocol binding](../glossary.json#concept.protocol-binding) of the project changed
+
+### scenario.distribution.install-repeat — Installing again repeats no download
+
+- GIVEN a project in which Concorde was installed with the pinned `d2` and the locked pi runtime
+- WHEN the developer runs the installer again with the same package
+- THEN the `d2` release is not downloaded again and `npm` does not run again
+- AND `CLAUDE.md` still holds exactly one Concorde block
 
 ### scenario.distribution.install-docsite-template — An installed Concorde can scaffold a docsite
 
@@ -88,38 +106,79 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer installs it into a project, initializes the project's Specs and runs `concorde docsite --propose`
 - THEN `.concorde/framework/docsite/` holds exactly the template files [Views](../spec-tooling/views/module.md)' inventory selects, `scaffold/` included
 - AND the proposal succeeds, listing the template files, a new `docsite/site.json` and, with `--github-pages`, the deployment workflow
-- BUT a package whose template contains a symbolic link is refused with `invalid_docsite_template`, whose reason is `input`, and nothing is written into the project
+
+### scenario.distribution.install-docsite-template-refused — An unsafe docsite template installs nothing
+
+- GIVEN a Concorde package whose `docsite/` template contains a symbolic link
+- WHEN the developer installs it into a project
+- THEN the install is refused with `invalid_docsite_template`, naming the link, whose reason is `input`
+- BUT nothing is written into the project
 
 ### scenario.distribution.glossary-import — The CLAUDE.md block imports the project's glossary
 
 - GIVEN a project in which Concorde is installed
 - WHEN `concorde init --apply` creates the project's first glossary, or an install or update finds one declared
 - THEN the Concorde block of `CLAUDE.md` imports that glossary with `@<path>`, once, so Claude Code loads every term at launch
-- BUT before any glossary is declared the block imports nothing, and the rest of `CLAUDE.md` is kept
+- AND the rest of `CLAUDE.md` is kept
+
+### scenario.distribution.glossary-import-none — The CLAUDE.md block imports nothing before a glossary
+
+- GIVEN a project whose `CLAUDE.md` has content of its own and which declares no glossary yet
+- WHEN the developer installs Concorde
+- THEN the Concorde block of `CLAUDE.md` imports no glossary
+- AND the rest of `CLAUDE.md` is kept
 
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
 
 - GIVEN a project whose `.claude/settings.json` has its own permission rules, and a receipt recording a rule the new package no longer ships
 - WHEN the installer runs again
 - THEN the developer's rules and other settings are unchanged, the missing workflow rules are added and the rule no longer shipped is removed
-- BUT a `.claude/settings.json` that is not a JSON object is refused with `settings_invalid` before anything is written
+
+### scenario.distribution.install-settings-invalid — Unusable settings refuse the install
+
+- GIVEN a project whose `.claude/settings.json` is not a JSON object
+- WHEN the installer runs
+- THEN it is refused with `settings_invalid`
+- BUT nothing is written, not even a workflow the project lacks
 
 ### scenario.distribution.update — Updating Concorde in a project
 
 - GIVEN an initialized project with an open task, installed from a checkout whose Protocol has since changed
 - WHEN the developer runs `concorde update`
 - THEN the configuration binds the new Protocol copy, the result names the bindings, versions and installed commits before and after and the open task, and `.concorde/update.json` marks the project Concorde unvalidated
-- AND while a Spec is broken, `concorde spec-validation` also reports `CONCORDE-UPDATE-001` and the mark stays
-- AND the first validation that passes reports `CONCORDE-UPDATE-002` and removes the mark
+- AND the result asks for the primary branch to be merged into the open task
+
+### scenario.distribution.update-unvalidated-reported — Validation reports an update not yet validated
+
+- GIVEN a project that `concorde update` marked Concorde unvalidated
+- AND one of its Specs is broken
+- WHEN the developer runs `concorde spec-validation` in the primary worktree
+- THEN the result is `invalid` and reports `CONCORDE-UPDATE-001` beside the Spec's own findings
+- AND `.concorde/update.json` stays
+
+### scenario.distribution.update-unvalidated-cleared — The first clean validation clears the mark
+
+- GIVEN a project that `concorde update` marked Concorde unvalidated
+- AND its Specs validate
+- WHEN the developer runs `concorde spec-validation` in the primary worktree
+- THEN the result is `success` and reports `CONCORDE-UPDATE-002`
+- AND `.concorde/update.json` is removed
 
 ### scenario.distribution.install-busy — Concorde is not replaced while it runs
 
 - GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock), or a pi [task-session](../glossary.json#concept.task-session) round's supervisor is still running
+- AND its [run store](../glossary.json#concept.run-store) also holds the [progress file](../glossary.json#concept.progress-file) of the running Operation's worker and a run whose run lock nobody holds
 - WHEN the developer installs Concorde again or runs `concorde update`
-- THEN the install is refused with `concorde_busy`, naming each running run or round with its process and [progress file](../glossary.json#concept.progress-file)
-- BUT the progress file of the running Operation's worker is not named as a run of its own, nor a run whose run lock nobody holds, whatever process its recorded identifier names
-- BUT nothing in the project changes
-- AND once the run has finished, the same install succeeds
+- THEN the install is refused with `concorde_busy`, naming each running run or round with its process and progress file
+- BUT neither the worker's progress file nor the run whose run lock nobody holds is named, whatever process its recorded identifier names
+- AND nothing in the project changes
+
+### scenario.distribution.install-after-runs-end — Concorde is replaced once nothing runs
+
+- GIVEN an installed project whose run store holds a finished run, a run whose run lock nobody holds although its recorded process identifier names a live process, and the progress file of an Operation's worker
+- AND no pi task-session round's supervisor is running
+- WHEN the developer installs Concorde again
+- THEN the install succeeds
 
 ### scenario.distribution.install-refusal-link — A refused install answers with an error link
 
@@ -135,8 +194,20 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the caller runs `.concorde/bin/concorde task list`
 - THEN it prints the project's empty task list `[]` and exits with status 0, run by the interpreter of `.concorde/framework/python/`
 - AND uv created that environment for the Python requirement `concorde.json` names, and the receipt names the environment, the requirement, the interpreter uv chose and its version
-- BUT when uv finds no interpreter satisfying the requirement and may not download one, the install is refused with `python_env_failed` and uv's output
-- BUT without `uv` on `PATH` the install is refused with `uv_missing`, and nothing is written into the project, not even `d2`
+
+### scenario.distribution.install-python-env-failed — No interpreter fits Concorde's Python requirement
+
+- GIVEN a Concorde package whose Python requirement no interpreter on the machine satisfies
+- AND uv may not download one
+- WHEN the developer runs the installer
+- THEN the install is refused with `python_env_failed`, carrying uv's output
+
+### scenario.distribution.install-programs-missing — A missing program refuses the install before anything is written
+
+- GIVEN a machine without `uv` on `PATH`, or without `npm` while the pi runtime is still to be placed
+- WHEN the developer runs the installer on a project
+- THEN the install is refused with `uv_missing` or `npm_missing`
+- BUT nothing is written into the project, not even `d2`
 
 ### scenario.distribution.python-dependencies — Concorde's own environment gets its locked dependencies
 
@@ -145,7 +216,18 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN it exports the lock's runtime part, without the development group, to `.concorde/framework/requirements.txt`
 - AND installs exactly those hashed versions into `.concorde/framework/python/` and checks that the environment imports LangGraph
 - AND the receipt names the requirements file, the digest of the lock and the number of packages
-- BUT a failing step is refused with `python_dependencies_failed` and the step's output, and with `--without-dependencies` the receipt's `dependencies` is `null`
+
+### scenario.distribution.python-dependencies-failed — A failing dependency step refuses the install
+
+- GIVEN a Concorde checkout and `uv` on `PATH`
+- WHEN the installer runs and a step installing the Python dependencies fails
+- THEN the install is refused with `python_dependencies_failed`, carrying the step's output
+
+### scenario.distribution.python-dependencies-skipped — Install without the Python dependencies
+
+- GIVEN a Concorde checkout and `uv` on `PATH`
+- WHEN the developer runs the installer with `--without-dependencies`
+- THEN the receipt's `dependencies` is `null`
 
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
@@ -159,7 +241,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the installer runs and the downloaded archive does not match the pinned SHA-256, or the download fails
 - THEN the installer refuses with `d2_digest_mismatch` or `d2_unavailable`, naming the URL and the reason
 - AND nothing is written into the project
-- BUT with `--without-d2` the installer places everything else and leaves `d2` to the developer
+
+### scenario.distribution.install-without-d2 — Install without d2
+
+- GIVEN a fresh Concorde package whose `concorde.json` pins a `d2` release
+- WHEN the developer runs the installer with `--without-d2`
+- THEN the install succeeds and the receipt names no `d2`
+- BUT no `d2` is placed under `.concorde/tools/`, leaving it to the developer
 
 ### scenario.distribution.install-pi — Install for a pi main session as well
 
@@ -168,8 +256,6 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/` with `npm ci --ignore-scripts` from the package's lockfile, as in every install
 - AND the [run view](../glossary.json#concept.run-view) is placed as `.pi/extensions/concorde/` and the skill as `.pi/skills/concorde/SKILL.md`
 - AND every rendered pi [workflow script](../glossary.json#concept.workflow-script) is under `.concorde/workflows/pi/` and the command-runner agents `concorde-step` and `concorde-report` under `.pi/agents/`
-- AND a second install with the same lockfile does not run npm again
-- BUT without npm the install is refused with `npm_missing` before anything is written into the project, not even `d2`
 
 ### scenario.distribution.pi-runtime-default — Every install places the runtime pi workers run in
 
@@ -177,12 +263,31 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer installs Concorde without `--pi`
 - THEN the locked pi runtime is placed under `.concorde/tools/pi-runtime/`, since workers run on pi unless configured otherwise
 - AND no file of the pi main session is placed, and the receipt records `pi` false and `pi_runtime` true
-- BUT with `--without-pi-runtime` the runtime is left out, npm is not needed, and the receipt records `pi_runtime` false
+
+### scenario.distribution.install-without-pi-runtime — Install without the pi runtime
+
+- GIVEN a project and a machine without npm
+- WHEN the developer installs Concorde with `--without-pi-runtime`
+- THEN the install succeeds without the runtime under `.concorde/tools/pi-runtime/`
+- AND the receipt records `pi_runtime` false
 
 ### scenario.distribution.update-pi — An update adds the pi runtime and, on request, the pi files
 
 - GIVEN a project installed without the pi runtime by an installer that did not record the choice
 - WHEN the developer runs `concorde update`
-- THEN the pi runtime is placed and the receipt records `pi_runtime` true, while no file of the pi main session is placed
-- AND `concorde update --pi` places the pi main session's files, and later updates keep both
-- BUT an install made with `--without-pi-runtime` stays without the runtime after an update
+- THEN the pi runtime is placed and the receipt records `pi_runtime` true
+- BUT no file of the pi main session is placed
+
+### scenario.distribution.update-add-pi — An update adds the pi main session's files on request
+
+- GIVEN a project installed without the pi main session's files
+- WHEN the developer runs `concorde update --pi`
+- THEN the skill `.pi/skills/concorde/SKILL.md` and the pi workflow scripts under `.concorde/workflows/pi/` are placed
+- AND the receipt records `pi` true
+
+### scenario.distribution.update-keeps-pi-choices — An update keeps the recorded pi choices
+
+- GIVEN a project whose receipt records whether the pi main session's files and the pi runtime were installed
+- WHEN the developer runs `concorde update` without `--pi`
+- THEN the update installs what the receipt records: the pi files and the runtime when both were chosen, without placing the runtime a second time
+- AND an install made with `--without-pi-runtime` stays without the runtime

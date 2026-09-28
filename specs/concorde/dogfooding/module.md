@@ -78,6 +78,55 @@ host evidence), and the refused action with its message
 the Concorde repository ([requirements](requirements.md#req.dogfooding.concorde-cases-only)), and
 only the third may be fixed there without asking the developer.
 
+A Concorde defect crosses two repositories and three actors: the project's main agent reports it, the
+developer carries it to a session in the Concorde repository and decides what only the developer
+may, and that session fixes it; the project then takes the fix with an update. The following
+paragraphs explain each step:
+
+```d2 illustrative
+direction: down
+project: The project {
+  agent: Project main agent {
+    observe: Observe a run closely
+    classify: Whose problem is it?
+    own: Ordinary work in the project
+    write: Write the defect report, check it with concorde issues report --check
+    log: Record it in the decision log, leave the blocked work open
+    update: concorde update, then concorde spec-validation
+    resume: Merge the primary branch into open tasks, take up the blocked work
+    observe -> classify
+    classify -> own: the project's own
+    classify -> write: a Concorde defect
+    write -> log
+    update -> resume
+  }
+  framework: .concorde/framework/
+}
+developer: Developer {
+  handoff: Hand the report's path to a session in the Concorde repository
+  decide: Decide whether Concorde's design changes
+  tell: Tell the project's main agent the fix is merged
+}
+concorde: Concorde repository {
+  session: Concorde-repository session {
+    record: Open a task for the Module at fault, record the report as an Issue
+    assign: Append a report naming the Module at fault
+    fix: Fix the defect generally, close the Issue with the fix
+    merge: Deliver and merge the task
+    record -> assign -> fix -> merge
+  }
+  primary: Primary worktree
+}
+project.agent.log -> developer.handoff: defect report
+developer.handoff -> concorde.session.record
+concorde.session.assign -> developer.decide: a design limitation {style.stroke-dash: 3}
+developer.decide -> concorde.session.fix: decision {style.stroke-dash: 3}
+concorde.session.merge -> concorde.primary: the fix
+concorde.primary -> project.framework: install --develop, concorde update
+concorde.primary -> developer.tell: merged
+developer.tell -> project.agent.update
+```
+
 <a id="concept.defect-report"></a>
 
 **Reporting a defect.** The main agent writes a **defect report**: an

@@ -20,11 +20,36 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the receipt records mode `normal` and the source commit
 - BUT neither the skill nor the `CLAUDE.md` block mentions developing Concorde
 
-### scenario.dogfooding.refused-source — Refuse a source that is not a clean primary worktree
+### scenario.dogfooding.refused-source — Refuse a linked worktree as the source
 
-- GIVEN a Concorde checkout that is a linked task worktree, has a detached `HEAD` or has an uncommitted change
+- GIVEN a built Concorde checkout that is a linked worktree of a Concorde repository, such as a task worktree, on a branch and fully committed
 - WHEN the developer runs its installer on a project with `--develop`
-- THEN the install is refused with `develop_source_not_primary`, `develop_source_detached` or `develop_source_dirty`, naming the primary worktree, the detached state or the changed paths
+- THEN the install is refused with `develop_source_not_primary`, naming the repository's primary worktree
+- BUT nothing is written into the project
+
+The source is checked in this order: the root of a Git worktree, the primary worktree, a branch,
+no uncommitted change. A checkout that fails several checks is refused by the first, so a linked
+worktree whose `HEAD` is detached is refused as a linked worktree.
+
+### scenario.dogfooding.refused-not-root — Refuse a source that is not a worktree's root
+
+- GIVEN a built Concorde checkout that is not the root of a Git worktree, such as a copy outside any Git repository or a directory inside another repository's worktree
+- WHEN the developer runs its installer on a project with `--develop`
+- THEN the install is refused with `develop_source_not_repository`, saying that the checkout is in no Git worktree or naming the worktree it lies inside
+- BUT nothing is written into the project
+
+### scenario.dogfooding.refused-detached — Refuse a primary worktree with a detached HEAD
+
+- GIVEN the built, fully committed primary worktree of a Concorde repository whose `HEAD` is detached
+- WHEN the developer runs its installer on a project with `--develop`
+- THEN the install is refused with `develop_source_detached`, naming the detached `HEAD`
+- BUT nothing is written into the project
+
+### scenario.dogfooding.refused-dirty — Refuse a primary worktree with uncommitted changes
+
+- GIVEN the built primary worktree of a Concorde repository, on a branch, with an uncommitted or untracked change
+- WHEN the developer runs its installer on a project with `--develop`
+- THEN the install is refused with `develop_source_dirty`, naming the changed paths
 - BUT nothing is written into the project
 
 ### scenario.dogfooding.update-keeps-develop — Update a develop install

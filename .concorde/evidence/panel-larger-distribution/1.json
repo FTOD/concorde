@@ -1,0 +1,123 @@
+{
+  "workspace": "panel-larger-distribution",
+  "goal": "Finish the 2026-09-28 panel review's larger items for Distribution, Dogfooding, Harness and the root Module: split bundled scenarios with their tests' @verifies, open Usage sections with worked normal paths, and the defect cycle diagram",
+  "modules": [
+    "module.distribution",
+    "module.dogfooding",
+    "module.harness",
+    "module.concorde"
+  ],
+  "sequence": 1,
+  "base_commit": "0b3008636dbdb04c40e3f233bc5aeb01eed56c76",
+  "parent_commit": "00d8f7591f9bc9b2b3eb93aeb3fa2bf443fff3b3",
+  "readiness": {
+    "run_id": "r-20260928T195705-delivery-86fd887e",
+    "input_digest": "sha256:0ed5d9c60215aedcec5545a393f496abec11763769383692186ae7daffc37974",
+    "modules": [
+      "module.concorde",
+      "module.distribution",
+      "module.dogfooding",
+      "module.harness"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:344d2331742171585f2b1fada9ca2b7ea9a90317c7862984d041bd372137cb46"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:e6d6b5b97b4839b00c303d6554dad24e644b0ac0978d117483bb0d1099b4e937"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:261a03dd90aab78e64cb80204dcd46d4d75c7ba2983dc66fb36c770e8a0ce51c"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:5be4734c6db1d9dc1dbfafc8bd9c52564a47f318b2efaba4aa8dffc8a69ceebb"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:ad7c21fda515e9347427d240bbfe24fc033ef1d2b44902f6e76ae07ce658fa1c"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:a51f34d1c6c95a6574282ebddb5e8edd1e21a85d6e8edc40cc8045d8dfabb827"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:9e5e768105c9e6326d48073ae0bdda931b44c95ce94ccd66fb83a19489548890"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:5d5bf7df2a90108e51283d52429c3fc7b6ae59b35302ecfc7b0e500a731f0ab9"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:afa81655db08a839feffa4fd3b6248015cfe27e1fbc7157cb1076789d309291c"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:fdbe61fb3a0e67d5c8e1b826328e8cdaed72ec8d73a5c6658b249259e9643435"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d4bfef6d133ed994eed55d45e963a22ac0dd5b58fc3eb2b0f39e642b8432b0b2"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:5f371a00a209057c4c36aa872e81de611dc69ddbbbb69709a470a338aa0c0cf5"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:67f932aabf7c3e84d65fec39ce3d4a2f94beaa735e25a6f6e6d114a4d25684cb"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T195530-task_validation-923a7e6f",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.distribution",
+        "module.dogfooding",
+        "module.harness",
+        "module.concorde"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:69e4ef7c6e194e804e24ed0c9d5dfaac94f9e66d031a2fcd942b47782cfff9d8"
+    }
+  ],
+  "created_at": "2026-09-28T19:58:41Z"
+}

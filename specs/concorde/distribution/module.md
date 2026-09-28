@@ -80,70 +80,106 @@ candidates without probing inference API access. Configuration validation does n
 
 <a id="concept.protocol-copy"></a>
 
-**Installing into a project.** `python3 scripts/install-concorde.py <project>` refuses a stale build,
-a machine without `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python, and a project in
-which Concorde is still running — a [run](../glossary.json#concept.run) of an
-Operation or of an [execution command](../glossary.json#concept.execution-command) whose runner
-process lives, as its [run progress file](../glossary.json#concept.run-progress-file) says, or a pi
-[task-session](../glossary.json#concept.task-session) round whose supervisor lives, each named in
-the refusal `concorde_busy` ([requirements](requirements.md#req.distribution.idle-install),
-[naming](requirements.md#req.distribution.busy-named)), since
-replacing the framework copy under them would change their code halfway; the
+**Installing into a project.** The developer runs `python3 scripts/install-concorde.py <project>`
+from a built Concorde checkout. The installer first decides everything that could refuse the
+install and only then writes, so a refusal among these checks leaves the project as it was. On a
+project where every check passes, it goes through these steps in order:
+
+1. **It checks, writing nothing.** It refuses a directory that is not a project
+   (`invalid_project`); a stale build (`stale_build`), which includes a stale render of the
+   [main-session guidance](../glossary.json#concept.main-session-guidance); a docsite template
+   that [Views](../spec-tooling/views/module.md)' inventory rule rejects
+   (`invalid_docsite_template`,
+   [checked first](requirements.md#req.distribution.installer-docsite-template-first)); a missing
+   render of the guidance (`stale_build`,
+   [requirements](requirements.md#req.distribution.installer-fresh-guidance)); with
+   `--develop`, a source that Dogfooding's check refuses; a project in which Concorde is still
+   running (`concorde_busy`, described below); a `concorde.json` that names no Python requirement
+   (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object (`settings_invalid`,
+   [checked first](requirements.md#req.distribution.installer-settings-checked)); a machine
+   without `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python; and, when the pi runtime described
+   below is still to be placed, a machine without `npm` (`npm_missing`)
+   ([requirements](requirements.md#req.distribution.installer-programs-first)).
+2. **It places the pinned programs.** It fetches the `d2` release `concorde.json` pins, checks it
+   against its SHA-256 before anything else is written and places it at `.concorde/tools/d2`,
+   keeping it on a later install with the same pin
+   ([requirements](requirements.md#req.distribution.installer-pinned-d2),
+   [checked first](requirements.md#req.distribution.installer-d2-first); `--without-d2` skips
+   it). It then places the pi runtime under `.concorde/tools/pi-runtime/`, as described below.
+3. **It places Concorde's files.** It writes the Protocol copy under `.concorde/protocol/` and
+   Concorde-owned defaults only where absent, and places the Framework runtime under
+   `.concorde/framework/`, replacing an earlier copy and leaving out `scripts/e2e/`, which only
+   [End-to-end testing](../e2e/module.md) uses. With it goes the docsite template under
+   `.concorde/framework/docsite/`, exactly the files Views' template inventory selects,
+   `scaffold/` included, from which `concorde docsite --propose` scaffolds a project's site
+   ([requirements](requirements.md#req.distribution.installer-docsite-template)).
+4. **It creates Concorde's own Python environment.** `uv venv` creates a venv at
+   `.concorde/framework/python/` for the Python requirement `concorde.json` names under
+   `runtime.python`, on an interpreter uv chooses — one of the machine's or a uv-managed CPython,
+   which uv downloads when none fits — whatever interpreter runs the installer
+   ([requirements](requirements.md#req.distribution.uv-owns-python)); when uv cannot create it,
+   the install is refused with `python_env_failed` and uv's output. Into that environment go
+   Concorde's Python dependencies, such as LangGraph, which `spec_panel` runs on: exactly the
+   runtime part of the checkout's `uv.lock`, exported with `uv export` to
+   `.concorde/framework/requirements.txt` and installed with `uv pip install --require-hashes`. A
+   failing step is refused with `python_dependencies_failed` and the failing command's output;
+   `--without-dependencies` skips them, and the Operations that need them then refuse.
+5. **It writes the command.** `.concorde/bin/concorde` runs Concorde only in that environment,
+   with the caller's `PYTHONPATH`, `PYTHONHOME` and user site-packages left out, so an activated
+   project venv never becomes Concorde's interpreter
+   ([requirements](requirements.md#req.distribution.own-python)).
+6. **It installs the guidance.** The main-session guidance becomes the project skill
+   `.claude/skills/concorde/SKILL.md` and a block between `<!-- concorde:start -->` and
+   `<!-- concorde:end -->` in the project's `CLAUDE.md`, replaced in place on a later install,
+   leaving the rest of the file untouched, and ending with an `@<path>` import of the project's
+   glossary once one is declared, which `concorde init --apply` also adds when it creates the
+   first glossary ([requirements](requirements.md#req.distribution.glossary-import)).
+7. **It installs the workflows.** Every rendered workflow for Claude Code becomes
+   `.claude/workflows/concorde-<name>.js`, which Claude Code offers as the command
+   `/concorde-<name>`, and the `permissions.allow` of the project's `.claude/settings.json` gains
+   the rules the workflow needs to run without a prompt per step: `Workflow(concorde-<name>)` for
+   each workflow and `Bash(.concorde/bin/concorde workflow step:*)` and
+   `Bash(.concorde/bin/concorde workflow report:*)` for its
+   [step agents](../glossary.json#concept.step-agent). It adds only rules that are missing,
+   records them in the receipt, removes on a later install the recorded rules it no longer ships,
+   and leaves every other setting untouched
+   ([requirements](requirements.md#req.distribution.installer-own-permissions)).
+8. **It records the install.** It adds ignore rules for `.concorde/runs/`, `.concorde/tasks/`,
+   the [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json`
+   that each task worktree gets, `.concorde/framework/`, `.concorde/tools/` and
+   `.claude/worktrees/`, where task worktrees go, and writes the receipt `.concorde/install.json`.
+
+Only the steps that run those programs, `npm ci`, `uv venv` and the installation of the Python
+dependencies, can fail after something was written; an install run again repeats them.
+
+The receipt names Concorde's own environment under `python` (its path, the requirement it was
+created for, the interpreter uv chose and that interpreter's version), the installed dependencies
+under `dependencies` (the requirements file, the digest of the `uv.lock` they came from and the
+number of packages, or `null` without them), `d2` and the pi runtime under `tools`, the checkout
+installed from as `source`, the commit it was at as `source_commit` (`null` outside a Git
+checkout) and the `mode`, `normal` or, for a
+[develop install](../glossary.json#concept.develop-install) made with `--develop`, `develop`. It
+lists under `files` every file Concorde owns in the project, including a default an earlier
+install wrote and this one found in place
+([requirements](requirements.md#req.distribution.receipt-complete)), and under `amended` the
+project's own files it only amends: `.gitignore`, `CLAUDE.md` and, once written,
+`.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
+
+A project in which Concorde is still running is refused with `concorde_busy`, since replacing the
+framework copy under a run would change its code halfway
+([requirements](requirements.md#req.distribution.idle-install)). What counts is a
+[run](../glossary.json#concept.run) of an Operation or of an
+[execution command](../glossary.json#concept.execution-command) whose runner still holds its
+[run lock](../glossary.json#concept.run-lock), found through its
+[run progress file](../glossary.json#concept.run-progress-file), or a pi
+[task-session](../glossary.json#concept.task-session) round whose supervisor lives; the refusal
+names each ([requirements](requirements.md#req.distribution.busy-named)). The
 [progress file](../glossary.json#concept.progress-file) of an Operation's worker, which lies beside
-the Operation's and names the same runner, is not a run of its own — then places the Framework
-runtime under `.concorde/framework/` (replacing an earlier copy, and leaving out `scripts/e2e/`,
-which only [End-to-end testing](../e2e/module.md) uses) with the docsite template under
-`.concorde/framework/docsite/`, exactly the files [Views](../spec-tooling/views/module.md)' template
-inventory selects, `scaffold/` included, from which `concorde docsite --propose` scaffolds a
-project's site ([requirements](requirements.md#req.distribution.installer-docsite-template),
-[checked first](requirements.md#req.distribution.installer-docsite-template-first)),
-Concorde's own Python environment, a venv
-at `.concorde/framework/python/` that `uv venv` creates for the Python requirement `concorde.json`
-names under `runtime.python`, on an interpreter uv chooses — one of the machine's or a uv-managed
-CPython, which uv downloads when none fits — whatever interpreter runs the installer
-([requirements](requirements.md#req.distribution.uv-owns-python)), refused with
-`python_env_failed` and uv's output when uv cannot create it, Concorde's Python dependencies in that
-environment, such as LangGraph, which `spec_panel` runs on — exactly the runtime part of the
-checkout's `uv.lock`, exported with `uv export` to `.concorde/framework/requirements.txt` and
-installed with `uv pip install --require-hashes`, and refused with `python_dependencies_failed` with
-the failing command's output when a step fails (`--without-dependencies` skips them, and the
-Operations that need them then refuse) — the
-`concorde` command as `.concorde/bin/concorde`, which runs Concorde only in that environment, with
-the caller's `PYTHONPATH`, `PYTHONHOME` and user site-packages left out, so an activated project
-venv never becomes Concorde's interpreter, the Protocol copy under `.concorde/protocol/` and
-Concorde-owned defaults only where absent, the
-[main-session guidance](../glossary.json#concept.main-session-guidance) as the project skill
-`.claude/skills/concorde/SKILL.md` and a block between `<!-- concorde:start -->` and
-`<!-- concorde:end -->` in the project's `CLAUDE.md` — replaced in place on a later install, leaving
-the rest of the file untouched, and ending with an `@<path>` import of the project's glossary once
-one is declared, which `concorde init --apply` also adds when it creates the first glossary — and
-the `d2` release `concorde.json` pins, placed at
-`.concorde/tools/d2`, checked against its SHA-256 before anything else is written and kept on a
-later install with the same pin
-([requirements](requirements.md#req.distribution.installer-pinned-d2),
-[checked first](requirements.md#req.distribution.installer-d2-first), `--without-d2` skips it);
-plus ignore rules for `.concorde/runs/`, `.concorde/tasks/`, the
-[workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json` that each
-task worktree gets, `.concorde/framework/`, `.concorde/tools/` and
-`.claude/worktrees/`, where task worktrees go, and a receipt `.concorde/install.json`. The receipt
-names Concorde's own environment under `python` (its path, the requirement it was created for, the
-interpreter uv chose and that interpreter's version), the installed dependencies under
-`dependencies` (the requirements file, the digest of the `uv.lock` they came from and the number
-of packages, or `null` without them), the checkout installed from as `source`, the commit it was at
-as `source_commit` (`null` outside a Git checkout) and the `mode`, `normal` or, for a
-[develop install](../glossary.json#concept.develop-install) made with `--develop`, `develop`. It lists under `files` every file Concorde owns in the project, including a
-default an earlier install wrote and this one found in place, and under `amended` the project's own
-files it only amends: `.gitignore`, `CLAUDE.md` and, once written, `.claude/settings.json`. It also
-installs every rendered workflow for Claude Code as `.claude/workflows/concorde-<name>.js`, which
-Claude Code offers as the command `/concorde-<name>`, and adds to the `permissions.allow` of the
-project's `.claude/settings.json` the rules the workflow needs to run without a prompt per step:
-`Workflow(concorde-<name>)` for each workflow and `Bash(.concorde/bin/concorde workflow step:*)` and
-`Bash(.concorde/bin/concorde workflow report:*)` for its
-[step agents](../glossary.json#concept.step-agent). It adds only rules that are missing, records
-them in the receipt, removes on a later install the recorded rules it no longer ships, and leaves
-every other setting untouched. The command runs the Framework copy of the worktree it belongs to; a
-task worktree has none of its own, since Git ignores it, unless the task reinstalled Concorde there,
-so its command runs the primary worktree's copy, found through Git's common directory.
+the Operation's and names the same runner, is not a run of its own.
+
+The command runs the Framework copy of the worktree it belongs to; a task worktree has none of its
+own, since Git ignores it, unless the task reinstalled Concorde there, so its command runs the
+primary worktree's copy, found through Git's common directory.
 
 <a id="concept.distribution.update"></a>
 
@@ -330,7 +366,7 @@ Protocol the manifest names.
 The **installer program** reuses the writer, the build's freshness check and Views' docsite
 template inventory, and installs the rendered main-session guidance. Everything that can refuse an
 install before any program runs — the build's freshness, the docsite template, Dogfooding's develop
-source check, the running Concorde, the project's settings, the descriptor's Python requirement,
+source check, the running Concorde, the descriptor's Python requirement, the project's settings,
 `uv` on `PATH` and, when the pi runtime is still to be placed, `npm` — and then the pinned download
 are decided before the first write, so such a refusal leaves the project as it was. Only the steps
 that run those programs, `npm ci`, `uv venv` and the installation of the Python dependencies, can

@@ -24,6 +24,78 @@ this Module owns, including the agent roles, the five kinds of context and the t
 [glossary](glossary.json), declared by this Module, remains the sole source of term definitions;
 documents link to those definitions where they use the terms.
 
+### A normal path
+
+The installer places the [Protocol copy](glossary.json#concept.protocol-copy) under
+`.concorde/protocol/`, the `concorde` command and the
+[main-session guidance](glossary.json#concept.main-session-guidance), but never writes the Specs;
+initialization proposes and applies an honest first Spec. The developer then works with the main
+agent in the primary worktree, and every piece of work becomes a task. Say the developer asks for
+payments to be retried at most three times. The main agent opens a task for the Module that owns
+payments:
+
+```text
+concorde task open retry-limit --goal "Retry a payment at most three times" --modules module.payments
+```
+
+This creates the branch `concorde/retry-limit` and its worktree `.claude/worktrees/retry-limit`,
+bound as the task's workspace. The main agent enters that worktree and works there with the
+worktree's own `concorde`. `concorde run understand --goal "…" --plan` reports what the Module
+promises about retries today and plans the change; `concorde run specify --intent "…"` writes the
+limit into the Module's Spec; `concorde run implement --goal "…"` changes the code and
+`concorde run test` checks it against the Spec; `concorde run code_review` reviews the change. The
+main agent may make any of these changes directly instead, committing each verified step on the
+task branch. Then `concorde task-validation` shows what would block the task and `concorde
+delivery` commits the result and its evidence on the task branch. None of these names the task:
+each reads the worktree's binding. The main agent then returns to the primary worktree and merges
+with `concorde task merge retry-limit`. For work split into several tasks, it starts a
+[task session](glossary.json#concept.task-session) per task with `concorde task session`, which does
+the same inside its task and reports back, so several tasks run at once. Before any change, a
+read-only Operation such as `understand` or a review may also run in the primary worktree itself, as
+an [unbound run](glossary.json#concept.unbound-run) that reads an
+[unbound checkout](glossary.json#concept.unbound-checkout) of that worktree's `HEAD` and changes
+nothing.
+
+```d2 illustrative
+grid-rows: 1
+primary: "Primary worktree\nMain agent" {
+  grid-columns: 1
+  vertical-gap: 152
+  open: "Open task\nbranch + bound worktree"
+  merge: "Merge delivered task"
+}
+task: "Task worktree\nMain agent or task session" {
+  grid-columns: 1
+  work: "Change Specs and code\ndirectly or through Operations"
+  validate: "task-validation\ncheck readiness"
+  deliver: "delivery\ncommit result + evidence"
+  work -> validate -> deliver
+}
+primary.open -> task.work: enter or delegate
+task.deliver -> primary.merge: delivered
+```
+
+Some tasks follow a known procedure. A [workflow](execution/workflows/module.md) records that
+procedure: the main agent opens a task as usual and starts the workflow inside its worktree, which
+orders the workspace's runs one at a time and returns one
+[workflow result](glossary.json#concept.workflow-result). In **interactive** mode it ends at each
+point that needs the developer's decision, so the main agent can ask right away and start it again
+with the answers; in **no-ask** mode it follows its declared continuation rules and reports every
+decision and problem at the end. The first workflow is `brownfield`: after installation and
+initialization of a project whose code came before any Spec, it surveys the code, scaffolds child
+Modules, describes each [Module](glossary.json#concept.module)'s code with `code_to_spec`, reviews
+and validates the result and delivers it.
+
+| Command | Use it to | Provided by |
+| --- | --- | --- |
+| `concorde spec-validation` | check the structure of the Specs | [Spec core](spec-tooling/spec/module.md) |
+| `concorde grant` | compute a [task type](glossary.json#concept.task-type)'s grant for some Modules | [Spec core](spec-tooling/spec/module.md) |
+| `concorde spec-mcp` | let an agent query Modules, context and grants over MCP | [Spec MCP server](spec-tooling/spec-mcp/module.md) |
+| `concorde task` | open, list, show and close tasks, start task sessions, escalate, merge | [Tasks](coordination/tasks/module.md) |
+| `concorde run` | run one Operation in the workspace of the current worktree | [Execution](execution/module.md) with [Operations](execution/operations/module.md) |
+| `concorde task-validation`, `concorde delivery`, `concorde scaffold` | decide readiness, deliver, create surveyed Modules, in the current workspace | [Commands](execution/commands/module.md), with [Validation](execution/commands/validation/module.md), [Delivery](execution/commands/delivery/module.md) and [Scaffold](execution/commands/scaffold/module.md) |
+| `concorde workflow` | run the steps of a workflow in the current workspace and report its result | [Workflows](execution/workflows/module.md) |
+
 ### The levels of work
 
 Every piece of work on a Concorde project passes down the same levels, and every result and error
@@ -77,67 +149,6 @@ The levels are levels of work, not of Modules. [Coordination](coordination/modul
 sessions and the task workspace; [Execution](execution/module.md) groups everything that works in a
 bound workspace; and two Modules serve both halves without being a level, described under
 [Design](#design).
-
-### A normal path
-
-The installer places the [Protocol copy](glossary.json#concept.protocol-copy) under
-`.concorde/protocol/`, the `concorde` command and the
-[main-session guidance](glossary.json#concept.main-session-guidance), but never writes the Specs;
-initialization proposes and applies an honest first Spec. The developer then works with the main
-agent in the primary worktree. For each piece of work it opens a task (a branch and a worktree under
-`.claude/worktrees/`, which `concorde task open` binds as the task's workspace), enters that
-worktree and works there with the worktree's own `concorde`: changing Specs and code directly,
-running Operations with `concorde run <operation>` (`understand`, `specify`, `implement`/`test`,
-`spec_review`/`code_review`), then the execution commands `concorde task-validation` and
-`concorde delivery`, until `delivery` commits the result and its evidence on the task branch. None
-of these names the task: each reads the worktree's binding. The main agent then returns to the
-primary worktree and merges. For work split into several tasks, it starts a
-[task session](glossary.json#concept.task-session) per task with `concorde task session`, which does
-the same inside its task and reports back, so several tasks run at once. Before any change, a
-read-only Operation such as `understand` or a review may also run in the primary worktree itself, as
-an [unbound run](glossary.json#concept.unbound-run) that reads an
-[unbound checkout](glossary.json#concept.unbound-checkout) of that worktree's `HEAD` and changes
-nothing.
-
-```d2 illustrative
-grid-rows: 1
-primary: "Primary worktree\nMain agent" {
-  grid-columns: 1
-  vertical-gap: 152
-  open: "Open task\nbranch + bound worktree"
-  merge: "Merge delivered task"
-}
-task: "Task worktree\nMain agent or task session" {
-  grid-columns: 1
-  work: "Change Specs and code\ndirectly or through Operations"
-  validate: "task-validation\ncheck readiness"
-  deliver: "delivery\ncommit result + evidence"
-  work -> validate -> deliver
-}
-primary.open -> task.work: enter or delegate
-task.deliver -> primary.merge: delivered
-```
-
-Some tasks follow a known procedure. A [workflow](execution/workflows/module.md) records that
-procedure: the main agent opens a task as usual and starts the workflow inside its worktree, which
-orders the workspace's runs one at a time and returns one
-[workflow result](glossary.json#concept.workflow-result). In **interactive** mode it ends at each
-point that needs the developer's decision, so the main agent can ask right away and start it again
-with the answers; in **no-ask** mode it follows its declared continuation rules and reports every
-decision and problem at the end. The first workflow is `brownfield`: after installation and
-initialization of a project whose code came before any Spec, it surveys the code, scaffolds child
-Modules, describes each [Module](glossary.json#concept.module)'s code with `code_to_spec`, reviews
-and validates the result and delivers it.
-
-| Command | Use it to | Provided by |
-| --- | --- | --- |
-| `concorde spec-validation` | check the structure of the Specs | [Spec core](spec-tooling/spec/module.md) |
-| `concorde grant` | compute a [task type](glossary.json#concept.task-type)'s grant for some Modules | [Spec core](spec-tooling/spec/module.md) |
-| `concorde spec-mcp` | let an agent query Modules, context and grants over MCP | [Spec MCP server](spec-tooling/spec-mcp/module.md) |
-| `concorde task` | open, list, show and close tasks, start task sessions, escalate, merge | [Tasks](coordination/tasks/module.md) |
-| `concorde run` | run one Operation in the workspace of the current worktree | [Execution](execution/module.md) with [Operations](execution/operations/module.md) |
-| `concorde task-validation`, `concorde delivery`, `concorde scaffold` | decide readiness, deliver, create surveyed Modules, in the current workspace | [Commands](execution/commands/module.md), with [Validation](execution/commands/validation/module.md), [Delivery](execution/commands/delivery/module.md) and [Scaffold](execution/commands/scaffold/module.md) |
-| `concorde workflow` | run the steps of a workflow in the current workspace and report its result | [Workflows](execution/workflows/module.md) |
 
 ### Errors
 
