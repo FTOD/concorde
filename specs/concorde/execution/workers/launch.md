@@ -76,6 +76,28 @@ rewrites it atomically at every phase change and at most once a second for worke
 | `host_pid` | the process identifier, in its own PID namespace, of the process running the run: the Execution runner of the Operation run that launched it |
 | `started_at`, `updated_at` | UTC times |
 
+The phases follow the [rounds](#rounds): every round runs the worker and then audits it, and only a
+round whose worker ended `ok` with a clean audit goes on to the checks or to a resume round. What
+ends the run from outside moves any phase to `finished` with `interrupted`.
+
+```d2 illustrative
+preparing
+worker
+audit
+checks
+finished
+preparing -> worker: round 1
+preparing -> finished: a refusal before launch
+worker -> finished: the command could not be started
+worker -> audit: the round ended
+audit -> finished: timeout, limit, process failure, violation, invalid result, blocked or failed
+audit -> checks: ok, clean, checks given
+audit -> worker: no checks given, validation reports a repair, rounds left
+audit -> finished: no checks given, nothing to repair or no rounds left
+checks -> worker: a check fails or validation reports a repair, rounds left
+checks -> finished: checks pass, nothing to repair; no rounds left; checks unavailable
+```
+
 It is an observation aid only: the run record, not the progress file, is the run's evidence.
 
 ## Launch
