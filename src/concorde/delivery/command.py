@@ -9,9 +9,10 @@ bundle and the run that decided the readiness.
 3. Require new work: a commit since the base, or an uncommitted change.
 4. Decide the readiness of the whole workspace with Validation's steps, as task-validation does.
 5. Require that readiness to be ready, and every scenario changed with code to be verified.
-6. Apply the readiness's confirmations through Validation.
+6. Record the index as a tree, then apply the readiness's confirmations through Validation.
 7. Write the evidence bundle in the workspace.
-8. Stage everything and create the delivery commit; undo steps 6 and 7 when Git refuses.
+8. Stage everything and create the delivery commit; when writing the bundle, staging or the
+   commit fails, undo steps 6 and 7 and read the recorded tree back into the index.
 9. Verify the new head, its parent and a clean worktree.
 10. Return the delivery commit as the output.
 """
@@ -62,6 +63,8 @@ class State:
     readiness_run: str = ""
     readiness: dict = field(default_factory=dict)
     backups: dict[str, bytes] = field(default_factory=dict)
+    # The tree ``git write-tree`` recorded from the index the readiness examined.
+    index: str = ""
     bundle: str = ""
     sequence: int = 0
     created: list[Path] = field(default_factory=list)
@@ -360,6 +363,20 @@ def require_verified_scenarios(ctx: RunContext):
 
 def apply_confirmations(ctx: RunContext):
     state = _state(ctx)
+    # Recorded before anything changes, so a failed delivery can give the index back exactly,
+    # staged changes included, rather than resetting it to the head.
+    recorded = _git(ctx.worktree, "write-tree")
+    if recorded.returncode != 0:
+        return measurement_failed(
+            ctx,
+            MeasurementError(
+                "git_failed",
+                "git write-tree could not record the index, so a failed delivery could not "
+                "restore it: "
+                + (recorded.stderr.strip() or f"exit {recorded.returncode}"),
+            ),
+        )
+    state.index = recorded.stdout.strip()
     listed = state.readiness["confirmations"]
     try:
         state.backups = confirming.apply(ctx.worktree, listed)
@@ -400,7 +417,7 @@ def write_bundle(ctx: RunContext):
     state.bundle = bundle_path(ctx.workspace_name, state.sequence)
     target = ctx.worktree / state.bundle
     if target.exists():
-        undo(ctx)
+        unrestored = undo(ctx)
         return _failed(
             ctx,
             "bundle_exists",
@@ -412,6 +429,7 @@ def write_bundle(ctx: RunContext):
             reason="decision",
             explanation="delivery never overwrites evidence; reconciling the branch and its "
             "evidence is the task level's decision",
+            causes=unrestored,
         )
     since = previous[-1]["readiness_run"] if previous else None
     value = build_bundle(
@@ -435,8 +453,13 @@ def write_bundle(ctx: RunContext):
     return Continue()
 
 
-def undo(ctx: RunContext) -> None:
-    """Restore the confirmed metadata, remove the bundle and reset the index to the head."""
+def undo(ctx: RunContext) -> list[dict]:
+    """Restore the confirmed metadata, remove the bundle and give the index back.
+
+    The index is read back from the tree recorded before the confirmations, so changes staged
+    before the delivery stay staged. Returns a ``component`` link for each Git command that failed
+    doing so, for the caller's error chain.
+    """
     state = _state(ctx)
     confirming.restore(ctx.worktree, state.backups)
     for path in reversed(state.created):
@@ -447,7 +470,14 @@ def undo(ctx: RunContext) -> None:
                 pass
         else:
             path.unlink(missing_ok=True)
-    _git(ctx.worktree, "reset", "-q")
+    if not state.index:
+        return []
+    restored = _git(ctx.worktree, "read-tree", state.index)
+    if restored.returncode != 0:
+        return [_git_link(f"read-tree {state.index}", restored)]
+    # read-tree drops the cached file stats; refreshing them lets Git see unchanged files as such.
+    _git(ctx.worktree, "update-index", "-q", "--refresh")
+    return []
 
 
 def commit(ctx: RunContext):
@@ -458,14 +488,16 @@ def commit(ctx: RunContext):
     try:
         special = special_paths(ctx.worktree)
     except MeasurementError as error:
-        undo(ctx)
-        return measurement_failed(ctx, error)
+        unrestored = undo(ctx)
+        failure = measurement_failed(ctx, error)
+        failure.error["causes"].extend(unrestored)
+        return failure
     excluded = [f":(exclude,literal){path}" for path in special]
     staged = _git(ctx.worktree, "add", "-A", "--", ".", *excluded)
     if staged.returncode == 0:
         staged = _git(ctx.worktree, "add", "-f", "--", state.bundle)
     if staged.returncode != 0:
-        undo(ctx)
+        unrestored = undo(ctx)
         return _failed(
             ctx,
             "stage_failed",
@@ -474,7 +506,7 @@ def commit(ctx: RunContext):
             f"git add failed in {ctx.worktree}, so nothing was committed; the confirmations "
             f"and the bundle were undone: {staged.stderr.strip()}",
             ["repair the worktree's Git state, then run delivery again"],
-            causes=[_git_link("add", staged)],
+            causes=[_git_link("add", staged), *unrestored],
         )
     message = commit_message(ctx.workspace, state.bundle, state.readiness_run)
     result = subprocess.run(
@@ -487,21 +519,21 @@ def commit(ctx: RunContext):
     )
     if result.returncode != 0:
         output = (result.stdout + result.stderr).strip()
-        undo(ctx)
+        unrestored = undo(ctx)
         return _failed(
             ctx,
             "commit_failed",
             "Git refused the delivery commit; the confirmations and the bundle were undone "
-            "and the index reset.",
+            "and the index restored.",
             found
             + [
                 evidence("git", "commit", output[-4000:] or f"exit {result.returncode}")
             ],
             f"git commit refused the delivery commit of workspace {ctx.workspace_name} in "
             f"{ctx.worktree}; the confirmations and the bundle were undone and the index "
-            f"reset: {output[-1000:] or f'exit {result.returncode}'}",
+            f"restored: {output[-1000:] or f'exit {result.returncode}'}",
             ["fix the commit hook or the author identity, then run delivery again"],
-            causes=[_git_link("commit", result)],
+            causes=[_git_link("commit", result), *unrestored],
         )
     state.commit = head_commit(ctx.worktree)
     return Continue(evidence=[evidence("commit", state.commit, f"parent {state.head}")])

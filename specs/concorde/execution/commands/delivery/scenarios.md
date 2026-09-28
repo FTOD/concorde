@@ -90,10 +90,10 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 
 ### scenario.delivery.commit-refused — Git refuses the commit
 
-- GIVEN a workspace that is ready and a commit hook that rejects the commit
+- GIVEN a workspace that is ready, with changes staged before the delivery, and a commit hook that rejects the commit
 - WHEN the workspace is delivered
 - THEN the result has status `failed` with the hook's output as host evidence
-- AND the confirmed metadata is restored, the bundle removed and the index reset
+- AND the confirmed metadata is restored, the bundle removed and the index restored with the changes staged before, including a staged version the worktree changed since
 - AND a fresh measurement yields the readiness's input digest again
 - AND the branch holds no delivery commit
 

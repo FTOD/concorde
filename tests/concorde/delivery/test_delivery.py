@@ -352,13 +352,22 @@ class DeliveryTests(unittest.TestCase):
         hook = self.project.root / ".git/hooks/pre-commit"
         hook.write_text("#!/bin/sh\necho 'hook says no' >&2\nexit 1\n")
         hook.chmod(0o755)
+        # Changes staged before the delivery: a new file, and a version of calc.py that the
+        # worktree has changed again since, which only the index holds.
         (self.worktree / "src/new.py").write_text("NEW = 1\n")
+        (self.worktree / "src/a/calc.py").write_text(
+            "def add(a, b):\n    return b + a\n"
+        )
+        git(self.worktree, "add", "src/new.py", "src/a/calc.py")
         (self.worktree / "src/a/calc.py").write_text(FIXED)
+        staged = git(self.worktree, "diff", "--cached")
         metadata = (self.worktree / "specs/a/module.md.json").read_bytes()
         before = (status_lines(self.worktree), git(self.worktree, "ls-files", "-s"))
+        self.assertIn("MM src/a/calc.py", before[0])
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
         self.assertIn("hook says no", evidence_of(envelope, "git")[-1]["detail"])
+        self.assertEqual(git(self.worktree, "diff", "--cached"), staged)
         self.assertEqual(["commit_failed", "git_failed"], codes(envelope["error"]))
         self.assertIn("hook says no", envelope["error"]["causes"][0]["detail"])
         self.assertEqual(self.head(), self.base)
