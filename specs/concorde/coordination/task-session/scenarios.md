@@ -14,7 +14,12 @@ defined in the [contracts](contracts.md).
 - AND `claude --bg` is started in the task worktree with those settings and a first prompt naming the task, its goal and `concorde-7d`
 - AND the [task record](../../glossary.json#concept.task-record) lists the started session with its identity and name
 - BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying Claude Code's output, and the record is unchanged
-- AND `--answer` or `--stop` for a Claude Code session is refused with `invalid_input`
+
+### scenario.task-session.claude-no-rounds — A Claude Code session takes no round options
+
+- GIVEN an open task `severity` and a Claude Code main agent
+- WHEN the main agent runs `concorde task session severity` with `--answer "<answer>"`, with `--stop` or with `--wait`
+- THEN each is refused with `invalid_input`, naming SendMessage as the way a Claude Code task session receives the main agent's answers
 
 ### scenario.task-session.program — A task session runs on the main session's program
 
@@ -45,7 +50,18 @@ defined in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde task session severity --answer "<answer>"`
 - THEN round 2 runs on the same session file with the answer as its prompt
 - AND when it reports `delivered` naming the task's [delivery commit](../../glossary.json#concept.delivery-commit), round 2 is recorded `delivered` with the report
-- BUT `--answer` while a round runs is refused with `session_busy`, and for a task with no pi session with `no_session`
+
+### scenario.task-session.pi-busy — One round runs at a time
+
+- GIVEN a pi task session of the task `severity` with a running round
+- WHEN the main agent runs `concorde task session severity --answer "<answer>"` or `concorde task session severity`
+- THEN both are refused with `session_busy`, naming the running round and its supervisor process, and no round starts
+
+### scenario.task-session.pi-no-session — An answer needs a pi session
+
+- GIVEN an open task `severity` for which no pi task session was started
+- WHEN the main agent runs `concorde task session severity --answer "<answer>"`
+- THEN it is refused with `no_session` and no round starts
 
 ### scenario.task-session.pi-report-verified — A report the record contradicts fails the round
 
@@ -59,7 +75,12 @@ defined in the [contracts](contracts.md).
 - WHEN the boundary and supervisor validate the report
 - THEN delivered is accepted only with a full delivery commit and an empty escalation array, and escalated only with a null commit and a nonempty unique array of positive escalation numbers
 - BUT a `concorde_report` call with an omitted field, empty commit, mixed status fields or malformed value returns an error naming the problem and does not end the round, and a report that reaches the supervisor without following the contract ends the round `failed` with a `session_report_unverified` link
-- AND persisted version 1 reports remain unchanged when a task record is read or settled
+
+### scenario.task-session.pi-report-v1 — Earlier reports stay as they were recorded
+
+- GIVEN a task record whose pi session holds rounds recorded with version 1 reports, which have only the fields of their status: no `escalations` when delivered, no `commit` when escalated
+- WHEN the task record is read or its rounds are settled
+- THEN the report is neither validated again nor rewritten, and the record stays unchanged
 
 ### scenario.task-session.pi-failed — A round without a report fails with its evidence
 
@@ -74,7 +95,12 @@ defined in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde task session severity --stop`
 - THEN the round's pi receives SIGTERM, so it can end its session and clean up, and the round is recorded `stopped`
 - AND a pi that ignores SIGTERM is killed with its process group 3 seconds later, and the round is recorded `stopped` as well
-- BUT `--stop` when no round runs is refused with `session_idle`
+
+### scenario.task-session.pi-stop-idle — Nothing to stop without a running round
+
+- GIVEN a pi task session of the task `severity` whose last round has ended
+- WHEN the main agent runs `concorde task session severity --stop`
+- THEN it is refused with `session_idle` and the recorded rounds are unchanged
 
 ### scenario.task-session.pi-wait — Wait for a round without the run view
 
@@ -82,7 +108,7 @@ defined in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde task session severity --wait`
 - THEN the command returns once the round has ended, printing the session with the round's recorded outcome
 - AND with `--wait 1` it returns after a second, the round still `running`
-- BUT `--wait` for a task without a pi session is refused with `no_session`, and for a Claude Code session with `invalid_input`
+- BUT `--wait` for a task without a pi session is refused with `no_session`
 
 ### scenario.task-session.boundary — The session's boundary confines its writes
 

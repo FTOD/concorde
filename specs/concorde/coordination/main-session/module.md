@@ -164,6 +164,39 @@ The view only launches and observes: the
 closing pi never stops or changes one. Without pi-subagents the tool, the wake and `/concorde` still
 work.
 
+How the run view carries one run from its start, or from its discovery, to the message that wakes
+the main agent:
+
+```d2 illustrative
+direction: down
+tool: "concorde_run: an Operation or execution command, with or without a task"
+worktree: "Find the task worktree through the task record"
+refused: "Refused before anything starts, naming the task"
+launch: "Start the worktree's own concorde as a detached process\n(the session's own worktree without a task)"
+elsewhere: "A run still running when the session started,\nor started since with bash or by another session"
+store: "Find the run in the primary worktree's run store"
+done: "Answered in the tool's own result; no message follows"
+follow: "Follow its run progress file and, for an Operation,\nits worker's progress file"
+fleet: "Show it in FleetView: workspace or unbound, name, step,\nworker round and latest tool call"
+ended: "The run ends, or its runner is lost"
+wake: "Message the main agent: status, summary, result file, error chain"
+steer: "Steered into the current turn\nafter its tool calls"
+next: "Starts the next turn"
+tool -> worktree: with a task
+tool -> launch: without a task
+worktree -> refused: no worktree
+worktree -> launch: worktree found
+launch -> done: already finished, such as refused at once
+launch -> follow: still running
+elsewhere -> store
+store -> follow
+follow -> fleet: with pi-subagents
+follow -> ended
+ended -> wake
+wake -> steer: in a turn
+wake -> next: between turns
+```
+
 The view follows pi task sessions the same way. The `concorde_task_session` tool starts a task
 session, answers it (`answer`, which starts the next round) or stops its running round (`stop`), by
 running `concorde task session` from the primary worktree, and returns at once. The extension reads

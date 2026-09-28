@@ -99,6 +99,32 @@ when the task has no pi session (`no_session`), and `--stop` when no round runs 
 start while a round runs is refused with `session_busy`; after the last round ended, a start begins
 a new session. `--dry-run` writes the boundary and prints the command without starting anything.
 
+A pi task session of one task, from the main agent's point of view, with the refusals each state
+answers:
+
+```d2 illustrative
+direction: right
+start: "" {shape: circle; width: 16; height: 16; style.fill: black}
+none: No pi session
+running: Round running
+ended: Round ended {
+  delivered
+  escalated
+  failed
+  stopped
+}
+start -> none
+none -> running: start
+running -> ended.delivered: report names a verified delivery commit
+running -> ended.escalated: report names recorded escalations
+running -> ended.failed: "no report, a contradicted report\nor a lost supervisor"
+running -> ended.stopped: --stop
+ended -> running: "--answer: next round, same session file\nstart: a new session"
+none -> none: "--answer, --wait: no_session"
+running -> running: "start, --answer: session_busy"
+ended -> ended: "--stop: session_idle"
+```
+
 The main session's [run view](../../glossary.json#concept.run-view) wakes the main agent when a
 round ends. A main agent without it, such as a pi session that has not loaded Concorde's pi
 extension, waits with `--wait [<seconds>]` instead of polling: the command waits inside its own
