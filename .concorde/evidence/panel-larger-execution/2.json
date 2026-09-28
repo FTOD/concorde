@@ -1,0 +1,123 @@
+{
+  "workspace": "panel-larger-execution",
+  "goal": "Finish the 2026-09-28 panel review's larger items for Execution and Workers: rename the runner's numbered steps, add the runner activity and progress-file phase diagrams, and split Workers' bundled scenarios with their tests' @verifies",
+  "modules": [
+    "module.execution",
+    "module.workers"
+  ],
+  "sequence": 2,
+  "base_commit": "0b3008636dbdb04c40e3f233bc5aeb01eed56c76",
+  "parent_commit": "36ff678a0365068fb217f1e873d6fc61886514b0",
+  "readiness": {
+    "run_id": "r-20260928T204131-delivery-4856d9d5",
+    "input_digest": "sha256:8a6ef5e28348d95708a3aa16da95a4cdb2bff1e6a7b49fcc959b62f55bc68240",
+    "modules": [
+      "module.execution",
+      "module.workers"
+    ],
+    "checks": [
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:344d2331742171585f2b1fada9ca2b7ea9a90317c7862984d041bd372137cb46"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:261a03dd90aab78e64cb80204dcd46d4d75c7ba2983dc66fb36c770e8a0ce51c"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:fb3c8f7888b0eb1dc320c524c26eb7bc6740514d0c9316e787632d0afa8061ba"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:10f9a774d21f451c59332b71640344226f4848fdb062ddb30a6b05b865ba0bbe"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:f409feb265a71e7c82c34cc14437295fde139767a0de46a7c354d6a28d146af2"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:a51f34d1c6c95a6574282ebddb5e8edd1e21a85d6e8edc40cc8045d8dfabb827"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:9e5e768105c9e6326d48073ae0bdda931b44c95ce94ccd66fb83a19489548890"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:5d5bf7df2a90108e51283d52429c3fc7b6ae59b35302ecfc7b0e500a731f0ab9"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:afa81655db08a839feffa4fd3b6248015cfe27e1fbc7157cb1076789d309291c"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:fdbe61fb3a0e67d5c8e1b826328e8cdaed72ec8d73a5c6658b249259e9643435"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d4bfef6d133ed994eed55d45e963a22ac0dd5b58fc3eb2b0f39e642b8432b0b2"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:5f371a00a209057c4c36aa872e81de611dc69ddbbbb69709a470a338aa0c0cf5"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:6419dfd3295152b21dc472d609305bff6e8b836d5c759b9305b1c7d7d636d551"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:bc99537f0ccfdccd500b594f2b944a43c23b2889ac029dadee6831be524f5971"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T204009-task_validation-590ca9b7",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.execution",
+        "module.workers"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:822eaaad45d03b859edf19b7b3267a48e171e6601c6c8f675c987e6c751e45fd"
+    }
+  ],
+  "created_at": "2026-09-28T20:43:01Z"
+}
