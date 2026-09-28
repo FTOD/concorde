@@ -12,8 +12,12 @@ project.
 
 The pytest evidence plugin SHALL record each run's reason, scope, phase, attempt and input fingerprints in its JSON report.
 
-Callers that pass none of these get `manual` and `unspecified`. The report keeps discovery,
-queueing and execution times apart and never presents summed parallel test time as elapsed time.
+Each option has its own default: an omitted `--reason` records `manual`, an omitted `--scope` or
+`--phase` `unspecified` and an omitted `--attempt` `1`. The report is written only to the file
+`--json=PATH` names, for example
+`.venv/bin/python -m pytest tests/concorde/spec --scope=targeted --json=report.json`. It keeps
+discovery, queueing and execution times apart and never presents summed parallel test time as
+elapsed time.
 
 ### scenario.concorde.test-timing — Test runs record reasons and input identity
 

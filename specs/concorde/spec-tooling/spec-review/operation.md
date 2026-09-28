@@ -33,7 +33,7 @@ another. Step 1 validates the worktree once for all Modules.
 | --- | --- | --- | --- |
 | 1 | Load the workspace's Specs and validate the Module | Operation (Spec core) | loading error: the Operation fails; structural error in the Module's own documents or about the Module or a node it defines: the Module is `incomplete`, with the findings as host evidence |
 | 2 | Compute the `review-spec` grant for the Module with the workspace as root and freeze it with its context identity | Operation (Spec core) | the Module is `incomplete` |
-| 3 | Read the Module's review memory; generate the reviewer's settings, tool list and brief from the grant, the Reviewer brief and the memory's open findings | Operation (Workers) | an unusable memory: the Module is `incomplete` (`review_memory_unusable`); otherwise the Operation fails |
+| 3 | Read the Module's review memory, an empty one when its file does not exist yet. When the memory records the grant's context identity as reviewed and `--force` is not given, launch no worker: skip to step 7, where the memory decides and `unchanged_since` names the run that judged these Specs. Otherwise generate the reviewer's settings, tool list and brief from the grant, the Reviewer brief and the memory's open findings | Operation (Workers) | an unusable memory, one that is not valid JSON, does not match the memory contract or belongs to another Module: the Module is `incomplete` (`review_memory_unusable`); otherwise the Operation fails |
 | 4 | Launch the reviewer and wait for its [worker result](../../glossary.json#concept.worker-result) with findings; there is one round and no resume | Operation (Workers) | `blocked`, `failed`, timeout or an invalid result: the Module is `incomplete` |
 | 5 | Audit that the worktree has no change | Operation (Workers) | any change: the Module is `incomplete`, with the audit violations as host evidence |
 | 6 | With `--check-findings` and at least one finding, launch the checker under the same grant with the reviewer's numbered findings as task material, then audit again | Operation (Workers) | as steps 4 and 5; the reviewer's findings stay unchecked |
@@ -42,7 +42,8 @@ another. Step 1 validates the worktree once for all Modules.
 
 After every Module is done, the Operation derives the verdict and returns the run's output. No step
 runs [configured checks](../../glossary.json#concept.configured-check) and no step resumes a worker,
-because a review changes no file.
+because no reviewer or checker changes a file. A Module whose review is `incomplete` writes no
+review memory.
 
 Normalizing a finding means: an absolute path inside the workspace becomes relative to it;
 `module` becomes the Module that owns the cited document when the path is a registered document or
@@ -56,10 +57,12 @@ second status for the same finding is ignored, and a finding without a status ke
 | Verdict | Status | Error |
 | --- | --- | --- |
 | `accepted` or `changes_required` | `ok` | none |
-| `incomplete`, and some incomplete Module failed: a worker failed, a launch error, a timeout, an invalid result, an audit violation or a grant that could not be computed | `failed` | `review_incomplete`, one cause per incomplete Module |
+| `incomplete`, and some incomplete Module failed: a worker failed, a launch error, a timeout, an invalid result, an audit violation, a grant that could not be computed, an unusable review memory or a finding path outside the workspace | `failed` | `review_incomplete`, one cause per incomplete Module |
 | `incomplete` otherwise: a structural error or a `blocked` worker | `blocked` | `review_incomplete`, one cause per incomplete Module |
 
-A loading error in step 1 is `failed` with no output. In every other case the result's `output` is
+A loading error in step 1 is `failed` with no output, and so is any other failure the step table
+calls a failure of the Operation: the Execution runner turns it into a `failed` result with
+`host-error` evidence. In every other case the result's `output` is
 the review payload, including for `blocked` and `failed`, so the findings of the Modules that were
 reviewed are never lost. The result's error is the Operation's `review_incomplete` link with the
 reason `decision`; its causes are the error of every incomplete Module, in the order of the
@@ -72,13 +75,21 @@ counts the blocking findings that stand. The `worker` field holds the last worke
 
 ## Reviewer result
 
-A reviewer ends with the ordinary worker result plus `findings`, an array of findings. The checker
+A reviewer ends with the ordinary worker result plus `findings`, an array of findings, and
+optionally `resolved`, an array of `{id, reason}` naming each open earlier finding of the review
+memory that the Specs no longer have and why. A finding that updates an open earlier finding
+carries that finding's id as `earlier`; an earlier finding the reviewer neither updates nor
+resolves stays open unchanged. A resolution that names no open earlier finding, or one this review
+already resolved, is ignored and listed under `ignored` in the payload's `memory`; a finding whose
+`earlier` names no open earlier finding, or one this review already updated or resolved, is kept
+as a new finding. The checker
 ends with the worker result plus `checks`, one `{finding, status, reason}` per finding it received,
 where `finding` is the finding's position in the numbered list the checker received, starting at
 1, and `status` is `confirmed` or `disputed`. Both end `ok` when they could do their work; a
 `blocked` or `failed` worker still returns an empty `findings` or `checks` array.
 
-A finding is `{module, path, anchor, line, dimension, severity, problem, evidence, suggestion}`.
+A finding is `{module, path, anchor, line, dimension, severity, problem, evidence, suggestion}`,
+plus `earlier` when it updates an earlier finding.
 `module` is the reviewed Module, or the provider whose selected document the finding concerns;
 `path` is a document member in the grant; `anchor` and `line` are optional; `dimension` is one of
 `readability`, `obligations`, `design`, `views`, `terminology` and `context`; `severity` is
@@ -396,7 +407,7 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
       }
     }
   },
-  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed, changes_required when a blocking finding about its own documents is not disputed, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings are reviewer claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each Module's outcome is the state of its review memory after this review: any open blocking finding, reported now or carried from an earlier review, requires changes. Each reported finding has the memory id it was kept under, or null when a checker disputed it; earlier names the earlier finding it updates. memory lists the ids this review added and updated, the earlier findings it resolved with their reasons, the open earlier findings it carried unchanged in full, and resolutions it ignored because they named no open finding; it is null when the Module was not reviewed. unchanged_since names the review whose memory decided a Module that was not reviewed again because its Specs, by context identity, are the ones that review judged; it is null when the Module was reviewed. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one Spec review. Each Module's outcome is incomplete when it could not be reviewed, changes_required when a blocking finding about its own documents is not disputed, and accepted otherwise; the verdict is incomplete if any Module is incomplete, else changes_required if any Module requires changes, else accepted. Findings are reviewer claims; check is null when no checker ran. context_identity is null only when no grant could be computed. Each Module's outcome is the state of its review memory after this review: any open blocking finding, reported now or carried from an earlier review, requires changes. Each reported finding has the memory id it was kept under, or null when a checker disputed it; earlier names the earlier finding it updates. memory lists the ids this review added and updated, the earlier findings it resolved with their reasons, the open earlier findings it carried unchanged in full, and resolutions it ignored because they named no open finding; it is null exactly when the Module's outcome is incomplete. unchanged_since names the review whose memory decided a Module whose Specs, by context identity, are the ones that review judged, so that no reviewer was launched again; it is null when a reviewer ran. A behaviour or field change increments the version.",
   "example": {
     "verdict": "changes_required",
     "modules": [
@@ -608,7 +619,10 @@ The [run result](../../glossary.json#concept.run-result) carries this payload as
 ```
 
 The Operation adds the run result's own evidence, each item naming the Module and worker it
-concerns: the grant and context identity of every worker, the audits, the transcript paths, the
+concerns: the grant and context identity of every worker, the `worker-model` item naming each
+worker's worker id, backend, model and level
+([worker settings](../../execution/operations/workers.md#worker-backend-and-model)), the audits,
+the transcript paths, the
 structural findings of step 1 (kind `structural`), the scope corrections of step 7 (kind
 `finding-scope`) and any unusable finding (kind `invalid-output`). The worker run identities are in
 the result's `worker_runs`, reviewer before checker, in Module order.

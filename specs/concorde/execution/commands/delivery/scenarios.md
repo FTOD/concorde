@@ -41,6 +41,7 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 
 - GIVEN a workspace whose verified steps are committed on its branch and whose worktree is clean
 - AND no `task-validation` run since
+- AND no pending realization entry whose file exists, so there is nothing to confirm
 - WHEN delivery runs
 - THEN Delivery validates every change since the base commit
 - AND the delivery commit, on top of the last step, adds only the evidence bundle

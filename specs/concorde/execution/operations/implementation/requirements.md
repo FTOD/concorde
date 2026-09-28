@@ -25,13 +25,19 @@ and directory the grant makes writable before it launches the worker.
 ### req.implementation.audit — Writes outside the grant fail the run
 
 An implement run whose [write audit](../../../glossary.json#concept.write-audit) finds a change
-outside the grant's writable paths SHALL end `failed` with the offending paths as host evidence and
-without a [resume round](../../../glossary.json#concept.resume-round).
+outside the grant's writable paths SHALL end `failed` with the offending paths as host evidence.
+
+Such a run gets no [resume round](../../../glossary.json#concept.resume-round), since rounds only
+repair failed checks.
 
 ### req.implementation.host-deletes — Deletions are performed by the Operation
 
-The implement Operation SHALL delete a file only when the worker's result proposes it, the file lies
-inside the grant's writable paths and the audit was clean.
+Apart from the pending files and directories it pre-created, the implement Operation SHALL delete a
+file only when the worker's result proposes it, the file lies inside the grant's writable paths and
+the audit was clean.
+
+A pre-created path that is still empty is removed without a proposal, whatever the status, as
+[req.implementation.pending-markers](#req.implementation.pending-markers) describes.
 
 ### req.implementation.checks-follow-uses — The checks of users run too
 
@@ -39,23 +45,25 @@ The Operation SHALL run the [configured checks](../../../glossary.json#concept.c
 
 ### req.implementation.checks-outside — Checks run outside the worker
 
-The implement Operation SHALL run the bound Modules' configured checks through Check execution after
-every audited worker round.
+The implement Operation SHALL run the configured checks through Check execution after every worker
+round whose audit is clean and whose worker ended `ok`.
 
 ### req.implementation.resume-checks-only — Resume rounds repair failed checks only
 
 The implement Operation SHALL resume the worker only to repair configured checks that failed in the
 preceding round.
 
-A [worker result](../../../glossary.json#concept.worker-result) of `blocked` or `failed`, including
-one that reports a [Spec gap](../../../glossary.json#concept.spec-gap), ends the run with that
-status and an [error chain](../../../glossary.json#concept.error-chain) that ends in the worker's
-own link.
+### req.implementation.worker-status — A blocked or failed worker ends the run
+
+An implement run whose [worker result](../../../glossary.json#concept.worker-result) is `blocked`
+or `failed`, including one that reports a [Spec gap](../../../glossary.json#concept.spec-gap),
+SHALL end with that status and an [error chain](../../../glossary.json#concept.error-chain) that
+ends in the worker's own link.
 
 ### req.implementation.round-limit — Resume rounds are bounded
 
-The implement Operation SHALL run at most the configured number of resume rounds, three unless
-`--rounds` gives another number.
+The implement Operation SHALL run at most the configured number of resume rounds: the number
+`--rounds` gives, or else the configuration's `workers.rounds`, or else three.
 
 ### req.implementation.pending-markers — Pending markers follow the files
 

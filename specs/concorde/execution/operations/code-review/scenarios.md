@@ -11,7 +11,7 @@ in the [contracts](contracts.md).
 - WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `code_review` for that Module
 - THEN the [Operation](../../../glossary.json#concept.operation) computes the diff and runs the Module's [configured checks](../../../glossary.json#concept.configured-check) before launching the reviewer
 - AND the result has status `ok` and a report with verdict `clean`
-- AND the report records the base and the [check results](../../../glossary.json#concept.check-result) it examined, and the host evidence the [context identity](../../../glossary.json#concept.context-identity)
+- AND the report records the base and the [check results](../../../glossary.json#concept.check-result) it examined, and the run's host evidence carries the [context identity](../../../glossary.json#concept.context-identity)
 
 ### scenario.code-review.all-blocking — Every blocking finding in one report
 
@@ -25,7 +25,8 @@ in the [contracts](contracts.md).
 
 - GIVEN a change whose behaviour the bound Module's Spec neither requires nor forbids
 - WHEN the reviewer cannot judge whether the behaviour is correct
-- THEN the report holds a finding of kind [Spec gap](../../../glossary.json#concept.spec-gap) naming the Spec passage that would have to settle it
+- THEN the result has status `ok`, not `blocked`
+- AND the report holds a finding of kind [Spec gap](../../../glossary.json#concept.spec-gap) whose basis is the passage of the bound Module's Spec context that would have to settle it, which resolves in that context
 
 ### scenario.code-review.foreign-path — A changed file no Module binds is named only
 
@@ -40,7 +41,7 @@ in the [contracts](contracts.md).
 - GIVEN a bound Module whose configured check fails on the workspace
 - WHEN the main agent runs `code_review` for that Module
 - THEN the reviewer receives the failing check result and its log path
-- AND the report keeps the Operation's check result unchanged
+- AND the report carries that check result with outcome `failed`, its exit code and its log path
 - BUT the run does not fail because of the failing check
 
 ## Host checks

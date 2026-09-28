@@ -28,7 +28,8 @@ Both work on the [workspace](../../../glossary.json#concept.workspace) whose bin
 worktree they start in and need one: an [unbound run](../../../glossary.json#concept.unbound-run) of
 either is refused. `--modules` defaults to the binding's Modules, and the worker is briefed with the
 workspace's goal. `implement` takes `--goal`, admits earlier `ok` outputs via `--input`, and
-`--rounds` overrides the resume-round limit (0+, default 3). For example, after `specify` declares
+`--rounds` sets the resume-round limit (0 or more); without it the limit is the configuration's
+`workers.rounds`, and three when that is not set. For example, after `specify` declares
 `src/concorde/issues/severity.py` pending, `implement --goal "accept and store the report severity"`
 lets the worker create it and change the other Issues files, returning once the checks pass or the
 rounds run out.
@@ -39,10 +40,12 @@ rounds run out.
 a **[code change](../../../glossary.json#concept.code-change)**, defined by the
 [code change contract](contracts.md#contract.implementation.code-change). `status` is `ok` when the
 last round's checks passed; `blocked` when the worker reported a Spec gap or another problem it
-cannot solve within its grant, such as a file shared with an unbound Module, ending the
-[error chain](../../../glossary.json#concept.error-chain) in its own link, unresumed;
+cannot solve within its grant, such as a change that needs a file only an unbound Module binds,
+ending the [error chain](../../../glossary.json#concept.error-chain) in its own link, unresumed;
 `failed` when checks still fail after the last round (one link per failing check, exit code and log
-tail), the audit found a change outside the grant, or the worker could not be run. A run with
+tail), the audit found a change outside the grant, the worker ended `failed` or could not be run,
+or the grant could not be computed — for instance because a writable file is also bound by an
+unbound Module, which is refused before any worker starts. A run with
 no configured check ends `ok` with no check evidence, which the result states, and the main agent
 should run `test` or add checks. Whenever the worker returned a result, the output holds the code
 change whatever the status, and edits stay uncommitted.
@@ -55,8 +58,9 @@ worker looks at, never which checks run; the Operation's results decide pass/fai
 adds, per failure, the scenario or requirement concerned, its cause, and whether the defect is code,
 a test, the Spec or the environment. `status` is `ok` whenever the checks were interpreted, passing
 or not; `blocked` when the worker could not interpret them; `failed` when the checks or the worker
-could not be run, or the audit found any change. Only `ok` carries a report; the host evidence of
-any other run still lists the check results. Running `test` again is safe.
+could not be run, the worker ended `failed`, or the audit found any change. Only `ok` carries a
+report; the host evidence of any other run still lists the check results. Running `test` again is
+safe.
 
 ## Design
 
@@ -76,10 +80,10 @@ be reported.
 | 3 | Generate settings, tools and the [brief](../../../glossary.json#concept.brief) | Workers | — |
 | 4 | Launch the worker and wait for its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error/timeout (`failed`) |
 | 5 | [Audit](../../../glossary.json#concept.write-audit) against the grant | Workers | write outside the grant (`failed`); worker `blocked`/`failed` (passed on) |
-| 6 | Run the bound Modules' [configured checks](../../../glossary.json#concept.configured-check) | Workers, Check execution | — |
+| 6 | After a clean audit of a worker that ended `ok`, run the [configured checks](../../../glossary.json#concept.configured-check) of the bound Modules and of every Module that uses one of them | Workers, Check execution | — |
 | 7 | While a check fails with rounds left, [resume](../../../glossary.json#concept.resume-round) the session, repeat 5–6 | Workers, worker | rounds used, still failing (`failed`) |
-| 8 | Perform proposed deletions after a clean audit; write the [run record](../../../glossary.json#concept.run-record) | Workers | — |
-| 9 | Remove empty pre-created paths; clear the pending marker of every entry that now exists | Operation, Spec core | — |
+| 8 | Perform proposed deletions after a clean audit; remove pre-created paths still empty; write the [run record](../../../glossary.json#concept.run-record) | Workers | — |
+| 9 | Remove any pre-created path still empty that step 8 left; clear the pending marker of every entry that now exists | Operation, Spec core | — (a marker update that fails is recorded as `pending-markers` evidence) |
 | 10 | Return the run's output | Operation, Execution runner | — |
 
 Once launched, steps 8–10 run whatever the status, so Specs and the run record stay consistent after
@@ -87,10 +91,26 @@ a failure. Steps 1–8 are the
 [standard worker sequence](../../../glossary.json#concept.standard-worker-sequence); step 9 is this
 Operation's own, and the Operation composes the code change from the run record itself:
 changed/created files, deletions performed or refused, rounds used and the last round's checks.
+Workers already removes the pre-created paths that stayed empty when its run ends; step 9 repeats
+that removal for any it left, so the markers it then clears follow the files that really exist. When
+the marker update cannot be read or written, step 9 records the failure as `pending-markers`
+evidence, clears nothing and keeps the status and error chain the run already had.
 
-The worker gets Read, Glob, Grep, Edit, Write and Bash. Bash runs in Claude Code's sandbox — reads
-the granted files and toolchain, writes only the grant's writable files and the
-[run directory](../../../glossary.json#concept.run-directory), no network. The worker may use it to
+The set of checked Modules is the same for both Operations: the bound Modules together with every
+Module that uses one of them, directly or through further uses, as Check execution's
+`checked_modules` computes it. A selective check runs only when some test verifies a scenario of
+those Modules, and a readiness check never runs here; a check that does not run is not listed.
+
+The worker can read, search, edit and write files and run commands — Read, Glob, Grep, Edit, Write
+and Bash on the Claude Code backend, their counterparts on pi, the default
+[worker backend](../../../glossary.json#concept.worker-backend); both enforce the same grant.
+Commands run in the backend's sandbox — reads the granted files and toolchain, writes only the
+grant's writable files and the [run directory](../../../glossary.json#concept.run-directory), no
+network. When the configuration names the project's interpreter in `python`, the brief names it and
+puts it first on the worker's PATH as `python`, and the sandbox may read its environment and the
+installation it resolves to; since the sandbox allows a read at a path's real location, the
+directory holding each symbolic link on that way is readable too, but never the home directory or
+one that holds it. The worker may use it to
 try things, but its own runs are never evidence, and a file it creates outside its writable paths is
 silently lost, which the brief says. The worker cannot delete a file itself: it names deletions in
 its result, and the Operation performs those inside the writable paths after a clean audit and
@@ -99,7 +119,9 @@ refuses the rest.
 Checks run outside the worker and read-only, so it cannot fake a green result or change the
 worktree through one. Each resume round continues the same session with the failures and is only
 for failed checks — an audit violation, a Spec gap or any other reported problem ends the run at
-once.
+once. Proposed deletions and the removal of empty pre-created paths happen after the last round's
+checks, so the recorded check results describe the worktree before them; a caller that needs checks
+of the final state runs `test`.
 
 Pre-creating pending files lets the [write hook](../../../glossary.json#concept.write-hook) and
 sandbox treat them as ordinary writable files. Steps 8–9 then keep the Specs consistent: an unused
@@ -112,16 +134,18 @@ to stay empty is removed and stays pending; it needs some content to count as cr
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Compute the `test` grant, frozen by Workers at launch | Workers, Spec core | Specs cannot load, or unknown Module (`failed`) |
-| 2 | Run the configured checks outside any worker, logs kept in the run directory | Operation, Check execution | a check cannot start (`failed`) |
+| 2 | Run the configured checks of the bound Modules and of every Module that uses one of them outside any worker, logs kept in the run directory | Operation, Check execution | a check cannot start (`failed`) |
 | 3 | Generate settings, tools and the brief with the focus and failing-log tails | Workers | — |
-| 4 | Launch the worker and wait for its worker result | Workers, worker | launch error/timeout (`failed`); worker `blocked` (passed on) |
-| 5 | Audit: read-only grant, so any change is a violation; write the run record | Workers | any change (`failed`) |
+| 4 | Launch the worker and wait for its worker result | Workers, worker | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
+| 5 | Audit: read-only grant, so any change the audit observes is a violation; write the run record | Workers | any observed change (`failed`) |
 | 6 | Return the run's output | Operation, Execution runner | — |
 
-The `test` worker gets Read, Glob and Grep only and never runs a command: running checks is the
-Operation's own evidence, and the check logs are material, so the brief carries the last part of
-every log that did not pass and widens nothing. A failing check is not a failed run; it is for the
-main agent to follow up with `implement`, `specify` or a decision. See the
+The `test` worker can only read and search (Read, Glob and Grep on Claude Code) and never runs a
+command: running checks is the Operation's own evidence. The check logs are material: the brief
+lists every check result with its log path and carries the last part of every log that did not
+pass, and the run directory's check logs are made readable to the worker beside its grant, so it
+can open every full log, passing ones included; nothing becomes writable. A failing check is not a
+failed run; it is for the main agent to follow up with `implement`, `specify` or a decision. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
 <a id="realization.implementation.operations"></a>
@@ -136,7 +160,10 @@ or `failures` and `notes`); the Operation adds everything it observed itself.
 
 **Operations** lists `implement` and `test` in its catalog as Operations that need a bound
 workspace, `implement` writing the bound Modules' code, and names this Module as their provider;
-Implementation never calls another Operation.
+Implementation never calls another Operation. Implementation relies on Operations'
+[standard worker sequence](../../../glossary.json#concept.standard-worker-sequence) and its mapping
+of worker and audit outcomes to run statuses for steps 1–8 of `implement` and the worker launch of
+`test`; its own steps extend that sequence.
 
 <a id="uses-execution"></a>
 

@@ -27,11 +27,15 @@ The Spec navigation SHALL nest one [Module](../../glossary.json#concept.module) 
 
 ### req.views.reading-collections — Role selects the reading collection
 
-Publication SHALL place each document in the [reading collection](../../glossary.json#concept.reading-collection) named by its declared role without changing its route, owner or selecting Modules.
+Publication SHALL place each document in the [reading collection](../../glossary.json#concept.reading-collection) named by its declared role.
 
 A document with role `module` is listed in Module documents and one with role `implementation` in
 Implementation documents. The role is read from metadata and never inferred from a file name, a
 heading or the presence of definitions.
+
+### req.views.reading-collection-neutral — The reading collection changes nothing else
+
+A document's reading collection SHALL NOT change its route, owner or selecting Modules.
 
 ## Rendering
 
@@ -91,16 +95,37 @@ Publication SHALL fail naming the diagram's document and line when the `d2` prog
 A missing program is reported with how to install it, and a rejected diagram with the program's own
 message.
 
-### req.views.user-docs — User documents are the home page and the first tab
+### req.views.user-docs — User documents are published as they are
 
-Publication SHALL publish configured user documents from their directory as it is, in the first navigation tab, with their root page as the site's home page, never as Spec pages.
+Publication SHALL publish configured user documents from their directory as it is.
 
-Their sidebar follows the directory's folders. Without user documents the home page opens the root
-Module's entry.
+Their sidebar follows the directory's folders.
 
-### req.views.custom-docs — Custom docs stay outside the Specs
+### req.views.user-docs-first-tab — User documents are the first tab
 
-Publication SHALL publish custom docs only in their own tabs and routes, after the Spec tabs, never as Spec pages or inside a Spec collection.
+Publication SHALL place configured user documents in the first navigation tab.
+
+### req.views.user-docs-home — The user documents' root page is the home page
+
+Publication SHALL publish the root page of configured user documents as the site's home page.
+
+Without user documents the home page opens the root Module's entry.
+
+### req.views.user-docs-not-specs — User documents are not Spec pages
+
+Publication SHALL NOT publish user documents as Spec pages.
+
+### req.views.custom-docs — Custom docs have their own tabs and routes
+
+Publication SHALL publish each custom docs collection only in its own tab and under its own routes.
+
+### req.views.custom-docs-order — Custom docs follow the Spec tabs
+
+Publication SHALL place the tabs of custom docs after the Spec tabs.
+
+### req.views.custom-docs-not-specs — Custom docs stay outside the Specs
+
+Publication SHALL NOT publish custom docs as Spec pages or inside a Spec reading collection.
 
 ### req.views.provenance-selection — Provenance agrees with Spec core
 
@@ -125,8 +150,12 @@ The build SHALL promote only a candidate whose [site build manifest](../../gloss
 
 ### req.views.promote-atomic — Failed promotion restores the published site
 
-Promotion SHALL restore the previous [published site](../../glossary.json#concept.published-site)
-when moving the candidate into place fails.
+Promotion SHALL move the previous [published site](../../glossary.json#concept.published-site)
+back into place when moving the candidate into place fails.
+
+Only a filesystem failure during that restoration itself can prevent it; the build then fails with
+that error and leaves the previous site in `docsite/.generated/previous-build/` for manual
+recovery.
 
 ### req.views.production-preview-isolation — Production does not disturb the preview
 
@@ -134,10 +163,14 @@ A production build SHALL NOT clear or overwrite the generated files of the devel
 
 ### req.views.preview-follows-specs — The preview follows the Specs
 
-While `npm run start` runs, a change to the [site identity](../../glossary.json#concept.site-identity), the configuration, the registry or either member of a registered document SHALL stage the Specs again and restart the preview.
+While `npm run start` runs, a change to the [site identity](../../glossary.json#concept.site-identity), the configuration, the registry or either member of a registered document SHALL stage the Specs again.
 
-A staging that fails during the preview reports its error in full, and the command keeps waiting
-for the next change instead of exiting.
+A staging that fails during the preview reports its error in full, no preview runs, and the
+command keeps waiting for the next change instead of exiting.
+
+### req.views.preview-restart — A successful staging restarts the preview
+
+While `npm run start` runs, a staging that follows a change and succeeds SHALL restart the preview from the new staging.
 
 ### req.views.hash-format — Digest format
 
@@ -145,7 +178,11 @@ Every content or source digest that publication records SHALL be `sha256:` follo
 
 ### req.views.safe-relative-paths — Safe source paths
 
-Publication SHALL read only source paths that are relative POSIX paths without empty, `.` or `..` components, backslashes or symbolic links.
+Publication SHALL read the configuration, the registry, every registered document with its metadata and the glossary only through relative POSIX paths without empty, `.` or `..` components, backslashes or symbolic links.
+
+The directories of [user documents](../../glossary.json#concept.user-documents) and
+[custom docs](../../glossary.json#concept.custom-docs) are configured relative to `docsite/` under
+the [site identity](contracts.md#site-identity)'s own rules, which allow `../`.
 
 ## Scaffold
 

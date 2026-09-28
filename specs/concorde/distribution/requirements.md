@@ -18,7 +18,8 @@ them. Each new prompt root adds its own owned location in the same change.
 
 ### req.distribution.build-reachable — Every prompt file is rendered
 
-The build SHALL fail when a Markdown file under `prompts/` is included by no prompt root.
+The build SHALL fail when a Markdown file under `prompts/` is neither a prompt root nor reached
+through the includes of one.
 
 ### req.distribution.no-stale-copy — A stale build is never copied
 
@@ -30,10 +31,12 @@ is missing or changed, or whose rendered asset differs from the tracked manifest
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `configure-workers` and `issues` SHALL print exactly one JSON result envelope on standard output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `configure-workers`, `issues` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help`.
 
-The exit status follows the envelope's status, so a caller that only checks the status and a caller
-that reads the envelope reach the same conclusion.
+The exit status is the one Spec core's shared envelope assigns to the envelope's status, so it
+follows from this requirement rather than being a separate one: a caller that only checks the status
+and a caller that reads the envelope reach the same conclusion. `update` prints the installer's
+result or [error link](#req.distribution.installer-error-links) instead.
 
 ## Installation
 
@@ -43,14 +46,24 @@ The installed `CLAUDE.md` block SHALL import the glossary the project's registry
 
 ### req.distribution.receipt-complete — The receipt names every owned file
 
-The installer's receipt SHALL list every file Concorde owns in the project, whether or not this install wrote it, and apart from them the project files it only amends.
+The installer's receipt SHALL list under `files` every file Concorde owns in the project, whether or not this install wrote it.
+
+### req.distribution.receipt-amended — The receipt names every amended project file
+
+The installer's receipt SHALL list under `amended` the project's own files that the installer only amends.
 
 ### req.distribution.installer-own-permissions — The installer adds only its own permission rules
 
 The installer SHALL change the project's `.claude/settings.json` only by adding the missing permission rules its workflows need and removing the rules it recorded in its receipt and no longer ships.
 
 Every other setting, including rules the developer wrote that equal one of Concorde's, stays as
-it was; a file that is not a JSON object is refused before anything is written.
+it was.
+
+### req.distribution.installer-settings-checked — Unusable settings are refused first
+
+The installer SHALL refuse, before writing anything, a project whose `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list.
+
+The refusal is `settings_invalid`.
 
 ### req.distribution.own-python — Concorde runs in its own Python environment
 
@@ -61,15 +74,19 @@ The installed `concorde` command SHALL run Concorde only with the interpreter of
 The installer SHALL refuse, before writing anything, to install into a project in which the runner
 process of an [Operation](../glossary.json#concept.operation) or
 [execution command](../glossary.json#concept.execution-command) run or a pi
-[task-session](../glossary.json#concept.task-session) round's supervisor is still running, naming
-each.
+[task-session](../glossary.json#concept.task-session) round's supervisor is still running.
 
 The update runs the installer, so the same holds for `concorde update`.
+
+### req.distribution.busy-named — A busy refusal names what runs
+
+The installer's `concorde_busy` refusal SHALL name each run and task-session round it found running.
 
 ### req.distribution.installer-error-links — Installer refusals are error links
 
 Every refusal of the installer and of `concorde update` SHALL be printed as one error link of the
-Framework's error contract, naming the refusal's code and what is wrong.
+Framework's [error contract](../contracts.md#contract.concorde.error), naming the refusal's code and
+what is wrong.
 
 ### req.distribution.installer-no-specs — The installer never writes Specs
 
@@ -77,9 +94,23 @@ The installer SHALL NOT create, modify or remove a registered [Spec](../glossary
 document, the registry or, except in update mode, the project configuration's
 [Protocol binding](../glossary.json#concept.protocol-binding).
 
-### req.distribution.update-unvalidated — An update is validated before anything merges
+### req.distribution.update-unvalidated — An update marks the project Concorde unvalidated
 
-`concorde update` SHALL leave the project Concorde unvalidated, reported as an error by every validation in the primary worktree, until a validation passes.
+`concorde update` SHALL mark the project Concorde unvalidated.
+
+The mark is the file `.concorde/update.json`, which the project ignores; only an update writes it.
+
+### req.distribution.unvalidated-reported — Validation reports an unvalidated update
+
+While the project is Concorde unvalidated, `concorde spec-validation` in its primary worktree SHALL report `CONCORDE-UPDATE-001` as an error.
+
+Nothing merges before the update is validated, since a `task merge` runs that validation by default.
+
+### req.distribution.unvalidated-cleared — The first clean validation clears the mark
+
+A `concorde spec-validation` of a Concorde-unvalidated project that finds no error other than `CONCORDE-UPDATE-001` SHALL remove the mark.
+
+It reports the removal as `CONCORDE-UPDATE-002`.
 
 ### req.distribution.installer-fresh-guidance — Only current guidance is installed
 
@@ -98,5 +129,10 @@ hash differs, and no install script of a dependency runs on the developer's mach
 
 The installer SHALL place a `d2` program only from an archive whose SHA-256 equals the one `concorde.json` pins for the platform.
 
-The docsite renders the Specs' diagrams with it. The installer fetches and checks it before writing
-anything else, so a failed or tampered download leaves the project untouched.
+The docsite renders the Specs' diagrams with it.
+
+### req.distribution.installer-d2-first — The d2 archive is checked before anything is written
+
+When it installs `d2`, the installer SHALL fetch and check the pinned archive before it writes anything else into the project.
+
+A failed or tampered download therefore leaves the project untouched.

@@ -28,19 +28,19 @@ Situations the [main-session guidance](module.md) prepares the
 
 ### scenario.main-session.project-terms — Every session starts with the project's terms
 
-- GIVEN a project whose root Module declares a glossary
-- WHEN a Claude Code or pi session starts in one of its worktrees
+- GIVEN a project whose root Module declares a glossary that can be read
+- WHEN the main agent's session or a task session, in Claude Code or pi, starts in one of its worktrees
 - THEN the session holds every term of that worktree's glossary with its identity, owner and definition
 - AND the guidance tells it to use each term exactly as defined, with the developer and in task goals, decision logs, escalations, commit messages and Specs
-- BUT a project without a readable glossary starts the session without terms and without an error
+- BUT a project that declares no glossary, or whose declared glossary cannot be read, starts the session without terms and without an error
 
 ### scenario.main-session.change-through-task — The guidance routes an agreed change through a task
 
 - GIVEN the rendered [main-session guidance](../../glossary.json#concept.main-session-guidance)
 - WHEN a main agent reads how to carry out a change agreed with the developer
 - THEN it is told to open a task with its own branch and worktree for the Modules involved
-- AND to enter that worktree and make the change there, directly or with Operations and the execution commands `task-validation` and `delivery` run in background Bash
-- AND to run every `concorde` command for the task with the worktree's own copy
+- AND to work inside that worktree, entering it in Claude Code and addressing its path in pi, and make the change there, directly or with Operations and the execution commands `task-validation` and `delivery` run in the background
+- AND to run every `concorde` command that works on the task's workspace with the worktree's own copy
 - AND that `concorde task open` bound the worktree as the task's workspace, whose binding every run reads without naming the task, and that a second run while one runs is refused with `workspace_busy`
 - BUT it is told never to change Specs or code in the primary worktree
 
@@ -61,8 +61,8 @@ Situations the [main-session guidance](module.md) prepares the
 
 ### scenario.main-session.task-session-role — The task-session guidance keeps a session within its task
 
-- GIVEN the rendered task-session guidance
-- WHEN a task session reads how to work
+- GIVEN the rendered Claude Code task-session guidance
+- WHEN a Claude Code task session reads how to work
 - THEN it is told to work only inside its task worktree with the worktree's own `concorde`
 - AND to escalate beyond its task's goal or Modules with `concorde task escalate --by task-session` and SendMessage
 - AND to report to the main agent when the task is delivered or cannot go further
@@ -89,7 +89,7 @@ Situations the [main-session guidance](module.md) prepares the
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads what to do after `delivery` committed a task's change with its evidence
-- THEN it is told to leave the task worktree and merge the task with `concorde task merge <task>` without asking the developer
+- THEN it is told to leave the task worktree if it is in it and merge the task with `concorde task merge <task>` without asking the developer
 - AND never to merge with `git merge` itself, because other main sessions may be merging, and that the merge runs `concorde spec-validation` unless it names other checks
 - AND to run the command again on `merge_busy`, and to resolve a `merge_conflict` in the task worktree and deliver again
 
@@ -97,9 +97,9 @@ Situations the [main-session guidance](module.md) prepares the
 
 ### scenario.main-session.pi-model-picker — pi's picker applies the developer's choice
 
-- GIVEN a pi terminal main session and an optional task worktree
+- GIVEN a pi terminal main session, and optionally a task with a worktree
 - WHEN the developer opens `/concorde-models` or the main agent calls `concorde_configure_workers`
-- THEN the picker opens Workers' shared terminal editor in exactly that worktree, with backend, model, reasoning, inheritance and Save/Cancel
+- THEN the picker opens Workers' shared terminal editor in exactly the named task's worktree, or in the session's own worktree when no task is named, with backend, model, reasoning, inheritance and Save/Cancel
 - AND it restores pi's terminal after normal exit, cancellation or a launch failure
 - AND read-only `configure-workers --show --json` inspection reports saved changes and preserves refusal chains
 - BUT RPC and headless modes are told to use direct JSON edits and read-only validation, and a missing task worktree is refused without primary fallback
@@ -113,7 +113,7 @@ Situations the [main-session guidance](module.md) prepares the
 - AND to edit JSON directly for AI-driven changes, preserve unrelated overrides and validate with `--check`, inspecting sources with `--show --json`
 - AND that separate `scripts/available_models.py` discovery supplies advisory configured candidates without inference API probes, while custom/offline names require no discovery
 - AND to set the JSON backend to `claude` when asked, with program installation required at launch rather than at configuration time
-- BUT to run it in an existing task's worktree only when the developer asks to change that task
+- BUT to edit the configuration in an existing task's worktree only when the developer asks to change that task
 
 ### scenario.main-session.no-task-operations — The guidance runs questions and reviews without a task
 
@@ -129,7 +129,7 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN a main agent has just initialized a project whose code came before its Specs
 - THEN it is told to open a task bound to the root Module and start the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) inside its worktree, which never names the task
 - AND to ask the developer for interactive or no-ask mode unless the developer already said
-- AND to put every pending [decision point](../../glossary.json#concept.decision-point) to the developer when the workflow ends `awaiting_decision`, then start the workflow again with the answers keyed by [step key](../../glossary.json#concept.step-key)
+- AND to put every pending [decision point](../../glossary.json#concept.decision-point) to the developer when the workflow ends `awaiting_decision`, then start the workflow again with every answer given so far, keyed by each step's base key, its [step key](../../glossary.json#concept.step-key) without a restart label or answer digest
 - AND to read the [workflow result](../../glossary.json#concept.workflow-result) saved beside the workspace's [workflow record](../../glossary.json#concept.workflow-record) like a run result, copy its decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log) itself, and merge the delivered task
 
 ## Escalation
@@ -176,7 +176,8 @@ This illustrates [recording decisions](requirements.md#req.main-session.issues-r
 - AND to close the Issue on the task branch with the evidence, so the closure is merged with the fix
 - BUT starting or delivering the task does not itself close the Issue
 
-This illustrates [ordinary repair](requirements.md#req.main-session.issues-by-operations).
+This illustrates [ordinary repair](requirements.md#req.main-session.issues-by-operations) and
+[closure with the fix](requirements.md#req.main-session.issues-close-with-fix).
 
 ### scenario.main-session.unmerged-issue — The guidance preserves an unmerged observation
 
@@ -198,4 +199,5 @@ This illustrates [handoff before closure](requirements.md#req.main-session.issue
 - BUT it is told not to concatenate incompatible closes or invent reopenings to satisfy the state rules
 - AND that a passing store check does not establish that the disposition is justified
 
-This illustrates [conflict handling](requirements.md#req.main-session.issues-conflicts).
+This illustrates [conflict handling](requirements.md#req.main-session.issues-conflicts) and the
+[store check](requirements.md#req.main-session.issues-store-check).

@@ -40,21 +40,21 @@ is in the [contracts](contracts.md).
 
 ### scenario.understanding.unknown-module — An unknown Module fails the run
 
-- GIVEN a worker whose assessment names a Module identity the workspace's Specs do not define
+- GIVEN a worker whose assessment names a Module identity the Specs of the worktree the run works on do not define
 - WHEN the [Operation](../../../glossary.json#concept.operation) checks the assessment
 - THEN the result has status `failed`
 - AND the unknown identity is listed as host evidence
 
 ### scenario.understanding.inconsistent — An inconsistent assessment fails the run
 
-- GIVEN a worker whose assessment carries a plan although `--plan` was not given, or is marked insufficient without a Spec gap
+- GIVEN a worker whose assessment breaks one of the consistency rules of [req.understanding.consistent](requirements.md#req.understanding.consistent), such as a plan although `--plan` was not given
 - WHEN the Operation checks the assessment
 - THEN the result has status `failed` with each inconsistency as host evidence
 - BUT the worker is not resumed
 
 ### scenario.understanding.change-detected — A change to the worktree fails the run
 
-- GIVEN an understand run whose [write audit](../../../glossary.json#concept.write-audit) finds a changed or new file in the workspace
-- WHEN the Operation evaluates the audit
+- GIVEN an understand run whose worker leaves a changed or new file in the worktree the run works on
+- WHEN Workers' [write audit](../../../glossary.json#concept.write-audit) finds it after the round
 - THEN the result has status `failed` with the changed paths as host evidence
 - BUT the worker is not resumed

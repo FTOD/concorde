@@ -43,14 +43,12 @@ reviews it had and its **stop**: the status, summary and error link that stopped
 
 ```d2 illustrative
 direction: right
-reviewers: "reviewer 1 … reviewer N\n(in parallel)"
+review: "review\n(reviewer 1 … reviewer N, in parallel)"
 gather: "gather\n(Operation)"
-chair: "chair"
-account: "accounting\n(Operation)"
-reviewers -> gather
+chair: "chair\n(chair worker, then the Operation's accounting)"
+review -> gather
 gather -> chair: every reviewer finished
-chair -> account
-account -> chair: "a label unaccounted\nand an attempt remains"
+chair -> chair: "a label unaccounted\nand an attempt remains"
 ```
 
 - **review** runs once per seat, all seats at the same time: reviewer `n` reviews the Module on its
@@ -75,7 +73,8 @@ Control moves by these rules:
    every accounting problem; after that second attempt a report still incomplete stops the Module
    with `report_unaccounted`, whose detail names every problem.
 
-A Module's panel therefore takes `--reviewers` reviewer runs and one or two chair runs. The graph's
+A Module's panel therefore takes `--reviewers` reviewer runs and, when every reviewer finished,
+one or two chair runs. The graph's
 state is the reviews, the host evidence, the Module's
 [context identity](../../glossary.json#concept.context-identity), the chair's latest report, its
 accounting problems, the chair attempts and the Module's stop, all plain JSON values; the reviews

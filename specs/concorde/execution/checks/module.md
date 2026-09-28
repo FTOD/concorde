@@ -9,8 +9,8 @@ between rounds, directly by Operations such as testing and code review, and by t
 [execution commands](../../glossary.json#concept.execution-command) `task-validation` and
 `delivery`. Checks read the worktree but cannot directly change its files; the boundary restricts
 filesystem writes only, not reads, network or credentials. The service records which inputs were
-checked and refuses a result if they changed during the run. It never decides whether a passing
-check means correct code or whether a workspace is ready to deliver.
+checked and refuses a result if they differ after the run from before it. It never decides whether
+a passing check means correct code or whether a workspace is ready to deliver.
 
 ## Usage
 
@@ -82,13 +82,13 @@ plainly what it leaves out:
 | Reading files the developer's user can read | Not enforced |
 | Network access | Not enforced: the network namespace is shared with the host |
 | Host sockets: abstract Unix sockets and filesystem sockets such as an SSH agent or a container daemon | Not enforced: a read-only mount does not stop connecting to a socket, so a command could ask a host service to act, including changing the project |
-| Environment and credentials | Not enforced: the command receives the caller's environment, including any credentials in it |
+| Environment and credentials | Not enforced by the boundary, which passes on whatever environment its caller gives; the check service builds that environment from `PATH`, `LANG`, the proxy and TLS trust variables and the check's own `env`, so a credential reaches a configured check only through one of those, such as a proxy address carrying one, or through a file the check can read |
 
 The omissions are deliberate: configured checks are commands the project itself chose, run by the
 host and never by a worker, which only receives their results. Because the boundary cannot stop a
 process outside it, or a host service a check talked to, from changing the project during the run,
 the service measures its input before and after and turns that race into `stale_evidence` rather
-than false evidence.
+than false evidence. A change undone before the second measurement is not detected.
 
 ### Its place in the levels of work
 
@@ -117,14 +117,15 @@ operations.adoption -> checks
 validation -> checks
 ```
 
-Workers, Validation and the Operation providers use this Module; it knows none of them. They rely on
-the [check result](../../glossary.json#concept.check-result), the stale-measurement rule, and the
-boundary refusing to run rather than running a check unconfined. Every call returns to the caller's
-step: the check results go up as that caller's evidence, and a failure, such as `stale_evidence` or
-a boundary that cannot be established, goes up as this Module's own error link, which the caller
-keeps as a cause under its link. The check result is owned here, next to the runner that produces
-it, so Workers, Validation and Delivery consume one record and never run checks another way. Logs go
-only to the directory the caller names, usually the calling run's directory in the
+Workers, Validation and the Operation providers Implementation (for its `test` Operation), Code
+review and Adoption (which maps changed paths to Modules with it) use this Module; it knows none of
+them. They rely on the [check result](../../glossary.json#concept.check-result), the
+stale-measurement rule, and the boundary refusing to run rather than running a check unconfined.
+Every call returns to the caller's step: the check results go up as that caller's evidence, and a
+failure, such as `stale_evidence` or a boundary that cannot be established, goes up as this
+Module's own error link, which the caller keeps as a cause under its link. The check result is
+owned here, next to the runner that produces it, so Workers, Validation and Delivery consume one
+record and never run checks another way. Logs go only to the directory the caller names, usually the calling run's directory in the
 [run store](../../glossary.json#concept.run-store); a check's output reaches a worker only as the
 bounded log tail Workers puts into a [resume round](../../glossary.json#concept.resume-round), and
 whether a worker needs more than its last 20,000 bytes is undecided.
@@ -167,7 +168,11 @@ checks: Check execution {
 ```
 
 The timing recorder lives here because check runs and sandbox setup are the slowest deterministic
-steps a host takes; it is passive and holds no content, so it can stay on in any run.
+steps a host takes; it is passive and holds no content, so it can stay on in any run. The open
+trace and the enclosing span are held per execution context, so each thread or asynchronous task
+records into the trace opened where its work started and gets its previous trace back when a scope
+ends; a failing sink is caught and only marks the trace incomplete, and the work's own result or
+exception passes through a span unchanged.
 
 - <a id="realization.checks.runner"></a>The **check runner** has three parts: the executor mounts
   the filesystem read-only except the scratch, holding a process descriptor to end every descendant

@@ -45,9 +45,9 @@ live worker test of Workers.
 
 ### scenario.concorde.worker-escalates — A worker that needs more than its grant
 
-- GIVEN a task whose worker needs to change a file outside its grant
+- GIVEN a task whose worker changes a file outside its grant with a write its harness did not refuse
 - WHEN the [Operation](glossary.json#concept.operation) runs
-- THEN the write does not stand: the worker's settings refuse it, and a write that slips through fails the Operation's audit
+- THEN the Operation's audit finds the change and the run ends `failed`
 - AND the [run result](glossary.json#concept.run-result) carries an [error chain](glossary.json#concept.error-chain) whose top link, the Operation's, names the file and gives `permission` as the reason it cannot handle the error
 - AND the link below it is Workers', with the audit as evidence
 - BUT the Operation does not retry the worker with a wider grant

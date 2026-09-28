@@ -166,7 +166,7 @@
     {
       "type": "relates",
       "source": "realization.distribution.command",
-      "verb": "routes validate and registry to",
+      "verb": "routes spec-validation and registry to",
       "target": "module.spec"
     },
     {

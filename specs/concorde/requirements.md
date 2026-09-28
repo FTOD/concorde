@@ -8,16 +8,33 @@ together.
 
 ### req.concorde.agent-runtimes — Claude Code and pi are the agent runtimes
 
-The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code or in pi and run every worker of that main agent, under the same grant, on the agent program the worktree's [worker model configuration](glossary.json#concept.worker-model-configuration) chooses for it, and on the main agent's own program when it chooses none.
+The Framework SHALL support a [main agent](glossary.json#concept.main-agent) in Claude Code or in pi.
+
+### req.concorde.worker-program — Workers run on the configured program
+
+Every worker SHALL run on the agent program the worktree's [worker model configuration](glossary.json#concept.worker-model-configuration) chooses for it, and on pi when it chooses none, whatever program the main agent runs on.
+
+A worker whose chosen program is not installed is refused, never moved to the other program.
+
+### req.concorde.grant-program-independent — A grant does not depend on the program
+
+A worker's grant SHALL NOT depend on the agent program the worker runs on.
 
 The [Spec](glossary.json#concept.spec) Protocol needs no change for this, because it defines
 visibility, not how an agent is run; each backend compiles the same grant into its own mechanism, so
-a Claude Code main agent may run pi workers and a pi main agent Claude Code workers. A worker whose
-chosen program is not installed is refused, never moved to the other program.
+a Claude Code main agent may run pi workers and a pi main agent Claude Code workers.
 
 ### req.concorde.worker-models-per-worktree — Worker models belong to the worktree
 
-The model and reasoning level of every worker SHALL come from the worker model configuration of the worktree it works on, which a new task worktree inherits from the primary worktree when the task opens and which changes afterwards only by an explicit request made in that worktree.
+The model and reasoning level of every worker SHALL come from the worker model configuration of the worktree it works on.
+
+### req.concorde.worker-models-inherited — A task worktree inherits the worker models
+
+A new task worktree SHALL inherit the worker model configuration of the primary worktree when the task opens.
+
+### req.concorde.worker-models-explicit — Worker models change only on request
+
+A worktree's worker model configuration SHALL change only by an explicit request made in that worktree.
 
 ## The two halves
 
@@ -45,7 +62,7 @@ command instead.
 
 ### req.concorde.spec-first — Specs are derived from code only by code-to-spec
 
-Every Spec statement that an Operation writes from the contents of implementation files SHALL originate from a worker of [task type](glossary.json#concept.task-type) `code-to-spec`.
+Every Spec statement that an Operation or an execution command writes from the contents of implementation files SHALL originate from a worker of [task type](glossary.json#concept.task-type) `code-to-spec`.
 
 Concorde's flow is Spec first, and every other worker sees code at most by name when it writes a
 Spec. A project whose code came before its Specs is described through the
@@ -60,11 +77,18 @@ Every grant a worker receives SHALL be computed from the Specs in the worktree o
 
 ### req.concorde.no-wider-than-type — A worker never exceeds its task type
 
-A worker's readable and writable paths SHALL NOT exceed what its task type assigns to its bound Modules.
+A worker's readable and writable paths among the project's files SHALL NOT exceed what its task type assigns to its bound Modules.
+
+Besides the project's files, the [Harness](harness/module.md) gives a worker its run's own working,
+home and temporary directories and leaves readable the system paths every program needs; its
+[known limits](harness/module.md#known-limits-of-v1) say what else it leaves out.
 
 ### req.concorde.workers-no-git — Workers have no Git access
 
-A worker SHALL NOT be able to read or change Git metadata; diffs and delivery commits belong to the runs that launch no worker, and merges to the main agent.
+A worker SHALL NOT be able to read or change Git metadata.
+
+Git belongs to the deterministic code around the workers: the run that launches a worker reads the
+worktree's changes to audit them against the grant, `delivery` commits, and the main agent merges.
 
 ## Results and errors
 
@@ -74,6 +98,11 @@ Every Operation, execution command, worker, step, `concorde` command and the mai
 
 A status, a code or a one-line summary alone is never the whole report. The parent must be able to reason about the error from the link without asking the actor that wrote it.
 
+Spec tooling's deterministic commands and library, such as `concorde spec-validation`, are the one
+exception: they depend on no other Module and report with Spec tooling's own, equally detailed error
+record, which a Module that cannot handle it translates into a link
+([Where links appear](contracts.md#where-links-appear)).
+
 ### req.concorde.error-chain — An unhandled error keeps its chain
 
 An actor that cannot handle an error it received from a child SHALL pass the child's error on unchanged as a cause of its own link, which states the reason the actor cannot handle the error.
@@ -82,7 +111,10 @@ The reasons are the fixed set of the [error contract](contracts.md#contract.conc
 
 ### req.concorde.structured-errors — The chain is structured data
 
-Every error link SHALL conform to the error contract wherever it appears: in a [run result](glossary.json#concept.run-result), a worker [run record](glossary.json#concept.run-record), a [worker result](glossary.json#concept.worker-result), a refusal of a `concorde` command and an escalation of the main agent.
+Every error link SHALL conform to the error contract wherever it appears: in a [run result](glossary.json#concept.run-result), a worker [run record](glossary.json#concept.run-record), a refusal of a `concorde` command and an escalation of the main agent or a [task session](glossary.json#concept.task-session).
+
+A [worker result](glossary.json#concept.worker-result) carries the worker's link without `level`,
+`actor` and `causes`, which Workers adds before the link reaches a run record.
 
 ### req.concorde.claims-apart — Host evidence and worker claims stay apart
 
@@ -99,9 +131,9 @@ back to the same worker automatically.
 
 ## Change control
 
-### req.concorde.delivery-separate — Delivery is its own Operation
+### req.concorde.delivery-separate — Delivery is its own execution command
 
-Changes of a task SHALL reach the task branch only through the `delivery` Operation, which commits them together with their evidence.
+Changes of a task SHALL reach the task branch only through the `delivery` execution command, which commits them together with their evidence.
 
 ### req.concorde.merge-by-main-agent — The main agent merges delivered tasks
 

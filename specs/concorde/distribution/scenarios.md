@@ -62,8 +62,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 ### scenario.distribution.refused-command-line — A refused command line still answers with one envelope
 
-- GIVEN a command line with an unknown option or a missing required argument
-- WHEN the developer runs `concorde`
+- GIVEN a command line naming an unknown command, or giving a command that prints an envelope, such as `spec-validation` or `grant`, an unknown option, or leaving out one of its required arguments
+- WHEN the developer runs `concorde` with it
 - THEN exactly one `failed` result envelope is printed
 - AND the exit status is nonzero
 
@@ -124,8 +124,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN a project where Concorde is installed
 - AND a caller whose `python3` on `PATH` fails and whose `PYTHONPATH` names a package called `concorde` that fails on import
-- WHEN the caller runs `.concorde/bin/concorde`
-- THEN it answers as usual, run by the interpreter of `.concorde/framework/python/`
+- WHEN the caller runs `.concorde/bin/concorde task list`
+- THEN it prints the project's empty task list `[]` and exits with status 0, run by the interpreter of `.concorde/framework/python/`
 - AND the receipt names that environment, the interpreter it was made from and its version
 - BUT an installer given an interpreter older than Python 3.11 is refused with `python_too_old`
 
@@ -141,8 +141,8 @@ Concrete situations that show the [requirements](requirements.md) at work.
 ### scenario.distribution.task-worktree-command — The command works in a task worktree
 
 - GIVEN a project where Concorde is installed and committed, and a linked worktree of it, which has no Framework copy of its own
-- WHEN `.concorde/bin/concorde` of the linked worktree runs
-- THEN it runs the primary worktree's Framework copy and answers as usual
+- WHEN `.concorde/bin/concorde task list` of the linked worktree runs
+- THEN it runs the primary worktree's Framework copy, prints the empty task list `[]` and exits with status 0
 
 ### scenario.distribution.install-d2-refused — A d2 archive that cannot be trusted installs nothing
 

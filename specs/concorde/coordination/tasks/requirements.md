@@ -13,9 +13,13 @@ worktree and nowhere else.
 
 ### req.tasks.store-writes — Only the Task store writes records
 
-Every change to a task record SHALL be made by the [Task](../../glossary.json#concept.task) store as
-one [file transaction](../../glossary.json#concept.file-transaction) bound to the digest of the
-record bytes it replaces.
+Every change to a task record SHALL be made by the [Task](../../glossary.json#concept.task) store.
+
+### req.tasks.record-transactions — Each record write is one bound transaction
+
+Every change to a task record SHALL be one
+[file transaction](../../glossary.json#concept.file-transaction) bound to the digest of the record
+bytes it replaces.
 
 A concurrent change is detected by the digest, never overwritten; after three conflicting attempts
 the update is refused with `record_conflict`.
@@ -41,13 +45,16 @@ A record's Modules never change after the open; the Modules a run worked on are 
 
 ### req.tasks.no-copies — Tasks keeps no copy of what Execution records
 
-Tasks SHALL NOT store a task's runs, deliveries or workflow in its record, nor write the
-[run store](../../glossary.json#concept.run-store), a
-[workflow record](../../glossary.json#concept.workflow-record) or a
-[delivery commit](../../glossary.json#concept.delivery-commit).
+Tasks SHALL NOT store a task's runs, deliveries or workflow in its record.
 
 What happened in a task's workspace is read where Execution recorded it, each time it is needed,
 so no second copy can disagree with it.
+
+### req.tasks.no-foreign-writes — Tasks writes nothing Execution records
+
+Tasks SHALL NOT write the [run store](../../glossary.json#concept.run-store), a
+[workflow record](../../glossary.json#concept.workflow-record) or a
+[delivery commit](../../glossary.json#concept.delivery-commit).
 
 ## Lifecycle
 
@@ -103,12 +110,16 @@ explicit declaration that no error caused it.
 
 ### req.tasks.closed-inert — A closed task stays closed
 
-Tasks SHALL keep a closed or failed task in that state whatever its workspace records afterwards,
-and refuse to start or record a [task session](../../glossary.json#concept.task-session) for it.
+Tasks SHALL keep a closed or failed task in that state whatever its workspace records afterwards.
 
 Closing removes the worktree and with it the workspace binding, so no run of the task's workspace
 can start there; one task runs one thing at a time by Execution's
 [workspace lock](../../glossary.json#concept.workspace-lock), not by the record.
+
+### req.tasks.closed-no-session — A closed task gets no task session
+
+Tasks SHALL refuse with `task_closed` to start or record a
+[task session](../../glossary.json#concept.task-session) for a closed or failed task.
 
 ### req.tasks.merge-verified — Merged means contained in the primary branch
 
@@ -127,9 +138,10 @@ A refused task command or record update SHALL leave every record, branch and wor
 
 The exceptions are refusals that say so themselves: `config_copy_failed` and `binding_failed`,
 where `concorde task open` leaves the worktree and branch it had added, naming them and how to
-remove them; and two `concorde task merge` refusals, `rollback_failed`, where Git would not restore
-the primary branch, and a close that failed after the merge and its checks succeeded, which leaves
-the checked merge in place.
+remove them; and three `concorde task merge` refusals: `rollback_failed`, where Git would not
+restore the primary branch; a `check_failed` whose checks created paths, which the reset leaves in
+the primary worktree and the refusal names; and a close that failed after the merge and its checks
+succeeded, which leaves the checked merge in place.
 
 ## Merging
 
@@ -151,9 +163,13 @@ start time.
 
 ### req.tasks.merge-all-or-nothing — A merge is checked or undone
 
-`concorde task merge` SHALL end with the primary branch either at the merge commit, all its checks
-passed and the task closed as merged, or at the commit it started from with the task still
-delivered, apart from a `rollback_failed` or a failed close that it reports.
+A `concorde task merge` that has run `git merge` SHALL end with the primary branch either at the
+merge commit, all its checks passed and the task closed as merged, or at the commit it started from
+with the task still delivered, apart from a `rollback_failed` or a failed close that it reports.
+
+A merge refused before `git merge` is governed by
+[req.tasks.merge-clean-primary](#req.tasks.merge-clean-primary) and
+[req.tasks.refusal-inert](#req.tasks.refusal-inert).
 
 ### req.tasks.empty-log-warned — A merge warns of an unwritten decision log
 

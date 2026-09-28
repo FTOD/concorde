@@ -1,7 +1,7 @@
 # Workflows contracts
 
-The exact shapes of [Workflows](module.md): what one step prints, the request a pi
-[step agent](../../glossary.json#concept.step-agent) passes on standard input, the
+The exact shapes of [Workflows](module.md): what one step prints, the step and report requests a
+pi [step agent](../../glossary.json#concept.step-agent) passes on standard input, the
 [workflow result](../../glossary.json#concept.workflow-result), and the error codes of the
 workflow's own links. Error links follow the Framework's
 [error contract](../../contracts.md#contract.concorde.error), copied here as `$defs`.
@@ -279,7 +279,7 @@ Printed by `concorde workflow step`, from the workspace's
       }
     }
   },
-  "semantics": "The outcome of one workflow step in the bound workspace the step command runs in. workspace names that workspace as its binding does. key is the step key, including the restart label after # and the answers digest after @ when they were given. name is the Operation or execution command the step runs. run_id names the run recorded for the key, null for a refused step, and result_path the path in the run store where its run result is or will be saved. state is running while the run has no result and its runner lives, finished once it has a result, lost when it has neither a result nor a living runner, and refused when the run could not start or the workflow record refused the step; status and summary are the result's once finished and null otherwise. decision_points counts the result's open questions, and for a survey also its decisions decided by the worker, leaving out the points the step's own answers settle. created_modules lists the Modules a scaffold created, each with the other created Modules it uses, empty for any other step. ready is a task-validation result's readiness and null otherwise. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
+  "semantics": "The outcome of one workflow step in the bound workspace the step command runs in. workspace names that workspace as its binding does. key is the step key, including the restart label after # and the answers digest after @ when they were given. name is the Operation or execution command the step runs. run_id names the run recorded for the key, null for a refused step and for a step that is still waiting for the workspace lock, and result_path the path in the run store where its run result is or will be saved. state is running while the run has no result and its runner lives, and also when the command's wait ended before the workspace lock was free, in which case nothing was started or recorded and asking again waits for the lock again; finished once it has a result, lost when it has neither a result nor a living runner, and refused when the run could not start or the workflow record refused the step; status and summary are the result's once finished and null otherwise. decision_points counts the result's open questions, and for a survey also its decisions decided by the worker, leaving out the points the step's own answers settle. created_modules lists the Modules a scaffold created, each with the other created Modules it uses, empty for any other step. ready is a task-validation result's readiness and null otherwise. error is null for running and finished, and the workflow's link for lost and refused. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "workspace": "adopt",
@@ -408,6 +408,43 @@ receives as its task.
     ],
     "retry": false,
     "restart": null
+  }
+}
+```
+
+## Report request
+
+What `concorde workflow report --stdin` reads, and what the pi report agent `concorde-report`
+receives as its task.
+
+```concorde-contract
+{
+  "id": "contract.workflows.report-request",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "lost": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "semantics": "One report request, with the meaning of the command line's --lost options: lost lists the base keys the script reports as lost because their step agents returned nothing, as each --lost <key> would. lost is optional and means the empty list when left out or null, so the ordinary request is the empty object. The command reads the text from its first { to its last }, since pi-subagents may wrap the task in its prompt, and ignores other fields. A text without a JSON object is answered with an invalid_request link and exit status 2, and nothing is reported or saved. With --stdin the report command exits 0 whatever status the result has. A behaviour or field change increments the version.",
+  "example": {
+    "lost": [
+      "describe:module.checkout"
+    ]
   }
 }
 ```
@@ -1114,13 +1151,13 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
       }
     }
   },
-  "semantics": "The result of the workflow of one bound workspace, built from its workflow record and the saved run results. workspace names the workspace; mode is the mode of the latest recorded step. steps lists the current steps in the order recorded, each with the name of its Operation or execution command, its Modules, run and status: ok, blocked or failed from its result, running while its runner lives, lost without result or runner, refused without a run. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions and open_questions are every decision and open question of the finished current steps exactly as their runs reported them, with their step and run; deviations likewise. reviews holds each spec_review step's verdict and per-Module outcomes as it reported them. proposed_checks are the checks the survey proposed, each with the env and when it was proposed with, which nothing has configured. pending lists the decision points an interactive run ended at, empty otherwise. problems lists every current step that did not end ok with its run's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is running while a current step runs; otherwise failed when the procedure stopped at a failed, lost or refused step, blocked when it stopped at a blocked step or unready validation, awaiting_decision when an interactive run ended at decision points, and ok when its last step ended ok. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged. Each report is saved beside the workflow record as reports/<n>.json, with its Markdown rendering as reports/<n>.md. A behaviour or field change increments the version.",
+  "semantics": "The result of the workflow of one bound workspace, built from its workflow record and the saved run results. workspace names the workspace; mode is the mode of the latest recorded step. steps lists the current steps in the order recorded, each with the name of its Operation or execution command, its Modules, run and status: ok, blocked or failed from its result, running while its runner lives, lost without result or runner, refused without a run. superseded lists the steps a later rerun superseded, which contribute nothing else. decisions and open_questions are every decision and open question of the finished current steps exactly as their runs reported them, with their step and run; deviations likewise. reviews holds each spec_review step's verdict and its modules, the per-Module entries of the Spec review's output (each reviewed Module's outcome with its findings), copied unchanged. proposed_checks are the checks the survey proposed, each with the env and when it was proposed with, which nothing has configured. pending lists the decision points an interactive run ended at, empty otherwise. problems lists every current step that did not end ok with its run's error chain unchanged, or the workflow's own link for a running, lost or refused step. status is running while a current step runs; otherwise failed when the procedure stopped at a failed, lost or refused step, blocked when it stopped at a blocked step or unready validation, awaiting_decision when an interactive run ended at decision points, ok when its last step ended ok, and failed with the code incomplete when the recorded steps end before the procedure's last step without any of these stops. error is null exactly when status is ok; otherwise it is the workflow's link, level workflow, whose causes are the errors of the steps that stopped it, unchanged. Each report is saved beside the workflow record as reports/<n>.json, with its Markdown rendering as reports/<n>.md. A behaviour or field change increments the version.",
   "example": {
     "workflow": "brownfield",
     "workspace": "adopt",
     "mode": "no-ask",
     "status": "ok",
-    "summary": "brownfield described module.shop and 2 created Module(s) and delivered them; 1 problem, 1 decision, 1 open question and 1 proposed check to review",
+    "summary": "workflow brownfield of workspace adopt is ok after survey ok, scaffold ok, describe:module.checkout ok, describe:module.inventory failed, describe:module.shop ok, spec_review ok, validate ok, delivery ok; 1 problem(s), 1 decision(s), 1 open question(s), 1 proposed check(s)",
     "steps": [
       {
         "key": "survey",
@@ -1131,6 +1168,16 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
         "run_id": "r-20260925T101500-survey-1a2b3c4d",
         "status": "ok",
         "summary": "survey finished for module.shop."
+      },
+      {
+        "key": "scaffold",
+        "name": "scaffold",
+        "modules": [
+          "module.shop"
+        ],
+        "run_id": "r-20260925T102000-scaffold-2b3c4d5e",
+        "status": "ok",
+        "summary": "scaffold finished for module.shop."
       },
       {
         "key": "describe:module.checkout",
@@ -1151,6 +1198,36 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
         "run_id": "r-20260925T104000-code_to_spec-9f8e7d6c",
         "status": "failed",
         "summary": "The worker run ended failed (worker_timeout)."
+      },
+      {
+        "key": "describe:module.shop",
+        "name": "code_to_spec",
+        "modules": [
+          "module.shop"
+        ],
+        "run_id": "r-20260925T104500-code_to_spec-3c4d5e6f",
+        "status": "ok",
+        "summary": "code_to_spec finished for module.shop."
+      },
+      {
+        "key": "spec_review",
+        "name": "spec_review",
+        "modules": [
+          "module.shop"
+        ],
+        "run_id": "r-20260925T105000-spec_review-1b2c3d4e",
+        "status": "ok",
+        "summary": "spec_review finished for module.shop."
+      },
+      {
+        "key": "validate",
+        "name": "task-validation",
+        "modules": [
+          "module.shop"
+        ],
+        "run_id": "r-20260925T105500-task_validation-4d5e6f7a",
+        "status": "ok",
+        "summary": "task-validation finished for module.shop."
       },
       {
         "key": "delivery",
@@ -1216,7 +1293,7 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
         "id": "check.checkout.tests",
         "module": "module.checkout",
         "argv": [
-          "python",
+          "{python}",
           "-m",
           "pytest",
           "tests/checkout"
@@ -1300,7 +1377,7 @@ causes.
 | `step_rejected` | step outcome | `input` | the workflow record refused the step (`workflow_conflict`, `step_conflict`, `record_unreadable`), its `Workflows (workflow record)` link the cause; nothing was started or recorded, and the outcome has state `refused` |
 | `step_unrecorded` | step outcome | `environment` | a run started but the workflow record refused to record it, its link the cause; the link names the live run |
 | `incomplete` | result | `capability` | the recorded steps end before the procedure's last step without any of the stops above, such as a script that ended early |
-| `invalid_request` | step command | `input` | the step command line or standard-input request breaks the step request contract; exit status 2 |
+| `invalid_request` | step and report commands | `input` | the step command line or standard-input request breaks the step request contract, or the report's standard input holds no report request; exit status 2 |
 | `report_failed` | report command | `capability` | the report could not be built for a reason of its own, such as a recorded result the report's contract refuses; the detail names the reason, instead of the command ending in a traceback |
 
 The step and report commands also answer with a `component` link of the actor

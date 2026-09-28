@@ -60,14 +60,18 @@ identity, title, a one-paragraph purpose, the paths it should bind and the Modul
 reason; the third-party code the project vendors, such as a bundled copy of a library, each with the
 Module that uses it; the test and lint commands it found, proposed in the shape of
 [configured checks](../../../glossary.json#concept.configured-check) of the Modules they check; the
-decisions it took; and its open questions. The host adds the entries that stay with the surveyed
-Module. A proposal with no children is valid: the Module is small enough to describe as it is. A
-survey writes nothing, so it may also run [unbound](../../../glossary.json#concept.unbound-run), in
-the primary worktree, to show the developer a proposal before any task exists.
+decisions it took; and its open questions. The host adds the realization entries, the bound paths,
+that stay with the surveyed Module. A proposal with no children is valid: the Module is small enough
+to describe as it is. A survey writes nothing, so it may also run
+[unbound](../../../glossary.json#concept.unbound-run), in the primary worktree, to show the developer
+a proposal before any task exists.
 
 The host gives the worker, as task material, an inventory of every file the surveyed Module binds
 with its size in lines, so the worker can plan what to read in a large codebase instead of opening
-everything.
+everything. The files of the surveyed Module's Concorde installation realization, the skill,
+workflows and agents the installer placed, are left out of it and stay with the surveyed Module: a
+proposal that gives one of them to a child fails, since they configure the agents, not the project,
+and the installer replaces them on every update.
 
 **Scaffold.** The execution command `concorde scaffold` of
 [Scaffold](../../commands/scaffold/module.md), with no worker, applies exactly one proposal admitted
@@ -80,15 +84,15 @@ a worker, and why it is not an [Operation](../../../glossary.json#concept.operat
 
 <a id="concept.code-to-spec"></a><a id="concept.spec-description"></a>
 
-**[Code to spec](../../../glossary.json#concept.code-to-spec).** A worker of
-[task type](../../../glossary.json#concept.task-type) `code-to-spec` reads the bound Modules' code
-and their Specs and rewrites their own documents: Purpose, Usage and Design of each entry, the
-glossary entries of the words they own, and requirements, scenarios and contracts in implementation
-documents. The host prepares the
-implementation documents the worker may need, `requirements.md`, `scenarios.md` and `contracts.md`,
-as owned stubs before the grant is frozen, and removes again every stub the worker left unchanged,
-however the run ends. The answers are checked before anything is written. The result's output is a
-**[Spec description](../../../glossary.json#concept.spec-description)**
+**[Code to spec](../../../glossary.json#concept.code-to-spec).** A worker of [task
+type](../../../glossary.json#concept.task-type) `code-to-spec` reads the bound Modules' code and
+their Specs and rewrites their own documents: Purpose, Usage and Design of each entry document
+(`module.md`), the glossary entries of the words they own, and requirements, scenarios and contracts
+in implementation documents. The host prepares the implementation documents the worker may need,
+`requirements.md`, `scenarios.md` and `contracts.md`, as owned stubs before the grant is frozen, and
+removes again every stub the worker left unchanged or deleted, however the run ends. The answers are
+checked before anything is written. The result's output is a **[Spec
+description](../../../glossary.json#concept.spec-description)**
 ([contract](contracts.md#contract.adoption.spec-description)). Describing the root after its
 children are scaffolded describes how the children compose and the files that stayed with it.
 
@@ -116,10 +120,10 @@ an **answers** file ([contract](contracts.md#contract.adoption.answers)) with `-
 naming the decision or question it answers, the question's text and the answer; `--input` admits the
 run that asked, so the worker sees the earlier proposal or description. An answers file lists every
 answer given so far for that step, not only the latest. A survey rerun follows every answered
-decision. A code_to_spec rerun writes an answered question as the promise the developer stated. When
-that intent differs from what the code does, the Spec states the intent, and the result lists a
-**deviation** with the intended and the observed behaviour, for later `implement` work: the Spec is
-again ahead of the code, as Concorde expects.
+decision and no longer lists an answered open question. A code_to_spec rerun writes an answered
+question as the promise the developer stated. When that intent differs from what the code does, the
+Spec states the intent, and the result lists a **deviation** with the intended and the observed
+behaviour, for later `implement` work: the Spec is again ahead of the code, as Concorde expects.
 
 Status follows the other worker-backed Operations. A survey or code_to_spec run is `ok` when the
 worker completed its proposal or description, whatever decisions and open questions it lists. It is
@@ -203,11 +207,11 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 | 1 | Check the answers; validate the workspace's Specs as a baseline | host, Spec core | invalid answers (`failed`, `invalid_answers`); Specs cannot load (`failed`, `specs_unloadable`) |
 | 2 | Create the missing implementation document stubs of each bound Module and reconcile the registry mirror | host, Spec core | unknown Module (`failed`, `unknown_modules`) |
 | 3 | Compute and freeze the `code-to-spec` grant | Workers, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`, after step 7) |
-| 4 | Generate settings, tools and the brief with the registered Modules, answers and inputs | Workers | — |
-| 5 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on, after step 7) |
+| 4 | Generate settings, tools and the brief with the registered Modules, the structural errors already in the described Modules' documents, answers and inputs | Workers | — |
+| 5 | Launch the worker and wait for its result; after each round validate and, at most twice, resume it with the errors the run is judged by | Workers, worker, host | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on, after step 7) |
 | 6 | Audit and write the [run record](../../../glossary.json#concept.run-record) | Workers | a write outside the grant (`failed`, after step 7) |
 | 7 | Remove the stubs left unchanged or deleted through the worker's proposed deletions from their Modules' documents, whatever steps 3 to 6 found; reconcile the registry mirror | host, Spec core | — |
-| 8 | Validate again and compare with the baseline | host, Spec core | a new error (`blocked`, `new_structural_errors`) |
+| 8 | Validate again and compare with the baseline | host, Spec core | an error the run counts as its own, left after the last round (`blocked`, `new_structural_errors`) |
 | 9 | Check the description against the answers and the bound Modules | host | an inconsistency or an answer not followed (`failed`, `inconsistent_description`) |
 | 10 | Link the existing tests each scenario was taken from | host | — (a link it cannot make is reported in `unlinked_tests`) |
 | 11 | Return the run result | host | — |

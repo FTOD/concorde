@@ -14,46 +14,56 @@ deploys without opting into the GitHub Pages workflow.
 
 <a id="concept.canonical-page"></a><a id="concept.reading-collection"></a>
 
-The site has a **[Module](../../glossary.json#concept.module) documents** tab and, when any document
-is role `implementation`, an **Implementation documents** tab, both showing the Module tree built
-from `contains`. Every **[canonical page](../../glossary.json#concept.canonical-page)** sits under
-its owner; a Module reading it through `uses` or `includes` links there instead of copying it. Each
-page shows its owner, the Modules selecting it and why, and its source digests, with every identity
-anchored, term links leading to the glossary page, and illustrative diagrams labelled
-non-normative. The glossary is one page under the root Module, and an owning Module's entry page
-lists the terms it owns.
+The site's Spec pages form two **[reading
+collections](../../glossary.json#concept.reading-collection)**, each a tab showing the Module tree
+built from `contains`: **[Module](../../glossary.json#concept.module) documents** and, when any
+document is role `implementation`, **Implementation documents**. Every **[canonical
+page](../../glossary.json#concept.canonical-page)** sits under its owner; a Module reading it
+through `uses` or `includes` links there instead of copying it. Each page shows its owner, the
+Modules selecting it and why, and its source digests, with every identity anchored, term links
+leading to the glossary page, and illustrative diagrams labelled non-normative. The glossary is one
+page under the root Module, and an owning Module's entry page lists the terms it owns.
 
 <a id="concept.user-documents"></a><a id="concept.custom-docs"></a>
 
 **[User documents](../../glossary.json#concept.user-documents)** are written for the people who use
 the project, in any structure: the site publishes their directory as it is, with a sidebar that
-follows its folders, as the first tab, and their root page (`README.md` or `index.md`) is the home
-page at `/`. Without them the home page opens the root Module's entry.
+follows its folders, as the first tab, and their root page (`README` or `index`, `.md` or `.mdx`)
+is the home page at `/`. Without them the home page opens the root Module's entry.
 **[Custom docs](../../glossary.json#concept.custom-docs)** are further collections, such as
 Concorde's own Spec Protocol, each in its own tab after the Spec tabs. Neither belongs to a Module,
 may contain a registered document, or is ever agent context.
 
 <a id="concept.publication-candidate"></a><a id="concept.promotion"></a><a id="concept.published-site"></a><a id="concept.site-build-manifest"></a>
 
+The commands run from `docsite/` (Concorde's own, or one the scaffold below created) after
+`npm ci` has installed its dependencies there, and need the `d2` program, which the Concorde
+installer places at `.concorde/tools/d2`:
+
 | Command | Effect |
 | --- | --- |
 | `npm run start` | Previews the site, restarting the preview whenever its Specs change. |
 | `npm run validate` | Checks without building. |
-| `npm run build` | Builds a **[publication candidate](../../glossary.json#concept.publication-candidate)**, checks it, and promotes it to the **[published site](../../glossary.json#concept.published-site)** in `docsite/build/`. |
+| `npm run build` | Builds a **[publication candidate](../../glossary.json#concept.publication-candidate)**, checks it, and, by **[promotion](../../glossary.json#concept.promotion)**, makes it the **[published site](../../glossary.json#concept.published-site)** in `docsite/build/`. |
 
-A successful build writes a
-**[site build manifest](../../glossary.json#concept.site-build-manifest)** — every page's route,
-owner and source digests, nothing about the code. A failure, such as a moved anchor's link, deletes
-the candidate and keeps the published site.
+A successful build writes a **[site build
+manifest](../../glossary.json#concept.site-build-manifest)** — every registered document's route,
+owner and source digests, nothing about the code; user documents, custom docs and the Glossary page
+are not in it. A failure, such as a moved anchor's link, deletes the candidate and keeps the
+published site.
 
 <a id="concept.scaffold-proposal"></a><a id="concept.site-identity"></a>
 
 For another project, `concorde docsite --propose` returns a
 **[scaffold proposal](../../glossary.json#concept.scaffold-proposal)** — the exact template files
 plus a new **[site identity](../../glossary.json#concept.site-identity)** `docsite/site.json` — and
-`--apply --proposal FILE` creates exactly those files, never replacing or deleting: `conflict` for
-an existing destination, `unchanged` if already applied, refused for bytes from another package. The
-exact commands and fields are in the [contracts](contracts.md).
+`--apply --proposal FILE` creates exactly those files, never replacing or deleting: `unchanged`
+when every file already has the proposed bytes, otherwise `conflict` when any destination exists,
+and `invalid` when the proposal no longer matches the installed template (another package version
+or an altered file list). With `--github-pages` the proposal also holds
+`.github/workflows/deploy-docsite.yml`, which on every push to `main` runs `npm run build` and
+deploys `docsite/build/` to GitHub Pages. The exact commands and fields are in the
+[contracts](contracts.md).
 
 ## Design
 
@@ -77,14 +87,16 @@ views: Views {
 
 <a id="realization.views.publisher"></a>
 
-**Docsite publisher** reads the project configuration, the registry and the documents the registry
-lists, and nothing else: it never scans directories for Markdown or follows links to find
-documents, so a nearby file that looks like a Spec never becomes a page and nothing is published
-that no Module owns. The navigation follows `contains`, the Protocol's top-down reading path, and
-directory layout plays no part. Each document is published once, at a route derived from its
-source path, so its address does not depend on which Modules read it; consumers link to the owner's
-page instead of receiving a copy that could drift. There are no alias routes: moving a document
-changes its route, and the build refuses a link that still points to the old one.
+**Docsite publisher** finds Spec pages only through the project configuration, the registry and the
+documents the registry lists: it never scans directories for Markdown or follows links to find
+documents, so a nearby file that looks like a Spec never becomes a Spec page and no Spec page is
+published that no Module owns. Its other inputs are declared separately, each with its own admission
+rules: the glossary the root Module declares, the site identity, and the user documents and custom
+docs that the site identity configures. The navigation follows `contains`, the Protocol's top-down
+reading path, and directory layout plays no part. Each document is published once, at a route
+derived from its source path, so its address does not depend on which Modules read it; consumers
+link to the owner's page instead of receiving a copy that could drift. There are no alias routes:
+moving a document changes its route, and the build refuses a link that still points to the old one.
 
 Every enrichment, such as hidden identities in headings, anchors, imported definitions and
 illustrative labels, is made on a staged copy under `docsite/.generated/`. The Spec files stay
@@ -97,9 +109,9 @@ is refused.
 
 Rendering can fail halfway and sources can change while a build runs, so the publisher builds a
 candidate apart from the published site and compares one source digest, over the configuration, the
-registry and both files of every document, at staging, after the Docusaurus build and in the final
-validation, which also follows every internal link and anchor in the built HTML. Promotion renames
-whole directories with rollback:
+registry, both files of every document and the glossary, at staging, after the Docusaurus build and
+in the final validation, which also follows every internal link and anchor in the built HTML.
+Promotion renames whole directories with rollback:
 
 ```d2 illustrative
 direction: right
@@ -120,7 +132,9 @@ site that builds proves nothing about conformance. It is TypeScript and does not
 so it recomputes each document's selecting Modules itself; that must equal Spec core's
 `selected-by` [impact index](../../glossary.json#concept.impact-index), and a difference is a
 publisher defect, never a second definition of context. Preview and production keep Docusaurus's
-generated files in different directories, so a build never breaks a running preview.
+generated files in different directories, so a build never clears or overwrites the preview's; both
+modes stage the same pages under `docsite/.generated/`, which a build run beside a preview rewrites
+from the same sources.
 
 <a id="realization.views.scaffold"></a>
 
@@ -168,8 +182,8 @@ project's Spec configuration isn't readable.
 
 Distribution calls the scaffold and packages it — `distribution -> views` above is its own `uses`,
 declared there. Its CLI dispatches `concorde docsite` to the scaffold, which reads templates from
-the installed package, returning `invalid` (asking for a reinstall) if `concorde.json` omits
-`docsite` as a package root or lists it unsafely; its installer ships `docsite/` by the inventory
-rule Views defines, so the two cannot disagree on the template. Its
-[build manifest](../../glossary.json#concept.build-manifest), unrelated to the docsite's, records
-Concorde's own build outputs.
+the installed package, returning `invalid` (asking for a reinstall) if `concorde.json`, the
+descriptor of the [package](../../glossary.json#concept.package), omits `docsite` as a package root
+or lists it unsafely; its installer ships `docsite/` by the inventory rule Views defines, so the two
+cannot disagree on the template. Its [build manifest](../../glossary.json#concept.build-manifest),
+unrelated to the docsite's, records Concorde's own build outputs.

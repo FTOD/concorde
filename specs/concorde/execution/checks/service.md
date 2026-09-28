@@ -20,12 +20,14 @@ The project configuration lists checks under `checks`. Each has:
 | `inputs` | Project-relative files or directories the result depends on, beyond the Module's own implementation files |
 
 The Spec core validates `id`, `module` and `inputs` when it loads the configuration; the service
-validates `argv`, `env` and `timeout_seconds` when it runs the check. An input that is missing, a
-symbolic link or not a regular file stops the run before any command and names the check, its
-Module and the path.
+validates `argv`, `env`, `when` and `timeout_seconds` when it runs the check. An input names a
+regular file or a directory; below a directory the service measures every regular file outside
+`__pycache__` directories. An input that is missing, is itself a symbolic link or is neither a
+regular file nor a directory stops the run before any command and names the check, its Module and
+the path.
 
-A **selective** check, one whose `argv` holds `{tests}`, runs once whenever checks run for a set of
-Modules, with the tests whose
+A **selective** check, one whose `argv` holds `{tests}`, runs at most once per call for the whole
+set of selected Modules, whichever Module it belongs to, with the tests whose
 [verification declarations](../../glossary.json#concept.verification-declaration) name a scenario of
 any of them, and is skipped when there are none. Tests and scenarios are many-to-many: the tests a
 Module's change runs are those verifying its scenarios, wherever their files are bound, so the
@@ -58,23 +60,32 @@ added to the command line or diagnostic messages.
 
 ## Running checks
 
-`run_checks(worktree, *, modules=None, changed=None, log_directory)` in
+`run_checks(worktree, *, modules=None, changed=None, log_directory, stage="work", kinds="all")` in
 `src/concorde/harness/checks.py`:
 
 1. selects the Modules: those named in `modules`, or else every Module whose `ImplementationScope`
-   or `SpecScope` in `worktree` contains a path in `changed`. Its callers name, through
-   `checked_modules`, the Modules a change concerns together with every Module that uses one of
-   them, directly or through further uses, so a Module's checks run whenever code it uses changes;
-2. for each selected Module, computes `check_revision`: the digest of the Module's implementation
-   digest, each of its checks' definitions, the digest of every file below their inputs, and
-   `CHECK_POLICY`;
-3. runs each of the Module's checks in order through `execute_check` with `worktree` as project root
-   and the default boundary;
-4. writes `<stdout>\n<stderr>` to `<log_directory>/<check id>.log`, also when the boundary refused
-   the command, and then fails a refused run with `check_sandbox_unavailable`;
-5. computes `check_revision` again and fails the whole call with `stale_evidence` when it differs;
-6. returns one check result per check, in configuration order.
+   or `SpecScope` in `worktree` contains a path in `changed`, and fails with `unknown_module` for a
+   name the registry does not register. Callers compute `modules` with `checked_modules`, in the
+   same file: the Modules a change concerns together with every Module that uses one of them,
+   directly or through further uses, so a Module's checks run whenever code it uses changes;
+2. goes through the configured checks in configuration order and keeps a check marked
+   `"when": "readiness"` only when `stage` is `readiness`, which `task-validation` and `delivery`
+   pass; every other caller leaves the default `work`;
+3. keeps an ordinary check when its own Module is selected, and a selective check once, when some
+   test verifies a scenario of the selected Modules; `kinds` narrows the call to the ordinary checks
+   (`module`) or to the selective ones (`selective`), so that a caller can run each Module's own
+   checks separately and the selective checks once for the whole selection;
+4. for each kept check, computes `check_revision` of the check's own Module: the digest of that
+   Module's implementation digest, each of its checks' definitions, the digest of every file below
+   their inputs, and `CHECK_POLICY`;
+5. runs the check through `execute_check` with `worktree` as project root and the default boundary,
+   and writes `<stdout>\n<stderr>` to `<log_directory>/<check id>.log`, preceded for a selective
+   check by the tests it selected; when the boundary refused the command, the log holds what it
+   reported and the call fails with `check_sandbox_unavailable`;
+6. computes `check_revision` again and fails the whole call with `stale_evidence` when it differs;
+7. returns one check result per check it ran, in configuration order.
 
+A failure in any step ends the call without results, including those of checks that already ran.
 A selected Module without configured checks contributes no result; the caller decides whether that
 is acceptable.
 
@@ -86,7 +97,7 @@ is acceptable.
 | `module` | The Module the check belongs to |
 | `status` | `passed` (exit code 0), `failed` (any other exit code) or `timeout` |
 | `exit_code` | The exit status, `-1` on timeout |
-| `source_digest` | The `check_revision` measured before the run |
+| `source_digest` | The `check_revision` measured before the run, the result's measured digest |
 | `log` | The log's path |
 | `log_digest` | The digest of the saved log |
 
@@ -97,10 +108,14 @@ for the same Module and comparing it with `source_digest`.
 
 Check execution raises `CheckError`, a subclass of Spec tooling's
 [error type](../../spec-tooling/spec/errors.md) that registers its own codes: `invalid_check` (a
-check without a nonempty argv or a positive timeout), `check_input_missing`,
+check without a nonempty argv or a positive timeout, with an `env` that is not an object of
+variable names to strings, or with a `when` other than `always` or `readiness`),
+`check_input_missing`, `project_python_missing` (a check uses `{python}` but the configuration
+names no project interpreter, or none that is an executable file where it was looked for),
 `check_sandbox_unavailable` (the read-only boundary cannot be established), `stale_evidence` (an
-input changed while the check ran) and `unknown_module`. Each carries its message naming the check
-and Module, the reason and a remediation.
+input changed while the check ran) and `unknown_module`. Each carries the fields of that error
+record: its code, a message naming the check or Module concerned, the code's reason and
+remediation, and its causes.
 
 ### A check that did not pass as an error link
 
@@ -115,7 +130,15 @@ measures the code it runs against.
 
 ### req.checks.project-python — Checks run the project's interpreter, never Concorde's
 
-The service SHALL replace `{python}` with the project's interpreter named by the configuration's `python` and give a check no part of Concorde's own runtime in its environment.
+The service SHALL replace `{python}` with the project's interpreter named by the configuration's
+`python`.
+
+### req.checks.no-concorde-runtime — A check inherits nothing of Concorde's runtime
+
+The service SHALL NOT give a check any host environment variable other than `PATH`, `LANG` and the
+inherited transport variables.
+
+The check's own `env` and the scratch settings of [the boundary](boundary.md) are added to these.
 
 ### req.checks.measured-input-unchanged — A check cannot vouch for input that changed
 
@@ -173,7 +196,7 @@ start.
 
 ### scenario.checks.service-read-only — A check cannot change the worktree
 
-- GIVEN a configured check that tries to write a file of the worktree
+- GIVEN a configured check that tries to write a file of the worktree and exits with a nonzero code when the write fails
 - WHEN the service runs it
 - THEN the write fails as a read-only file system and the check's result is `failed`
 - AND the file is unchanged

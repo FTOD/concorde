@@ -9,21 +9,20 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 - GIVEN a project whose `.mcp.json` registers `concorde spec-mcp` with `CLAUDE_PROJECT_DIR` set to `${CLAUDE_PROJECT_DIR}`
 - WHEN a Claude Code session opens in the project's primary worktree
-- THEN the server resolves the primary worktree as its root
-- AND lists the tools `boundary`, `modules`, `module`, `context`, `impact` and `validate`
+- THEN the server lists the tools `boundary`, `modules`, `module`, `context`, `impact` and `validate`
+- AND a `modules` call answers with the primary worktree's Modules
 
 ### scenario.spec-mcp.client-root — The client's root is used without the variable
 
 - GIVEN a server started without `CLAUDE_PROJECT_DIR`
 - WHEN the client reports exactly one `file://` root through `roots/list`
-- THEN the server resolves that directory as its root
+- THEN a `modules` call answers with that directory's Modules
 
 ### scenario.spec-mcp.no-root — Without a root the server answers nothing
 
 - GIVEN a server started without `CLAUDE_PROJECT_DIR` whose client reports no root or several roots
 - WHEN any tool is called
 - THEN the call fails with `no_root`
-- AND no Specs are loaded
 
 ## Answers
 
@@ -76,7 +75,7 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - GIVEN a server rooted at a worktree
 - WHEN the client calls `impact` with a path containing `..` that leaves the root, an absolute path in another directory, or a path through a symbolic link that points outside the root
 - THEN each call fails with `outside_root`
-- AND nothing outside the root is read
+- AND its error names what the path resolved to
 
 ### scenario.spec-mcp.unloadable-specs — Specs that cannot be loaded
 

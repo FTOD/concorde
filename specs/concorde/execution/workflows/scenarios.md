@@ -28,6 +28,7 @@ shapes are in the [contracts](contracts.md).
 - THEN it prints the step outcome with state `running` and exits with status 3 after at most `--wait` seconds
 - AND running the same command again starts no second run and waits for the recorded one
 - AND a step whose [workspace lock](../../glossary.json#concept.workspace-lock) another run still holds waits for that run to end before starting its own, within the same bound
+- AND when the bound ends while the lock is still held, it prints the step outcome with state `running` and no run and exits with status 3, having started and recorded nothing
 
 ### scenario.workflows.step-cached — A finished step returns at once
 
@@ -57,15 +58,17 @@ shapes are in the [contracts](contracts.md).
 - GIVEN that paused interactive workflow and the developer's answer to `d.db-helper`
 - WHEN the workflow is started again with the answer keyed by `survey`
 - THEN the first survey is not run again
-- AND a new survey step with the answers' digest in its key runs with `--answers` and with `--input` naming the first survey run, and follows the answer
+- AND a new survey step with the answers' digest in its key runs with `--answers` and with `--input` naming the first survey run
+- AND its step outcome counts no [decision point](../../glossary.json#concept.decision-point) for the answered `d.db-helper`
 - AND the scaffold then admits that new survey run
 
 ### scenario.workflows.no-ask-complete — A no-ask run reports everything at the end
 
 - GIVEN the brownfield workflow started in no-ask mode in the workspace `adopt` bound to `module.shop`
 - AND the survey proposes `module.checkout` and `module.inventory`, the `code_to_spec` of `module.inventory` ends `blocked`, and the one of `module.checkout` reports an [open question](../../glossary.json#concept.open-question)
+- AND task validation finds the workspace ready
 - WHEN the workflow runs to its end
-- THEN it runs survey, scaffold, the three code_to_spec steps, spec_review, task-validation and, when the workspace is ready, `delivery --adoption`, one after another
+- THEN it runs survey, scaffold, the three code_to_spec steps, spec_review, task-validation and `delivery --adoption`, one after another
 - AND the workflow result lists the survey's decisions, the open question and the blocked description as a problem with its chain unchanged
 - AND the result is saved with its Markdown rendering beside the workspace's workflow record and listed there
 - BUT no [decision log](../../glossary.json#concept.decision-log) changes

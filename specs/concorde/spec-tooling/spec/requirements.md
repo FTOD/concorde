@@ -65,9 +65,12 @@ running Concorde package.
 
 ### req.spec.every-check — Every Protocol check is evaluated
 
-Validation SHALL evaluate every check listed in the Protocol's Checks chapter and report each
-violation as a finding whose rule identity is that check's identity and whose severity is the
-severity the chapter gives it.
+Validation SHALL evaluate every check listed in the Protocol's Checks chapter.
+
+### req.spec.check-finding-identity — A violation carries its check's identity and severity
+
+Validation SHALL report each violation of a Protocol check as a finding whose rule identity is that
+check's identity and whose severity is the severity the Checks chapter gives it.
 
 ### req.spec.all-findings — One run reports everything it can
 
@@ -91,8 +94,11 @@ The result carries an explicit marker saying semantic completeness is not proven
 ### req.spec.link-fragments — Links to definitions resolve
 
 Validation SHALL report as an error every link in Spec reading whose fragment has the form of a
-node identity and does not name a definition in the linked document, where a concept's definition is
-its entry in the project glossary.
+requirement, scenario, realization or contract identity and does not name a definition in the
+linked document.
+
+A link whose fragment is a concept identity is a term link, which the Protocol's `CHK.term.link`
+checks against the project glossary instead.
 
 ### req.spec.check-inputs — Configured check inputs exist and are safe
 
@@ -185,9 +191,9 @@ query changes a boundary set.
 
 ### req.spec.grant-task-type-levels — A task type fixes every level
 
-A grant SHALL give each boundary set of each bound Module exactly the access level that the
-Protocol's [task-type](../../glossary.json#concept.task-type) table assigns to the grant's task
-type.
+A grant SHALL give each boundary set of each bound Module, and ProjectImplementation, exactly the
+access level that the Protocol's [task-type](../../glossary.json#concept.task-type) table assigns
+to the grant's task type.
 
 The levels are serialized as `names`, `ro` and `rw`; the table is repeated in the
 [interface definitions](contracts.md#grants).
@@ -205,9 +211,18 @@ Every path the list does not cover, directly or below a directory entry, is deni
 
 ### req.spec.grant-no-widening — Nothing else widens a grant
 
-A grant SHALL contain no path outside the boundary sets of its bound Modules.
+A grant SHALL contain no path outside the boundary sets of its bound Modules and, for the task
+types that assign it, ProjectImplementation.
 
 Task material, shared files, impact indexes and the task's history add nothing.
+
+### req.spec.grant-installed-read-only — An installed file is never writable
+
+A grant SHALL give a file that the installation record `.concorde/install.json` lists as the
+installer's own at most the level `ro`.
+
+The cap applies after the highest level is chosen, so it overrides an `rw` that an implementation
+scope would give; a file the installer only amends is the project's and keeps its level.
 
 ### req.spec.grant-shared-write — Shared files need every binder
 
@@ -233,7 +248,9 @@ The [context identity](../../glossary.json#concept.context-identity) SHALL chang
 a selected document member, a selected glossary entry, a selecting declaration, a document's owner
 or pinned external material changes.
 
-It covers no implementation file contents, so a worker's writes inside its grant never change it.
+It covers no implementation file contents, so a worker's writes to implementation files never
+change it. A task that writes Specs changes it with its own writes to the Module's documents or
+glossary entries, so its context identity is recomputed after them.
 
 ## Coverage
 
@@ -329,8 +346,13 @@ Protocol copy under `.concorde/protocol/`.
 
 ### req.spec.protocol-assets-projected — The bundle carries only the Protocol
 
-Every Protocol asset recorded in the tracked manifest SHALL be rendered only from the Protocol text
-and carry the digest of its rendered bytes.
+Every Protocol asset recorded in the tracked manifest SHALL be rendered only from the Protocol text.
 
 Concorde's own conventions are not part of the bundle; they are defined by the Modules that own
-them. Rendering the bundle and recomputing the digests is Distribution's build step.
+them. Rendering the bundle is Distribution's build step.
+
+### req.spec.protocol-assets-digest — Each asset records its digest
+
+The tracked manifest SHALL record for every Protocol asset the digest of its rendered bytes.
+
+Distribution's `protocol-manifest` command recomputes the digests.

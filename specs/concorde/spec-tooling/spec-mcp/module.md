@@ -2,8 +2,8 @@
 
 ## Purpose
 
-The Spec MCP server lets an agent ask a project's Specs which Modules exist, what one declares, whom
-a change concerns, whether the Specs validate, and what a
+The Spec MCP server lets an agent ask a project's [Specs](../../glossary.json#concept.spec) which
+Modules exist, what one declares, whom a change concerns, whether the Specs validate, and what a
 [task type](../../glossary.json#concept.task-type) would let a task read and write: a local,
 read-only stdio MCP server rooted at one worktree, usable without knowing Concorde's Python code. It
 adds no rule of its own — every answer is Spec core's — is not how workers receive grants, and
@@ -29,33 +29,41 @@ A project using Concorde registers the **Spec MCP server** for Claude Code in it
 
 | Tool | Returns |
 | --- | --- |
-| `boundary(modules, task_type)` | The grant the task type gives the listed Modules: context identity and `{path, level}` entries (`names`, `ro`, `rw`); an unlisted path is denied. |
-| `modules()` | The Modules in registry order. |
+| `boundary(modules, task_type)` | The [grant](../../glossary.json#concept.grant) the task type gives the listed Modules: [context identity](../../glossary.json#concept.context-identity) and `{path, level}` entries (`names`, `ro`, `rw`); an unlisted path is denied. |
+| `modules()` | The Modules in [registry](../../glossary.json#concept.registry) order. |
 | `module(id)` | One [Module](../../glossary.json#concept.module)'s entry, owned documents, relations and realization entries. |
-| `context(id)` | One Module's [Spec context](../../glossary.json#concept.spec-context), with a digest per member and the selecting relation, and the glossary entries of its terms. |
+| `context(id)` | One Module's [Spec context](../../glossary.json#concept.spec-context), or that of a scenario's owner, with a digest per member and the selecting relation, and the glossary entries of its terms. |
 | `impact(paths)` | Which Modules writing the given documents or files concerns. |
-| `validate(target?)` | The structural checks' findings. |
+| `validate(target?)` | The [structural checks](../../glossary.json#concept.structural-check)' findings. |
 
 For example, before opening a task the [main agent](../../glossary.json#concept.main-agent) calls
 `boundary(["module.checkout"], "implement")` to see what an implementation worker could change, and
 `impact(["src/checkout/cart.py"])` to see which other Modules share that file and must be bound too.
-Exact results are in the [contracts](contracts.md).
+`boundary` answers with the grant's context identity and its entries, such as `src/checkout/` at
+`rw` and the documents the checkout Module's Spec context selects at `ro`; any path it does not
+list is denied. When `impact` names a second Module for `cart.py`, the main agent binds that
+Module to the task as well, because a grant for the checkout Module alone would be refused with
+`shared_file`. Exact results are in the [contracts](contracts.md).
 
-A call fails with a code, never a partial answer: `outside_root`, `no_root`, or one of Spec core's
-own codes such as `protocol_mismatch` or `shared_file`. No tool writes, so a call may be repeated at
-any time and reads the Specs as they stand.
+A call fails with a code, never a partial answer: one of the server's own codes `no_root`,
+`outside_root`, `invalid_input`, `system_error` and `unexpected_error`, or one of Spec core's codes
+such as `protocol_mismatch` or `shared_file`; the [contracts](contracts.md#session) say when each
+applies. No tool writes, so a call may be repeated at any time and reads the Specs as they stand.
 
 <a id="concept.server-root"></a>
 
 The **[server root](../../glossary.json#concept.server-root)** is resolved once, at session start:
 `CLAUDE_PROJECT_DIR` when set, otherwise the client's single `file://` root; without either, or with
 several roots and no variable, every call fails with `no_root`. It never moves during the session,
-and a path resolving outside it — via `..`, an absolute path or a symlink — is refused.
+and a path resolving outside it — via `..`, an absolute path elsewhere or a symlink whose target
+lies elsewhere — is refused with `outside_root`.
 
 ## Design
 
-The server is a thin presentation of Spec core: every call loads a fresh repository and calls the
-same functions the rest of Concorde uses, trading speed for never answering from a stale model.
+The server is a thin presentation of Spec core: every call that has a root and acceptable
+arguments loads a fresh repository and calls the same functions the rest of Concorde uses, trading
+speed for never answering from a stale model. A call refused before that, with `no_root`,
+`invalid_input` or `outside_root`, loads no Specs.
 
 ```d2
 mcp: Spec MCP server {
@@ -76,6 +84,10 @@ hand-written JSON-RPC session with no MCP library dependency, tested over a real
 Rooting at one worktree keeps answers honest across concurrent tasks: a branch may declare a
 pending file or a `uses` the primary lacks, and only its own server sees it. The running Concorde
 package must still carry the Protocol the root binds, or calls fail with `protocol_mismatch`.
+`validate` alone does not fail then: it loads through the validator, which reports Specs it cannot
+load as a finding, so its answer is the `spec-validation` envelope with status `invalid` and one
+error finding that describes the mismatch. Confining path arguments to the root keeps a query from
+reading or reporting on files of another worktree.
 
 Grants are frozen by the [Operation](../../glossary.json#concept.operation) that launches a worker,
 never the server or the worker: the Operation calls Spec core with its workspace as root and writes
@@ -90,8 +102,9 @@ about structure only.
 
 ### Around it
 
-The server sits inside Spec tooling, between the Main session that calls it and the Spec core it
-presents:
+The server sits inside Spec tooling, between the
+[Main session](../../coordination/main-session/module.md) Module, whose main agent calls it, and
+the Spec core it presents:
 
 ```d2
 tooling: Spec tooling {

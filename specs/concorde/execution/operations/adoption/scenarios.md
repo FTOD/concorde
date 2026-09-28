@@ -9,6 +9,7 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN an initialized project whose root [Module](../../../glossary.json#concept.module) `module.shop` binds `src/`, `tests/`, `README.md` and `pyproject.toml`
 - AND a task worktree whose binding names the workspace `adopt` and `module.shop`
+- AND a survey worker that proposes the children `module.checkout` binding `src/checkout/` and `module.inventory` binding `src/inventory/`
 - WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `concorde run survey --modules module.shop` there
 - THEN the worker's grant reads the Specs and the code `module.shop` binds and writes nothing
 - AND its brief lists every bound file with its size in lines
@@ -62,7 +63,7 @@ shapes are in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde run code_to_spec --modules module.checkout` in the workspace `adopt`
 - THEN the worker's grant reads `src/checkout/` and writes only `module.checkout`'s documents
 - AND the worker has no tool that runs commands
-- AND the result is `ok` with a [Spec description](../../../glossary.json#concept.spec-description) whose changed documents include the entry
+- AND the result is `ok` with a [Spec description](../../../glossary.json#concept.spec-description) whose changed documents include the entry document `module.md`
 - AND the stubs the worker did not fill are removed again
 - AND no implementation file changed
 
@@ -86,7 +87,6 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a code_to_spec worker whose first round leaves a scenario of `module.checkout` without a THEN step
 - WHEN the host validates the Specs after that round
 - THEN it resumes the same worker with the structural error, and after a round that repairs it the run ends `ok` with no new error
-- BUT a worker that leaves the error through its two [resume rounds](../../../glossary.json#concept.resume-round) ends the run `blocked` with `new_structural_errors`
 
 ### scenario.adoption.describe-own-errors — The worker learns the errors it must repair
 
@@ -113,7 +113,7 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a scaffolded Module `module.checkout` without implementation documents
 - WHEN a code_to_spec run for it prepares the stubs and its worker then ends `failed` without writing
 - THEN the result is `failed` with the worker's chain
-- AND none of the prepared stubs remains, and `module.checkout` owns only its entry again
+- AND none of the prepared stubs remains, and `module.checkout` owns only its entry document again
 
 ### scenario.adoption.invalid-answers — Answers that cannot be used
 

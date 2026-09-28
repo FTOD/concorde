@@ -36,7 +36,7 @@ concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--det
 
 The run works on the workspace whose binding lies in the worktree it starts in; `--modules`,
 `--input`, `--detach`, the run identity, the
-[progress file](../../glossary.json#concept.progress-file), the
+[run progress file](../../glossary.json#concept.run-progress-file), the
 [workspace lock](../../glossary.json#concept.workspace-lock) and the result are the
 [Execution runner](../runner.md)'s, the same for every run. Each provider adds its own arguments,
 such as `--goal` for `understand`. No Operation needs the developer's consent.
@@ -45,17 +45,20 @@ such as `--goal` for `understand`. No Operation needs the developer's consent.
 
 The **Operation catalog** of this version:
 
-| Operation | Provider | [Task type](../../glossary.json#concept.task-type) | [Worker ids](../../glossary.json#concept.worker-id) | Unbound | May write | Output |
+| Operation | Provider | [Task type](../../glossary.json#concept.task-type) | [Worker ids](../../glossary.json#concept.worker-id) | Unbound | May change | Output |
 | --- | --- | --- | --- | --- | --- | --- |
-| `understand` | [Understanding](understanding/module.md) | `understand` | `worker` | yes | no | an assessment, with a plan when asked |
-| `specify` | [Specification](specification/module.md) | `specify` | `worker` | no | Specs of the bound Modules | a [Spec change](../../glossary.json#concept.spec-change) |
-| `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | no | code of the bound Modules | a code change |
-| `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a [test report](../../glossary.json#concept.test-report) |
-| `spec_review` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | no | [review findings](../../glossary.json#concept.review-finding) and a verdict |
-| `spec_panel` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer1` … `reviewer5`, `chair` | yes | no | a [panel report](../../glossary.json#concept.panel-report) merged from independent reviews, and a verdict |
-| `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base`) | no | review findings and a verdict |
+| `understand` | [Understanding](understanding/module.md) | `understand` | `worker` | yes | no | [an assessment](understanding/contracts.md#contract.understanding.assessment), with a plan when asked |
+| `specify` | [Specification](specification/module.md) | `specify` | `worker` | no | Specs of the bound Modules, including documents it creates, and the registry mirror | a [Spec change](../../glossary.json#concept.spec-change) ([contract](specification/contracts.md#contract.specification.spec-change)) |
+| `implement` | [Implementation](implementation/module.md) | `implement` | `worker` | no | code of the bound Modules, and the pending markers of the entries whose files now exist | [a code change](implementation/contracts.md#contract.implementation.code-change) |
+| `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a [test report](../../glossary.json#concept.test-report) ([contract](implementation/contracts.md#contract.implementation.test-report)) |
+| `spec_review` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer`, `checker` | yes | a bound run: the reviewed Modules' [review memory](../../glossary.json#concept.review-memory); unbound: no | [review findings](../../glossary.json#concept.review-finding) and a verdict ([contract](../../spec-tooling/spec-review/operation.md#contract.spec-review.payload)) |
+| `spec_panel` | [Spec review](../../spec-tooling/spec-review/module.md) | `review-spec` | `reviewer1` … `reviewer5`, `chair` | yes | no | a [panel report](../../glossary.json#concept.panel-report) merged from independent reviews, and a verdict ([contract](../../spec-tooling/spec-review/panel.md#contract.spec-review.panel-payload)) |
+| `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base`) | no | a [code review report](../../glossary.json#concept.code-review-report) with findings and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, Specs withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
-| `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules and the registry mirror | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
+| `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
+
+"May change" covers both what a worker's grant makes writable and what the provider's own host
+steps change in the workspace; each provider's Spec gives the rule.
 
 A typical task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then the
 execution commands `task-validation` and `delivery`, repeating or skipping steps as the results tell
@@ -126,10 +129,10 @@ operations.operation -> checks: runs checks through
 
 <a id="uses-workers"></a>
 
-**Workers** launches every worker. A worker-backed step hands it the frozen grant, the brief, the
-worker id and the records directory, and Workers performs the
-[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) — settings, launch,
-audit, resume rounds, run record — and returns the
+**Workers** launches every worker. A worker-backed step hands it the grant it froze, the brief, the
+worker id and the records directory, and Workers performs the rest of the
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) — settings,
+pending files, launch, audit, checks and resume rounds, run record — and returns the
 [worker result](../../glossary.json#concept.worker-result) with the evidence it gathered. The
 Operation relies on Workers launching the worker only under that grant, auditing every write against
 it and keeping the worker's claims apart from what it measured. It keeps the worker result unchanged
@@ -141,8 +144,9 @@ the run `failed`, with Workers' link as a cause of the Operation's own.
 **Check execution** is the deterministic service that runs
 [configured checks](../../glossary.json#concept.configured-check) read-only, for the resume rounds
 Workers drives and for providers that run checks themselves, returning each result's command, exit
-code and log as evidence. An Operation relies on a check never changing the workspace it measures
-and on a result being refused as `stale_evidence` when its input changed during the run. It keeps
+code and log as evidence. An Operation relies on a check writing nothing in the workspace outside
+its [check scratch](../../glossary.json#concept.check-scratch), and on a result being refused as
+`stale_evidence` when the input it measured changed during the run, whatever changed it. It keeps
 each [check result](../../glossary.json#concept.check-result) as its own evidence rather than a
 worker's claim, and ends the run `failed` when the check boundary cannot be established or a check
 still fails after the last resume round, with the check's error or log in the chain.
@@ -155,15 +159,15 @@ Each Operation's control flow is a step table in its provider's Spec, which the 
 order until one step stops the run. A worker-backed step follows the **standard worker
 sequence**: compute the [grant](../../glossary.json#concept.grant) for the task
 type and Modules from the **workspace's** Specs and freeze it with its
-[context identity](../../glossary.json#concept.context-identity), pre-create the
-pending files it makes writable, generate the worker's settings, tools and
-[brief](../../glossary.json#concept.brief), launch the worker, run the
-[write audit](../../glossary.json#concept.write-audit), run the bound Modules'
-[configured checks](../../glossary.json#concept.configured-check) outside the worker,
-feed failures back as a [resume round](../../glossary.json#concept.resume-round) until they
-pass or the rounds run out, and write the
-[run record](../../glossary.json#concept.run-record). Workers performs that sequence; the
-step decides what its outcome means. See [How an Operation runs its workers](workers.md).
+[context identity](../../glossary.json#concept.context-identity), generate the worker's settings,
+tools and [brief](../../glossary.json#concept.brief), pre-create the pending files the grant makes
+writable, launch the worker, run the [write audit](../../glossary.json#concept.write-audit), run
+the bound Modules' [configured checks](../../glossary.json#concept.configured-check) outside the
+worker when it ended `ok`, feed failures back as a
+[resume round](../../glossary.json#concept.resume-round) until they pass or the rounds run out,
+and write the [run record](../../glossary.json#concept.run-record). The step computes and freezes
+the grant through Spec core and hands it to Workers, which performs the rest; the step decides
+what the outcome means. See [How an Operation runs its workers](workers.md).
 
 The grant always comes from the workspace's Specs, never the primary worktree's, so a task that
 changes a Spec is bounded by the Spec as its workspace sees it; an
@@ -200,8 +204,10 @@ instruction to the runner. It may run unbound, which is how the
 <a id="contains-specification"></a>
 
 **Specification** provides `specify`: a worker edits the bound Modules' own Spec documents,
-including pending files, and the Operation validates the result. It is the only Operation that
-writes Specs, so the task level routes every Spec repair through it or does it itself.
+including pending files, and the Operation validates the result. It is the Operation that changes
+what a Module promises: `code_to_spec` writes Specs only to describe existing code, and
+`implement`'s host only clears pending markers, so the task level routes every Spec repair through
+`specify` or does it itself.
 
 <a id="contains-implementation"></a>
 
@@ -215,9 +221,10 @@ need a bound workspace.
 <a id="contains-code-review"></a>
 
 **Code review** provides `code_review`: a worker judges the workspace's code change against the
-bound Modules' Specs and returns findings and a verdict, changing nothing. The Operation prepares
-the change to review from the binding's base commit, or from `--base` when it runs unbound, and
-keeps the verdict as the worker's claim; acting on a finding is the task level's decision.
+bound Modules' Specs and returns findings, changing nothing. The Operation prepares the change to
+review from the binding's base commit, or from `--base` when it runs unbound, keeps the findings as
+the worker's claims and derives the verdict from their severities itself; acting on a finding is
+the task level's decision.
 
 <a id="contains-adoption"></a>
 
@@ -230,10 +237,12 @@ that order.
 <a id="uses-spec-review"></a>
 
 **Spec review** provides `spec_review` and `spec_panel` from Spec tooling: reviewers read the bound
-Modules' Specs and return findings and a verdict, listed in the catalog like a contained provider
+Modules' Specs and return findings, listed in the catalog like a contained provider
 but living in Spec tooling because it maintains Specs rather than changing a project. Its workers,
 `spec_review`'s `reviewer` and `checker` and `spec_panel`'s reviewers and `chair`, run like any
-other provider's, and it changes nothing; its verdict stays the reviewers' claim. `spec_panel` is
+other provider's and change nothing. The findings stay the reviewers' claims, while the provider
+derives the verdict from them and, in a bound `spec_review` run, keeps them in the reviewed
+Modules' [review memory](../../glossary.json#concept.review-memory). `spec_panel` is
 the one provider whose steps run a LangGraph graph inside the run, which the runner neither knows
 nor needs: the provider still returns one run result through the ordinary steps.
 

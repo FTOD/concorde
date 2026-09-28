@@ -28,21 +28,49 @@ null. A label is kept only when it is a host-issued identifier of at most 160 ch
 letters, digits and `-_.:`; otherwise it is null.
 
 A finished trace handed to a sink is `{schema_version: 1, trace_id, complete, omitted, spans}`. A
-trace keeps at most 20,000 spans; the rest are counted in `omitted`.
+trace keeps at most 20,000 spans, open ones included, so an open span holds its place until it
+finishes; a span marked while the trace is full is not stored. `omitted` counts the spans not
+stored together with the spans still open when the trace is handed to its sink, which are stored
+with status `incomplete`, and `complete` is false whenever `omitted` is not zero.
 
 ## Library entry points
 
 | Entry point | Behaviour |
 | --- | --- |
-| `Span(name, **labels)` / `timed(name)` | mark a unit of work as a span; a no-op without an open trace or `CONCORDE_DIAGNOSTIC_TIMING_DIR` |
-| `Trace(trace_id=None, sink=None, layer="B")` / `tracing(trace)` | open a trace in the current context; its sink receives the finished trace once |
+| `Span(name, **labels)` / `timed(name)` | mark a unit of work, or every call of a function, as a span; a no-op without an open trace, except that `timed` then opens one when `CONCORDE_DIAGNOSTIC_TIMING_DIR` is set |
+| `Trace(trace_id=None, *, sink=None, layer="B")` / `tracing(trace)` | open a trace in the current context; its sink receives the finished trace once |
 | `notice_incomplete()` | write the one `CONCORDE_TIMING_INCOMPLETE` line of a sink that could not keep its trace |
-| `diagnostic_sink(directory)` | a sink writing each trace as a new mode-0600 file in an existing directory |
+| `diagnostic_sink(directory)` | a sink writing each trace as a new mode-0600 file, never through a symbolic link, in a directory that exists and is absolute, canonical and outside both the working directory and any `.concorde/status` or `.concorde/runs` directory; any other directory is refused |
 | `interval_record(...)` | adapt an interval measured elsewhere to the span shape |
 | `summarize(spans)` | the timing summary of finished span records |
 
 The timing summary is `{complete, summed_span_seconds, covered_seconds_by_process, wall_seconds:
 null, server_thinking_seconds: null}`.
+
+The directory conditions keep diagnostic files apart from the project and from the lifecycle
+records Concorde keeps under `.concorde/status` and `.concorde/runs`. A function marked with
+`timed` and called while no trace is open but `CONCORDE_DIAGNOSTIC_TIMING_DIR` is set opens a trace
+of its own whose sink is `diagnostic_sink` of that directory; when the directory is refused, the
+trace has no sink and the `CONCORDE_TIMING_INCOMPLETE` line is written instead.
+
+A caller opens a trace with a sink, marks nested work and summarizes what the sink received:
+
+```python
+received = []
+
+@timed("check.sandbox_setup")  # marks every call of set_up as a span
+def set_up():
+    ...
+
+with tracing(Trace(sink=received.append)):
+    with Span("check.total"):
+        set_up()  # its span's parent is check.total
+
+summary = summarize(received[0]["spans"])
+```
+
+The sink receives the finished trace once, when the `tracing` block ends; `summarize` reads the span
+records of that trace.
 
 ## Requirements
 
@@ -105,10 +133,10 @@ timestamps are used only to correlate records.
 
 ### scenario.checks.timing-trace-cap — A full trace counts what it omits
 
-- GIVEN a trace that already holds 20,000 spans
-- WHEN more spans finish
+- GIVEN a trace that already holds 20,000 spans, finished or open
+- WHEN more spans are marked
 - THEN they are not stored, and the trace reports how many were omitted and that it is incomplete
-- AND spans still open when the trace is handed to its sink are stored with status `incomplete` and counted as omitted
+- AND spans still open when the trace is handed to its sink are stored within the cap with status `incomplete` and also counted in `omitted`
 
 ### scenario.checks.timing-concurrent-traces — Concurrent traces stay separate
 

@@ -8,16 +8,16 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 
 ### scenario.spec-review.accepted — A clear Spec is accepted
 
-- GIVEN a workspace whose [Module](../../glossary.json#concept.module) A validates without errors
+- GIVEN a workspace whose [Module](../../glossary.json#concept.module) A validates without errors and has no review memory yet
 - AND a reviewer that finds only advisory problems in A's documents
 - WHEN the [main agent](../../glossary.json#concept.main-agent) runs `spec_review` for Module A
 - THEN the verdict is `accepted` and A's outcome carries the [context identity](../../glossary.json#concept.context-identity) of its `review-spec` grant
 - AND the advisory findings are returned
-- BUT no file of the workspace changes
+- BUT no file of the workspace changes other than A's review memory, which now holds the advisory findings as open
 
 ### scenario.spec-review.changes-required — All blocking findings in one result
 
-- GIVEN a Module A whose requirements document has a requirement with two obligations and whose Usage never shows a normal path
+- GIVEN a Module A and a reviewer that reports two blocking findings about A's own documents: a requirement with two obligations, and a Usage that never shows a normal path
 - WHEN the main agent runs `spec_review` for Module A
 - THEN the verdict is `changes_required`
 - AND both problems are returned as blocking findings in the same result, each with its path, dimension, evidence and suggestion
@@ -32,7 +32,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 
 ### scenario.spec-review.several-modules — Each Module is reviewed on its own
 
-- GIVEN Modules A and B, where A uses B
+- GIVEN Modules A and B without review memories, where A uses B
 - WHEN the main agent runs `spec_review` for Modules A and B
 - THEN one reviewer runs per Module, each under its own Module's `review-spec` grant
 - AND a problem A's reviewer notices in a B document is an advisory finding naming B
@@ -50,7 +50,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 
 ### scenario.spec-review.worker-blocked — A reviewer that cannot finish
 
-- GIVEN a reviewer that ends `blocked` because it needs a document outside its grant
+- GIVEN a Spec review of Module A whose reviewer ends `blocked`
 - WHEN the [Operation](../../glossary.json#concept.operation) collects its result
 - THEN A's outcome is `incomplete` and the verdict is `incomplete`
 - AND the result's error is the Operation's `review_incomplete` link whose cause for A ends in the reviewer's own link with its detail, attempts and options unchanged
@@ -58,10 +58,10 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 ### scenario.spec-review.memory — A repeated review builds on the memory
 
 - GIVEN a workspace whose [review memory](../../glossary.json#concept.review-memory) of `module.a` holds the open blocking findings `f.1` and `f.2` and the open advisory `f.3`
-- WHEN a reviewer, given those earlier findings, reports `f.2` changed, one new advisory finding, and `f.3` and an unknown `f.9` resolved
+- WHEN a reviewer, given those earlier findings, reports `f.2` changed but still blocking, one new advisory finding, and `f.3` and an unknown `f.9` resolved
 - THEN the memory keeps `f.2` with its new content, adds the new finding as `f.4`, marks `f.3` resolved with the reason and keeps `f.1` open
 - AND the result lists `f.4` as new, `f.2` as updated, `f.3` as resolved, `f.1` as carried in full and `f.9` as ignored
-- AND the outcome is `changes_required`, since `f.1` still stands
+- AND the outcome is `changes_required`, since the carried `f.1` and the updated `f.2` are open blocking findings
 - BUT once every earlier blocking finding is resolved, the outcome is `accepted`
 
 ### scenario.spec-review.unchanged — Unchanged Specs are not reviewed again
@@ -108,7 +108,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 
 ### scenario.spec-review.panel-short — A reviewer that cannot finish stops the panel
 
-- GIVEN a panel of two reviewers for Module A, of which reviewer 2 ends `blocked` because it needs a document outside its grant
+- GIVEN a panel of two reviewers for Module A, of which reviewer 2 ends `blocked`
 - WHEN the reviewers have ended
 - THEN the chair does not run, and A's outcome and the verdict are `incomplete`
 - AND the result's error is the Operation's `panel_incomplete` link whose cause for A is `panel_short`, with reviewer 2's link, naming its seat, and below it the reviewer's own link unchanged

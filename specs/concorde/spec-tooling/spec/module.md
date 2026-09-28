@@ -53,6 +53,9 @@ init -> writer: writes through
 init -> validator: validates the result with
 ```
 
+The commands named below are `concorde` commands; in the Concorde checkout itself they run as
+`python3 scripts/concorde.py`.
+
 <a id="concept.registry"></a><a id="concept.document"></a><a id="concept.protocol-binding"></a>
 
 **Loading.** Every program that needs the Specs loads the configuration `.concorde/config.json`, the
@@ -67,12 +70,11 @@ the developer rebinds.
 
 <a id="concept.structural-check"></a><a id="concept.verification-declaration"></a>
 
-**Validation.** `python3 scripts/concorde.py spec-validation` reports every structural finding in
-one run, each with its rule, severity, file and remediation; errors make the result `invalid`.
-Coverage comes from
+**Validation.** `concorde spec-validation` reports every structural finding in one run, each with
+its rule, severity, file and remediation; errors make the result `invalid`. Coverage comes from
 [verification declarations](../../glossary.json#concept.verification-declaration) in the tests' own
 source, parsed and never run ([syntax](contracts.md#verification-declarations)). A task may change
-its own `module` block but never the registry, so `concorde.py registry --write` regenerates a stale
+its own `module` block but never the registry, so `concorde registry --write` regenerates a stale
 mirror (`CHK.registry.mirror`). Success is evidence about structure only; see
 [What validation tells you](validation.md).
 
@@ -80,20 +82,23 @@ mirror (`CHK.registry.mirror`). Success is evidence about structure only; see
 
 **Boundaries and impact.** For the Modules a task is bound to, Spec core returns the five boundary
 sets, selected one level deep. A Module's [Spec context](../../glossary.json#concept.spec-context)
-also holds its terms: the glossary entries of the concepts it owns and of the concepts its selected
-documents link, closed over the terms those definitions link, so a reader knows every word its
-documents use without reading the owners' documents. The impact indexes (`selected-by`,
-`referenced-by`, `implemented-by`, binding Modules, changed definitions) say whom a change concerns
-and never widen a boundary. Which Modules a task may edit or must re-review is the Operations'
-policy.
+also holds its terms: the glossary entries of the concepts it owns, of the concepts its selected
+documents link or relate to and of those its `relies_on` names, closed over the terms those
+definitions link and their `narrows`, `supersedes` and `relates` targets, so a reader knows every
+word its documents use without reading the owners' documents. The impact indexes (`selected-by`,
+`referenced-by`, `implemented-by`, `covered-by`, binding Modules, changed definitions) say whom a
+change concerns and never widen a boundary. Which Modules a task may edit or must re-review is the
+Operations' policy.
 
 <a id="concept.grant"></a><a id="concept.context-identity"></a>
 
 **Grants.** `concorde grant --root <worktree> --modules <ids> --type <task type>` computes, from one
 worktree's Specs, which paths a worker may change (`rw`), read (`ro`) or only know by name
-(`names`); every other path is denied. The grant carries the bound Modules' terms, whole glossary
-entries, and its [context identity](../../glossary.json#concept.context-identity), so a caller can
-tell later whether anything the worker could read has changed. A grant that writes Specs makes the
+(`names`); every other path is denied. A task type that reads code reads the whole project's code,
+the Protocol's ProjectImplementation, but writes only within the bound Modules' scopes. The grant
+carries the bound Modules' terms, whole glossary entries, and its
+[context identity](../../glossary.json#concept.context-identity), so a caller can tell later
+whether anything the worker could read has changed. A grant that writes Specs makes the
 glossary file writable, since a concept is declared there; that its writes stay within the bound
 Modules' own entries is checked after the worker, by Workers'
 [write audit](../../glossary.json#concept.write-audit). It refuses to make writable a file that an
@@ -219,9 +224,9 @@ workers and nothing else. A write to a file an unbound Module also binds is refu
 silently narrowed: narrowing would leave a worker unable to write a file its own Module binds, with
 nothing to tell it why, while the refusal names the file and the Module so the caller can bind the
 task to it too or split the work. The context identity covers no implementation contents, so a
-worker's own writes never make its context stale. The grant does not yet mark which of its entries
-are pending, so the Operation learns which files to create by checking what exists; whether it
-should is not settled.
+worker's writes to code never make its context stale; a task that writes Specs changes its own
+context identity. The grant does not yet mark which of its entries are pending, so the Operation
+learns which files to create by checking what exists; whether it should is not settled.
 
 **Validation.** The validator runs nothing: it parses verification declarations and reads configured
 checks only to confirm their inputs exist and are safe. Concerns other Modules own, such as

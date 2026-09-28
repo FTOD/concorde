@@ -7,11 +7,13 @@ site identity file, the build commands and the
 
 ## Scaffold proposal
 
-`concorde docsite --propose` returns a result whose `result.proposal` is the value below and
-whose `result.prerequisites` is a separate array of `{name, status, detail}` records for `node` and
-`npm`, with status `present`, `missing` or `outdated`. Prerequisite warnings never change the
-proposal. `--apply --proposal PATH` reads a safe project-relative JSON file holding the value
-itself, `{"proposal": value}` or the whole propose result `{"result": {"proposal": value}}`.
+`concorde docsite --propose` returns Spec core's
+[command-line envelope](../spec/contracts.md#validation-result) with `tool: "docsite"`, whose
+`result.proposal` is the value below and whose `result.prerequisites` is a separate array of
+`{name, status, detail}` records for `node` and `npm`, with status `present`, `missing` or
+`outdated`. Prerequisite warnings never change the proposal. `--apply --proposal PATH` reads a safe
+project-relative JSON file holding the value itself, `{"proposal": value}` or the whole propose
+result `{"result": {"proposal": value}}`.
 
 ```concorde-contract
 {
@@ -166,7 +168,8 @@ field and value (for differing files, every differing path), and `stale_proposal
 package's template digest moved. Then:
 
 - every destination already has the proposed bytes: `unchanged`, nothing written;
-- any destination exists with other content: `conflict`, nothing written;
+- otherwise, when any destination exists, whatever its content: `conflict`, naming every existing
+  destination, nothing written;
 - every destination is absent: the files are created through a
   [file transaction](../../glossary.json#concept.file-transaction) that checks each destination is
   still absent before staging and before each write, and removes the files it created if one
@@ -238,10 +241,13 @@ Commands run from `docsite/` with the dependencies installed from `package-lock.
 | `npm run typecheck` | Type-checks the TypeScript sources. |
 | `npm run check` | Runs typecheck, tests, validate and build in that order. |
 
-A command exits nonzero with a diagnostic on any failure; `validate`, `start` and `build` fail
-first when the project has no Concorde configuration.
+`validate`, `build`, `test`, `typecheck` and `check` exit nonzero with a diagnostic on any failure.
+`start` exits nonzero with a diagnostic only when its first staging fails; a later staging failure
+or a Docusaurus exit is reported while the command keeps waiting for the next change, as the
+[pipeline](pipeline.md#preview) describes, and an interruption stops it. `validate`, `start` and
+`build` fail first when the project has no Concorde configuration.
 
-## Build manifest
+## Site build manifest
 
 A successful build writes `build-manifest.json` at the root of the
 [published site](../../glossary.json#concept.published-site):
@@ -274,7 +280,9 @@ of the reading and metadata files. `includedBy` lists, in registry order, each M
 one-level [Spec context](../../glossary.json#concept.spec-context) selects the document, with its
 reasons sorted by `relation`, `kind` and `id`; `relation` is `owns`, `contains`, `uses` or
 `includes`, an `includes` reason also has `kind` `module` or `document`, and `id` is the Module or
-document that the relation names. This is the same reason shape as the Spec core's context records.
+document that the relation names. `includedBy` is the document's selecting Modules, which equal
+Spec core's `selected-by` index, and this is the same reason shape as the Spec core's context
+records.
 `sourceDigest` is defined in the [pipeline](pipeline.md#source-digest). A manifest of any other
 version, or with any difference in these fields, is stale and requires a fresh build. The manifest
 records inputs only and makes no claim that code satisfies the Specs.

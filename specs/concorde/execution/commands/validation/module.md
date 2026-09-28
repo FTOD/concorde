@@ -19,7 +19,7 @@ work is complete, usually after `implement`, `test` and the reviews. `delivery` 
 readiness again itself, so a `task-validation` run is a preview, not a precondition:
 
 ```text
-concorde task-validation [--modules <id>[,<id>…]] [--detach]
+concorde task-validation [--modules <id>[,<id>…]] [--input <run-id>]… [--detach]
 ```
 
 It is an [execution command](../../../glossary.json#concept.execution-command): the
@@ -29,8 +29,11 @@ It is an [execution command](../../../glossary.json#concept.execution-command): 
 records it in the [run store](../../../glossary.json#concept.run-store), so that Delivery and a
 workflow can find it. In a worktree without a binding it is refused with `binding_required`, since
 readiness concerns a workspace's changes from its base commit. The command takes no arguments of its
-own. Its Modules (`--modules`, the binding's by default) never narrow what is validated — readiness
-concerns the whole workspace — but add their checks to the changed Modules'. It returns a
+own; it accepts the runner's `--input` like any run, but no step reads an admitted input. The
+**run's Modules** (`--modules`, the binding's by default) never narrow what is validated — readiness
+concerns the whole workspace — but add their checks to the changed Modules'. The checks of every
+Module that uses one of these, directly or through further uses, run too, so a change can bring
+check results from Modules the workspace did not touch. A run that decides a readiness returns a
 [run result](../../../glossary.json#concept.run-result) of kind `command`, with no worker, whose
 `output` is the readiness ([contract](contracts.md#contract.validation.readiness)), one per run,
 which it also saves as `readiness.json` in its
@@ -45,9 +48,9 @@ established, not only the first, each of one kind:
 | Kind | Blocking when |
 | --- | --- |
 | `load` | the Specs fail to load at all |
-| `structural` | a [structural check](../../../glossary.json#concept.structural-check) error, e.g. a broken link or stale registry mirror, or a run [Module](../../../glossary.json#concept.module) the workspace's registry no longer registers |
+| `structural` | a [structural check](../../../glossary.json#concept.structural-check) error, e.g. a broken link or stale registry mirror, or one of the run's [Modules](../../../glossary.json#concept.module) that the workspace's registry no longer registers |
 | `unbound` | a changed path is not a Spec document, the glossary, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
-| `check` | a changed or run Module's [configured check](../../../glossary.json#concept.configured-check) failed, timed out or couldn't run |
+| `check` | a [configured check](../../../glossary.json#concept.configured-check) of a Module whose checks run failed or timed out, or Check execution could not run a Module's checks (see step 7) |
 
 Warnings, such as missing scenario coverage, are reported but never block. A pending entry whose
 file now exists is not an error but a **confirmation**, cleared by Delivery on commit. Changed
@@ -68,24 +71,33 @@ change of the workspace alters it.
 | `failed` | `checks_unavailable` | `environment` | Check execution's error as cause |
 | `failed` | `inputs_changed` | `environment` | the workspace changed mid-run |
 
-The error is the run's own link of level `command`, with the actor `Command task-validation
-<run-id> (workspace <workspace>)`. A blocked summary starts `Not deliverable:` with the finding
-count; each finding is named by kind, location and message, as host evidence and as the
-[error chain](../../../glossary.json#concept.error-chain)'s causes — so whoever reads the
-result sees everything blocking delivery from the result alone. The readiness is always the output;
-the usual fix is another `implement`, a `specify`, or regenerating a stale registry mirror. Each
-`failed` code carries a host evidence entry with the same code. Running `task-validation` again on
-an unchanged workspace gives the same readiness with fresh check results.
+The error is the run's own link of level `command`, with the actor
+`Command task-validation <run-id> (workspace <workspace>)`. A blocked summary starts
+`Not deliverable:` with the finding count; each finding is named by kind, location and message, as
+host evidence and as the [error chain](../../../glossary.json#concept.error-chain)'s causes — so
+whoever reads the result sees everything blocking delivery from the result alone. As host evidence,
+each finding is an entry of kind `blocking` with its location as `ref` and its message as `detail`,
+each check that ran is an entry of kind `check`, and the structural validation and the decided
+readiness are summarized in entries of kind `readiness`. An `ok` or `blocked` run always carries its
+readiness as the output; the usual fix of a blocked one is another `implement`, a `specify`, or
+regenerating a stale registry mirror. A `failed` run and a refused one decide no readiness: their
+`output` is null and they save no `readiness.json`. Each `failed` run carries host evidence of its
+cause: kind `git` for `wrong_branch` and `measurement_failed`, `checks_unavailable` for
+`checks_unavailable` and `readiness` for `inputs_changed`. Running `task-validation` again on an
+unchanged workspace measures the same inputs and reaches the same structural and unbound findings
+and the same Modules; only its fresh check results, and with them the readiness decision, can
+differ, when a configured check depends on something outside the workspace.
 
 ## Design
 
-Readiness is decided by deterministic code alone, so Delivery can run the same steps and trust
-their outcome without asking — a model's opinion of completeness is not enough. That is also why it
-is an execution command and not an Operation: it involves no model, yet delivery must cite the run
-that decided a readiness, a workflow must be able to take it as a step, and its caller must receive
-its evidence and error chain like any run's. Binding the readiness to an input digest, remeasured
-at the end, proves the inputs did not change while the checks ran, rather than trusting a
-timestamp.
+Readiness is decided by deterministic code alone, so Delivery can run the same steps and trust their
+outcome without asking — a model's opinion of completeness is not enough. That is also why it is an
+execution command and not an Operation: it involves no model, yet delivery must cite the run that
+decided a readiness, a workflow must be able to take it as a step, and its caller must receive its
+evidence and error chain like any run's. Binding the readiness to an input digest, remeasured at the
+end, proves that the measured inputs at the end of the run are those it recorded at the start,
+rather than trusting a timestamp; Check execution in addition refuses a check whose own inputs
+changed while it ran. Changes the measurement leaves out, below, are not seen.
 
 The measurement covers everything Delivery will commit: tracked changes since the binding's base
 commit and untracked files Git does not ignore. An untracked path Git cannot version, such as the
@@ -103,28 +115,33 @@ validation always covers the whole workspace, since a
 | --- | --- | --- | --- |
 | 1 | Require the workspace's head to be on the branch its binding names | host | wrong or detached branch (`failed`) |
 | 2 | Measure inputs: head, base, changed paths' digests, config digest, combined | host, read-only Git | Git can't report the changes (`failed`) |
-| 3 | Validate the workspace's Spec structure | Spec core | — |
+| 3 | Validate the workspace's Spec structure | Spec core | — (Specs that fail to load skip steps 5–7) |
 | 4 | Sort findings: errors block, filled pending entries become confirmations, warnings kept | host | — |
-| 5 | Require every changed path be a Spec document, control record or Module-bound | host, Spec core | — |
+| 5 | Require every changed path be accounted for, as the `unbound` kind lists | host, Spec core | — |
 | 6 | Derive the changed Modules via the impact indexes | Spec core | — |
-| 7 | Run the changed and run Modules' configured checks | Check execution | check boundary unavailable (`failed`) |
+| 7 | Run the configured checks of the changed Modules, the run's Modules and every Module using one of them | Check execution | check boundary unavailable (`failed`, `checks_unavailable`); a check input changed (`failed`, `inputs_changed`) |
 | 8 | Remeasure inputs, compare the digest | host | digest changed (`failed`, `inputs_changed`) |
 | 9 | Save the readiness and return it | host | — |
 
 Steps 3–7 collect every blocking finding rather than stopping at the first: step 3 reads the Specs
 as they will look once confirmed, so a filled pending entry is no error, and an unbound path is
 reported once, at step 5. When the Specs fail to load, steps 5–7 are skipped and the load failure
-itself blocks, naming the file and the loader's error. A run Module the loaded registry does not
-register is a structural blocking finding. Unlike an Operation, the command diagnoses the Specs
-itself, so the runner does not load them before the steps and these diagnoses always reach the
-caller as findings rather than as a refusal. Step 8 catches changes of the workspace during a
-check, which can take minutes.
+itself blocks, naming the file and the loader's error. One of the run's Modules that the loaded
+registry does not register is a structural blocking finding. At step 7, Check execution's
+`check_sandbox_unavailable` fails the run with `checks_unavailable`, and its `stale_evidence` with
+`inputs_changed`; any other error it raises for a Module's checks, such as a missing check input or
+an invalid check, is a blocking `check` finding naming the Modules whose checks could not run, and
+the other Modules' checks still run. Unlike an Operation, the command diagnoses the Specs itself, so
+the runner does not load them before the steps and these diagnoses always reach the caller as
+findings rather than as a refusal. Step 8 catches changes of the workspace during a check, which can
+take minutes.
 
 A `task-validation` run writes nothing in the workspace; its logs and readiness go to its run
-directory in the run store. Delivery reuses the readiness steps and a confirmation service that
-clears exactly the listed pending markers in one
-[file transaction](../../../glossary.json#concept.file-transaction), bound to the
-measured metadata digests, then revalidates and rolls back on any remaining error. See the
+directory in the run store, under the binding's records directory, which is the only place it writes
+even when that directory lies inside the worktree. Delivery reuses the readiness steps and a
+confirmation service that clears exactly the listed pending markers in one
+[file transaction](../../../glossary.json#concept.file-transaction), bound to the measured metadata
+digests, then revalidates and rolls back on any remaining error. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
 <a id="realization.validation.command"></a>
@@ -152,5 +169,8 @@ bound-workspace fixture Delivery's tests share.
 - <a id="uses-checks"></a>**Check execution** runs each changed Module's
   [configured checks](../../../glossary.json#concept.configured-check) read-only,
   with the workspace as the project, and returns one
-  [check result](../../../glossary.json#concept.check-result) per check, copied into
-  the readiness unchanged; a boundary it cannot establish fails the run.
+  [check result](../../../glossary.json#concept.check-result) per check. The readiness keeps
+  each result's check identity as `check`, its Module, status and exit code, its measured
+  `check_revision` as `measured_digest` and its log path relative to the directory holding the
+  records directory; a timeout's exit code becomes null and the log digest is dropped. A boundary
+  it cannot establish fails the run.

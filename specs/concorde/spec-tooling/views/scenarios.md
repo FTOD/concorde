@@ -24,7 +24,7 @@ does.
 - THEN loading fails with an error naming the source
 - BUT nothing is staged or promoted
 
-### scenario.views.reject-reading-collection — A document without a valid role is refused
+### scenario.views.reject-reading-collection — A document whose role or shape cannot be published is refused
 
 - GIVEN a document whose metadata is not schema 3 or has no valid `role`, an entry `module.md` whose role is `implementation` or whose metadata lacks the `module` block, another document whose metadata has a `module` block, a `module`-role document containing a requirement, a scenario or a canonical contract, or an `implementation`-role document defining a concept
 - WHEN the publisher loads the project
@@ -43,7 +43,7 @@ See [req.views.diagram-subset](requirements.md#req.views.diagram-subset).
 ### scenario.views.d2-missing — Without the d2 program diagrams cannot be published
 
 - GIVEN a registered document containing a `d2` block
-- AND no `d2` program on `PATH` and no `CONCORDE_D2`
+- AND no `CONCORDE_D2`, no `.concorde/tools/d2` and no `d2` program on `PATH`
 - WHEN the site is built
 - THEN the build fails with an error naming the diagram's document and line and saying how to install the program
 - AND no candidate is promoted
@@ -52,7 +52,7 @@ See [req.views.d2-failure](requirements.md#req.views.d2-failure).
 
 ### scenario.views.d2-program — The installed d2 is found without configuration
 
-- GIVEN a project into which the Concorde installer placed `.concorde/tools/d2`
+- GIVEN a project that may have `CONCORDE_D2` set and may have `.concorde/tools/d2`, which the Concorde installer places
 - WHEN the publisher looks for the `d2` program
 - THEN it uses `CONCORDE_D2` when that is set
 - AND otherwise the installed `.concorde/tools/d2`
@@ -67,7 +67,7 @@ See [req.views.d2-program](requirements.md#req.views.d2-program).
 - GIVEN a valid registered project
 - WHEN the site is built
 - THEN every registered document is published at exactly one page whose route is `/specs/` followed by its source path without `.md`, with a leading `specs/` removed when every document lies under `specs/`
-- AND each Module appears in the navigation under the Module that contains it, and root Modules at the top level
+- AND each Module appears in the navigation under the Module that contains it, and the uncontained Modules at the top level
 - AND a Module's name opens its entry, with its explanatory topics and then its child Modules beneath it
 - AND D2 diagrams render where the document places them
 
@@ -84,7 +84,7 @@ See [req.views.d2-program](requirements.md#req.views.d2-program).
 
 - GIVEN a project in which no document declares the role `implementation`
 - WHEN the site is built
-- THEN the navigation bar shows only the Module documents tab
+- THEN the navigation bar shows the Module documents tab and no Implementation documents tab
 
 ### scenario.views.publish-reference-link — A shared document is published once
 
@@ -230,11 +230,11 @@ a link to a page or anchor that does not exist stops promotion, as
 
 ### scenario.views.user-docs — User documents as the home page and first tab
 
-- GIVEN `docsite/site.json` sets `userDocs.path` to a directory whose root page is `README.md` or `index.md`
+- GIVEN `docsite/site.json` sets `userDocs.path` to a directory whose root page is `README.md`, `README.mdx`, `index.md` or `index.mdx`
 - WHEN the site is built
 - THEN the root page is the site's home page at `/`, and every other document is published at its path in the directory
 - AND the first navigation tab, labelled `userDocs.label` or "[User documents](../../glossary.json#concept.user-documents)", leads to them, with a sidebar that follows the directory's folders
-- AND the Module documents, Implementation documents and [custom docs](../../glossary.json#concept.custom-docs) tabs follow in that order
+- AND the Module documents tab, the Implementation documents tab when any document is role `implementation`, and one tab per configured [custom docs](../../glossary.json#concept.custom-docs) collection follow in that order
 - BUT user documents are not Spec pages, are not listed in the site build manifest, belong to no Module and grant no context
 
 ### scenario.views.publish-homepage-default — No user documents configured
@@ -321,7 +321,10 @@ a link to a page or anchor that does not exist stops promotion, as
 
 ### scenario.views.scaffold-conflict — Existing destinations block a scaffold
 
-- GIVEN a valid proposal and a project in which at least one destination already exists with other content
+- GIVEN a valid proposal and a project in which at least one destination already exists, but not every destination has the proposed bytes
 - WHEN it is applied
 - THEN the result is `conflict`, naming every existing destination
 - BUT no file is written
+
+A partially applied proposal, whose existing destinations already have the proposed bytes and whose
+other destinations are absent, is a conflict too.

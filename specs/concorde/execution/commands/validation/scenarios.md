@@ -15,7 +15,7 @@ readiness is defined in the [contracts](contracts.md).
 
 ### scenario.validation.not-ready — Every blocker is reported in one run
 
-- GIVEN a workspace with a broken [Spec](../../../glossary.json#concept.spec) link, a new file bound by no [Module](../../../glossary.json#concept.module) and a failing check of a changed Module
+- GIVEN a workspace with a broken [Spec](../../../glossary.json#concept.spec) link, a new file bound by no [Module](../../../glossary.json#concept.module), a failing check of a changed Module and a changed project glossary
 - WHEN `task-validation` runs
 - THEN the result has status `blocked` and the readiness has `ready` false
 - AND `blocking` holds a structural finding, an unbound finding and a check finding
@@ -69,7 +69,7 @@ readiness is defined in the [contracts](contracts.md).
 ### scenario.validation.inputs-changed — The worktree changes during the run
 
 - GIVEN a `task-validation` run whose checks are running
-- WHEN a file of the workspace changes before the run ends
+- WHEN a file of the workspace that the input measurement covers changes and is still changed when the run remeasures its inputs
 - THEN the result has status `failed` with `inputs_changed`
 - AND no readiness is issued
 
@@ -77,7 +77,7 @@ readiness is defined in the [contracts](contracts.md).
 
 - GIVEN a workspace whose head is detached or on another branch than the one its binding names
 - WHEN `task-validation` runs
-- THEN the result has status `failed`
+- THEN the result has status `failed` with the code `wrong_branch` and the reason `permission`
 - AND no check is run
 
 ### scenario.validation.unbound — Readiness needs a bound workspace
@@ -91,7 +91,7 @@ readiness is defined in the [contracts](contracts.md).
 
 - GIVEN a host where the [read-only check boundary](../../../glossary.json#concept.read-only-check-boundary) cannot be established
 - WHEN `task-validation` reaches its checks
-- THEN the result has status `failed`
+- THEN the result has status `failed` with the code `checks_unavailable` and the reason `environment`
 - AND no check runs outside the boundary
 
 ## Confirmation for Delivery

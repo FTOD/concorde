@@ -2,10 +2,13 @@
 
 ## Purpose
 
-Concorde makes a project's Specs the harness of the AI agents that change it. The Specs describe
-the architecture and divide the responsibility among Modules; from that division Concorde computes,
-for each piece of work, what a worker is given as context and what it may read and write, runs the
-worker inside that boundary and verifies its result instead of trusting it.
+Concorde makes a project's [Specs](glossary.json#concept.spec) the
+[harness](glossary.json#concept.agent-harness) of the AI agents that change it. The Specs describe
+the architecture and divide the responsibility among [Modules](glossary.json#concept.module); from
+that division Concorde computes, for each piece of work, what a
+[worker](glossary.json#concept.worker) is given as [context](glossary.json#concept.context) and what
+it may read and write, runs the worker inside that [boundary](glossary.json#concept.boundary) and
+verifies its result instead of trusting it.
 
 The developer and the [main agent](glossary.json#concept.main-agent) rely on it. Its work is
 organized in two halves. The upper half, [Coordination](coordination/module.md), is project
@@ -79,7 +82,7 @@ drive a repair loop inside one Operation.
 
 The levels are levels of work, not of Modules. [Coordination](coordination/module.md) groups the
 sessions and the task workspace; [Execution](execution/module.md) groups everything that works in a
-bound workspace; and several Modules serve both halves without being a level, described under
+bound workspace; and two Modules serve both halves without being a level, described under
 [Design](#design).
 
 ### A normal path
@@ -97,7 +100,9 @@ running Operations with `concorde run <operation>` (`understand`, `specify`, `im
 of these names the task: each reads the worktree's binding. The main agent then returns to the
 primary worktree and merges. For work split into several tasks, it starts a
 [task session](glossary.json#concept.task-session) per task with `concorde task session`, which does
-the same inside its task and reports back, so several tasks run at once.
+the same inside its task and reports back, so several tasks run at once. Before any change, a
+read-only Operation such as `understand` or a review may also run in the primary worktree itself, as
+an [unbound run](glossary.json#concept.unbound-run) that judges the Specs as they stand there.
 
 The normal path moves from opening a task to work in its bound workspace, then back to the main
 agent for merge. Operations, validation and delivery run through Execution in the task worktree;
@@ -149,14 +154,17 @@ and validates the result and delivers it.
 Every run returns a structured result; a failure carries an
 [error chain](glossary.json#concept.error-chain): the run's own detailed link saying why it cannot
 handle the error, with each error it received nested as a cause with its own reason, and every
-`concorde` command refuses in the same shape. The chain climbs the levels: a worker reports its link
+`concorde` command refuses in the same shape, except Spec tooling's deterministic commands, which
+report with Spec tooling's own error record. The chain climbs the levels: a worker reports its link
 to Workers, the Operation adds its own, a workflow keeps each run's chain whole in its result, a
 task session escalates to the main agent with its link on top, and the main agent adds its link
 above that when the developer must decide. The main agent reads the chain, decides what it can, logs
 the decision, escalates only a major-impact one, and adds its own link rather than summarizing. A
 step needing an unstated promise stops with a [Spec gap](glossary.json#concept.spec-gap) instead of
-inferring it from code; only the developer, the main agent and a task session within its task's goal
-change Specs outside a `specify` run.
+inferring it from code; outside a `specify` run and the
+[Adoption](execution/operations/adoption/module.md) route (`code_to_spec` and the `scaffold` command
+that writes what it proposed), only the developer, the main agent and a task session within its
+task's goal change Specs.
 
 ## Design
 
@@ -232,9 +240,11 @@ worktree's own `concorde`. An extra level of messaging is one more place for an 
 so the loss is prevented structurally: a task session escalates with
 `concorde task escalate --by task-session`, which records its link with the failed runs' chains
 unchanged as causes, and the main agent adds its own link on top. A task session's writes are
-confined to its task, while the main agent stays unrestricted and alone merges. Because a task's
-commands run with the branch's own copy, their success is self-validation, which is why a merge
-runs the build and `spec-validation` once more on the primary branch.
+confined to its task, while the main agent stays unrestricted and alone merges. Where a task's
+commands run with the branch's own copy of the Framework, as in Concorde's own source checkout,
+their success is self-validation, which is why a merge there runs the build and `spec-validation`
+once more on the primary branch; in an installed project a task worktree ordinarily runs the
+primary worktree's copy ([Distribution](distribution/module.md)).
 
 One task through the Modules; each arrow is declared by the calling Module's own `uses`:
 
@@ -260,7 +270,8 @@ m -> t: merge the task branch (delivered: read from the delivery commit)
 
 ### Modules that serve both halves
 
-Two Modules serve both halves without being a level. Every agent gets its harness from one
+Two Modules serve both halves without being a level: the Harness, drawn below, and Spec tooling,
+which is not drawn because nearly every Module relies on it. Every agent gets its harness from one
 Harness:
 
 ```d2 illustrative
@@ -278,15 +289,15 @@ rules, a [write hook](glossary.json#concept.write-hook) and the Bash sandbox, on
 and a task session's from its task. It guards against scope drift and mistakes, not a malicious
 actor; the Harness explains why these layers were chosen and what they leave out.
 
-[Spec tooling](spec-tooling/module.md) is not drawn because nearly every Module relies on it: its
-Spec core loads and checks the Specs and computes the grants, and a Module refuses to act on a
+Nearly every Module relies on [Spec tooling](spec-tooling/module.md): its Spec core loads and checks the Specs and computes the grants, and a Module refuses to act on a
 structure it reports untrustworthy. Its core uses no other Module, so the Specs can be checked,
 served and published without any agent.
 
 ### Around the framework
 
 Three Modules face the people who install, test and develop Concorde rather than a project's work:
-Distribution installs the main-session guidance, the workflows and the docsite into a project;
+Distribution installs the main-session guidance, the workflows and the docsite of
+[Views](spec-tooling/views/module.md) into a project;
 Dogfooding runs a [develop install](glossary.json#concept.develop-install) and reports Concorde's
 defects as Issues; and End-to-end testing runs installed Concorde on real codebases.
 

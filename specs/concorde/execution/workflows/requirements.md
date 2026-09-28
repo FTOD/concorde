@@ -14,18 +14,18 @@ The workflow commands SHALL refuse to run a step or build a report in a worktree
 
 A [workflow step](../../glossary.json#concept.workflow-step) SHALL start its run only as `concorde run <operation> --detach` or `concorde <command> --detach` of the workspace's own `concorde`, in the workspace the step runs in.
 
-The workflow leaves worker launches and service calls inside the run. Client
-[step agents](../../glossary.json#concept.step-agent) only relay the workflow commands; they do not
-perform the worker's job or bypass the run's grant, audit and result handling.
+The workflow leaves worker launches and service calls inside the run. What client
+[step agents](../../glossary.json#concept.step-agent) may do is stated once, in
+[req.workflows.step-agent-relays](#req.workflows.step-agent-relays).
 
 ### req.workflows.one-at-a-time — One run at a time
 
-A workflow SHALL NOT start a step while another process holds the
-[workspace lock](../../glossary.json#concept.workspace-lock) of its workspace.
+`concorde workflow step` SHALL start a step's run only after it has found the [workspace lock](../../glossary.json#concept.workspace-lock) of its workspace free.
 
-`concorde workflow step` waits for a running run of the workspace before starting its own, and the
-runner writes a run's result before it releases the lock, so a finished step always leaves the
-workspace free.
+The runner writes a run's result before it releases the lock, so a finished step always leaves the
+workspace free. When another process takes the lock between that check and the start, the runner
+refuses the step's run under its own workspace lock, and the refused run is an ordinary finished
+step whose result carries that refusal.
 
 ### req.workflows.key-idempotent — A step key runs once
 
@@ -33,7 +33,10 @@ workspace free.
 
 ### req.workflows.restart-generation — A restart runs a step once more
 
-A step given a restart label SHALL add it to the step key after `#`, so that it starts one new run for that label and finds that run on every later call with the same label.
+A step given a restart label SHALL add it to the step key after `#`, so that it starts one new run for that label and finds that run on every later call with the same label while that step is current.
+
+A step that a rerun of an earlier step superseded is never found again, even under the label it
+was restarted with: asking for that label again starts a new run under the same key.
 
 ### req.workflows.step-lock — A step is looked up, started and recorded at once
 
@@ -56,14 +59,27 @@ A step whose command line the runner rejected, or whose detached runner did not 
 
 ### req.workflows.answers-new-key — Answers make a new step
 
-A step given answers SHALL pass them to its run with `--answers`, add their digest to the step key and admit with `--input` the latest `ok` run of the same base key.
+A step given answers SHALL add to its step key `@` and the first eight hexadecimal digits of the SHA-256 of the answers list in canonical JSON.
 
-The digest is taken over the answers list in canonical JSON, so the same answers always name the
-same step.
+Canonical JSON has its keys sorted and no whitespace, so the same answers always name the same step.
+
+### req.workflows.answers-passed — Answers reach the run
+
+A step given answers SHALL pass them to its run with `--answers`, written next to the workflow record.
+
+### req.workflows.answers-input — An answered step admits the run that asked
+
+A step given answers SHALL admit with `--input` the latest `ok` run of the same base key, even when a rerun superseded that run.
+
+The answers refer to that run's questions.
 
 ### req.workflows.one-workflow-per-workspace — A workspace runs one workflow
 
-`concorde workflow step` SHALL refuse a step naming a workflow other than the one already recorded for the workspace, and a key already recorded for another [Operation](../../glossary.json#concept.operation) or command.
+`concorde workflow step` SHALL refuse a step naming a workflow other than the one already recorded for the workspace, starting and recording nothing.
+
+### req.workflows.key-one-name — A step key names one Operation or command
+
+`concorde workflow step` SHALL refuse a key already recorded for another [Operation](../../glossary.json#concept.operation) or command, starting and recording nothing.
 
 ### req.workflows.no-task — Workflows knows no task
 
@@ -77,7 +93,13 @@ A workflow in interactive mode SHALL end right after a step that did not end `ok
 
 ### req.workflows.no-ask-continues — No-ask runs never stop for a decision
 
-A workflow in no-ask mode SHALL NOT end at a decision point, nor at a `code_to_spec` step of the brownfield procedure that did not end `ok`.
+A workflow in no-ask mode SHALL NOT end at a decision point.
+
+### req.workflows.no-ask-describe-continues — A failed description does not end a no-ask brownfield run
+
+A [brownfield workflow](../../glossary.json#concept.brownfield-workflow) in no-ask mode SHALL NOT end at a `code_to_spec` step that did not end `ok`.
+
+Task validation then decides whether the workspace can still be delivered.
 
 ## Results
 
@@ -95,16 +117,21 @@ A workflow result whose status is not `ok` SHALL carry an error link of level `w
 
 ### req.workflows.lost-step — A step that vanished is named
 
-A workflow result SHALL report as lost, with a `workflow` link naming the step key and what was observed, every current step whose run has no result and no running runner, and every key the script reported with `--lost` that has no finished current step.
+A workflow result SHALL report as lost, with a `workflow` link naming the step key and what was observed, every current step whose run has no result and no running runner, and every key the script reported with `--lost` whose base key has no current step.
 
-The record wins over the script: a key with a finished run keeps that run's outcome.
+The record wins over the script: a reported key with a current step keeps what its run shows,
+finished, still running or lost.
 
 ### req.workflows.report-saved — Reports are kept beside the record
 
-`concorde workflow report` SHALL save every workflow result it prints, with its Markdown rendering, beside the workspace's workflow record and list it in that record.
+`concorde workflow report` SHALL save every workflow result it prints, with its Markdown rendering, beside the workspace's workflow record.
 
 A report is written into no decision log: what to copy from it into a task's log is the task
 level's decision.
+
+### req.workflows.report-listed — Saved reports are listed in the record
+
+`concorde workflow report` SHALL list every report it saves in the workspace's workflow record.
 
 ## Scripts
 
@@ -126,8 +153,18 @@ The Claude Code step function SHALL treat a relayed outcome as no answer when it
 
 ### req.workflows.relay-asked-again — A relay that is no answer is asked again
 
-The Claude Code step function SHALL ask its step agent again after an outcome that is no answer, at most three times in a row, and then report the step lost with the last relayed outcome attached to its result as `relayed`.
+The Claude Code step function SHALL ask its step agent again after an outcome that is no answer until three outcomes in a row have been no answer.
+
+### req.workflows.relay-exhausted — A step without an answer is reported lost
+
+The Claude Code step function SHALL report a step lost after three outcomes in a row that are no answer, with the last relayed outcome attached to the script's result as `relayed`.
 
 ### req.workflows.step-agent-relays — Step agents only relay
 
-A step agent SHALL run nothing but `concorde workflow step` or `concorde workflow report`, changing no file.
+A step agent SHALL run nothing but `concorde workflow step` or `concorde workflow report`.
+
+It does not perform the worker's job or bypass the run's grant, audit and result handling.
+
+### req.workflows.step-agent-no-change — Step agents change no file
+
+A step agent SHALL change no file.

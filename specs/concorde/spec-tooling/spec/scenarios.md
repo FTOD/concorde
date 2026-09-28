@@ -82,7 +82,7 @@ to it.
 ### scenario.spec.node-checks — Malformed nodes
 
 - GIVEN an implementation document with a requirement whose first sentence has no `SHALL`, a scenario whose steps return from `THEN` to `GIVEN`, and a `concorde-contract` fence whose example does not satisfy its schema
-- AND a glossary entry whose explanation names no anchor with prose in a document its owner owns, or whose definition is two sentences
+- AND a glossary entry whose explanation names no anchor with prose in a document its owner owns, and another whose definition is two sentences
 - WHEN the validator runs
 - THEN it reports `CHK.requirement.statement`, `CHK.scenario.steps`, `CHK.contract.fence`, `CHK.node.meaning` and `CHK.concept.definition` as errors
 
@@ -237,10 +237,12 @@ to it.
 ### scenario.spec.participation — Contract participation
 
 - GIVEN a contract of version 2 defined by one Module and a peer Module that declares it participates in version 1
+- AND a participation whose internal peer does not declare the complementary role for the same version
+- AND a participation that repeats a contract, peer and role
 - WHEN the validator runs
-- THEN it reports `CHK.participates.version`
-- AND an internal peer that does not declare the complementary role for the same version fails `CHK.participates.complementary`
-- AND a repeated contract, peer and role fails `CHK.participates.unique`
+- THEN it reports `CHK.participates.version` for the version mismatch
+- AND `CHK.participates.complementary` for the missing complementary role
+- AND `CHK.participates.unique` for the repetition
 
 ### scenario.spec.checked-diagram — A checked diagram that asserts only declarations
 
@@ -279,7 +281,7 @@ to it.
 
 - GIVEN a registry whose records are stale for some Modules
 - WHEN the developer runs the registry command with `--write`
-- THEN every record's `title`, `owns`, `contains`, `uses`, `includes` and `participates` equal its entry's `module` block
+- THEN every record's `title`, `owns`, `contains`, `uses`, `includes`, `participates` and, where the block declares it, `glossary` equal its entry's `module` block
 - AND each record's identity and entry path, the record order and the set of recorded Modules are unchanged
 
 ### scenario.spec.registry-check — Checking the mirror without writing
@@ -646,7 +648,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 ### scenario.spec.init-installation — Concorde's installed files are bound apart
 
 - GIVEN a project whose installer receipt lists `.claude/skills/concorde/SKILL.md` among its files and `CLAUDE.md` as amended
-- WHEN initialization is proposed
+- WHEN initialization is proposed and the proposal applied
 - THEN the root's metadata binds the skill in the realization Concorde installation
 - AND the realization Existing project files binds `CLAUDE.md` and the project's other files but not the skill
 - AND the applied project validates
@@ -682,7 +684,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ### scenario.spec.reject-stale-proposal — A proposal for an earlier project state
 
-- GIVEN a proposal returned by propose, one of whose destinations was created afterwards, or whose project gained or lost a file its realization would bind
+- GIVEN a proposal returned by propose, one of whose destinations was created afterwards, or whose project changed so that propose would now return other realization entries, such as a new file directly under the project root
 - WHEN apply is requested
 - THEN it fails with `stale_proposal`
 - AND no file is written

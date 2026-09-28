@@ -10,8 +10,8 @@ run will create. The Operation reconciles the registry mirror, validates the res
 [Spec change](../../../glossary.json#concept.spec-change) it observed, so the main agent can close
 [Spec gaps](../../../glossary.json#concept.spec-gap) and fix where code may go before anyone writes
 it. Specification never touches code, creates the files it declares or changes another
-[Module](../../../glossary.json#concept.module)'s documents; a Spec that fails validation stops the
-run for a decision, not another guess.
+[Module](../../../glossary.json#concept.module)'s documents; a Spec that still fails validation after
+the worker's bounded repair rounds stops the run for a decision, not another guess.
 
 ## Usage
 
@@ -27,9 +27,10 @@ worktree it starts in and briefs the worker with that workspace's goal; it needs
 only a bound workspace may change. `--modules` names the Modules whose documents may change
 (default: the binding's), `--intent` states the change in plain words, and `--input` admits an
 earlier `ok` run's output of the same workspace as material. For example,
-`--intent "add an optional severity to [Issue reports](../../../glossary.json#concept.issue-report); declare src/concorde/issues/severity.py as pending"`
-has the worker edit the Issues entry, contract and scenario documents, adding the new file as a
-pending entry.
+`--intent "add an optional severity to Issue reports; declare src/concorde/issues/severity.py as pending"`
+has the worker edit the Issues entry, contract and scenario documents for
+[Issue reports](../../../glossary.json#concept.issue-report), adding the new file as a pending
+entry.
 
 <a id="concept.spec-change"></a>
 
@@ -49,21 +50,26 @@ Edits stay uncommitted, for the main agent to accept, retry, repair or discard; 
 still carries the observed change, except after an audit violation or a failure before the worker
 ran.
 
-The worker can write only documents its Modules already own. When the change needs a new document of
-a bound Module, the worker proposes it and ends `blocked`; the Operation then creates each proposed
-document, empty and registered in its Module's `owns` and the registry mirror, and launches a
-worker once more, with the same intent and a brief naming the created documents, to fill them. A
-proposal it may not create — a Module the run is not bound to, a path outside the folder of that
-Module's entry, a file already there — creates nothing and the run stays `blocked`, with
-`document-refused` evidence naming the reason. An owned document is deleted only by proposing it;
-the Operation performs the deletion after a clean audit. A change spanning several
+The worker can write only documents its Modules already own, and the project glossary's entries
+those Modules own; a changed glossary shows among the changed documents. When the change needs a
+new document of a bound Module, the worker proposes it and ends `blocked`; the Operation then
+creates each proposed document, empty and registered in its Module's `owns` and the registry
+mirror, and launches a worker once more, with the same intent and a brief naming the created
+documents, to fill them. A proposal it may not create — a Module the run is not bound to, a path
+outside the folder of that Module's entry, a file already there — refuses the whole list, since the
+change needs all of them: nothing is created, no second worker runs and the run stays `blocked`,
+with `document-refused` evidence naming the reason for each refused proposal. An owned document is
+deleted only by proposing it; the Operation performs the deletion after a clean audit. A change
+spanning several
 Modules, such as a contract version increment, needs them all bound in one run.
 
 ## Design
 
 The Operation is worker-backed, run with [task type](../../../glossary.json#concept.task-type)
-`specify`: the bound Modules' own documents (reading files and metadata) are writable, other
-Modules' selected documents stay read-only, and implementation files show by name only. Declaring a
+`specify`: the bound Modules' own documents (reading files and metadata) and the project glossary
+are writable — the write audit reports any glossary entry changed whose owner is not a bound
+Module — other Modules' selected documents stay read-only, and implementation files show by name
+only. Declaring a
 pending entry is the one way a `specify` worker decides where code goes; only `implement` may create
 it.
 
@@ -76,12 +82,18 @@ it.
 | 5 | [Audit](../../../glossary.json#concept.write-audit), perform proposed deletions, write the [run record](../../../glossary.json#concept.run-record) | Workers | a write outside the grant (`failed`) |
 | 5a | When the worker ended `blocked` proposing new documents of bound Modules: create them, empty and owned, regenerate the registry mirror, and repeat steps 2–5 once with a brief naming them | Operation, Workers | a proposal it may not create (`blocked`, `document-refused`); the second worker's own outcome |
 | 6 | Regenerate the [registry](../../../glossary.json#concept.registry) mirror from the changed entries | Operation, Spec core | — |
-| 7 | Validate again and compare with the baseline | Operation, Spec core | a new error (`blocked`) |
+| 7 | Validate again and compare with the baseline | Operation, Spec core | a new error left after the last repair round of a worker that ended `ok` (`blocked`) |
 | 8 | Compute changed documents, added entries and affected Modules via the [impact index](../../../glossary.json#concept.impact-index) | Operation, Spec core | — |
 | 9 | Return the Spec change as the run's output | Operation, Execution runner | — |
 
-When the worker ends `blocked` or `failed` after editing, steps 6–8 still run so the result shows
-what was left behind, and the status stays the worker's; only an audit violation skips them.
+When the worker ends `blocked` or `failed` after editing — including a round that timed out or
+reached a limit, and an invalid worker result — steps 6–8 still run so the result shows what was
+left behind, and the status stays the worker's, with any new error reported in the validation
+findings; only an audit violation skips them. Steps 6 and 8 never stop the run themselves: when an
+entry the worker edited cannot be read, step 6 records the registry command's refusal as evidence
+and leaves the mirror unchanged, step 7 reports the unreadable entry as a new error, treated like
+any other, and step 8 reports the affected Modules it could still compute, with evidence naming
+each Module whose [Spec context](../../../glossary.json#concept.spec-context) it could not.
 
 No grant shows the [Protocol copy](../../../glossary.json#concept.protocol-copy), so the brief
 states the rules for writing Spec documents and ends with the project's own copy of Spec writing
@@ -94,10 +106,14 @@ are never pre-created, since the grant has no implementation path.
 
 Validation is structural: the same [checks](../../../glossary.json#concept.structural-check)
 `concorde spec-validation` runs. Comparing with the baseline lets `specify` repair an already-broken
-worktree — pre-existing errors do not stop the run, only ones the change introduced. After each
-round the Operation validates the same way and resumes the worker, at most twice, with every error
-its change introduced, so the worker repairs the Specs it broke itself; only errors left after the
-last round stop the run for the main agent's decision.
+worktree — pre-existing errors do not stop the run, only ones the change introduced. A finding is
+the same as a baseline one when its rule, file and message match; line numbers are ignored, since
+any edit shifts them, so an error that only moved stays pre-existing, and another occurrence with
+the same rule, file and message counts as pre-existing too. After each round that the worker ended
+`ok` with a clean audit, the Operation validates the same way and resumes the worker, at most twice
+per worker launch, with every error its change introduced, so the worker repairs the Specs it broke
+itself; the second worker launched to fill created documents gets its own two repair rounds. Only
+errors left after the last round stop the run for the main agent's decision.
 
 The registry sits outside every Module's write set, so an edited `module` block leaves the mirror
 stale; step 6 is the reconciliation the Protocol provides, touching only existing Modules' mirrored

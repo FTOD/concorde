@@ -40,8 +40,8 @@ CODES: dict[str, tuple[str, str]] = {
         "create the file, restore it, or remove the reference to it",
     ),
     "unsupported_profile": (
-        "this Spec tooling reads only the project profile and registry schema of Protocol 15 "
-        "(schema_version 3)",
+        "this Spec tooling reads only configuration profile_version 17 and registry "
+        "schema_version 3",
         "migrate the configuration and registry to the current profile explicitly",
     ),
     "protocol_mismatch": (

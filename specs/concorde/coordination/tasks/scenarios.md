@@ -91,7 +91,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.interrupted — A run whose runner died shows as lost
 
-- GIVEN a task whose workspace has a run with a [progress file](../../glossary.json#concept.progress-file) and no result, whose runner process no longer exists
+- GIVEN a task whose workspace has a run with a [run progress file](../../glossary.json#concept.run-progress-file) and no result, whose runner process no longer exists
 - WHEN the main agent shows the task
 - THEN the run is listed with the status `lost`
 - AND `busy` is null, since the kernel released the dead runner's workspace lock
@@ -134,7 +134,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.close-not-merged — Refuse to close an unmerged task as merged
 
-- GIVEN a task that is not delivered, or whose delivered head is not contained in the primary branch, or whose branch moved past its latest delivery commit
+- GIVEN a task whose branch holds no delivery commit of its workspace, or whose branch moved past its latest delivery commit, or whose delivered head is not contained in the primary branch
 - WHEN the main agent closes it with `--merged`
 - THEN the command fails with `not_merged`
 - AND the worktree and the record are unchanged
@@ -221,9 +221,9 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 ### scenario.tasks.merge-check-failed — A failed check undoes the merge
 
 - GIVEN a delivered task
-- WHEN the main agent merges it with a `--check` that exits with status 1
-- THEN the command fails with `check_failed` naming the check, its exit status, the log and the end of its output
-- AND the primary branch is back at the commit it had before the merge, clean
+- WHEN the main agent merges it with a `--check` that exits with status 1, or with checks that leave an uncommitted path
+- THEN the command fails with `check_failed` naming the check, its exit status, the log, the end of its output and any path the checks left
+- AND the primary branch is back at the commit it had before the merge, clean apart from the paths the checks created, which stay
 - AND the task is still delivered with its worktree
 
 ### scenario.tasks.merge-refused-early — Refuse a merge that cannot close
@@ -241,7 +241,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent runs `concorde task escalate` naming that run with its own code, detail, reason and options
 - THEN the printed chain's top link has the level `main-agent` and the run's error, unchanged, as its cause
 - AND the chain is appended to the task record's escalations and to the decision log, rendered and as JSON
-- BUT an escalation that names no run and no file is refused with `nothing_to_escalate`, and one naming a run of another workspace or an unbound run with `unknown_run`, and neither records anything
+- BUT an escalation that names no run, no file and no earlier escalation is refused with `nothing_to_escalate`, and one naming a run of another workspace or an unbound run with `unknown_run`, and neither records anything
 
 ### scenario.tasks.session-escalates — A task session escalates to the main agent
 

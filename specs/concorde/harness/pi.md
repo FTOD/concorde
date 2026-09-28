@@ -34,10 +34,16 @@ result is resolved against the working directory. Every failure inside a check d
 the reason `Concorde grant: the extension could not decide: <message>`; pi itself also blocks a
 tool whose handler throws.
 
+pi validates the argument of `concorde_result` against the embedded schema before the tool runs:
+an invalid one comes back to the worker as an error result and the session goes on, so the worker
+can call it again; a valid one ends the run. What the result means, and every check beyond its
+shape, is Workers' ([the pi run mechanics](../execution/workers/pi.md)).
+
 ### Read table
 
 A read is allowed only when both the resolved path and, if it exists, its symbolic-link-free real
-path are allowed:
+path are allowed. The rows overlap, so they are tried from the top and the first that matches a
+path decides it:
 
 | Path | Decision | Reason given to the worker |
 | --- | --- | --- |
@@ -103,3 +109,9 @@ intercepts pi's tools instead of replacing them, so the developer's own extensio
 | `concorde_report` | Takes the [session report](../coordination/task-session/contracts.md#contract.task-session.report) and ends the round |
 
 Every other tool is left as the developer's configuration gives it.
+
+pi validates the argument of `concorde_report` against the embedded schema, and the extension then
+checks what the schema cannot express, such as the
+[delivery commit](../glossary.json#concept.delivery-commit) a delivered report names. A report
+either check rejects comes back to the session as an error result naming the problem, and the round
+goes on so the session can report again; an accepted one ends the round.

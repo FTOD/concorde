@@ -15,7 +15,7 @@ contents of an implementation file.
 Implementation files of the bound Modules appear in the brief by path only, so the worker can place
 a planned file without learning what existing code does.
 
-### req.understanding.task-worktree — Assessments describe the workspace's Specs
+### req.understanding.task-worktree — Assessments describe the run worktree's Specs
 
 The understand [Operation](../../../glossary.json#concept.operation) SHALL compute the grant from the Specs of the worktree the run starts in, which for a bound run is its workspace.
 
@@ -54,13 +54,24 @@ Each inconsistency is returned as host evidence. The run is not resumed to repai
 
 ## Effects
 
-### req.understanding.no-writes — The worktree is left unchanged
+### req.understanding.no-writes — The worker may write nothing
 
-The understand Operation SHALL leave every file of the worktree it runs in unchanged.
+The understand Operation SHALL run its worker under a grant with no writable path.
 
-The worker has no Edit, Write or Bash tool, and the
-[write audit](../../../glossary.json#concept.write-audit) confirms that nothing changed; a change it
-finds ends the run `failed` with the changed paths as host evidence.
+The worker has no editing or shell tool.
+
+### req.understanding.change-fails — A change to the worktree fails the run
+
+The understand Operation SHALL end a run `failed` when the
+[write audit](../../../glossary.json#concept.write-audit) finds a changed or new file in the
+worktree the run works on.
+
+The changed paths are returned as host evidence and the change is left in place for the
+[main agent](../../../glossary.json#concept.main-agent), never reverted. The run's own
+[progress file](../../../glossary.json#concept.progress-file), result and
+[run record](../../../glossary.json#concept.run-record) are written into the
+[run store](../../../glossary.json#concept.run-store), which is not version-controlled; they are
+not changes the audit judges.
 
 ### req.understanding.single-round — No resume rounds
 

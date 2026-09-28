@@ -51,9 +51,9 @@ newest. `retry` lists the base keys to run again after a failure. `restart` maps
 short generation label, such as `{"scaffold": "2"}`, to run that step again whatever its outcome,
 for instance after the workspace was reset by hand: the label becomes part of the
 [step key](../../glossary.json#concept.step-key), so the step and every later step run once more,
-and relaunching with the same label finds the restarted runs instead of starting them again. A
-worktree without a binding runs no workflow: both workflow commands answer there with
-`binding_required`.
+and relaunching with the same label finds the restarted runs instead of starting them again, as
+long as no rerun of an earlier step has superseded them. A worktree without a binding runs no
+workflow: both workflow commands answer there with `binding_required`.
 
 <a id="concept.workflow-mode"></a><a id="concept.decision-point"></a>
 
@@ -94,9 +94,11 @@ concorde workflow step --stdin
 The step's key is the base key, followed by `#` and the generation label when `--restart` names one,
 and with `--answers` by `@` and the first eight hexadecimal digits of the SHA-256 of the answers
 list in canonical JSON (keys sorted, no whitespace), so a restarted or answered rerun is a new step
-while the same label and answers find the same step again. Holding the workspace's step lock, the
-command looks the key up among the current steps of the workspace's workflow record. When it is not
-there, it starts the run detached with the workspace's own `concorde`:
+while the same label and answers find the same step again. Holding the workspace's **step lock**,
+the lock on its workflow record that only the step and report commands take and that is distinct
+from the [workspace lock](../../glossary.json#concept.workspace-lock) a run holds, the command looks
+the key up among the **current steps** of the workspace's workflow record, those no later rerun has
+superseded. When it is not there, it starts the run detached with the workspace's own `concorde`:
 `concorde run <operation> … --detach` for an Operation and `concorde <command> … --detach` for an
 execution command such as `task-validation`, `delivery` or `scaffold`. For an answered step it adds
 `--answers` with the answers written next to the workflow record and `--input` naming the latest
@@ -116,17 +118,21 @@ superseded that run, since the answers still refer to its questions.
 
 The command prints the [step outcome](contracts.md#contract.workflows.step) and exits with status 0
 once the run has finished, 3 while it is still running, so a caller that must not block longer than
-a few minutes simply asks again, and 1 when the step is lost or refused. Before it starts a run,
-the command waits, within the same bound, until the [workspace
-lock](../../glossary.json#concept.workspace-lock) is free, since a workspace runs one run at a
-time. A step is **lost** when its recorded run has no result and no living runner. A step is
-**refused** when the runner rejected the command line or the detached runner did not start: the
-step is then recorded without a run and with that error. A step for another workflow than the
-workspace's, or a key recorded for another Operation or command, is refused by the workflow record
-before anything is recorded or started, with a `step_rejected` link over that refusal; if the
-record refuses a run already started, the link is `step_unrecorded` and names the run. Such a step
-is in no record, so the script returns its outcome with the report. Every lost or refused outcome
-carries an error link, and a lost step's link carries the end of its runner's output.
+a few minutes simply asks again, 1 when the step is lost or refused or the command cannot work at
+all, and 2 when the command line or request breaks the step request contract (`invalid_request`).
+With `--stdin` it exits 0 whatever step outcome it printed, which the pi step agent passes on.
+Before it starts a run, the command waits, within the same bound, until the workspace lock is free,
+since a workspace runs one run at a time. When the bound ends while the lock is still held, it
+starts and records nothing and prints an outcome with state `running`, no run and no error, exiting
+with status 3; asking again waits for the lock again. A step is **lost** when its recorded run has
+no result and no living runner. A step is **refused** when the runner rejected the command line or
+the detached runner did not start: the step is then recorded without a run and with that error. A
+step for another workflow than the workspace's, or a key recorded for another Operation or command,
+is refused by the workflow record before anything is recorded or started, with a `step_rejected`
+link over that refusal; if the record refuses a run already started, the link is `step_unrecorded`
+and names the run. Such a step is in no record, so the script returns its outcome with the report.
+Every lost or refused outcome carries an error link, and a lost step's link carries the end of its
+runner's output.
 
 <a id="concept.workflow-record"></a>
 
@@ -170,8 +176,11 @@ agents relayed last as `relayed`, marked unverified, so that the step command's 
 the error chain. For pi the step function's step agent is the installed command-runner agent
 `concorde-step`, which runs `concorde workflow step --stdin` without a model, and the report goes
 through its twin `concorde-report`, which runs `concorde workflow report --stdin`. Both read the
-JSON object in the prompt pi-subagents hands them. A step agent only relays; what counts is what the
-runs recorded.
+JSON object in the prompt pi-subagents hands them: a
+[step request](contracts.md#contract.workflows.step-request) for the step, and a
+[report request](contracts.md#contract.workflows.report-request) for the report, whose `lost` lists
+the keys the `--lost` option would name. A step agent only relays; what counts is what the runs
+recorded.
 
 <a id="concept.workflow-result"></a>
 
@@ -186,7 +195,9 @@ relayed. Its status is, in this order of precedence:
   ready;
 - `awaiting_decision` when an interactive run ended at decision points;
 - `ok` when the procedure's last step, `delivery` in the brownfield workflow, ended `ok`, even if
-  earlier steps reported problems the procedure could go past.
+  earlier steps reported problems the procedure could go past;
+- `failed`, with the code `incomplete`, when the recorded steps end before the procedure's last
+  step without any of the stops above, such as a report taken after a script ended early.
 
 Every result lists, from the current steps, every decision and open question as the run reported
 it, with its step and run; every deviation; every Spec review's verdict and findings; the checks
@@ -199,8 +210,9 @@ every pending point. The report is saved beside the workflow record as `reports/
 Markdown rendering `reports/<n>.md`, and listed in the record; it is written into no decision log.
 Decisions a no-ask workflow took without the developer belong in the decision log of whoever
 started it, so the task level copies them from the rendering into the task's log itself. When a
-step agent returned nothing, the script reports with `--lost <key>`: a key whose current step has a
-finished run keeps that run's outcome, since the record wins, and any other is reported lost.
+step agent returned nothing, the script reports with `--lost <key>`: a key whose base key has a
+current step keeps what that step's run shows, finished, still running or lost, since the record
+wins, and any other is reported lost.
 Anyone can run the report command in the workspace again at any time.
 
 <a id="concept.brownfield-workflow"></a>
@@ -225,7 +237,7 @@ workflow -> step: runs
 workflow -> mode: runs in
 step -> key: is named by
 record -> step: lists
-agent -> step: runs
+agent -> step: relays
 script -> workflow: defines
 workflow -> result: ends with
 mode -> point: decides what happens at
@@ -285,7 +297,7 @@ the workflow, holding the [workspace lock](../../glossary.json#concept.workspace
 life, writing exactly one result before releasing it and starting no other run, so the order of the
 runs is the procedure's alone and a finished step always leaves the workspace free for the next. It
 relies on a [detached run](../../glossary.json#concept.detached-run) being announced only once its
-[progress file](../../glossary.json#concept.progress-file) exists, and on the
+[run progress file](../../glossary.json#concept.run-progress-file) exists, and on the
 [run store](../../glossary.json#concept.run-store) keeping every run's result and progress by its
 identity, which is how a later call, or a relaunched workflow, finds a run it started before.
 Workflows reads results and never changes them. A command line the runner rejects, such as an
@@ -299,8 +311,10 @@ workspace that was busy after all, is an ordinary finished run whose result carr
 **Operations** names the jobs that involve a model. A workflow's steps name Operations from the
 [Operation catalog](../../glossary.json#concept.operation-catalog), such as `survey`,
 `code_to_spec` and `spec_review`, with their arguments; Workflows relies on each Operation
-returning its output under its catalog entry's contract and never starting another Operation. It
-never looks inside an Operation.
+returning its output under its catalog entry's contract, which the runner checks before it saves
+the result, and never starting another Operation. It never looks inside an Operation. From a
+`spec_review` result it copies the output's `verdict` and its `modules`, each reviewed Module's
+outcome with its findings, unchanged into the workflow result; it neither judges nor repairs them.
 
 <a id="uses-commands"></a>
 
@@ -396,7 +410,7 @@ Brownfield's procedure, as a step table:
 | --- | --- | --- | --- | --- |
 | 1 | `survey` | Operation `survey --modules <module>` | always | not `ok`; interactive with decision points not answered |
 | 2 | `scaffold` | execution command `scaffold --input <survey run>` | the survey is `ok` | not `ok` |
-| 3 | `describe:<id>` | Operation `code_to_spec --modules <id>` | for each created Module, providers before the Modules that use them, then `<module>` | interactive with open questions not answered, or not `ok` |
+| 3 | `describe:<id>` | Operation `code_to_spec --modules <id>` | for each created Module, providers before the Modules that use them, then `<module>` | interactive, and either not `ok` or with open questions not answered |
 | 4 | `spec_review` | Operation `spec_review --modules <module and created Modules>` | always after 3 | interactive and not `ok` |
 | 5 | `validate` | execution command `task-validation` | always after 4 | not `ok`, or readiness not ready |
 | 6 | `delivery` | execution command `delivery --adoption` | validation ready | — |

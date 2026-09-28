@@ -23,6 +23,7 @@ A run is requested with:
 | grant | The frozen grant: every path with its level `rw`, `ro` or `names`, relative to the worktree, and its [context identity](../../glossary.json#concept.context-identity) |
 | instructions | The [Operation](../../glossary.json#concept.operation)'s task-specific part of the brief |
 | checks | The [configured checks](../../glossary.json#concept.configured-check) to run after each round, possibly none |
+| validation | Optionally the caller's own validation, run after a round whose checks pass: nothing to repair, or the text naming what to repair |
 | runtime paths | Extra absolute paths Bash may read, such as the toolchain, `.venv` or `node_modules` |
 | limits | Timeout per round, `--max-turns`, `--max-budget-usd`, and the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3) |
 | model | Optionally the model passed with `--model`, from the run worktree's [worker model configuration](../../glossary.json#concept.worker-model-configuration) for the worker's id |
@@ -87,8 +88,8 @@ claude -p --settings <run>/control/settings.json --tools <tool set>
        --strict-mcp-config --max-turns <n> --max-budget-usd <x> [--model <model>] [--effort <level>]
 ```
 
-A resume round runs the same command with `--resume <latest session id>` and the check failures as
-the prompt.
+A resume round runs the same command with `--resume <latest session id>` and the check failures, or
+the text of the caller's validation, as the prompt.
 
 The environment is cleared and then set to exactly:
 
@@ -127,24 +128,30 @@ compares.
 | a changed `HEAD`, index or branch | violation |
 | a change under a path Git ignores | not observed |
 
-After the last round, the host removes each pre-created pending file that is still empty and was not
-otherwise changed, and deletes each path in `proposed_deletions` that is in the `rw` list, but only
-when the audit was clean. A proposed deletion outside `rw` is refused and recorded.
+When the run ends, however it ends, the host removes each pre-created pending file that is still
+empty. After the last round, and only when its audit was clean, it deletes each path in
+`proposed_deletions` that is in the `rw` list; a proposed deletion outside `rw` is refused and
+recorded. Both happen after the last round's checks, so the recorded check results describe the
+worktree before these removals.
 
 ## Rounds
 
 | Worker result and audit | Checks | Next |
 | --- | --- | --- |
+| the round timed out, or the agent process failed or reached a limit | not run | end `failed` with `worker_timeout`, `worker_limit_reached` or the backend's process failure code, naming any audit violation in its detail |
 | audit violation, whatever the result | not run | end `failed` with `audit_violation` |
 | invalid result, audit clean | not run | end `failed` with `worker_result_invalid` |
 | `blocked` or `failed`, audit clean | not run | end with the worker's status and `worker_blocked` or `worker_failed` |
-| `ok`, audit clean, no checks given | — | end `ok` |
-| `ok`, audit clean, all checks pass | run | end `ok` |
+| `ok`, audit clean, no checks given | — | as when all checks pass |
+| `ok`, audit clean, all checks pass, no validation or nothing to repair | run | end `ok` |
+| `ok`, audit clean, all checks pass, validation reports something to repair, rounds left | run | resume round |
+| `ok`, audit clean, all checks pass, validation reports something to repair, no rounds left | run | end `ok`; the caller judges the result |
 | `ok`, audit clean, a check fails, rounds left | run | resume round |
 | `ok`, audit clean, a check fails, no rounds left | run | end `failed` with `checks_failed` |
 
-The resume prompt lists each failing check's identity, status, exit code and the last 20,000 bytes
-of its log.
+The rows are tried in this order. The resume prompt after failing checks lists each failing check's
+identity, status, exit code and the last 20,000 bytes of its log; after the caller's validation it
+is the validation's text.
 
 ## Run record
 
@@ -159,7 +166,7 @@ of its log.
 | `operation`, `worker`, `model`, `reasoning` | the Operation and worker id the worker was launched for, and the model and reasoning level passed to it, or null when the program's own default applied |
 | `settings_digest`, `brief_digest`, `tools` | what the worker was given; `settings_digest` is the digest of `control/settings.json` on the Claude Code backend and of `control/permission.ts` on the pi backend |
 | `started_at`, `ended_at` | UTC times |
-| `rounds` | per round: session identifier, prompt kind (`initial` or `check_failures`), exit status, duration, audit verdict with violating paths, and [check results](../../glossary.json#concept.check-result) with log paths |
+| `rounds` | per round: session identifier, prompt kind (`initial`, `check_failures` or `validation_failures`), exit status, duration, audit verdict with violating paths, [check results](../../glossary.json#concept.check-result) with log paths, and the validation outcome (`clean`, the text to repair, or why it did not run) when the caller gave one |
 | `transcript` | the path of the latest session's transcript under `config/` |
 | `rounds[].pi` | pi backend only: per round, the last assistant stop reason, the turn count and the reported cost |
 | `stderr_tail` | the last 20,000 bytes of the worker's standard error |
@@ -193,6 +200,7 @@ by every code whose round had one, even when the round also timed out or failed 
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
 | `checks_unavailable` | the Modules and Check execution's error | `environment` | Check execution's link |
 | `checks_failed` | every check still failing and the rounds used; `attempts` lists each round's failures | `exhausted` | one link per failing check, from Check execution |
+| `interrupted` | what ended the run from outside before it finished, such as a signal or the cancellation of the launching Operation | `environment` | none |
 
 The **Claude Code process's link** has the level `component` and states the envelope's subtype,
 error flag, turn count, cost, exit status, final text, reported errors and the tail of standard
@@ -205,23 +213,27 @@ unchanged.
 
 ### req.workers.frozen-grant — One grant for the whole run
 
-The host SHALL generate a run's settings, write hook, tool set and brief from one frozen grant and keep them unchanged for every round of the run.
+The host SHALL generate a run's settings, write hook, tool set and brief from one frozen grant.
+
+### req.workers.unchanged-across-rounds — The run's configuration never changes between rounds
+
+The host SHALL keep a run's settings, write hook, tool set and brief unchanged for every round of the run.
 
 ### req.workers.write-allowlist — Only `rw` paths are writable by file tools
 
-The write hook SHALL deny every Edit or Write whose target is not in the grant's `rw` list.
+On the Claude Code backend the write hook SHALL deny every Edit or Write whose target is not in the grant's `rw` list.
 
 ### req.workers.read-denials — File tools cannot read what the grant withholds
 
-The [deny rules](../../glossary.json#concept.deny-rules) SHALL forbid Read, Glob and Grep every worktree path whose level is neither `ro` nor `rw`.
+On the Claude Code backend the [deny rules](../../glossary.json#concept.deny-rules) SHALL forbid Read, Glob and Grep every worktree path whose level is neither `ro` nor `rw`.
 
 ### req.workers.bash-sandbox — Bash runs sandboxed without network
 
-Every Bash command of a worker SHALL run in Claude Code's sandbox with no allowed network domain, with a strict allowlist so that an unlisted host is denied rather than approved by the permission mode, and with unsandboxed commands disabled.
+On the Claude Code backend every Bash command of a worker SHALL run in Claude Code's sandbox with no allowed network domain, with a strict allowlist so that an unlisted host is denied rather than approved by the permission mode, and with unsandboxed commands disabled.
 
 ### req.workers.working-directory — The worker never works in the worktree
 
-A worker's working directory SHALL be its run's `work/` directory, outside the worktree and outside every path a deny rule names.
+A worker's working directory SHALL be its run's `work/` directory, which is never the worktree and contains none of its files outside the run directory, and lies outside every path a deny rule names.
 
 ### req.workers.clean-environment — Nothing ambient reaches the worker
 
@@ -243,13 +255,13 @@ When the grant names a writable glossary, the audit SHALL report as a violation 
 
 A run whose audit finds a violation SHALL end `failed` without another round.
 
-### req.workers.rounds-for-checks-only — Rounds only repair failing checks
+### req.workers.rounds-for-checks-only — Rounds only repair failing checks and validation
 
-The host SHALL resume a worker only when it ended `ok`, its audit was clean and a configured check failed, and at most the configured number of times.
+The host SHALL resume a worker only when it ended `ok`, its audit was clean, and either a configured check failed or, with every check passing, the caller's validation reported something to repair, and at most the configured number of times.
 
 ### req.workers.latest-session — Resume from the newest session
 
-Each resume round SHALL continue the session identifier returned by the previous round.
+Each resume round SHALL continue the run's latest session: on the Claude Code backend the session identifier the previous round returned, on the pi backend the session identifier the run fixed at its first round.
 
 ### req.workers.claims-apart — Worker claims stay claims
 
@@ -257,11 +269,15 @@ The run record SHALL keep the worker result verbatim and separate from the evide
 
 ### req.workers.error-chain — A failed run explains itself
 
-Every run that does not end `ok` SHALL carry Workers' error link with the worker's own error, the Claude Code process's error or each failing check as its causes, as listed in [Errors](#errors).
+Every run that does not end `ok` SHALL carry Workers' error link with the worker's own error, the agent process's link (Claude Code's or pi's) or each failing check as its causes, as listed in [Errors](#errors).
 
 ### req.workers.host-deletes — Only the host deletes
 
-The host SHALL delete a file only when the worker proposed it, the file is in the `rw` list and the audit was clean.
+Apart from the pending files it pre-created, the host SHALL delete a file only when the worker proposed it, the file is in the `rw` list and the audit was clean.
+
+### req.workers.pending-cleanup — Unused pending files are removed
+
+When a run ends, however it ends, the host SHALL remove each pending file it pre-created that is still empty.
 
 ### req.workers.process-group — No worker process outlives its round
 

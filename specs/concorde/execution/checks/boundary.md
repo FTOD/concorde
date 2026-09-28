@@ -21,8 +21,11 @@ from a registry, a task or a model except the command itself. It refuses, with
 nonpositive or nonfinite timeout, a platform other than Linux, a project at `/` or under `/proc`,
 `/dev` or `/sys`, a missing root-owned system bubblewrap, missing namespace or process file
 descriptor support, a failed sandbox setup, and the absence of any writable temporary directory
-outside the project. The error carries the diagnostic output as bytes for the host. A command that
-never received a trusted successful start is an isolation error, not a failed check.
+outside the project. The error carries the diagnostic output as bytes for the host. Apart from a
+deadline, which is a timeout even when it passes during sandbox setup, a command that never
+received a trusted successful start is an isolation error, not a failed check. `CheckResult` is
+this runner's command outcome, not the [check result](../../glossary.json#concept.check-result) the
+[check service](service.md) builds from it.
 
 | Outcome | Result |
 | --- | --- |
@@ -35,7 +38,8 @@ before the scratch is removed, with the scratch path and the result or exception
 output stream keeps only its last 2 MiB while counting all bytes.
 
 `CHECK_POLICY = "project-read-only-v1"` names the boundary. The policy name is part of every
-[configured check](../../glossary.json#concept.configured-check)'s measured digest.
+[configured check](../../glossary.json#concept.configured-check)'s measured digest, the
+`check_revision` of [the check service](service.md#running-checks).
 
 ## Scratch and environment
 
@@ -60,11 +64,15 @@ passing the command's environment through an anonymous descriptor rather than it
 unshares user, PID and IPC namespaces, drops all capabilities, dies with the host, binds the host
 filesystem recursively read-only, replaces `/proc` with the sandbox's PID view and `/dev` with a
 minimal private one, and binds only the scratch writable at its own path; shared memory is backed by
-the scratch. System file owners unmapped in a nested check's namespace are admitted only on those
-read-only mounts. The host closes inherited descriptors, gives the command a null standard input and
-reads both pipes; bubblewrap's own metadata descriptors are closed before the command runs. The
-command stays stopped until the host holds a process file descriptor for the namespace's first
-process; at the end the host kills the namespace and waits for it before removing the scratch.
+the scratch. The runner starts only a bubblewrap whose file and parent directories are owned by
+root and writable by neither group nor others. A check running inside another check's boundary
+sees root as the kernel's overflow user, because its namespace cannot map root; there the runner
+accepts that owner in place of root only for a file on a read-only mount, so a nested check can
+still use the system bubblewrap while a file the checking user owns is never trusted. The host
+closes inherited descriptors, gives the command a null standard input and reads both pipes;
+bubblewrap's own metadata descriptors are closed before the command runs. The command stays
+stopped until the host holds a process file descriptor for the namespace's first process; at the
+end the host kills the namespace and waits for it before removing the scratch.
 
 The network namespace is shared, so the command reaches the host's network and abstract Unix
 sockets. Filesystem Unix sockets under read-only mounts stay connectable. The IPC namespace is
@@ -91,8 +99,11 @@ No ordinary subprocess and no weaker boundary is used instead.
 
 ### req.checks.fresh-scratch — Every run has its own scratch
 
-Every run SHALL receive a new writable scratch directory outside the project that is removed after
-its process tree has ended.
+Every run SHALL receive a new writable scratch directory outside the project.
+
+### req.checks.scratch-removed — A scratch outlives no process of its run
+
+The check runner SHALL remove a run's scratch directory after its whole process tree has ended.
 
 ### req.checks.process-tree — No process outlives its run
 

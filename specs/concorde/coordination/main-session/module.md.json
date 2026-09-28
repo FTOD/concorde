@@ -148,7 +148,7 @@
     {
       "type": "relates",
       "source": "realization.main-session.pi-run-view",
-      "verb": "draws the dialogs of",
+      "verb": "opens the editor through",
       "target": "realization.main-session.pi-model-picker"
     },
     {

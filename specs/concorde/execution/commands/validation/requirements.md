@@ -39,7 +39,7 @@ names.
 
 ### req.validation.changed-modules — Checks cover every changed Module
 
-A `task-validation` run SHALL run the
+A `task-validation` run that reaches its checks SHALL run the
 [configured checks](../../../glossary.json#concept.configured-check) of every
 [Module](../../../glossary.json#concept.module) that binds a changed path or owns a changed
 [Spec](../../../glossary.json#concept.spec) document, of every Module the run works on, and of every
@@ -64,12 +64,18 @@ blocking finding.
 
 ### req.validation.read-only — A task-validation run changes nothing in the workspace
 
-A `task-validation` run SHALL NOT change any file, index entry, branch or commit of the workspace.
+A `task-validation` run SHALL NOT change any file, index entry, branch or commit of the workspace
+outside its own [run directory](../../../glossary.json#concept.run-directory).
 
 ### req.validation.confirm-exact — Confirmation clears only the listed markers
 
-Applying confirmations SHALL clear the pending markers of exactly the listed entries, and only when
-each declaring document still has the digest the readiness recorded.
+Applying confirmations SHALL clear the pending markers of exactly the listed entries and of no
+other entry.
+
+### req.validation.confirm-digest — A changed declaring document stops confirmation
+
+Applying confirmations SHALL leave every Spec document unchanged when a declaring document no longer
+has the digest the readiness recorded.
 
 ### req.validation.confirm-valid — Confirmation keeps the Specs valid
 

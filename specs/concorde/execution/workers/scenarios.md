@@ -8,9 +8,9 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.fenced-run — An implement worker changes only its writable files
 
 - GIVEN a worktree and an `implement` grant with a `rw` source file, a pending `rw` file, `ro` Specs and a `names` file of another [Module](../../glossary.json#concept.module)
-- WHEN the host runs a worker that edits the source file and writes the pending file
+- WHEN the host runs a worker that edits the source file, writes the pending file, changes nothing else and ends with a valid `ok` result
 - THEN both changes reach the worktree
-- AND the audit is clean, the [configured checks](../../glossary.json#concept.configured-check) run on the worktree and the run ends `ok`
+- AND the audit is clean, the [configured checks](../../glossary.json#concept.configured-check) run on the worktree, and when they pass the run ends `ok`
 - AND the [run record](../../glossary.json#concept.run-record) holds the grant's [context identity](../../glossary.json#concept.context-identity), the settings and brief digests, the tool set, the transcript path, the round with its audit and [check results](../../glossary.json#concept.check-result), and the [worker result](../../glossary.json#concept.worker-result) verbatim
 
 ### scenario.workers.pending-precreated — Pending files exist before launch and vanish if unused
@@ -26,7 +26,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a `CLAUDE.md` in the worktree and in the working directory, and user settings, skills and MCP servers in the user's Claude Code configuration
 - WHEN the host launches a worker
 - THEN none of them reaches the worker
-- AND the worker's environment holds only the listed variables, with `HOME`, `TMPDIR` and `CLAUDE_CONFIG_DIR` inside its [run directory](../../glossary.json#concept.run-directory)
+- AND the worker's environment holds only the listed variables, with `HOME` and `CLAUDE_CONFIG_DIR` inside its [run directory](../../glossary.json#concept.run-directory) and `TMPDIR` the run's private temporary directory
 
 ### scenario.workers.brief-terms — The brief carries the definitions of the worker's terms
 
@@ -124,11 +124,11 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.blocked-not-resumed — A blocked worker goes to the main agent
 
-- GIVEN a worker that ends `blocked` because its Module's Spec does not state a promise it needs
+- GIVEN a worker that changes nothing outside its `rw` list and ends `blocked` because its Module's Spec does not state a promise it needs
 - WHEN the host finishes the round
-- THEN the audit still runs
+- THEN the audit still runs and is clean
 - BUT no configured check runs, no resume round follows, and the run ends `blocked` with the worker result verbatim
-- AND the run's error is the harness's `worker_blocked` link whose one cause is the worker's own error, unchanged, with the level `worker`
+- AND the run's error is Workers' `worker_blocked` link, of level `workers`, whose one cause is the worker's own error, unchanged, with the level `worker`
 
 ## Host failures
 
@@ -175,7 +175,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a running pi worker
 - WHEN it reads a `names` file, an ungranted file, `.git` or a file of the run's `config/`, or writes a `ro` file or an undeclared file
-- THEN each call is denied with the reason the read or write table gives, prefixed `Concorde grant:`
+- THEN each call is denied with the reason the Harness's read or write table gives, prefixed `Concorde grant:`
 - AND no file changes
 
 ### scenario.workers.pi-commands-sandboxed — pi commands see only the grant

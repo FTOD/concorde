@@ -77,16 +77,18 @@ Module; an inclusion reason is `{relation: "includes", kind, id}`, where `kind` 
 
 `hash(value)` is `sha256:` followed by the lowercase hex SHA-256 of the bytes. The source digest is
 `hash` of the JSON serialization of the ordered list of `[path, hash(bytes)]` pairs for the
-configuration, the registry and both members of every document in registry order. Any byte change
-in any of them, including a metadata-only edit, changes it. It identifies inputs; it is not a
-claim about meaning.
+configuration, the registry, both members of every document in registry order and, last, the
+glossary when the root Module declares one. Any byte change in any of them, including a
+metadata-only edit, changes it. The site identity, user documents and custom docs are not in it. It
+identifies inputs; it is not a claim about meaning.
 
 ## Routes {#routes}
 
 A page's staged path is its source path, with a leading `specs/` removed when every registered
 document lies under `specs/`. Its route is `/specs/` followed by the staged path without `.md`.
-Its title is the document's first level-1 heading, falling back to the owner's title. A page has
-no other route.
+A page has no other route. Its model title, which the provenance bar uses when it links an entry
+and its implementation pages, is the document's first level-1 heading, falling back to the owner's
+title.
 
 ## Staging
 
@@ -94,8 +96,9 @@ no other route.
 
 1. It deletes the staging identity record, then the previous `content/` and `static/` directories.
 2. For every page it writes `content/specs/<staged path>` with front matter giving the slug, the
-   title (the Module's title for an entry, otherwise the file name without `.md`), the sidebar of
-   its reading collection and a table of contents of level-2 and level-3 headings. The body is
+   title and navigation label (the Module's title for an entry, otherwise the file name without
+   `.md`; the page body still shows the document's own level-1 heading), the sidebar of its
+   reading collection and a table of contents of level-2 and level-3 headings. The body is
    the reading with these rewrites, applied outside fenced code only:
    - **links**: a relative Markdown link `[label](path)` or image `![label](path)` whose target
      path resolves, relative to the source file, to a registered document is replaced by that
@@ -194,10 +197,10 @@ User documents admission, done while configuring the site, fails when the direct
 has no root page, contains a registered document, or has a top-level document or folder that would
 publish under `/specs`, `/search` or a custom docs route. Custom docs admission fails when a
 collection directory or sidebar file is missing, when a collection directory contains a registered
-document, or when `custom-docs/index.ts` does not export an object with array `plugins` and
-`navbarItems`.
+document, or when `custom-docs/index.ts` does not export an object, or exports `plugins` or
+`navbarItems` that is not an array; an omitted property adds nothing.
 
-## Preview
+## Preview {#preview}
 
 A running Docusaurus cannot show a changed Spec: the content plugin refuses staged pages whose
 source digest differs from the sources, and the pages, sidebars and navigation are fixed when
@@ -223,8 +226,10 @@ stops Docusaurus and the watchers and exits.
 
 `validateScopedBuild(root, directory)` reloads the model from the current sources and fails unless:
 
-- the candidate's `build-manifest.json` has the model's schema version and source digest and its
-  `pages` equal the expected entries exactly and in order;
+- the candidate's `build-manifest.json` has the
+  [site build manifest](../../glossary.json#concept.site-build-manifest)'s `schema_version` (23,
+  see the [contracts](contracts.md)) and the current source digest, and its `pages` equal the
+  expected entries exactly and in order;
 - every internal link resolves.
 
 For links it parses every HTML file of the candidate and collects `id` and `a name` anchors, the
@@ -245,7 +250,8 @@ failure it deletes the candidate and rethrows.
 
 `promoteCandidate(candidate, destination, backup)` deletes the backup, renames the existing
 destination to the backup, renames the candidate to the destination and deletes the backup. If a
-rename fails, it removes a partially moved destination and renames the backup back. A failure of
-the filesystem during this rollback can still need manual recovery. The function checks nothing
-itself; only `buildSite` calls it, after validation. The caller must own the candidate, build and
-backup directories exclusively for the whole build.
+rename fails, it removes a partially moved destination and renames the backup back. A failure of the
+filesystem during this rollback fails the build with that error and leaves the previous site in the
+backup directory, `docsite/.generated/previous-build/`, for manual recovery. The function checks
+nothing itself; only `buildSite` calls it, after validation. The caller must own the candidate,
+build and backup directories exclusively for the whole build.

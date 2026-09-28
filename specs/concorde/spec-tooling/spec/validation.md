@@ -32,7 +32,8 @@ A finding names the rule that failed, for example `CHK.context.reconciled`, its 
 it concerns and, where known, a line, the node identity involved and a remediation. An error means
 the Specs are not structurally conformant; the result status is `invalid`. A warning is reported
 and does not change the status. `CHK.contains.root`, `CHK.node.explained`, `CHK.term.unlinked` and
-`CHK.includes.redundant` are the Protocol's warnings; Concorde adds two coverage warnings.
+`CHK.includes.redundant` are the Protocol's warnings; Concorde adds one, the coverage warning
+`CONCORDE-COVERAGE-001`.
 
 Validation reports every finding it can establish in one run. When a document cannot be read at all,
 for example because its metadata is not valid JSON, the checks that need it are skipped and the
@@ -63,8 +64,10 @@ and every output that `generated/build-manifest.json` lists), and external mater
 
 **Links to definitions.** The Protocol requires a link fragment that names a stable identity to
 name a definition in the linked document, but lists no check for it. Concorde checks it: a link
-whose fragment begins with `concept.`, `realization.`, `req.`, `scenario.` or `contract.` and that
-names no definition, or a definition in another document, is a `CONCORDE-LINK-001` error.
+whose fragment begins with `realization.`, `req.`, `scenario.` or `contract.` and that names no
+definition, or a definition in another document, is a `CONCORDE-LINK-001` error. A link whose
+fragment begins with `concept.` is a term link, which the Protocol's `CHK.term.link` checks
+against the glossary, so it never draws `CONCORDE-LINK-001`.
 
 **Configured check inputs.** Every input path a configured check declares must exist as a regular
 file or directory reached without symbolic links; a missing or unsafe input is a

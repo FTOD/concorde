@@ -5,15 +5,20 @@
 Main session is the top of Concorde's levels of work, level 1: the guidance that makes an ordinary
 Claude Code or pi session in a project's primary worktree act as Concorde's
 [main agent](../../glossary.json#concept.main-agent): discuss work with the developer, split it into
-tasks, carry a task out inside its worktree or hand tasks to task sessions, keep each task's
-decision log, decide ordinary questions itself while escalating only major ones, merge delivered
-tasks, and handle Issues. The method of working inside a task is part of this guidance, because the
-task level is the main agent's own work: it follows the method when it works a task itself, and a
-task session it delegates the task to starts with the same method in the guidance it is given. It is
-advice to a model, not enforcement — Concorde places no permission limits on the main agent, and
-nothing here constrains the developer. In pi it adds a run view, an extension that starts Operations
-and execution commands in a task's worktree in the background and shows their progress. Distribution
-renders and installs this [Module](../../glossary.json#concept.module)'s content.
+[tasks](../../glossary.json#concept.task), carry a task out inside its worktree or hand tasks to
+[task sessions](../../glossary.json#concept.task-session), keep each task's
+[decision log](../../glossary.json#concept.decision-log), decide ordinary questions itself while
+escalating only major ones, merge delivered tasks, and handle
+[Issues](../../glossary.json#concept.issue). The method of working inside a task is part of this
+guidance, because the task level is the main agent's own work: it follows the method when it works a
+task itself, and a task session it delegates the task to starts with the same method in the guidance
+it is given. It is advice to a model, not enforcement — Concorde places no permission limits on the
+main agent, and nothing here constrains the developer. In pi it adds a
+[run view](../../glossary.json#concept.run-view), an extension that starts
+[Operations](../../glossary.json#concept.operation) and
+[execution commands](../../glossary.json#concept.execution-command) in a task's worktree in the
+background and shows their progress. Distribution renders and installs this
+[Module](../../glossary.json#concept.module)'s content.
 
 ## Usage
 
@@ -28,13 +33,17 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   files do not overlap; run the rest one after another
   ([requirements](requirements.md#req.main-session.parallel-by-worktree)).
 - **Work inside the task.** Never change Specs or code in the primary worktree. For a single
-  task, enter its worktree (Claude Code's EnterWorktree), change Specs and code there directly or
-  by running [Operations](../../glossary.json#concept.operation) with
+  task, work inside its worktree: in Claude Code enter it (EnterWorktree) and leave it after
+  delivery; in pi, which cannot move a session into another worktree, address it explicitly, with
+  that worktree as the commands' working directory and the files under its path. Change Specs and
+  code there directly or by running [Operations](../../glossary.json#concept.operation) with
   `concorde run <operation> …` and the
   [execution commands](../../glossary.json#concept.execution-command)
-  `concorde task-validation` and `concorde delivery` in background Bash, reading each
-  [run result](../../glossary.json#concept.run-result), and run every `concorde`
-  command with the worktree's own copy; leave after delivery. None of these names the task: the
+  `concorde task-validation` and `concorde delivery` in the background (background Bash in Claude
+  Code, the `concorde_run` tool in pi), reading each
+  [run result](../../glossary.json#concept.run-result), and run every `concorde` command that works
+  on the task's workspace with the worktree's own copy; the commands that open, merge and close
+  tasks and start task sessions run from the primary worktree. None of these names the task: the
   task worktree's [workspace binding](../../glossary.json#concept.workspace-binding),
   which `concorde task open` wrote, tells every run which goal, Modules, branch and base it works
   on, and one workspace runs one of them at a time (`workspace_busy` otherwise). Be inside at most
@@ -47,16 +56,18 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   with `--main`, and the [session reports](../../glossary.json#concept.session-report) back with
   SendMessage. In pi the main agent uses the `concorde_task_session` tool: each
   [session round](../../glossary.json#concept.session-round) ends with a report that wakes the main
-  agent, which starts the next round with the tool's `answer`. Either way a task session escalates
-  with its own link on the chain.
+  agent, which starts the next round with the tool's `answer`; since a round ends only with its
+  report, a pi task session runs its `concorde` commands in the foreground within the round (see
+  [Task sessions](../task-session/module.md)). Either way a task session escalates with its own
+  link on the chain.
 - **Keep the decision log.** Record every non-`ok` result and every unsupervised choice, with its
   reason, in the task's [decision log](../../glossary.json#concept.decision-log), including
   the decisions and problems of a workflow's report, which nothing else writes there.
-- **Merge delivered work.** From the primary worktree, merge a branch `delivery` committed without
-  asking authorization, with `concorde task merge`, never with `git merge`: it holds the
-  [merge lock](../../glossary.json#concept.merge-lock) so merges of several main sessions never
-  interleave, runs `concorde spec-validation` on the primary branch, undoes a merge whose checks
-  fail and closes the task.
+- **Merge delivered work.** Merge, without asking the developer's authorization, a task branch
+  that `delivery` committed, from the primary worktree with `concorde task merge`, never with
+  `git merge`: it holds the [merge lock](../../glossary.json#concept.merge-lock) so merges of
+  several main sessions never interleave, runs `concorde spec-validation` on the primary branch, or
+  exactly the `--check` commands given, undoes a merge whose checks fail and closes the task.
   Retry a `merge_busy`; resolve a conflict in the task worktree by merging the primary branch into
   the task branch and delivering again; handle a failed check as new work, never by discarding
   someone's change.
@@ -72,20 +83,34 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   glossary through a task. A SessionStart hook could not carry the terms: Claude Code cuts a hook's
   output at 10,000 characters, while a project's glossary is usually longer.
 
-A representative flow, agreeing a payments retry limit:
+A representative flow, agreeing a payments retry limit, with where the main agent works at each
+stage:
 
 ```d2 illustrative
-shape: sequence_diagram
-developer: Developer
-main: Main agent
-task: Task worktree (module.payments)
-developer -> main: ask for a retry limit
-main -> developer: agree the limit
-main -> task: open the task
-main -> task: run specify, implement, test
-main -> task: run code_review, task-validation, delivery
-task -> main: run results
-main -> developer: merge; report the exponential back-off it chose
+direction: down
+developer: Developer {
+  ask: ask for a retry limit
+  read: read the report
+}
+primary: Main agent in the primary worktree {
+  agree: agree the limit with the developer
+  open: open a task for module.payments
+  merge: merge the delivered task
+  report: report the exponential back-off it chose
+}
+task: Main agent in the task worktree {
+  work: run specify, implement, test
+  review: run code_review
+  deliver: run task-validation, delivery
+}
+developer.ask -> primary.agree
+primary.agree -> primary.open
+primary.open -> task.work: enter the worktree
+task.work -> task.review: read each run result
+task.review -> task.deliver
+task.deliver -> primary.merge: leave after delivery
+primary.merge -> primary.report
+primary.report -> developer.read
 ```
 
 <a id="concept.run-view"></a>
@@ -99,23 +124,27 @@ detached process in the task's worktree, found through the
 [task record](../../glossary.json#concept.task-record), since a pi session cannot move into the task
 worktree itself: the task worktree's own `concorde` runs there and reads its workspace binding, so
 the command line never names the task. Without a task it starts an
-[unbound](../../glossary.json#concept.unbound-run) Operation in the session's own worktree; a task
-without a worktree is refused before anything starts. The tool returns at once with the run
+[unbound](../../glossary.json#concept.unbound-run) Operation in the session's own worktree; an
+execution command without a task starts there too, and Execution refuses it with `binding_required`
+in a worktree without a binding, a run refused at once whose result the tool returns (see below). A
+task without a worktree is refused before anything starts. The tool returns at once with the run
 identity. The extension follows every run of the project, Operation or recorded command, through its
 [run progress file](../../glossary.json#concept.run-progress-file) in the primary worktree's
 [run store](../../glossary.json#concept.run-store), where every task worktree's binding records its
 runs, and through the [progress file](../../glossary.json#concept.progress-file) of the worker an
 Operation launched, paired by the runner's process identifier; an execution command has no worker.
 It shows each run as an external job in pi-subagents' FleetView — its workspace (or `unbound`) and
-name, its step, the worker's round and latest tool call, and on its end the result's status and
-summary. A `bg_wait` call without an id waits for the running ones (with an id it matches only
-subagent runs); runs are filed under the session's file, or its identity when it is not persisted,
-the name pi-subagents gives the session. When a run ends the extension sends the main agent a
-message with the result's status and summary and the run result's file: while the main agent is in a
-turn the message is steered into that turn after its current tool calls, and otherwise it starts the
-next turn. A run that has already finished when `concorde_run` finds it, such as one refused at
-once, is answered in the tool's own result instead, and no message follows. `/concorde` lists the
-recent runs of both kinds. The view only launches and observes: the
+name, its step, the worker's round and latest tool call, and on its end `completed`, `stopped` or
+`failed` for a result of `ok`, `blocked` or `failed`, with the result's summary; a run whose runner
+process ended without finishing is shown `failed`. A `bg_wait` call without an id waits for the
+running ones (with an id it matches only subagent runs); runs are filed under the session's file, or
+its identity when it is not persisted, the name pi-subagents gives the session. When a run ends the
+extension sends the main agent a message naming the run, its workspace and name, the result's status
+and summary and the run result's file: while the main agent is in a turn the message is steered into
+that turn after its current tool calls, and otherwise it starts the next turn. A run that has
+already finished when `concorde_run` finds it, such as one refused at once, is answered in the
+tool's own result instead, and no message follows. `/concorde` lists the recent runs of both kinds.
+The view only launches and observes: the
 [Execution runner](../../glossary.json#concept.execution-runner) runs and records every run, so
 closing pi never stops or changes one. Without pi-subagents the tool, the wake and `/concorde` still
 work.
@@ -129,7 +158,9 @@ the main agent with the outcome recorded in the task record: the report's summar
 open points, the [delivery commit](../../glossary.json#concept.delivery-commit), the numbers of the
 escalations to read with `concorde task show`, or the failed round's error chain rendered. A main
 session that starts again finds the running rounds from their progress files. In a pi task session
-itself, where `CONCORDE_TASK_SESSION` is set, the extension stays inactive.
+itself, where `CONCORDE_TASK_SESSION` is set, the extension only adds the project's terms to every
+prompt and marks the commands the session starts as started from pi; it starts, follows and
+reports no runs or rounds.
 
 <a id="concept.escalation-policy"></a>
 
@@ -160,12 +191,16 @@ pi's terminal, and restores the terminal on success, cancellation or failure. It
 global and Operation defaults and every worker, each field's effective source, custom input and
 optional discovery. Only Save writes; dirty exits offer Keep editing by default or explicit Discard
 changes, including Ctrl-C. Scope and model search use `/`, and returning from Edit keeps the
-selected scope and filter. A named task must have a worktree; the picker never falls back to the
-primary worktree. It requires pi's terminal mode, and reports that requirement to RPC and headless
+selected scope and filter. Without a task the picker edits the session's own worktree; with a task
+it edits exactly that task's worktree, which must exist: the picker never falls back to the primary
+worktree. It requires pi's terminal mode, and reports that requirement to RPC and headless
 callers.
 
 For AI-driven changes the guidance tells the agent to edit the worktree's JSON directly,
-preserving unrelated entries, then use `configure-workers --check` and `--show --json`.
+preserving unrelated entries, then use `configure-workers --check` and `--show --json`. It chooses
+Claude Code for a worker by setting that entry's `backend` to `claude` when the developer asks; the
+chosen program must be installed when a worker launches, not when the configuration is edited or
+validated.
 The separate `scripts/available_models.py --backend pi|claude [--json]` supplies optional
 suggestions without Git or inference API calls. Discovery does not gate custom/offline
 configuration or impose an extra question flow when the developer already chose a model.
@@ -193,8 +228,10 @@ asks the developer which [mode](../../glossary.json#concept.workflow-mode) to us
 developer already said; interactive suits a developer who is present, no-ask one who wants the
 result later. When a workflow ends `awaiting_decision`, the main agent puts every pending
 [decision point](../../glossary.json#concept.decision-point) to the developer at once, with its
-options and recommendation, writes the answers keyed by
-[step key](../../glossary.json#concept.step-key) and starts the same workflow again. It reads the
+options and recommendation, and starts the same workflow again with its `answers` keyed by each
+step's base key, its [step key](../../glossary.json#concept.step-key) without a restart label or
+answer digest, each key holding every answer the developer has given for that step so far, not only
+the newest ([Workflows](../../execution/workflows/module.md) defines the arguments). It reads the
 [workflow result](../../glossary.json#concept.workflow-result) from the file Workflows saves beside
 the workspace's [workflow record](../../glossary.json#concept.workflow-record) in the run store, and
 treats it like a run result: it copies the result's decisions and problems into the task's decision
@@ -202,7 +239,7 @@ log itself, since Workflows keeps its record apart from the task and in no-ask m
 decisions taken without the developer, reads every problem's chain, and merges a delivered task. The
 guidance names the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) as the way
 to describe a project whose code came before its Specs, right after installation and initialization,
-and nowhere else.
+and nowhere else, in a task opened for the root Module, or for a created Module to split further.
 
 ### Issues
 
@@ -313,8 +350,8 @@ there themselves. Every `concorde` command for a task runs with the worktree's o
 only the branch's copy knows the Specs, Protocol and checks the task changes, and only that
 worktree's binding names the task's workspace. A session is inside one task at a time, which is why
 split work goes to task sessions; a task session's writes are confined to its task by the
-[session boundary](../../glossary.json#concept.session-boundary)
-[Task sessions](../task-session/module.md) writes from the Harness, while the main agent stays
+[session boundary](../../glossary.json#concept.session-boundary), which
+[Task sessions](../task-session/module.md) obtains from the Harness, while the main agent stays
 unrestricted and alone merges; merging needs no authorization because `delivery` only commits what
 it found ready, and a merge is ordinary, revertible Git. The escalation policy balances the same
 way: deciding ordinary questions keeps work moving, recording and reporting them keeps them
@@ -347,14 +384,13 @@ merges a delivered task itself.
 
 <a id="uses-workflows"></a>
 
-**Workflows** provides the [workflows](../../glossary.json#concept.workflow) the main
-agent starts in a task, their modes and the [workflow
-result](../../glossary.json#concept.workflow-result) it reads when one ends. The guidance
-relies on a workflow never opening, merging or closing a task and on its result keeping every
-run's chain whole, so that a workflow's end is handled like a run's: an `awaiting_decision` result
-makes the main agent put every pending decision point to the developer at once and start the same
-workflow again with the answers. Workflows never writes the decision log, so the guidance makes the
-main agent copy a report's decisions and problems there.
+**Workflows** provides the [workflows](../../glossary.json#concept.workflow) the main agent starts
+in a task, their modes and the [workflow result](../../glossary.json#concept.workflow-result) it
+reads when one ends. The guidance relies on a workflow never opening, merging or closing a task and
+on its result keeping every run's chain whole, so that a workflow's end is handled like a run's: an
+`awaiting_decision` result makes the main agent put every pending decision point to the developer at
+once and start the same workflow again with the answers. Workflows never writes the decision log, so
+the guidance makes the main agent copy a report's decisions and problems there.
 
 <a id="uses-execution"></a>
 
@@ -427,7 +463,7 @@ mainsession: Main session {
   }
   sources -> guidance: authors
   guidance -> policy: includes
-  view -> picker: draws the dialogs of
+  view -> picker: opens the editor through
 }
 ```
 
@@ -447,10 +483,15 @@ observes. The skill is also installed for pi as `.pi/skills/concorde/SKILL.md`.
 
 The **pi run view** is `src/concorde/main_session/pi_extension.ts`, installed as
 `.pi/extensions/concorde/index.ts`, with the pure reading of progress files in `pi_runs.ts` beside
-it. It also sets `CONCORDE_CLIENT=pi` for every command the session starts, so a run it starts
-launches pi workers and `concorde task session` starts pi task sessions. It tells an execution
-command from an Operation by name and starts the first as `concorde <command>`, the second as
-`concorde run <operation>`. `pi_runs.ts` also reads the progress files of task-session rounds. The
+it. It also sets `CONCORDE_CLIENT=pi` for every command the session starts, which tells Concorde
+that the main session is pi, so that `concorde task session` starts pi task sessions; which
+backend a worker runs on is not affected, since Workers takes it from the worktree's worker model
+configuration. It tells an execution command from an Operation by name and starts the first as
+`concorde <command>`, the second as `concorde run <operation>`. It pairs a worker's progress file
+with a run by the runner's process identifier and a start no earlier than the run's, so a worker of
+another runner, or of an earlier run whose process identifier was reused, is never attributed to
+it; a run still marked running whose runner process no longer exists is shown `failed`.
+`pi_runs.ts` also reads the progress files of task-session rounds. The
 tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi session
 and is exercised in one.
 

@@ -19,7 +19,6 @@ change and the [test report](../../../glossary.json#concept.test-report) are in 
 - GIVEN [Module](../../../glossary.json#concept.module) A, which uses Module B and has a [configured check](../../../glossary.json#concept.configured-check), and Module B, which has none
 - WHEN an implement run bound to Module B changes B's code
 - THEN the [Operation](../../../glossary.json#concept.operation) runs A's check as well, and its result is among the run's checks
-- AND a change bound to A alone runs only A's own checks, since no Module uses A
 
 ### scenario.implementation.implement-pass — A change passes its checks
 
@@ -48,7 +47,7 @@ change and the [test report](../../../glossary.json#concept.test-report) are in 
 - GIVEN a goal whose code needs a promise the bound Module's [Spec](../../../glossary.json#concept.spec) does not state
 - WHEN the worker returns `blocked` naming the [Spec gap](../../../glossary.json#concept.spec-gap)
 - THEN the result has status `blocked` with an [error chain](../../../glossary.json#concept.error-chain) that ends in the worker's own link naming the Spec gap, unchanged
-- BUT the Operation neither resumes the worker nor changes any Spec document
+- BUT the Operation neither resumes the worker nor changes any Spec promise; its only Spec edit is clearing the pending marker of a pending entry whose file the worker filled before it stopped
 
 ### scenario.implementation.out-of-grant — A write outside the grant fails the run
 
@@ -98,6 +97,6 @@ change and the [test report](../../../glossary.json#concept.test-report) are in 
 
 ### scenario.implementation.test-change — A change during a test run fails it
 
-- GIVEN a test run whose write audit finds any changed or new file in the workspace
+- GIVEN a test run whose write audit finds a changed or new file in the workspace, outside the paths Git ignores
 - WHEN the Operation evaluates the audit
 - THEN the result has status `failed` with the changed paths as host evidence

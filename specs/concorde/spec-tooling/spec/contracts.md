@@ -35,6 +35,9 @@ document does not repeat it and adds only what Concorde fixes on top of it.
   each Module's check identities in its descriptor.
 - `workers` is optional. It holds the [worker settings](../../glossary.json#concept.worker-settings)
   that the Harness reads; Spec core accepts it without interpreting it.
+- `python` is optional. It names the project's own interpreter, which Check execution substitutes
+  for `{python}` in a check's `argv`; Spec core accepts it without interpreting it, and
+  [initialization](#initialization) records it.
 
 No other field is allowed. Spec core only verifies the binding; changing it is an explicit step of
 Distribution, such as rebinding a Concorde checkout to its freshly built Protocol.
@@ -55,7 +58,8 @@ The registry file is JSON with exactly two fields:
 ```
 
 Each record has exactly `id`, `title`, `entry`, `owns`, `contains`, `uses`, `includes` and
-`participates`, in this order. `id` equals the entry metadata's `document.owner`, `entry` is the
+`participates`, in this order, followed by `glossary` in the record of the one Module whose block
+declares the project glossary. `id` equals the entry metadata's `document.owner`, `entry` is the
 entry's reading path, and every other field equals the same field of the entry's `module` block
 (`CHK.registry.mirror`). Records are unique by `id`. Decoding rejects duplicate keys and non-JSON
 numeric constants.
@@ -100,14 +104,16 @@ Module, or a scenario of another Module, fails with a `SpecError`. `root_module`
 recorded Module that no other Module contains, and `contained` returns the Modules a Module
 `contains`.
 
-`definitions` returns the requirements, scenarios, concepts, realizations and contracts the
-Module's own documents define. `document` returns one registered reading member with its metadata,
-owner and digest, and `documents` every document a Module owns. `definer` returns the reading path
-of the document defining a node, or `None` for an unknown identity. `selection` returns the
-documents one `contains`, `uses` or `includes` declaration selects. `meaning_text` returns the
-prose a Module relation's `meaning` anchor resolves to. `realization_entries` maps each declared
-entry of the Module to its realization, and `realization_for_path` returns the realization whose
-most specific entry covers a file; an exact entry is more specific than any directory entry.
+`definitions` returns the requirements, scenarios, realizations and contracts the Module's own
+documents define, and the concepts whose glossary entries name the Module as owner. `document`
+returns one registered reading member with its metadata, owner and digest, and `documents` every
+document a Module owns. `definer` returns the reading path of the document defining a node, for a
+concept the document its glossary entry names as its explanation, or `None` for an unknown identity.
+`selection` returns the documents one `contains`, `uses` or `includes` declaration selects.
+`meaning_text` returns the prose a Module relation's `meaning` anchor resolves to.
+`realization_entries` maps each declared entry of the Module to its realization, and
+`realization_for_path` returns the realization whose most specific entry covers a file; an exact
+entry is more specific than any directory entry.
 
 Failures raise Spec tooling's own [error](errors.md): a `SpecError`, or a subclass such as the
 [typed values](../../glossary.json#concept.typed-value)' `TypedDataError`, with its code, a concrete
@@ -122,8 +128,8 @@ the fatal problems and carries every one of them as a cause, each with its path 
 the check it fails:
 
 - an unreadable configuration or registry, a configuration without `profile_version`, `registry`
-  or `protocol` or with a field other than those and `checks` and `workers`, or a registry with
-  malformed or duplicate records;
+  or `protocol` or with a field other than those and `checks`, `workers` and `python`, or a
+  registry with malformed or duplicate records;
 - a Protocol binding that does not match the installed copy (`protocol_mismatch`) or an
   unsupported profile (`unsupported_profile`);
 - a configured check entry without an `id` or `module`, with a duplicate `id`, naming an
@@ -210,8 +216,9 @@ computed from declarations alone:
 | [Spec context](../../glossary.json#concept.spec-context) | both members of each owned and selected document, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context` |
 | External context | per external inclusion: the entry, whether it is a directory, whether it exists, the readable files below it and one digest over their paths and bytes | `external_context`; `external_inclusions` lists the declared entries, `external_files` and `external_digest` expand and digest one entry |
 | Implementation context | the names of the existing files the realizations bind, and of pending exact entries | `implementation_context`; `bound_files` lists only the existing bound files |
-| Spec scope | both members of each owned document | `spec_scope` |
+| Spec scope | both members of each owned document, and the project glossary, of whose entries only those the Module owns or adds are its to change | `spec_scope` |
 | Implementation scope | the realization entries, pending entries included; a directory entry covers every present and future file below it | `implementation_scope`; `missing_entries` lists the entries not yet on disk |
+| ProjectImplementation | the names of the files every Module's realizations bind, with their pending exact entries, and every Module's external inclusions; the same for every Module | `project_implementation` |
 | selected-by | the Modules whose Spec context contains a document | `selected_by` |
 | referenced-by | the declarations that name a concept, requirement, scenario or contract, each with its Module | `referenced_by` |
 | implemented-by | the Modules whose realizations bind a path or list it as an entry | `implemented_by` |
@@ -219,14 +226,14 @@ computed from declarations alone:
 | covered-by | the verification declarations that name a scenario; `coverage` answers it for every scenario of a Module | `covered_by`, `coverage` |
 | changed definitions | between two repositories: the documents whose members differ, and the nodes whose definitions differ | `changed_documents(old, new, paths=None)`, `changed_nodes(old, new, paths)` |
 
-`boundary_sets(module)` returns all five sets of one Module at once as a `BoundarySets` record,
-whose `writable(path)` answers whether a path lies in the Spec scope or is covered by the
-implementation scope. `impact(*, documents=(), nodes=(), paths=())` returns every Module that
-writing the given documents, nodes or files concerns: the readers of the documents, the Modules
-referencing the nodes and the Modules binding the files. `shared_files` is computed from entries
-alone: an exact entry both Modules list, an exact entry of one below a directory entry of the
-other, or the inner of two nested directory entries. `scope_roots(entries)` turns entries into
-permission roots by dropping trailing slashes.
+`boundary_sets(module)` returns all five sets of one Module at once, together with
+ProjectImplementation, as a `BoundarySets` record, whose `writable(path)` answers whether a path
+lies in the Spec scope or is covered by the implementation scope. `impact(*, documents=(), nodes=(),
+paths=())` returns every Module that writing the given documents, nodes or files concerns: the
+readers of the documents, the Modules referencing the nodes and the Modules binding the files.
+`shared_files` is computed from entries alone: an exact entry both Modules list, an exact entry of
+one below a directory entry of the other, or the inner of two nested directory entries.
+`scope_roots(entries)` turns entries into permission roots by dropping trailing slashes.
 
 `changed_nodes` compares a node by its definition: a requirement or scenario by its defining
 section, a contract by its fence, a concept by its glossary entry, a
@@ -276,26 +283,30 @@ registered Module identities and one [task type](../../glossary.json#concept.tas
     {"id": "concept.hold", "title": "Hold", "owner": "module.a",
      "definition": "Stock withheld until a submission succeeds or expires.",
      "explanation": "specs/a/module.md#concept.hold"}
-  ]
+  ],
+  "glossary": "specs/glossary.json"
 }
 ```
 
 `terms` is the union of the glossary entries of the bound Modules' terms, each entry whole and
 sorted by identity; it is how a worker learns the definitions its documents link without reading
-the glossary file.
+the glossary file. `glossary` is the project glossary's path, or `null` when no Module declares
+one, so that the [write audit](../../glossary.json#concept.write-audit) can hold a change of it to
+the bound Modules' entries.
 
-`task_type` is one of `understand`, `specify`, `implement`, `test`, `review-spec` and
-`review-code`. `modules` is sorted and without duplicates. Each entry's `level` follows the table
-below, where a dash means the set contributes nothing:
+`task_type` is one of `understand`, `specify`, `implement`, `test`, `review-spec`, `review-code`
+and `code-to-spec`. `modules` is sorted and without duplicates. Each entry's `level` follows the
+table below, where a dash means the set contributes nothing:
 
-| Task type | Spec context | Implementation context | Implementation scope | Spec scope | External context |
-| --- | --- | --- | --- | --- | --- |
-| `understand` | `ro` | `names` | — | — | `ro` |
-| `specify` | `ro` | `names` | — | `rw` | `ro` |
-| `implement` | `ro` | `names` | `rw` | — | `ro` |
-| `test` | `ro` | `names` | `ro` | — | `ro` |
-| `review-spec` | `ro` | `names` | — | — | `ro` |
-| `review-code` | `ro` | `names` | `ro` | — | `ro` |
+| Task type | Spec context | Implementation context | Implementation scope | Spec scope | External context | ProjectImplementation |
+| --- | --- | --- | --- | --- | --- | --- |
+| `understand` | `ro` | `names` | — | — | `ro` | — |
+| `specify` | `ro` | `names` | — | `rw` | `ro` | — |
+| `implement` | `ro` | `names` | `rw` | — | `ro` | `ro` |
+| `test` | `ro` | `names` | `ro` | — | `ro` | `ro` |
+| `review-spec` | `ro` | `names` | — | — | `ro` | — |
+| `review-code` | `ro` | `names` | `ro` | — | `ro` | `ro` |
+| `code-to-spec` | `ro` | `names` | `ro` | `rw` | `ro` | `ro` |
 
 The sets contribute these paths:
 
@@ -308,10 +319,17 @@ The sets contribute these paths:
   ending with `/` covers every present and future file below it under the exclusion rule.
 - External context: each external inclusion's declared path; a directory path ends with `/` and
   covers the readable files below it.
+- ProjectImplementation: the files every registered Module's realizations bind, their pending exact
+  entries and their external inclusions, so a task that reads code reads the code it uses and the
+  code that uses it. Only the bound Modules' own scopes are ever `rw`.
 
-Over every bound Module and every set, a path receives the highest level assigned to it, ordered
-`names`, `ro`, `rw`. An exact path that a directory entry of equal or higher level covers is then
-dropped. Entries are unique and sorted by path. A path covered by no entry is denied.
+The computation runs in this order. Over every bound Module and every set, a path receives the
+highest level assigned to it, ordered `names`, `ro`, `rw`. If an `rw` entry would then cover a file
+a Module outside the grant also binds, the computation fails with `shared_file` (below). An
+installed file, one that the installation record `.concorde/install.json` lists under `files`
+outside `.concorde/` and not under `amended`, is then lowered from `rw` to `ro`. Finally, an exact
+path that a directory entry of equal or higher level covers is dropped. Entries are unique and
+sorted by path. A path covered by no entry is denied.
 
 Computing fails, returning no grant and writing nothing, with a `SpecError` whose `code` is the one
 below; its message names the offending value, for `unknown_module` also every registered Module:
@@ -345,9 +363,12 @@ validate_repository(root, target_id=None, package_root=None, *, registry_bytes=N
                     document_overrides=None) -> ToolResult
 ```
 
-`python3 scripts/concorde.py spec-validation [target]` prints the same result as JSON. The result
-has `tool: "spec-validation"`, `target` (the requested Module or `.`), `status` (`success` or
-`invalid`), `artifacts` (the assessed Spec member paths), `findings` and `result`.
+`concorde spec-validation [target]` prints the same result as JSON. The result has
+`tool: "spec-validation"`, `target` (the requested Module or `.`), `status` (`success` or
+`invalid`), `artifacts` (the assessed Spec member paths and the project glossary), `findings` and
+`result`. A target must name a registered Module, otherwise the call fails with `unknown_target`;
+it does not narrow the run, which checks the whole project and reports every finding whatever the
+target.
 
 A finding has `rule_id`, `severity` (`error` or `warning`), `source` (a project-relative path),
 `message` and `remediation`, and optionally `line`, `column` and `subject_id` (the node identity
@@ -357,16 +378,17 @@ identities:
 
 | Rule | Severity | Meaning |
 | --- | --- | --- |
-| `CONCORDE-LINK-001` | error | a link fragment shaped like a node identity names no definition in the linked document |
+| `CONCORDE-LINK-001` | error | a link fragment shaped like a requirement, scenario, realization or contract identity names no definition in the linked document |
 | `CONCORDE-COVERAGE-001` | warning | no test declares a scenario of a Module that binds files |
 | `CONCORDE-COVERAGE-003` | error | a bound test cannot be parsed, or a declaration in it is malformed; reported per file |
 | `CONCORDE-CHECK-001` | error | a configured check's declared input is missing or unsafe |
 | `CONCORDE-SOURCE-008` | error | the configuration, registry or Protocol binding cannot be read, so nothing else was checked; the message is the load error's, the remediation carries its remediation and reason, and `result.load_error` holds its [error record](errors.md) |
 
 `result` holds `summary` (the counts of errors and warnings), `source_digest` (a digest over the
-paths and digests of the configuration, the registry, every assessed document member, the Protocol
-binding and the state of every configured-check input), `claims` (the kinds of structure the run
-checked) and `semantic_completeness: "not_proven"`. No other Module's records enter the digest.
+paths and digests of the configuration, the registry, every assessed document member, the project
+glossary, the Protocol binding and the state of every configured-check input), `claims` (the kinds
+of structure the run checked) and `semantic_completeness: "not_proven"`. No other Module's records
+enter the digest.
 
 The command-line envelope is canonical JSON with `schema_version: 3`, the fields above and `error`:
 `null` when the command did its work, otherwise the [error record](errors.md) of its failure,
@@ -377,14 +399,14 @@ are sorted. The exit code is 0 for `success` and 1 for `invalid`.
 
 ## Registry command {#registry-command}
 
-`python3 scripts/concorde.py registry --write` loads every recorded Module's entry and rewrites the
-registry so that each record's `title`, `owns`, `contains`, `uses`, `includes` and `participates`
-equal the entry's `module` block. It keeps the records' order and their `id` and `entry`, and adds
-or removes no record. It writes through a
-[file transaction](../../glossary.json#concept.file-transaction) and reports `unchanged` when
-nothing differs. With `--check` it writes nothing and reports one `CHK.registry.mirror` finding per
-record that differs. The command fails, with the [error record](errors.md) naming the registry or
-the entry and its cause, and writes nothing when the registry or an entry cannot be read.
+`concorde registry --write` loads every recorded Module's entry and rewrites the registry so that
+each record's `title`, `owns`, `contains`, `uses`, `includes`, `participates` and, where the block
+declares it, `glossary` equal the entry's `module` block. It keeps the records' order and their `id`
+and `entry`, and adds or removes no record. It writes through a [file
+transaction](../../glossary.json#concept.file-transaction) and reports `unchanged` when nothing
+differs. With `--check` it writes nothing and reports one `CHK.registry.mirror` finding per record
+that differs. The command fails, with the [error record](errors.md) naming the registry or the entry
+and its cause, and writes nothing when the registry or an entry cannot be read.
 
 ## Verification declarations {#verification-declarations}
 
@@ -409,15 +431,17 @@ it("renders the page", () => {});
 At run time the decorator only attaches the identities to the test function and returns it
 unchanged, and it refuses an argument that does not begin with `scenario.`.
 
-The scanner reads bound files ending in `.py`, `.ts`, `.tsx`, `.mts` or `.cts` by parsing them,
-never by importing, compiling or running them. In Python it reads module-level functions and the
+The scanner reads bound files ending in `.py`, `.ts`, `.tsx`, `.mts` or `.cts`, never importing,
+compiling or running them. It parses a Python file and reads its module-level functions and the
 methods of classes at any class nesting; a function nested inside another function is a helper and
-is ignored. Every argument must be a string literal beginning with `scenario.`. In TypeScript a
-declaration is an own-line comment whose text after the comment marker begins with `verifies:`; it
-applies to the next `it`, `test` or `describe` call, whose title names the declaring test. A
-declaration comment that no test call follows, an argument that is not a scenario identity, and a
-Python file that does not parse are `CONCORDE-COVERAGE-003` errors for that file; the scanner then
-continues with the next file. Each declaration yields `{scenario_id, path, line, name}`.
+is ignored. Every argument must be a string literal beginning with `scenario.`. It reads a
+TypeScript file line by line, as UTF-8 with undecodable bytes replaced, so a TypeScript file never
+fails to parse: a declaration is an own-line comment whose text after the comment marker begins
+with `verifies:`; it applies to the next `it`, `test` or `describe` call, whose title names the
+declaring test. A declaration that names no scenario, a declaration comment that no test call
+follows, an argument that is not a scenario identity, and a Python file that does not parse are
+`CONCORDE-COVERAGE-003` errors for that file; the scanner then continues with the next file. Each
+declaration yields `{scenario_id, path, line, name}`.
 
 ## Typed values {#typed-values}
 
@@ -523,8 +547,8 @@ did not exist, and the exception propagates. It returns the written paths in ord
 `confirm_pending_files` removes from every realization's `pending` the entries that now exist. It
 rewrites only the affected metadata members, in one file transaction whose final check requires the
 project to load and no other Spec source to have changed meanwhile. It returns the confirmed
-entries, each as `{module, realization, path}`, and the entries that are still missing. It refuses
-a repository loaded with overrides, because only files on disk can be confirmed.
+entries, each as `{module, realization, path}`, and the entries that are still missing. It always
+loads the repository from the files on disk, because only files on disk can be confirmed.
 
 ## Initialization {#initialization}
 
@@ -535,8 +559,9 @@ initialize(root: Path, package: Path, data: dict) -> dict
 Initialization is deterministic; it runs no model and selects no context. `root` is the project
 and `package` the running Concorde package. `data` is one of:
 
-- `{"action": "propose", "name": ..., "target_id": ...}`: `name` is required and nonblank;
-  `target_id`, the root Module's identity, defaults to `module.project`. Propose fails with
+- `{"action": "propose", "name": ..., "target_id": ..., "python": ...}`: `name` is required and
+  nonblank; `target_id`, the root Module's identity, defaults to `module.project`; `python`, the
+  project's interpreter, is optional and nonblank when given. Propose fails with
   `already_initialized` when `.concorde/config.json` exists and with `not_installed` when the
   installer's [Protocol copy](../../glossary.json#concept.protocol-copy) is missing.
 - `{"action": "apply", "proposal": ..., "proposal_digest": ...}`: `proposal` is the complete
@@ -557,12 +582,13 @@ its digest and its ordered paths. Apply returns `{status: "applied", proposal: n
 proposal_digest: null, files}` with the written paths.
 
 The proposal contains four files, each with `before_digest: null`: `.concorde/config.json` with
-profile 17, the registry path, the binding of the installed Protocol copy and an empty `checks`
-list; `.concorde/specs.json` with one record for the root Module; and `specs/project/module.md`
-with its metadata. The entry has the five required sections and says that the project's
-responsibility, behaviour and architecture are not yet specified. Its metadata declares the
-`module` block with the entry as the only owned document and empty relation arrays, and no
-concepts.
+profile 17, the registry path, the binding of the installed Protocol copy, an empty `checks` list
+and `python`, which is the interpreter named on propose as given, otherwise the first of
+`.venv/bin/python` and `venv/bin/python` that exists, and absent when there is none;
+`.concorde/specs.json` with one record for the root Module; and `specs/project/module.md` with its
+metadata. The entry has the five required sections and says that the project's responsibility,
+behaviour and architecture are not yet specified. Its metadata declares the `module` block with the
+entry as the only owned document and empty relation arrays, and no concepts.
 
 When the project already has files, the metadata defines one realization,
 `realization.<local>.existing-files` titled Existing project files, where `<local>` is the last

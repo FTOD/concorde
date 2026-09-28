@@ -7,11 +7,17 @@ requirement belongs to the [Module](../../glossary.json#concept.module) as a who
 
 ### req.spec-review.never-edits — Review changes no file but its memory
 
-Spec review SHALL NOT create, change or delete any file of the worktree it reviews other than the reviewed Modules' review memories.
+Spec review SHALL NOT create, change or delete any file of the worktree it reviews other than the reviewed Modules' review memories and its own run's entries in the [run store](../../glossary.json#concept.run-store).
+
+Only a Spec review in a bound workspace writes review memories; an
+[unbound run](../../glossary.json#concept.unbound-run) keeps its run store in the worktree it
+reviews.
 
 ### req.spec-review.memory — A repeated review builds on the memory
 
-A Spec review in a bound workspace SHALL merge its findings into each reviewed Module's [review memory](../../glossary.json#concept.review-memory), keeping every earlier finding it does not update or resolve open.
+A Spec review in a bound workspace SHALL merge its findings into each reviewed Module's [review memory](../../glossary.json#concept.review-memory), keeping open every open earlier finding it neither updates nor resolves.
+
+An earlier finding that is already resolved keeps its resolution and its reason.
 
 ### req.spec-review.review-spec-grant — Reviewers read under a review-spec grant
 
@@ -59,7 +65,10 @@ statuses apart from the evidence the Operation produced itself.
 ### req.spec-review.panel-accounted — A panel report accounts for every reviewer finding
 
 A Spec panel SHALL NOT complete a Module whose
-[panel report](../../glossary.json#concept.panel-report) leaves a reviewer finding unaccounted for.
+[panel report](../../glossary.json#concept.panel-report) does not account for every reviewer
+finding exactly once or names a label no reviewer finding has.
+
+The [accounting](panel.md#the-panel-graph) rule says how a report accounts for a finding.
 
 ### req.spec-review.panel-independent — Panel reviewers review independently
 

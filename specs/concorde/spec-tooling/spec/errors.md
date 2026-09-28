@@ -1,8 +1,9 @@
 # Spec tooling errors
 
-Spec tooling reports every error with its own type, independent of the rest of Concorde: the
-Framework's [error chain](../../glossary.json#concept.error-chain) is built on top of Spec tooling,
-never inside it. This document defines that type exactly, as the [Spec core](module.md) implements
+[Spec tooling](../module.md) reports every error with its own type, independent of the rest of
+the [Concorde Framework](../../module.md): the Framework's
+[error chain](../../glossary.json#concept.error-chain) is built on top of Spec tooling, never
+inside it. This document defines that type exactly, as the [Spec core](module.md) implements
 it in `concorde.spec.errors` and as every command of Spec tooling and the
 [Spec MCP server](../spec-mcp/module.md) return it.
 
@@ -173,7 +174,7 @@ are the defaults; a call site gives more specific ones when it knows more.
 | `invalid_owner` | every Spec document is owned by exactly one Module (CHK.owns.unique) | list the document in the owns of one Module only |
 | `unsafe_path` | Spec tooling reads only canonical project-relative paths of regular files, never through a symbolic link or outside the project | use a canonical project-relative path to a regular file and remove the symbolic link |
 | `missing_source` | a file the Specs or the configuration require does not exist or cannot be read | create the file, restore it, or remove the reference to it |
-| `unsupported_profile` | this Spec tooling reads only the project profile and registry schema of Protocol 15 (schema_version 3) | migrate the configuration and registry to the current profile explicitly |
+| `unsupported_profile` | this Spec tooling reads only configuration profile_version 17 and registry schema_version 3 | migrate the configuration and registry to the current profile explicitly |
 | `protocol_mismatch` | the project's Protocol binding must name exactly the [Protocol copy](../../glossary.json#concept.protocol-copy) installed under .concorde/protocol/, and that copy must be unchanged | reinstall Concorde, or accept the installed Protocol by updating the binding |
 | `not_installed` | initialization needs the Protocol copy that only the installer places | run the Concorde installer in this project first |
 | `already_initialized` | initialization creates the first Spec only; it never overwrites a configured project | change an initialized project's Specs through ordinary work instead |

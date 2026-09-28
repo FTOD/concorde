@@ -35,12 +35,20 @@ so the server adds no rule about what a task may read or write.
 
 ### req.spec-mcp.current-sources — Answers reflect the current Specs
 
-The server SHALL load the root's Specs anew for every tool call.
+The server SHALL load the root's Specs anew for every tool call that passes the root and argument
+checks.
+
+A call refused before that, with `no_root`, `invalid_input` or `outside_root`, loads no Specs.
 
 ### req.spec-mcp.no-partial-answer — Failures are whole
 
-A tool call whose Specs cannot be loaded or whose request Spec core rejects SHALL return a tool
-error carrying Spec core's code and no result.
+A tool call whose request is rejected, or whose Specs a tool other than `validate` cannot load,
+SHALL return a tool error carrying the failure's code and no result.
+
+The failure's code is one of the server's own codes or Spec core's, as the
+[contracts](contracts.md#session) list them. `validate` reports Specs it cannot load the way the
+`spec-validation` command does: as an envelope with status `invalid` whose error finding describes
+the load failure.
 
 ## Safety
 

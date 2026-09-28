@@ -25,7 +25,9 @@ The code_review Operation SHALL let its reviewer read the log of every check the
 
 ### req.code-review.read-only — The reviewer cannot change or run anything
 
-The reviewer's tool list SHALL contain only tools that read files.
+The reviewer's tool list SHALL contain only tools that read files, besides the
+[worker backend](../../../glossary.json#concept.worker-backend)'s tool for returning the
+[worker result](../../../glossary.json#concept.worker-result).
 
 ### req.code-review.no-edits — The worktree is left unchanged
 

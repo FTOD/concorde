@@ -45,7 +45,7 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 
 - GIVEN a registry with one root Module and a report file whose owner is `null`
 - WHEN the main agent runs `report --file` with that file
-- THEN the Issue is recorded with owner `null` and the root Module as reporting Module
+- THEN the Issue is recorded with the report's `owner_target_id` still `null` and the root Module as its reporting Module, and so as the Issue's owner
 - AND the store check passes
 
 ### scenario.issues.command-append — Append a later observation from a file
@@ -79,7 +79,7 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 
 - GIVEN a missing argument, an unknown reason, a `duplicate` without `--duplicate-of`, a blank note, a repeated evidence item, an unreadable report file or a directory that is not a Concorde project
 - WHEN the command runs
-- THEN it prints an error code and a message naming the argument, file or directory
+- THEN it prints the error code `usage` for an argument, `unreadable_file` for the report file or `not_a_project` for the directory, and a message naming it
 - AND exits with status 2
 - BUT writes nothing
 
@@ -96,7 +96,7 @@ This illustrates [command attribution](requirements.md#req.issues.main-agent-act
 ### scenario.issues.store-report — Save a report once
 
 - GIVEN caller-supplied provenance and a classified report
-- WHEN the store saves it and then saves the identical report again
+- WHEN the store saves it and then saves the identical report again with the same provenance, so the same `invocation_id`
 - THEN exactly one Issue with one report exists
 - AND both calls return the same receipt
 - AND the receipt resolves to exactly that report
@@ -156,7 +156,7 @@ This illustrates [status derived from history](requirements.md#req.issues.status
 
 ### scenario.issues.store-disposition-stale — A disposition over a changed record is refused
 
-- GIVEN an Issue, or the Issue it would duplicate, whose record changed after its revision was read
+- GIVEN an Issue whose record changed after its revision was read, or the Issue a duplicate disposition would name, whose record changed after the revision the disposition gives for it as `duplicate_revision`
 - WHEN a disposition names the old revision
 - THEN the store refuses with `stale_issue`
 - BUT the record is unchanged

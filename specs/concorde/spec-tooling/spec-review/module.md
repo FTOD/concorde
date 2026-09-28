@@ -3,15 +3,16 @@
 ## Purpose
 
 Spec review judges whether the Specs of one or more Modules are good enough for their reader, which
-no deterministic check can establish. It is the `spec_review` Operation: a headless `review-spec`
-worker per named [Module](../../glossary.json#concept.module) reads its
+no deterministic check can establish. It provides two Operations. In a Spec review, one run of the
+`spec_review` Operation, a headless `review-spec` worker per named
+[Module](../../glossary.json#concept.module) reads its
 [Spec context](../../glossary.json#concept.spec-context), works through one checklist, and returns
-every blocking finding in one pass with a verdict the Operation derives. It never edits a
-[Spec](../../glossary.json#concept.spec), repairs a finding or calls another Operation, and does not
-repeat structural validation (Spec core) or judge code (Code review). Its second Operation,
-`spec_panel`, has several reviewers review each Module independently and a chair audit and merge
+every blocking finding in one pass with a verdict the Operation derives. In a Spec panel, one run
+of `spec_panel`, several reviewers review each Module independently and a chair audits and merges
 their reviews into one report, so that one reviewer's blind spots and false alarms do not decide
-what reaches the developer.
+what reaches the developer. Neither Operation edits a [Spec](../../glossary.json#concept.spec),
+repairs a finding or calls another Operation, and neither repeats structural validation (Spec
+core) or judges code (Code review).
 
 ## Usage
 
@@ -23,10 +24,12 @@ The [main agent](../../glossary.json#concept.main-agent) runs a **Spec review** 
 to workers:
 
 ```text
-concorde run spec_review --modules module.checkout,module.inventory [--check-findings]
+concorde run spec_review --modules module.checkout,module.inventory [--check-findings] [--force]
 ```
 
-It runs in the background and writes a result when it ends. In a task worktree it reviews the
+The command waits for the result; with `--detach` it is a
+[detached run](../../glossary.json#concept.detached-run) that prints its run identity at once and
+writes the result when it ends. In a task worktree it reviews the
 [workspace](../../glossary.json#concept.workspace) whose binding lies there, and `--modules`
 defaults to the binding's Modules; each named Module is reviewed on its own from that worktree's
 Specs, so what gets judged is the branch's own change, committed or not. In a worktree without a
@@ -39,7 +42,8 @@ Status is `ok` whenever every Module could be reviewed, `blocked`/`failed` only 
 
 Each **[review finding](../../glossary.json#concept.review-finding)** names the Module, document and
 anchor or line concerned, one checklist dimension (`readability`, `obligations`, `design`, `views`,
-`terminology`), a severity, the problem, its evidence and a suggested repair. It is `blocking` when
+`terminology`, or `context` for a document or promise the reviewer needed but was not given), a
+severity, the problem, its evidence and a suggested repair. It is `blocking` when
 a reader or bound worker could not rely on the Spec as written, `advisory` otherwise. A reviewer
 reports every blocking finding it can establish in one pass, so one round of changes can address
 them all. `--check-findings` has a second worker mark each finding `confirmed` or `disputed` with a
@@ -50,10 +54,12 @@ reason; a Module without findings needs no checker.
 The **[review verdict](../../glossary.json#concept.review-verdict)** is `accepted` when no blocking
 finding stands in any reviewed Module's [review memory](../../glossary.json#concept.review-memory),
 `changes_required` when one does, whether this review reported it or an earlier one did and it still
-stands, and `incomplete` when a Module could not be reviewed — failed structural validation, a
-blocked/failed worker, or an audit-found change. It carries every reviewed Module's context identity
-and stops applying once any of those Specs changes. The main agent decides what to act on, logs that
-decision, and reruns `specify` for changes; Spec review itself changes no Spec.
+stands, and `incomplete` when a Module could not be reviewed — for example failed structural
+validation, a blocked/failed worker or an audit-found change; the
+[step table](operation.md#host-sequence) gives every cause. It carries every reviewed Module's
+context identity and stops applying once any of those Specs changes. The main agent decides what
+to act on, logs that decision, and reruns `specify` for changes; Spec review itself changes no
+Spec.
 
 <a id="concept.review-memory"></a>
 
@@ -71,7 +77,7 @@ since a model sees the same Specs a little differently each time: the same probl
 is the earlier finding. A completed review also records the context identity of the Specs it judged;
 while a Module's context identity is still that one, a review launches no reviewer and the memory
 decides its outcome, unless `--force` asks for a new look. An unbound review reads the memory and
-writes nothing, so only a review inside a workspace, whose
+never writes it, so only a review inside a workspace, whose
 [delivery commits](../../glossary.json#concept.delivery-commit) the memory, changes the shared
 history.
 
@@ -166,11 +172,12 @@ judges findings; after its second attempt the Module is `incomplete` with the re
 result. A reviewer that does not finish stops the panel before the chair, so that a report never
 silently rests on fewer reviews than asked for.
 
-A reviewer cannot widen its own view: lacking a needed document, it reports a `context` finding
-naming it, and the main agent decides whether the Spec lacks a relation or the review needs another
-Module. In this version, reviewers read Specs directly under their grant, not the Spec MCP server,
-on one checklist covering all dimensions; splitting by dimension and server queries are future
-work.
+A reviewer cannot widen its own view: lacking a needed document of another Module, it reports a
+`context` finding naming it and goes on, and the main agent decides whether the Spec lacks a
+relation or the review needs another Module. A reviewer ends `blocked` only when it cannot review
+at all, for example because the reviewed Module's own documents cannot be read. In this version,
+reviewers read Specs directly under their grant, not the Spec MCP server, on one checklist covering
+all dimensions; splitting by dimension and server queries are future work.
 
 ### Around it
 
@@ -218,7 +225,8 @@ result's [error chain](../../glossary.json#concept.error-chain) unchanged.
 <a id="uses-operations"></a>
 
 **Operations** defines the [Operation](../../glossary.json#concept.operation) concept and lists
-`spec_review` and `spec_panel` in its catalog as Operations that write nothing and may run unbound,
+`spec_review` and `spec_panel` in its catalog as Operations whose workers write nothing and that
+may run unbound,
 with their [worker ids](../../glossary.json#concept.worker-id). Spec review relies on that entry to
 be dispatched to with its arguments.
 

@@ -5,8 +5,9 @@
 Issues keeps a durable record of concrete problems found while working on a project, outliving the
 conversation, worker or task that found it: Issue records under `.concorde/issues/`, the store that
 alone writes them, dispositions closing or reopening one, and the bookkeeping command the main agent
-records, closes, reopens, lists, shows and checks them with. Recording never stops anyone, starts a
-repair or grants read/write access; Issues neither solves problems nor decides who may close one —
+records, closes, reopens, lists, shows and checks them with. Recording never stops the reporter,
+starts a repair or changes the outcome of a task, and it grants nobody read/write access; Issues
+neither solves problems nor decides who may close one —
 the [main agent](../glossary.json#concept.main-agent) solves an
 [Issue](../glossary.json#concept.issue) with ordinary Operations on its
 [Module](../glossary.json#concept.module), and whoever disposes it answers for the evidence cited.
@@ -58,8 +59,15 @@ reply gives a [receipt](interface.md#contract.issues.receipt) naming that immuta
 record's revision. Keep it as the reference for follow-up. `report --check` checks the report
 without recording it, useful before handing a defect report to another project.
 
-To append to an existing open Issue, put its `issue_id` and current `expected_revision` in the
-new report. Omit both to create an Issue. Running a creation twice creates two Issues even when the
+What `list` and `show` found decides what the report carries:
+
+- no matching Issue: omit `issue_id` and `expected_revision`, and the report creates an Issue;
+- an open match: put its `issue_id`, and the revision `show` printed as `expected_revision`, and
+  the report is appended to it;
+- a closed match: `reopen` it first, then append as to an open match, with the revision `reopen`
+  printed.
+
+Running a creation twice creates two Issues even when the
 file and report key are unchanged: each command invocation has new provenance. The store's retry
 handling applies only when a caller reuses the same invocation and report key, as the
 [interface](interface.md#store-operations) explains; it does not deduplicate separate CLI runs.
@@ -131,20 +139,31 @@ The store never commits, merges or transfers records itself.
 
 Solving an Issue is ordinary work: read it, open a task for its current owning Module, run the
 Operations that fix it, and close it on the task branch with the fix's evidence before delivery.
-Merge the closure with the fix. A typical deferred repair is:
+Merge the closure with the fix. In a typical deferred repair, the two merges are the points where
+the primary branch sees the open Issue and later its closure:
 
 ```d2 illustrative
-shape: sequence_diagram
-main: Main agent
-a: Task A worktree
-primary: Primary branch
-b: Repair task B worktree
-a -> main: worker or Operation reports an unfixed problem
-main -> a: inspect Issues; record report with task A; deliver
-main -> primary: merge A, including the open Issue
-main -> b: open B for the Issue's owner; fix and verify
-main -> b: close Issue with evidence; deliver
-main -> primary: merge B, including fix and closure
+direction: right
+a: Task A {
+  found: "a worker or Operation reports a problem A will not fix"
+  record: "inspect Issues, record a report with task A"
+  deliver: deliver A
+  found -> record -> deliver
+}
+primary: Primary branch {
+  merge_a: "merge A: the Issue is open here"
+  merge_b: "merge B: the fix and the closure arrive together"
+}
+b: Repair task B {
+  open: "open B for the Issue's owner"
+  fix: fix and verify
+  close: "close the Issue with the fix's evidence"
+  deliver: deliver B
+  open -> fix -> close -> deliver
+}
+a.deliver -> primary.merge_a
+primary.merge_a -> b.open
+b.deliver -> primary.merge_b
 ```
 
 A task that ends without merging has not published its Issue changes to the primary branch. Closing
@@ -193,19 +212,28 @@ issues -> core
 session -> issues
 ```
 
-Nothing outside the store writes a record; the bookkeeping command is how the main agent adds
-reports and dispositions, usually closing an Issue on the task branch that fixed it. Main session
-declares `session -> issues` above; its [guidance](../coordination/main-session/module.md) says when
-to record, solve and close Issues. Issues relies on nobody but Spec core.
+No program but the store writes a record; the one hand edit Issues expects is the main agent's
+resolution of a Git merge conflict in a record, described under
+[branch-local records](#branch-local-records-and-repair). The bookkeeping command is how the main
+agent adds reports and dispositions, usually closing an Issue on the task branch that fixed it. Main
+session declares `session -> issues` above; its
+[guidance](../coordination/main-session/module.md) says when to record, solve and close Issues.
+
+Of the Modules, Issues relies only on Spec core. It also follows the Framework's
+[error contract](../contracts.md#contract.concorde.error): the command checks a report's
+`error_chain` against it and prints every refusal as one link of it. For provenance the command
+asks Git for the project's `HEAD` and records `null` when Git fails, so a project outside Git can
+still record Issues; nothing else of Issues runs Git.
 
 <a id="uses-spec"></a>
 
 **Spec core** provides the [typed-value](../glossary.json#concept.typed-value)
 machinery Issues' shapes register with, the
 [file transaction](../glossary.json#concept.file-transaction) a digest-bound
-record publishes through, and the [registry](../glossary.json#concept.registry)
-the command reads for which Modules exist. A stale transaction is refused, reported `stale_issue`,
-writing nothing.
+record publishes through, the [registry](../glossary.json#concept.registry)
+the command reads for which Modules exist, and the
+[error type](../spec-tooling/spec/errors.md) the store's `IssueError` extends with its own codes. A
+stale transaction is refused, reported `stale_issue`, writing nothing.
 
 ### Inside
 

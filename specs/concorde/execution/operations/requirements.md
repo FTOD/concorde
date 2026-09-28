@@ -1,10 +1,13 @@
 # Operations requirements
 
 The Module-wide obligations of [Operations](module.md). What every run promises, whatever its
-definition, is in the [Execution requirements](../requirements.md); how an
+definition, is in the [Execution requirements](../requirements.md); the [scenarios](scenarios.md)
+rely in particular on
+[req.execution.claims-apart](../requirements.md#req.execution.claims-apart),
+[req.execution.error-when-not-ok](../requirements.md#req.execution.error-when-not-ok) and
+[req.execution.reasons](../requirements.md#req.execution.reasons). How an
 [Operation](../../glossary.json#concept.operation) runs its workers is in
-[How an Operation runs its workers](workers.md), and the [scenarios](scenarios.md) show the
-obligations at work.
+[How an Operation runs its workers](workers.md), and the scenarios show the obligations at work.
 
 ## Workers
 
@@ -14,7 +17,7 @@ Every worker-backed step SHALL compute the grant of a bound run from the Specs o
 run works on, never from the primary worktree's, and the grant of an
 [unbound run](../../glossary.json#concept.unbound-run) from the Specs of the worktree it runs in.
 
-### req.operations.workers-through-harness — Workers are launched only through Workers
+### req.operations.workers-through-workers — Workers are launched only through Workers
 
 Every Operation SHALL launch every worker through Workers with a grant frozen before the launch.
 

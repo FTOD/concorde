@@ -41,10 +41,10 @@ inside the primary worktree by default (or `--path <dir>`), copies the primary w
 there is one, binds the worktree as a workspace, writes the record and log, and prints the record.
 Git ignores that configuration, so the copy is the task's own: the task's workers keep the models
 chosen when it opened, whatever the primary worktree chooses later, until someone edits the task's
-JSON file directly or saves changes with `concorde configure-workers` in the task worktree.
-Read-only `--show` and `--check` never change it. A worktree path inside the primary worktree must
-be ignored by Git there, or the open is refused with `worktree_not_ignored`; the installer adds
-`.claude/worktrees/` to `.gitignore`.
+JSON file directly or saves changes with `concorde configure-workers` in the task worktree;
+`concorde configure-workers --show` and `--check` only read it. A worktree path inside the primary
+worktree must be ignored by Git there, or the open is refused with `worktree_not_ignored`; the
+installer adds `.claude/worktrees/` to `.gitignore`.
 
 **The binding.** Binding the worktree is what makes it a place where Execution can work. Tasks
 writes its [workspace binding](../../glossary.json#concept.workspace-binding),
@@ -95,9 +95,10 @@ name, Modules and status, `running` while its runner lives and `lost` when the r
 a result), its [delivery commits](../../glossary.json#concept.delivery-commit)
 read from the task branch, who holds its workspace lock now, and the path of the decision log.
 
-Since every Module was registered when the task opened, one the task worktree no longer registers
-is exactly one the task branch removed or renamed; Tasks tells the current Modules from the removed
-ones by reading the task worktree's registry each time it is asked.
+The record's Modules are not kept in step with the task worktree's registry: a Module the task
+branch removes or renames stays in the record and in the binding, and Execution leaves each bound
+Module the worktree does not register out of a run, with evidence saying so. Tasks reads a registry
+only to open a task.
 
 <a id="concept.decision-log"></a>
 
@@ -198,8 +199,9 @@ validating and delivering again, never in the primary worktree. After the merge,
 checks in the primary worktree: `concorde spec-validation` of the merged checkout by default, or
 exactly the `--check` commands given, such as a project that must build first. A failed check, or
 checks that leave uncommitted paths, returns the primary branch with `git reset --keep` to the
-commit it had and refuses with `check_failed`, naming the check, its exit status and its log,
-`.concorde/tasks/<task-id>.merge.log`. When everything passed, Tasks closes the task as merged and
+commit it had and refuses with `check_failed`, naming the check, its exit status, its log,
+`.concorde/tasks/<task-id>.merge.log`, and any paths the checks created, which the reset leaves in
+the primary worktree. When everything passed, Tasks closes the task as merged and
 prints the record with the commits before and after, each check, how long it waited and its
 warnings, such as a decision log nobody wrote in.
 
@@ -216,7 +218,8 @@ worktree (`not_primary` otherwise); `concorde task session` is dispatched to
 starts is recorded here through the record updates the [contracts](contracts.md#record-updates)
 list; a [worker](../../glossary.json#concept.worker) cannot run them, having no Git access.
 Every refusal names its code (`task_exists`, `unknown_module`, `invalid_transition`, `not_merged`,
-...), what was refused and why, and changes nothing ([contracts](contracts.md)).
+...), what was refused and why, and changes nothing apart from the few refusals that say what they
+left behind ([requirements](requirements.md#req.tasks.refusal-inert), [contracts](contracts.md)).
 
 ## Design
 
@@ -343,8 +346,9 @@ every run of the workspace in the [run store](../../glossary.json#concept.run-st
 directory it names, under the workspace's name, and holding the
 [workspace lock](../../glossary.json#concept.workspace-lock) for every bound run. It reads a run's
 [result](../../glossary.json#concept.run-result) for its status, Modules and error chain, and the
-run's [progress file](../../glossary.json#concept.progress-file) while it runs; it never writes
-either. A run that is neither finished nor alive is shown as `lost` rather than trusted as running.
+run's [run progress file](../../glossary.json#concept.run-progress-file) while it runs, whose
+runner liveness tells a `running` run from a `lost` one; it never writes either. A run that is
+neither finished nor alive is shown as `lost` rather than trusted as running.
 
 <a id="uses-delivery"></a>
 
@@ -370,6 +374,5 @@ may be merged or closed as merged. A task branch with no delivery commit is refu
   record never names a Module that doesn't exist at open; and its
   [file transactions](../../glossary.json#concept.file-transaction), so every
   record write is complete or absent, bound to the bytes it replaces. Tasks reads the primary
-  worktree's registry to open a task (its worktree doesn't exist yet) and the task worktree's to
-  tell current Modules from removed ones. If the Specs cannot be loaded, the command is refused and
-  nothing is written.
+  worktree's registry to open a task, since its worktree doesn't exist yet. If the Specs cannot be
+  loaded, the command is refused and nothing is written.

@@ -10,9 +10,11 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 ### scenario.operations.worker-ok — A worker-backed run succeeds
 
 - GIVEN a bound workspace `severity` of `module.issues`
-- WHEN the task level runs `concorde run implement` in it
+- AND a worker that ends `ok` after changing only files its grant makes writable
+- AND a change on which every [configured check](../../glossary.json#concept.configured-check) of the bound Modules passes
+- WHEN the task level runs `concorde run implement --goal "<goal>"` in it
 - THEN the run computes the implement grant from the workspace's Specs and launches one worker through Workers
-- AND the audit is clean and every [configured check](../../glossary.json#concept.configured-check) passes
+- AND the audit is clean and every configured check passes
 - AND the result has status `ok`, the worker's result in `worker` and the grant, audit and checks in `host_evidence`
 - AND the result is printed and saved in the [run store](../../glossary.json#concept.run-store) of the binding's records directory
 - AND the command exits with status 0
@@ -20,7 +22,7 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 ### scenario.operations.worker-model — A worker runs with the worktree's model for its id
 
 - GIVEN a task worktree whose [worker model configuration](../../glossary.json#concept.worker-model-configuration) chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker`
-- WHEN the task level runs `concorde run implement` in the task worktree
+- WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree
 - THEN the run launches `claude -p` with the worker's model and the default's level as `--effort`
 - AND the [run record](../../glossary.json#concept.run-record) and the result's `worker-model` host evidence name the backend, the [worker id](../../glossary.json#concept.worker-id), the model and the level
 - BUT a change made afterwards to the primary worktree's configuration does not change what the task's next worker runs on
@@ -34,14 +36,16 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 
 ### scenario.operations.worker-model-unavailable — A run whose worker backend or model cannot be settled fails before launch
 
-- GIVEN a task whose worktree's worker model configuration is not valid JSON, or chooses nothing on a machine without pi
-- WHEN the task level runs `concorde run implement` in the task worktree and the run reaches the worker step
+- GIVEN a task whose worktree's worker model configuration either is not valid JSON or chooses nothing for `implement`'s worker on a machine without pi
+- WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree and the run reaches the worker step
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
-- AND its cause is the `component` link of Workers' model configuration with `config_invalid` or `backend_missing`, naming the file, or that the worker runs on pi as Concorde's default worker backend, the command looked for and how to choose Claude Code for it
+- AND when the file is not valid JSON, its cause is the `component` link of Workers' model configuration with `config_invalid`, naming the file
+- AND when pi is missing, its cause is that link with `backend_missing`, saying that the worker runs on pi as Concorde's default worker backend, naming the command looked for and how to choose Claude Code for it
 
 ### scenario.operations.worker-blocked — A blocked worker escalates
 
 - GIVEN a worker that returns status `blocked` because the [Spec](../../glossary.json#concept.spec) lacks a promise
+- AND changed no file outside its grant's writable paths
 - WHEN its Operation ends
 - THEN the result has status `blocked`
 - AND its error is a chain of the Operation's link, Workers' link and the worker's own link with its detail, options and recommendation unchanged

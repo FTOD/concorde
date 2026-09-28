@@ -3,11 +3,13 @@
 ## Purpose
 
 Distribution turns the Concorde checkout into something a developer can run and install: describes
-the package, builds the generated files, routes each `concorde` command to its owning
-[Module](../glossary.json#concept.module), writes the Protocol copy a project carries, and installs
-Concorde with the main-session guidance, for Claude Code and, on request, for pi. It does not decide
-what a command does, what the [main agent](../glossary.json#concept.main-agent) is told, or a
-project's Specs and configuration — the installer never writes Specs.
+the [package](../glossary.json#concept.package), builds the generated files, routes each `concorde`
+command to its owning [Module](../glossary.json#concept.module), writes the
+[Protocol copy](../glossary.json#concept.protocol-copy) a project carries, and installs Concorde
+with the [main-session guidance](../glossary.json#concept.main-session-guidance), for Claude Code
+and, on request, for pi. It does not decide what a command does, what the
+[main agent](../glossary.json#concept.main-agent) is told, or a project's Specs and configuration —
+the [installer](../glossary.json#concept.installer) never writes Specs.
 
 ## Usage
 
@@ -27,9 +29,10 @@ text `{name}` so that a prompt can show a placeholder such as a check's `{python
 `generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step adapter,
 `generated/workflows/pi/<name>.js` with the pi step adapter, and the pi command-runner agents
 `generated/workflows/pi/agents/concorde-step.md` and `concorde-report.md`, and writes
-`generated/build-manifest.json` with every source's and output's digest. Every file directly in
-`prompts/workers/`, `prompts/main-session/` and `prompts/dogfooding/` is a prompt root of its own,
-rendered to the same path under `generated/`; `build --check` only reports what is stale, writing
+`generated/build-manifest.json` with every source's and output's digest. The prompt roots are the
+Protocol's `prompts/protocol/principles.md` and `prompts/protocol/kinds/module.md` and every file
+directly in `prompts/workers/`, `prompts/main-session/` and `prompts/dogfooding/`, each rendered
+to the same path under `generated/`; `build --check` only reports what is stale, writing
 nothing ([requirements](requirements.md#req.distribution.build-check-read-only)). `generated/` is
 Git-ignored, so a checkout always rebuilds. `protocol-manifest --write --bind-project` accepts a
 Protocol change's fresh digests, binds the configuration and refreshes this checkout's own copy.
@@ -57,22 +60,26 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
+| `update [--from <checkout>] [--python <interpreter>] [--pi]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
 
 <a id="concept.distribution-command"></a>
 
 A command is named after the part of Concorde that owns it: `task` gives the coordination
 commands, `spec-validation`, `registry`, `docsite`, `grant`, `spec-mcp` and `init` the Spec tooling
-commands, `issues` the Issues commands, and `build` and `protocol-manifest` the **distribution
-commands**, the only ones Distribution owns itself. Of Execution's, `task-validation`, `delivery`
-and `scaffold` are the [execution commands](../glossary.json#concept.execution-command),
-runs without a worker; `run` starts an Operation, `workflow` a workflow step and
-`configure-workers` changes the worker configuration.
+commands, `issues` the Issues commands, and `build`, `protocol-manifest` and `update` the
+**[distribution commands](../glossary.json#concept.distribution-command)**, the only ones
+Distribution owns itself. Of Execution's, `task-validation`, `delivery` and `scaffold` are the
+[execution commands](../glossary.json#concept.execution-command), runs without a worker; `run`
+starts an Operation, `workflow` a workflow step and `configure-workers` changes the worker
+configuration.
 
 Every command but `spec-mcp`, `task`, `run`, the execution commands, `workflow`,
-`configure-workers` and `issues` prints exactly one JSON envelope and exits with its status, even
-when refused ([requirements](requirements.md#req.distribution.one-envelope)); those route to their
-owners, which define their own output and exit codes. Worker configuration defaults to a human
-terminal editor; only its explicit read-only JSON options print a configuration envelope.
+`configure-workers`, `issues` and `update` prints exactly one JSON envelope and exits with its
+status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)); those
+route to their owners, which define their own output and exit codes, except `update`, which prints
+the installer's result or its
+[error link](requirements.md#req.distribution.installer-error-links). Worker configuration defaults
+to a human terminal editor; only its explicit read-only JSON options print a configuration envelope.
 
 The standalone Workers entry point `scripts/available_models.py --backend pi|claude [--json]`
 is shipped under `.concorde/framework/scripts/available_models.py` with the runtime. It resolves
@@ -134,7 +141,7 @@ every other setting untouched. The command runs the Framework copy of the worktr
 task worktree has none of its own, since Git ignores it, unless the task reinstalled Concorde there,
 so its command runs the primary worktree's copy, found through Git's common directory.
 
-<a id="concept.distribution.update"></a>
+<a id="concept.distribution.update"></a><a id="concept.concorde-unvalidated"></a>
 
 **Updating an installed Concorde.** `concorde update` runs, in update mode, the installer of the
 Concorde checkout the receipt names as its `source` (or `--from <checkout>`): it installs as the
@@ -146,7 +153,8 @@ interpreter unless `--python` names another, and refusing like an install while 
 project; binds the new Protocol copy in the configuration itself, the one write of the project
 configuration an installer makes; and marks the project **Concorde unvalidated** by writing
 `.concorde/update.json`, which Git ignores, with the versions, installed commits and Protocol
-bindings before and after; the findings below name the commits too, since between two commits of a
+bindings before and after; the validation findings `CONCORDE-UPDATE-001` and `CONCORDE-UPDATE-002`
+described next name the commits too, since between two commits of a
 [Concorde repository](../glossary.json#concept.concorde-repository) the version seldom changes.
 While that state is there, `concorde spec-validation` in the primary worktree reports
 `CONCORDE-UPDATE-001` as an error, which also stops a `task merge`; the first validation that passes
@@ -155,14 +163,14 @@ stops validating because of its own changes is never marked by it. The result li
 and, when the Protocol copy changed, asks for the primary branch to be merged into each, since their
 worktrees keep the previous copy until then.
 
-Workers run on pi unless the
+<a id="concept.pi-runtime"></a>Workers run on pi unless the
 [worker model configuration](../glossary.json#concept.worker-model-configuration) chooses Claude
 Code for them, whatever program the main session is, so every install places the **pi runtime** —
 the sandbox engine `@anthropic-ai/sandbox-runtime` that pi workers run their commands in — under
 `.concorde/tools/pi-runtime/` by copying the package's
 `src/concorde/distribution/pi_runtime/package.json` and `package-lock.json` there and running
-`npm ci --ignore-scripts`, which installs exactly the locked versions after checking each package's
-integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime)). A
+`npm ci --ignore-scripts`, which installs exactly the locked versions after checking each npm
+package's integrity hash ([requirements](requirements.md#req.distribution.installer-locked-pi-runtime)). A
 later install with the same lockfile keeps the runtime it placed. Without npm the install refuses
 before writing anything else. `--without-pi-runtime` leaves the runtime out, for a machine where
 every worker runs on Claude Code; the receipt records that choice (`pi_runtime`) so that an update
@@ -181,18 +189,21 @@ loads the project's extension and skill only once the developer trusts the proje
 interactive start asks for and a headless `pi -p` or RPC run grants with `--approve`.
 
 Every refusal of the installer and of `concorde update` prints `{"error": <link>}` and exits with
-status 1: one link of the Framework's [error chain](../glossary.json#concept.error-chain),
+status 1: one link of the Framework's [error chain](../glossary.json#concept.error-chain), in the
+shape of its [error contract](../contracts.md#contract.concorde.error),
 whose actor is `Installer (install-concorde)` or `concorde update`, whose code is the refusal's,
 whose detail names what is wrong and where, and whose reason is `input` when only a different
 project, Concorde checkout or argument corrects it and `environment` otherwise
 ([requirements](requirements.md#req.distribution.installer-error-links)). The caller can therefore
 forward it as the cause of its own link like any other refusal.
 
-It never writes Specs, the registry or the project configuration
+The installer never writes Specs or the registry, and a plain install never writes the project
+configuration; only update mode rewrites the configuration's Protocol binding, as described above
 ([requirements](requirements.md#req.distribution.installer-no-specs)). Afterwards,
 `concorde init --propose --name <name>` prints Spec core's initialization proposal, and
 `concorde init --apply --proposal <file>` applies exactly the proposal it printed, from a file
-outside the project; the developer accepts a new Protocol copy later by updating the binding.
+outside the project. After a plain install that brought a new Protocol copy, the developer accepts
+it by updating the binding; `concorde update` does that itself.
 
 ## Design
 
@@ -267,15 +278,23 @@ is never shipped with renders made before it.
 
 The **build renderer** is a pure function of the source tree followed by a guarded write: includes
 must be safe, acyclic and audience-consistent, and an output is written only inside the build-owned
-`generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)). A
+`generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)).
+Every prompt declares in its front matter an audience, `worker`, `ambient` or `shared`, and
+includes another with a line `@<path>.md [KEY=value ...]` starting at column one, whose values fill
+the included prompt's `{KEY}` placeholders. An include is safe when its target is a Markdown file at
+a repository-relative path without a symbolic link, never a Spec document, and a Protocol prompt
+includes and is included only by Protocol prompts. It is audience-consistent when the included
+prompt has its root's audience or `shared`, so a worker's instructions never pull in text meant for
+another audience. Within one root a prompt is reached at most once. A
 leftover is removed only when its bytes still match the previous manifest; an edited leftover, a
 link or an unknown file stops the build first.
 
 <a id="realization.distribution.command"></a>
 
 The **command entry points** are thin: they parse the command line, call the owning Module's
-function, and wrap the outcome in Spec core's shared envelope, so a command's meaning changes only
-in its owner.
+function, and, for the distribution and Spec tooling commands other than `spec-mcp` and `update`,
+wrap the outcome in Spec core's shared envelope, so a command's meaning changes only in its owner.
+The commands routed to other owners keep their owners' output unchanged.
 
 <a id="realization.distribution.protocol-copy-writer"></a>
 
@@ -290,6 +309,15 @@ The **installer program** reuses the writer and the build's freshness check, and
 rendered main-session guidance. Everything that can refuse an install, the build's freshness,
 Dogfooding's develop source check, the running Concorde and the pinned downloads, is decided before
 the first write, so a refused install leaves the project as it was.
+
+In update mode the installer takes the choices to keep from the previous receipt and installs as
+before. It then rewrites the configuration's Protocol binding itself, since the project would
+otherwise be bound to a Protocol copy it no longer carries, and writes the Git-ignored mark
+`.concorde/update.json`. The mark holds because Distribution's own `spec-validation` entry point
+adds `CONCORDE-UPDATE-001` to Spec core's result while the mark is present, and removes the mark
+only on a result that is otherwise a success; a `task merge`, whose default check is that
+validation in the primary worktree, therefore stops until the project validates with the new
+Concorde ([requirements](requirements.md#req.distribution.update-unvalidated)).
 
 How this Module's realizations call one another:
 

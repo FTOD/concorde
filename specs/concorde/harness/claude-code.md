@@ -4,10 +4,11 @@ The exact files the Harness generates to apply a harness to a Claude Code agent:
 [worker settings](../glossary.json#concept.worker-settings) with their
 [deny rules](../glossary.json#concept.deny-rules), [write hook](../glossary.json#concept.write-hook)
 and Bash sandbox, the tool sets per [task type](../glossary.json#concept.task-type), and the
-[task-session](../glossary.json#concept.task-session) settings. The [entry](module.md) explains why
-a harness is applied this way; the [pi mechanics](pi.md) state what the pi backend generates
-instead, and [the run mechanics](../execution/workers/launch.md) of Workers where these files are
-placed in a run.
+[task-session](../glossary.json#concept.task-session) write hook, with the shape of the settings
+that Task sessions assembles around it. The [entry](module.md) explains why a harness is applied
+this way; the [pi mechanics](pi.md) state what the pi backend generates instead, and
+[the run mechanics](../execution/workers/launch.md) of Workers where these files are placed in a
+run.
 
 ## Worker settings
 
@@ -58,13 +59,17 @@ directories. They are generated from the grant and the file tree:
 
 The home rule hides other projects, other task worktrees, the primary worktree's `.git` and other
 runs, and `~/.claude`. Paths below a runtime path are left alone. Glob and Grep are governed by the
-`Read` rules. A file created after the rules were generated has no rule of its own; it is still
-covered by a directory rule or by the write hook.
+`Read` rules. A file created after the rules were generated has no rule of its own: the write hook
+still refuses to change it unless it is `rw`, and a directory rule hides it when its directory has
+no `ro` or `rw` path below it, but otherwise the file tools can read it. The worker cannot create
+such a file itself, since it writes only `rw` paths.
 
 ### Write hook
 
-The hook receives Claude Code's PreToolUse JSON on standard input and resolves
-`tool_input.file_path` to an absolute path without following a final symbolic link.
+The hook is `write_hook.py` copied into the run's `control/` with the task worktree and the grant's
+`rw`, `ro` and `names` lists embedded, generated from the same grant as the deny rules. It receives
+Claude Code's PreToolUse JSON on standard input and resolves `tool_input.file_path` to an absolute
+path without following a final symbolic link.
 
 | Target | Decision | Reason given to the worker |
 | --- | --- | --- |
@@ -97,7 +102,7 @@ whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing
 ## Task-session settings
 
 A Claude Code task session's settings, `.concorde/tasks/<task>.session/settings.json`, hold the
-write hook and the Bash sandbox of its
+task-session write hook and the Bash sandbox of its
 [session boundary](../glossary.json#concept.session-boundary):
 
 - a PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit, `session_hook.py` copied beside the

@@ -12,7 +12,7 @@ Concrete situations that show the [requirements](requirements.md) at work. The
 - WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `specify` for a [Module](../../../glossary.json#concept.module) with an intent the worker can carry out
 - THEN the worker edits only documents that Module owns
 - AND the [Operation](../../../glossary.json#concept.operation) regenerates the registry mirror and validates the workspace
-- AND the result has status `ok` with the changed documents, the affected Modules and no new finding
+- AND the result has status `ok` with the changed documents, the affected Modules and an empty `validation.new_errors`
 
 ### scenario.specification.declare-pending — A new file is declared, not created
 
@@ -48,7 +48,8 @@ Concrete situations that show the [requirements](requirements.md) at work. The
 
 ### scenario.specification.new-document — A needed document is created and filled
 
-- GIVEN an intent whose precise obligations belong in a new implementation document of the bound Module
+- GIVEN an intent whose precise obligations belong in a new [Spec](../../../glossary.json#concept.spec) document of role `implementation` (such as a contracts or scenarios document) of the bound Module, whose entry is `specs/a/module.md`
+- AND no file exists at `specs/a/rules.md` or `specs/a/rules.md.json`
 - WHEN the worker ends `blocked` proposing `specs/a/rules.md` for that Module
 - THEN the Operation creates `specs/a/rules.md` and its metadata, empty and owned by the Module, and adds it to the Module's `owns` and the registry mirror
 - AND it launches a second worker whose brief names the created document, and that worker fills it
@@ -60,4 +61,4 @@ Concrete situations that show the [requirements](requirements.md) at work. The
 - GIVEN a specify run whose [write audit](../../../glossary.json#concept.write-audit) finds a changed implementation file
 - WHEN the Operation evaluates the audit
 - THEN the result has status `failed` with the changed path as host evidence
-- BUT the Operation runs no validation for the run
+- BUT the Operation runs no validation after the worker

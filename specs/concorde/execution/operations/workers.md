@@ -7,7 +7,7 @@ program and model, the
 and the error links that sequence adds. The runner's own steps, refusals and errors are in
 [How a run is executed](../runner.md).
 
-## Worker settings in the project configuration
+## Worker limits in the project configuration
 
 The optional `workers` object of `.concorde/config.json`, read from the workspace, sets the limits
 of every worker launch: `timeout_seconds` per round (default 1800), `max_turns` (default 200),
@@ -18,8 +18,8 @@ read besides the grant, relative to the workspace or absolute (default `.venv` a
 ## Worker backend and model
 
 No tracked project setting chooses the agent program or the model of a worker. Before each worker
-launch the step resolves, for the worker the provider names by its id — or its first worker — the
-[worker backend](../../glossary.json#concept.worker-backend), the model and the reasoning level
+launch the step resolves, for the worker the provider names by its id — or, when it names none, the
+first id its catalog entry lists — the [worker backend](../../glossary.json#concept.worker-backend), the model and the reasoning level
 from the run worktree's [worker model
 configuration](../../glossary.json#concept.worker-model-configuration); the backend is pi unless
 the configuration chooses Claude Code for that worker, its Operation or every worker.
@@ -36,35 +36,44 @@ with `worker_model_unavailable` before any worker starts.
 
 ## Standard worker sequence
 
-A worker-backed provider step hands Workers the [task type](../../glossary.json#concept.task-type),
-the Modules, the workspace, the records directory, the brief material and the result schema of its
-task type, whether [configured checks](../../glossary.json#concept.configured-check) run, and the
-number of [resume rounds](../../glossary.json#concept.resume-round) (default 3). Workers performs:
+The worker-backed provider step itself computes and freezes the grant and settles the worker's
+backend and model; Workers, which never computes a grant, performs the rest. The step hands Workers
+the frozen grant, the [task type](../../glossary.json#concept.task-type), the workspace, the records
+directory, the brief material, the schema of the provider's own output part, which Workers checks
+inside the fixed [worker result](../../glossary.json#concept.worker-result) schema, whether
+[configured checks](../../glossary.json#concept.configured-check) run, and the number of
+[resume rounds](../../glossary.json#concept.resume-round) (default 3).
 
-| # | Step | Stops the step when |
-| --- | --- | --- |
-| 1 | Compute the grant for the task type and Modules from the workspace's Specs through Spec core, lower every writable level to read when the provider withholds writes, and freeze it with its [context identity](../../glossary.json#concept.context-identity) | the Specs cannot be loaded or a [Module](../../glossary.json#concept.module) is unknown |
-| 2 | Pre-create the pending files that the grant makes writable | a pending file cannot be created |
-| 3 | Generate the [worker settings](../../glossary.json#concept.worker-settings), the tool list and the brief from the frozen grant | — |
-| 4 | Launch the worker in its own [run directory](../../glossary.json#concept.run-directory) of the [run store](../../glossary.json#concept.run-store) and wait for its [worker result](../../glossary.json#concept.worker-result) | launch error, timeout or a result that fails its schema |
-| 5 | Audit the workspace's changes against the grant | any write outside the grant's writable paths |
-| 6 | Run the bound Modules' configured checks outside the worker, when the step asks for checks | — |
-| 7 | While a check fails and rounds remain, resume the same worker with the failures and repeat steps 5 and 6 | the rounds are used up with a check still failing |
-| 8 | Write the [run record](../../glossary.json#concept.run-record) | — |
+| # | Step | Actor | Stops the step when |
+| --- | --- | --- | --- |
+| 1 | Compute the grant for the task type and Modules from the workspace's Specs through Spec core, lower every writable level to read when the provider withholds writes, and freeze it with its [context identity](../../glossary.json#concept.context-identity) | the step, Spec core | the Specs cannot be loaded or a [Module](../../glossary.json#concept.module) is unknown |
+| 2 | Resolve the worker's backend, model and level | the step | the configuration cannot be read or is not valid, or the backend is not installed |
+| 3 | Generate the [worker settings](../../glossary.json#concept.worker-settings), the tool list and the brief from the frozen grant, and pre-create the pending files the grant makes writable | Workers | a pending file cannot be created |
+| 4 | Launch the worker in its own [run directory](../../glossary.json#concept.run-directory) of the [run store](../../glossary.json#concept.run-store) and wait for its worker result | Workers | launch error, timeout or a result that fails its schema |
+| 5 | Audit the workspace's changes against the grant | Workers | any write outside the grant's writable paths |
+| 6 | When the step asks for checks and the worker ended `ok` with a clean audit, run the bound Modules' configured checks outside the worker | Workers | a worker result `blocked` or `failed`: the step ends with the worker's status, without checks or resume |
+| 7 | While rounds remain and a check fails, or the checks pass but the step's own validation after the round reports something to repair, resume the same worker with the failures and repeat steps 4 to 6 | Workers | the rounds are used up with a check still failing; a validation still reporting problems leaves the round's result for the step to judge |
+| 8 | Write the [run record](../../glossary.json#concept.run-record) | Workers | — |
 
-An [unbound run](../../glossary.json#concept.unbound-run) never reaches step 1 with a grant that
-would keep a writable path: the step refuses it first with `unbound_write`, whatever the provider
-asks. A `specify`, `implement` or `code-to-spec` launch of an unbound run is therefore refused
-unless its provider withholds every writable level, as a survey does.
+The stop column ends the productive work, not the record: a round that ran is audited even when it
+timed out or returned an invalid result, and Workers writes the run record for every worker run it
+was asked to start, including one refused before launch.
+
+An [unbound run](../../glossary.json#concept.unbound-run) whose provider asks for a worker of a
+task type that may change files — `specify`, `implement` or `code-to-spec` — without withholding
+every writable level is refused by the step with `unbound_write` before step 1, so no grant with a
+writable path is ever computed for it. The runner already refuses an unbound run of an Operation
+the catalog marks as not unbound; this check guards the Operations that may run unbound, such as a
+survey, which withholds every writable level of its `code-to-spec` grant.
 
 The step's outcome maps to the result status as follows; the first matching row wins.
 
 | Outcome | Status |
 | --- | --- |
 | Grant not computable, worker backend or model not settled, launch error, timeout, invalid worker result, audit violation | `failed` |
-| Checks still failing after the last round | `failed` |
 | Worker result status `failed` | `failed` |
 | Worker result status `blocked` | `blocked` |
+| Checks still failing after the last round | `failed` |
 | Worker result status `ok`, audit clean, every check passed | `ok`, unless a later provider step stops the run |
 
 A provider may withhold every writable level of a task type's grant, as the Protocol lets a harness
@@ -88,7 +97,7 @@ sequence adds these codes.
 | --- | --- | --- | --- |
 | Grant not computable | `grant_unavailable` | `scope` | Spec core's error |
 | An unbound run asked for a worker whose grant keeps a writable path | `unbound_write` | `scope` | none |
-| Worker backend or model configuration not settled | `worker_model_unavailable` | `input` | the `component` link of Workers' model configuration, with its code (`client_unknown`, `invalid_client`, `config_invalid` or `backend_missing`) and the file |
+| Worker backend or model configuration not settled | `worker_model_unavailable` | `input` | the `component` link of Workers' model configuration, with its code (`config_invalid` or `backend_missing`) and the file |
 | Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error |
 | Worker run ended with an audit violation | `audit_violation` | `permission` | the run record's error |
 | Worker run ended with checks still failing | `checks_failed` | `decision` | the run record's error |

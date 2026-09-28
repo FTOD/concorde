@@ -34,9 +34,9 @@ argument as `field`, the path or identity concerned), the reason, the remediatio
 | `boundary` | `modules`: nonempty array of [Module](../../glossary.json#concept.module) identities; `task_type`: one of the seven [task types](../../glossary.json#concept.task-type) | the boundary result below |
 | `modules` | none | `{"modules": [{"id", "title", "entry", "parent"}]}` in registry order; `parent` is `null` for a root |
 | `module` | `id`: a Module identity | `{"id", "title", "entry", "documents", "contains", "uses", "includes", "participates", "realizations", "checks"}`, where `realizations` lists `{"id", "title", "entries", "pending"}` and `checks` the [configured check](../../glossary.json#concept.configured-check) identities |
-| `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources", "terms"}`, with Spec core's source and term records for the Module, or for the scenario's owner |
+| `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources", "terms"}`, with Spec core's [source and term records](../spec/contracts.md#spec-context-records) for the Module, or for the scenario's owner |
 | `impact` | `paths`: nonempty array of paths | `{"paths": [{"path", "modules"}], "modules"}`: for a document member the Modules whose [Spec context](../../glossary.json#concept.spec-context) contains it, for the glossary the Modules that have terms, for any other path the Modules that bind it, and their union |
-| `validate` | optional `target`: a Module identity | the envelope of the `spec-validation` command, with `tool` `spec-validation` |
+| `validate` | optional `target`: a Module identity | the envelope of the `spec-validation` command ([validation result](../spec/contracts.md#validation-result)), with `tool` `spec-validation`; Specs that cannot be loaded, such as a `protocol_mismatch`, give status `invalid` with one error finding describing the failure and its record as `result.load_error`, not a tool error |
 
 `boundary` returns exactly the `context_identity` and `entries` of Spec core's grant for the
 server root, the given Modules and the task type. `context` computes its `context_identity` the

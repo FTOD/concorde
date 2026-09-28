@@ -6,13 +6,24 @@ situations.
 
 ## Reporting
 
-### req.issues.report-control — Reporting does not control execution
+### req.issues.report-control — Reporting does not stop the reporter
 
-Recording an [Issue report](../glossary.json#concept.issue-report) SHALL NOT stop the reporter,
-start a repair or change the outcome of the task in which the problem was found.
+Recording an [Issue report](../glossary.json#concept.issue-report) SHALL NOT stop the reporter.
 
 The [main agent](../glossary.json#concept.main-agent) can record several problems and still complete
-its task. Whether a problem stops the task is decided separately.
+its task.
+
+### req.issues.report-no-repair — Reporting does not start a repair
+
+Recording an Issue report SHALL NOT start a repair of the problem it describes.
+
+A repair is ordinary work the main agent starts later in a task of its own.
+
+### req.issues.report-no-outcome — Reporting does not change the task outcome
+
+Recording an Issue report SHALL NOT change the outcome of the task in which the problem was found.
+
+Whether a problem stops the task is decided separately.
 
 ### req.issues.caller-provenance — Provenance comes from the command
 
@@ -32,11 +43,15 @@ the main agent decides what to record after reading their results.
 
 ### req.issues.report-checked — A report names a registered owner and existing evidence
 
-The bookkeeping command SHALL refuse a report whose owner is not a registered
-[Module](../glossary.json#concept.module), whose evidence path does not exist in the project or, for
-a report with an origin, in the origin project, or whose
+The bookkeeping command SHALL refuse a report whose `owner_target_id` is neither `null` nor a
+registered [Module](../glossary.json#concept.module), whose evidence path does not exist in the
+project or, for a report with an origin, in the origin project, or whose
 [error chain](../glossary.json#concept.error-chain) is not an error of the Framework's error
 contract.
+
+A `null` owner is accepted: the report's reporting Module is then the registry's root Module, and
+the command refuses the report with `no_reporting_module` when the registry has no single root
+([provenance](interface.md#provenance)).
 
 ### req.issues.durable-receipt — A receipt means the report is on disk
 
@@ -46,9 +61,15 @@ holding the report is durably published.
 ### req.issues.specific-refusals — Refusals name what is wrong
 
 The bookkeeping command SHALL answer every refusal with an error code and a message naming the
-Issue, file, argument or field concerned, without writing a record.
+Issue, file, argument or field concerned.
 
-The exit status is 2 when the request is unusable and 1 when the Issue rules refuse it.
+The exit status is 2 for an unusable request (codes `usage`, `not_a_project` and
+`unreadable_file`) and 1 for every other refusal, as the
+[bookkeeping command](interface.md#bookkeeping-command) defines.
+
+### req.issues.refusal-writes-nothing — A refused request writes no record
+
+The bookkeeping command SHALL NOT write a record for a request it refuses.
 
 ## Records
 
@@ -58,7 +79,10 @@ Every program write that creates, appends to or disposes an Issue record SHALL g
 the Issue store.
 
 Git operations that move committed record files between branches, such as committing on a task
-branch or merging it, are not store writes, and the store never runs Git.
+branch or merging it, are not store writes, and the store never runs Git. Resolving a Git merge
+conflict in a record by hand, as the [branch-local records](module.md#branch-local-records-and-repair)
+describe, is part of such a merge: it keeps accepted reports unchanged, only reconciles the
+disposition history, and `concorde issues check` must pass on the result.
 
 ### req.issues.retention — Reports are never rewritten
 
@@ -90,7 +114,10 @@ disposition sequence to the initial `open` state.
 
 An empty disposition history means `open`; `resolved`, `duplicate` and `not-actionable` close it,
 and `reopened` opens it again. These reasons are not additional statuses. Reports do not change
-status. See the [lifecycle](module.md#lifecycle) and [record rules](interface.md#record-file).
+status. A legal disposition sequence is one in which every disposition obeys
+[legal transitions](#req.issues.legal-transitions); that requirement governs accepting a new
+disposition, this one reading a whole record. See the [lifecycle](module.md#lifecycle) and
+[record rules](interface.md#record-file).
 
 ### req.issues.legal-transitions — Dispositions alternate
 

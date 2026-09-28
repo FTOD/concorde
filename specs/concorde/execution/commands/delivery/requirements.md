@@ -13,12 +13,22 @@ over every commit on the bound branch since the base commit and every uncommitte
 
 ### req.delivery.committed-steps — Committed steps are deliverable
 
-Delivery SHALL accept a workspace without uncommitted changes when its branch head is past the base
-commit and is no [delivery commit](../../../glossary.json#concept.delivery-commit) of the workspace.
+Delivery SHALL treat a workspace without uncommitted changes whose branch head is past the base
+commit and is no [delivery commit](../../../glossary.json#concept.delivery-commit) of the workspace
+as new work to validate, never as nothing to deliver.
+
+Such a workspace is still delivered only under the other requirements, first
+[its own readiness](#req.delivery.own-readiness).
 
 ### req.delivery.scenarios-verified — A code change ships only with tests for its scenarios
 
-Delivery SHALL refuse a workspace that changed implementation files while a scenario it added or changed since its base commit has no test declaring that it verifies it, except in a run given `--adoption`.
+Delivery SHALL refuse a workspace that changed code while a scenario it added or changed since its
+base commit has no test declaring that it verifies it, except in a run given `--adoption`.
+
+Changed code is a changed path outside `specs/` and `.concorde/` that a
+[Module](../../../glossary.json#concept.module)'s realization binds, tests included; a test declares
+what it verifies by its
+[verification declaration](../../../glossary.json#concept.verification-declaration).
 
 ### req.delivery.blocked-reason — A refusal says its own reason
 
@@ -35,8 +45,9 @@ A delivery run that ends `blocked` SHALL leave the workspace, its index and its 
 ### req.delivery.exact-content — The commit holds what was validated
 
 A delivery commit SHALL contain exactly the uncommitted changes the readiness examined, the metadata
-changed by the applied confirmations and the evidence bundle; the commits it is created on are the
-ones the readiness examined.
+changed by the applied confirmations and the evidence bundle.
+
+Its parent is fixed by [req.delivery.bound-branch](#req.delivery.bound-branch).
 
 ### req.delivery.bound-branch — Commits go on the bound branch
 
@@ -50,12 +61,16 @@ Every delivery commit SHALL contain one evidence bundle that satisfies the evide
 
 ### req.delivery.history-kept — History is never rewritten
 
-Delivery SHALL NOT amend, rebase, reset, merge or push any commit.
+Delivery SHALL NOT amend, rebase, merge or push any commit, nor move its branch to a commit other
+than the delivery commit it creates.
+
+Resetting the index while undoing an uncommitted delivery, as
+[req.delivery.atomic](#req.delivery.atomic) requires, changes no commit.
 
 ### req.delivery.atomic — A failed commit leaves the validated workspace
 
-When the commit fails, Delivery SHALL restore the workspace and its index to the state the readiness
-examined.
+When writing the bundle, staging or the commit fails, Delivery SHALL restore the workspace's files
+to the state the readiness examined and reset its index to the head.
 
 ## Records
 
@@ -69,6 +84,8 @@ its branch, as the [contract](contracts.md#delivery-commit) defines them.
 
 ### req.delivery.already-delivered — A delivered head is reported, not repeated
 
-A delivery run that finds the branch head already a delivery commit of the workspace with no
-uncommitted change SHALL report that commit as its output with `recovered` true and create no
-commit.
+Delivery SHALL NOT create a commit when the branch head already is a delivery commit of the
+workspace and no uncommitted change waits.
+
+Such a run reports the existing commit instead, as
+[scenario.delivery.recover](scenarios.md#scenario.delivery.recover) shows.

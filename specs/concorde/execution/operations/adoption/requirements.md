@@ -12,14 +12,18 @@ The survey and code_to_spec hosts SHALL compute their workers' grants for [task 
 
 ### req.adoption.survey-read-only — A survey writes nothing
 
-The survey host SHALL give its worker no writable path and end the run `failed` when the audit finds any change.
+The survey host SHALL give its worker no writable path.
 
 The survey withholds the [Spec](../../../glossary.json#concept.spec) side of the `code-to-spec`
 grant, which the Protocol permits, so the survey may also run unbound.
 
+### req.adoption.survey-change-fails — A change during a survey fails it
+
+The survey host SHALL end the run `failed` when the audit finds any change.
+
 ### req.adoption.no-code-change — Adoption never changes code
 
-No Adoption [Operation](../../../glossary.json#concept.operation) SHALL create, change or delete a file of the workspace other than Spec documents, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
+No Adoption [Operation](../../../glossary.json#concept.operation) SHALL create, change or delete a file of the workspace other than Spec documents, the glossary entries of the Modules a code_to_spec run describes, the project registry and the `verifies` decorators and helper that code_to_spec's host adds to existing test files.
 
 ### req.adoption.self-repair — The worker repairs the Specs it breaks
 
@@ -31,7 +35,17 @@ The code_to_spec host SHALL list, in its worker's brief, every structural error 
 
 ### req.adoption.tests-linked-by-host — The host alone marks tests
 
-The code_to_spec host SHALL add a `verifies` decorator, and never any other change, to each existing Python test that a scenario promise names in its `tests`, reporting every link it cannot make.
+The code_to_spec host SHALL add a `verifies` decorator to each existing Python test in a Module's implementation file that a scenario promise of a described Module names in its `tests`, unless the decorated file would not parse.
+
+A test that already declares the scenario gets no second decorator.
+
+### req.adoption.test-edits-limited — Test files get decorators and one helper only
+
+The code_to_spec host SHALL change an existing test file only by adding `verifies` decorators and, once in a file that does not already bind the name `verifies` at its top level, a two-line no-op definition of `verifies`.
+
+### req.adoption.unlinked-reported — Links not made are reported
+
+The code_to_spec host SHALL list in the result's `unlinked_tests` every test a scenario promise names that it did not link, with the reason.
 
 ### req.adoption.no-bash — Adoption workers cannot run code
 
@@ -63,13 +77,16 @@ A survey or code_to_spec run given `--answers` SHALL end `failed` when its outpu
 
 ### req.adoption.deviation-reported — Intent that the code misses is reported
 
-A code_to_spec run SHALL report as a deviation every answer whose stated intent differs from the behaviour the worker observed in the code.
+A code_to_spec run SHALL report as a deviation every answered [open question](../../../glossary.json#concept.open-question) whose stated intent differs from the behaviour the worker observed in the code.
+
+A decision answer chooses among options the code leaves open, so it has no observed behaviour to
+deviate from.
 
 ## Survey
 
 ### req.adoption.proposal-checked — A proposal fits the worktree
 
-The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, two children whose documents would share a folder, an entry that the surveyed Module's realizations do not cover or that does not exist, a `uses` target that is neither another child nor a registered Module, or a check for a Module that is neither the surveyed Module nor a child.
+The survey host SHALL end the run `failed` with every inconsistency listed when the proposal names a child identity or title that is already registered or repeated, two children whose documents would share a folder, an entry that the surveyed Module's realizations do not cover or that does not exist, a `uses` target that is neither another child nor a registered Module, a check for a Module that is neither the surveyed Module nor a child, a check that is already configured or proposed twice, a check input that is not a canonical project-relative path, an external that is not a path the surveyed Module binds, overlaps a child's entries, takes Concorde installation files, is proposed twice or is used by neither the surveyed Module nor a child, a worker decision whose choice is none of its options, or a decision or open question identity used twice.
 
 ### req.adoption.inventory — The survey worker gets an inventory
 
@@ -88,9 +105,13 @@ A survey SHALL be bound to exactly one Module.
 
 ## Code to spec
 
-### req.adoption.stubs-prepared — Implementation documents are prepared and tidied
+### req.adoption.stubs-prepared — Implementation documents are prepared
 
-The code_to_spec host SHALL create the `requirements.md`, `scenarios.md` and `contracts.md` stubs that a bound Module lacks before freezing the grant and remove every stub the worker left unchanged or had deleted, with its place among the Module's documents, before the run ends, whichever step stops it.
+The code_to_spec host SHALL create the `requirements.md`, `scenarios.md` and `contracts.md` stubs that a bound Module lacks before freezing the grant.
+
+### req.adoption.stubs-removed — Unused stubs are removed on every way out
+
+The code_to_spec host SHALL remove every prepared stub the worker left unchanged or had deleted, with its place among the Module's documents, before the run ends, whichever step stops it.
 
 ### req.adoption.answers-first — Answers are checked before anything happens
 
@@ -103,9 +124,13 @@ The code_to_spec host SHALL count every structural error located in a document a
 The worker rewrites those documents. A retry after a failed attempt would otherwise take that
 attempt's errors as the project's and let the same errors pass.
 
-### req.adoption.no-resume-on-spec — A Spec error stops the run
+### req.adoption.errors-left-block — Errors left after the last round stop the run
 
-The code_to_spec host SHALL end the run `blocked` with every new structural error as a cause, without a [resume round](../../../glossary.json#concept.resume-round), when the change adds a structural error.
+The code_to_spec host SHALL end the run `blocked`, with every structural error it counts as introduced as a cause, when such errors remain after its worker's last round.
+
+The [resume rounds](../../../glossary.json#concept.resume-round) of
+[req.adoption.self-repair](#req.adoption.self-repair) come first, so only errors the worker did not
+repair stop the run.
 
 ### req.adoption.mirror-reconciled — The registry mirror follows the entries
 
