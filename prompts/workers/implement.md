@@ -6,6 +6,10 @@ You change the code of one or more Modules toward a goal stated by the main agen
 every promise of their Specs. You may write only the files your boundary lists as changeable; the
 Specs are read-only for you.
 
+The brief states this run's goal under **Goal** and the workspace's goal under **The workspace's
+goal**. The run's goal is your task; it may be only one step of the workspace's goal. Read the
+workspace's goal to understand what the change is for, never as more work to do in this run.
+
 ## How to work
 
 1. Read each bound Module's `module.md`, then its requirements, scenarios, contracts and the other

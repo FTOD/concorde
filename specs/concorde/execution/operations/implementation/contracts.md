@@ -10,7 +10,7 @@ supplies as the Operation-specific part of its answer are its claims and are pas
 ```concorde-contract
 {
   "id": "contract.implementation.code-change",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -36,14 +36,14 @@ supplies as the Operation-specific part of its answer are its claims and are pas
         "properties": {
           "check": {"type": "string", "minLength": 1},
           "module": {"type": "string", "pattern": "^module\\."},
-          "outcome": {"enum": ["passed", "failed", "timed_out", "not_started"]},
+          "outcome": {"enum": ["passed", "failed", "timed_out"]},
           "exit_code": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
           "log": {"type": "string", "minLength": 1}
         }
       }
     }
   },
-  "semantics": "The outcome of one implement run. goal repeats the --goal argument. summary and addresses are the worker's claims: its account of the change and the requirement or scenario identities it believes the change addresses. Everything else is computed by the Operation: changed_files, created_files and deleted_files from the workspace after the last audit, relative to the state before the run; refused_deletions lists deletions the worker proposed outside its writable paths; pending_cleared lists the realization entries whose pending marker the Operation removed; rounds counts worker rounds including the first; checks holds the configured check results of the last round that ran checks, for the bound Modules and every Module that uses one of them, each with the check identity, the Module it belongs to, its outcome, its exit code and the path of its log. outcome and exit_code project Check execution's result: its status passed and failed keep their name and exit code, and its timeout becomes timed_out with exit_code null, since the check did not exit; not_started is never produced, because a check that cannot start fails the run without a result. An empty checks list means no round ran checks: either the checked Modules have no configured check, which the run's checks evidence then states, or the run stopped before any round's checks, as after an audit violation or a blocked or failed worker. The run's status is ok only when every listed check passed.",
+  "semantics": "The outcome of one implement run. goal repeats the --goal argument. summary and addresses are the worker's claims: its account of the change and the requirement or scenario identities it believes the change addresses. Everything else is computed by the Operation: changed_files, created_files and deleted_files from the workspace after the last audit, relative to the state before the run; refused_deletions lists deletions the worker proposed outside its writable paths; pending_cleared lists the realization entries whose pending marker the Operation removed; rounds counts worker rounds including the first; checks holds the configured check results of the last round that ran checks, for the bound Modules and every Module that uses one of them, each with the check identity, the Module it belongs to, its outcome, its exit code and the path of its log. outcome and exit_code project Check execution's result: its status passed and failed keep their name and exit code, and its timeout becomes timed_out with exit_code null, since the check did not exit. A check that cannot start has no outcome: it fails the run without a result. An empty checks list means no round ran checks: either the checked Modules have no configured check, which the run's checks evidence then states, or the run stopped before any round's checks, as after an audit violation or a blocked or failed worker. The run's status is ok only when every listed check passed.",
   "example": {
     "goal": "accept and store the report severity",
     "summary": "Added the severity field to report parsing and storage.",
@@ -66,7 +66,7 @@ supplies as the Operation-specific part of its answer are its claims and are pas
 ```concorde-contract
 {
   "id": "contract.implementation.test-report",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -83,7 +83,7 @@ supplies as the Operation-specific part of its answer are its claims and are pas
           "properties": {
             "check": {"type": "string", "minLength": 1},
             "module": {"type": "string", "pattern": "^module\\."},
-            "outcome": {"enum": ["passed", "failed", "timed_out", "not_started"]},
+            "outcome": {"enum": ["passed", "failed", "timed_out"]},
             "exit_code": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
             "log": {"type": "string", "minLength": 1}
           }

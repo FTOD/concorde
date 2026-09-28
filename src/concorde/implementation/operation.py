@@ -42,7 +42,7 @@ CHECK_SCHEMA: dict = {
     "properties": {
         "check": {"type": "string", "minLength": 1},
         "module": {"type": "string", "pattern": "^module\\."},
-        "outcome": {"enum": ["passed", "failed", "timed_out", "not_started"]},
+        "outcome": {"enum": ["passed", "failed", "timed_out"]},
         "exit_code": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
         "log": {"type": "string", "minLength": 1},
     },
@@ -142,7 +142,7 @@ def check_results(primary: Path, results: list[dict]) -> list[dict]:
             log_text = log.relative_to(primary).as_posix()
         except ValueError:
             log_text = log.as_posix()
-        outcome = OUTCOMES.get(item["status"], "failed")
+        outcome = OUTCOMES[item["status"]]
         shaped.append(
             {
                 "check": item["check_id"],
@@ -205,6 +205,15 @@ def host_checks(ctx: RunContext) -> list[dict] | Stop:
         )
     except (SpecError, OSError) as error:
         return ctx.checks_unavailable(error)
+
+
+def _workspace_goal(ctx: RunContext) -> str:
+    """The workspace's goal, as context beside the run's own arguments."""
+    return (
+        "\n## The workspace's goal\n\n"
+        "Context for this run, which may serve only part of it:\n\n"
+        f"{ctx.goal or '(none)'}\n"
+    )
 
 
 def _admitted(ctx: RunContext) -> str:
@@ -319,6 +328,7 @@ def implement_step(ctx: RunContext):
     instructions = (
         load_prompt("implement")
         + f"\n## Goal\n\n{ctx.arguments.goal}\n"
+        + _workspace_goal(ctx)
         + _admitted(ctx)
     )
     launched = len(ctx.worker_runs)
@@ -396,6 +406,7 @@ def testing_step(ctx: RunContext):
     instructions = (
         load_prompt("test")
         + (f"\n## Focus\n\n{focus}\n" if focus else "")
+        + _workspace_goal(ctx)
         + "\n## Check results (run by the host)\n\n"
         + check_material(results)
     )

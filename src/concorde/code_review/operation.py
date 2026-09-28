@@ -39,7 +39,7 @@ CHECK_SCHEMA: dict = {
     "properties": {
         "check": {"type": "string", "minLength": 1},
         "module": {"type": "string", "pattern": "^module\\."},
-        "outcome": {"enum": ["passed", "failed", "timed_out", "not_started"]},
+        "outcome": {"enum": ["passed", "failed", "timed_out"]},
         "exit_code": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
         "log": {"type": "string", "minLength": 1},
     },
@@ -252,7 +252,7 @@ def check_results(primary: Path, results: list[dict]) -> list[dict]:
             log_text = log.relative_to(primary).as_posix()
         except ValueError:
             log_text = log.as_posix()
-        outcome = OUTCOMES.get(item["status"], "failed")
+        outcome = OUTCOMES[item["status"]]
         shaped.append(
             {
                 "check": item["check_id"],
