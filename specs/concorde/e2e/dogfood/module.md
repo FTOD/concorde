@@ -78,6 +78,31 @@ session](../../glossary.json#concept.headless-session) of the recorded client in
 under the scenario directory's `sessions/<time>/`, and then evaluates. `evaluate` can be run again
 at any time.
 
+What each command makes, and where:
+
+```d2 illustrative
+direction: down
+checkout: "This checkout's committed Concorde"
+upstream: "The project's repository"
+dir: "Scenario directory, under the end-to-end root" {
+  concorde: "concorde/: clone, fault commit, build"
+  project: "project/: develop install, initialized and committed"
+  record: "dogfood.json: fault commit and baselines"
+  sessions: "sessions/<time>/: one headless session per run"
+  evaluation: "evaluation.json"
+}
+throwaway: "Throwaway clone of concorde/, in a temporary directory"
+checkout -> dir.concorde: "prepare: clone, inject, commit, build"
+upstream -> dir.project: "prepare: clone at the revision"
+dir.concorde -> dir.project: "prepare: develop install"
+dir.project -> dir.record: "prepare: baselines"
+dir.project -> dir.sessions: "run: the scenario's prompt"
+dir.concorde -> throwaway: "evaluate: clone"
+throwaway -> dir.evaluation: "evaluate: reports_accepted"
+dir.project -> dir.evaluation: "evaluate: what the session left"
+dir.record -> dir.evaluation: "evaluate: the baselines"
+```
+
 `prepare` refuses a scenario it does not know with `unknown_scenario`, naming the known ones, and a
 scenario directory that already exists with `scenario_exists`; `--name` gives the directory another
 name under the end-to-end root, so one scenario can be prepared several times. `run` and `evaluate`
