@@ -339,7 +339,14 @@ class GuidanceTests(unittest.TestCase):
             "they change no Spec or code, since an unbound run launches only reading workers",
             self.skill,
         )
-        self.assertIn("their result has `workspace` null", self.skill)
+        self.assertIn(
+            "They work on a throwaway checkout of that worktree's `HEAD`", self.skill
+        )
+        self.assertIn("uncommitted changes are not examined", self.skill)
+        self.assertIn(
+            "their result has `workspace` null and names the examined commit as `commit`",
+            self.skill,
+        )
         self.assertIn("a question or a review that does not justify a task", self.skill)
         self.assertIn("An `--input` of such a run must be unbound too", self.skill)
         self.assertIn("as an unbound Operation in the primary worktree", self.block)

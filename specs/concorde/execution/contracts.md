@@ -83,7 +83,7 @@ them is in [How a run is executed](runner.md).
 ```concorde-contract
 {
   "id": "contract.execution.run-result",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -91,6 +91,7 @@ them is in [How a run is executed](runner.md).
       "kind",
       "name",
       "workspace",
+      "commit",
       "modules",
       "run_id",
       "status",
@@ -122,6 +123,17 @@ them is in [How a run is executed](runner.md).
           {
             "type": "string",
             "minLength": 1
+          }
+        ]
+      },
+      "commit": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
           }
         ]
       },
@@ -323,11 +335,12 @@ them is in [How a run is executed](runner.md).
       }
     }
   },
-  "semantics": "The result of one run, printed on standard output and saved as <records>/runs/<run_id>/result.json. kind is operation for an Operation and command for an execution command; name is the Operation's or command's name. workspace is the bound workspace's name, or null for an unbound run or a run whose binding was refused. modules are the Modules the run worked on, empty when the run was refused before they were settled. status is ok when the run did what it promises, blocked when it needs a decision above it and failed otherwise. output is the definition's output, checked against its own contract when the status is ok. worker is the last worker result unchanged, a claim, and worker_runs the identities of the worker runs the run started; both are empty for an execution command. host_evidence holds only what the runner and its steps observed themselves; kind is one of grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, refused, cancelled, host-error, invalid-output, git, readiness, commit or removed-module (a Module the binding names that the workspace no longer registers, which the run left out), or a kind the definition's own Spec defines; ref names the path, command or identity concerned and detail explains it. Timestamps are RFC 3339 in UTC. error is null exactly when the status is ok; otherwise it is the run's own error link, level operation or command, whose causes are the errors it received, unchanged. A behaviour or field change increments the version.",
+  "semantics": "The result of one run, printed on standard output and saved as <records>/runs/<run_id>/result.json. kind is operation for an Operation and command for an execution command; name is the Operation's or command's name. workspace is the bound workspace's name, or null for an unbound run or a run whose binding was refused. commit is the commit an unbound run examined, the HEAD of the worktree it started in, which its throwaway checkout held; it is null for a bound run, which works on its workspace as it stands, uncommitted changes included, and for a run refused before its checkout existed. modules are the Modules the run worked on, empty when the run was refused before they were settled. status is ok when the run did what it promises, blocked when it needs a decision above it and failed otherwise. output is the definition's output, checked against its own contract when the status is ok. worker is the last worker result unchanged, a claim, and worker_runs the identities of the worker runs the run started; both are empty for an execution command. host_evidence holds only what the runner and its steps observed themselves; kind is one of grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, refused, cancelled, host-error, invalid-output, git, readiness, commit, removed-module (a Module the binding names that the workspace no longer registers, which the run left out), checkout (the throwaway checkout an unbound run worked in), submodule or submodule-absent (a submodule the checkout did or did not check out), environment or environment-not-linked (a runtime path the checkout did or did not link from the worktree the run started in) or checkout-not-removed (a part of the checkout Git would not remove, deleted directly), or a kind the definition's own Spec defines; ref names the path, command or identity concerned and detail explains it. Timestamps are RFC 3339 in UTC. error is null exactly when the status is ok; otherwise it is the run's own error link, level operation or command, whose causes are the errors it received, unchanged. A behaviour or field change increments the version.",
   "example": {
     "kind": "command",
     "name": "task-validation",
     "workspace": "retry",
+    "commit": null,
     "modules": [
       "module.http"
     ],

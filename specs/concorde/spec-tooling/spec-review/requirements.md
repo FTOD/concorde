@@ -10,8 +10,9 @@ requirement belongs to the [Module](../../glossary.json#concept.module) as a who
 Spec review SHALL NOT create, change or delete any file of the worktree it reviews other than the reviewed Modules' review memories and its own run's entries in the [run store](../../glossary.json#concept.run-store).
 
 Only a Spec review in a bound workspace writes review memories; an
-[unbound run](../../glossary.json#concept.unbound-run) keeps its run store in the worktree it
-reviews.
+[unbound run](../../glossary.json#concept.unbound-run) reviews its
+[unbound checkout](../../glossary.json#concept.unbound-checkout) and keeps its run store in the
+worktree it started in.
 
 ### req.spec-review.memory — A repeated review builds on the memory
 

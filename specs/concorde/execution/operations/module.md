@@ -62,8 +62,8 @@ steps change in the workspace; each provider's Spec gives the rule.
 
 A typical task runs `understand`, `specify` if needed, `implement`, `test` and the reviews, then the
 execution commands `task-validation` and `delivery`, repeating or skipping steps as the results tell
-it. Unbound, in the primary worktree, `understand` or a review answers a question before any change
-is agreed. For a project whose code came before its Specs, `survey`, the execution command
+it. Unbound, started in the primary worktree, `understand` or a review answers a question about its
+`HEAD` before any change is agreed. For a project whose code came before its Specs, `survey`, the execution command
 `scaffold` and `code_to_spec` describe the code in Specs, usually run by the
 [brownfield workflow](../workflows/module.md).
 
@@ -171,8 +171,9 @@ what the outcome means. See [How an Operation runs its workers](workers.md).
 
 The grant always comes from the workspace's Specs, never the primary worktree's, so a task that
 changes a Spec is bounded by the Spec as its workspace sees it; an
-[unbound run](../../glossary.json#concept.unbound-run) reads the worktree it runs in and may launch
-only reading workers, since only a bound workspace may change. One workspace runs one run at a time,
+[unbound run](../../glossary.json#concept.unbound-run) reads its
+[unbound checkout](../../glossary.json#concept.unbound-checkout) of the worktree it started in and
+may launch only reading workers, since only a bound workspace may change. One workspace runs one run at a time,
 because two runs in one worktree would audit each other's writes as their own, so parallelism comes
 from running workspaces side by side. No provider calls another Operation: the task level or its
 workflow decides which runs next.

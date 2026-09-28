@@ -19,17 +19,33 @@ from concorde.execution import binding as binding_file
 from concorde.commands import catalog as commands
 from concorde.execution import runs
 from concorde.execution.context import Continue, Provider, command, evidence
+from concorde.execution.checkout import PREFIX
 from concorde.execution.runner import UsageError, detach, execute, run_main
 from concorde.execution.runs import RESULT_SCHEMA
 from concorde.harness import models, pi_backend
+from concorde.harness.checks import run_checks
 from concorde.operations import catalog
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from concorde.tasks import store
 from tests.concorde.harness.workers.test_pi import FAKE as FAKE_PI
+from tests.concorde.harness.workers.test_workers import git
 from tests.concorde.harness.workers.test_pi import fake_which
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
+
+
+def head(root: Path) -> str:
+    return git(root, "rev-parse", "HEAD").strip()
+
+
+def worktrees(root: Path) -> list[Path]:
+    """The worktrees Git lists for the repository of ``root``, the primary one first."""
+    return [
+        Path(line.split(" ", 1)[1])
+        for line in git(root, "worktree", "list", "--porcelain").splitlines()
+        if line.startswith("worktree ")
+    ]
 
 
 def spec_contract(identity: str) -> dict:
@@ -121,6 +137,76 @@ WRITER = Provider(
     (writing_step,),
     None,
     goal_arguments,
+    binding="optional",
+)
+
+
+def probing_step(ctx):
+    """Record what the run sees and, with ``--checks``, the configured checks' outcomes there;
+    with ``--merge``, commit in the worktree the run started in, as a main session merging a task
+    meanwhile would."""
+    reference = ctx.worktree / "references/lib"
+    ctx.state["probe"] = {
+        "worktree": ctx.worktree.as_posix(),
+        "started_in": ctx.started_in.as_posix(),
+        "commit": ctx.commit,
+        "calc": (ctx.worktree / "src/a/calc.py").read_text(),
+        "venv": os.path.realpath(ctx.worktree / ".venv")
+        if (ctx.worktree / ".venv").exists()
+        else None,
+        "reference": sorted(
+            path.relative_to(reference).as_posix()
+            for path in reference.rglob("*")
+            if path.is_file() and path.name != ".git"
+        ),
+    }
+    if ctx.arguments.checks:
+        ctx.state["probe"]["checks"] = [
+            item["status"]
+            for item in run_checks(
+                ctx.worktree, modules=["module.a"], log_directory=ctx.run_dir / "checks"
+            )
+        ]
+    if ctx.arguments.merge:
+        (ctx.started_in / "src/bmod/merged.py").write_text("MERGED = 1\n")
+        git(ctx.started_in, "add", "src/bmod/merged.py")
+        git(
+            ctx.started_in,
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "-qm",
+            "merged meanwhile",
+        )
+    return Continue()
+
+
+def probing_worker(ctx):
+    if ctx.arguments.fail:
+        raise RuntimeError("the probe failed on purpose")
+    return ctx.run_worker(ctx.arguments.goal, task_type="understand", rounds=0)
+
+
+def probed(ctx):
+    return Continue(output=ctx.state["probe"])
+
+
+def probe_arguments(parser):
+    goal_arguments(parser)
+    parser.add_argument("--merge", action="store_true")
+    parser.add_argument("--checks", action="store_true")
+    parser.add_argument("--fail", action="store_true")
+
+
+PROBE = Provider(
+    "understand",
+    "understand",
+    False,
+    (probing_step, probing_worker, probed),
+    None,
+    probe_arguments,
     binding="optional",
 )
 
@@ -313,7 +399,7 @@ class RunnerTests(unittest.TestCase):
         )
 
     @verifies("scenario.execution.unbound-run")
-    def test_an_unbound_run_works_on_its_own_worktree(self):
+    def test_an_unbound_run_works_on_a_checkout_of_its_worktree(self):
         before = store.load_task(self.root, "t1")
         status, envelope = self.project.run(
             "spec_review",
@@ -328,8 +414,15 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertIsNone(envelope["workspace"])
         self.assertEqual(["module.a"], envelope["modules"])
+        self.assertEqual(head(self.root), envelope["commit"])
+        # The reviewer worked in a throwaway checkout of the primary worktree's HEAD, which is
+        # gone once the run ended.
         record = self.worker_record(envelope)
-        self.assertEqual(str(self.root), record["worktree"])
+        checkout = Path(record["worktree"])
+        self.assertNotEqual(self.root, checkout)
+        self.assertTrue(checkout.parent.name.startswith(PREFIX), checkout)
+        self.assertFalse(checkout.parent.exists())
+        self.assertEqual([self.root, self.worktree], worktrees(self.root))
         self.assertEqual(before, store.load_task(self.root, "t1"))
         self.assertEqual(envelope, self.saved(envelope))
         self.assertEqual("ok", self.run_status(envelope, None))
@@ -909,6 +1002,210 @@ class RunnerTests(unittest.TestCase):
         fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
         self.assertEqual(json.loads(fence)["schema"], ERROR_SCHEMA)
         self.assertEqual(RESULT_SCHEMA["$defs"]["error"], LINK_SCHEMA)
+
+
+class UnboundCheckoutTests(unittest.TestCase):
+    """An unbound run works in a throwaway detached checkout of its worktree's HEAD."""
+
+    def setUp(self):
+        self.project = OperationProject(self)
+        self.root = self.project.root
+        self.records = self.root / ".concorde"
+        patcher = patch.dict(catalog.CATALOG, {"understand": f"{__name__}:PROBE"})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def commit(self, message: str) -> str:
+        git(self.root, "add", "-A")
+        git(
+            self.root,
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "-qm",
+            message,
+        )
+        return head(self.root)
+
+    def probe(self, *extra, cwd: Path | None = None):
+        return self.project.run(
+            "understand",
+            "--modules",
+            "module.a",
+            "--goal",
+            OperationProject.plan([{}]),
+            *extra,
+            cwd=cwd,
+        )
+
+    def worker_record(self, envelope) -> dict:
+        [worker] = envelope["worker_runs"]
+        return json.loads((self.records / "runs" / worker / "record.json").read_text())
+
+    @verifies("scenario.execution.unbound-checkout", "scenario.execution.unbound-run")
+    def test_an_unbound_run_examines_head_while_its_worktree_changes(self):
+        (self.root / ".gitignore").write_text(
+            (self.root / ".gitignore").read_text() + ".venv/\n"
+        )
+        # The configured check runs the interpreter of the environment Git ignores.
+        config = json.loads((self.root / ".concorde/config.json").read_text())
+        config["checks"][0]["argv"] = [".venv/bin/python", "checks/a_check.py"]
+        (self.root / ".concorde/config.json").write_text(json.dumps(config, indent=2))
+        examined = self.commit("check with the environment")
+        (self.root / ".venv/bin").mkdir(parents=True)
+        (self.root / ".venv/bin/python").symlink_to(sys.executable)
+        (self.root / ".venv/bin/tool").write_text("tool\n")
+        # An uncommitted change of the worktree the run starts in is not examined.
+        (self.root / "src/a/calc.py").write_text("uncommitted\n")
+        # The worker model configuration is the starting worktree's own.
+        (self.root / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "default": {"backend": "claude"},
+                    "operations": {
+                        "understand": {"workers": {"worker": {"model": "opus"}}}
+                    },
+                }
+            )
+        )
+        status, envelope = self.probe("--merge", "--checks")
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        probe = envelope["output"]
+        checkout = Path(probe["worktree"])
+        self.assertEqual(
+            (str(self.root), examined, examined),
+            (probe["started_in"], probe["commit"], envelope["commit"]),
+        )
+        self.assertTrue(checkout.parent.name.startswith(PREFIX), checkout)
+        self.assertEqual("def add(a, b):\n    return a - b\n", probe["calc"])
+        self.assertEqual(str(self.root / ".venv"), probe["venv"])
+        self.assertEqual(["passed"], probe["checks"])
+        # The worker worked and was audited in the checkout, so the commit made meanwhile in
+        # the starting worktree left its audit clean; its model came from the starting worktree.
+        record = self.worker_record(envelope)
+        self.assertEqual(str(checkout), record["worktree"])
+        self.assertEqual("opus", record["model"])
+        self.assertEqual(
+            ["clean"], [item["audit"]["verdict"] for item in record["rounds"]]
+        )
+        kinds = {item["kind"]: item for item in envelope["host_evidence"]}
+        self.assertEqual(examined, kinds["checkout"]["ref"])
+        self.assertEqual(".venv", kinds["environment"]["ref"])
+        # The run is recorded in the starting worktree, and its checkout is gone.
+        self.assertTrue(
+            (self.records / "runs" / envelope["run_id"] / "result.json").exists()
+        )
+        progress = json.loads(
+            (self.records / "runs" / envelope["run_id"] / "status.json").read_text()
+        )
+        self.assertEqual(
+            (str(checkout), examined), (progress["worktree"], progress["commit"])
+        )
+        self.assertFalse(checkout.parent.exists())
+        self.assertEqual([self.root], worktrees(self.root))
+        # The starting worktree keeps its change, its environment and the commit made meanwhile.
+        self.assertEqual("uncommitted\n", (self.root / "src/a/calc.py").read_text())
+        self.assertEqual("tool\n", (self.root / ".venv/bin/tool").read_text())
+        self.assertNotEqual(examined, head(self.root))
+        validate(envelope, RESULT_SCHEMA)
+
+    @verifies("scenario.execution.unbound-checkout")
+    def test_the_checkout_is_removed_however_the_run_ends(self):
+        examined = head(self.root)
+        status, envelope = self.probe("--fail")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual("host_error", envelope["error"]["code"])
+        self.assertIn(
+            f"(unbound, {self.root} at {examined})", envelope["error"]["actor"]
+        )
+        self.assertEqual(examined, envelope["commit"])
+        [checkout] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "checkout"
+        ]
+        self.assertEqual(examined, checkout["ref"])
+        self.assertEqual([self.root], worktrees(self.root))
+        self.assertEqual(
+            [],
+            list(
+                Path(os.environ.get("TMPDIR", "/tmp")).glob(
+                    f"{PREFIX}*/{envelope['run_id']}"
+                )
+            ),
+        )
+
+    @verifies("scenario.execution.unbound-checkout")
+    def test_a_checked_out_submodule_is_checked_out_in_the_checkout_too(self):
+        library = self.project.base / "lib"
+        library.mkdir()
+        (library / "guide.md").write_text("guide\n")
+        (library / "media").mkdir()
+        (library / "media/picture.png").write_text("png\n")
+        git(library, "init", "-q")
+        git(library, "add", "-A")
+        git(
+            library, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "lib"
+        )
+        git(
+            self.root,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(library),
+            "references/lib",
+        )
+        self.commit("vendor lib")
+        # The starting worktree checks out only part of it, as a sparse vendored reference does.
+        git(
+            self.root / "references/lib",
+            "sparse-checkout",
+            "set",
+            "--no-cone",
+            "/guide.md",
+        )
+        status, envelope = self.probe()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(["guide.md"], envelope["output"]["reference"])
+        [submodule] = [
+            item for item in envelope["host_evidence"] if item["kind"] == "submodule"
+        ]
+        self.assertEqual("references/lib", submodule["ref"])
+        self.assertEqual([self.root], worktrees(self.root))
+        # The submodule's repository lists only its own checkout again.
+        self.assertEqual(1, len(worktrees(self.root / "references/lib")))
+        # A submodule the starting worktree has not checked out stays empty in the checkout.
+        git(self.root, "submodule", "deinit", "-q", "--force", "references/lib")
+        status, envelope = self.probe()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual([], envelope["output"]["reference"])
+        [absent] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "submodule-absent"
+        ]
+        self.assertEqual("references/lib", absent["ref"])
+
+    @verifies("scenario.execution.unbound-checkout")
+    def test_a_worktree_without_a_commit_refuses_an_unbound_run(self):
+        empty = self.project.base / "empty"
+        empty.mkdir()
+        git(empty, "init", "-q")
+        status, envelope = self.probe(cwd=empty)
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual(["refused", "checkout_unavailable"], codes(envelope["error"]))
+        self.assertEqual("environment", envelope["error"]["unhandled"]["reason"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("Execution (unbound checkout)", cause["actor"])
+        self.assertIn(f"{empty} has no commit at HEAD", cause["detail"])
+        self.assertIsNone(envelope["commit"])
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertTrue(
+            (empty / ".concorde/runs" / envelope["run_id"] / "result.json").exists()
+        )
 
 
 class BindingTests(unittest.TestCase):

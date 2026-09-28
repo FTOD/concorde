@@ -1,0 +1,281 @@
+"""The throwaway checkout an unbound run works in.
+
+An unbound run never works in the worktree it starts in, such as the primary worktree, where main
+sessions merge tasks while it runs: a merge there would change the Specs and code under its workers
+and fail their audit. The runner checks out that worktree's ``HEAD`` detached in a private
+temporary directory with ``git worktree add --detach``, which shares the repository's objects and
+costs no clone, and the run's steps and workers work there. Each submodule the starting worktree
+has checked out at the commit ``HEAD`` records, such as a vendored external reference, is checked
+out the same way from its own repository, with the same sparse patterns. The environments the
+project configuration names as runtime paths and Git ignores, such as ``.venv`` and
+``node_modules``, are never part of a commit, so they are linked from the starting worktree for the
+run's checks to use; nothing in the run writes them. However the run ends, the links, the
+submodule checkouts and the checkout itself are removed, and a removal Git refuses is reported as
+host evidence.
+
+Nothing here writes a file of the starting worktree or its index: ``git worktree add`` and
+``git worktree remove`` change only the repository's administrative files.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import tempfile
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from ..errors import evidence
+from .context import DEFAULT_RUNTIME
+from .runs import RunError
+
+# Git never runs a hook of the repository for the checkout: it is the runner's, not a checkout a
+# developer made.
+GIT = ("git", "-c", "core.hooksPath=/dev/null")
+PREFIX = "concorde-unbound-"
+
+
+def _git(cwd: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [*GIT, *arguments],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+    )
+
+
+def _said(result: subprocess.CompletedProcess[str]) -> str:
+    return (result.stderr or result.stdout).strip() or "no output"
+
+
+@dataclass
+class Checkout:
+    """A detached checkout of ``commit`` at ``path``, for the run started in ``origin``."""
+
+    origin: Path
+    path: Path
+    commit: str
+    # The submodule paths checked out from the origin's own checkouts, in the order they were.
+    submodules: list[str] = field(default_factory=list)
+    # The links to the origin's ignored environments.
+    links: list[Path] = field(default_factory=list)
+    # What the checkout provides or lacks, as host evidence of the run.
+    evidence: list[dict] = field(default_factory=list)
+    closed: bool = False
+
+    def close(self) -> list[dict]:
+        """Remove the links, the submodule checkouts and the checkout, once; evidence of each
+        removal Git refused, after removing the files and the administrative entry directly."""
+        if self.closed:
+            return []
+        self.closed = True
+        problems = []
+        for link in self.links:
+            try:
+                link.unlink(missing_ok=True)
+            except OSError as error:
+                problems.append(
+                    evidence("checkout-not-removed", link.as_posix(), str(error))
+                )
+        for path in reversed(self.submodules):
+            problems += _remove(self.origin / path, self.path / path)
+        problems += _remove(self.origin, self.path)
+        shutil.rmtree(self.path.parent, ignore_errors=True)
+        return problems
+
+
+def _remove(repository: Path, path: Path) -> list[dict]:
+    removed = _git(repository, "worktree", "remove", "--force", path.as_posix())
+    if removed.returncode == 0:
+        return []
+    # A checkout Git no longer knows, or cannot remove, goes directly; pruning then drops the
+    # administrative entry of every worktree whose directory is gone.
+    shutil.rmtree(path, ignore_errors=True)
+    _git(repository, "worktree", "prune")
+    return [
+        evidence(
+            "checkout-not-removed",
+            path.as_posix(),
+            f"git worktree remove --force in {repository} exited {removed.returncode}: "
+            f"{_said(removed)}; the directory was deleted and the worktree list pruned",
+        )
+    ]
+
+
+def open_checkout(origin: Path, run_id: str) -> Checkout:
+    """Check out ``origin``'s ``HEAD`` detached in a new private temporary directory.
+
+    Each relative runtime path of the checked-out project configuration (``workers.runtime``, by
+    default ``.venv`` and ``node_modules``) that exists in ``origin`` and that Git ignores is linked
+    into the checkout. ``RunError`` ``checkout_unavailable`` when ``HEAD`` names no commit or Git
+    refuses the checkout, which is then left nowhere.
+    """
+    head = _git(origin, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+    if head.returncode != 0:
+        raise RunError(
+            "checkout_unavailable",
+            f"the worktree {origin} has no commit at HEAD to check out for an unbound run "
+            f"(git rev-parse --verify HEAD^{{commit}} exited {head.returncode}: {_said(head)})",
+        )
+    commit = head.stdout.strip()
+    try:
+        parent = Path(os.path.realpath(tempfile.mkdtemp(prefix=PREFIX)))
+    except OSError as error:
+        raise RunError(
+            "checkout_unavailable",
+            f"no private temporary directory could be created for the checkout of {commit}: "
+            f"{error}",
+        ) from error
+    path = parent / run_id
+    added = _git(
+        origin, "worktree", "add", "--detach", "--quiet", path.as_posix(), commit
+    )
+    if added.returncode != 0:
+        shutil.rmtree(parent, ignore_errors=True)
+        _git(origin, "worktree", "prune")
+        raise RunError(
+            "checkout_unavailable",
+            f"git worktree add --detach {path} {commit} in {origin} exited "
+            f"{added.returncode}: {_said(added)}",
+        )
+    checkout = Checkout(origin, path, commit)
+    try:
+        _submodules(checkout)
+        _environments(checkout, _runtime(path))
+    except BaseException:
+        checkout.close()
+        raise
+    return checkout
+
+
+def _gitlinks(checkout: Path) -> list[tuple[str, str]]:
+    """The submodule paths of the checkout's index with the commit each records."""
+    listed = _git(checkout, "ls-files", "--stage", "-z")
+    found = []
+    for record in listed.stdout.split("\0"):
+        head, _, path = record.partition("\t")
+        fields = head.split()
+        if len(fields) == 3 and fields[0] == "160000" and fields[2] == "0":
+            found.append((path, fields[1]))
+    return found
+
+
+def _submodules(checkout: Checkout) -> None:
+    """Check out every submodule the origin has checked out and holding the recorded commit."""
+    for path, commit in _gitlinks(checkout.path):
+        source = checkout.origin / path
+        target = checkout.path / path
+        if not (source / ".git").exists():
+            checkout.evidence.append(
+                evidence(
+                    "submodule-absent",
+                    path,
+                    f"{checkout.origin} has not checked out the submodule {path}, so the "
+                    "checkout leaves it empty",
+                )
+            )
+            continue
+        if _git(source, "cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
+            checkout.evidence.append(
+                evidence(
+                    "submodule-absent",
+                    path,
+                    f"the submodule {path} of {checkout.origin} does not hold the commit {commit} "
+                    f"that {checkout.commit} records, so the checkout leaves it empty",
+                )
+            )
+            continue
+        added = _git(
+            source,
+            "worktree",
+            "add",
+            "--detach",
+            "--no-checkout",
+            "--quiet",
+            target.as_posix(),
+            commit,
+        )
+        if added.returncode != 0:
+            checkout.evidence.append(
+                evidence(
+                    "submodule-absent",
+                    path,
+                    f"git worktree add --detach {target} {commit} in {source} exited "
+                    f"{added.returncode}: {_said(added)}; the checkout leaves it empty",
+                )
+            )
+            continue
+        checkout.submodules.append(path)
+        steps = []
+        if (
+            _git(source, "config", "--bool", "core.sparseCheckout").stdout.strip()
+            == "true"
+        ):
+            patterns = _git(source, "sparse-checkout", "list").stdout.split()
+            steps.append(("sparse-checkout", "set", "--no-cone", *patterns))
+        steps.append(("read-tree", "-mu", "HEAD"))
+        for step in steps:
+            done = _git(target, *step)
+            if done.returncode != 0:
+                checkout.evidence.append(
+                    evidence(
+                        "submodule-absent",
+                        path,
+                        f"git {' '.join(step[:2])} in the checkout of {path} exited "
+                        f"{done.returncode}: {_said(done)}; the submodule may be incomplete",
+                    )
+                )
+                break
+        else:
+            checkout.evidence.append(
+                evidence("submodule", path, f"checked out at {commit} from {source}")
+            )
+
+
+def _runtime(checkout: Path) -> list:
+    """``workers.runtime`` of the checkout's project configuration, or the default."""
+    try:
+        config = json.loads((checkout / ".concorde/config.json").read_text())
+        return list((config.get("workers") or {}).get("runtime", DEFAULT_RUNTIME))
+    except (OSError, ValueError, AttributeError, TypeError):
+        return list(DEFAULT_RUNTIME)
+
+
+def _environments(checkout: Checkout, environments) -> None:
+    """Link each relative runtime path the origin has and Git ignores into the checkout."""
+    for entry in environments:
+        if not isinstance(entry, str) or not entry.strip() or os.path.isabs(entry):
+            continue
+        relative = entry.strip().strip("/")
+        source = checkout.origin / relative
+        target = checkout.path / relative
+        if not source.exists() or os.path.lexists(target) or not target.parent.is_dir():
+            continue
+        # The link does not exist yet, so a directory is named as one for ``dir/`` patterns.
+        asked = relative + "/" if source.is_dir() else relative
+        if _git(checkout.path, "check-ignore", "--quiet", asked).returncode != 0:
+            checkout.evidence.append(
+                evidence(
+                    "environment-not-linked",
+                    relative,
+                    f"Git does not ignore {relative}, so the checkout of {checkout.commit} "
+                    f"keeps its own and does not link {source}",
+                )
+            )
+            continue
+        target.symlink_to(source, target_is_directory=source.is_dir())
+        checkout.links.append(target)
+        checkout.evidence.append(
+            evidence(
+                "environment",
+                relative,
+                f"linked from {source}, which the run only reads",
+            )
+        )
+
+
+__all__ = ["PREFIX", "Checkout", "open_checkout"]

@@ -24,8 +24,9 @@ The run judges the [workspace](../../../glossary.json#concept.workspace) whose b
 the worktree it starts in. `--modules` names the judged Modules (the binding's by default; an
 [unbound run](../../../glossary.json#concept.unbound-run) must name them, or its grant cannot be
 computed and it ends `failed` with `grant_unavailable`), `--base` the diff's start commit (the
-binding's base commit by default; required for an unbound run, which judges the worktree it starts
-in, such as the primary worktree, since that commit), and `--focus` a concern to look at first,
+binding's base commit by default; required for an unbound run, which judges the `HEAD` of the
+worktree it starts in, such as the primary worktree, since that commit, reading it from its
+[unbound checkout](../../../glossary.json#concept.unbound-checkout)), and `--focus` a concern to look at first,
 never narrowing what may be reported. For example, `code_review --modules module.issues` gives the
 reviewer the Issues Spec, code and tests, read access to the rest of the project's code, the
 workspace's diff since its base and the Issues checks.

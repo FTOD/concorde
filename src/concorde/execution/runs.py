@@ -26,7 +26,7 @@ KINDS = ("operation", "command")
 RUN_ID_PATTERN = "^r-[0-9]{8}T[0-9]{6}-[a-z_]+-[0-9a-f]{8}$"
 RUN_ID = re.compile(RUN_ID_PATTERN)
 
-# contract.execution.run-result, version 1
+# contract.execution.run-result, version 2
 RESULT_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -34,6 +34,7 @@ RESULT_SCHEMA: dict = {
         "kind",
         "name",
         "workspace",
+        "commit",
         "modules",
         "run_id",
         "status",
@@ -50,6 +51,12 @@ RESULT_SCHEMA: dict = {
         "kind": {"enum": list(KINDS)},
         "name": {"type": "string", "pattern": "^[a-z][a-z_-]*$"},
         "workspace": {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]},
+        "commit": {
+            "anyOf": [
+                {"type": "null"},
+                {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"},
+            ]
+        },
         "modules": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "run_id": {"type": "string", "pattern": RUN_ID_PATTERN},
         "status": {"enum": ["ok", "blocked", "failed"]},

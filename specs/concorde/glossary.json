@@ -1165,11 +1165,24 @@
       "explanation": "specs/concorde/spec-tooling/spec/module.md#concept.typed-value"
     },
     {
+      "id": "concept.unbound-checkout",
+      "title": "Unbound checkout",
+      "owner": "module.execution",
+      "definition": "The throwaway detached checkout of the HEAD of the worktree an unbound run started in, made in a private temporary directory, in which the run's steps and workers work and which the runner removes before it writes the result.",
+      "explanation": "specs/concorde/execution/module.md#concept.unbound-checkout"
+    },
+    {
       "id": "concept.unbound-run",
       "title": "Unbound run",
       "owner": "module.execution",
-      "definition": "A run started in a worktree without a workspace binding, such as the primary worktree, which works on that worktree alone, records no workspace and may only read.",
-      "explanation": "specs/concorde/execution/module.md#concept.unbound-run"
+      "definition": "A run started in a worktree without a workspace binding, such as the primary worktree, which works in a throwaway detached checkout of that worktree's HEAD, records no workspace and may only read.",
+      "explanation": "specs/concorde/execution/module.md#concept.unbound-run",
+      "relates": [
+        {
+          "verb": "works in",
+          "target": "concept.unbound-checkout"
+        }
+      ]
     },
     {
       "id": "concept.user-documents",

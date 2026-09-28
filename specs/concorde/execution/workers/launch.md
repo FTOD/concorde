@@ -17,8 +17,8 @@ A run is requested with:
 | Input | Meaning |
 | --- | --- |
 | backend | `claude` or `pi`: the [worker backend](../../glossary.json#concept.worker-backend) the worker model configuration chooses for the worker, pi when nothing chooses one |
-| worktree | Absolute path of the Git worktree the worker works in: the bound workspace, or for an [unbound run](../../glossary.json#concept.unbound-run) the worktree the run started in |
-| records | The records directory of the run that asks for the worker, whose [run store](../../glossary.json#concept.run-store) receives the run directory: the [workspace binding](../../glossary.json#concept.workspace-binding)'s for a bound run; the worktree's own `.concorde` when none is given |
+| worktree | Absolute path of the Git worktree the worker works in: the bound workspace, or for an [unbound run](../../glossary.json#concept.unbound-run) its [unbound checkout](../../glossary.json#concept.unbound-checkout) |
+| records | The records directory of the run that asks for the worker, whose [run store](../../glossary.json#concept.run-store) receives the run directory: the [workspace binding](../../glossary.json#concept.workspace-binding)'s for a bound run, the `.concorde` of the worktree an unbound run started in; the worktree's own `.concorde` when none is given |
 | [task type](../../glossary.json#concept.task-type) | One of the seven Protocol task types; it selects the tool set |
 | grant | The frozen grant: every path with its level `rw`, `ro` or `names`, relative to the worktree, and its [context identity](../../glossary.json#concept.context-identity) |
 | instructions | The [Operation](../../glossary.json#concept.operation)'s task-specific part of the brief |

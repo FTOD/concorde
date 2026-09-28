@@ -27,7 +27,9 @@ mistakes, not a malicious worker.
 The caller is a worker-backed step of an Operation run, in the Execution runner's process, that has
 chosen the worktree, task type and Modules and asked Spec core for the grant. For work that changes
 files this is a bound workspace; an [unbound run](../../glossary.json#concept.unbound-run) can
-launch only a reading worker over the worktree it runs in. The step calls Workers with the worktree,
+launch only a reading worker over the worktree it runs in, its
+[unbound checkout](../../glossary.json#concept.unbound-checkout), which Workers audits like any
+worktree. The step calls Workers with the worktree,
 the records directory of the run, the frozen grant and [context
 identity](../../glossary.json#concept.context-identity), task instructions for the
 [brief](../../glossary.json#concept.brief), checks to run after the worker, and run limits — getting
@@ -69,8 +71,8 @@ The host creates the **run directory** `runs/<run-id>/` in the [run
 store](../../glossary.json#concept.run-store) of the records directory the Operation names: the
 records directory of its [workspace binding](../../glossary.json#concept.workspace-binding) for a
 bound run, so that a task's worker runs lie beside its Operation runs in the primary worktree's
-`.concorde/runs/` however many task worktrees there are, and the worktree's own `.concorde` for an
-unbound run. It holds host-only `control/` (settings, hook, grant, brief), the worker's `config/`
+`.concorde/runs/` however many task worktrees there are, and for an unbound run the `.concorde` of
+the worktree it started in, never its throwaway checkout. It holds host-only `control/` (settings, hook, grant, brief), the worker's `config/`
 (`CLAUDE_CONFIG_DIR` plus a credential copy), `home/` (`HOME`) and `work/` (its working directory);
 the run directory is ignored by Git. `TMPDIR` is a short private directory under `/tmp`, removed
 when the run ends. It pre-creates `src/shop/discounts.py` empty — a worker can write only files that
@@ -413,6 +415,9 @@ store](../../glossary.json#concept.run-store), beside the Operation run, and rec
 runner's process identifier in the progress file, as the runner's own [run progress
 file](../../glossary.json#concept.run-progress-file) does. Workers relies on the runner refusing an
 unbound run's writing worker before it reaches Workers, and never reads a workspace binding itself.
+For an unbound run the step passes the run's checkout as the worktree and reads the backend and
+model from the worker model configuration of the worktree the run started in, so Workers never
+learns that the worktree it audits is a checkout.
 
 <a id="uses-operations"></a>
 

@@ -103,8 +103,10 @@ to the next run.
 
 Some Operations also run **unbound**, in a worktree without a binding such as the primary
 worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`).
-They work on that worktree with the Modules you name in `--modules`; their result has `workspace`
-null, and they change no Spec or code, since an unbound run launches only reading workers. Use
+They work on a throwaway checkout of that worktree's `HEAD`, with the Modules you name in
+`--modules`, so a task merged there meanwhile does not disturb them and uncommitted changes are not
+examined; their result has `workspace` null and names the examined commit as `commit`, and they
+change no Spec or code, since an unbound run launches only reading workers. Use
 them for a question or a review that does not justify a task, such as understanding a Module before
 you agree a change with the developer. An `--input` of such a run must be unbound too. In the primary worktree you may do housekeeping that changes no Spec meaning and
 no code behaviour directly, such as `concorde registry --write`.

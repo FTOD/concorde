@@ -16,7 +16,8 @@ rely in particular on
 
 Every worker-backed step SHALL compute the grant of a bound run from the Specs of the workspace the
 run works on, never from the primary worktree's, and the grant of an
-[unbound run](../../glossary.json#concept.unbound-run) from the Specs of the worktree it runs in.
+[unbound run](../../glossary.json#concept.unbound-run) from the Specs of its
+[unbound checkout](../../glossary.json#concept.unbound-checkout).
 
 ### req.operations.workers-through-workers — Workers are launched only through Workers
 

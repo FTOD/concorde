@@ -101,7 +101,8 @@ developer.
 ### req.main-session.no-task-questions — Questions need no task
 
 The guidance SHALL tell the main agent which Operations run unbound, in a worktree without a
-workspace binding, and that such a run changes no Spec or code.
+workspace binding, that such a run examines a checkout of that worktree's `HEAD` whose commit its
+result names, and that it changes no Spec or code.
 
 Every change still runs in a task ([Changes run in tasks](#req.main-session.tasks-own-changes)).
 
