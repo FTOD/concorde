@@ -217,8 +217,11 @@ The installer never writes Specs or the registry, and a plain install never writ
 configuration; only update mode rewrites the configuration's Protocol binding, as described above
 ([requirements](requirements.md#req.distribution.installer-no-specs)). Afterwards,
 `concorde init --propose --name <name>` prints Spec core's initialization proposal, and
-`concorde init --apply --proposal <file>` applies exactly the proposal it printed, from a file
-outside the project. After a plain install that brought a new Protocol copy, the developer accepts
+`concorde init --apply --proposal <file>` applies a proposal read from a file outside the project
+only when Spec core accepts its shape, its integrity (the proposal digest matches the value) and its
+freshness (the project is still in the state it was computed from), which shows the proposal intact
+and current, not that propose printed it
+([Spec core](../spec-tooling/spec/requirements.md#req.spec.init-explicit-envelope)). After a plain install that brought a new Protocol copy, the developer accepts
 it by updating the binding; `concorde update` does that itself.
 
 ## Design
