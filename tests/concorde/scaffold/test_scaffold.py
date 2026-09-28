@@ -194,6 +194,8 @@ class ScaffoldTests(AdoptionCase):
         )
         self.assertEqual("blocked", envelope["status"])
         self.assertEqual("stale_proposal", envelope["error"]["code"])
+        # What the code names today (the folder the recheck finds); the scenario leaves open
+        # whether it should name the file, as req.scaffold.no-overwrite says.
         self.assertIn("specs/project/checkout/", envelope["error"]["detail"])
         self.assertEqual(
             before, git(worktree, "status", "--porcelain", "--untracked-files=all")
