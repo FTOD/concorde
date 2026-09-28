@@ -11,6 +11,83 @@ judge whether a Spec explains enough or whether code keeps a promise, does not d
 
 ## Usage
 
+The commands named below are `concorde` commands; in the Concorde checkout itself they run as
+`python3 scripts/concorde.py`.
+
+**A worked example.** A shop project has two Modules under its root, Checkout and Inventory.
+Checkout's entry `specs/checkout/module.md` binds the directory `src/checkout/` in its realization
+Checkout service, owns the term Hold, which the project glossary `specs/project/glossary.json`
+defines as "Stock withheld until an order is accepted or expires.", and relies on Inventory to
+reserve stock. Inventory binds `src/inventory/`. The developer declares that reliance as a `uses`
+in the `module` block of Checkout's entry metadata:
+
+```json
+{
+  "module": {
+    "title": "Checkout",
+    "owns": ["specs/checkout/module.md"],
+    "contains": [],
+    "uses": [{"target": "module.inventory", "meaning": "#uses-module-inventory"}],
+    "includes": [],
+    "participates": []
+  },
+  "defines": [
+    {"id": "realization.checkout.service", "type": "realization", "title": "Checkout service",
+     "meaning": "#realization.checkout.service", "entries": ["src/checkout/"]}
+  ]
+}
+```
+
+`concorde spec-validation` then reports one error, and its status is `invalid`, because the
+registry still mirrors Checkout's old `module` block:
+
+```json
+{
+  "rule_id": "CHK.registry.mirror",
+  "severity": "error",
+  "source": ".concorde/specs.json",
+  "subject_id": "module.checkout",
+  "message": "registry record module.checkout differs from its entry's module block in uses",
+  "remediation": "Regenerate the registry's mirrored fields with `concorde.py registry --write`."
+}
+```
+
+`concorde registry --write` regenerates that record (`"regenerated": ["module.checkout"]`), and the
+next `spec-validation` is `success` with no finding. A worker is now to change Checkout's code, so
+`concorde grant --root . --modules module.checkout --type implement` computes what it may touch and
+prints it as its `result`:
+
+```json
+{
+  "task_type": "implement",
+  "modules": ["module.checkout"],
+  "context_identity": "sha256:daa066e5aa817d139551eb0de41b1bbadcbbf51d8f798c864a798c38c76380d5",
+  "entries": [
+    {"path": "specs/checkout/module.md", "level": "ro"},
+    {"path": "specs/checkout/module.md.json", "level": "ro"},
+    {"path": "specs/inventory/module.md", "level": "ro"},
+    {"path": "specs/inventory/module.md.json", "level": "ro"},
+    {"path": "src/checkout/", "level": "rw"},
+    {"path": "src/inventory/stock.py", "level": "ro"}
+  ],
+  "terms": [
+    {"id": "concept.hold", "title": "Hold", "owner": "module.checkout",
+     "definition": "Stock withheld until an order is accepted or expires.",
+     "explanation": "specs/checkout/module.md#concept.hold"}
+  ],
+  "glossary": "specs/project/glossary.json"
+}
+```
+
+Checkout's own entry and Inventory's entry, which the new `uses` selects, are its Spec context,
+readable. Its realization's directory is writable, which covers `src/checkout/submit.py` without an
+entry of its own. Inventory's code is readable because a task that implements reads the whole
+project's code, and the root Module's entry is absent because nothing Checkout declares selects it.
+The glossary is named but not writable, since this task type writes no Spec; the definition of Hold
+travels in `terms` instead. Every other path, such as the registry, is denied. The context identity
+changes when either entry or the definition of Hold changes, never when `src/checkout/submit.py`
+does.
+
 What each part of Spec core reads and produces:
 
 ```d2
@@ -48,9 +125,6 @@ writer -> transaction: applies
 init -> writer: writes through
 init -> validator: validates the result with
 ```
-
-The commands named below are `concorde` commands; in the Concorde checkout itself they run as
-`python3 scripts/concorde.py`.
 
 <a id="concept.registry"></a><a id="concept.protocol-binding"></a>
 
@@ -228,6 +302,28 @@ worker's writes to code never make its context stale; a task that writes Specs c
 context identity. The grant does not yet mark which of its entries are pending, so the Operation
 learns which files to create by checking what exists; whether it should is not settled.
 
+The computation runs in a fixed order ([definition](contracts.md#grants)), so that the refusal of a
+shared file sees every level the task type assigns and an installed file is lowered only after it:
+
+```d2 illustrative
+direction: down
+input: "Bound Modules, task type,\nSpecs of one worktree"
+check: "Check the input"
+levels: "Give each path of the boundary sets\nthe task type's level; a path keeps\nits highest (names < ro < rw)"
+shared: "Does an rw entry cover a file\nan unbound Module also binds?" {shape: diamond}
+installed: "Lower installed files\nfrom rw to ro"
+drop: "Drop exact paths a directory entry\nof equal or higher level covers"
+identity: "Compute the context identity over the\nSpec sources, terms and pinned\nexternal material"
+grant: "Grant: sorted entries, terms,\nglossary path, context identity" {shape: page}
+refused: "Refused, no grant:\ninvalid_input, invalid_task_type,\nunknown_module or shared_file" {shape: page}
+
+input -> check -> levels -> shared
+shared -> installed: no
+installed -> drop -> identity -> grant
+check -> refused: invalid input,\ntask type or Module
+shared -> refused: yes
+```
+
 **Validation.** The validator runs nothing: it parses verification declarations and reads configured
 checks only to confirm their inputs exist and are safe. Concerns other Modules own, such as
 [Issue](../../glossary.json#concept.issue) records or Concorde's own package, are their configured
@@ -251,6 +347,33 @@ back. Initialization creates only what the project owns, its configuration, regi
 everything that exists because Concorde is installed is the installer's. So that the project
 validates at once, the root Module binds every file the project already has in one realization that
 says only where the files are, and later Modules take files over from it.
+
+Propose and apply are two calls, and apply refuses before it writes anything unless the proposal
+is exactly what the project's current state would give ([definition](contracts.md#initialization)):
+
+```d2 illustrative
+direction: down
+propose: Propose {
+  ask: "Name, root Module,\ninterpreter"
+  compute: "Compute the configuration,\nregistry, root entry and\nglossary from the project"
+  proposal: "Proposal and its digest;\nnothing written" {shape: page}
+  ask -> compute -> proposal
+}
+apply: Apply {
+  checks: "Digest, shape, Protocol binding,\nnull before-digests, unchanged\nsource digest, allowed paths"
+  write: "Write every file in\none file transaction"
+  validate: "Validate the project\ninside the transaction"
+  applied: "Applied" {shape: page}
+  checks -> write -> validate -> applied: no error
+}
+refused: "Refused, nothing written:\nalready_initialized, not_installed,\ninvalid_proposal, stale_proposal\nor permission_denied" {shape: page}
+rolled: "Every file rolled back" {shape: page}
+
+propose.proposal -> apply.checks: the caller accepts it
+propose.ask -> refused: configuration exists\nor no Protocol copy
+apply.checks -> refused: a check fails
+apply.validate -> rolled: an error
+```
 
 **Protocol text and assets.** The bundle carries only the Protocol; Concorde's conventions, such as
 verification declarations, live in the Modules that own them. Keeping the text apart from its
