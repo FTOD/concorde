@@ -253,7 +253,7 @@ class StepTests(unittest.TestCase):
         self.assertEqual(outcome["run_id"], record["steps"][0]["run_id"])
         validate(outcome, STEP_SCHEMA)
 
-    @verifies("scenario.workflows.step-starts")
+    @verifies("scenario.workflows.step-starts-command")
     def test_a_real_step_runs_detached_with_the_worktrees_concorde(self):
         _status, outcome = run_step(
             self.space, self.request("validate", ("task-validation",)), wait=120
@@ -278,22 +278,27 @@ class StepTests(unittest.TestCase):
         self.assertEqual(outcome["run_id"], again["run_id"])
 
     @verifies("scenario.workflows.step-cached")
-    def test_a_finished_step_returns_at_once_and_retry_restarts_a_failed_one(self):
-        validation = ("validate", ("task-validation",))
+    def test_a_finished_step_returns_at_once(self):
         with self.starter(output=SURVEY_OUTPUT):
-            run_step(self.space, self.request())
-            run_step(self.space, self.request())
+            _, first = run_step(self.space, self.request())
+            status, again = run_step(self.space, self.request())
         self.assertEqual(1, len(self.started))
+        self.assertEqual((0, first["run_id"]), (status, again["run_id"]))
+
+    @verifies("scenario.workflows.step-retried")
+    def test_retry_runs_a_failed_step_again(self):
+        validation = ("validate", ("task-validation",))
         with self.starter(status="failed"):
             run_step(self.space, self.request(*validation))
             _, failed = run_step(self.space, self.request(*validation))
         self.assertEqual("failed", failed["status"])
-        self.assertEqual(2, len(self.started))
+        self.assertEqual(1, len(self.started))
         with self.starter(status="ok"):
             _status, retried = run_step(
                 self.space, self.request(*validation, retry=True)
             )
-        self.assertEqual(3, len(self.started))
+        self.assertEqual(2, len(self.started))
+        self.assertEqual("validate", retried["key"])
         self.assertNotEqual(failed["run_id"], retried["run_id"])
 
     @verifies("scenario.workflows.restarted")
@@ -368,13 +373,16 @@ class StepTests(unittest.TestCase):
         result = report(self.space, ["describe:module.shop"])
         self.assertEqual("failed", result["status"])
         self.assertEqual("lost", result["problems"][0]["status"])
-        # A key reported lost that has a finished run keeps that run's outcome.
+
+    @verifies("scenario.workflows.lost-finished")
+    def test_a_key_reported_lost_keeps_its_finished_run(self):
         with self.starter(output=SURVEY_OUTPUT):
             run_step(self.space, self.request())
         result = report(self.space, ["survey"])
         self.assertEqual(
             "ok", {s["key"]: s["status"] for s in result["steps"]}["survey"]
         )
+        self.assertEqual([], [p for p in result["problems"] if p["step"] == "survey"])
 
     @verifies("scenario.workflows.superseded")
     def test_a_retried_step_supersedes_later_steps(self):
@@ -431,7 +439,7 @@ class StepTests(unittest.TestCase):
             )
         self.assertEqual(second["run_id"], again["run_id"])
 
-    @verifies("scenario.workflows.step-waits")
+    @verifies("scenario.workflows.step-waits-lock")
     def test_a_step_waits_while_another_run_of_the_workspace_runs(self):
         with self.starter(output=SURVEY_OUTPUT):
             with workspace_lock(self.records, "adopt", "Operation implement r-other"):
@@ -440,6 +448,7 @@ class StepTests(unittest.TestCase):
                     (3, "running", None), (status, value["state"], value["run_id"])
                 )
                 self.assertEqual([], self.started)
+                self.assertEqual([], store.current_steps(store.load(self.space)))
             status, value = run_step(self.space, self.request())
         self.assertEqual((0, "finished"), (status, value["state"]))
         self.assertEqual(1, len(self.started))

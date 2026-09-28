@@ -12,7 +12,13 @@ shapes are in the [contracts](contracts.md).
 - THEN it starts `concorde run survey --modules module.shop --detach` with the workspace's own `concorde`
 - AND the workspace's [workflow record](../../glossary.json#concept.workflow-record) names the workflow `brownfield` and the key `survey` with the run
 - AND once the run has finished it prints the step outcome with state `finished`, the workspace `adopt` and the result's status, and exits with status 0
-- AND a step naming the [execution command](../../glossary.json#concept.execution-command) `task-validation` starts `concorde task-validation --detach`, and its outcome carries the readiness's `ready`
+
+### scenario.workflows.step-starts-command — A step starts an execution command
+
+- GIVEN the task worktree of the workspace `adopt`, running the brownfield workflow
+- WHEN `concorde workflow step --workflow brownfield --mode no-ask --key validate -- task-validation` is run there
+- THEN it starts the [execution command](../../glossary.json#concept.execution-command) as `concorde task-validation --detach` with the workspace's own `concorde`, not through `concorde run`
+- AND once the run has finished its step outcome names `task-validation` and carries the readiness's `ready`
 
 ### scenario.workflows.unbound-refused — No workflow runs in an unbound worktree
 
@@ -27,15 +33,27 @@ shapes are in the [contracts](contracts.md).
 - WHEN the step command is run
 - THEN it prints the step outcome with state `running` and exits with status 3 after at most `--wait` seconds
 - AND running the same command again starts no second run and waits for the recorded one
-- AND a step whose [workspace lock](../../glossary.json#concept.workspace-lock) another run still holds waits for that run to end before starting its own, within the same bound
+
+### scenario.workflows.step-waits-lock — A step waits for the workspace lock before it starts
+
+- GIVEN a workspace whose [workspace lock](../../glossary.json#concept.workspace-lock) another run holds, and no step `survey` recorded
+- WHEN the step command is run for `survey`
+- THEN it starts no run while the lock is held, waiting within its `--wait` for that run to end
 - AND when the bound ends while the lock is still held, it prints the step outcome with state `running` and no run and exits with status 3, having started and recorded nothing
+- AND once the lock is free, running the same command again starts the step's run
 
 ### scenario.workflows.step-cached — A finished step returns at once
 
 - GIVEN a workspace whose step `survey` has finished `ok`
 - WHEN the same step is asked for again
 - THEN no run starts and the recorded outcome is printed at once
-- BUT with `--retry` a step whose run ended `failed` starts a new run under the same key
+
+### scenario.workflows.step-retried — A failed step runs again with `--retry`
+
+- GIVEN a workspace whose step `validate` has finished `failed`, so that asking for it again prints that outcome and starts nothing
+- WHEN the step is asked for again with `--retry`
+- THEN a new run starts under the same key `validate`
+- AND the step outcome names the new run instead of the failed one
 
 ### scenario.workflows.step-refused — A step that does not belong
 
@@ -88,7 +106,13 @@ shapes are in the [contracts](contracts.md).
 - WHEN the step command is run for that key again
 - THEN it prints the step outcome with state `lost` and a `workflow` link naming the key, the run and the dead runner, with the end of the runner's output, and exits with status 1
 - AND `concorde workflow report --lost describe:module.checkout` lists the step as a lost problem and has status `failed`
-- BUT a key named with `--lost` whose current step has a finished run keeps that run's outcome
+
+### scenario.workflows.lost-finished — A key reported lost keeps its finished run
+
+- GIVEN a workspace whose step `survey` has finished `ok`
+- WHEN `concorde workflow report --lost survey` runs, because a step agent returned nothing for that step
+- THEN the workflow result lists `survey` with its run's status `ok`
+- AND lists no lost problem for it, since the record wins over what the step agents relayed
 
 ### scenario.workflows.relay-refused — A step agent mistypes the step command
 
