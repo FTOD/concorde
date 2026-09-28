@@ -228,6 +228,32 @@ fails there is nothing to watch, and the command exits nonzero. When Docusaurus 
 the supervisor reports the status and starts it again on the next change. Interrupting the command
 stops Docusaurus and the watchers and exits.
 
+The supervisor's states and what moves it between them; an interrupt, in any state, stops
+Docusaurus and the watchers and exits:
+
+```d2 illustrative
+direction: down
+start: "npm run start" {shape: oval}
+staging: Staging
+running: "Running:\nDocusaurus serves the pages"
+restart: "Restart pending:\nchanges gathered for 300 ms,\nthen Docusaurus stopped"
+failed: "Failed, waiting:\nno preview"
+exited: "Exited on its own:\nno preview"
+end: "Exit nonzero" {shape: oval}
+
+start -> staging
+staging -> running: succeeds
+staging -> end: the first staging fails
+staging -> failed: a later staging fails
+running -> restart: an input changes
+running -> exited: Docusaurus exits
+exited -> restart: an input changes
+failed -> restart: an input or any .md\nor .md.json there changes
+restart -> staging
+```
+
+A change that arrives during a restart is kept and makes one more restart once it ends.
+
 ## Validation
 
 `validateScopedBuild(root, directory)` reloads the model from the current sources and fails unless:

@@ -62,15 +62,32 @@ Spec panel in its [definition](panel.md).
 - THEN the memory keeps `f.2` with its new content, adds the new finding as `f.4`, marks `f.3` resolved with the reason and keeps `f.1` open
 - AND the result lists `f.4` as new, `f.2` as updated, `f.3` as resolved, `f.1` as carried in full and `f.9` as ignored
 - AND the outcome is `changes_required`, since the carried `f.1` and the updated `f.2` are open blocking findings
-- BUT once every earlier blocking finding is resolved, the outcome is `accepted`
+
+### scenario.spec-review.last-blocker-resolved — Resolving the last blocking finding accepts the Module
+
+- GIVEN a workspace whose review memory of `module.a` holds the open blocking finding `f.1` and no other open blocking finding
+- WHEN a reviewer, given that earlier finding, reports no new finding and `f.1` resolved with a reason
+- THEN the memory marks `f.1` resolved with that reason
+- AND the outcome and the verdict are `accepted`
 
 ### scenario.spec-review.unchanged — Unchanged Specs are not reviewed again
 
 - GIVEN a review memory of `module.a` recording the context identity of its current Specs as reviewed by run `r-earlier`, with the open blocking finding `f.1`
 - WHEN a Spec review of `module.a` runs
 - THEN no reviewer is launched, the outcome is `changes_required` from the memory, and the result names `r-earlier` as the review it is unchanged since
-- AND a completed review records the context identity it judged and its run in the memory
-- BUT with `--force` the reviewer runs whatever the memory records
+
+### scenario.spec-review.records-judged — A completed review records what it judged
+
+- GIVEN a workspace whose review memory of `module.a` records no reviewed Specs
+- WHEN a Spec review of `module.a` runs and its reviewer ends `ok`
+- THEN the memory records the context identity of the `review-spec` grant the review judged and the review's run
+- AND the result names no review it is unchanged since
+
+### scenario.spec-review.forced — `--force` reviews unchanged Specs again
+
+- GIVEN a review memory of `module.a` recording the context identity of its current Specs as reviewed
+- WHEN a Spec review of `module.a` runs with `--force`
+- THEN the reviewer is launched and receives the memory's open earlier findings
 
 ### scenario.spec-review.audit-change — A reviewer that changed a file
 

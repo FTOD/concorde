@@ -64,21 +64,16 @@ Spec.
 
 The **review memory** keeps a Module's review history, so that a repeated review neither forgets
 earlier findings nor reports them again as new
-([contract](operation.md#contract.spec-review.memory)). It is one file per Module,
-`.concorde/reviews/spec/<module>.json`, tracked with the project and committed by the task's
-delivery, so every task and every collaborator reviews against the same history. The reviewer
-receives the Module's open earlier findings and returns only new findings, earlier findings that
-changed (naming their id) and earlier findings the Specs no longer have (with the reason); an
-earlier finding it leaves out still stands. The Operation merges that into the memory, giving each
-new finding the next id, keeps out a finding the checker disputed, and reports what was new,
-updated, resolved and carried. The reviewer compares every finding with the earlier ones first,
-since a model sees the same Specs a little differently each time: the same problem, however worded,
-is the earlier finding. A completed review also records the context identity of the Specs it judged;
-while a Module's context identity is still that one, a review launches no reviewer and the memory
-decides its outcome, unless `--force` asks for a new look. An unbound review reads the memory and
-never writes it, so only a review inside a workspace, whose
-[delivery commits](../../glossary.json#concept.delivery-commit) the memory, changes the shared
-history.
+([contract](operation.md#contract.spec-review.memory)). It is the file
+`.concorde/reviews/spec/<module>.json`, tracked with the project. A repeated review returns what it
+found new, which earlier findings it updated or resolved, and the earlier ones it carried
+unchanged; an earlier finding it does not mention still stands and still counts toward the
+verdict. While a Module's context identity is the one the last completed review judged, a review
+launches no reviewer and the memory decides the Module's outcome, unless `--force` asks for a new
+look. Only a review inside a workspace writes the memory, and the task's
+[delivery commit](../../glossary.json#concept.delivery-commit) carries it; an unbound review reads
+it and writes nothing. [The review memory](#the-review-memory) in Design explains why it works this
+way.
 
 A **Spec panel** is for a review the caller wants to
 rely on more than on one reviewer, whose findings vary from run to run and are sometimes wrong. It
@@ -143,6 +138,74 @@ checklist itself is a shared part, so that a panel judges by exactly the same ba
 reviewers and the chair, plus, from the Operation, the role and seat or attempt, and for the chair
 every labelled reviewer finding and, on its second attempt, its previous report and what it left
 unaccounted.
+
+### The review memory
+
+A single reviewer's findings vary from run to run, so a review that forgot the one before it would
+report again, in other words, problems the task has already seen, and would drop the ones it
+happened not to notice this time. The review memory is the state that carries a Module's findings
+from one review to the next: every finding its reviews kept, under a stable id `f.<n>` never
+reused, with its content as last reported, whether it is open or resolved, the runs that first and
+last reported or resolved it and, once resolved, the reason; and, under `reviewed`, the context identity of the
+Specs the last completed review judged, with that review's run.
+
+There is one tracked file per Module because the history belongs to the Module, as its Specs do,
+and is bound to the same per-Module context identity as its outcome. A task that reviews a Module
+changes only that Module's file, so tasks reviewing different Modules never touch the same file,
+and a merged task brings the Module's history to every later task and collaborator.
+
+The reviewer, not the Operation, matches a finding with an earlier one. Two reviews describe the
+same problem in other words, at another anchor or with other evidence, and only a reader of the
+Specs can tell that it is the same problem; a textual comparison would keep duplicates or merge
+distinct problems. So the reviewer receives the open earlier findings, without the runs that
+reported them, and names the earlier id it updates or resolves. The Operation keeps what no worker
+may decide: it assigns ids, ignores a resolution that names no open finding, keeps an update of an
+unknown finding as a new one, keeps out a finding the checker disputed, and derives the outcome
+from the open findings alone, so a blocking finding stands until a review resolves it.
+
+An unbound run never writes the memory. It works in an unbound checkout the runner removes before
+the result, and writing into the worktree it started in, such as the primary worktree, would change
+the shared history outside any task, with no delivery to account for it. A bound review writes the
+file in its worktree and the delivery commits it with the rest of the task, so the history changes
+only through a merged task. A review that skips the reviewer because the Specs are unchanged, and
+an `incomplete` review, write nothing, so a failed review never records Specs as judged.
+
+A memory the Operation cannot use, one that is not valid JSON, does not match the contract or names
+another Module, makes only that Module's review `incomplete` with `review_memory_unusable`, naming
+the file; the other Modules of the run are still reviewed and their memories written. The Operation
+leaves that file as it is rather than overwrite a history it cannot read: repairing or removing it
+is the task's decision.
+
+For each Module, a repeated review runs through the memory like this
+([step table](operation.md#host-sequence)):
+
+```d2 illustrative
+direction: down
+read: "Read the Module's review memory"
+usable: "Usable?" {shape: diamond}
+same: "Records this context identity,\nwithout --force?" {shape: diamond}
+skip: "Launch no reviewer;\nthe memory decides\n(unchanged_since)"
+launch: "Launch the reviewer with\nthe open earlier findings,\nthen audit"
+check: "Checker, with --check-findings\nand at least one finding"
+merge: "Merge: new ids, updates,\nresolutions; disputed kept out;\nrecord the context identity and run"
+outcome: "Outcome from the open findings" {shape: page}
+bound: "Bound run?" {shape: diamond}
+write: "Write the memory file;\ndelivery commits it"
+nothing: "Nothing written" {shape: page}
+unusable: "Module incomplete:\nreview_memory_unusable" {shape: page}
+
+read -> usable
+usable -> unusable: no
+usable -> same: yes
+same -> skip: yes
+same -> launch: no
+skip -> outcome
+launch -> check -> merge -> bound
+bound -> write: yes
+bound -> nothing: no
+write -> outcome
+nothing -> outcome
+```
 
 ### The panel
 

@@ -630,14 +630,15 @@ Propose returns `{status: "proposed", proposal, proposal_digest, files}` with th
 its digest and its ordered paths. Apply returns `{status: "applied", proposal: null,
 proposal_digest: null, files}` with the written paths.
 
-The proposal contains four files, each with `before_digest: null`: `.concorde/config.json` with
+The proposal contains five files, each with `before_digest: null`: `.concorde/config.json` with
 profile 19, the binding of the installed Protocol copy and `python`, which is the interpreter named
 on propose as given, otherwise the first of `.venv/bin/python` and `venv/bin/python` that exists,
 and absent when there is none;
-`.concorde/specs.json` with one record for the root Module; and `specs/project/module.md` with its
-metadata. The entry has the five required sections and says that the project's responsibility,
-behaviour and architecture are not yet specified. Its metadata declares the `module` block with the
-entry as the only owned document and empty relation arrays, and no concepts.
+`.concorde/specs.json` with one record for the root Module; `specs/project/module.md` with its
+metadata; and the empty project glossary `specs/project/glossary.json`, beside the entry. The entry
+has the three required sections and says that the project's responsibility, behaviour and
+architecture are not yet specified. Its metadata declares the `module` block with the entry as the
+only owned document, empty relation arrays and the glossary, and the glossary holds no concept.
 
 When the project already has files, the metadata defines one realization,
 `realization.<local>.existing-files` titled Existing project files, where `<local>` is the last
@@ -665,8 +666,9 @@ exactly that shape, that lacks the configuration or the registry, whose configur
 Protocol binding other than the installed copy's, or that has a non-null
 before-digest (all `invalid_proposal`); and a proposal whose `source_digest` differs from the
 project's current one, because the project's files changed so that propose would now return a
-different proposal (`stale_proposal`). It writes only the configuration, the registry and the
-members of the documents the proposed registry lists (`permission_denied` otherwise), through one
+different proposal (`stale_proposal`). It writes only the configuration, the registry, the
+members of the documents the proposed registry lists and the glossary it declares
+(`permission_denied` otherwise), through one
 file transaction whose final check validates the project; a destination that appeared since the
 proposal fails with `stale_proposal`, and a validation error rolls every file back.
 
