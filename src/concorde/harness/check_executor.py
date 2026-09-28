@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Event
-from typing import Callable, Mapping, Protocol, Sequence
+from typing import Mapping, Protocol, Sequence
 
 
 CHECK_POLICY = "project-read-only-v1"
@@ -37,19 +37,14 @@ class CheckResult:
     stderr: bytes
     returncode: int
     timed_out: bool = False
-    stdout_bytes: int | None = None
-    stderr_bytes: int | None = None
 
 
 class CheckCancelled(KeyboardInterrupt):
     """Cancellation with drained output, after descendant cleanup."""
 
-    def __init__(
-        self, stdout: bytes, stderr: bytes, stdout_bytes: int, stderr_bytes: int
-    ):
+    def __init__(self, stdout: bytes, stderr: bytes):
         super().__init__("Test cancelled")
         self.stdout, self.stderr = stdout, stderr
-        self.stdout_bytes, self.stderr_bytes = stdout_bytes, stderr_bytes
 
 
 class CheckSandboxError(RuntimeError):
@@ -61,14 +56,10 @@ class CheckSandboxError(RuntimeError):
         *,
         stdout: bytes = b"",
         stderr: bytes = b"",
-        stdout_bytes: int | None = None,
-        stderr_bytes: int | None = None,
     ):
         super().__init__(message)
         self.stdout = stdout
         self.stderr = stderr
-        self.stdout_bytes = stdout_bytes
-        self.stderr_bytes = stderr_bytes
 
 
 class CheckBackend(Protocol):
@@ -183,27 +174,17 @@ def _pipe():
         yield source, sink
 
 
-def _drain(stream, limit: int | None) -> tuple[bytes, int]:
+def _drain(stream) -> bytes:
     data = bytearray()
-    total = 0
     while chunk := stream.read(65536):
-        total += len(chunk)
         data.extend(chunk)
-        if limit is not None and len(data) > limit:
-            del data[:-limit]
-    return bytes(data), total
+    return bytes(data)
 
 
 class BubblewrapBackend:
     """Linux backend. The gate prevents command execution until its PID namespace is pinned."""
 
-    def __init__(
-        self,
-        *,
-        output_limit: int | None = None,
-        cancel_event: Event | None = None,
-    ):
-        self.output_limit = output_limit
+    def __init__(self, *, cancel_event: Event | None = None):
         self.cancel_event = cancel_event
 
     def run(
@@ -215,7 +196,7 @@ class BubblewrapBackend:
         timeout: float,
     ) -> CheckResult:
         if self.cancel_event is not None and self.cancel_event.is_set():
-            raise CheckCancelled(b"", b"", 0, 0)
+            raise CheckCancelled(b"", b"")
         executable = _bubblewrap()
         deadline = time.monotonic() + timeout
         pidfd = None
@@ -223,7 +204,6 @@ class BubblewrapBackend:
         stdout = stderr = b""
         timed_out = False
         cancelled = False
-        stdout_bytes = stderr_bytes = 0
         failure = None
         reader = None
         output = None
@@ -301,8 +281,8 @@ class BubblewrapBackend:
                 )
                 reader = ThreadPoolExecutor(max_workers=2)
                 output = (
-                    reader.submit(_drain, process.stdout, self.output_limit),
-                    reader.submit(_drain, process.stderr, self.output_limit),
+                    reader.submit(_drain, process.stdout),
+                    reader.submit(_drain, process.stderr),
                 )
                 info_write.close()
                 gate_read.close()
@@ -360,27 +340,22 @@ class BubblewrapBackend:
                 if process is not None:
                     process.wait()
                     if output is not None:
-                        stdout, stdout_bytes = output[0].result()
-                        stderr, stderr_bytes = output[1].result()
+                        stdout = output[0].result()
+                        stderr = output[1].result()
                         process.stdout.close()
                         process.stderr.close()
                     else:
                         stdout, stderr = process.communicate()
-                        stdout_bytes, stderr_bytes = len(stdout), len(stderr)
                 if reader is not None:
                     reader.shutdown()
             if cancelled:
-                raise CheckCancelled(stdout, stderr, stdout_bytes, stderr_bytes)
+                raise CheckCancelled(stdout, stderr)
             if failure is not None:
                 raise CheckSandboxError(
-                    str(failure),
-                    stdout=stdout,
-                    stderr=stderr,
-                    stdout_bytes=stdout_bytes,
-                    stderr_bytes=stderr_bytes,
+                    str(failure), stdout=stdout, stderr=stderr
                 ) from failure
             if timed_out:
-                return CheckResult(stdout, stderr, -1, True, stdout_bytes, stderr_bytes)
+                return CheckResult(stdout, stderr, -1, True)
             status.seek(0)
             records = [json.loads(line) for line in status if line.strip()]
             # bubblewrap emits exit-code only after setup and successful exec. Never infer that
@@ -391,16 +366,8 @@ class BubblewrapBackend:
                     "bubblewrap could not execute the isolated check",
                     stdout=stdout,
                     stderr=stderr,
-                    stdout_bytes=stdout_bytes,
-                    stderr_bytes=stderr_bytes,
                 )
-            return CheckResult(
-                stdout,
-                stderr,
-                process.returncode,
-                stdout_bytes=stdout_bytes,
-                stderr_bytes=stderr_bytes,
-            )
+            return CheckResult(stdout, stderr, process.returncode)
 
 
 @timed("check.total")
@@ -410,8 +377,6 @@ def execute_check(
     *,
     timeout: float,
     environment: Mapping[str, str],
-    evidence: Callable[[Path | None, CheckResult | None, BaseException | None], None]
-    | None = None,
     cancel_event: Event | None = None,
 ) -> CheckResult:
     """Run a check with the project read-only and a private, removed-afterwards scratch."""
@@ -431,10 +396,7 @@ def execute_check(
         raise CheckSandboxError(
             "project location cannot be isolated by the Linux check backend"
         )
-    backend: CheckBackend = BubblewrapBackend(
-        output_limit=2 * 1024 * 1024 if evidence else None,
-        cancel_event=cancel_event,
-    )
+    backend: CheckBackend = BubblewrapBackend(cancel_event=cancel_event)
     # An ambient TMPDIR inside the project must never create a writable project mount. Nested
     # checks may use their parent's scratch, provided it is outside their own project.
     candidates = dict.fromkeys(
@@ -470,17 +432,7 @@ def execute_check(
                 "CONCORDE_CHECK_TMPDIR": str(scratch),
                 "CONCORDE_CHECK_REPORT_DIR": str(scratch / "reports"),
             }
-            result = None
-            failure = None
-            try:
-                result = backend.run(project, argv, scratch, env, timeout)
-                return result
-            except BaseException as error:
-                failure = error
-                raise
-            finally:
-                if evidence is not None:
-                    evidence(scratch, result, failure)
+            return backend.run(project, argv, scratch, env, timeout)
     raise CheckSandboxError(
         "no writable host temporary directory outside the project is available"
     )

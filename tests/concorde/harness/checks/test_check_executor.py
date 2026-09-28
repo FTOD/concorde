@@ -363,7 +363,8 @@ class CheckCancellationTests(unittest.TestCase):
             "import os,time\nos.setsid()\nif os.fork(): os._exit(0)\ntime.sleep(60)\n"
         )
         code = (
-            "import subprocess,sys,time\n"
+            "import os,subprocess,sys,time\n"
+            "sys.stdout.write(os.environ['CONCORDE_CHECK_TMPDIR']+'\\n'); sys.stdout.flush()\n"
             "sys.stdout.write('o'*300000); sys.stdout.flush()\n"
             "sys.stderr.write('e'*70000); sys.stderr.flush()\n"
             # The token is joined only at run time: the literal must not appear in this command
@@ -371,10 +372,6 @@ class CheckCancellationTests(unittest.TestCase):
             f"subprocess.Popen([sys.executable,'-c',{child!r},'concorde-cancel-'+{suffix!r}]).wait()\n"
             "time.sleep(60)\n"
         )
-        seen = []
-
-        def evidence(scratch, result, failure):
-            seen.append((scratch, scratch.is_dir(), result, failure))
 
         def trigger():
             deadline = time.monotonic() + 20
@@ -391,21 +388,16 @@ class CheckCancellationTests(unittest.TestCase):
                 [sys.executable, "-c", code],
                 timeout=30,
                 environment=child_environment(),
-                evidence=evidence,
                 cancel_event=self.event,
             )
         helper.join(5)
         self.assertLess(time.monotonic() - started, 20)
         error = caught.exception
-        self.assertEqual(b"o" * 300000, error.stdout)
+        scratch, output = error.stdout.split(b"\n", 1)
+        self.assertEqual(b"o" * 300000, output)
         self.assertEqual(b"e" * 70000, error.stderr)
-        self.assertEqual((300000, 70000), (error.stdout_bytes, error.stderr_bytes))
         self.assertFalse(running(token))  # the whole process tree has ended
-        [(scratch, existed, result, failure)] = seen
-        self.assertTrue(existed)  # evidence ran before the scratch was removed
-        self.assertIsNone(result)
-        self.assertIs(error, failure)
-        self.assertFalse(scratch.exists())
+        self.assertFalse(Path(scratch.decode()).exists())  # and the scratch is removed
 
     @verifies("scenario.checks.cancelled")
     def test_cancel_event_ends_the_tree_and_keeps_drained_output(self):
