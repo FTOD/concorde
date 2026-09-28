@@ -86,12 +86,13 @@ install and only then writes, so a refusal among these checks leaves the project
 project where every check passes, it goes through these steps in order:
 
 1. **It checks, writing nothing.** It refuses a directory that is not a project
-   (`invalid_project`); a stale build (`stale_build`) and
-   [main-session guidance](../glossary.json#concept.main-session-guidance) whose render is
-   missing or stale ([requirements](requirements.md#req.distribution.installer-fresh-guidance));
-   a docsite template that [Views](../spec-tooling/views/module.md)' inventory rule rejects
+   (`invalid_project`); a stale build (`stale_build`), which includes a stale render of the
+   [main-session guidance](../glossary.json#concept.main-session-guidance); a docsite template
+   that [Views](../spec-tooling/views/module.md)' inventory rule rejects
    (`invalid_docsite_template`,
-   [checked first](requirements.md#req.distribution.installer-docsite-template-first)); with
+   [checked first](requirements.md#req.distribution.installer-docsite-template-first)); a missing
+   render of the guidance (`stale_build`,
+   [requirements](requirements.md#req.distribution.installer-fresh-guidance)); with
    `--develop`, a source that Dogfooding's check refuses; a project in which Concorde is still
    running (`concorde_busy`, described below); a `concorde.json` that names no Python requirement
    (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object (`settings_invalid`,

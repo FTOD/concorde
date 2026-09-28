@@ -123,7 +123,7 @@ concorde.session.assign -> developer.decide: a design limitation {style.stroke-d
 developer.decide -> concorde.session.fix: decision {style.stroke-dash: 3}
 concorde.session.merge -> concorde.primary: the fix
 concorde.primary -> project.framework: install --develop, concorde update
-concorde.session.merge -> developer.tell: merged
+concorde.primary -> developer.tell: merged
 developer.tell -> project.agent.update
 ```
 

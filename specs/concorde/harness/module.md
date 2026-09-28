@@ -60,11 +60,12 @@ returns the permission extension, generated from the same grant. Workers launche
 that configuration and the brief, which lists the three granted paths. The worker edits `cart.py`:
 no rule denies it and the write hook allows it. It then tries to write a new file
 `src/checkout/discount.py`: no deny rule names a file that does not exist yet, but the write hook
-refuses it with the reason "src/checkout/discount.py is not in this task's grant; a file no Module
-declares must first be declared as a pending file of a Module through a specify task, and a file
-another Module declares needs that Module bound to the task". A worker that needs that file says so in its
-[worker result](../glossary.json#concept.worker-result), and Workers audits the changes and records
-the run:
+refuses it, and the worker sees the reason "Concorde grant: src/checkout/discount.py is not in
+this task's grant; a file no Module declares must first be declared as a pending file of a Module
+through a specify task, and a file another Module declares needs that Module bound to the task",
+the hook's reason with the prefix it adds to every denial. A worker that needs that file says so in
+its [worker result](../glossary.json#concept.worker-result), and Workers audits the changes and
+records the run:
 
 ```d2 illustrative
 shape: sequence_diagram

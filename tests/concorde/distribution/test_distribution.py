@@ -977,10 +977,7 @@ class InstallTests(unittest.TestCase):
         self.assertEqual("npm_missing", raised.exception.code)
         self.assertFalse((project / ".concorde/framework").exists())
 
-    @verifies(
-        "scenario.distribution.pi-runtime-default",
-        "scenario.distribution.install-without-pi-runtime",
-    )
+    @verifies("scenario.distribution.pi-runtime-default")
     def test_a_plain_install_places_the_pi_runtime_workers_run_in(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -1002,6 +999,20 @@ class InstallTests(unittest.TestCase):
             )
         self.assertNotIn("pi-runtime", left_out["tools"])
         self.assertFalse(left_out["pi_runtime"])
+
+    @verifies("scenario.distribution.install-without-pi-runtime")
+    def test_an_install_without_the_pi_runtime_needs_no_npm(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        # A machine without npm, and a project that never had the runtime.
+        with which():
+            receipt = install(
+                project, package, d2=False, pi_runtime=False, dependencies=False
+            )
+        self.assertFalse((project / ".concorde/tools/pi-runtime").exists())
+        self.assertNotIn("pi-runtime", receipt["tools"])
+        self.assertFalse(receipt["pi_runtime"])
 
     @verifies(
         "scenario.distribution.update-pi",
