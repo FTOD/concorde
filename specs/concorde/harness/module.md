@@ -37,6 +37,53 @@ inputs of its level — a frozen grant and [run directory](../glossary.json#conc
 a task's paths — and asks the Harness for the configuration, which it then hands to the program it
 launches.
 
+**A worked example.** Take a project whose Module Checkout owns the Spec
+`specs/shop/checkout/module.md` and binds `src/checkout/cart.py`, beside a Module Billing with the
+Spec `specs/shop/billing/module.md` and the code `src/billing/invoice.py`, which Checkout does not
+use. A task bound to Checkout runs the `implement` Operation, whose step freezes this grant, among
+others of the same kinds:
+
+| Path | Level | Why |
+| --- | --- | --- |
+| `src/checkout/cart.py` | `rw` | Checkout's implementation scope |
+| `specs/shop/checkout/module.md` | `ro` | Checkout's Spec context |
+| `src/billing/invoice.py` | `ro` | the project's code, which an `implement` task reads whole |
+| `specs/shop/billing/module.md` | none | outside every [boundary set](../glossary.json#concept.boundary-set) of Checkout |
+
+Workers hands the Harness that grant, the run directory and the runtime paths. For a Claude Code
+worker the Harness returns the worker settings: deny rules `Edit` on the Checkout Spec and on
+`invoice.py`, `Read` and `Edit` on `specs/shop/billing/**`, since no granted path lies below it,
+and the rules that hide the rest of the home directory and the run's own configuration; the write
+hook with `cart.py` as its only writable path; a Bash sandbox that reads the three granted files and
+writes only `cart.py` and the run's directories; and the `implement` tool set. For a pi worker it
+returns the permission extension, generated from the same grant. Workers launches the worker with
+that configuration and the brief, which lists the three granted paths. The worker edits `cart.py`:
+no rule denies it and the write hook allows it. It then tries to write a new file
+`src/checkout/discount.py`: no deny rule names a file that does not exist yet, but the write hook
+refuses it with the reason "src/checkout/discount.py is not in this task's grant; a file no Module
+declares must first be declared as a pending file of a Module through a specify task, and a file
+another Module declares needs that Module bound to the task". A worker that needs that file says so in its
+[worker result](../glossary.json#concept.worker-result), and Workers audits the changes and records
+the run:
+
+```d2 illustrative
+shape: sequence_diagram
+workers: Workers (agent Module)
+harness: Harness
+program: Claude Code or pi (agent program)
+workers -> harness: frozen grant, run directory, runtime paths
+harness -> workers: worker settings or permission extension, tool set
+workers -> program: launch with the configuration and the brief
+program -> program: edit src/checkout/cart.py: rw, allowed
+program -> program: write src/checkout/discount.py: denied, not in the grant
+program -> workers: worker result
+workers -> workers: write audit, checks, run record
+```
+
+A `names` path never appears in an `implement` grant, since such a task reads the project's code
+whole; it appears, for instance, in an `understand` grant, whose worker may see an implementation
+file's name in its brief but read it with no tool.
+
 <a id="concept.worker-settings"></a><a id="concept.deny-rules"></a><a id="concept.write-hook"></a>
 
 **A worker on Claude Code.** The **worker settings** are the worker's only configuration (a fresh
