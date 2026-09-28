@@ -6,8 +6,9 @@ that test, so that the coverage check sees which test verifies which scenario. T
 a two-line no-op the host defines in the test file itself: the scanner recognizes any decorator
 named ``verifies``, so the project's tests never import Concorde and run the same in the
 project's own environment. Only decorator lines and that definition are ever added; a test that
-cannot be found, a file outside the described Modules or one that would no longer parse is left
-as it was and reported.
+cannot be found, a file outside the described Modules, one that would no longer parse or one that
+already binds ``verifies`` to something other than that helper or Concorde's decorator is left as
+it was and reported.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from pathlib import Path
 
 from ..spec.verification import DeclarationError, _declarations, parse_source
 
+DECORATOR_MODULE = "concorde.spec.verification"
 HELPER = (
     "def verifies(*scenarios):  # Concorde: names the scenarios a test verifies\n"
     "    return lambda test: test\n"
@@ -41,22 +43,99 @@ def _target(tree: ast.Module, qualified: list[str]):
     return None
 
 
-def _defines_verifies(tree: ast.Module) -> bool:
-    """Whether the module already binds the name ``verifies`` at its top level."""
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+def _bindings(body: list[ast.stmt]):
+    """Every statement that binds the name ``verifies`` at module level in ``body``, including
+    those inside a top-level ``if``, ``try``, ``with`` or loop, but never inside a function or
+    class body."""
+    for node in body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             names = [node.name]
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
-            names = [alias.asname or alias.name for alias in node.names]
-        elif isinstance(node, ast.Assign):
+            names = [alias.asname or alias.name.split(".")[0] for alias in node.names]
+        elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             names = [
-                target.id for target in node.targets if isinstance(target, ast.Name)
+                item.id
+                for target in targets
+                for item in ast.walk(target)
+                if isinstance(item, ast.Name)
             ]
         else:
             names = []
+            for field in ("body", "orelse", "finalbody"):
+                yield from _bindings(getattr(node, field, None) or [])
+            for handler in getattr(node, "handlers", None) or []:
+                yield from _bindings(handler.body)
         if "verifies" in names:
-            return True
-    return False
+            yield node
+
+
+def _is_helper(node: ast.stmt) -> bool:
+    """Whether ``node`` is Concorde's no-op helper: ``def verifies(*names)`` returning a lambda
+    that returns its one argument, however it is formatted or commented."""
+    if not isinstance(node, ast.FunctionDef) or node.decorator_list:
+        return False
+    arguments = node.args
+    if (
+        arguments.vararg is None
+        or arguments.posonlyargs
+        or arguments.args
+        or arguments.kwonlyargs
+        or arguments.kwarg
+    ):
+        return False
+    body = node.body
+    if (
+        len(body) == 2
+        and isinstance(body[0], ast.Expr)
+        and isinstance(body[0].value, ast.Constant)
+        and isinstance(body[0].value.value, str)
+    ):
+        body = body[1:]
+    if len(body) != 1 or not isinstance(body[0], ast.Return):
+        return False
+    function = body[0].value
+    if not isinstance(function, ast.Lambda):
+        return False
+    parameters = function.args
+    return (
+        len(parameters.args) == 1
+        and not (
+            parameters.posonlyargs
+            or parameters.vararg
+            or parameters.kwonlyargs
+            or parameters.kwarg
+        )
+        and isinstance(function.body, ast.Name)
+        and function.body.id == parameters.args[0].arg
+    )
+
+
+def _is_decorator_import(node: ast.stmt) -> bool:
+    """Whether ``node`` imports Concorde's own ``verifies`` decorator under its own name."""
+    return (
+        isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and node.module == DECORATOR_MODULE
+        and all(
+            alias.name == "verifies"
+            for alias in node.names
+            if (alias.asname or alias.name) == "verifies"
+        )
+    )
+
+
+def _foreign_binding(tree: ast.Module) -> ast.stmt | None:
+    """The first module-level binding of ``verifies`` that is neither Concorde's helper nor an
+    import of its decorator, or None."""
+    return next(
+        (
+            node
+            for node in _bindings(tree.body)
+            if not (_is_helper(node) or _is_decorator_import(node))
+        ),
+        None,
+    )
 
 
 def _helper_line(tree: ast.Module) -> int:
@@ -95,12 +174,21 @@ def link_file(path: Path, relative: str, links: list[tuple[str, str]]):
             (link, f"{relative} has a malformed verifies declaration: {error}")
             for link in links
         ]
+    # A decorator would call the project's own `verifies`, whatever that does.
+    foreign = _foreign_binding(tree)
+    conflict = foreign and (
+        f"{relative} binds verifies at line {foreign.lineno} to something other than "
+        "Concorde's helper or its verifies decorator"
+    )
     lines = source.splitlines(keepends=True)
     inserts: dict[int, list[str]] = {}
     linked, undone = [], []
     for scenario, name in links:
         if (scenario, name) in declared:
             linked.append((scenario, name))
+            continue
+        if conflict:
+            undone.append(((scenario, name), conflict))
             continue
         node = _target(tree, name.split("."))
         if node is None:
@@ -114,7 +202,7 @@ def link_file(path: Path, relative: str, links: list[tuple[str, str]]):
         return linked, undone
     for index in sorted(inserts, reverse=True):
         lines[index:index] = inserts[index]
-    if not _defines_verifies(tree):
+    if next(_bindings(tree.body), None) is None:
         # Two blank lines around the helper and no more, as PEP 8 and the project's own
         # formatter expect: the blank lines already there are taken, not added to.
         at = _helper_line(tree)

@@ -99,6 +99,45 @@ class LinkFileTests(unittest.TestCase):
         )
         self.assertEqual(changed, self.path.read_text())
 
+    @verifies("scenario.adoption.foreign-verifies")
+    def test_a_file_with_its_own_verifies_stays_as_it_is(self):
+        link = [("scenario.calc.other", "test_other")]
+        for binding, line in (
+            ("from tests.support import verifies\n", 6),
+            ("verifies = pytest.mark.verifies\n", 6),
+            (
+                "try:\n    from tests.support import check as verifies\n"
+                "except ImportError:\n    pass\n",
+                7,
+            ),
+            ("import concorde.spec.verification as verifies\n", 6),
+        ):
+            with self.subTest(binding=binding):
+                source = SOURCE.replace("import pytest\n", f"import pytest\n{binding}")
+                self.path.write_text(source)
+                linked, undone = link_file(self.path, "tests/test_calc.py", link)
+                self.assertEqual([], linked)
+                self.assertEqual(link, [item[0] for item in undone])
+                self.assertIn(f"binds verifies at line {line} ", undone[0][1])
+                self.assertEqual(source, self.path.read_text())
+        # Concorde's own helper, however formatted, and its decorator are kept and used.
+        for binding in (
+            'def verifies(*ids):\n    """No-op."""\n    return lambda f: f\n',
+            "from concorde.spec.verification import scan_declarations, verifies\n",
+        ):
+            with self.subTest(binding=binding):
+                source = SOURCE.replace("import pytest\n", f"import pytest\n{binding}")
+                self.path.write_text(source)
+                linked, undone = link_file(self.path, "tests/test_calc.py", link)
+                self.assertEqual((link, []), (linked, undone))
+                self.assertEqual(
+                    source.replace(
+                        "def test_other",
+                        '@verifies("scenario.calc.other")\ndef test_other',
+                    ),
+                    self.path.read_text(),
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

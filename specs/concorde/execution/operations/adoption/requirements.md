@@ -35,7 +35,10 @@ The code_to_spec host SHALL list, in its worker's brief, every structural error 
 
 ### req.adoption.tests-linked-by-host — The host alone marks tests
 
-The code_to_spec host SHALL add a `verifies` decorator to each existing Python test in a Module's implementation file that a scenario promise of a described Module names in its `tests`, unless the decorated file would not parse.
+The code_to_spec host SHALL add a `verifies` decorator to each existing Python test in a Module's implementation file that a scenario promise of a described Module names in its `tests`, unless the decorated file would not parse or the file already binds the name `verifies` at module level to something other than the host's no-op helper or an import of Concorde's `verifies` decorator from `concorde.spec.verification`.
+
+A decorator in such a file would call the project's own `verifies`, whatever it does, so the host
+leaves the file untouched and reports the link in `unlinked_tests`.
 
 A test that already declares the scenario gets no second decorator.
 
