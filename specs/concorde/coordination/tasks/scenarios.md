@@ -151,10 +151,17 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.close-submodules — Close a task whose worktree has submodules
 
-- GIVEN a merged task whose worktree has a checked-out submodule
-- WHEN the main agent closes it with `--merged` while the submodule has a local change
-- THEN the command fails with `dirty_worktree` and the worktree stays
-- BUT once the change is undone, closing removes the worktree and records the task as `closed` with outcome `merged`
+- GIVEN a merged task whose worktree has a checked-out submodule without local changes
+- WHEN the main agent closes it with `--merged`
+- THEN the worktree, with the submodule's checkout, is removed
+- AND the record's state is `closed` with outcome `merged`
+
+### scenario.tasks.close-submodules-dirty — Refuse to close a task whose submodule has a change
+
+- GIVEN a merged task whose worktree has a checked-out submodule with a local change
+- WHEN the main agent closes it with `--merged`
+- THEN the command fails with `dirty_worktree`
+- AND the worktree and the record are unchanged
 
 ### scenario.tasks.close-not-merged — Refuse to close an unmerged task as merged
 
@@ -166,18 +173,44 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 ### scenario.tasks.close-completed — Close a task that reached its goal without merging
 
 - GIVEN an open task that tried something out, whose worktree has uncommitted changes
+- WHEN the main agent closes it with `--completed`, a `--note` and `--force`
+- THEN the worktree is removed
+- AND the state is `closed` with outcome `completed` and the note
+- AND the branch is kept, and the decision log records the outcome and the note
+
+### scenario.tasks.close-completed-no-note — Refuse to close as completed without a note
+
+- GIVEN an open task
 - WHEN the main agent closes it with `--completed` and no `--note`
 - THEN the command fails with `invalid_input`
-- AND with a note but without `--force` it fails with `dirty_worktree` and nothing changes
-- BUT with a note and `--force` the worktree is removed, the state is `closed` with outcome `completed` and the note, the branch is kept, and the decision log records the outcome and the note
+- AND the worktree and the record are unchanged
+
+### scenario.tasks.close-completed-dirty — Refuse to discard uncommitted changes without force
+
+- GIVEN an open task whose worktree has uncommitted changes
+- WHEN the main agent closes it with `--completed` and a `--note` but without `--force`
+- THEN the command fails with `dirty_worktree`
+- AND the worktree, its changes and the record are unchanged
 
 ### scenario.tasks.close-failed — Close a failed task with its reason and error chains
 
 - GIVEN a task whose workspace has an [Operation](../../glossary.json#concept.operation) run that ended with an error the task cannot get past
-- WHEN the main agent closes it with `--failed` and a reason but names neither an error source nor `--no-error`, or names both
+- WHEN the main agent closes it with `--failed`, a reason and `--run <run-id>`
+- THEN the state is `failed` and the note is the reason
+- AND the errors hold the run's [error chain](../../glossary.json#concept.error-chain) unchanged, also appended to the decision log
+
+### scenario.tasks.close-failed-no-error — Close a task that failed for no error
+
+- GIVEN a task that failed for no error, such as a wrong direction
+- WHEN the main agent closes it with `--failed`, a reason and `--no-error`
+- THEN the state is `failed`, the note is the reason and the errors are empty
+
+### scenario.tasks.close-failed-invalid — Refuse a failed close without its reason or one error choice
+
+- GIVEN an open task
+- WHEN the main agent closes it with `--failed` but without a reason, or names neither an error source nor `--no-error`, or names both
 - THEN the command fails with `invalid_input`
-- BUT with the reason and `--run <run-id>` the state is `failed`, the note is the reason and the errors hold the run's [error chain](../../glossary.json#concept.error-chain) unchanged, also appended to the decision log
-- AND a task that failed for no error, such as a wrong direction, closes as `failed` with `--no-error` and no errors
+- AND the worktree and the record are unchanged
 
 ### scenario.tasks.close-rerun — Running a close again finishes it
 
@@ -185,7 +218,13 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent reads the refusal
 - THEN it names what the close did and says that running the same close again finishes it
 - AND running the same close again closes the task, or appends the missing closing once and leaves the record unchanged
-- BUT a close with another outcome of the task already closed fails with `invalid_transition`
+
+### scenario.tasks.close-other-outcome — Refuse to close a closed task again
+
+- GIVEN a task already closed or failed
+- WHEN the main agent closes it with another outcome, or with its own outcome once its decision log holds the closing
+- THEN the command fails with `invalid_transition`
+- AND the record and the decision log are unchanged
 
 ### scenario.tasks.closed-inert — A closed task stays closed
 
@@ -235,7 +274,13 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - GIVEN one process holding the [merge lock](../../glossary.json#concept.merge-lock) for task `a`
 - WHEN another main session runs `concorde task merge b` and the first process releases the lock within the wait
 - THEN the merge of `b` starts only after the release and reports how long it waited
-- BUT when the lock stays held for the whole `--wait`, the merge of `b` fails with `merge_busy` naming the holder's command `merge`, task `a`, process and start time, and nothing changes
+
+### scenario.tasks.merge-busy — A merge refuses a lock held for its whole wait
+
+- GIVEN one process holding the merge lock for task `a`
+- WHEN another main session runs `concorde task merge b` and the lock stays held for the whole `--wait`
+- THEN the merge of `b` fails with `merge_busy` naming the holder's command `merge`, task `a`, process and start time
+- AND the primary branch and the task `b` are unchanged
 
 ### scenario.tasks.merge-lock-dies — A dead holder releases the lock
 
@@ -309,8 +354,21 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent runs `concorde task merge <task-id> --resume`
 - THEN the checks the merge recorded run again on the merge commit
 - AND when they pass, the task is closed as merged and the output names the commits before and after
-- AND when one fails, the primary branch is reset to the commit before the merge, the task is delivered again and the command fails with `check_failed`
-- BUT when the primary branch's head is not the merge commit, the command fails with `not_resumable` and changes nothing; `--check` with `--resume` fails with `invalid_input`, and `--resume` of a task that is not merging fails with `not_merging`
+
+### scenario.tasks.merge-resume-check-failed — A failed check on resume undoes the merge
+
+- GIVEN a task left `merging` by an interrupted merge whose merge commit is still the primary branch's head
+- AND a recorded check that now exits with a failure
+- WHEN the main agent runs `concorde task merge <task-id> --resume`
+- THEN the command fails with `check_failed`
+- AND the primary branch is reset to the commit before the merge, clean, and the task is delivered again
+
+### scenario.tasks.merge-resume-refused — Refuse a resume that cannot check the merge
+
+- GIVEN a task that is not merging, or one left `merging` whose merge commit is not the primary branch's head
+- WHEN the main agent runs `concorde task merge <task-id> --resume`, with or without `--check`
+- THEN the command fails with `not_merging` for a task that is not merging, with `not_resumable` for a merge commit that is not the head, and with `invalid_input` for `--check` with `--resume`
+- AND the primary branch and the task record are unchanged
 
 ### scenario.tasks.merge-abort — Abort undoes the interrupted merge
 
@@ -318,7 +376,14 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent runs `concorde task merge <task-id> --abort`
 - THEN the primary branch is back at the commit before the merge, the task is delivered again, and the output names that commit and the merge commit it undid
 - AND the task can be merged again, and no command is refused any more
-- BUT when the primary branch has moved on past the merge commit, the command fails with `merge_diverged`, naming the commits, and changes nothing
+
+### scenario.tasks.merge-abort-diverged — Refuse to abort a merge the primary branch moved past
+
+- GIVEN a task left `merging` by an interrupted merge
+- AND a commit made on the primary branch on top of the merge commit
+- WHEN the main agent runs `concorde task merge <task-id> --abort`
+- THEN the command fails with `merge_diverged`, naming the primary branch's head, the commit before the merge and the merge commit
+- AND the primary branch and the task, still `merging`, are unchanged
 
 ### scenario.tasks.merge-live-busy — A merge still running is busy, not incomplete
 
@@ -335,7 +400,13 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent runs `concorde task escalate` naming that run with its own code, detail, reason and options
 - THEN the printed chain's top link has the level `main-agent` and the run's error, unchanged, as its cause
 - AND the chain is appended to the task record's escalations and to the decision log, rendered and as JSON
-- BUT an escalation naming a run of another workspace or an unbound run is refused with `unknown_run`, and one naming a run that ended without an error with `nothing_to_escalate`, and neither records anything
+
+### scenario.tasks.escalate-refused — Refuse to escalate a run that is not the task's or has no error
+
+- GIVEN a task
+- WHEN the main agent runs `concorde task escalate` naming a run of another workspace, an unbound run or a run of the task's workspace that ended without an error
+- THEN the command fails with `unknown_run` for a run that is not of the task's workspace and with `nothing_to_escalate` for a run without an error
+- AND nothing is recorded in the task record or the decision log
 
 ### scenario.tasks.escalate-decision — A decision without an error is escalated as a link alone
 

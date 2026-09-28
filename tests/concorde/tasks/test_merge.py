@@ -201,10 +201,11 @@ class MergeTests(unittest.TestCase):
         self.assertLess(log.index("first check"), log.index("second check"))
         self.assertNotIn("spec-validation", log)
 
-    @verifies("scenario.tasks.merge-waits")
+    @verifies("scenario.tasks.merge-waits", "scenario.tasks.merge-busy")
     def test_a_second_merge_waits_for_the_first(self):
         self.project.open_task("t1")
         self.deliver()
+        before = self.head()
         taken, release = threading.Event(), threading.Event()
 
         def hold():
@@ -221,7 +222,7 @@ class MergeTests(unittest.TestCase):
         self.assertIn(f"process {os.getpid()}", busy["detail"])
         self.assertIn("holding it since 20", busy["detail"])
         self.assertEqual("environment", busy["unhandled"]["reason"])
-        self.assertEqual("delivered", self.state())
+        self.assert_untouched(before)
         threading.Timer(0.5, release.set).start()
         status, value = self.command(
             "merge", "t1", "--wait", "10", "--check", python("pass")
@@ -533,10 +534,6 @@ class MergeTests(unittest.TestCase):
             after,
             store.merge_commit(self.root, store.load_task(self.root, "t1")["merging"]),
         )
-        self.assertEqual(
-            "invalid_input",
-            self.refusal("merge", "t1", "--resume", "--check", python("pass"))["code"],
-        )
         status, value = self.command("merge", "t1", "--resume")
         self.assertEqual(0, status, value)
         self.assertEqual(
@@ -593,7 +590,7 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(stored, store.load_task(self.root, "t2"))
         self.assertIn(f"## Closed: merged, {stored['closed']['at']}", log.read_text())
 
-    @verifies("scenario.tasks.merge-resume")
+    @verifies("scenario.tasks.merge-resume-check-failed")
     def test_resume_undoes_a_merge_whose_check_fails(self):
         before, _ = self.interrupted(then=1)
         error = self.refusal("merge", "t1", "--resume")
@@ -602,7 +599,7 @@ class MergeTests(unittest.TestCase):
         self.assert_untouched(before)
         self.assertIsNone(store.load_task(self.root, "t1")["merging"])
 
-    @verifies("scenario.tasks.merge-resume")
+    @verifies("scenario.tasks.merge-resume-refused")
     def test_resume_refuses_a_merge_that_is_not_the_head(self):
         self.project.open_task("t1")
         checked = self.deliver()
@@ -625,6 +622,14 @@ class MergeTests(unittest.TestCase):
         self.assertEqual("not_resumable", error["code"])
         self.assertIn("the commit before the merge", error["detail"])
         self.assertEqual("merging", self.state())
+        merging = store.load_task(self.root, "t1")
+        self.assertEqual(
+            "invalid_input",
+            self.refusal("merge", "t1", "--resume", "--check", python("pass"))["code"],
+        )
+        self.assertEqual(
+            (before, merging), (self.head(), store.load_task(self.root, "t1"))
+        )
         # Abort returns it to delivered without touching the branch.
         status, value = self.command("merge", "t1", "--abort")
         self.assertEqual(0, status, value)
@@ -649,7 +654,7 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(0, status, value)
         self.assertEqual("merged", value["record"]["closed"]["outcome"])
 
-    @verifies("scenario.tasks.merge-abort")
+    @verifies("scenario.tasks.merge-abort-diverged")
     def test_abort_refuses_a_primary_branch_that_moved_on(self):
         before, after = self.interrupted()
         (self.root / "notes.txt").write_text("committed on top of the merge\n")
