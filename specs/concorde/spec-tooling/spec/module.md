@@ -19,9 +19,9 @@ Checkout's entry `specs/checkout/module.md` binds the directory `src/checkout/` 
 Checkout service, owns the term Hold, which the project glossary `specs/project/glossary.json`
 defines as "Stock withheld until an order is accepted or expires.", and relies on Inventory to
 reserve stock. Inventory binds `src/inventory/`, and its entry links Hold too, since a reservation
-places one; a term only its owner used would draw the warning `CHK.concept.local`. The project is
-not yet installed, so its root binds no installer files. The developer declares Checkout's reliance
-as a `uses` in the `module` block of Checkout's entry metadata:
+places one; a term only its owner used would draw the warning `CHK.concept.local`. The root binds
+no files of its own, and the example leaves out the installer's files. The developer declares
+Checkout's reliance as a `uses` in the `module` block of Checkout's entry metadata:
 
 ```json
 {
@@ -86,9 +86,9 @@ readable. Its realization's directory is writable, which covers `src/checkout/su
 entry of its own. Inventory's code is readable because a task that implements reads the whole
 project's code, and the root Module's entry is absent because nothing Checkout declares selects it.
 The glossary is named but not writable, since this task type writes no Spec; the definition of Hold
-travels in `terms` instead. Every other path, such as the registry, is denied. In an installed
-project the root also binds the installer's files, such as its skills and `CLAUDE.md`, which the
-grant then lists as `ro` with the rest of the project's code; the example leaves them out. The context identity
+travels in `terms` instead. Every other path, such as the registry, is denied. In a real project
+the root also binds the installer's files, such as its skills and `CLAUDE.md`, which the grant
+lists as `ro` with the rest of the project's code; the example leaves them out. The context identity
 changes when either entry or the definition of Hold changes, never when `src/checkout/submit.py`
 does.
 
