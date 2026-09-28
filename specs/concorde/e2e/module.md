@@ -77,8 +77,9 @@ Each of `prepare`'s choices has its reason:
 
 - It fetches only the revision, because SWE-bench's base commits are commits, which
   `git clone --branch` does not accept, and nothing in a test project needs earlier history.
-- It checks the revision out as the branch `main`, because tasks are merged into the project's
-  primary branch, and a merge refuses a primary worktree on a detached `HEAD`.
+- It checks the revision out on a branch, because tasks are merged into the project's primary
+  branch, and a merge refuses a primary worktree on a detached `HEAD`; the branch is named `main`
+  because [SWE-bench cases](cases/module.md)' `grade` grades `main` unless `--ref` names another.
 - It installs without `d2`, which only renders the Specs' diagrams for a docsite a test project
   never publishes, and which every preparation would otherwise download again.
 - It commits the installed and initialized project before it opens the task, because the task's
@@ -262,9 +263,10 @@ its task worktree is bound as: Tasks writes that
 [workspace binding](../glossary.json#concept.workspace-binding) when `prepare` opens the task, and
 End-to-end testing never writes it. `watch` reads the run store's
 [run progress files](../glossary.json#concept.run-progress-file) for each run's workspace, phase,
-step and status, relying on them to name those fields. A run whose run progress file is not there yet,
-because its runner has not written it, is left out of the list rather than failing `watch`, which
-the developer may run at any moment.
+step and status, relying on them to name those fields. A run without a run progress file, whether its
+runner has not written it yet or died before writing it, is left out of the list rather than
+failing `watch`, which the developer may run at any moment; a run left out for the second reason
+stays out.
 
 <a id="uses-distribution"></a>
 

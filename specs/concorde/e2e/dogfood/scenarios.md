@@ -17,7 +17,7 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.dogfood-scenarios.client — A scenario without a client runs on Claude Code
 
-- GIVEN a scenario without a `client`, whose fault changes both [worker backends](../../glossary.json#concept.worker-backend)' write checks
+- GIVEN a scenario without a `client`
 - WHEN it is read
 - THEN its client is Claude Code
 

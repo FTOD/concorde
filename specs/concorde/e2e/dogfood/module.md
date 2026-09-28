@@ -89,18 +89,20 @@ dir: "Scenario directory, under the end-to-end root" {
   project: "project/: develop install, initialized and committed"
   record: "dogfood.json: fault commit and baselines"
   sessions: "sessions/<time>/: one headless session per run"
-  evaluation: "evaluation.json"
+  evaluation: "evaluation.json, written by evaluate and after each run"
 }
 throwaway: "Throwaway clone of concorde/, in a temporary directory"
 checkout -> dir.concorde: "prepare: clone, inject, commit, build"
 upstream -> dir.project: "prepare: clone at the revision"
 dir.concorde -> dir.project: "prepare: develop install"
+dir.concorde -> dir.record: "prepare: fault commit"
 dir.project -> dir.record: "prepare: baselines"
 dir.project -> dir.sessions: "run: the scenario's prompt"
-dir.concorde -> throwaway: "evaluate: clone"
-throwaway -> dir.evaluation: "evaluate: reports_accepted"
-dir.project -> dir.evaluation: "evaluate: what the session left"
-dir.record -> dir.evaluation: "evaluate: the baselines"
+dir.concorde -> throwaway: "evaluation: clone"
+throwaway -> dir.evaluation: "evaluation: reports_accepted"
+dir.concorde -> dir.evaluation: "evaluation: its head and status"
+dir.project -> dir.evaluation: "evaluation: what the session left"
+dir.record -> dir.evaluation: "evaluation: the baselines"
 ```
 
 `prepare` refuses a scenario it does not know with `unknown_scenario`, naming the known ones, and a

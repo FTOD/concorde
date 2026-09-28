@@ -45,6 +45,12 @@ class ScenarioTests(unittest.TestCase):
                 for edit in value["fault"]["edits"]:
                     text = (REPOSITORY_ROOT / edit["file"]).read_text()
                     self.assertEqual(1, text.count(edit["old"]), edit["file"])
+        # The first scenario's fault breaks both worker backends' write checks, so it holds
+        # whichever backend a worker configuration chooses.
+        chosen = dogfood.scenario("write-hook-rw-directories")
+        faulted = {edit["file"] for edit in chosen["fault"]["edits"]}
+        self.assertIn("src/concorde/harness/write_hook.py", faulted)
+        self.assertIn("src/concorde/harness/pi_policy.ts", faulted)
 
     @verifies("scenario.dogfood-scenarios.unknown-scenario")
     def test_an_unknown_scenario_is_refused_naming_the_known_ones(self):
@@ -55,13 +61,9 @@ class ScenarioTests(unittest.TestCase):
 
     @verifies("scenario.dogfood-scenarios.client")
     def test_a_scenario_without_a_client_runs_on_claude_code(self):
-        # A scenario's fault covers both worker backends, so it runs on either client.
         value = json.loads(
             (dogfood.SCENARIOS / "write-hook-rw-directories.json").read_text()
         )
-        faulted = {edit["file"] for edit in value["fault"]["edits"]}
-        self.assertIn("src/concorde/harness/write_hook.py", faulted)
-        self.assertIn("src/concorde/harness/pi_policy.ts", faulted)
         value.pop("client", None)
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "unset.json").write_text(
