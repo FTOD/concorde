@@ -12,7 +12,12 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN the main agent starts an [Operation](../../glossary.json#concept.operation) or an [execution command](../../glossary.json#concept.execution-command) of that task with the `concorde_run` tool
 - THEN the run view starts the task worktree's own `concorde`, with the task worktree as working directory, as `concorde run <operation>` or `concorde <command>` without naming the task
 - AND the run works on the workspace the worktree's binding names
-- BUT for a task whose record names no existing worktree the tool is refused before anything starts, naming the task
+
+### scenario.main-session.pi-task-worktree-missing — pi refuses a task without a worktree
+
+- GIVEN a pi main session in the primary worktree and a task that has no record, or whose record names no existing worktree
+- WHEN the main agent starts an Operation or an execution command of that task with the `concorde_run` tool
+- THEN the tool is refused before anything starts, naming the task
 
 ### scenario.main-session.pi-run-view — pi shows every run and its worker's progress
 
@@ -20,12 +25,42 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN the run view reads the [progress files](../../glossary.json#concept.progress-file) of the [run store](../../glossary.json#concept.run-store)
 - THEN it shows the run with its workspace, Operation, step, the worker's round and latest tool call
 - AND a worker of another run is not attributed to it, even when that run's runner recorded the same process identifier in another PID namespace
-- AND an execution command's run is shown the same way without a worker, and an [unbound run](../../glossary.json#concept.unbound-run) with `unbound` in place of the workspace
-- AND a finished run shows `completed`, `stopped` or `failed` for `ok`, `blocked` or `failed` with the result's summary
-- AND a run whose runner ended without finishing, so that nobody holds its [run lock](../../glossary.json#concept.run-lock), shows `failed` and is not counted as running, even when the process identifier it recorded names a living process
-- AND the message the main agent is given for a finished run names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file, followed by the result's whole [error chain](../../glossary.json#concept.error-chain) when it carries one
-- AND a run started after the session started by a command run with bash or by another session, even one that already ended, is shown and reported the same way
-- BUT a run that had already ended before the session started is not reported, and a run whose runner `concorde_run` is still starting is left to that tool
+
+### scenario.main-session.pi-run-view-command — pi shows an execution command's run without a worker
+
+- GIVEN a pi main session with the run view and a running `task-validation` run of the task `t1`
+- WHEN the run view reads the run's [run progress file](../../glossary.json#concept.run-progress-file)
+- THEN it shows the run as `t1 · task-validation` with its step, as it shows an Operation's run
+- AND it pairs no worker with the run, even while an Operation's worker is running
+
+### scenario.main-session.pi-run-view-unbound — pi shows an unbound run without a workspace
+
+- GIVEN a pi main session with the run view and an [unbound run](../../glossary.json#concept.unbound-run) of `understand`
+- WHEN the run view reads the run's run progress file
+- THEN it shows the run as `unbound · understand`, with `unbound` in place of the workspace
+
+### scenario.main-session.pi-run-finished — pi shows a finished run and wakes the main agent
+
+- GIVEN a pi main session with the run view and a run that has finished with the status `ok`, `blocked` or `failed`
+- WHEN the run view reads its run progress file
+- THEN it shows the run `completed`, `stopped` or `failed` respectively, with the result's summary
+- AND the message the main agent is given names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file
+- AND for a result that carries an [error chain](../../glossary.json#concept.error-chain) the message is followed by that whole chain, and for a result without one by none
+
+### scenario.main-session.pi-run-lost — pi shows a run whose runner ended without finishing as failed
+
+- GIVEN a pi main session with the run view and a run that has no result and whose runner ended without finishing, so that nobody holds its [run lock](../../glossary.json#concept.run-lock)
+- WHEN the run view reads its run progress file
+- THEN it shows the run `failed` and does not count it as running, even when the process identifier it recorded names a living process
+- AND the message the main agent is given says that the runner ended without finishing the run
+- BUT a run whose runner holds its run lock, or whose result has been written, is not taken for a lost one
+
+### scenario.main-session.pi-run-discovered — pi follows runs it did not start
+
+- GIVEN a pi main session with the run view, and runs of the project started before and after the session started, by a command run with bash or by another session
+- WHEN the run view looks in the [run store](../../glossary.json#concept.run-store) for runs to follow
+- THEN it follows every run still running when the session started and every run started since, even one that already ended, and shows and reports them as it does the runs of `concorde_run`
+- BUT it does not report a run that had already ended before the session started, and leaves a run whose runner `concorde_run` is still starting to that tool
 
 ### scenario.main-session.pi-owned-work — A `pi -p` session waits only for its own runs
 
@@ -41,7 +76,12 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN the main agent's session or a task session, in Claude Code or pi, starts in one of its worktrees
 - THEN the session holds every term of that worktree's glossary with its identity, owner and definition
 - AND the guidance tells it to use each term exactly as defined, with the developer and in task goals, decision logs, escalations, commit messages and Specs
-- BUT a project that declares no glossary, or whose declared glossary cannot be read, starts the session without terms and without an error
+
+### scenario.main-session.project-terms-missing — A session without a readable glossary starts without terms
+
+- GIVEN a project whose root Module declares no glossary, or declares one that cannot be read
+- WHEN the main agent's session or a task session, in Claude Code or pi, starts in one of its worktrees
+- THEN the session starts without terms and without an error
 
 ### scenario.main-session.change-through-task — The guidance routes an agreed change through a task
 
@@ -99,10 +139,16 @@ Situations the [main-session guidance](module.md) prepares the
 ### scenario.main-session.pi-task-session-view — pi shows task-session rounds and wakes on their end
 
 - GIVEN a pi main session that started a task session with `concorde_task_session`
-- WHEN the round's status file changes and the round ends
+- WHEN the round's status file changes while the round runs
 - THEN the run view shows the task, the round and the session's latest tool call
+- AND a pi main session that starts again follows the rounds still running, from their status files
+
+### scenario.main-session.pi-task-session-wake — pi wakes the main agent with a round's recorded outcome
+
+- GIVEN a pi main session following a task-session round
+- WHEN the round ends and its outcome is recorded in the [task record](../../glossary.json#concept.task-record)
+- THEN the run view shows the round finished with its outcome
 - AND the main agent is woken with the recorded outcome: the report's summary, decisions and open points with the delivery commit or the escalation numbers, or the failed round's [error chain](../../glossary.json#concept.error-chain)
-- AND a pi main session that starts again follows the rounds still running
 
 ### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
 

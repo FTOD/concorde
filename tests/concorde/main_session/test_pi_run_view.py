@@ -161,8 +161,8 @@ class RunViewTests(unittest.TestCase):
             (self.runs / "r-1/result.json").as_posix(), shown["reportPath"]
         )
 
-    @verifies("scenario.main-session.pi-run-view")
-    def test_recorded_commands_and_unbound_runs_are_shown(self):
+    @verifies("scenario.main-session.pi-run-view-command")
+    def test_recorded_commands_are_shown_without_a_worker(self):
         self.status(
             operation(
                 "r-command",
@@ -170,17 +170,6 @@ class RunViewTests(unittest.TestCase):
                 name="task-validation",
                 step="run_checks",
                 host_pid=300,
-            )
-        )
-        self.status(
-            operation(
-                "r-unbound",
-                name="understand",
-                workspace=None,
-                phase="finished",
-                status="ok",
-                summary="Answered.",
-                host_pid=301,
             )
         )
         self.status(
@@ -210,12 +199,27 @@ class RunViewTests(unittest.TestCase):
                 command["view"]["currentAction"],
             ),
         )
-        self.assertEqual("unbound · understand", out["r-unbound"]["view"]["label"])
-        self.assertEqual("completed", out["r-unbound"]["view"]["state"])
         self.assertNotIn("w-1", out)
 
-    @verifies("scenario.main-session.pi-run-view")
-    def test_finished_and_abandoned_runs(self):
+    @verifies("scenario.main-session.pi-run-view-unbound")
+    def test_unbound_runs_are_shown_without_a_workspace(self):
+        self.status(
+            operation(
+                "r-unbound",
+                name="understand",
+                workspace=None,
+                phase="finished",
+                status="ok",
+                summary="Answered.",
+                host_pid=301,
+            )
+        )
+        out = self.probe()
+        self.assertEqual("unbound · understand", out["r-unbound"]["view"]["label"])
+        self.assertEqual("completed", out["r-unbound"]["view"]["state"])
+
+    @verifies("scenario.main-session.pi-run-finished")
+    def test_finished_runs_show_their_status(self):
         self.status(
             operation("r-ok", phase="finished", status="ok", summary="Implemented.")
         )
@@ -237,19 +241,12 @@ class RunViewTests(unittest.TestCase):
                 host_pid=102,
             )
         )
-        self.status(operation("r-dead", host_pid=103))
-        out = self.probe(alive={"r-dead": False})
+        out = self.probe()
         states = {
-            key: out[key]["view"]["state"]
-            for key in ("r-ok", "r-blocked", "r-failed", "r-dead")
+            key: out[key]["view"]["state"] for key in ("r-ok", "r-blocked", "r-failed")
         }
         self.assertEqual(
-            {
-                "r-ok": "completed",
-                "r-blocked": "stopped",
-                "r-failed": "failed",
-                "r-dead": "failed",
-            },
+            {"r-ok": "completed", "r-blocked": "stopped", "r-failed": "failed"},
             states,
         )
         self.assertEqual("ok: Implemented.", out["r-ok"]["view"]["preview"])
@@ -260,16 +257,24 @@ class RunViewTests(unittest.TestCase):
             + result_file,
             out["r-blocked"]["result"],
         )
+
+    @verifies("scenario.main-session.pi-run-lost")
+    def test_a_run_whose_runner_ended_without_finishing_failed(self):
+        self.status(operation("r-dead", host_pid=103))
+        out = self.probe(alive={"r-dead": False})
+        self.assertEqual(
+            ("failed", True),
+            (out["r-dead"]["view"]["state"], out["r-dead"]["view"]["finished"]),
+        )
         self.assertIn(
             "finished failed. failed: the runner ended without finishing the run: it no "
             "longer holds its run lock",
             out["r-dead"]["result"],
         )
-        self.assertTrue(out["r-dead"]["view"]["finished"])
         self.assertTrue(out["self"])
         self.assertFalse(out["gone"])
 
-    @verifies("scenario.main-session.pi-run-view", "scenario.execution.run-lock")
+    @verifies("scenario.main-session.pi-run-lost", "scenario.execution.run-lock")
     def test_a_runner_lives_while_it_holds_its_run_lock(self):
         # Held by its runner, as a live runner does.
         self.status(operation("r-held", host_pid=2**22 + 12345))
@@ -293,7 +298,7 @@ class RunViewTests(unittest.TestCase):
             out["runnerAlive"],
         )
 
-    @verifies("scenario.main-session.pi-run-view")
+    @verifies("scenario.main-session.pi-run-discovered")
     def test_runs_started_elsewhere_are_followed(self):
         # Before the view began: one still running, one finished, one whose runner died.
         self.status(operation("r-running", started_at="2026-09-25T09:00:00.000000Z"))
@@ -329,7 +334,7 @@ class RunViewTests(unittest.TestCase):
         )
         self.assertEqual(["r-running", "r-bash", "r-quick"], out["discovered"])
 
-    @verifies("scenario.main-session.pi-run-view")
+    @verifies("scenario.main-session.pi-run-finished")
     def test_the_wake_message_carries_the_error_chain(self):
         self.status(
             operation(
@@ -400,8 +405,7 @@ class RunViewTests(unittest.TestCase):
             [(self.root / ".concorde/bin/concorde").as_posix()], self.probe()["command"]
         )
 
-    @verifies("scenario.main-session.pi-task-worktree")
-    def test_a_task_runs_in_its_own_worktree(self):
+    def tasks(self) -> Path:
         tasks = self.root / ".concorde/tasks"
         tasks.mkdir(parents=True)
         worktree = self.root / ".claude/worktrees/t1"
@@ -410,9 +414,26 @@ class RunViewTests(unittest.TestCase):
         (tasks / "gone.json").write_text(
             json.dumps({"worktree": (self.root / "removed").as_posix()})
         )
-        self.assertEqual(
-            [worktree.as_posix(), None, None, None], self.probe()["worktrees"]
+        return worktree
+
+    @verifies("scenario.main-session.pi-task-worktree")
+    def test_a_task_runs_in_its_own_worktree(self):
+        worktree = self.tasks()
+        self.assertEqual(worktree.as_posix(), self.probe()["worktrees"][0])
+
+    @verifies("scenario.main-session.pi-task-worktree-missing")
+    def test_a_task_without_a_worktree_is_refused_before_anything_starts(self):
+        self.tasks()
+        # A removed worktree, a task without a record and a name outside the tasks directory.
+        self.assertEqual([None, None, None], self.probe()["worktrees"][1:])
+        # concorde_run refuses such a task, naming it, before it spawns anything.
+        extension = (SOURCE.parent / "pi_extension.ts").read_text()
+        refusal = extension.index("if (worktree === null)")
+        self.assertIn(
+            "`task ${params.task} has no worktree in ${root}",
+            extension[refusal : refusal + 200],
         )
+        self.assertLess(refusal, extension.index("spawn(", refusal))
 
 
 ROUNDS = """
@@ -498,7 +519,10 @@ class TaskSessionViewTests(unittest.TestCase):
         self.assertEqual(0, completed.returncode, completed.stderr)
         return json.loads(completed.stdout)
 
-    @verifies("scenario.main-session.pi-task-session-view")
+    @verifies(
+        "scenario.main-session.pi-task-session-view",
+        "scenario.main-session.pi-task-session-wake",
+    )
     def test_rounds_show_their_progress_and_wake_with_the_recorded_outcome(self):
         self.session("t1", progress("t1"), recorded("t1", {}))
         link = {
@@ -644,7 +668,7 @@ class ProjectTermsTests(unittest.TestCase):
         )
         self.assertLess(grant, worker)
 
-    @verifies("scenario.main-session.project-terms")
+    @verifies("scenario.main-session.project-terms-missing")
     def test_a_project_without_a_readable_glossary_adds_nothing(self):
         self.registry()
         self.assertIsNone(self.terms())
