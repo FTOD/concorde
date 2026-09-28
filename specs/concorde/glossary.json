@@ -201,7 +201,7 @@
       "id": "concept.concorde-defect",
       "title": "Concorde defect",
       "owner": "module.dogfooding",
-      "definition": "A failure or wrong behaviour that would happen in any project using Concorde the same way, as opposed to a problem of the project it was seen in.",
+      "definition": "A failure, wrong behaviour or design limitation of Concorde that would happen in any project using Concorde the same way, as opposed to a problem of the project it was seen in.",
       "explanation": "specs/concorde/dogfooding/module.md#concept.concorde-defect"
     },
     {
@@ -427,7 +427,7 @@
       "id": "concept.evaluation",
       "title": "Evaluation",
       "owner": "module.dogfood-scenarios",
-      "definition": "The checks that decide, from files alone, whether a scenario's session behaved as Dogfooding requires.",
+      "definition": "The checks that decide, from the scenario directory's files and the results of commands run on them, never from the session's messages, whether a scenario's session behaved as Dogfooding requires.",
       "explanation": "specs/concorde/e2e/dogfood/module.md#concept.evaluation"
     },
     {
@@ -1147,7 +1147,7 @@
       "id": "concept.test-project",
       "title": "Test project",
       "owner": "module.e2e",
-      "definition": "A codebase from SWE-bench's repositories, cloned at a pinned revision into the end-to-end root, with Concorde installed, initialized and a task open.",
+      "definition": "A codebase cloned at a pinned revision into the end-to-end root, from SWE-bench's repositories unless `--any` admits another, with Concorde installed, initialized and a task open.",
       "explanation": "specs/concorde/e2e/module.md#concept.test-project"
     },
     {

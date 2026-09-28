@@ -5,11 +5,9 @@ them in concrete situations.
 
 ### req.swe-bench-cases.repair-specs-only — A case's Specs are repaired in one bounded round
 
-The tool SHALL repair an adopted case's Specs in one bounded round: a review and, when that review
-does not accept the Specs, one `specify` and a second review.
-
-The developer runs the round before the case's issue is worked, as
-[Working a case](module.md#usage) describes.
+The tool SHALL repair an adopted case's Specs in one bounded round before the case's issue is
+worked: a review and, when that review does not accept the Specs, one `specify` and a second
+review.
 
 ### req.swe-bench-cases.specs-not-code — A case's repair never changes code
 

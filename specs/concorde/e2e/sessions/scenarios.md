@@ -32,7 +32,6 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN every round runs `pi -p --mode json --approve` with pi's headless note, the session directory and the same session identity, the prompt on standard input
 - AND a round that leaves a run running is followed, once the run ends, by a round of the same session whose prompt names the run and its result
 - AND the record names the client, adds up the rounds' costs and shows each round's tool calls and turns
-- BUT a client other than Claude Code or pi is refused with `unknown_client`
 
 ### scenario.headless-sessions.wake — A run left running wakes the session
 
@@ -41,3 +40,9 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the run ends
 - THEN the driver resumes the same session with a message naming the run, its kind, name and workspace, how it ended and its result file
 - AND the session ends idle after the second round, with both rounds, the run it woke for and the final answer and cost in `session.json`
+
+### scenario.headless-sessions.unknown-client — Another client is refused
+
+- GIVEN a project and a prompt
+- WHEN the driver is asked to start a headless session on a client other than Claude Code or pi
+- THEN it refuses with `unknown_client`

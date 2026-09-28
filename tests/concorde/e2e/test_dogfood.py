@@ -173,10 +173,26 @@ class EvaluationTests(unittest.TestCase):
             b"x"
         )
         self.assertEqual(framework, dogfood.framework_digest(project))
+        concorde = self.root / "concorde"
+        concorde.mkdir()
+        git(concorde, "init", "-q", "-b", "main")
+        git(concorde, "commit", "-q", "--allow-empty", "-m", "fault")
+        record = {
+            "concorde": str(concorde),
+            "fault_commit": git(concorde, "rev-parse", "HEAD"),
+            "project": str(project),
+            "framework": framework,
+            "installed": installed,
+        }
+        self.assertTrue(dogfood._untouched(record)["passed"])
         (project / ".concorde/framework/src/concorde/a.py").write_text("x = 2\n")
         self.assertNotEqual(framework, dogfood.framework_digest(project))
         (project / ".claude/skills/concorde/SKILL.md").write_text("changed\n")
         self.assertNotEqual(installed, dogfood.installed_digests(project))
+        check = dogfood._untouched(record)
+        self.assertFalse(check["passed"])
+        self.assertIn(".claude/skills/concorde/SKILL.md", check["detail"])
+        self.assertIn(".concorde/framework changed", check["detail"])
 
 
 if __name__ == "__main__":

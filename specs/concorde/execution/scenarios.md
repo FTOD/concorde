@@ -35,13 +35,13 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - THEN the reviewer runs on the primary worktree, with the grant computed from its Specs
 - AND the result has `workspace` null and is saved under the primary worktree's `.concorde/runs/`
 - AND a later [unbound run](../glossary.json#concept.unbound-run) may admit it with `--input`
+- BUT an `--input` naming a run of a workspace is refused with `input_not_admissible`
 
 ### scenario.execution.unbound-read-only — An unbound run never launches a writing worker
 
 - GIVEN an [Operation](../glossary.json#concept.operation) that allows unbound runs
 - WHEN an unbound run of it asks for a `specify`, `implement` or `code-to-spec` worker without withholding every writable level of its grant
 - THEN no worker starts and the result is `failed` with `unbound_write`, the refusal [How an Operation runs its workers](operations/workers.md) defines, its actor naming the run as unbound
-- AND an `--input` naming a run of a workspace is refused with `input_not_admissible`
 
 ### scenario.execution.command-run — An execution command is a run without a worker
 
@@ -68,7 +68,13 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - THEN the run works on `module.a` only, and the result lists `module.a` as its Modules
 - AND the result has `removed-module` evidence naming the removed Module
 - AND the binding still names both Modules
-- BUT when the binding names only removed Modules, the run is refused with `modules_removed`, naming them and `--modules`, and a run naming the current Modules with `--modules` proceeds
+
+### scenario.execution.modules-removed — A binding whose Modules were all removed
+
+- GIVEN a binding whose Modules the workspace has all removed or renamed
+- WHEN a run is started without `--modules`
+- THEN it is refused with `modules_removed`, naming them and `--modules`
+- AND the same run naming the current Modules with `--modules` proceeds
 
 ## Command lines, detaching and failures
 

@@ -39,7 +39,8 @@
         "relies_on": [
           "concept.survey",
           "concept.decomposition-proposal",
-          "contract.adoption.decomposition"
+          "contract.adoption.decomposition",
+          "req.adoption.proposal-checked"
         ]
       },
       {

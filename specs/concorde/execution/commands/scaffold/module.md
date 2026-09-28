@@ -140,8 +140,9 @@ definition by the command's name.
 
 **Adoption** defines the
 [decomposition proposal](../../operations/adoption/contracts.md#contract.adoption.decomposition) a
-survey returns, the checks of a proposal against a worktree that the survey applies, which its
-requirements list, and, in its shared records, the rule that narrows realization entries
+survey returns, the
+[checks of a proposal against a worktree](../../operations/adoption/requirements.md#req.adoption.proposal-checked)
+that the survey applies, and, in its shared records, the rule that narrows realization entries
 around children's paths and vendored code. Scaffold applies the same checks again before writing,
 since the worktree may have changed since the survey, and relies on a proposal that passes them
 naming only paths the parent binds and identities nobody registered. It computes the parent's and

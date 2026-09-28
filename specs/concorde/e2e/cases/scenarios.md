@@ -14,7 +14,12 @@ Concrete situations that show the [requirements](requirements.md) of
 - GIVEN a project whose `main` branch does not yet resolve a case, and the case's test patch, FAIL_TO_PASS and PASS_TO_PASS tests
 - WHEN the developer grades the project
 - THEN the result names each FAIL_TO_PASS test that did not pass and reports the case unresolved
-- AND after a change that makes every listed test pass and edits the same test file itself, grading reports it resolved, the test file graded as the case's test patch writes it
+
+### scenario.swe-bench-cases.grade-resolved — A change that resolves the case is graded resolved
+
+- GIVEN a project whose `main` branch holds a change that makes every listed test of a case pass and edits a test file the case's test patch also touches
+- WHEN the developer grades the project
+- THEN grading reports the case resolved, the test file graded as the case's test patch writes it
 - AND afterwards the project's files are as its `main` branch holds them, the change's own edit of the test file included, and the project has no extra worktree
 
 ### scenario.swe-bench-cases.repair-specs — An adopted case's Specs are repaired before its issue
@@ -22,6 +27,18 @@ Concrete situations that show the [requirements](requirements.md) of
 - GIVEN an adopted case whose Spec review requires changes
 - WHEN the developer runs `repair-specs` for it
 - THEN a task over the named Modules runs, in its worktree, `spec_review`, then `specify` with that review as input and an intent to change the Specs and never the code, then `spec_review` once more, `task-validation` and `delivery`, and is merged
-- AND a review that accepts the Specs is followed by `task-validation` and `delivery` with no repair
 - AND no run names the task: each works on the worktree's [workspace binding](../../glossary.json#concept.workspace-binding)
-- BUT a step that does not end `ok` stops the repair with its result, and the task stays open
+
+### scenario.swe-bench-cases.repair-accepted — An accepted review needs no repair
+
+- GIVEN an adopted case whose Spec review accepts its Specs
+- WHEN the developer runs `repair-specs` for it
+- THEN the task runs `spec_review`, `task-validation` and `delivery`
+- BUT it runs no `specify` and no second review
+
+### scenario.swe-bench-cases.repair-stopped — A step that does not end ok stops the repair
+
+- GIVEN an adopted case whose Spec review requires changes and whose `specify` run ends `blocked`
+- WHEN the developer runs `repair-specs` for it
+- THEN the repair stops at `specify` with that step's result
+- BUT the task is not merged and stays open

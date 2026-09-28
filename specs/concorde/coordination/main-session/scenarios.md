@@ -80,7 +80,7 @@ Situations the [main-session guidance](module.md) prepares the
 ### scenario.main-session.pi-task-session-view — pi shows task-session rounds and wakes on their end
 
 - GIVEN a pi main session that started a task session with `concorde_task_session`
-- WHEN the round's progress file changes and the round ends
+- WHEN the round's status file changes and the round ends
 - THEN the run view shows the task, the round and the session's latest tool call
 - AND the main agent is woken with the recorded outcome: the report's summary, decisions and open points with the delivery commit or the escalation numbers, or the failed round's [error chain](../../glossary.json#concept.error-chain)
 - AND a pi main session that starts again follows the rounds still running

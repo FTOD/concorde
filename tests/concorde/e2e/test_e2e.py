@@ -32,7 +32,11 @@ def git(cwd: Path, *arguments: str) -> str:
 
 
 class E2ETests(unittest.TestCase):
-    @verifies("scenario.e2e.repositories")
+    @verifies(
+        "scenario.e2e.repositories",
+        "scenario.e2e.unknown-repository",
+        "scenario.e2e.default-root",
+    )
     def test_projects_come_from_swe_bench(self):
         if not e2e.REPO_LIST.is_file():
             self.skipTest("references/swe-bench is not checked out")

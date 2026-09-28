@@ -367,7 +367,7 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse((self.worktree / ".concorde/runs").exists())
         self.assertEqual("ok", self.run_status(envelope))
 
-    @verifies("scenario.execution.unbound-read-only")
+    @verifies("scenario.execution.unbound-read-only", "scenario.execution.unbound-run")
     def test_an_unbound_run_launches_no_writing_worker(self):
         status, envelope = self.project.run(
             "code_review",
@@ -687,7 +687,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("refused", envelope["error"]["code"])
         self.assertEqual("failed", self.run_status(envelope, None))
 
-    @verifies("scenario.execution.removed-module")
+    @verifies("scenario.execution.removed-module", "scenario.execution.modules-removed")
     def test_a_module_the_workspace_removed_is_left_out(self):
         def bind(modules):
             binding_file.write(self.worktree, {**self.binding(), "modules": modules})

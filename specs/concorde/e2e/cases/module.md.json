@@ -20,6 +20,21 @@
         "relies_on": [
           "concept.command-line-interface"
         ]
+      },
+      {
+        "target": "module.specification",
+        "meaning": "#uses-specification",
+        "relies_on": [
+          "req.specification.audit"
+        ]
+      },
+      {
+        "target": "module.spec-review",
+        "meaning": "#uses-spec-review",
+        "relies_on": [
+          "concept.spec-review",
+          "concept.review-verdict"
+        ]
       }
     ],
     "includes": [

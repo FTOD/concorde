@@ -188,13 +188,18 @@ promise. Once a Module is described, work on it is Spec first again.
 Project management and the execution core change for different reasons. How tasks are opened,
 parallelized, delegated and merged follows how the developer wants to work; how a worker is bounded
 by the Specs, launched, audited and checked follows the Protocol and is Concorde's core. So they are
-two halves with one narrow seam. The upper half writes a
-[workspace binding](glossary.json#concept.workspace-binding) into each task worktree and reads what
-the lower half recorded: its runs in the [run store](glossary.json#concept.run-store) and its
+two halves with one narrow seam: the upper half reaches the lower one only through a
+[workspace binding](glossary.json#concept.workspace-binding), Execution's commands and what
+Execution recorded. It writes the binding into each task worktree, runs Execution's commands inside
+that worktree and reads what the lower half recorded: its runs in the
+[run store](glossary.json#concept.run-store), whose
+[run progress files](glossary.json#concept.run-progress-file) the pi main session's
+[run view](glossary.json#concept.run-view) follows, and its
 [delivery commits](glossary.json#concept.delivery-commit) on the task branch. The lower half reads
 the binding and never learns that tasks exist. No record is written by both, so whether a task is
-active or delivered is derived each time from what happened, never kept as a second copy that could
-disagree; and the execution core can serve any workspace someone prepares, not only a task.
+active or delivered is derived each time from what happened, together with the task branch's head
+and whether its worktree is clean, never kept as a second copy that could disagree; and the
+execution core can serve any workspace someone prepares, not only a task.
 
 ```d2 illustrative
 coordination: Coordination {
@@ -213,6 +218,7 @@ coordination.task -> execution.runs: starts in its worktree
 execution.runs -> execution.binding: read
 execution.runs -> execution.store: record
 coordination.tasks -> execution.store: reads
+coordination.main -> execution.store: follows runs in pi
 ```
 
 ### Agents at both ends, programs between

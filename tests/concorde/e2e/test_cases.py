@@ -50,7 +50,9 @@ class CaseTests(unittest.TestCase):
             self.assertEqual("base\n", (project / "a.txt").read_text())
             self.assertEqual("main", git(project, "branch", "--show-current").strip())
 
-    @verifies("scenario.swe-bench-cases.grade")
+    @verifies(
+        "scenario.swe-bench-cases.grade", "scenario.swe-bench-cases.grade-resolved"
+    )
     def test_grading_runs_the_case_tests_on_a_throwaway_tree(self):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory) / "project"
@@ -102,7 +104,53 @@ class CaseTests(unittest.TestCase):
             )
             self.assertEqual(1, git(project, "worktree", "list").count("\n"))
 
-    @verifies("scenario.swe-bench-cases.repair-specs")
+    def test_a_test_run_over_the_grading_limit_is_a_detailed_error(self):
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            project.mkdir()
+            git(project, "init", "-q", "-b", "main")
+            (project / "calc.py").write_text("x = 1\n")
+            git(project, "add", "-A")
+            git(project, "commit", "-q", "-m", "base")
+            patch_text = (
+                "diff --git a/test_calc.py b/test_calc.py\nnew file mode 100644\n"
+                "--- /dev/null\n+++ b/test_calc.py\n@@ -0,0 +1 @@\n+def test_x(): pass\n"
+            )
+            case = {
+                "instance_id": "toy__calc-2",
+                "base_commit": git(project, "rev-parse", "HEAD").strip(),
+                "test_patch": patch_text,
+                "FAIL_TO_PASS": json.dumps(["test_calc.py::test_x"]),
+                "PASS_TO_PASS": "[]",
+            }
+            real_run = subprocess.run
+
+            def slow_pytest(command, *arguments, **options):
+                if "pytest" in command:
+                    raise subprocess.TimeoutExpired(
+                        command, options["timeout"], output=b"collected 1 item"
+                    )
+                return real_run(command, *arguments, **options)
+
+            with patch.object(cases.subprocess, "run", slow_pytest):
+                with self.assertRaises(cases.E2EError) as raised:
+                    cases.grade(project, case, Path(sys.executable))
+            error = raised.exception
+            self.assertEqual("grade_timeout", error.code)
+            self.assertIn("toy__calc-2", error.detail)
+            self.assertIn(f"{cases.GRADE_TIMEOUT} seconds", error.detail)
+            self.assertIn("pytest", error.detail)
+            self.assertEqual("collected 1 item", error.evidence["stdout"])
+            # The grading worktree is removed even so.
+            self.assertEqual(1, git(project, "worktree", "list").count("\n"))
+
+    @verifies(
+        "scenario.swe-bench-cases.repair-specs",
+        "scenario.swe-bench-cases.repair-accepted",
+        "scenario.swe-bench-cases.repair-stopped",
+    )
     def test_specs_are_repaired_from_one_review_round(self):
         from types import SimpleNamespace
         from unittest.mock import patch

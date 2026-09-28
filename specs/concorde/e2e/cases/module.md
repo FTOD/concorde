@@ -65,9 +65,10 @@ under `.concorde/runs/e2e/`. The case is resolved when every FAIL_TO_PASS and ev
 test passed. Failing tests are a verdict, not an error: each listed test that did not pass is named
 with its status, `not run` for one pytest never reported, and pytest's exit code is kept. Grading
 stops with an error instead when the instance lacks FAIL_TO_PASS tests, a test patch or a base
-commit (`invalid_case`), or when the worktree cannot be made or the test patch does not apply
-(`command_failed`, naming the command, its exit status and its output). The throwaway worktree is
-removed however grading ends
+commit (`invalid_case`), when the worktree cannot be made or the test patch does not apply
+(`command_failed`, naming the command, its exit status and its output), or when the test run
+exceeds 30 minutes (`grade_timeout`, naming the case, the ref, the limit and the command, with the
+output it had produced). The throwaway worktree is removed however grading ends
 ([requirements](requirements.md#req.swe-bench-cases.grading-worktree-removed)).
 
 ## Design
@@ -109,6 +110,19 @@ the [requirements](requirements.md) and [scenarios](scenarios.md).
 task, runs its Operations and execution commands in the task's worktree and merges the task; the
 case steps never write the project's Specs, [task records](../../glossary.json#concept.task-record)
 or [workspace binding](../../glossary.json#concept.workspace-binding) themselves.
+
+<a id="uses-specification"></a>
+
+**Specification** provides the `specify` Operation, whose
+[write audit](../../glossary.json#concept.write-audit) fails a run that changed code
+([requirement](../../execution/operations/specification/requirements.md#req.specification.audit)),
+which keeps the repair from changing code.
+
+<a id="uses-spec-review"></a>
+
+**Spec review** provides the `spec_review` Operation, whose
+[verdict](../../glossary.json#concept.review-verdict) the round reads to decide whether to repair;
+the run ends `ok` for `accepted` and `changes_required` alike.
 
 SWE-bench is external material, included by [End-to-end testing](../module.md): its instances
 supply the base commit, test patch and test lists a case is graded with.

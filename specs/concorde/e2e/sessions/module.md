@@ -36,7 +36,9 @@ otherwise. `--client` accepts only `claude` and `pi`, and the driver refuses any
 `unknown_client` before it starts a round. A headless workflow run of End-to-end testing,
 `run --via claude`, is a headless session of one workflow prompt, kept under
 `.concorde/runs/e2e/<task>-claude/`, and a
-[dogfood scenario](../../glossary.json#concept.dogfood-scenario) runs its prompt as one.
+[dogfood scenario](../../glossary.json#concept.dogfood-scenario) runs its prompt as one, kept under
+its [scenario directory](../../glossary.json#concept.scenario-directory)'s `sessions/<time>/`,
+which the scenario runner passes in place of the default.
 
 <a id="concept.headless-note"></a>
 
@@ -77,11 +79,11 @@ that it has not reported yet ([requirements](requirements.md#req.headless-sessio
 task worktree, otherwise the worktree's own `.concorde/runs/`. Every run started there since the
 session began counts as the session's, including the runs of the tasks it opened, whose workspace
 bindings name the same records directory; a run another session started in the same project
-meanwhile would be taken for this one's too, so a project runs one headless session at a time. A
-run whose [run progress file](../../glossary.json#concept.run-progress-file) is not finished and
-whose runner lives is still running; a run whose result has the error code `cancelled` and was
-written within 30 seconds of the round's end was stopped by that end. These two are the round's
-**unsettled** runs. If there are none, the session is **idle** and ends. Otherwise the tool waits
+meanwhile would be taken for this one's too. A run whose
+[run progress file](../../glossary.json#concept.run-progress-file) is not finished and whose runner
+lives is still running; a run whose result has the error code `cancelled` and was written within
+30 seconds of the round's end was stopped by that end. These two are the round's **unsettled**
+runs. If there are none, the session is **idle** and ends. Otherwise the tool waits
 until every running run has finished or its runner has gone, then, when a round is left, resumes
 the same session with a **[wake message](../../glossary.json#concept.wake-message)** naming each
 run, its kind, name and workspace, how it ended and its result file, saying of a stopped run that

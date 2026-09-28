@@ -3,13 +3,23 @@
 Concrete situations that show the [requirements](requirements.md) of
 [End-to-end testing](module.md).
 
-### scenario.e2e.repositories — Only SWE-bench's projects are prepared
+### scenario.e2e.repositories — SWE-bench's repositories are listed
 
 - GIVEN a checkout with `references/swe-bench/` checked out
 - WHEN the developer lists the repositories
 - THEN the list names SWE-bench's Python repositories, among them `psf/requests` and `pallets/flask`
-- BUT preparing a repository not on the list is refused with `unknown_repository` naming the known ones
-- AND without `CONCORDE_E2E_ROOT` the [end-to-end root](../glossary.json#concept.end-to-end-root) is `concorde-e2e` in the system's temporary directory, outside the developer's home
+
+### scenario.e2e.unknown-repository — A repository SWE-bench does not name is refused
+
+- GIVEN a checkout with `references/swe-bench/` checked out
+- WHEN the developer prepares a repository not on the list without `--any`
+- THEN preparation is refused with `unknown_repository` naming the known ones
+
+### scenario.e2e.default-root — Test projects live in the temporary directory
+
+- GIVEN an environment without `CONCORDE_E2E_ROOT`
+- WHEN the tool resolves the [end-to-end root](../glossary.json#concept.end-to-end-root)
+- THEN it is `concorde-e2e` in the system's temporary directory, outside the developer's home
 
 ### scenario.e2e.trust — Trusting a test project
 

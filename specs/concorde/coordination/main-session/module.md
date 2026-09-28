@@ -152,14 +152,14 @@ work.
 The view follows pi task sessions the same way. The `concorde_task_session` tool starts a task
 session, answers it (`answer`, which starts the next round) or stops its running round (`stop`), by
 running `concorde task session` from the primary worktree, and returns at once. The extension reads
-each round's progress file under `.concorde/tasks/<task>.session/` and shows the round as an
-external job — its task, round and the session's latest tool call — and when the round ends it wakes
-the main agent with the outcome recorded in the task record: the report's summary, decisions and
-open points, the [delivery commit](../../glossary.json#concept.delivery-commit), the numbers of the
-escalations to read with `concorde task show`, or the failed round's error chain rendered. A main
-session that starts again finds the running rounds from their progress files. In a pi task session
-itself, where `CONCORDE_TASK_SESSION` is set, the extension only adds the project's terms to every
-prompt and marks the commands the session starts as started from pi; it starts, follows and
+each round's status file `status.json` under `.concorde/tasks/<task>.session/` and shows the round
+as an external job — its task, round and the session's latest tool call — and when the round ends it
+wakes the main agent with the outcome recorded in the task record: the report's summary, decisions
+and open points, the [delivery commit](../../glossary.json#concept.delivery-commit), the numbers of
+the escalations to read with `concorde task show`, or the failed round's error chain rendered. A
+main session that starts again finds the running rounds from their status files. In a pi task
+session itself, where `CONCORDE_TASK_SESSION` is set, the extension only adds the project's terms to
+every prompt and marks the commands the session starts as started from pi; it starts, follows and
 reports no runs or rounds.
 
 <a id="concept.escalation-policy"></a>
@@ -491,7 +491,7 @@ configuration. It tells an execution command from an Operation by name and start
 with a run by the runner's process identifier and a start no earlier than the run's, so a worker of
 another runner, or of an earlier run whose process identifier was reused, is never attributed to
 it; a run still marked running whose runner process no longer exists is shown `failed`.
-`pi_runs.ts` also reads the progress files of task-session rounds. The
+`pi_runs.ts` also reads the status files of task-session rounds. The
 tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi session
 and is exercised in one.
 

@@ -250,7 +250,9 @@ class HeadlessSessionTests(unittest.TestCase):
             shown["rounds"][0]["actions"][0]["target"],
         )
 
-    @verifies("scenario.headless-sessions.pi")
+    @verifies(
+        "scenario.headless-sessions.pi", "scenario.headless-sessions.unknown-client"
+    )
     def test_a_pi_session_continues_one_session_file_and_is_woken_the_same_way(self):
         argv = sessions.pi_command("s-7", self.base / "pi")
         self.assertEqual(["pi", "-p", "--mode", "json", "--approve"], argv[:5])

@@ -1225,6 +1225,21 @@
           "relies_on": [
             "concept.command-line-interface"
           ]
+        },
+        {
+          "target": "module.specification",
+          "meaning": "#uses-specification",
+          "relies_on": [
+            "req.specification.audit"
+          ]
+        },
+        {
+          "target": "module.spec-review",
+          "meaning": "#uses-spec-review",
+          "relies_on": [
+            "concept.spec-review",
+            "concept.review-verdict"
+          ]
         }
       ],
       "includes": [
@@ -1360,7 +1375,8 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.workspace-binding",
-            "concept.run-store"
+            "concept.run-store",
+            "concept.run-progress-file"
           ]
         },
         {
@@ -1580,7 +1596,8 @@
           "relies_on": [
             "concept.survey",
             "concept.decomposition-proposal",
-            "contract.adoption.decomposition"
+            "contract.adoption.decomposition",
+            "req.adoption.proposal-checked"
           ]
         },
         {

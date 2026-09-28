@@ -176,6 +176,17 @@ def case_tests(instance: dict, field: str) -> list[str]:
     return json.loads(value) if isinstance(value, str) else list(value)
 
 
+# The longest a case's test run may take before grading gives up on it, in seconds.
+GRADE_TIMEOUT = 1800
+
+
+def _text(output: str | bytes | None) -> str:
+    """A timed-out process's captured output, which may be bytes even with ``text=True``."""
+    if isinstance(output, bytes):
+        return output.decode("utf-8", errors="replace")
+    return output or ""
+
+
 def grade(
     project: Path,
     instance: dict,
@@ -214,15 +225,25 @@ def grade(
                 str(tree / item) for item in pythonpath
             )
         command = [str(python), "-m", "pytest", "-rA", "-p", "no:cacheprovider", *files]
-        completed = subprocess.run(
-            command,
-            cwd=tree,
-            env=environment,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=1800,
-        )
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=tree,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=GRADE_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise E2EError(
+                "grade_timeout",
+                f"the tests of case {instance.get('instance_id')} on {ref} did not finish "
+                f"within the grading limit of {GRADE_TIMEOUT} seconds: `{' '.join(command)}` "
+                f"in the grading worktree {tree} was stopped",
+                stdout=_text(error.stdout)[-3000:],
+                stderr=_text(error.stderr)[-3000:],
+            ) from error
     finally:
         subprocess.run(
             ["git", "worktree", "remove", "--force", str(tree)],
