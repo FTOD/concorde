@@ -1,0 +1,42 @@
+{
+  "workspace": "ci-socat-dependency",
+  "goal": "Fix GitHub Actions Validate source checkout failure in run 36403419564: pi task-session tests fail because socat is absent from PATH. Make the minimal CI system dependency correction (install socat alongside bubblewrap), verify required Linux dependencies, and complete validation and delivery. Keep the change small; do not weaken sandbox checks or skip tests. Read all required Specs and development instructions. Run the full Python suite once on final inputs plus the remaining CI docsite checks where feasible. Do not push or merge from the task session.",
+  "modules": [
+    "module.concorde"
+  ],
+  "sequence": 1,
+  "base_commit": "afa2a400c5a2d569876ed194d23d8d4b25ec203b",
+  "parent_commit": "bcd2468b02b18c79a50ef5d64506b5a9c5de8652",
+  "readiness": {
+    "run_id": "r-20260928T093714-delivery-fcfad68b",
+    "input_digest": "sha256:b417123003f0a83b162de78a72349a41c7b630edcd3b60aa160361bbe14c13da",
+    "modules": [
+      "module.concorde"
+    ],
+    "checks": [
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:e7d1eb3cff54092739d00f1d9a25ea07c89755abb3f94a02cda7d79d3141d29c"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T093648-task_validation-1ea9577e",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.concorde"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:10cf032ae6c67c54b47942e02479a9198815f21cf2b319f7844a3432b2814cbe"
+    }
+  ],
+  "created_at": "2026-09-28T09:37:44Z"
+}
