@@ -1,0 +1,66 @@
+{
+  "workspace": "pi-drain-own-work",
+  "goal": "The pi main-session extension reports to pi-subagents as this session's background work only the runs and task-session rounds this session started, so a headless pi -p main session no longer waits (up to pi-subagents' 30-minute auto-drain) for runs other sessions started; the run view still shows every running run and round.",
+  "modules": [
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "596392fc47e16a887ff9546fb0ce691d3678a744",
+  "parent_commit": "d60a0e85eaee5da3c9eb0f4b6cd6fcf819c0efb3",
+  "readiness": {
+    "run_id": "r-20260928T181008-delivery-413aa201",
+    "input_digest": "sha256:b4bcb494dac97eb39e7b62c3bbab6c0cfea1e924d643d0bcaa26d6561524d4af",
+    "modules": [
+      "module.main-session"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:f43a06a8c7914b30d2dd5a1be41a695482264972f80fbfd89611d5a14f05db4d"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:dbb5234a5f44a55e4e547a2224288cd6c1447472e104c205c2f859744ad29acb"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:45777450578688fe8adc47b7a9848ca62288e03b5d59f8bc3f8e594da63ca598"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:996ed26c8e11fe4e2e544124a2d5048edfb21ff663ccb6ea0ae8e1dbdac71fde"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:ba1250353331d41cc8cad1c26c11b5fb601f73994f4c0365827100a7056437e4"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T180929-task_validation-91663d6f",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:297b3e70992e717c332134f892707af827aadfeccafd51245102ae921f7ffd3f"
+    }
+  ],
+  "created_at": "2026-09-28T18:10:56Z"
+}
