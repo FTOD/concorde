@@ -1,0 +1,41 @@
+{
+  "workspace": "e2e-fixes",
+  "goal": "Developer-approved panel-review decisions for End-to-end testing: (e2e F7b) run remembers the workflow record's report count before starting and fails with no_result unless a new report appeared; (headless-sessions F3b) on wait_exceeded, start() writes session.json with end wait_exceeded and the progress-file path before raising, listed in Usage with a scenario and test; (e2e F5) End-to-end testing lists tests/concorde/workflows/run_script.mjs as a shared file of its own tool realization and says in Design that the driver runs Workflows' test sandbox, accepting that coupling; (swe-bench-cases) the order 'reviewed before the case's issue is worked' is a condition on how the tool is used, not a promise of the tool: state it as such outside the SHALL. Specs and tests.",
+  "modules": [
+    "module.e2e",
+    "module.headless-sessions",
+    "module.swe-bench-cases"
+  ],
+  "sequence": 1,
+  "base_commit": "1c901df3f11178ea5516eb0dc4f24d65f829f281",
+  "parent_commit": "1215f68ba870531287f0a5901f83b97d5898c086",
+  "readiness": {
+    "run_id": "r-20260928T172207-delivery-ef2149e6",
+    "input_digest": "sha256:4fc5e06dbb7360e438c6c4c36d3806a3b634a17d01674719191067a55d3dbf7b",
+    "modules": [
+      "module.e2e",
+      "module.headless-sessions",
+      "module.swe-bench-cases"
+    ],
+    "checks": [],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T172149-task_validation-70805c57",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.e2e",
+        "module.headless-sessions",
+        "module.swe-bench-cases"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:e17f9889b7625315e74352e285f47c1238397e508eb6468c71dbc11071490cb6"
+    }
+  ],
+  "created_at": "2026-09-28T17:22:32Z"
+}
