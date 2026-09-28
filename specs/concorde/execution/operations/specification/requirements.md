@@ -49,7 +49,8 @@ of Modules that already exist in it.
 
 The specify Operation SHALL run the
 [structural checks](../../../glossary.json#concept.structural-check) on the workspace after every
-worker round whose write audit is clean and that changed a document.
+worker round that ended `ok` with a clean write audit, and once more after the last worker round
+unless a write audit found a violation.
 
 ### req.specification.stop-on-new-error — New structural errors stop the run
 

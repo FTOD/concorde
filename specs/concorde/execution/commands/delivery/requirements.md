@@ -64,13 +64,13 @@ Every delivery commit SHALL contain one evidence bundle that satisfies the evide
 Delivery SHALL NOT amend, rebase, merge or push any commit, nor move its branch to a commit other
 than the delivery commit it creates.
 
-Resetting the index while undoing an uncommitted delivery, as
+Restoring the index while undoing an uncommitted delivery, as
 [req.delivery.atomic](#req.delivery.atomic) requires, changes no commit.
 
 ### req.delivery.atomic — A failed commit leaves the validated workspace
 
-When writing the bundle, staging or the commit fails, Delivery SHALL restore the workspace's files
-to the state the readiness examined and reset its index to the head.
+When writing the bundle, staging or the commit fails, Delivery SHALL restore the workspace and its
+index to the state the readiness examined.
 
 ## Records
 

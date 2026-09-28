@@ -90,8 +90,13 @@ The guidance SHALL tell the main agent to act on the
 The guidance SHALL tell the main agent to record every result that is not `ok` and every decision
 made without the developer in the task's [decision log](../../glossary.json#concept.decision-log).
 
-This includes the decisions and problems of a workflow's report, which Workflows never writes into
-the log and which, in no-ask mode, were taken without the developer.
+### req.main-session.workflow-report-logged — A workflow's report reaches the decision log
+
+The guidance SHALL tell the main agent to copy the decisions and problems of a workflow's report
+into the task's decision log.
+
+Workflows never writes them into the log, and in no-ask mode they were taken without the
+developer.
 
 ### req.main-session.no-task-questions — Questions need no task
 
@@ -132,11 +137,6 @@ The guidance SHALL tell the main agent and every task session to use each projec
 its glossary entry defines it.
 
 ## The pi extension and session context
-
-### req.main-session.pi-run-view — pi shows every running run
-
-In pi, the run view SHALL show every running run of the project, Operation or execution command,
-with its worker's progress when it has a worker.
 
 ### req.main-session.pi-run-wake — pi reports every run's end once
 
@@ -194,8 +194,8 @@ Save, a cancellation or a launch failure.
 ### req.main-session.escalation-policy — Only major decisions reach the developer
 
 The guidance SHALL state the [escalation policy](../../glossary.json#concept.escalation-policy):
-decide ordinary questions itself and report them, and ask the developer before acting only on
-decisions with major impact.
+decide ordinary questions itself, record and report them, and ask the developer before acting
+only on decisions with major impact.
 
 Recording those decisions is the obligation of
 [Decisions are recorded](#req.main-session.decision-log).

@@ -222,7 +222,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a delivered task
 - WHEN the main agent merges it with a `--check` that exits with status 1, or with checks that leave an uncommitted path
-- THEN the command fails with `check_failed` naming the check, its exit status, the log, the end of its output and any path the checks left
+- THEN the command fails with `check_failed`, naming for a failing check the check, its exit status, the log and the end of its output, and for checks that left paths those paths and the log
 - AND the primary branch is back at the commit it had before the merge, clean apart from the paths the checks created, which stay
 - AND the task is still delivered with its worktree
 

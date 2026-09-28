@@ -145,14 +145,13 @@ is: the commit names the workspace, which the binding names, and nothing else.
 Every step before 7 leaves the workspace as it was — Validation writes its check logs and the
 readiness only to the [run directory](../../../glossary.json#concept.run-directory) — so a blocked
 delivery changes nothing in the workspace. Steps 7–9 are undone together when step 8 or 9 fails
-(`bundle_exists`, `stage_failed`, `commit_failed`): confirmed metadata is restored from the bytes
-read before, the bundle and the directories created for it removed and the index reset to the head,
-so the workspace's files are again what the readiness describes. Staging done before the run is not
-kept, since the readiness examines the files, not the index, and a delivery stages every change
-anyway. A `commit_unverified` failure comes after the commit exists: Delivery leaves it in place,
-since it never rewrites history, and repairing the branch is the task level's decision. Checks are
-not repeated after confirmations, since clearing a marker changes no code and Validation revalidates
-the Spec structure when it applies them. See the [requirements](requirements.md) and
+(`bundle_exists`, `measurement_failed` while staging, `stage_failed`, `commit_failed`): confirmed
+metadata is restored from the bytes read before, the bundle and the directories created for it
+removed and the index reset, so the workspace is again what the readiness describes. A
+`commit_unverified` failure comes after the commit exists: Delivery leaves it in place, since it
+never rewrites history, and repairing the branch is the task level's decision. Checks are not
+repeated after confirmations, since clearing a marker changes no code and Validation revalidates the
+Spec structure when it applies them. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
 <a id="realization.delivery.command"></a>

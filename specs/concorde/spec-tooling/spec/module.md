@@ -98,10 +98,10 @@ worktree's Specs, which paths a worker may change (`rw`), read (`ro`) or only kn
 the Protocol's ProjectImplementation, but writes only within the bound Modules' scopes. The grant
 carries the bound Modules' terms, whole glossary entries, and its
 [context identity](../../glossary.json#concept.context-identity), so a caller can tell later
-whether anything the worker could read has changed. A grant that writes Specs makes the
-glossary file writable, since a concept is declared there; that its writes stay within the bound
-Modules' own entries is checked after the worker, by Workers'
-[write audit](../../glossary.json#concept.write-audit). It refuses to make writable a file that an
+whether a Spec source or pinned external material the worker could read has changed; it does not
+cover implementation files. A grant that writes Specs makes the glossary file writable, since a
+concept is declared there; that its writes stay within the bound Modules' own entries is checked
+after the worker, by Workers' [write audit](../../glossary.json#concept.write-audit). It refuses to make writable a file that an
 unbound Module also binds, and it never makes writable an installed file, one the installation
 record `.concorde/install.json` lists as the installer's own: such a file is bound only by its exact
 path (`CHK.binds.installed`) and granted at most `ro`, because the installer replaces it on every

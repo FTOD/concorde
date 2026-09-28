@@ -145,9 +145,10 @@ the provenance and `id` the digest of `{report, source}`. Each disposition is
 `{reason, note, evidence, duplicate_of, actor, created_at}`, where `reason` is `resolved`,
 `duplicate`, `not-actionable` or `reopened`, `evidence` is a nonempty list of unique strings and
 `duplicate_of` is another Issue identity for `duplicate` and `null` otherwise. A `created_at` is
-the UTC time, as an ISO 8601 string, at which the store accepted that report or disposition.
-`reports` and `dispositions` keep the order in which they were accepted, so the **latest** report
-is the last entry of `reports`.
+the UTC time, as an ISO 8601 string, at which the store accepted that report or disposition, unless
+the caller of `disposition_record` or `dispose_issue` supplies one. `reports` and `dispositions`
+keep the order in which they were accepted, so the **latest** report is the last entry of
+`reports`.
 
 A record is valid only when:
 
@@ -178,7 +179,7 @@ field it concerns.
 | `list_issues(root, target_id, status)` | Returns one summary row per Issue, sorted by identity: `{id, type, subtype, title, status, target_id, owner_target_id, revision}`, where `type`, `subtype`, `title` and `owner_target_id` are the latest report's, `target_id` is that report's reporting Module and `revision` the record's. A `target_id` keeps only the Issues whose latest report has that reporting Module or owner, whether or not it is a registered Module; a `status` keeps only the Issues with that status; `null` for either filters nothing. An absent directory yields an empty list and is not created. |
 | `resolve_report(root, receipt)` | Returns the exact report the receipt names, never the latest one; `stale_issue` when it is absent. |
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
-| `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; the bookkeeping command never gives `duplicate_revision`. |
+| `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
 
 Every write runs under the exclusive lock `.concorde/runs/issues.lock` of the worktree `root` names,
 which serializes the writes into that worktree; writes into different worktrees touch different

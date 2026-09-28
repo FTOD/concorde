@@ -23,9 +23,9 @@ The workflow leaves worker launches and service calls inside the run. What clien
 `concorde workflow step` SHALL start a step's run only after it has found the [workspace lock](../../glossary.json#concept.workspace-lock) of its workspace free.
 
 The runner writes a run's result before it releases the lock, so a finished step always leaves the
-workspace free. When another process takes the lock between that check and the start, the runner
-refuses the step's run under its own workspace lock, and the refused run is an ordinary finished
-step whose result carries that refusal.
+workspace free. When another process takes the lock between that check and the start, the detached
+runner cannot take the workspace lock and ends the run refused with `workspace_busy`; that run is an
+ordinary finished step whose result carries the refusal.
 
 ### req.workflows.key-idempotent — A step key runs once
 

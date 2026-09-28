@@ -1213,11 +1213,13 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
         "key": "spec_review",
         "name": "spec_review",
         "modules": [
+          "module.checkout",
+          "module.inventory",
           "module.shop"
         ],
         "run_id": "r-20260925T105000-spec_review-1b2c3d4e",
         "status": "ok",
-        "summary": "spec_review finished for module.shop."
+        "summary": "spec_review finished for module.checkout, module.inventory, module.shop."
       },
       {
         "key": "validate",
@@ -1283,7 +1285,50 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
         "step": "spec_review",
         "run_id": "r-20260925T105000-spec_review-1b2c3d4e",
         "verdict": "accepted",
-        "modules": []
+        "modules": [
+          {
+            "module": "module.checkout",
+            "outcome": "accepted",
+            "context_identity": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "findings": [],
+            "memory": {
+              "new": [],
+              "updated": [],
+              "resolved": [],
+              "carried": [],
+              "ignored": [],
+              "unchanged_since": null
+            }
+          },
+          {
+            "module": "module.inventory",
+            "outcome": "accepted",
+            "context_identity": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            "findings": [],
+            "memory": {
+              "new": [],
+              "updated": [],
+              "resolved": [],
+              "carried": [],
+              "ignored": [],
+              "unchanged_since": null
+            }
+          },
+          {
+            "module": "module.shop",
+            "outcome": "accepted",
+            "context_identity": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+            "findings": [],
+            "memory": {
+              "new": [],
+              "updated": [],
+              "resolved": [],
+              "carried": [],
+              "ignored": [],
+              "unchanged_since": null
+            }
+          }
+        ]
       }
     ],
     "proposed_checks": [
@@ -1377,7 +1422,6 @@ causes.
 | `step_rejected` | step outcome | `input` | the workflow record refused the step (`workflow_conflict`, `step_conflict`, `record_unreadable`), its `Workflows (workflow record)` link the cause; nothing was started or recorded, and the outcome has state `refused` |
 | `step_unrecorded` | step outcome | `environment` | a run started but the workflow record refused to record it, its link the cause; the link names the live run |
 | `incomplete` | result | `capability` | the recorded steps end before the procedure's last step without any of the stops above, such as a script that ended early |
-| `invalid_request` | step and report commands | `input` | the step command line or standard-input request breaks the step request contract, or the report's standard input holds no report request; exit status 2 |
 | `report_failed` | report command | `capability` | the report could not be built for a reason of its own, such as a recorded result the report's contract refuses; the detail names the reason, instead of the command ending in a traceback |
 
 The step and report commands also answer with a `component` link of the actor
@@ -1387,4 +1431,8 @@ cannot work at all: `binding_required` when the worktree they start in has no
 [workspace binding](../../glossary.json#concept.workspace-binding), `binding_unreadable`,
 `binding_invalid` or `binding_misplaced` when its binding is refused, and, for the report,
 `no_workflow` when the workspace ran no [workflow step](../../glossary.json#concept.workflow-step)
-and `record_unreadable` when its workflow record cannot be read.
+and `record_unreadable` when its workflow record cannot be read. A command line, or a
+standard-input request, that breaks the [step request](#contract.workflows.step-request) or
+[report request](#contract.workflows.report-request) contract is answered with a `component` link of
+the actor `Workflows (concorde workflow)`, code `invalid_request`, reason `input`, and exit status
+2.

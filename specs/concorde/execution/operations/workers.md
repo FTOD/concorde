@@ -51,8 +51,8 @@ inside the fixed [worker result](../../glossary.json#concept.worker-result) sche
 | 3 | Generate the [worker settings](../../glossary.json#concept.worker-settings), the tool list and the brief from the frozen grant, and pre-create the pending files the grant makes writable | Workers | a pending file cannot be created |
 | 4 | Launch the worker in its own [run directory](../../glossary.json#concept.run-directory) of the [run store](../../glossary.json#concept.run-store) and wait for its worker result | Workers | launch error, timeout or a result that fails its schema |
 | 5 | Audit the workspace's changes against the grant | Workers | any write outside the grant's writable paths |
-| 6 | When the step asks for checks and the worker ended `ok` with a clean audit, run the bound Modules' configured checks outside the worker | Workers | a worker result `blocked` or `failed`: the step ends with the worker's status, without checks or resume |
-| 7 | While rounds remain and a check fails, or the checks pass but the step's own validation after the round reports something to repair, resume the same worker with the failures and repeat steps 4 to 6 | Workers | the rounds are used up with a check still failing; a validation still reporting problems leaves the round's result for the step to judge |
+| 6 | When the step asks for checks and the worker ended `ok` with a clean audit, run the configured checks of the bound Modules and of every Module that uses one of them outside the worker | Workers | a worker result `blocked` or `failed`: the step ends with the worker's status, without checks or resume |
+| 7 | While rounds remain and a check fails, or every check passed or none ran but the step's own validation after the round reports something to repair, resume the same worker with the failures and repeat steps 4 to 6 | Workers | the rounds are used up with a check still failing; a validation still reporting problems leaves the round's result for the step to judge |
 | 8 | Write the [run record](../../glossary.json#concept.run-record) | Workers | — |
 
 The stop column ends the productive work, not the record: a round that ran is audited even when it
@@ -97,7 +97,7 @@ sequence adds these codes.
 | --- | --- | --- | --- |
 | Grant not computable | `grant_unavailable` | `scope` | Spec core's error |
 | An unbound run asked for a worker whose grant keeps a writable path | `unbound_write` | `scope` | none |
-| Worker backend or model configuration not settled | `worker_model_unavailable` | `input` | the `component` link of Workers' model configuration, with its code (`config_invalid` or `backend_missing`) and the file |
+| Worker backend or model configuration not settled | `worker_model_unavailable` | `input` (`config_invalid`) or `environment` (`backend_missing`) | the `component` link of Workers' model configuration, with its code (`config_invalid` or `backend_missing`) and the file |
 | Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error |
 | Worker run ended with an audit violation | `audit_violation` | `permission` | the run record's error |
 | Worker run ended with checks still failing | `checks_failed` | `decision` | the run record's error |

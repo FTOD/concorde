@@ -223,7 +223,7 @@ started.
 | `error` of a [worker result](glossary.json#concept.worker-result) | the worker, without `level`, `actor` and `causes`, which Workers adds |
 | `{"error": …}` printed by a refused `concorde task` or `concorde issues` command | the refusing component (`component`) |
 | `error` of the result of `concorde configure-workers` | the command (`command`) |
-| an escalation recorded with `concorde task escalate` | the main agent (`main-agent`) |
+| an escalation recorded with `concorde task escalate` (`--by main-agent`, the default) | the main agent (`main-agent`) |
 | an escalation recorded with `concorde task escalate --by task-session` | the [task session](glossary.json#concept.task-session) (`task-session`) |
 
 Spec tooling is the exception: it depends on no other Module and reports with its

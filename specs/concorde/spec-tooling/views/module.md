@@ -37,8 +37,9 @@ may contain a registered document, or is ever agent context.
 <a id="concept.publication-candidate"></a><a id="concept.promotion"></a><a id="concept.published-site"></a><a id="concept.site-build-manifest"></a>
 
 The commands run from `docsite/` (Concorde's own, or one the scaffold below created) after
-`npm ci` has installed its dependencies there, and need the `d2` program, which the Concorde
-installer places at `.concorde/tools/d2`:
+`npm ci` has installed its dependencies there; `start` and `build` render diagrams with the `d2`
+program, found as `CONCORDE_D2`, the `.concorde/tools/d2` the Concorde installer places, or `d2` on
+`PATH`:
 
 | Command | Effect |
 | --- | --- |

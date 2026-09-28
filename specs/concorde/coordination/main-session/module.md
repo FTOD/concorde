@@ -346,10 +346,10 @@ The main agent never changes the primary worktree's Specs or code: its view ther
 project, so nothing would bound or evidence a change made directly, and the primary worktree must
 stay clean to merge. Inside a task worktree a direct change is bounded by the task and evidenced by
 `task-validation` and `delivery`, so the main agent and task sessions may change Specs and code
-there themselves. Every `concorde` command for a task runs with the worktree's own copy, because
-only the branch's copy knows the Specs, Protocol and checks the task changes, and only that
-worktree's binding names the task's workspace. A session is inside one task at a time, which is why
-split work goes to task sessions; a task session's writes are confined to its task by the
+there themselves. Every `concorde` command that works on a task's workspace runs with the
+worktree's own copy, because only the branch's copy knows the Specs, Protocol and checks the task
+changes, and only that worktree's binding names the task's workspace. A session is inside one task
+at a time, which is why split work goes to task sessions; a task session's writes are confined to its task by the
 [session boundary](../../glossary.json#concept.session-boundary), which
 [Task sessions](../task-session/module.md) obtains from the Harness, while the main agent stays
 unrestricted and alone merges; merging needs no authorization because `delivery` only commits what

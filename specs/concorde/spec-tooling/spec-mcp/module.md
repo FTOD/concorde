@@ -39,11 +39,11 @@ A project using Concorde registers the **Spec MCP server** for Claude Code in it
 For example, before opening a task the [main agent](../../glossary.json#concept.main-agent) calls
 `boundary(["module.checkout"], "implement")` to see what an implementation worker could change, and
 `impact(["src/checkout/cart.py"])` to see which other Modules share that file and must be bound too.
-`boundary` answers with the grant's context identity and its entries, such as `src/checkout/` at
-`rw` and the documents the checkout Module's Spec context selects at `ro`; any path it does not
-list is denied. When `impact` names a second Module for `cart.py`, the main agent binds that
-Module to the task as well, because a grant for the checkout Module alone would be refused with
-`shared_file`. Exact results are in the [contracts](contracts.md).
+When no other Module binds `cart.py`, `boundary` answers with the grant's context identity and its
+entries, such as `src/checkout/` at `rw` and the documents the checkout Module's Spec context
+selects at `ro`; any path it does not list is denied. When `impact` names a second Module for
+`cart.py`, `boundary` for the checkout Module alone is refused with `shared_file` instead, and the
+main agent binds that Module to the task as well. Exact results are in the [contracts](contracts.md).
 
 A call fails with a code, never a partial answer: one of the server's own codes `no_root`,
 `outside_root`, `invalid_input`, `system_error` and `unexpected_error`, or one of Spec core's codes

@@ -75,7 +75,7 @@ be reported.
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Compute and freeze the `implement` [grant](../../../glossary.json#concept.grant) | Workers, Spec core | Specs cannot load, or unknown Module (`failed`) |
+| 1 | Compute and freeze the `implement` [grant](../../../glossary.json#concept.grant) | Operation, Spec core | Specs cannot load, or unknown Module (`failed`) |
 | 2 | Pre-create every pending file/directory the grant makes writable, empty | Workers | cannot create (`failed`) |
 | 3 | Generate settings, tools and the [brief](../../../glossary.json#concept.brief) | Workers | — |
 | 4 | Launch the worker and wait for its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error/timeout (`failed`) |
@@ -133,7 +133,7 @@ to stay empty is removed and stays pending; it needs some content to count as cr
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Compute the `test` grant, frozen by Workers at launch | Workers, Spec core | Specs cannot load, or unknown Module (`failed`) |
+| 1 | Compute and freeze the `test` grant | Operation, Spec core | Specs cannot load, or unknown Module (`failed`) |
 | 2 | Run the configured checks of the bound Modules and of every Module that uses one of them outside any worker, logs kept in the run directory | Operation, Check execution | a check cannot start (`failed`) |
 | 3 | Generate settings, tools and the brief with the focus and failing-log tails | Workers | — |
 | 4 | Launch the worker and wait for its worker result | Workers, worker | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |

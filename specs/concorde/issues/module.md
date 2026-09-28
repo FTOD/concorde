@@ -64,8 +64,9 @@ What `list` and `show` found decides what the report carries:
 - no matching Issue: omit `issue_id` and `expected_revision`, and the report creates an Issue;
 - an open match: put its `issue_id`, and the revision `show` printed as `expected_revision`, and
   the report is appended to it;
-- a closed match: `reopen` it first, then append as to an open match, with the revision `reopen`
-  printed.
+- a closed match whose closure the new observation calls into question or shows recurring: `reopen`
+  it first, then append as to an open match, with the revision `reopen` printed; otherwise record a
+  new Issue.
 
 Running a creation twice creates two Issues even when the
 file and report key are unchanged: each command invocation has new provenance. The store's retry

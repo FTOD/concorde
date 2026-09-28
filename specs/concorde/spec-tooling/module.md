@@ -15,15 +15,15 @@ Operation, and Views reports a failed build of its own.
 
 ## Usage
 
-A [Spec change](../glossary.json#concept.spec-change) meets Spec tooling in a fixed order. On a
-task branch, the developer, the [main agent](../glossary.json#concept.main-agent) or a `specify`
-worker changes a Module's Specs. `concorde spec-validation` then reports every finding of the
+A change to a Module's Specs usually meets Spec tooling in this order. On a task branch, the
+developer, the [main agent](../glossary.json#concept.main-agent) or a `specify` worker changes a
+Module's Specs. `concorde spec-validation` then reports every finding of the
 [structural checks](../glossary.json#concept.structural-check) in one run; while it reports an
 error, the change is not ready for delivery. Once the Specs are valid,
 `concorde run spec_review` (or `spec_panel`) has workers judge the named Modules' Specs and returns
 their findings with a [review verdict](../glossary.json#concept.review-verdict): `accepted`;
-`changes_required`, which sends the change back to be specified; or `incomplete`, which names each
-Module that could not be reviewed and why. Every later run in that worktree computes its workers'
+`changes_required`, when a blocking finding against the Specs stands; or `incomplete`, which names
+each Module that could not be reviewed and why. Every later run in that worktree computes its workers'
 [grants](../glossary.json#concept.grant), the paths each may read and write, from those Specs; the
 main agent can ask the Spec MCP server which Modules a change concerns and what grant a task type
 would give, and people read the same Specs on the published site. Each step has its own entry
@@ -39,16 +39,16 @@ point, one per child:
 A worker's grant is computed by Spec core and frozen by the Operation that launches the worker,
 through the [Execution runner](../glossary.json#concept.execution-runner); the Spec MCP server,
 Spec review and Views' scaffold also call Spec core as a library, for loading, typed values and file
-transactions. Every answer is computed from the Specs of one worktree, so a Spec change on a task
-branch governs only that task.
+transactions. Every answer is computed from the Specs of one worktree, so a change to the Specs on
+a task branch governs only that task.
 
 ## Design
 
 The children are split by what they depend on. Spec core loads, checks and computes, and depends on
 nothing, so every other [Module](../glossary.json#concept.module) can rely on it without a cycle.
 The Spec MCP server only presents what Spec core computes, to agents, and adds no rule of its own.
-Views presents the same Specs to people but is TypeScript and does not call Spec core: it parses the
-[registry](../glossary.json#concept.registry) and metadata itself and recomputes each document's
+Views presents the same Specs to people; its publisher is TypeScript and does not call Spec core: it
+parses the [registry](../glossary.json#concept.registry) and metadata itself and recomputes each document's
 selecting Modules, which must equal Spec core's `selected-by`
 [impact index](../glossary.json#concept.impact-index), so a page that disagrees with a worker's
 context is a Views defect; it leaves full structural conformance to the validator. Spec review is

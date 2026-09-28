@@ -137,8 +137,9 @@ findings rather than as a refusal. Step 8 catches changes of the workspace durin
 take minutes.
 
 A `task-validation` run writes nothing in the workspace; its logs and readiness go to its run
-directory in the run store, under the binding's records directory, which is the only place it writes
-even when that directory lies inside the worktree. Delivery reuses the readiness steps and a
+directory in the run store, under the binding's records directory; the run store, where the runner
+also holds the workspace lock, is the only place it writes, even when that directory lies inside the
+worktree. Delivery reuses the readiness steps and a
 confirmation service that clears exactly the listed pending markers in one
 [file transaction](../../../glossary.json#concept.file-transaction), bound to the measured metadata
 digests, then revalidates and rolls back on any remaining error. See the
@@ -166,9 +167,9 @@ bound-workspace fixture Delivery's tests share.
   Modules bind a path or own a document, and applies confirmations as a file transaction.
   Validation relies on the validator being deterministic and on loading refusing, not partially
   reading, a Spec that cannot support a boundary; it always roots Spec core at the workspace.
-- <a id="uses-checks"></a>**Check execution** runs each changed Module's
-  [configured checks](../../../glossary.json#concept.configured-check) read-only,
-  with the workspace as the project, and returns one
+- <a id="uses-checks"></a>**Check execution** runs the
+  [configured checks](../../../glossary.json#concept.configured-check) of the Modules step 7 selects
+  read-only, with the workspace as the project, and returns one
   [check result](../../../glossary.json#concept.check-result) per check. The readiness keeps
   each result's check identity as `check`, its Module, status and exit code, its measured
   `check_revision` as `measured_digest` and its log path relative to the directory holding the

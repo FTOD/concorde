@@ -102,7 +102,8 @@ primary worktree and merges. For work split into several tasks, it starts a
 [task session](glossary.json#concept.task-session) per task with `concorde task session`, which does
 the same inside its task and reports back, so several tasks run at once. Before any change, a
 read-only Operation such as `understand` or a review may also run in the primary worktree itself, as
-an [unbound run](glossary.json#concept.unbound-run) that judges the Specs as they stand there.
+an [unbound run](glossary.json#concept.unbound-run) that reads that worktree as it stands and
+changes nothing.
 
 The normal path moves from opening a task to work in its bound workspace, then back to the main
 agent for merge. Operations, validation and delivery run through Execution in the task worktree;
@@ -163,7 +164,7 @@ the decision, escalates only a major-impact one, and adds its own link rather th
 step needing an unstated promise stops with a [Spec gap](glossary.json#concept.spec-gap) instead of
 inferring it from code; outside a `specify` run and the
 [Adoption](execution/operations/adoption/module.md) route (`code_to_spec` and the `scaffold` command
-that writes what it proposed), only the developer, the main agent and a task session within its
+that writes what a survey proposed), only the developer, the main agent and a task session within its
 task's goal change Specs.
 
 ## Design

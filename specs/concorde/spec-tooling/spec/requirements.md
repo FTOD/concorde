@@ -218,11 +218,13 @@ Task material, shared files, impact indexes and the task's history add nothing.
 
 ### req.spec.grant-installed-read-only — An installed file is never writable
 
-A grant SHALL give a file that the installation record `.concorde/install.json` lists as the
-installer's own at most the level `ro`.
+A grant SHALL give an exact entry for a file that the installation record `.concorde/install.json`
+lists as the installer's own at most the level `ro`.
 
 The cap applies after the highest level is chosen, so it overrides an `rw` that an implementation
-scope would give; a file the installer only amends is the project's and keeps its level.
+scope would give; a file the installer only amends is the project's and keeps its level. A
+directory entry covering an installed file is the `CHK.binds.installed` error, which only
+validation reports.
 
 ### req.spec.grant-shared-write — Shared files need every binder
 
@@ -250,7 +252,7 @@ or pinned external material changes.
 
 It covers no implementation file contents, so a worker's writes to implementation files never
 change it. A task that writes Specs changes it with its own writes to the Module's documents or
-glossary entries, so its context identity is recomputed after them.
+glossary entries, so an identity computed after them differs from the one frozen before.
 
 ## Coverage
 

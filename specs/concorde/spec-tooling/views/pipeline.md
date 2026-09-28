@@ -79,8 +79,7 @@ Module; an inclusion reason is `{relation: "includes", kind, id}`, where `kind` 
 `hash` of the JSON serialization of the ordered list of `[path, hash(bytes)]` pairs for the
 configuration, the registry, both members of every document in registry order and, last, the
 glossary when the root Module declares one. Any byte change in any of them, including a
-metadata-only edit, changes it. The site identity, user documents and custom docs are not in it. It
-identifies inputs; it is not a claim about meaning.
+metadata-only edit, changes it. It identifies inputs; it is not a claim about meaning.
 
 ## Routes {#routes}
 

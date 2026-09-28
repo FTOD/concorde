@@ -143,7 +143,7 @@ worktree before these removals.
 | invalid result, audit clean | not run | end `failed` with `worker_result_invalid` |
 | `blocked` or `failed`, audit clean | not run | end with the worker's status and `worker_blocked` or `worker_failed` |
 | `ok`, audit clean, no checks given | — | as when all checks pass |
-| `ok`, audit clean, all checks pass, no validation or nothing to repair | run | end `ok` |
+| `ok`, audit clean, all checks pass, no validation, nothing to repair, or the validation could not run | run | end `ok` |
 | `ok`, audit clean, all checks pass, validation reports something to repair, rounds left | run | resume round |
 | `ok`, audit clean, all checks pass, validation reports something to repair, no rounds left | run | end `ok`; the caller judges the result |
 | `ok`, audit clean, a check fails, rounds left | run | resume round |

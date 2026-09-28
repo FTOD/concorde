@@ -63,15 +63,17 @@ The worker has no editing or shell tool.
 ### req.understanding.change-fails — A change to the worktree fails the run
 
 The understand Operation SHALL end a run `failed` when the
-[write audit](../../../glossary.json#concept.write-audit) finds a changed or new file in the
-worktree the run works on.
+[write audit](../../../glossary.json#concept.write-audit) finds any violation in the worktree the
+run works on, such as a changed, new or deleted file.
 
 The changed paths are returned as host evidence and the change is left in place for the
 [main agent](../../../glossary.json#concept.main-agent), never reverted. The run's own
-[progress file](../../../glossary.json#concept.progress-file), result and
-[run record](../../../glossary.json#concept.run-record) are written into the
-[run store](../../../glossary.json#concept.run-store), which is not version-controlled; they are
-not changes the audit judges.
+[run progress file](../../../glossary.json#concept.run-progress-file) and
+[run result](../../../glossary.json#concept.run-result), and its worker's
+[progress file](../../../glossary.json#concept.progress-file) and
+[run record](../../../glossary.json#concept.run-record), are written into the
+[run store](../../../glossary.json#concept.run-store), which Git ignores; they are not changes the
+audit judges.
 
 ### req.understanding.single-round — No resume rounds
 

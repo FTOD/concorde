@@ -225,10 +225,10 @@ result's [error chain](../../glossary.json#concept.error-chain) unchanged.
 <a id="uses-operations"></a>
 
 **Operations** defines the [Operation](../../glossary.json#concept.operation) concept and lists
-`spec_review` and `spec_panel` in its catalog as Operations whose workers write nothing and that
-may run unbound,
-with their [worker ids](../../glossary.json#concept.worker-id). Spec review relies on that entry to
-be dispatched to with its arguments.
+`spec_review` and `spec_panel` in its catalog as Operations that may run unbound, `spec_review`
+changing only the reviewed Modules' review memories in a bound run and `spec_panel` nothing, with
+their [worker ids](../../glossary.json#concept.worker-id). Spec review relies on that entry to be
+dispatched to with its arguments.
 
 <a id="uses-execution"></a>
 

@@ -34,7 +34,7 @@ A new task worktree SHALL inherit the worker model configuration of the primary 
 
 ### req.concorde.worker-models-explicit — Worker models change only on request
 
-A worktree's worker model configuration SHALL change only by an explicit request made in that worktree.
+After the task opens, a worktree's worker model configuration SHALL change only by an explicit request made in that worktree.
 
 ## The two halves
 

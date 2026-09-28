@@ -114,8 +114,8 @@ variable names to strings, or with a `when` other than `always` or `readiness`),
 names no project interpreter, or none that is an executable file where it was looked for),
 `check_sandbox_unavailable` (the read-only boundary cannot be established), `stale_evidence` (an
 input changed while the check ran) and `unknown_module`. Each carries the fields of that error
-record: its code, a message naming the check or Module concerned, the code's reason and
-remediation, and its causes.
+record: its code, a message naming the check or Module concerned, the code's reason, its location,
+remediation and causes.
 
 ### A check that did not pass as an error link
 

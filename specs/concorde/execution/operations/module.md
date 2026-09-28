@@ -162,8 +162,8 @@ type and Modules from the **workspace's** Specs and freeze it with its
 [context identity](../../glossary.json#concept.context-identity), generate the worker's settings,
 tools and [brief](../../glossary.json#concept.brief), pre-create the pending files the grant makes
 writable, launch the worker, run the [write audit](../../glossary.json#concept.write-audit), run
-the bound Modules' [configured checks](../../glossary.json#concept.configured-check) outside the
-worker when it ended `ok`, feed failures back as a
+the [configured checks](../../glossary.json#concept.configured-check) of the bound Modules and of
+every Module that uses one of them outside the worker when it ended `ok`, feed failures back as a
 [resume round](../../glossary.json#concept.resume-round) until they pass or the rounds run out,
 and write the [run record](../../glossary.json#concept.run-record). The step computes and freezes
 the grant through Spec core and hands it to Workers, which performs the rest; the step decides

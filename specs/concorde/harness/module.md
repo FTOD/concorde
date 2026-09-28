@@ -120,8 +120,9 @@ Workers, and generates nothing for a grant it cannot read.
 is relied on for its extension API: a tool an extension registers replaces pi's built-in of the
 same name; pi validates a tool's arguments against the tool's parameter schema before running it;
 `tool_call` handlers run in extension load order and may change a call's input or block it, and a
-handler that throws blocks the tool; a tool whose result asks to terminate ends the run. The path
-decisions resolve a tool's path argument exactly as pi resolves it.
+handler that throws blocks the tool; a tool whose result asks to terminate ends the run when every
+other tool called in the same assistant message asks it too. The path decisions resolve a tool's
+path argument exactly as pi resolves it.
 
 ### Inside
 

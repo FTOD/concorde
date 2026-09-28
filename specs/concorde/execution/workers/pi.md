@@ -36,8 +36,8 @@ pi -p --mode json --no-extensions -e <run>/control/permission.ts
 ```
 
 A [resume round](../../glossary.json#concept.resume-round) runs the same command, with the same
-session identifier, and the check failures on standard input; pi continues the session with its
-context. The command is `pi`, or the value of `CONCORDE_PI`.
+session identifier, and the check failures, or the text of the caller's validation, on standard
+input; pi continues the session with its context. The command is `pi`, or the value of `CONCORDE_PI`.
 
 The environment is cleared and then set to exactly:
 

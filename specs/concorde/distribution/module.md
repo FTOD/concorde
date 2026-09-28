@@ -290,15 +290,16 @@ is never shipped with renders made before it.
 The **build renderer** is a pure function of the source tree followed by a guarded write: includes
 must be safe, acyclic and audience-consistent, and an output is written only inside the build-owned
 `generated/` locations ([requirements](requirements.md#req.distribution.build-owned-outputs)).
-Every prompt declares in its front matter an audience, `worker`, `ambient` or `shared`, and
-includes another with a line `@<path>.md [KEY=value ...]` starting at column one, whose values fill
-the included prompt's `{KEY}` placeholders. An include is safe when its target is a Markdown file at
-a repository-relative path without a symbolic link, never a Spec document, and a Protocol prompt
-includes and is included only by Protocol prompts. It is audience-consistent when the included
-prompt has its root's audience or `shared`, so a worker's instructions never pull in text meant for
-another audience. Within one root a prompt is reached at most once. A
-leftover is removed only when its bytes still match the previous manifest; an edited leftover, a
-link or an unknown file stops the build first.
+Every prompt under `prompts/` declares in its front matter an audience, `worker`, `ambient` or
+`shared` (the Protocol's own chapters under `protocol/` are plain Markdown and count as `shared`),
+and includes another with a line `@<path>.md [KEY=value ...]` starting at column one, whose values
+fill the included prompt's `{KEY}` placeholders. An include is safe when its target is a Markdown
+file at a repository-relative path without a symbolic link, never a Spec document, and a Protocol
+prompt includes and is included only by Protocol prompts. A root must be `worker` or `shared` and is
+resolved as instructions an agent reads, so it is audience-consistent when every prompt it includes
+is `worker` or `shared`; text meant for another audience (`ambient`) is never pulled in. Within one
+root a prompt is reached at most once. A leftover is removed only when its bytes still match the
+previous manifest; an edited leftover, a link or an unknown file stops the build first.
 
 <a id="realization.distribution.command"></a>
 
