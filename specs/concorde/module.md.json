@@ -9,7 +9,7 @@
     "title": "Concorde Framework",
     "owns": [
       "specs/concorde/module.md",
-      "specs/concorde/vocabulary.md",
+      "specs/concorde/core-concepts.md",
       "specs/concorde/requirements.md",
       "specs/concorde/scenarios.md",
       "specs/concorde/development.md",

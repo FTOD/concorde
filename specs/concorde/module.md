@@ -10,26 +10,19 @@ that division Concorde computes, for each piece of work, what a
 it may read and write, runs the worker inside that [boundary](glossary.json#concept.boundary) and
 verifies its result instead of trusting it.
 
-The developer and the [main agent](glossary.json#concept.main-agent) rely on it. Its work is
-organized in two halves. The upper half, [Coordination](coordination/module.md), is project
-management and task-level parallelism: the main session, in which the main agent works with the
-developer on the whole project, and the task level, where each task gets its own branch and worktree
-and is worked by the main agent itself or by a task session it delegates the task to. The lower
-half, [Execution](execution/module.md), is the execution core: in one bound workspace, workflows
-order runs for a known procedure; Operations complete bounded jobs with AI workers under
-Spec-derived grants and return checked results;
-[execution commands](glossary.json#concept.execution-command) such as `task-validation` and
-`delivery` do the deterministic work; workers act at the bottom. The upper half hands a task to the
-lower half only through the task worktree's workspace binding and learns what happened only from
-what the lower half recorded. Spec tooling checks, serves and publishes the Specs on its own.
-Concorde never chooses the developer's direction or repairs a [Spec](glossary.json#concept.spec) on
-its own. The main agent and the workers run on Claude Code or on pi.
+The developer and the [main agent](glossary.json#concept.main-agent) rely on it.
+[Coordination](coordination/module.md) organizes work into tasks, and
+[Execution](execution/module.md) carries out bounded work in their workspaces. Spec tooling checks,
+serves and publishes the Specs on its own. Concorde never chooses the developer's direction or
+repairs a Spec on its own. The main agent and the workers run on Claude Code or on pi.
 
 ## Usage
 
-Every term of the project is defined once in the [glossary](glossary.json), which this Module
-declares, and linked where a document uses it. The [shared vocabulary](vocabulary.md) explains the
-words every Module shares, such as the four kinds of context and the task types.
+This entry explains the overall relationships among Concorde's concepts and how its Modules
+collaborate. [Core concepts](core-concepts.md) gives focused, detailed explanations of the concepts
+this Module owns, including the agent roles, the four kinds of context and the task types. The
+[glossary](glossary.json), declared by this Module, remains the sole source of term definitions;
+documents link to those definitions where they use the terms.
 
 ### The levels of work
 
@@ -41,7 +34,7 @@ travels back up them. The first two are Coordination's, the rest Execution's:
 | 1. Main session | Coordination | the main agent, an interactive Claude Code or pi session | the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks, decides ordinary questions and escalates major ones | [Main session](coordination/main-session/module.md) |
 | 2. Task | Coordination | the main agent inside the task, or a task session it delegated the task to | one task worktree | changes Specs and code directly or through runs of Execution, keeps the [decision log](glossary.json#concept.decision-log), validates and delivers | [Task sessions](coordination/task-session/module.md), with the workspace from [Tasks](coordination/tasks/module.md) |
 | 3. Workflow | Execution | a procedure rendered for Claude Code and pi | one bound workspace | orders the workspace's runs for a known procedure and stops where the developer must decide | [Workflows](execution/workflows/module.md) |
-| 4. Run | Execution | the Execution runner, running an [Operation](glossary.json#concept.operation) or an execution command | one bound workspace | completes one bounded job and returns one [run result](glossary.json#concept.run-result) with evidence: an Operation with AI workers, an execution command without | [Execution](execution/module.md), [Operations](execution/operations/module.md), [Commands](execution/commands/module.md) |
+| 4. Run | Execution | the Execution runner, running an [Operation](glossary.json#concept.operation) or an execution command | one bound workspace | completes one bounded job and returns one [run result](glossary.json#concept.run-result) with evidence: an Operation with AI workers, an [execution command](glossary.json#concept.execution-command) without | [Execution](execution/module.md), [Operations](execution/operations/module.md), [Commands](execution/commands/module.md) |
 | 5. Worker | Execution | a headless `claude -p` or `pi -p` process | a run over the workspace | reasons within its grant on one bounded job and returns a [worker result](glossary.json#concept.worker-result) the run checks | [Workers](execution/workers/module.md) |
 
 ```d2 illustrative
@@ -105,10 +98,6 @@ read-only Operation such as `understand` or a review may also run in the primary
 an [unbound run](glossary.json#concept.unbound-run) that reads that worktree as it stands and
 changes nothing.
 
-The normal path moves from opening a task to work in its bound workspace, then back to the main
-agent for merge. Operations, validation and delivery run through Execution in the task worktree;
-only the main agent merges in the primary worktree.
-
 ```d2 illustrative
 grid-rows: 1
 primary: "Primary worktree\nMain agent" {
@@ -153,15 +142,15 @@ and validates the result and delivers it.
 ### Errors
 
 Every run returns a structured result; a failure carries an
-[error chain](glossary.json#concept.error-chain): the run's own detailed link saying why it cannot
-handle the error, with each error it received nested as a cause with its own reason, and every
-`concorde` command refuses in the same shape, except Spec tooling's deterministic commands, which
-report with Spec tooling's own error record. The chain climbs the levels: a worker reports its link
+[error chain](glossary.json#concept.error-chain). It climbs the levels: a worker reports its link
 to Workers, the Operation adds its own, a workflow keeps each run's chain whole in its result, a
 task session escalates to the main agent with its link on top, and the main agent adds its link
-above that when the developer must decide. The main agent reads the chain, decides what it can, logs
-the decision, escalates only a major-impact one, and adds its own link rather than summarizing. A
-step needing an unstated promise stops with a [Spec gap](glossary.json#concept.spec-gap) instead of
+above that when the developer must decide. The main agent reads the chain, decides what it can,
+logs the decision and escalates only a major-impact one. Every `concorde` command refuses in the
+same shape, except Spec tooling's deterministic commands, which use Spec tooling's own error
+record. [Core concepts](core-concepts.md#results-and-problems) explains how to read a chain.
+
+A step needing an unstated promise stops with a [Spec gap](glossary.json#concept.spec-gap) instead of
 inferring it from code; outside a `specify` run and the
 [Adoption](execution/operations/adoption/module.md) route (`code_to_spec` and the `scaffold` command
 that writes what a survey proposed), only the developer, the main agent and a task session within its
@@ -240,18 +229,13 @@ and the developer bound them. An Operation exists only where a model works: dete
 such as deciding readiness and delivering, are execution commands, which the same runner records
 without any worker machinery.
 
-The task level between the main session and the programs is stable, but who plays it is not: the
-main agent works a task itself unless it wants several tasks to run at once, and then delegates
-each to a task session, since a session is inside one task worktree at a time and runs that
-worktree's own `concorde`. An extra level of messaging is one more place for an error to be lost,
-so the loss is prevented structurally: a task session escalates with
-`concorde task escalate --by task-session`, which records its link with the failed runs' chains
-unchanged as causes, and the main agent adds its own link on top. A task session's writes are
-confined to its task, while the main agent stays unrestricted and alone merges. Where a task's
-commands run with the branch's own copy of the Framework, as in Concorde's own source checkout,
-their success is self-validation, which is why a merge there runs the build and `spec-validation`
-once more on the primary branch; in an installed project a task worktree ordinarily runs the
-primary worktree's copy ([Distribution](distribution/module.md)).
+Keeping one session inside one task worktree makes parallel tasks independent: the main agent can
+delegate each to a task session whose writes are confined to that task, while retaining the
+project-wide view and sole responsibility for merging. The [error flow](#errors) preserves failures
+across that extra session. Where a task's commands run with the branch's own copy of the Framework,
+as in Concorde's own source checkout, their success is self-validation, which is why a merge there
+runs the build and `spec-validation` once more on the primary branch; in an installed project a task
+worktree ordinarily runs the primary worktree's copy ([Distribution](distribution/module.md)).
 
 One task through the Modules; each arrow is declared by the calling Module's own `uses`:
 
@@ -330,16 +314,12 @@ e2e -> workflows
 
 Errors travel as a chain because every level handles some errors and must pass the others up:
 Workers resumes a worker for a failing check but not for a Spec gap, a run reruns nothing, and the
-main agent decides ordinary questions but not the project's direction. An error passed up as a bare
-code or a one-line summary loses exactly what the next level needs to decide, and an error each
-level re-describes in its own words drifts from what happened. So a level that cannot handle an
-error adds one link and keeps the rest: its detailed account, the specific reason it cannot handle
-the error, taken from a small fixed set such as a missing permission, a decision reserved to a
-higher level or used-up rounds, the options it sees, and the errors it received as causes,
-unchanged. The chain is structured data with one [contract](contracts.md#contract.concorde.error),
-checked by the runner against its schema and extended by the main agent with a command rather than
-paraphrased, so the developer receives the whole path from the failing check up to the question they
-are asked.
+main agent decides ordinary questions but not the project's direction. Summarizing an error loses
+what the next level needs to decide; re-describing it at every level lets the account drift. Keeping
+the received causes unchanged preserves that account while each level explains its own inability
+to proceed. The shared [error contract](contracts.md#contract.concorde.error) makes this checkable:
+the runner checks the chain against its schema, and the main agent extends it through a command,
+so the developer receives the whole path from the failing check to the question they are asked.
 
 <a id="realization.concorde.error-chain"></a>
 
