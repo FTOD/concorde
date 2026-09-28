@@ -1,0 +1,211 @@
+{
+  "workspace": "context-five-kinds",
+  "goal": "Developer's decision: a worker's context has five kinds, not four: Spec context (the Protocol's SpecContext of the bound Modules, documents plus terms), external context (the Protocol's ExternalContext: the external dependencies' documentation and source a Module's external references pin), implementation context, capability context and task context. Add concept.external-context to the glossary (owner module.concorde) with its explanation in specs/concorde/core-concepts.md, redefine concept.context as the union of the five, and update every Spec, prompt and user doc that lists the context kinds or says what a worker reads (root Module, Harness, Spec core, Workers, docs/), so none describes external material as part of Spec context. No code change unless something names the kinds.",
+  "modules": [
+    "module.concorde",
+    "module.harness",
+    "module.spec",
+    "module.workers"
+  ],
+  "sequence": 1,
+  "base_commit": "8d0d5d9a12d9fb135351aac29646661c97105c63",
+  "parent_commit": "111546e5621bc998534f8e598d6294af1a158ea1",
+  "readiness": {
+    "run_id": "r-20260928T184029-delivery-2850ba65",
+    "input_digest": "sha256:c1966d91d0dfdbbcc9d8db684225e70a36878bd25220ada16ad85167bf7773bb",
+    "modules": [
+      "module.adoption",
+      "module.checks",
+      "module.code-review",
+      "module.commands",
+      "module.concorde",
+      "module.coordination",
+      "module.delivery",
+      "module.distribution",
+      "module.dogfood-scenarios",
+      "module.dogfooding",
+      "module.e2e",
+      "module.execution",
+      "module.harness",
+      "module.headless-sessions",
+      "module.implementation",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.scaffold",
+      "module.spec",
+      "module.spec-mcp",
+      "module.spec-review",
+      "module.spec-tooling",
+      "module.specification",
+      "module.swe-bench-cases",
+      "module.task-session",
+      "module.tasks",
+      "module.understanding",
+      "module.validation",
+      "module.views",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:378e3db85da88ca395d776a9623742064932b350e66f51f0412192e3f2cb8cbb"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:4d791d9cf57d0f099c1165a140932ad70943d6511a553cce1718eca0a1fe28b3"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:08ecb773c19db996b82562623d2b35c4e89944b9a3a1277b3dc74584d74581cc"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:653370d538aac4cf56922751d9c77280e50b43dc555de93f4e7bd98a7f0731d5"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:01c7448d677f8f930d7bc27370afc3a8b62db9677a65cf17f55d76bb0ec22cc9"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:642383b3a2b093dee86006c6f823d2399f7ff75ffc1f506688197b206a57799c"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:8875b894aca9ecbf1a9f6dbb9fccd9e33d30f2b178ec6d548410b4d5d7fc99e2"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:72378029840c251e23033edcad534adf0c1a1aff6bd49788c82432fc954f074d"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:3457aa4b40ce5ff638c530494297021d3092345109b9ee86ac974dcbfdd81e20"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:3457aa4b40ce5ff638c530494297021d3092345109b9ee86ac974dcbfdd81e20"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:f9d82a6545e094d9bb0a4380475b605067189ae422595135a7c6809eb6a4c0d1"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:19f159b150722ce3a0fe70e39763cbc63cb477c554ee7bedbbbe470d006d2b7a"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:1e1e8ed243062fef1b46e516299f29bf196e4b56a429da1e93decaa717b6fe8d"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:4459d4c5f9a94d38c4e0a74bc8ff43506a92d1ca37da82d34ce67b6005fc7f86"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:c64dda5a5604d93cafb8fbdf61ba173c2e2a4a3d34281233edc04149c5a1b9b0"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:669c4d416ed042d2a475631a9841c4d76b56035518ad63e7302a24ecc049a6f9"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:aaa590fe56cd47395fee9295a363b121efdea31745da9254fe37c7c536955c5b"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:e2f4b215805bca88145263854a4697feaa7bb691be3472765b71d4f38011cef3"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:f986e146caeee1b74ab655a673e1ebab9c2e764e6e1ad6dbe59abaa07e1b1231"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:c6ba4f2a383c8eb6807dc4e76379c7d403ecfd4cd8c1867f6547ec1d11101840"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:c6ba4f2a383c8eb6807dc4e76379c7d403ecfd4cd8c1867f6547ec1d11101840"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:c6ba4f2a383c8eb6807dc4e76379c7d403ecfd4cd8c1867f6547ec1d11101840"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:2fe2424a2933b29e098518fa57d21ffb4b3e01f512e8ac58c1445112f4a7e8f7"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T183458-task_validation-7fdf260d",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.concorde",
+        "module.harness",
+        "module.spec",
+        "module.workers"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:bf429610524fcd99a38b801d7085b516b92f79875b8f620addba53a3baf5a20e"
+    }
+  ],
+  "created_at": "2026-09-28T18:46:09Z"
+}
