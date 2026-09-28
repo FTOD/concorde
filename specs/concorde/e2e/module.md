@@ -32,6 +32,31 @@ python3 scripts/e2e/e2e.py watch <project>
 Its children add `session` ([Headless sessions](sessions/module.md)), `repair-specs` and `grade`
 ([SWE-bench cases](cases/module.md)) and `dogfood` ([Dogfood scenarios](dogfood/module.md)).
 
+**A worked example.** The developer prepares `psf/requests` at its tag `v2.31.0`, runs the
+[brownfield workflow](../glossary.json#concept.brownfield-workflow) in it as a headless run and,
+from another terminal while it runs or afterwards, watches its runs. Shortened, the three commands
+print:
+
+```text
+$ python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0
+{"project": "/tmp/concorde-e2e/requests", "repository": "psf/requests", "revision": "v2.31.0",
+ "task": "adopt", "worktree": "/tmp/concorde-e2e/requests/.claude/worktrees/adopt"}
+
+$ python3 scripts/e2e/e2e.py run /tmp/concorde-e2e/requests --via claude
+{"workflow": "brownfield", "workspace": "adopt", "mode": "no-ask", "status": "ok",
+ "steps": [{"key": "survey", "status": "ok", …}, {"key": "scaffold", …}, …,
+           {"key": "delivery", "status": "ok", …}],
+ "decisions": […], "open_questions": […], "problems": […], …}
+
+$ python3 scripts/e2e/e2e.py watch /tmp/concorde-e2e/requests
+{"runs": [{"run": "r-…-survey-…", "workspace": "adopt", "phase": "finished", "status": "ok", …}, …],
+ "workflows": {"adopt": [{"key": "survey", "run": "r-…-survey-…", "superseded": false}, …]}}
+```
+
+The project is then a throwaway: the developer reads its Specs, runs and records, and removes the
+directory, or prepares the next one under another `--name`. The sections below explain each
+command.
+
 <a id="concept.test-project"></a>
 
 **Preparing a [test project](../glossary.json#concept.test-project).** `repos` lists the
@@ -47,6 +72,25 @@ repository SWE-bench does not name unless `--any` is given, and a project direct
 exists. The end-to-end root is `CONCORDE_E2E_ROOT` when it is set, and otherwise `concorde-e2e` in
 the system's temporary directory (`/tmp/concorde-e2e` on Linux), never the developer's home: test
 projects are throwaway, and Claude Code keeps no trust for the home directory itself.
+
+Each of `prepare`'s choices has its reason:
+
+- It fetches only the revision, because SWE-bench's base commits are commits, which
+  `git clone --branch` does not accept, and nothing in a test project needs earlier history.
+- It checks the revision out as the branch `main`, because tasks are merged into the project's
+  primary branch, and a merge refuses a primary worktree on a detached `HEAD`.
+- It installs without `d2`, which only renders the Specs' diagrams for a docsite a test project
+  never publishes, and which every preparation would otherwise download again.
+- It commits the installed and initialized project before it opens the task, because the task's
+  branch starts from the committed head, and a merge refuses a primary worktree with uncommitted
+  paths.
+- It binds the task to the root Module, because the brownfield workflow a test project first runs
+  describes the whole project from it.
+
+A step that fails, such as the fetch, the install, `init` or `task open`, stops `prepare` with
+`command_failed`, naming the command, its exit status and its output. `prepare` removes nothing it
+made: the partial project directory is left for the developer to read, and a later `prepare` under
+the same name refuses it with `project_exists` until the developer removes it.
 
 **Trusting test projects.** Claude Code applies a project's `.claude/settings.json` allow rules,
 which the installer writes for its workflows, only once that exact repository is trusted: trust is
@@ -218,12 +262,18 @@ its task worktree is bound as: Tasks writes that
 [workspace binding](../glossary.json#concept.workspace-binding) when `prepare` opens the task, and
 End-to-end testing never writes it. `watch` reads the run store's
 [run progress files](../glossary.json#concept.run-progress-file) for each run's workspace, phase,
-step and status, relying on them to name those fields.
+step and status, relying on them to name those fields. A run whose run progress file is not there yet,
+because its runner has not written it, is left out of the list rather than failing `watch`, which
+the developer may run at any moment.
 
 <a id="uses-distribution"></a>
 
 **Distribution** provides the installer and the `concorde` command that set a test project up the
-way a user's project is set up; a test project always runs the Concorde of this checkout.
+way a user's project is set up; a test project always runs the Concorde of this checkout. When the
+installer, `concorde init` or `concorde task open` fails, `prepare` stops with `command_failed`
+naming that command, its exit status and its output, and leaves the partial project directory as it
+is (see Preparing a test project); End-to-end testing never repairs a failed setup, since the
+failure is the finding.
 
 SWE-bench is included as external material: its harness names the Python projects it draws from,
 such as `psf/requests` and `pallets/flask`, existing codebases of known size and quality to test on.
