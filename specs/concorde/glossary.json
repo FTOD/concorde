@@ -43,7 +43,7 @@
       "title": "Boundary",
       "owner": "module.concorde",
       "definition": "The read and write limits one task receives, fixed by its task type and its bound Modules.",
-      "explanation": "specs/concorde/vocabulary.md#concept.boundary"
+      "explanation": "specs/concorde/core-concepts.md#concept.boundary"
     },
     {
       "id": "concept.boundary-case",
@@ -111,7 +111,7 @@
       "title": "Capability context",
       "owner": "module.concorde",
       "definition": "The tools a worker may use and the contracts those tools reach, which tell it what it can do and never what the project promises.",
-      "explanation": "specs/concorde/vocabulary.md#concept.capability-context"
+      "explanation": "specs/concorde/core-concepts.md#concept.capability-context"
     },
     {
       "id": "concept.case",
@@ -243,7 +243,7 @@
       "title": "Context",
       "owner": "module.concorde",
       "definition": "Everything one worker may know: the union of its Spec context, implementation context, capability context and task context.",
-      "explanation": "specs/concorde/vocabulary.md#concept.context"
+      "explanation": "specs/concorde/core-concepts.md#concept.context"
     },
     {
       "id": "concept.context-identity",
@@ -345,7 +345,7 @@
       "title": "Developer",
       "owner": "module.concorde",
       "definition": "The person who uses Concorde to specify, change and understand a project.",
-      "explanation": "specs/concorde/vocabulary.md#concept.developer"
+      "explanation": "specs/concorde/core-concepts.md#concept.developer"
     },
     {
       "id": "concept.deviation",
@@ -414,7 +414,7 @@
       "title": "Error chain",
       "owner": "module.concorde",
       "definition": "The structured report of an error that travels up: one link per level that could not handle it, each with its detailed account and its reason for not handling it, and the errors it received from below nested as its causes.",
-      "explanation": "specs/concorde/vocabulary.md#concept.error-chain"
+      "explanation": "specs/concorde/core-concepts.md#concept.error-chain"
     },
     {
       "id": "concept.escalation-policy",
@@ -435,7 +435,7 @@
       "title": "Evidence",
       "owner": "module.concorde",
       "definition": "A recorded check or review result, bound to the exact inputs it examined.",
-      "explanation": "specs/concorde/vocabulary.md#concept.evidence"
+      "explanation": "specs/concorde/core-concepts.md#concept.evidence"
     },
     {
       "id": "concept.evidence-bundle",
@@ -512,7 +512,7 @@
       "title": "Implementation context",
       "owner": "module.concorde",
       "definition": "The code side of a worker's context: the names of the bound Modules' implementation files, and the contents of those files when the task type grants them.",
-      "explanation": "specs/concorde/vocabulary.md#concept.implementation-context"
+      "explanation": "specs/concorde/core-concepts.md#concept.implementation-context"
     },
     {
       "id": "concept.initial-proposal",
@@ -567,7 +567,7 @@
       "title": "Main agent",
       "owner": "module.concorde",
       "definition": "The developer-facing Claude Code or pi session, started in the primary worktree, that discusses the project, splits work into tasks, carries them out or hands them to task sessions, and merges their results.",
-      "explanation": "specs/concorde/vocabulary.md#concept.main-agent"
+      "explanation": "specs/concorde/core-concepts.md#concept.main-agent"
     },
     {
       "id": "concept.main-session-guidance",
@@ -601,7 +601,7 @@
       "title": "Module",
       "owner": "module.concorde",
       "definition": "One cohesive responsibility of the software, with its own Spec; it need not be a package or directory.",
-      "explanation": "specs/concorde/vocabulary.md#concept.module"
+      "explanation": "specs/concorde/core-concepts.md#concept.module"
     },
     {
       "id": "concept.open-question",
@@ -977,7 +977,7 @@
       "title": "Spec",
       "owner": "module.concorde",
       "definition": "The documents in which a Module explains what it is for, how to use it, how it is designed and what it precisely promises.",
-      "explanation": "specs/concorde/vocabulary.md#concept.spec"
+      "explanation": "specs/concorde/core-concepts.md#concept.spec"
     },
     {
       "id": "concept.spec-change",
@@ -991,7 +991,7 @@
       "title": "Spec context",
       "owner": "module.concorde",
       "definition": "The read-only documents the bound Modules' declarations select: the Protocol's SpecContext of those Modules together with their ExternalContext.",
-      "explanation": "specs/concorde/vocabulary.md#concept.spec-context"
+      "explanation": "specs/concorde/core-concepts.md#concept.spec-context"
     },
     {
       "id": "concept.spec-description",
@@ -1103,7 +1103,7 @@
       "title": "Task context",
       "owner": "module.concorde",
       "definition": "The material produced for one task, namely its brief, constraints and admitted artifacts, which adds no Spec or code source.",
-      "explanation": "specs/concorde/vocabulary.md#concept.task-context"
+      "explanation": "specs/concorde/core-concepts.md#concept.task-context"
     },
     {
       "id": "concept.task-record",
@@ -1127,7 +1127,7 @@
       "title": "Task session",
       "owner": "module.concorde",
       "definition": "A session of the main agent's own program to which the main agent delegates the work of one task when it runs several at once, working only inside that task's worktree until delivery and reporting to the main agent.",
-      "explanation": "specs/concorde/vocabulary.md#concept.task-session"
+      "explanation": "specs/concorde/core-concepts.md#concept.task-session"
     },
     {
       "id": "concept.task-state",
@@ -1141,7 +1141,7 @@
       "title": "Task type",
       "owner": "module.concorde",
       "definition": "One of the seven Protocol task types (understand, specify, implement, test, review-spec, review-code, code-to-spec) that fixes the access level of every boundary set a task receives.",
-      "explanation": "specs/concorde/vocabulary.md#concept.task-type"
+      "explanation": "specs/concorde/core-concepts.md#concept.task-type"
     },
     {
       "id": "concept.test-project",
@@ -1210,7 +1210,7 @@
       "title": "Worker",
       "owner": "module.concorde",
       "definition": "One headless Claude Code or pi process that performs one bounded task of one task type under a frozen grant and reports only to the Operation run that launched it.",
-      "explanation": "specs/concorde/vocabulary.md#concept.worker"
+      "explanation": "specs/concorde/core-concepts.md#concept.worker"
     },
     {
       "id": "concept.worker-backend",
