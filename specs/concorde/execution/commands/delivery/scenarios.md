@@ -20,8 +20,19 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - GIVEN a workspace that changes `src/a/calc.py` and adds `scenario.a.sum` to [Module](../../../glossary.json#concept.module) A's Specs, while the untouched `scenario.a.answer` has no test either
 - WHEN delivery runs
 - THEN delivery is `blocked` with `unverified_scenarios` naming `scenario.a.sum` and its document, and not `scenario.a.answer`
-- AND once a test in a file Module A binds declares that it verifies `scenario.a.sum`, delivery commits the workspace
-- BUT a workspace that adds the scenario without changing code is delivered without a test
+
+### scenario.delivery.verified-scenarios — A verifying test lets the code change through
+
+- GIVEN the workspace of the previous scenario
+- AND a test in a file Module A binds declaring that it verifies `scenario.a.sum`
+- WHEN delivery runs
+- THEN the workspace is delivered, `ok`
+
+### scenario.delivery.spec-only-scenarios — A scenario added without code needs no test
+
+- GIVEN a workspace that adds `scenario.a.sum` to Module A's Specs without changing code
+- WHEN delivery runs
+- THEN the workspace is delivered, `ok`, without a test
 
 ### scenario.delivery.adoption — An adoption delivery needs no scenario test
 
@@ -77,7 +88,13 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - WHEN delivery runs
 - THEN the result has status `blocked` with `nothing_to_deliver`
 - AND the error names the base commit and explains that there is no new work
-- BUT when the clean head is the workspace's latest delivery commit, delivery ends `ok`, reports that commit with `recovered` true and commits nothing
+
+### scenario.delivery.redeliver — Delivering a delivered head again
+
+- GIVEN a clean workspace whose head is its latest delivery commit
+- WHEN delivery runs
+- THEN the result has status `ok` and reports that commit with `recovered` true
+- AND nothing is committed
 
 ### scenario.delivery.unbound — Delivery needs a bound workspace
 

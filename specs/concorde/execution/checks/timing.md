@@ -121,7 +121,14 @@ timestamps are used only to correlate records.
 - GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` names an existing, absolute, canonical directory outside the working directory and outside any `.concorde/status` or `.concorde/runs` directory
 - WHEN host code marks a unit of work as a span
 - THEN a new trace file for that work is created in the directory with mode 0600, without following a symbolic link
-- BUT a directory that does not meet these conditions receives nothing, the telemetry is marked incomplete and the work runs unchanged
+
+### scenario.checks.timing-invalid-directory — A refused timing directory receives nothing
+
+- GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` names a directory that is relative, missing, a symbolic link, not canonical, the working directory or inside it, or inside a `.concorde/status` or `.concorde/runs` directory
+- WHEN host code marks a unit of work as a span
+- THEN nothing is written to that directory or to the working directory
+- AND one `CONCORDE_TIMING_INCOMPLETE` line is written to standard error
+- AND the work returns exactly as unmarked work would
 
 ### scenario.checks.timing-sink-failure — A failing sink marks the trace incomplete
 

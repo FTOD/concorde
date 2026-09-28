@@ -177,7 +177,10 @@ class ObservationScenarioTests(unittest.TestCase):
         self.assertIsNone(bare.trace)
         self.assertEqual("", stderr.getvalue())
 
-    @verifies("scenario.checks.timing-standalone-directory")
+    @verifies(
+        "scenario.checks.timing-standalone-directory",
+        "scenario.checks.timing-invalid-directory",
+    )
     def test_standalone_directory_receives_one_private_file_or_nothing(self):
         @timed("fixture.standalone")
         def work():

@@ -241,7 +241,10 @@ class DeliveryTests(unittest.TestCase):
         self.assertIsNone(envelope["worker"])
         self.assertEqual(envelope["worker_runs"], [])
 
-    @verifies("scenario.delivery.unverified-scenarios")
+    @verifies(
+        "scenario.delivery.unverified-scenarios",
+        "scenario.delivery.verified-scenarios",
+    )
     def test_a_code_change_with_an_untested_new_scenario_is_refused(self):
         obligations = self.worktree / "specs/a/obligations.md"
         obligations.write_text(
@@ -263,7 +266,7 @@ class DeliveryTests(unittest.TestCase):
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
 
-    @verifies("scenario.delivery.unverified-scenarios")
+    @verifies("scenario.delivery.spec-only-scenarios")
     def test_a_spec_only_change_needs_no_test(self):
         obligations = self.worktree / "specs/a/obligations.md"
         obligations.write_text(
@@ -383,7 +386,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn("base commit", envelope["error"]["detail"])
         self.assertIn("new work only", envelope["error"]["unhandled"]["explanation"])
 
-    @verifies("scenario.delivery.nothing")
+    @verifies("scenario.delivery.redeliver")
     def test_nothing_new_after_a_delivery(self):
         # Delivering again what was delivered reports the delivery commit and commits nothing.
         (self.worktree / "src/a/calc.py").write_text(FIXED)

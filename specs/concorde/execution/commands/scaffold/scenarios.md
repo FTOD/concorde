@@ -26,6 +26,21 @@ shapes are in the [contracts](contracts.md).
 - THEN the result is `blocked` with `stale_proposal` naming the missing entry
 - AND no file was written
 
+### scenario.scaffold.target-exists — An existing target is never replaced
+
+- GIVEN a survey proposing `module.checkout`, whose entry would be `specs/shop/checkout/module.md`
+- AND that file was created in the workspace after the survey
+- WHEN the main agent runs the scaffold with that survey as input
+- THEN the result is `blocked` with `stale_proposal`
+- AND no file was written and the existing file is unchanged
+
+### scenario.scaffold.invalid-not-kept — A scaffold that would not validate keeps nothing
+
+- GIVEN a survey whose proposed `module.checkout` has a purpose linking to an anchor that no document defines
+- WHEN the main agent runs the scaffold with that survey as input
+- THEN the result is `failed` with `scaffold_invalid` and one cause for each structural error the scaffold would add
+- AND every file of the workspace is as before the scaffold, and no folder of a proposed child exists
+
 ### scenario.scaffold.refused-input — The scaffold needs one survey of its workspace
 
 - GIVEN a workspace `adopt`
