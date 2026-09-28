@@ -92,8 +92,10 @@ over the unchanged errors it received. The
 started in the same workspace while the first holds it is refused with `workspace_busy`, naming the
 run that holds it, and a [workflow step](../glossary.json#concept.workflow-step) waits for the
 lock to be free before it starts its run. The lock is a file lock held by the runner's process, so
-the kernel releases it however the run ends. The lock lies in the run store, not in the workspace,
-so a run that only reads the workspace leaves it untouched.
+the kernel releases it however the run ends. The runner writes a run's result before it releases
+the lock, so a run admitted after it always finds that result written; a result on disk, though,
+does not mean the lock is free yet. The lock lies in the run store, not in the workspace, so a run
+that only reads the workspace leaves it untouched.
 
 <a id="concept.unbound-run"></a>
 
