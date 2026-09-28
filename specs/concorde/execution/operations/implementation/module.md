@@ -16,8 +16,8 @@ exists; readiness and delivery are the
 
 ## Usage
 
-The [main agent](../../../glossary.json#concept.main-agent) runs both Operations after the Specs
-state what the code must do and declare new files as pending entries:
+The caller runs both Operations after the Specs state what the code must do and declare new files
+as pending entries:
 
 ```text
 concorde run implement [--modules <module-id>[,<module-id>…]] --goal "<text>" [--input <run-id>]… [--rounds <n>]
@@ -46,7 +46,7 @@ ending the [error chain](../../../glossary.json#concept.error-chain) in its own 
 tail), the audit found a change outside the grant, the worker ended `failed` or could not be run,
 or the grant could not be computed — for instance because a writable file is also bound by an
 unbound Module, which is refused before any worker starts. A run with
-no configured check ends `ok` with no check evidence, which the result states, and the main agent
+no configured check ends `ok` with no check evidence, which the result states, and the caller
 should run `test` or add checks. Whenever the worker returned a result, the output holds the code
 change whatever the status, and edits stay uncommitted.
 
@@ -145,7 +145,7 @@ command: running checks is the Operation's own evidence. The check logs are mate
 lists every check result with its log path and carries the last part of every log that did not
 pass, and the run directory's check logs are made readable to the worker beside its grant, so it
 can open every full log, passing ones included; nothing becomes writable. A failing check is not a
-failed run; it is for the main agent to follow up with `implement`, `specify` or a decision. See the
+failed run; it is for the task level to follow up with `implement`, `specify` or a decision. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
 <a id="realization.implementation.operations"></a>

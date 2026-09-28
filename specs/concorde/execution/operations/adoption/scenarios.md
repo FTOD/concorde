@@ -10,7 +10,7 @@ shapes are in the [contracts](contracts.md).
 - GIVEN an initialized project whose root [Module](../../../glossary.json#concept.module) `module.shop` binds `src/`, `tests/`, `README.md` and `pyproject.toml`
 - AND a task worktree whose binding names the workspace `adopt` and `module.shop`
 - AND a survey worker that proposes the children `module.checkout` binding `src/checkout/` and `module.inventory` binding `src/inventory/`
-- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `concorde run survey --modules module.shop` there
+- WHEN the caller runs `concorde run survey --modules module.shop` there
 - THEN the worker's grant reads the Specs and the code `module.shop` binds and writes nothing
 - AND its brief lists every bound file with its size in lines
 - AND the result is `ok` with a [decomposition proposal](../../../glossary.json#concept.decomposition-proposal) naming `module.checkout` and `module.inventory` with their entries
@@ -27,7 +27,7 @@ shapes are in the [contracts](contracts.md).
 ### scenario.adoption.survey-no-task — An unbound survey before any task
 
 - GIVEN an initialized project whose primary worktree has no [workspace binding](../../../glossary.json#concept.workspace-binding), and no task
-- WHEN the main agent runs `concorde run survey --modules module.shop` in the primary worktree
+- WHEN the [main agent](../../../glossary.json#concept.main-agent) runs `concorde run survey --modules module.shop` in the primary worktree
 - THEN the run is unbound and the result is `ok` with `workspace` null and a decomposition proposal
 - AND no [task record](../../../glossary.json#concept.task-record) exists or changes
 
@@ -51,7 +51,7 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN an `ok` survey run whose decision `d.db-helper` chose to keep the database helper with the root
 - AND an answers file answering `d.db-helper` with "a Module of its own"
-- WHEN the main agent runs the survey again with `--answers` and `--input` naming the first run
+- WHEN the caller runs the survey again with `--answers` and `--input` naming the first run
 - THEN the new proposal has a child for the database helper
 - AND its decision `d.db-helper` is decided by the developer with that answer
 
@@ -60,7 +60,7 @@ shapes are in the [contracts](contracts.md).
 ### scenario.adoption.describe-module — A Module's code becomes its Spec
 
 - GIVEN the scaffolded Module `module.checkout` binding `src/checkout/`
-- WHEN the main agent runs `concorde run code_to_spec --modules module.checkout` in the workspace `adopt`
+- WHEN the caller runs `concorde run code_to_spec --modules module.checkout` in the workspace `adopt`
 - THEN the worker's grant reads `src/checkout/` and writes only `module.checkout`'s documents
 - AND the worker has no tool that runs commands
 - AND the result is `ok` with a [Spec description](../../../glossary.json#concept.spec-description) whose changed documents include the entry document `module.md`
@@ -77,7 +77,7 @@ shapes are in the [contracts](contracts.md).
 ### scenario.adoption.answered-deviation — An answer that the code does not follow
 
 - GIVEN the open question about payment retries and an answer "retry both once"
-- WHEN the main agent runs code_to_spec again with `--answers` and `--input` naming the earlier run
+- WHEN the caller runs code_to_spec again with `--answers` and `--input` naming the earlier run
 - THEN the Spec states that both declined and timed-out payments are retried once
 - AND the result lists that promise with source `answer`
 - AND the result lists a deviation with the intended and the observed behaviour
@@ -91,7 +91,7 @@ shapes are in the [contracts](contracts.md).
 ### scenario.adoption.describe-own-errors — The worker learns the errors it must repair
 
 - GIVEN a scaffolded `module.checkout` whose entry has a structural error, left by an earlier description
-- WHEN the main agent runs code_to_spec for it again
+- WHEN the caller runs code_to_spec for it again
 - THEN the worker's brief lists that error with its rule and document, as one its description must repair
 
 ### scenario.adoption.tests-linked — The tests a scenario came from are marked
@@ -133,4 +133,4 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a code_to_spec worker whose change leaves a scenario without a `THEN` step
 - WHEN the host validates the worktree again
 - THEN the worker is resumed twice with the error, and when it is still there the result is `blocked` with one `new_structural_errors` cause per new finding
-- AND the change stays in the worktree for the main agent to repair or discard
+- AND the change stays in the worktree for the task level to repair or discard within its authority

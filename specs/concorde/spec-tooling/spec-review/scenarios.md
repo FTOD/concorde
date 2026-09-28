@@ -10,7 +10,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 
 - GIVEN a workspace whose [Module](../../glossary.json#concept.module) A validates without errors and has no review memory yet
 - AND a reviewer that finds only advisory problems in A's documents
-- WHEN the [main agent](../../glossary.json#concept.main-agent) runs `spec_review` for Module A
+- WHEN the caller runs `spec_review` for Module A
 - THEN the verdict is `accepted` and A's outcome carries the [context identity](../../glossary.json#concept.context-identity) of its `review-spec` grant
 - AND the advisory findings are returned
 - BUT no file of the workspace changes other than A's review memory, which now holds the advisory findings as open
@@ -18,14 +18,14 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 ### scenario.spec-review.changes-required — All blocking findings in one result
 
 - GIVEN a Module A and a reviewer that reports two blocking findings about A's own documents: a requirement with two obligations, and a Usage that never shows a normal path
-- WHEN the main agent runs `spec_review` for Module A
+- WHEN the caller runs `spec_review` for Module A
 - THEN the verdict is `changes_required`
 - AND both problems are returned as blocking findings in the same result, each with its path, dimension, evidence and suggestion
 
 ### scenario.spec-review.checker — The checker disputes a finding
 
 - GIVEN a reviewer that reports one blocking finding the [Spec](../../glossary.json#concept.spec) does not support
-- WHEN the main agent runs `spec_review` with `--check-findings`
+- WHEN the caller runs `spec_review` with `--check-findings`
 - THEN the checker marks that finding `disputed` with a reason
 - AND the finding is still returned
 - BUT it does not make the verdict `changes_required`
@@ -33,7 +33,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 ### scenario.spec-review.several-modules — Each Module is reviewed on its own
 
 - GIVEN Modules A and B without review memories, where A uses B
-- WHEN the main agent runs `spec_review` for Modules A and B
+- WHEN the caller runs `spec_review` for Modules A and B
 - THEN one reviewer runs per Module, each under its own Module's `review-spec` grant
 - AND a problem A's reviewer notices in a B document is an advisory finding naming B
 - AND the verdict combines both Modules' outcomes
@@ -43,7 +43,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 ### scenario.spec-review.structural-errors — A structurally invalid Spec is not reviewed
 
 - GIVEN a Module A whose Specs fail a [structural check](../../glossary.json#concept.structural-check)
-- WHEN the main agent runs `spec_review` for Module A
+- WHEN the caller runs `spec_review` for Module A
 - THEN no reviewer is launched for A
 - AND A's outcome is `incomplete`, with the structural findings as host evidence
 - AND the verdict is `incomplete`
@@ -94,7 +94,7 @@ Concrete situations of [Spec review](module.md). The step sequence and the paylo
 ### scenario.spec-review.panel-worker-models — Each reviewer runs on the model of its worker id
 
 - GIVEN a [worker model configuration](../../glossary.json#concept.worker-model-configuration) putting every worker on Claude Code, giving `spec_panel`'s default a model and level, `reviewer2` another model, and the `chair` its own model and level
-- WHEN the main agent runs `spec_panel` with two reviewers
+- WHEN the caller runs `spec_panel` with two reviewers
 - THEN `reviewer1` runs on the Operation's model, `reviewer2` on its own model at the Operation's level, and the `chair` on its own
 - AND each worker's [run record](../../glossary.json#concept.run-record) names its [worker id](../../glossary.json#concept.worker-id), and the host evidence names the model each worker used
 

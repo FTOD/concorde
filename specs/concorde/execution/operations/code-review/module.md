@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Code review gives the [main agent](../../../glossary.json#concept.main-agent) an independent
-judgement of a workspace's [code changes](../../../glossary.json#concept.code-change) against the
+Code review gives callers an independent judgement of a workspace's
+[code changes](../../../glossary.json#concept.code-change) against the
 Specs. It provides the `code_review` [Operation](../../../glossary.json#concept.operation): a worker
 reads the bound Modules' Specs, code and tests, changes nothing, and reports every problem it can
 establish in one pass, tied to the promise it judges the code against; the Operation derives the
-verdict, and the main agent decides whether to run `implement` again, repair the
+verdict, and the task level decides whether to run `implement` again, repair the
 [Spec](../../../glossary.json#concept.spec) first or move to validation. The reviewer never edits a
 file or runs a command, and judges code only against the Specs in the bound Modules' context; the
 Operation's host steps compute the diff and run the configured checks through Check execution, and
@@ -58,7 +58,7 @@ the Spec's promises imply, a missing test for a touched scenario, a change outsi
 Modules' code, or a [Spec gap](../../../glossary.json#concept.spec-gap), where the code does
 something the Spec neither requires nor forbids. A blocking finding always names its basis — a
 stable identity (requirement, scenario, contract or concept) or a Spec passage — from the bound
-Modules' [Spec context](../../../glossary.json#concept.spec-context). The main agent usually answers
+Modules' [Spec context](../../../glossary.json#concept.spec-context). The task level usually answers
 blocking Spec gaps with `specify`, other blocking findings with `implement`.
 
 ## Design

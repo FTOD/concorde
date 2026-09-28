@@ -67,7 +67,7 @@ The understand Operation SHALL end a run `failed` when the
 run works on, such as a changed, new or deleted file.
 
 The changed paths are returned as host evidence and the change is left in place for the
-[main agent](../../../glossary.json#concept.main-agent), never reverted. The run's own
+caller, never reverted. The run's own
 [run progress file](../../../glossary.json#concept.run-progress-file) and
 [run result](../../../glossary.json#concept.run-result), and its worker's
 [progress file](../../../glossary.json#concept.progress-file) and

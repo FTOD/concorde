@@ -23,12 +23,15 @@ like any other definition's.
 An Operation hides the internal execution of one AI job from its caller. For `implement`, it
 prepares a grant and brief, delegates [code changes](../../glossary.json#concept.code-change) to a
 worker through Workers, and uses check results to check the changes and drive bounded repair rounds.
-The caller receives one run result without managing those rounds.
+The caller receives one run result without managing those rounds. At the task level, either the
+[main agent](../../glossary.json#concept.main-agent) or a
+[task session](../../glossary.json#concept.task-session) can invoke Operations directly or through
+a workflow in its task worktree. The caller handles results and chooses the next step within its
+authority, following its existing decision and escalation rules.
 
 <a id="concept.operation"></a>
 
-Whoever works a workspace runs an **Operation** inside it, usually as a background command so it
-can keep working while it runs:
+Whoever works a workspace runs an **Operation** inside it:
 
 ```text
 concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [operation arguments]
