@@ -26,7 +26,27 @@ command-line interface shows.
 
 <a id="concept.execution-command"></a>
 
-Whoever works a workspace runs an **execution command** inside it by name, without `run`:
+Whoever works a workspace runs an **execution command** inside it by name, without `run`. A task
+usually ends with two of them. In a task worktree bound to the workspace `severity` on the branch
+`concorde/severity`, once its changes are made:
+
+```text
+concorde task-validation
+concorde delivery
+```
+
+`task-validation` is the preview: it decides the workspace's
+[readiness](validation/contracts.md#contract.validation.readiness) and writes nothing. When the
+workspace is ready its run result has status `ok` and a readiness with `ready` true; otherwise it
+is `blocked` and names every blocking finding at once, to repair before trying again. `delivery`
+then decides the readiness again itself rather than trusting the preview and, when it is ready,
+creates the [delivery commit](../../glossary.json#concept.delivery-commit)
+`concorde: deliver severity` on `concorde/severity` and returns that commit as its output. Both
+runs are recorded in the [run store](../../glossary.json#concept.run-store), and the delivery's
+[evidence bundle](../../glossary.json#concept.evidence-bundle) lists the `task-validation` run
+among the runs of the workspace that led to it.
+
+The execution commands and their arguments:
 
 ```text
 concorde task-validation [--modules <id>[,<id>…]] [--input <run-id>]… [--detach]
@@ -55,10 +75,8 @@ catalog of this version:
 | `delivery` | [Delivery](delivery/module.md) | one [delivery commit](../../glossary.json#concept.delivery-commit) on the bound branch | the [delivery commit](delivery/contracts.md#contract.delivery.output) |
 | `scaffold` | [Scaffold](scaffold/module.md) | the new child Modules' Specs, the parent's entry and the registry | a [scaffold record](scaffold/contracts.md#contract.scaffold.record) |
 
-A task usually ends with `task-validation` as a preview and `delivery`, which decides the readiness
-again itself. For a project whose code came before its Specs, `scaffold` sits between the
-Operations `survey` and `code_to_spec`, usually run by the
-[brownfield workflow](../workflows/module.md).
+For a project whose code came before its Specs, `scaffold` sits between the Operations `survey` and
+`code_to_spec`, usually run by the [brownfield workflow](../workflows/module.md).
 
 ## Design
 
