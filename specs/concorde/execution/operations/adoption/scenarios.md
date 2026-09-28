@@ -102,6 +102,15 @@ shapes are in the [contracts](contracts.md).
 - AND `linked_tests` names that test, and `unlinked_tests` names the other two with their reasons
 - AND the decorated file imports nothing of Concorde, and linking the same test again adds nothing
 
+### scenario.adoption.foreign-verifies — A test file with its own `verifies` stays as it is
+
+- GIVEN a code_to_spec run for `module.checkout` whose worker names `tests/test_checkout.py::test_submit` as a test of `scenario.checkout.submit`
+- AND `tests/test_checkout.py` imports a `verifies` of its own from the project's test utilities
+- WHEN the run ends
+- THEN `tests/test_checkout.py` is unchanged
+- AND `unlinked_tests` names that test with a reason naming the file's own `verifies` binding and its line
+- BUT a file whose `verifies` is the host's no-op helper or Concorde's decorator imported from `concorde.spec.verification` gets the decorator and no second definition
+
 ### scenario.adoption.stub-deleted — A stub the worker deleted leaves its Module
 
 - GIVEN the scaffolded Module `module.checkout` and a code_to_spec run that prepared its `contracts.md` stub

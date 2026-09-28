@@ -224,7 +224,11 @@ once per file a two-line no-op definition of `verifies` after the file's docstri
 so that the project's tests stay free of any import of Concorde and run the same in the project's
 own environment, while the coverage check sees which test verifies which scenario. It adds
 nothing else, adds nothing twice, and leaves a file untouched when the decorated file would not
-parse. Only Python tests are linked.
+parse. A file that already binds `verifies` at module level keeps that binding: the host adds only
+decorators when the binding is its own no-op helper, however formatted, or an import of Concorde's
+decorator from `concorde.spec.verification`, and otherwise leaves the file untouched and reports
+each of its links in `unlinked_tests`, because a decorator would call the project's own `verifies`,
+whatever it does. Only Python tests are linked.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
 run's, even one the baseline already had: the worker rewrites those documents, and a retry must not

@@ -35,7 +35,10 @@ The code_to_spec host SHALL list, in its worker's brief, every structural error 
 
 ### req.adoption.tests-linked-by-host — The host alone marks tests
 
-The code_to_spec host SHALL add a `verifies` decorator to each existing Python test in a Module's implementation file that a scenario promise of a described Module names in its `tests`, unless the decorated file would not parse.
+The code_to_spec host SHALL add a `verifies` decorator to each existing Python test in a Module's implementation file that a scenario promise of a described Module names in its `tests`, unless the decorated file would not parse or the file already binds the name `verifies` at module level to something other than the host's no-op helper or an import of Concorde's `verifies` decorator from `concorde.spec.verification`.
+
+A decorator in such a file would call the project's own `verifies`, whatever it does, so the host
+leaves the file untouched and reports the link in `unlinked_tests`.
 
 A test that already declares the scenario gets no second decorator.
 
@@ -73,7 +76,12 @@ A survey or code_to_spec worker SHALL list every choice it took between options 
 
 ### req.adoption.answers-followed — Answers are followed
 
-A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a decision answer as a decision `decided_by` developer with the answered choice, a question answer in a survey by no longer listing the question, and in a code_to_spec run as a promise with source `answer` or as a deviation.
+A survey or code_to_spec run given `--answers` SHALL end `failed` when its output does not follow every answer: a decision answer as a decision `decided_by` developer with the answered choice, a question answer in a survey by no longer listing the question, and in a code_to_spec run as a promise with source `answer` naming the question.
+
+A deviation never replaces that promise. When the code does otherwise, the run lists the promise
+and, by [req.adoption.deviation-reported](#req.adoption.deviation-reported), a deviation as well:
+the Spec states the intent, and the deviation tells later `implement` work that the code does not
+follow it yet.
 
 ### req.adoption.deviation-reported — Intent that the code misses is reported
 

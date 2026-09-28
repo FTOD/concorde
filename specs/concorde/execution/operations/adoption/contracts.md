@@ -828,7 +828,7 @@ The file `--answers` names. Every answer names a decision (`d.`) or
 ```concorde-contract
 {
   "id": "contract.adoption.answers",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -865,7 +865,7 @@ The file `--answers` names. Every answer names a decision (`d.`) or
       }
     }
   },
-  "semantics": "The developer's answers to decisions and open questions of an earlier survey or code_to_spec run, admitted with --input, listing every answer given so far for that step. id names the decision or question, question repeats its text so the file is readable on its own, and answer is the chosen option or the developer's own words. A later run follows every answer: a survey takes the answered choice as a decision decided_by developer, and a code_to_spec run writes an answered question as a promise with source answer, or records a deviation when the code does otherwise. A behaviour or field change increments the version.",
+  "semantics": "The developer's answers to decisions and open questions of an earlier survey or code_to_spec run, admitted with --input, listing every answer given so far for that step. id names the decision or question, question repeats its text so the file is readable on its own, and answer is the chosen option or the developer's own words. A later run follows every answer: a survey takes the answered choice as a decision decided_by developer, and a code_to_spec run writes every answered question as a promise with source answer naming it, and records a deviation as well when the code does otherwise; a deviation never replaces the promise. A behaviour or field change increments the version.",
   "example": {
     "answers": [
       {
