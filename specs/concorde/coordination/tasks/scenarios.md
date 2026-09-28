@@ -207,7 +207,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.close-failed-invalid — Refuse a failed close without its reason or one error choice
 
-- GIVEN an open task
+- GIVEN a task whose workspace has an Operation run that ended with an error
 - WHEN the main agent closes it with `--failed` but without a reason, or names neither an error source nor `--no-error`, or names both
 - THEN the command fails with `invalid_input`
 - AND the worktree and the record are unchanged
@@ -361,7 +361,8 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - AND a recorded check that now exits with a failure
 - WHEN the main agent runs `concorde task merge <task-id> --resume`
 - THEN the command fails with `check_failed`
-- AND the primary branch is reset to the commit before the merge, clean, and the task is delivered again
+- AND the primary branch is reset to the commit before the merge, clean apart from the paths the checks created, which stay
+- AND the task is delivered again
 
 ### scenario.tasks.merge-resume-refused — Refuse a resume that cannot check the merge
 

@@ -604,7 +604,11 @@ class MergeTests(unittest.TestCase):
         self.project.open_task("t1")
         checked = self.deliver()
         before = self.head()
+        delivered = store.load_task(self.root, "t1")
         self.assertEqual("not_merging", self.refusal("merge", "t1", "--resume")["code"])
+        self.assertEqual(
+            (before, delivered), (self.head(), store.load_task(self.root, "t1"))
+        )
         store.begin_merge(
             self.root,
             "t1",
@@ -623,6 +627,13 @@ class MergeTests(unittest.TestCase):
         self.assertIn("the commit before the merge", error["detail"])
         self.assertEqual("merging", self.state())
         merging = store.load_task(self.root, "t1")
+        self.assertEqual(before, self.head())
+        self.assertEqual(
+            "not_resumable", self.refusal("merge", "t1", "--resume")["code"]
+        )
+        self.assertEqual(
+            (before, merging), (self.head(), store.load_task(self.root, "t1"))
+        )
         self.assertEqual(
             "invalid_input",
             self.refusal("merge", "t1", "--resume", "--check", python("pass"))["code"],

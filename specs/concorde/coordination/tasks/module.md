@@ -241,10 +241,11 @@ checks: "Run the checks on the merge commit"
 reset: "git reset --keep to the commit before"
 close: "Close the task as merged"
 busy: "workspace_busy or merge_busy: nothing changed"
-refused: "not_merged, delivery_unverified, dirty_worktree or primary_dirty: nothing changed"
+refused: "A refusal such as not_merged, delivery_unverified, dirty_worktree, primary_dirty or merge_incomplete: nothing changed"
 conflict: "merge_conflict: merge aborted, primary branch at its commit, task delivered"
 failed: "check_failed: primary branch at its commit, task delivered, left paths named"
 merged: "Task closed as merged on the checked merge commit"
+unlogged: "decision_log_failed: task closed as merged, close --merged appends the closing"
 unchecked: "Task left merging: task commands refused with merge_incomplete"
 aborted: "Primary branch at the commit before, task delivered"
 locks -> preflight: both held
@@ -260,7 +261,8 @@ reset -> failed
 close -> merged
 checks -> unchecked: the process ended
 reset -> unchecked: rollback_failed
-close -> unchecked: the close failed
+close -> unchecked: the record could not be closed
+close -> unlogged: the decision log refused the closing
 unchecked -> checks: "--resume, head still the merge commit"
 unchecked -> aborted: --abort
 ```
