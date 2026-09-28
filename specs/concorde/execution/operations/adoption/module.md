@@ -42,7 +42,7 @@ direction: down
 survey: "concorde run survey"
 inspect: "The task level inspects\nthe decomposition proposal"
 scaffold: "concorde scaffold --input <survey run>"
-describe: "concorde run code_to_spec, one Module at a time\n(the brownfield workflow: created Modules providers first,\nthe surveyed Module last)"
+describe: "concorde run code_to_spec\n(the brownfield workflow: one Module at a time,\ncreated Modules providers first, the surveyed Module last)"
 review: "The task level inspects\neach Spec description"
 implement: "implement, for each deviation"
 survey -> inspect

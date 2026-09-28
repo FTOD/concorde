@@ -94,27 +94,31 @@ baseline: 1 Validate the Specs as a baseline
 grant: 2 Freeze the specify grant
 brief: 3 Settings, tools and brief
 launch: 4 Launch or resume the worker
-audit: 5 Audit, proposed deletions, run record
-repair: "4 Validate against the baseline"
+audit: 5 Audit against the grant
+repair: 4 Validate against the baseline
+record: "5 Proposed deletions after a clean audit, run record"
 create: "5a Create the proposed documents, empty and owned;\nregenerate the registry mirror"
 registry: 6 Regenerate the registry mirror
-validate: "7 Validate again against the baseline"
+validate: 7 Validate again against the baseline
 impact: 8 Changed documents, added entries, affected Modules
 output: 9 Return the Spec change
 stopped: "failed, nothing observed" {shape: oval}
 baseline -> grant -> brief -> launch -> audit
 audit -> repair: worker ok, audit clean
 launch <- repair: "new errors, repair rounds left (two per launch): resume with them"
-repair -> registry: "no new error, or repair rounds used up"
-audit -> create: "worker blocked, proposing new documents (first launch only)" {style.stroke-dash: 3}
+repair -> record: "no new error, or repair rounds used up"
+launch -> record: "launch error: failed" {style.stroke-dash: 3}
+audit -> record: "timeout, limit reached, invalid result: failed;\nworker blocked or failed: its status" {style.stroke-dash: 3}
+audit -> stopped: write outside the grant {style.stroke-dash: 3}
+record -> registry: "no documents proposed"
+record -> create: "worker blocked, proposing new documents (first launch only)" {style.stroke-dash: 3}
 grant <- create: "all created: launch once more, the brief naming them" {style.stroke-dash: 3}
 create -> registry: "a proposal refused: blocked, nothing created" {style.stroke-dash: 3}
-audit -> registry: "worker blocked or failed: its status" {style.stroke-dash: 3}
-audit -> stopped: write outside the grant {style.stroke-dash: 3}
 baseline -> stopped: Specs cannot load {style.stroke-dash: 3}
 grant -> stopped: unknown Module {style.stroke-dash: 3}
 registry -> validate
-validate -> impact: "a new error left after an ok worker: blocked"
+validate -> impact: "no new error: the worker's status"
+validate -> impact: "a new error left after an ok worker: blocked" {style.stroke-dash: 3}
 impact -> output
 ```
 

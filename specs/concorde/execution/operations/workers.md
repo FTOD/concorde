@@ -98,8 +98,10 @@ workers: Workers {
   prepare -> launch -> audit
   audit -> checks: worker ok, audit clean
   checks -> launch: "7 a check fails, or validation reports a repair; rounds left"
-  checks -> record: "checks pass or none ran; nothing to repair, or rounds used up"
-  audit -> record: violation, launch error, timeout, invalid result, worker blocked or failed {style.stroke-dash: 3}
+  checks -> record: "checks pass or none ran; nothing to repair, or validation rounds used up"
+  checks -> record: "a check still fails, rounds used up" {style.stroke-dash: 3}
+  launch -> record: launch error {style.stroke-dash: 3}
+  audit -> record: "violation, timeout, limit reached, invalid result, worker blocked or failed" {style.stroke-dash: 3}
   prepare -> record: a pending file cannot be created {style.stroke-dash: 3}
 }
 ok: ok {shape: oval}
@@ -110,7 +112,7 @@ step.grant -> failed: Specs not loaded, Module unknown {style.stroke-dash: 3}
 step.model -> failed: configuration invalid, backend missing {style.stroke-dash: 3}
 workers.record -> ok: "worker ok, audit clean, no check failing"
 workers.record -> blocked: worker blocked {style.stroke-dash: 3}
-workers.record -> failed: "any other exit, a check still failing included" {style.stroke-dash: 3}
+workers.record -> failed: "checks still failing, audit violation, launch error, timeout,\nlimit reached, invalid result, worker failed" {style.stroke-dash: 3}
 ```
 
 A provider may withhold every writable level of a task type's grant, as the Protocol lets a harness

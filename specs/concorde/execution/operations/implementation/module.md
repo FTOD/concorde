@@ -104,8 +104,8 @@ audit -> checks: worker ok, audit clean
 launch <- checks: "7 a check fails, rounds left: resume with the failures"
 checks -> record: "all passed, or none configured: ok"
 checks -> record: "still failing, rounds used up: failed" {style.stroke-dash: 3}
-audit -> record: "write outside the grant: failed;\nworker blocked or failed: its status, unresumed" {style.stroke-dash: 3}
-launch -> record: "launch error or timeout: failed" {style.stroke-dash: 3}
+audit -> record: "write outside the grant, timeout, limit reached, invalid result: failed;\nworker blocked or failed: its status, unresumed" {style.stroke-dash: 3}
+launch -> record: "launch error: failed" {style.stroke-dash: 3}
 precreate -> record: "cannot create: failed" {style.stroke-dash: 3}
 grant -> stopped: Specs not loaded, Module unknown {style.stroke-dash: 3}
 record -> markers -> output
