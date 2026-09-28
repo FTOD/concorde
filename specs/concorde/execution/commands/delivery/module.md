@@ -68,7 +68,10 @@ the deliveries: Delivery writes no [task record](../../../glossary.json#concept.
 keeps no list of its own, and reads its earlier deliveries back from the branch by their subject and
 trailers ([exact rule](contracts.md#delivery-commit)). Running `delivery` again when the branch head
 already is a delivery commit of the workspace and nothing waits reports that commit, `ok` with
-`recovered` true, and commits nothing.
+`recovered` true, and commits nothing — once it has verified the commit against its bundle: its
+only parent is the bundle's `parent_commit`, it adds the bundle its `Concorde-Evidence` trailer
+names, and that bundle's readiness run is the one its `Concorde-Readiness` trailer names. A head that
+fails any of these is `commit_unverified`, naming each mismatch.
 
 <a id="concept.evidence-bundle"></a>
 
@@ -86,7 +89,7 @@ identities and digests ([exact shape](contracts.md#contract.delivery.evidence-bu
 | `blocked` | `nothing_to_deliver` | `decision` | no commit since the base commit and no uncommitted change (`git` evidence) |
 | `blocked` | `not_ready` | `decision` | the whole workspace is not ready; Validation's `not_deliverable` link is the cause, with one cause per finding |
 | `blocked` | `unverified_scenarios` | `decision` | the workspace changed code while a scenario it added or changed has no verifying test; names each with its document |
-| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), `confirmations_refused`, `bundle_exists`, Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify (`commit_unverified`) |
+| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), `confirmations_refused`, `bundle_exists`, Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify, the one it made or the delivery commit it found at the head (`commit_unverified`) |
 
 The error is the run's own link of level `command`, with the actor `Command delivery <run-id>
 (workspace <workspace>)`. Every `blocked` code carries a host evidence `ref` of the same name and
@@ -135,15 +138,15 @@ is: the commit names the workspace, which the binding names, and nothing else.
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
 | 1 | Require the workspace's head to be on the branch its binding names | host | wrong or detached branch (`failed`) |
-| 2 | Report the head when it already is a delivery commit of the workspace and nothing waits | host, read-only Git | already delivered (`ok`, `recovered`) |
+| 2 | Report the head when it already is a delivery commit of the workspace and nothing waits, after verifying it against its bundle | host, read-only Git | already delivered (`ok`, `recovered`) or the head does not verify (`failed`, `commit_unverified`) |
 | 3 | Require a commit since the base commit or an uncommitted change | host, read-only Git | neither (`blocked`, `nothing_to_deliver`) |
 | 4 | Decide the whole workspace's readiness with Validation's steps | Validation | measurement, checks or inputs fail (`failed`) |
 | 5 | Require the readiness ready | host | not ready (`blocked`, `not_ready`) |
 | 6 | When the workspace changed code, require a test declaring that it verifies every scenario it added or changed since its base commit, unless `--adoption` | host, Spec core, read-only Git | an unverified scenario (`blocked`, `unverified_scenarios`, naming each with its document) |
 | 7 | Record the index with Git; apply confirmations via Validation | host, Git, Validation | the index cannot be recorded (`failed`, `index_unrecorded`) or confirmations refused (`failed`) |
 | 8 | Write the evidence bundle, numbered after the delivery commits on the branch | host | bundle path taken (`failed`; undone) |
-| 9 | Stage every change and the bundle; commit | host, Git | Git refuses (`failed`; undone, index restored) |
-| 10 | Verify the commit is head, parent validated, worktree clean | host, read-only Git | mismatch (`failed`; the commit stays) |
+| 9 | Stage every change and the bundle; record the staged tree; commit | host, Git | Git refuses (`failed`; undone, index restored) |
+| 10 | Verify the commit is head, its tree the staged tree, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit stays) |
 | 11 | Return the commit as the output | host | — |
 
 Every step before 7 leaves the workspace as it was — Validation writes its check logs and the
@@ -167,6 +170,18 @@ never rewrites history, and repairing the branch is the task level's decision. C
 repeated after confirmations, since clearing a marker changes no code and Validation revalidates the
 Spec structure when it applies them. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
+
+Delivery proves what it committed rather than assuming it. The repository's commit hooks run
+normally, and a pre-commit hook may change a file and stage it again, so the commit Git creates can
+hold content the readiness never examined while the worktree is still clean. Step 9 therefore
+records the tree of the staged index with `git write-tree` just before `git commit`, and step 10
+compares it with the new commit's tree, naming every path that differs. A delivery commit is
+likewise recognised in step 2 by its subject and trailers alone, which any commit can carry — a
+cherry-picked or reworded one, say — so before reporting the head as delivered, Delivery reads the
+bundle the commit adds and requires it to agree with the commit: the bundle's `parent_commit` is
+the commit's only parent, and its readiness run is the `Concorde-Readiness` trailer. Either
+mismatch is `commit_unverified` with the reason `decision`, since what to do with a commit that does
+not hold what it claims is the task level's decision.
 
 <a id="realization.delivery.command"></a>
 

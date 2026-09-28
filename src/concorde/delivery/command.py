@@ -5,16 +5,18 @@ bound branch are its only record: their subject and trailers name the workspace,
 bundle and the run that decided the readiness.
 
 1. Require that the workspace's head is its bound branch.
-2. Stop ``ok`` when the head already is a delivery commit of the workspace and nothing waits.
+2. Stop ``ok`` when the head already is a delivery commit of the workspace and nothing waits,
+   after verifying it against its bundle (``failed``, ``commit_unverified``, when it does not).
 3. Require new work: a commit since the base, or an uncommitted change.
 4. Decide the readiness of the whole workspace with Validation's steps, as task-validation does.
 5. Require that readiness to be ready, and every scenario changed with code to be verified.
 6. Record the index with Git (its tree, intent-to-add paths and skip-worktree and
    assume-unchanged flags), then apply the readiness's confirmations through Validation.
 7. Write the evidence bundle in the workspace.
-8. Stage everything and create the delivery commit; when writing the bundle, staging or the
-   commit fails, undo steps 6 and 7 and give the recorded index back with Git.
-9. Verify the new head, its parent and a clean worktree.
+8. Stage everything, record the staged tree and create the delivery commit; when writing the
+   bundle, staging or the commit fails, undo steps 6 and 7 and give the recorded index back.
+9. Verify the new head, its tree (the staged one, which a commit hook may have changed), its
+   parent and a clean worktree.
 10. Return the delivery commit as the output.
 """
 
@@ -55,6 +57,7 @@ from .bundle import (
     bundle_path,
     commit_message,
     delivery_commits,
+    delivery_mismatches,
 )
 
 
@@ -113,6 +116,8 @@ class State:
     sequence: int = 0
     created: list[Path] = field(default_factory=list)
     commit: str = ""
+    # ``git write-tree`` of the index once everything was staged, which the commit must hold.
+    staged_tree: str = ""
     # The workspace's earlier delivery commits, read once from Git.
     previous: list[dict] | None = None
 
@@ -318,6 +323,18 @@ def delivered(ctx: RunContext):
     if changed or not previous or previous[-1]["commit"] != state.head:
         return Continue()
     last = previous[-1]
+    problems = delivery_mismatches(ctx.worktree, last)
+    if problems:
+        return _unverified(
+            ctx,
+            f"The head {state.head} looks like a delivery commit of {ctx.workspace_name} but "
+            "does not verify against its bundle (commit_unverified); nothing was committed.",
+            f"the head {state.head} of {ctx.branch} has the subject and trailers of a delivery "
+            f"commit of workspace {ctx.workspace_name} but does not verify against its bundle "
+            f"{last['bundle']}: " + "; ".join(problems),
+            problems,
+            state.head,
+        )
     ctx.output = {
         "commit": state.head,
         "branch": ctx.branch,
@@ -331,7 +348,9 @@ def delivered(ctx: RunContext):
         f"{ctx.workspace_name} is already delivered as {state.head[:12]} on {ctx.branch}.",
         [
             evidence(
-                "commit", state.head, "the head is a delivery commit; nothing waits"
+                "commit",
+                state.head,
+                "the head is a delivery commit that verifies against its bundle; nothing waits",
             )
         ],
     )
@@ -708,6 +727,22 @@ def commit(ctx: RunContext):
             ["repair the worktree's Git state, then run delivery again"],
             causes=[_git_link("add", staged), *undone.causes],
         )
+    # What the commit must hold; a commit hook may still change it, which verify names.
+    tree = _git(ctx.worktree, "write-tree")
+    if tree.returncode != 0:
+        undone = undo(ctx)
+        return _failed(
+            ctx,
+            "stage_failed",
+            f"Git could not record the staged index; nothing was committed and {undone}.",
+            [evidence("git", "write-tree", tree.stderr.strip())],
+            f"git write-tree failed in {ctx.worktree} after staging, so the tree the commit "
+            f"must hold is unknown; nothing was committed and {undone}: "
+            f"{tree.stderr.strip()}",
+            ["repair the worktree's Git state, then run delivery again"],
+            causes=[_git_link("write-tree", tree), *undone.causes],
+        )
+    state.staged_tree = tree.stdout.strip()
     message = commit_message(ctx.workspace, state.bundle, state.readiness_run)
     result = subprocess.run(
         ["git", "commit", "-q", "--cleanup=verbatim", "-F", "-"],
@@ -748,24 +783,60 @@ def verify(ctx: RunContext):
     ).stdout.split()
     if parents[1:] != [state.head]:
         problems.append(f"parents {parents[1:]} instead of {state.head}")
+    committed = _git(
+        ctx.worktree, "rev-parse", f"{state.commit}^{{tree}}"
+    ).stdout.strip()
+    if committed != state.staged_tree:
+        changed = _git(
+            ctx.worktree,
+            "diff-tree",
+            "-r",
+            "--name-status",
+            state.staged_tree,
+            committed,
+        ).stdout.split("\n")
+        listed = ", ".join(
+            " ".join(line.split("\t")) for line in changed if line.strip()
+        )
+        problems.append(
+            f"its tree {committed} is not the staged tree {state.staged_tree}, so a commit "
+            f"hook changed what was committed: {listed or 'no path listed'}"
+        )
     if head_commit(ctx.worktree) != state.commit:
         problems.append("the new commit is not the branch head")
     if has_uncommitted(ctx.worktree):
         problems.append("the worktree is not clean after the commit")
     if problems:
-        return _failed(
+        return _unverified(
             ctx,
-            "commit_unverified",
-            f"The delivery commit {state.commit} does not verify.",
-            [evidence("git", state.commit, "; ".join(problems))],
+            f"The delivery commit {state.commit} does not verify (commit_unverified).",
             f"the delivery commit {state.commit} on {ctx.branch} does not verify: "
             + "; ".join(problems),
-            ["inspect the bound branch"],
-            reason="decision",
-            explanation="delivery never rewrites a commit it made; repairing the branch is the "
-            "task level's decision",
+            problems,
+            state.commit,
         )
     return Continue()
+
+
+def _unverified(
+    ctx: RunContext, summary: str, detail: str, problems: list[str], commit: str
+) -> Stop:
+    """Fail ``commit_unverified``: the commit stays, and the branch is the task level's."""
+    return _failed(
+        ctx,
+        "commit_unverified",
+        summary,
+        [evidence("git", commit, "; ".join(problems))],
+        detail,
+        [
+            "inspect the bound branch and the commit's content",
+            "revert or remove the commit that does not verify, then run delivery again",
+        ],
+        reason="decision",
+        explanation="delivery reports only a delivery commit it can show holds what was "
+        "validated and never rewrites a commit; repairing the branch is the task level's "
+        "decision",
+    )
 
 
 def output(ctx: RunContext):
