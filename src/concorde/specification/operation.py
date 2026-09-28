@@ -284,7 +284,7 @@ def instructions(ctx: RunContext) -> str:
         "\n\n## This run\n\n",
         f"Bound Modules: {', '.join(ctx.modules)}\n\n",
         f"Intent: {ctx.arguments.intent}\n\n",
-        f"The task's own goal: {ctx.goal or '(none)'}\n",
+        f"The workspace's goal: {ctx.goal or '(none)'}\n",
     ]
     if ctx.inputs:
         parts.append(

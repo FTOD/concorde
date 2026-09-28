@@ -394,7 +394,8 @@ class SpecifyTests(unittest.TestCase):
         brief = (Path(record["run_directory"]) / "control/brief.md").read_text()
         self.assertIn(first["run_id"], brief)
         self.assertIn("A answers one question.", brief)
-        self.assertIn("The task's own goal: Fix A.", brief)
+        self.assertIn("The workspace's goal: Fix A.", brief)
+        self.assertNotIn("task's own goal", brief)
 
     def test_proposed_deletions_of_owned_documents_are_reported(self):
         worktree = self.open()
