@@ -14,6 +14,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.errors import ERROR_SCHEMA
 from concorde.execution.runs import workspace_lock
@@ -465,6 +466,46 @@ class MergeTests(unittest.TestCase):
         )
         self.assertEqual(after, self.head())
         self.assertIn("resumed the merge", Path(value["merge"]["log"]).read_text())
+
+    @verifies("scenario.tasks.close-rerun")
+    def test_a_merge_whose_close_stopped_part_way_is_finished(self):
+        self.project.open_task("t1")
+        self.deliver()
+        worktree = self.project.worktree("t1")
+        real = store.update
+
+        def refusing_the_close(primary, task_id, change):
+            if change(store.load_task(primary, task_id))["state"] == "closed":
+                raise store.TaskError("record_conflict", "changed concurrently")
+            return real(primary, task_id, change)
+
+        with patch.object(store, "update", refusing_the_close):
+            error = self.refusal("merge", "t1", "--check", python("pass"))
+        self.assertEqual("record_conflict", error["code"])
+        self.assertIn(f"already removed the worktree {worktree}", error["detail"])
+        self.assertIn("`concorde task merge t1 --resume`", error["detail"])
+        self.assertFalse(worktree.exists())
+        self.assertEqual("merging", store.load_task(self.root, "t1")["state"])
+        status, value = self.command("merge", "t1", "--resume")
+        self.assertEqual(0, status, value)
+        self.assertEqual("closed", value["record"]["state"])
+        # The merge closes the task but the decision log refuses the closing.
+        self.project.open_task("t2")
+        self.deliver("t2", "src/a/other.py", "OTHER = 1\n")
+        log = self.root / ".concorde/tasks/t2.decisions.md"
+        log.chmod(0o444)
+        self.addCleanup(log.chmod, 0o644)
+        error = self.refusal("merge", "t2", "--check", python("pass"))
+        self.assertEqual("decision_log_failed", error["code"])
+        self.assertIn("the task is closed as merged", error["detail"])
+        self.assertIn("`concorde task close t2 --merged`", error["detail"])
+        stored = store.load_task(self.root, "t2")
+        self.assertEqual(("closed", None), (stored["state"], stored["merging"]))
+        log.chmod(0o644)
+        status, value = self.command("close", "t2", "--merged")
+        self.assertEqual(0, status, value)
+        self.assertEqual(stored, store.load_task(self.root, "t2"))
+        self.assertIn(f"## Closed: merged, {stored['closed']['at']}", log.read_text())
 
     @verifies("scenario.tasks.merge-resume")
     def test_resume_undoes_a_merge_whose_check_fails(self):

@@ -605,7 +605,7 @@ task, [Module](../../glossary.json#concept.module), path, run or Git command con
 message (for an unknown task, the known tasks; for a dirty worktree, the uncommitted paths; for a
 busy [merge lock](../../glossary.json#concept.merge-lock), its holder), and whose reason is
 `environment` for `git_failed`, `worktree_failed`, `record_conflict`, `record_unreadable`,
-`config_copy_failed`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed` and the
+`record_unwritable`, `decision_log_failed`, `config_copy_failed`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed` and the
 session codes `session_failed` and `missing_worktree`, `decision` for `dirty_worktree`,
 `not_merged`, `primary_dirty`, `merge_conflict`, `check_failed`, `merge_incomplete`,
 `not_resumable`, `merge_diverged` and `session_busy`, and `input` otherwise. A
@@ -613,7 +613,7 @@ refusal exits with status 1 and changes nothing, apart from the refusals that
 [req.tasks.refusal-inert](requirements.md#req.tasks.refusal-inert) names, each of which says what
 it left behind: `open`'s `config_copy_failed` and `binding_failed`, and `merge`'s
 `rollback_failed`, a `check_failed` whose checks created paths, and a close that failed after the
-merge (below). A malformed command line prints the same shape with the code `invalid_command` and
+merge, and the refusals of `close` and `escalate` after a step they could not undo (below). A malformed command line prints the same shape with the code `invalid_command` and
 exits with status 2.
 
 While a task is stored as `merging` and no live process holds the merge lock, `open`, `merge`,
@@ -658,6 +658,27 @@ names the merge commit and says that `concorde task merge <task-id> --resume` fi
 once the cause is fixed. A `rollback_failed` also leaves the task `merging`, and says that
 `--abort` restores the primary branch.
 
+`close` runs its steps in order, `git submodule deinit --all` in a worktree with submodules,
+`git worktree remove`, the record update and the append to the decision log, and a refusal after
+a step leaves what the steps before it did. A `worktree_failed` from the deinit or the removal
+says that the submodules Git deinitialized stay so and that `git submodule update --init` in the
+worktree restores them; a `record_conflict`, `record_unwritable` or `unknown_task` of the record
+update after the worktree was removed names the removed worktree and says the task keeps its
+state without it; a `decision_log_failed` names the task's stored state, outcome and time. Each
+says that running the same close again, with the same options, finishes it once the cause is
+fixed, and, when the close is a merge's, the `merge` refusal says that
+`concorde task merge <task-id> --resume` does, unless it is `decision_log_failed`, after which the
+task is closed as merged and the same `close --merged` finishes it. The rerun skips a worktree that
+no longer exists, and records `worktree_removed` false then; run on a task already stored `closed`
+or `failed` with the outcome it names, whose decision log holds no line
+`## Closed: <outcome>, <closed.at>`, it appends the closing the record holds, as the close that
+stored it would have, and returns the record unchanged.
+
+`escalate` writes the record before it appends to the decision log. When the append fails, it
+refuses with `decision_log_failed`, naming the escalation's number in the record, the decision
+log, the file system's error and the heading the entry would have had, carrying the rendered
+chain and saying that escalating again would record it twice, so the chain is appended by hand.
+
 The task's workspace lock is Execution's lock of the workspace named after the task
 (`contract.execution.workspace-binding`); `merge` and `close` take it after the merge lock without
 waiting and name themselves in it as `` `concorde task <command>` of task <task-id> ``.
@@ -677,12 +698,14 @@ waiting and name themselves in it as `` `concorde task <command>` of task <task-
 | `unknown_module` | A named Module is not in the registry. |
 | `specs_unloadable` | The Specs needed to check Module identities cannot be loaded. |
 | `unknown_task` | No record has that identity. |
-| `invalid_transition` | `close` or `merge` names a task that is already `closed` or `failed`, or a merge would store `merging` for a task whose stored state is not `open`. |
+| `invalid_transition` | `close` or `merge` names a task that is already `closed` or `failed`, apart from the same close of a task whose decision log lacks its closing (above), or a merge would store `merging` for a task whose stored state is not `open`. |
 | `not_merged` | `close --merged` or `merge` finds that the task branch holds no delivery commit of the task's workspace since the base commit or that its latest delivery commit is not the head of the branch, or `close --merged` finds that head not contained in the primary branch. |
 | `dirty_worktree` | The worktree has uncommitted changes and the command is `--merged`, or `--completed` or `--failed` without `--force`. |
-| `task_closed` | A session is started or recorded for a task that is closed or failed. |
+| `task_closed` | A session is started or recorded, or a round of a pi task session begun, for a task that is closed or failed. |
 | `record_conflict` | The record changed concurrently three times in a row. |
 | `record_unreadable` | The [task record](../../glossary.json#concept.task-record) on disk cannot be read as JSON. |
+| `record_unwritable` | The file system refused to write the task record; the message names the record and the file system's error. |
+| `decision_log_failed` | `close` or `escalate` wrote the task record and the file system then refused the append to the [decision log](../../glossary.json#concept.decision-log), or a rerun of a close cannot read it; the message says what was written and how to finish (above). |
 | `git_failed` | A Git command Tasks needs failed; the message names the command, its exit status and its output. |
 | `unknown_run` | `escalate` or `close --failed` names a run whose result cannot be read from the run store, or a run of another workspace or of none; the message names the workspace the run belongs to. |
 | `unknown_escalation` | `escalate` names an escalation number the task does not have. |
@@ -707,12 +730,13 @@ Execution, and Tasks reads them. Besides `open`, `merge`, `close` and `escalate`
 only through the three updates task sessions make; these are not refused for an unfinished merge,
 so a running round's outcome is always recorded. Each is one read, a check of its preconditions and one
 [file transaction](../../glossary.json#concept.file-transaction) bound to the digest of the bytes
-read. Their refusals use the codes above and the
+read; when the record changed before the transaction, the update reads it again and checks its
+preconditions again on what it read, so every precondition holds for the record it writes. Their refusals use the codes above and the
 [Task session codes](../task-session/contracts.md#commands) `no_session`, `session_busy` and
 `session_idle`.
 
 | Update | Preconditions | Effect |
 | --- | --- | --- |
 | Record session (`task`, `session`) | The task is neither `closed` nor `failed`. Otherwise `unknown_task` or `task_closed`. | Appends the session. |
-| Begin round (`task`, `session_id`, `round`) | The task's session with that identity is a pi session whose rounds are all ended. Otherwise `no_session` or `session_busy`. | Appends the round as `running`. |
-| Finish round (`task`, `session_id`, `round`, `status`, `report`, `error`) | The task's session with that identity is a pi session whose round with that number is `running`. Otherwise `no_session` or `session_idle`. | Sets the round's status, `ended_at`, report and error. |
+| Begin round (`task`, `session_id`, `round`) | The task is neither `closed` nor `failed`, and its session with that identity is a pi session whose rounds are all ended. Otherwise `unknown_task`, `task_closed`, `no_session` or `session_busy`. | Appends the round as `running`. |
+| Finish round (`task`, `session_id`, `round`, `status`, `report`, `error`) | The task's session with that identity is a pi session whose round with that number is `running`, whatever the task's state, so a round running when its task closed still records its outcome. Otherwise `unknown_task`, `no_session` or `session_idle`. | Sets the round's status, `ended_at`, report and error. |

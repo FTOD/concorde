@@ -320,8 +320,19 @@ def _check_and_close(
         if text is not None
     ]
     try:
-        closed = store.close_locked(primary, task_id, "merged")
+        closed = store.close_locked(
+            primary,
+            task_id,
+            "merged",
+            again=f"`concorde task merge {task_id} --resume`",
+        )
     except TaskError as error:
+        if error.code == "decision_log_failed":
+            raise TaskError(
+                error.code,
+                f"task {task_id} was merged into {branch} at {after}, every check passed and "
+                f"the task is closed as merged, but {error}",
+            ) from error
         raise TaskError(
             error.code,
             f"task {task_id} was merged into {branch} at {after} and every check passed, but "
