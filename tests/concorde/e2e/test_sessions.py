@@ -250,6 +250,34 @@ class HeadlessSessionTests(unittest.TestCase):
             shown["rounds"][0]["actions"][0]["target"],
         )
 
+    @verifies("scenario.headless-sessions.wait-exceeded")
+    def test_a_run_that_outlives_the_wait_fails_a_kept_session(self):
+        fake = self.base / "claude"
+        # The run's host outlives the wait, so the session fails after its first round.
+        fake.write_text(FAKE.replace('["sleep", "1"]', '["sleep", "5"]'))
+        fake.chmod(0o755)
+        directory = self.base / "session"
+        with self.assertRaises(e2e.E2EError) as raised:
+            sessions.start(
+                self.project,
+                "add a property",
+                directory,
+                claude=str(fake),
+                wait_limit=0.3,
+                poll=0.1,
+            )
+        progress = str(self.project / ".concorde/runs/r-1/status.json")
+        error = raised.exception
+        self.assertEqual("wait_exceeded", error.code)
+        self.assertEqual(progress, error.evidence["progress"])
+        self.assertEqual(str(directory / "session.json"), error.evidence["session"])
+        saved = json.loads((directory / "session.json").read_text())
+        self.assertEqual(("wait_exceeded", progress), (saved["end"], saved["progress"]))
+        self.assertEqual("s-1", saved["session_id"])
+        [round_] = saved["rounds"]
+        self.assertEqual([], round_["woke_for"])
+        self.assertTrue(Path(round_["log"]).is_file())
+
     @verifies(
         "scenario.headless-sessions.pi", "scenario.headless-sessions.unknown-client"
     )

@@ -90,11 +90,15 @@ the same session with a **[wake message](../../glossary.json#concept.wake-messag
 run, its kind, name and workspace, how it ended and its result file, saying of a stopped run that
 the turn's end stopped it and of a run whose runner went without writing a result that it ended
 without one ([requirements](requirements.md#req.headless-sessions.wake)). The wait lasts at most an
-hour: a run still running then fails the session with `wait_exceeded`, naming that run's
-run progress file ([requirements](requirements.md#req.headless-sessions.wait-bounded)). The session
-ends `idle`, `exited` when a round's process fails (with its standard error kept), `no_session` when
-the first round names no session, or `rounds_exhausted` after the allowed rounds
-([requirements](requirements.md#req.headless-sessions.rounds-bounded)).
+hour: a run still running then fails the session with `wait_exceeded`
+([requirements](requirements.md#req.headless-sessions.wait-bounded)). Before the failure goes up,
+the tool writes `session.json` with the rounds so far, the end `wait_exceeded` and, under
+`progress`, the path of that run's
+[run progress file](../../glossary.json#concept.run-progress-file); the failure names the same
+file and the session's `session.json`, so the kept session shows which run outlived the wait. The
+session ends `idle`, `exited` when a round's process fails (with its standard error kept),
+`no_session` when the first round names no session, `rounds_exhausted` after the allowed rounds
+([requirements](requirements.md#req.headless-sessions.rounds-bounded)), or `wait_exceeded`.
 
 **Reading the logs.** A resumed Claude Code round first replays the stopped background command as
 a turn of its own with no model turn; its `result` event is not the round's answer. The round's

@@ -38,6 +38,12 @@ A [driver run](../glossary.json#concept.driver-run) SHALL execute every step and
 workflow's script with the real `concorde workflow step` and `concorde workflow report` commands
 of the task's worktree.
 
+### req.e2e.own-result — A run prints only its own workflow result
+
+`run` SHALL print only a [workflow result](../glossary.json#concept.workflow-result) saved in the
+[workflow record](../glossary.json#concept.workflow-record) after the run started, failing with
+`no_result` when the record holds no more saved results after the run than before it.
+
 ### req.e2e.trust-explicit — Trust changes only on request
 
 The tool SHALL change Claude Code's configuration only through `trust`.

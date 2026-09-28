@@ -94,8 +94,12 @@ answers to continue it. `--retry <key>` and `--restart <key>=<label>` become the
 A workflow result whose status is not `ok` is printed like any other. `run` fails instead with
 `run_failed` when the headless session ends `exited` or `no_session`, naming its `session.json`,
 or when the driver exits with a non-zero status, with its standard error and log; with the
-session's own error, such as `wait_exceeded`, when the session fails; and with `no_result` when the
-workflow record holds no saved result.
+session's own error, such as `wait_exceeded`, when the session fails, naming its `session.json`;
+and with `no_result` when the run saved no workflow result of its own. `run` counts the saved results
+of the workflow record before it starts and takes only a result saved since: a record that holds no
+more saved results after the run than before it, or whose newest saved result is missing, fails with
+`no_result` naming both counts or the missing file, so a result an earlier run of the task saved is
+never printed as this run's ([requirements](requirements.md#req.e2e.own-result)).
 
 **Watching.** `watch` lists every run of the project's
 [run store](../glossary.json#concept.run-store) with its workspace, phase, step and outcome, and,
@@ -120,6 +124,13 @@ succeeded, and so points to whether Concorde or the client runtime is at fault; 
 it would only find the failed run recorded. Since the workers are real, one such comparison is
 evidence, not proof.
 
+The driver run does not have a runtime of its own: it runs the JavaScript sandbox of the Workflows
+tests, `tests/concorde/workflows/run_script.mjs`, with step agents that execute the real commands.
+This couples End-to-end testing to a test file of Workflows, and the coupling is accepted: a second
+stand-in runtime would have to follow every change of the rendered scripts' adapters that the
+Workflows tests already follow, and could drift from them. The file stays Workflows' and is listed
+by both Modules, so a change to it concerns the driver run too.
+
 The testing conditions stay here. A user's main session is interactive and its project trusted,
 so neither the wait ceiling nor the trust keying reaches the user-facing guidance; this Module
 handles both for tests, and changes nothing a user gets.
@@ -129,7 +140,9 @@ handles both for tests, and changes nothing a user gets.
 The **End-to-end tool** realization is `scripts/e2e/e2e.py`: preparing, trusting, running and
 watching test projects, and the command line of its children's `session`, `repair-specs`, `grade`
 and `dogfood` commands; `scripts/e2e/common.py` holds what the tools share, the checkout, the
-end-to-end root, the error type, running a command and cloning a revision.
+end-to-end root, the error type, running a command and cloning a revision. It also lists
+`tests/concorde/workflows/run_script.mjs`, the JavaScript sandbox of the Workflows tests that
+stands in for the client runtime and that a driver run runs, as a file it shares with Workflows.
 
 <a id="realization.e2e.tests"></a>
 
