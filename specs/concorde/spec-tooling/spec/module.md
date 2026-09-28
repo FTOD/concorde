@@ -18,8 +18,10 @@ The commands named below are `concorde` commands; in the Concorde checkout itsel
 Checkout's entry `specs/checkout/module.md` binds the directory `src/checkout/` in its realization
 Checkout service, owns the term Hold, which the project glossary `specs/project/glossary.json`
 defines as "Stock withheld until an order is accepted or expires.", and relies on Inventory to
-reserve stock. Inventory binds `src/inventory/`. The developer declares that reliance as a `uses`
-in the `module` block of Checkout's entry metadata:
+reserve stock. Inventory binds `src/inventory/`, and its entry links Hold too, since a reservation
+places one; a term only its owner used would draw the warning `CHK.concept.local`. The project is
+not yet installed, so its root binds no installer files. The developer declares Checkout's reliance
+as a `uses` in the `module` block of Checkout's entry metadata:
 
 ```json
 {
@@ -84,7 +86,9 @@ readable. Its realization's directory is writable, which covers `src/checkout/su
 entry of its own. Inventory's code is readable because a task that implements reads the whole
 project's code, and the root Module's entry is absent because nothing Checkout declares selects it.
 The glossary is named but not writable, since this task type writes no Spec; the definition of Hold
-travels in `terms` instead. Every other path, such as the registry, is denied. The context identity
+travels in `terms` instead. Every other path, such as the registry, is denied. In an installed
+project the root also binds the installer's files, such as its skills and `CLAUDE.md`, which the
+grant then lists as `ro` with the rest of the project's code; the example leaves them out. The context identity
 changes when either entry or the definition of Hold changes, never when `src/checkout/submit.py`
 does.
 
@@ -366,11 +370,11 @@ apply: Apply {
   applied: "Applied" {shape: page}
   checks -> write -> validate -> applied: no error
 }
-refused: "Refused, nothing written:\nalready_initialized, not_installed,\ninvalid_proposal, stale_proposal\nor permission_denied" {shape: page}
+refused: "Refused, nothing written:\ninvalid_input, already_initialized,\nnot_installed, invalid_proposal,\nstale_proposal or permission_denied" {shape: page}
 rolled: "Every file rolled back" {shape: page}
 
 propose.proposal -> apply.checks: the caller accepts it
-propose.ask -> refused: configuration exists\nor no Protocol copy
+propose.ask -> refused: invalid input, configuration\nexists or no Protocol copy
 apply.checks -> refused: a check fails
 apply.validate -> rolled: an error
 ```

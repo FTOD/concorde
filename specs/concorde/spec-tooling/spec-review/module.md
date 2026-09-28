@@ -146,7 +146,7 @@ report again, in other words, problems the task has already seen, and would drop
 happened not to notice this time. The review memory is the state that carries a Module's findings
 from one review to the next: every finding its reviews kept, under a stable id `f.<n>` never
 reused, with its content as last reported, whether it is open or resolved, the runs that first and
-last reported it and, once resolved, the reason; and, under `reviewed`, the context identity of the
+last reported or resolved it and, once resolved, the reason; and, under `reviewed`, the context identity of the
 Specs the last completed review judged, with that review's run.
 
 There is one tracked file per Module because the history belongs to the Module, as its Specs do,
