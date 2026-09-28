@@ -277,10 +277,14 @@ class SpecReviewTests(unittest.TestCase):
         self.assertIn("Earlier problem f.1.", brief)
         self.assertNotIn("r-earlier", brief)
 
-    @verifies("scenario.spec-review.unchanged")
-    def test_a_module_with_unchanged_specs_is_decided_by_its_memory(self):
+    def reviewed_unchanged(self, *arguments, plans=None):
+        """Review ``module.a`` whose memory records its current Specs as judged by ``r-earlier``,
+        with the open blocking finding ``f.1``; ``plans`` are the fake workers' plans."""
         memory = self.remembered(("f.1", "blocking"))
-        self.project.open_task("t1", modules=("module.a",), goal="Review.")
+        goal = (
+            "Review." if plans is None else "Review.\nFAKE-PLANS: " + json.dumps(plans)
+        )
+        self.project.open_task("t1", modules=("module.a",), goal=goal)
         self.worktree = self.project.worktree("t1")
         memory["reviewed"] = {
             "context_identity": self.identity("module.a"),
@@ -289,9 +293,13 @@ class SpecReviewTests(unittest.TestCase):
         path = self.worktree / ".concorde/reviews/spec/module.a.json"
         path.parent.mkdir(parents=True)
         path.write_text(json.dumps(memory))
-        status, envelope = self.project.run(
-            "spec_review", "--task", "t1", "--modules", "module.a"
+        return self.project.run(
+            "spec_review", "--task", "t1", "--modules", "module.a", *arguments
         )
+
+    @verifies("scenario.spec-review.unchanged")
+    def test_a_module_with_unchanged_specs_is_decided_by_its_memory(self):
+        status, envelope = self.reviewed_unchanged()
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         self.assertEqual([], envelope["worker_runs"])
         (module,) = envelope["output"]["modules"]
@@ -300,8 +308,8 @@ class SpecReviewTests(unittest.TestCase):
         self.assertEqual(["f.1"], [item["id"] for item in module["memory"]["carried"]])
         self.assertIn("review-skipped", self.kinds(envelope))
 
-    @verifies("scenario.spec-review.unchanged")
-    def test_a_completed_review_records_what_it_judged_and_force_reviews_again(self):
+    @verifies("scenario.spec-review.records-judged")
+    def test_a_completed_review_records_what_it_judged(self):
         status, envelope, after = self.review_with_memory(
             self.remembered(),
             {"reviewer module.a": reviewer(finding("specs/a/module.md", "advisory"))},
@@ -312,12 +320,18 @@ class SpecReviewTests(unittest.TestCase):
             after["reviewed"],
         )
         self.assertIsNone(envelope["output"]["modules"][0]["memory"]["unchanged_since"])
-        _, forced = self.project.run(
-            "spec_review", "--task", "t1", "--modules", "module.a", "--force"
-        )
-        self.assertEqual(1, len(forced["worker_runs"]), forced)
 
-    @verifies("scenario.spec-review.memory")
+    @verifies("scenario.spec-review.forced")
+    def test_force_reviews_unchanged_specs_again(self):
+        status, envelope = self.reviewed_unchanged(
+            "--force", plans={"reviewer module.a": reviewer()}
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(1, len(envelope["worker_runs"]), envelope)
+        self.assertIsNone(envelope["output"]["modules"][0]["memory"]["unchanged_since"])
+        self.assertIn("Earlier problem f.1.", self.brief(envelope["worker_runs"][0]))
+
+    @verifies("scenario.spec-review.last-blocker-resolved")
     def test_resolving_every_earlier_blocking_finding_accepts_the_module(self):
         _, envelope, after = self.review_with_memory(
             self.remembered(("f.1", "blocking")),
@@ -335,7 +349,9 @@ class SpecReviewTests(unittest.TestCase):
             },
         )
         self.assertEqual("accepted", envelope["output"]["verdict"], envelope)
+        self.assertEqual("accepted", envelope["output"]["modules"][0]["outcome"])
         self.assertEqual("resolved", after["findings"][0]["status"])
+        self.assertEqual("Split.", after["findings"][0]["resolution"])
 
     @verifies("scenario.spec-review.checker")
     def test_a_confirmed_finding_still_requires_changes(self):
