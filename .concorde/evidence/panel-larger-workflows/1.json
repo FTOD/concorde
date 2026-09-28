@@ -1,0 +1,66 @@
+{
+  "workspace": "panel-larger-workflows",
+  "goal": "Finish the 2026-09-28 panel review's larger items for Workflows: split bundled scenarios with their tests' @verifies, add a brownfield walkthrough with a resume example, and the brownfield procedure diagram",
+  "modules": [
+    "module.workflows"
+  ],
+  "sequence": 1,
+  "base_commit": "0b3008636dbdb04c40e3f233bc5aeb01eed56c76",
+  "parent_commit": "451841c7486a04b9ad7424ba84b9b8b99cabdc45",
+  "readiness": {
+    "run_id": "r-20260928T194935-delivery-b4894ad0",
+    "input_digest": "sha256:534ea3ac5a5ca40fba1df3b47d7bbe46565c0d76afd8166342faaeb18d27d71c",
+    "modules": [
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:1c974b2a3111c256f550a970508a029488b8fa592af78d67c7866758bf51ab28"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:10f9a774d21f451c59332b71640344226f4848fdb062ddb30a6b05b865ba0bbe"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:9e5e768105c9e6326d48073ae0bdda931b44c95ce94ccd66fb83a19489548890"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:fdbe61fb3a0e67d5c8e1b826328e8cdaed72ec8d73a5c6658b249259e9643435"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:d4bfef6d133ed994eed55d45e963a22ac0dd5b58fc3eb2b0f39e642b8432b0b2"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260928T194838-task_validation-c588de06",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.workflows"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:af92a86818a0678168ba06e84808ce6d748238ccd15624a369c46b18a1eac0e4"
+    }
+  ],
+  "created_at": "2026-09-28T19:50:24Z"
+}
