@@ -184,10 +184,12 @@ opens it, which creates a branch and a worktree bound as the task's
 [workspace](glossary.json#concept.workspace), records its brief in the
 [decision log](glossary.json#concept.decision-log) and starts a task session there. The task session
 changes Specs and code, itself or through runs of Execution, each of which returns a run result with
-evidence. Decisions that are not its own go up to the main agent together, which decides them or
-asks the developer, and the answers come back down. When the work is done, the task session
-validates the whole workspace and delivers it, which commits the result on the task branch, and the
-main agent merges the delivered task. A task that follows a known procedure, such as describing
+evidence, and may commit each verified step on the task branch. Decisions that are not its own go up
+to the main agent together, which decides them or asks the developer, and the answers come back
+down. When the work is done, the task session delivers the workspace: `delivery` validates it whole
+and, when it is ready, commits what is left in a
+[delivery commit](glossary.json#concept.delivery-commit), which alone marks the task delivered, and
+the main agent merges the delivered task. A task that follows a known procedure, such as describing
 existing code, runs as a [workflow](execution/workflows/module.md) inside the same path.
 
 ```d2 illustrative
