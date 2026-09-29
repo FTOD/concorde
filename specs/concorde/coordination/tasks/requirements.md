@@ -191,6 +191,13 @@ is contained in the primary branch and the worktree has no uncommitted change.
 Closing a task SHALL NOT remove a worktree that has uncommitted changes unless the task is closed
 without a merge, as completed or failed, with `--force`.
 
+### req.tasks.shared-config-kept — Ending a task leaves the shared Git configuration
+
+Closing or merging a task SHALL NOT change the repository's configuration that every worktree
+shares, `.git/config` of the primary worktree: the task's worktree is removed with its submodules'
+checkouts and their repositories, but the submodules stay registered for the primary worktree and
+every other task worktree.
+
 ### req.tasks.refusal-inert — A refusal changes nothing
 
 A refused task command or record update SHALL leave every record, branch and worktree unchanged.
@@ -206,8 +213,8 @@ task `merging`.
 task record and the decision log in steps that cannot be one transaction. Their refusals after a
 step leave that step done, and say so:
 
-- a close's `worktree_failed` may leave the worktree's submodules deinitialized, which the refusal
-  says with how to restore them;
+- a close's `worktree_failed` leaves the worktree as `git worktree remove` left it, which the
+  refusal says;
 - a close refused while writing the record (`record_conflict`, `record_unwritable`) after it
   removed the worktree leaves the task in its state without its worktree, which the refusal says;
 - a close's `decision_log_failed` leaves the task closed or failed in its record without its

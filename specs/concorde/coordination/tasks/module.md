@@ -321,9 +321,12 @@ Git refuses that commit, such as on a detached `HEAD` or during an unfinished me
 worktree, the close refuses with `decision_log_uncommitted`, after the record was closed and the log
 appended, and leaves the folder current: the same close run again commits the log and finishes.
 The log in Git is a copy: the task's folder keeps its own, and nothing reads the copy back. A
-worktree with checked-out submodules, such as the vendored references, is removed too: its
-submodules are deinitialized first, which refuses a submodule with local changes unless `--force`,
-and only then is the worktree removed.
+worktree with checked-out submodules, such as the vendored references, is removed too, with its
+submodules' checkouts and the repositories Git keeps for them under the worktree's own
+administrative directory; a change inside a submodule is refused as any other uncommitted change,
+whatever the submodule's `ignore` setting, unless `--force`. The close never deinitializes the
+submodules: their registration lives in the repository's configuration, which every worktree
+shares, and ending one task leaves it for the others.
 
 ## Merging
 

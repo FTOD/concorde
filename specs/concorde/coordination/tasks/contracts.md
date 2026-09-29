@@ -765,12 +765,13 @@ names the merge commit and says that `concorde task merge <task-id> --resume` fi
 once the cause is fixed. A `rollback_failed` also leaves the task `merging`, and says that
 `--abort` restores the primary branch.
 
-`close` runs its steps in order, `git submodule deinit --all` in a worktree with submodules,
-`git worktree remove`, the record update, the end of the trace node, the append to the decision log
-and the move of the task's folder to the history, and a refusal after a step leaves what the steps
-before it did. A `worktree_failed` from the deinit or the removal
-says that the submodules Git deinitialized stay so and that `git submodule update --init` in the
-worktree restores them; a `record_conflict`, `record_unwritable` or `unknown_task` of the record
+`close` runs its steps in order, `git worktree remove` (with `--force` when the close is forced or
+the worktree has submodules, since Git removes a worktree holding submodule checkouts only then),
+the record update, the end of the trace node, the append to the decision log and the move of the
+task's folder to the history, and a refusal after a step leaves what the steps before it did. It
+never runs `git submodule deinit`, which would unregister the submodules in the configuration every
+worktree shares. A `worktree_failed` from the removal says that the worktree is as Git left it and
+the record unchanged; a `record_conflict`, `record_unwritable` or `unknown_task` of the record
 update after the worktree was removed names the removed worktree and says the task keeps its
 state without it; a `decision_log_failed` names the task's stored state, outcome and time. Each
 says that running the same close again, with the same options, finishes it once the cause is

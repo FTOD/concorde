@@ -1113,7 +1113,7 @@ def show_task(primary: Path, task_id: str) -> dict:
 
 def _changes(worktree: Path) -> list[str]:
     """The worktree's uncommitted changes as ``git status`` entries, changes inside a submodule
-    included, without the new paths Git cannot version: a sandbox's ``/dev/null`` mounts of paths
+    included whatever its ``ignore`` setting, without the new paths Git cannot version: a sandbox's ``/dev/null`` mounts of paths
     such as ``.bashrc`` are neither a file, a symbolic link nor a directory, are no content of the
     task, and Delivery leaves them out as well."""
     if not worktree.exists():
@@ -1125,6 +1125,7 @@ def _changes(worktree: Path) -> list[str]:
         "-z",
         "--no-renames",
         "--untracked-files=all",
+        "--ignore-submodules=none",
         check=False,
     ).stdout
     entries = [entry for entry in raw.split("\0") if entry]
@@ -1399,40 +1400,25 @@ def close_locked(
             "dirty_worktree", _dirty_detail(worktree) + "; pass --force to discard them"
         )
     removed = False
-    submodules = worktree.exists() and (worktree / ".gitmodules").exists()
-    if submodules:
-        # Git removes a worktree that holds submodule repositories only with --force. Deinit
-        # first: it refuses local changes in a submodule unless the close is forced, so the
-        # forced removal below discards nothing the checks above would have kept.
-        arguments = ["submodule", "deinit", "--all", *(["--force"] if force else [])]
-        result = _git(worktree, *arguments, check=False)
-        if result.returncode != 0:
-            raise TaskError(
-                "worktree_failed",
-                f"git {' '.join(arguments)} in {worktree} exited {result.returncode}: "
-                f"{result.stderr.strip()}; Git may have deinitialized the submodules before "
-                f"the one it stopped at (`git submodule update --init` in {worktree} restores "
-                f"them), the worktree stays and the record of task {task_id} is unchanged; "
-                f"once the cause is fixed, {again} finishes the close",
-            )
     if worktree.exists():
+        # Git removes a worktree that holds submodule checkouts only with --force, which also
+        # removes their repositories under the worktree's own administrative directory. The
+        # checks above already refused a change inside a submodule unless the close is forced,
+        # so the forced removal discards nothing they would have kept. Never `git submodule
+        # deinit` here: it would unregister the submodules in the configuration every worktree
+        # of the repository shares.
+        submodules = (worktree / ".gitmodules").exists()
         arguments = ["worktree", "remove", str(worktree)]
         if force or submodules:
             arguments.insert(2, "--force")
         result = _git(primary, *arguments, check=False)
         if result.returncode != 0:
-            done = (
-                f"this close deinitialized the submodules of {worktree} "
-                f"(`git submodule update --init` there restores them)"
-                if submodules
-                else "this close changed nothing before it"
-            )
             raise TaskError(
                 "worktree_failed",
                 f"git {' '.join(arguments)} exited {result.returncode}: "
-                f"{result.stderr.strip()}; {done}, the worktree is as Git left it and the "
-                f"record of task {task_id} is unchanged; once the cause is fixed, {again} "
-                "finishes the close",
+                f"{result.stderr.strip()}; this close changed nothing before it, the worktree "
+                f"is as Git left it and the record of task {task_id} is unchanged; once the "
+                f"cause is fixed, {again} finishes the close",
             )
         removed = True
     primary_head = _git(primary, "rev-parse", "HEAD").stdout.strip()
