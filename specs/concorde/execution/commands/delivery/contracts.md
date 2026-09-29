@@ -15,8 +15,9 @@ concorde: deliver <workspace>
 The commit uses the repository's configured author identity and runs the repository's commit hooks
 normally. Its parent is the head of the workspace's bound branch that the delivery validated, whose
 commits since the base commit the readiness examined. It contains every uncommitted change of the
-workspace that Git does not ignore, except an untracked path Git cannot version (neither a regular
-file, a symbolic link nor a directory), and the metadata changed by the applied confirmations; when
+workspace that Git does not ignore, except the untracked paths Validation's
+[input measurement](../validation/contracts.md#input-measurement) leaves out as no content of the
+task, and the metadata changed by the applied confirmations; when
 every step was committed before and nothing was confirmed, it changes nothing and is still made, as
 the mark of the delivery.
 

@@ -29,8 +29,8 @@ what the same run validated. It builds on Validation's
 A **[delivery commit](../../../glossary.json#concept.delivery-commit)** has subject
 `concorde: deliver <workspace>`, which marks it as a delivery, and the goal as body. Its parent is
 the branch head Delivery validated; it contains the cleared markers and every uncommitted change
-except what Git ignores and untracked paths Git cannot version, such as a sandbox's `/dev/null`
-mounts — only any cleared markers, and so possibly nothing, when every step was already committed.
+except what Git ignores and the untracked paths Validation's input measurement leaves out, such as
+a sandbox's `/dev/null` mounts and placeholder files — only any cleared markers, and so possibly nothing, when every step was already committed.
 A workspace may be delivered several times — another `implement` after a code review, say — each a
 new commit on top, never amended. The delivery commits are the only record of the deliveries:
 Delivery writes no [task record](../../../glossary.json#concept.task-record) and keeps no list of

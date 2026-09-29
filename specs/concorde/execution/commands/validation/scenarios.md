@@ -62,6 +62,15 @@ readiness is defined in the [contracts](contracts.md).
 - WHEN the submodule is moved to another commit
 - THEN the submodule is a changed path and an uncommitted change
 
+### scenario.validation.sandbox-placeholder — A sandbox's placeholder file is not measured
+
+- GIVEN a workspace with an uncommitted change
+- AND an untracked empty `.bashrc` with no write bits and one link, the placeholder Claude Code's Bash sandbox creates before it mounts `/dev/null` there
+- AND an untracked empty `notes/empty.txt` with write bits and an untracked read-only `notes/frozen.txt` with content, which the task created
+- WHEN `task-validation` runs
+- THEN `.bashrc` is no changed path and no blocking finding, and it alone is no uncommitted change
+- BUT `notes/empty.txt` and `notes/frozen.txt` are changed paths, each reported as `unbound`
+
 ### scenario.validation.mode-change — A changed file mode changes the input digest
 
 - GIVEN a workspace with a changed regular file
