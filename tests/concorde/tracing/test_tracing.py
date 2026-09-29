@@ -308,6 +308,20 @@ class TracingTests(unittest.TestCase):
         with self.assertRaises(retention.ConfigError):
             retention.prune(self.concorde, moment=now)
 
+    def test_a_workspace_folder_without_a_task_is_shown(self):
+        workspace = self.root / "elsewhere" / "workspace-folder"
+        run = layout.run_folder(workspace, "r-20260927T100100-implement-00000001")
+        ended(
+            run,
+            run.name,
+            "run",
+            metadata={"workspace": "adhoc"},
+            used={"cost_usd": 0.5},
+        )
+        value = reader.view(workspace, self.concorde)
+        self.assertEqual(("workspace", "adhoc"), (value["kind"], value["id"]))
+        self.assertEqual(0.5, value["rolled_up"]["cost_usd"])
+
     def test_a_lock_names_its_holder_and_refuses_a_second_holder(self):
         path = layout.lock_file(self.concorde, "workspace", "retry")
         with locks.hold(path, "implement run r-1"):

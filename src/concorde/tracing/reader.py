@@ -114,7 +114,13 @@ def view(
     """
     folder = Path(folder)
     record = read(folder)
-    is_workspace = record is None and _is_workspace(folder)
+    # A workspace folder has no record of its own: below a task's node, or any folder a binding
+    # names that holds runs or a workflow, whoever prepared the workspace.
+    is_workspace = record is None and (
+        _is_workspace(folder)
+        or (folder / "runs").is_dir()
+        or (folder / "workflow").is_dir()
+    )
     if record is None and not is_workspace:
         raise ReadError("node_unreadable", f"{folder} holds no readable {layout.TRACE}")
     if record is not None:
