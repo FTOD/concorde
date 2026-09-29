@@ -1,12 +1,13 @@
 {
   "schema_version": 1,
   "enabled_models": {
-    "local-openai/gpt-6": {},
+    "local-openai/gpt-6-astra": {},
+    "local-openai/gpt-6.1-sol": {},
     "anthropic/claude-opus-5-5": {}
   },
   "default": {
     "backend": "pi",
-    "model": "local-openai/gpt-6",
+    "model": "local-openai/gpt-6-astra",
     "reasoning": "medium"
   },
   "operations": {
@@ -16,11 +17,11 @@
           "model": "anthropic/claude-opus-5-5"
         },
         "reviewer2": {
-          "model": "local-openai/gpt-6",
+          "model": "local-openai/gpt-6-astra",
           "reasoning": "high"
         },
         "reviewer3": {
-          "model": "local-openai/gpt-6",
+          "model": "local-openai/gpt-6.1-sol",
           "reasoning": "medium"
         }
       }
