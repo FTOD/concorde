@@ -763,11 +763,7 @@ class TaskStoreTests(unittest.TestCase):
         head = self.deliver()
         shown = store.show_task(self.root, "t1")
         self.assertEqual("delivered", shown["record"]["state"])
-        self.assertEqual([head], [item["commit"] for item in shown["deliveries"]])
-        self.assertEqual(
-            ".concorde/evidence/t1/1.json", shown["deliveries"][0]["bundle"]
-        )
-        self.assertEqual([], shown["deliveries"][0]["mismatches"])
+        self.assertEqual([{"commit": head, "mismatches": []}], shown["deliveries"])
         # A run that changes nothing leaves the task delivered.
         write_run(self.root, "r-20260927T000000-test-00000001", "t1", name="test")
         self.assertEqual("delivered", self.state())
@@ -780,8 +776,8 @@ class TaskStoreTests(unittest.TestCase):
         second = self.deliver()
         self.assertEqual("delivered", self.state())
         self.assertEqual(
-            [".concorde/evidence/t1/1.json", ".concorde/evidence/t1/2.json"],
-            [item["bundle"] for item in store.show_task(self.root, "t1")["deliveries"]],
+            [head, second],
+            [item["commit"] for item in store.show_task(self.root, "t1")["deliveries"]],
         )
         self.assertEqual(second, git(self.root, "rev-parse", "concorde/t1"))
 
@@ -826,14 +822,13 @@ class TaskStoreTests(unittest.TestCase):
     def test_a_delivery_commit_that_does_not_verify_is_not_delivered(self):
         self.project.open_task("t1")
         worktree = self.project.worktree("t1")
-        # Only the subject and trailers of a delivery commit, and no bundle.
-        head = deliver(worktree, bundle_run=None)
+        # The subject of a delivery commit on a commit with two parents.
+        head = deliver(worktree, verifies=False)
         shown = store.show_task(self.root, "t1")
         self.assertEqual("active", shown["record"]["state"])
         self.assertEqual([head], [item["commit"] for item in shown["deliveries"]])
         (mismatch,) = shown["deliveries"][0]["mismatches"]
-        self.assertIn(".concorde/evidence/t1/1.json", mismatch)
-        self.assertIn("not in the commit", mismatch)
+        self.assertIn("it has 2 parent(s)", mismatch)
         self.assertEqual(
             ["active"], [item["state"] for item in store.list_tasks(self.root)]
         )
@@ -850,18 +845,11 @@ class TaskStoreTests(unittest.TestCase):
         self.assertIn(mismatch, error["detail"])
         self.assertEqual(before, self.record())
         self.assertTrue(worktree.exists())
-        # A bundle whose readiness run is not the trailer's does not verify either.
-        second = deliver(worktree, text="second = True\n", bundle_run="r-other")
-        shown = store.show_task(self.root, "t1")
-        self.assertEqual("active", shown["record"]["state"])
-        self.assertEqual(second, shown["deliveries"][1]["commit"])
-        (mismatch,) = shown["deliveries"][1]["mismatches"]
-        self.assertIn("readiness run r-other", mismatch)
         # The next delivery that verifies delivers the task.
-        deliver(worktree, text="third = True\n")
+        deliver(worktree, text="second = True\n")
         shown = store.show_task(self.root, "t1")
         self.assertEqual("delivered", shown["record"]["state"])
-        self.assertEqual([], shown["deliveries"][2]["mismatches"])
+        self.assertEqual([], shown["deliveries"][1]["mismatches"])
 
     @verifies("scenario.tasks.close-merged")
     def test_close_a_merged_task(self):
@@ -884,6 +872,12 @@ class TaskStoreTests(unittest.TestCase):
         history = self.history()
         self.assertEqual(value, json.loads((history / "task.json").read_text()))
         self.assertIn("## Closed: merged", (history / "decisions.md").read_text())
+        # A merge made by hand has no merge commit to carry the log, so the close commits it
+        # alone, with its closing, on top of the merged head.
+        self.assertEqual(
+            [head], git(self.root, "rev-list", "--parents", "-n1", "HEAD").split()[1:]
+        )
+        self.assert_log_committed("t1", history)
         self.assertTrue((history / "workspace").is_dir())
         self.assertFalse((history / "runtime").exists())
         node = trace.read(history)
@@ -991,6 +985,56 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual("dirty = True\n", (worktree / "src/a/calc.py").read_text())
         self.assertEqual(before, self.record())
+
+    def assert_log_committed(self, key, history, task_id="t1"):
+        """The primary branch's head commits the history's decision log alone as ``key``."""
+        path = f".concorde/decisions/{key}.md"
+        self.assertEqual(
+            [path], git(self.root, "show", "--name-only", "--format=", "HEAD").split()
+        )
+        self.assertEqual(
+            (history / "decisions.md").read_text().strip(),
+            git(self.root, "show", f"HEAD:{path}"),
+        )
+        message = git(self.root, "log", "-1", "--format=%B")
+        self.assertTrue(
+            message.startswith(f"concorde: keep the decision log of {task_id}\n"),
+            message,
+        )
+        self.assertTrue(message.endswith(f"Concorde-Task: {task_id}"), message)
+
+    @verifies("scenario.tasks.close-commits-log")
+    def test_a_close_commits_the_decision_log_alone(self):
+        self.project.open_task("t1")
+        before = git(self.root, "rev-parse", "HEAD")
+        # The primary worktree's own changes, staged and not, are no part of the commit.
+        (self.root / "src/a/calc.py").write_text("staged = True\n")
+        git(self.root, "add", "src/a/calc.py")
+        (self.root / "src/bmod/secret.py").write_text("unstaged = True\n")
+        changes = git(self.root, "status", "--porcelain", "--untracked-files=no")
+        # On a detached HEAD there is no branch to commit on: the close stops before moving.
+        git(self.root, "checkout", "-q", "--detach")
+        arguments = ("t1", "--failed", "--reason", "the probe failed", "--no-error")
+        status, value = self.close(*arguments)
+        self.assertEqual(1, status, value)
+        self.assertEqual("decision_log_uncommitted", value["error"]["code"])
+        self.assertIn("detached HEAD", value["error"]["detail"])
+        self.assertEqual(before, git(self.root, "rev-parse", "HEAD"))
+        self.assertTrue(self.folder().exists())
+        self.assertFalse((self.root / ".concorde/decisions").exists())
+        self.assertEqual("failed", self.record()["state"])
+        git(self.root, "checkout", "-q", "-")
+        status, value = self.close(*arguments)
+        self.assertEqual(0, status, value)
+        self.assertEqual(
+            [before], git(self.root, "rev-list", "--parents", "-n1", "HEAD").split()[1:]
+        )
+        self.assert_log_committed("t1", self.history())
+        self.assertIn("the probe failed", (self.history() / "decisions.md").read_text())
+        self.assertEqual(
+            changes, git(self.root, "status", "--porcelain", "--untracked-files=no")
+        )
+        self.assertFalse(self.folder().exists())
 
     @verifies("scenario.tasks.close-completed")
     def test_close_a_task_that_reached_its_goal_without_merging(self):
@@ -1252,6 +1296,16 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             ["first", "second"], [item["closed"]["note"] for item in listed]
         )
+        # Each key's decision log is committed; once retention removed the history folders,
+        # the committed logs alone keep their keys taken.
+        for key in ("retry", "retry.2"):
+            self.assertTrue((self.root / f".concorde/decisions/{key}.md").is_file())
+            shutil.rmtree(self.history(key))
+        git(self.root, "branch", "-D", "concorde/retry")
+        self.project.open_task("retry")
+        status, value = self.close("retry", "--completed", "--note", "third")
+        self.assertEqual((0, "retry.3"), (status, value["closed"]["history"]), value)
+        self.assert_log_committed("retry.3", self.history("retry.3"), "retry")
 
     def read_only_log(self, task_id="t1"):
         log = self.folder(task_id) / "decisions.md"

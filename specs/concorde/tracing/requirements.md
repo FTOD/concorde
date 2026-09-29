@@ -46,10 +46,9 @@ another machine.
 
 ### req.tracing.created-or-found — A reference tells what the node created from what it found
 
-A [trace node](../glossary.json#concept.trace-node) SHALL reference a commit or an
-[evidence bundle](../glossary.json#concept.evidence-bundle) with the relation `commit` or `bundle`
-only when the node itself created it, and one an earlier node created, which it found and reports,
-with `found_commit` or `found_bundle`.
+A [trace node](../glossary.json#concept.trace-node) SHALL reference a commit with the relation
+`commit` only when the node itself created it, and one an earlier node created, which it found and
+reports, with `found_commit`.
 
 A reader that follows a node's `commit` references therefore finds only the work of that node, and
 still reaches the existing work a node reported, as
@@ -110,8 +109,14 @@ when that process ends.
 
 ### req.tracing.history-unchanged — The history is not changed
 
-No Concorde command SHALL change a file inside a history folder; a history folder is only removed
-whole, by retention.
+No Concorde command SHALL change a file inside a history folder; retention only removes a history
+folder whole or removes its conversation records.
+
+### req.tracing.conversations-shorter — Conversation records have their own retention
+
+Retention SHALL remove the conversation records of a history folder whose task was closed longer ago
+than the configuration's `conversation_days`, 30 by default, and leave every other file of that
+folder in place until the folder itself expires.
 
 ### req.tracing.retention-explicit — Traces are removed only at defined points
 

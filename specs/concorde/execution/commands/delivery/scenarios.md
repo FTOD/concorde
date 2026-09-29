@@ -1,7 +1,7 @@
 # Delivery scenarios
 
 Concrete situations that show the [requirements](requirements.md) of [Delivery](module.md). The
-commit, bundle and output are defined in the [contracts](contracts.md).
+commit and output are defined in the [contracts](contracts.md).
 
 ## Delivering
 
@@ -10,8 +10,8 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - GIVEN a task worktree bound to the workspace `severity` on the branch `concorde/severity`, with uncommitted changes that pass validation
 - WHEN the task level runs `concorde delivery` there
 - THEN Delivery decides the readiness itself and names its own run as the readiness run
-- AND a [delivery commit](../../../glossary.json#concept.delivery-commit) `concorde: deliver severity` with the trailers `Concorde-Workspace`, `Concorde-Evidence` and `Concorde-Readiness` is created on `concorde/severity` with the validated head as its parent
-- AND it contains every uncommitted change and the [evidence bundle](../../../glossary.json#concept.evidence-bundle) `.concorde/evidence/severity/1.json`
+- AND a [delivery commit](../../../glossary.json#concept.delivery-commit) `concorde: deliver severity`, with the goal as body and no trailer, is created on `concorde/severity` with the validated head as its parent
+- AND it contains every uncommitted change and nothing else
 - AND the result has kind `command`, no worker and status `ok`, with the commit as output, and the worktree is clean
 - BUT no [task record](../../../glossary.json#concept.task-record) changes: the task level reads the delivery back from the commit
 
@@ -46,7 +46,7 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - GIVEN a workspace with an uncommitted change, seen from inside a sandbox that hides `.bashrc` behind a `/dev/null` mount
 - WHEN delivery runs inside that sandbox
 - THEN the readiness's changed paths do not include `.bashrc`
-- AND the delivery commit contains the change and the bundle but not `.bashrc`
+- AND the delivery commit contains the change but not `.bashrc`
 
 ### scenario.delivery.committed — Deliver a workspace whose steps are committed
 
@@ -55,21 +55,20 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - AND no pending realization entry whose file exists, so there is nothing to confirm
 - WHEN delivery runs
 - THEN Delivery validates every change since the base commit
-- AND the delivery commit, on top of the last step, adds only the evidence bundle
+- AND the delivery commit, on top of the last step, changes no file and marks the delivery by its subject
 
 ### scenario.delivery.confirmations — Pending markers are cleared in the commit
 
 - GIVEN a workspace whose readiness lists a confirmation for a filled pending entry
 - WHEN the workspace is delivered
 - THEN the delivery commit contains the declaring metadata with that entry no longer pending
-- AND the output and the bundle list the confirmed entry
+- AND the output lists the confirmed entry
 
 ### scenario.delivery.second — Deliver again after further work
 
 - GIVEN a workspace delivered once, then changed further and validated again
 - WHEN delivery runs
-- THEN a second delivery commit is created on top of the first with bundle number 2
-- AND the bundle lists only the runs of the workspace that started after the first delivery run
+- THEN a second delivery commit is created on top of the first, and the output gives it sequence 2
 - AND the branch then holds both delivery commits, oldest first
 
 ## Refusing
@@ -95,7 +94,7 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - WHEN delivery runs
 - THEN the result has status `ok` and reports that commit with `recovered` true
 - AND nothing is committed
-- AND the run's [trace node](../../../glossary.json#concept.trace-node) references that commit with `found_commit` and its bundle with `found_bundle`, not with `commit` or `bundle`
+- AND the run's [trace node](../../../glossary.json#concept.trace-node) references that commit with `found_commit`, not with `commit`
 
 ### scenario.delivery.unbound — Delivery needs a bound workspace
 
@@ -111,7 +110,7 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a commit hook that rejects the commit
 - WHEN the workspace is delivered
 - THEN the result has status `failed` with the hook's output as host evidence
-- AND the confirmed metadata is restored, the bundle removed and the index restored with the changes staged before, including a staged version the worktree changed since, the intent-to-add path and both flags
+- AND the confirmed metadata is restored and the index restored with the changes staged before, including a staged version the worktree changed since, the intent-to-add path and both flags
 - AND a fresh measurement yields the readiness's input digest again
 - AND the branch holds no delivery commit
 
@@ -123,12 +122,12 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - BUT the commit's tree is not the tree recorded after staging, so the result has status `failed` with `commit_unverified`, reason `decision`, naming `src/a/calc.py` as changed
 - AND the commit stays on the branch, since Delivery never rewrites history
 
-### scenario.delivery.stage-refused — Git refuses to stage the bundle
+### scenario.delivery.stage-refused — Git refuses to stage a change
 
-- GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a Git clean filter that refuses the bundle's path
+- GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a Git clean filter that refuses one of its changed files, which the readiness's checks do not read through Git
 - WHEN the workspace is delivered
 - THEN the result has status `failed` with `stage_failed` and a `git add` cause carrying Git's output
-- AND after every other change was staged, the index is again exactly as before the delivery, and the confirmed metadata and the bundle are undone
+- AND the index is again exactly as before the delivery, and the confirmed metadata is undone
 - AND a fresh measurement yields the readiness's input digest again, and the branch holds no delivery commit
 
 ### scenario.delivery.unmerged-index — An unmerged index is refused before anything changes
@@ -137,7 +136,7 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - WHEN the workspace is delivered
 - THEN the result has status `failed` with `index_unrecorded`, reason `decision`, the unmerged path in its detail and options to resolve or abort the merge
 - AND its cause is the `git write-tree` link with Git's output
-- AND the index, the metadata and the branch are unchanged and no bundle is written
+- AND the index, the metadata and the branch are unchanged
 
 ### scenario.delivery.recover — A delivery interrupted after its commit needs no repair
 
@@ -146,13 +145,13 @@ commit, bundle and output are defined in the [contracts](contracts.md).
 - THEN no new commit is created
 - AND the output is the existing commit with `recovered` true and no confirmations, and the worktree is clean
 - AND the branch still holds exactly that one delivery commit, which alone records the delivery
-- AND the new run's trace node references that commit with `found_commit` and its bundle as `<commit>:<path>` with `found_bundle`
+- AND the new run's trace node references that commit with `found_commit`
 
 ### scenario.delivery.recover-unverified — A head that only looks delivered is not reported
 
-- GIVEN a clean workspace whose head has the subject and trailers of a delivery commit of the workspace
-- AND the head was cherry-picked onto another parent than its bundle's `parent_commit`, or its `Concorde-Readiness` trailer names another run than its bundle's readiness, or it adds no bundle
+- GIVEN a clean workspace whose head has the subject of a delivery commit of the workspace
+- AND the head is a merge commit, with two parents
 - WHEN delivery runs
-- THEN the result has status `failed` with `commit_unverified`, reason `decision`, naming each mismatch
+- THEN the result has status `failed` with `commit_unverified`, reason `decision`, naming the mismatch
 - AND no commit is created and the head is unchanged
-- AND the run's trace node references no commit and no bundle, created or found
+- AND the run's trace node references no commit, created or found

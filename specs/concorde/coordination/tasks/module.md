@@ -16,13 +16,15 @@ runs and its delivery commits; nothing below the task level reads or writes a ta
 main agent merges a delivered task, Tasks does the merge into the primary branch under a lock, so
 several main sessions never merge at once, and undoes it if the checks that follow fail; it records
 the merge in the task until the checks decided, so a merge interrupted halfway stops every task
-command that would build on it until it is resumed or aborted. Tasks is
+command that would build on it until it is resumed or aborted. When a task ends, merged or not,
+Tasks commits its decision log to the primary branch, so the reasons behind its choices travel with
+the code after the local records are gone. Tasks is
 independent of the sessions that work in its tasks: it does not start or follow them, which
 [Task sessions](../task-session/module.md) does, and it does not decide how work is split, which
 tasks run in parallel or when a task is merged. It never runs an
 [Operation](../../glossary.json#concept.operation) or an
 [execution command](../../glossary.json#concept.execution-command), never commits on a task branch,
-and never interprets the decision log.
+and never interprets the decision log, which it only copies into Git.
 
 ## Usage
 
@@ -127,7 +129,9 @@ the decisions and problems of a workflow's report, which Workflows saves beside 
 never writes here. `concorde task open` prints the log's path beside the new record, and
 `concorde task merge` warns when the log still holds only its heading and goal, since a task
 worked without writing it has lost the record of every decision taken alone. The main agent reads
-the log when it reports to the developer at the end of the task.
+the log when it reports to the developer at the end of the task. When the task ends, the log is
+committed to the primary branch as `.concorde/decisions/<history key>.md` (below), the one record
+of a task that Git keeps.
 
 When it cannot handle an error itself, the session escalates with `concorde task escalate`, naming
 the runs of the task's workspace, saved refusals or earlier escalations it cannot handle and
@@ -174,17 +178,16 @@ active -> failed: task close --failed
 delivered -> failed: task close --failed
 ```
 
-A task is **delivered** when its branch head is a delivery commit of its workspace that verifies
-against its [evidence bundle](../../glossary.json#concept.evidence-bundle) and its worktree is
-clean; **active** when its workspace has a run in the [run store](../../glossary.json#concept.run-store), running or finished, or its
+A task is **delivered** when its branch head is a delivery commit of its workspace that verifies,
+having exactly one parent as every commit Delivery creates has, and its worktree is clean; **active** when its workspace has a run in the [run store](../../glossary.json#concept.run-store), running or finished, or its
 branch moved past the base commit, or its worktree has uncommitted changes; and **open** before any
 of these. A run that changes nothing, such as a review after delivery, leaves a delivered task
 delivered; a change after the delivery commit, committed or not, makes it active until the next
 delivery. A new path Git cannot version, neither a file, a symbolic link nor a directory, such as
 one a sandbox hides behind a `/dev/null` mount, is no change of the worktree, as Delivery leaves it
 out of what it commits; a change inside a submodule is one, since removing the worktree would lose
-it. A head that carries the subject and trailers of a delivery commit but does not verify
-leaves the task active: `task show` lists it among the deliveries with its mismatches, and it is
+it. A head that carries the subject of a delivery commit but does not verify leaves the task
+active: `task show` lists it among the deliveries with its mismatches, and it is
 never merged (below). A task ends in one of two states, and the record keeps the outcome:
 
 - **closed** means the task was ended on purpose because it reached its goal. Merging is the usual
@@ -202,9 +205,9 @@ never merged (below). A task ends in one of two states, and the record keeps the
   whether an error caused the failure is never left unsaid.
 
 Closing without a merge refuses uncommitted changes unless `--force`. Closing appends the outcome,
-the note and any error chains to the decision log, removes the worktree, and with it the workspace
-binding, and moves the task's whole folder to the history, `.concorde/history/<task-id>/`, keeping
-the branch; no run of the task's workspace can start there any more, and a closed or failed task
+the note and any error chains to the decision log, commits the log (below), removes the worktree,
+and with it the workspace binding, and moves the task's whole folder to the history,
+`.concorde/history/<task-id>/`, keeping the branch; no run of the task's workspace can start there any more, and a closed or failed task
 stays so whatever happens afterwards. A task closes only once it has really ended: the close holds
 the task's workspace lock, so no run of it is running and none can start, while it moves the
 folder, and a close with `--completed` or `--failed` first stops the task's task sessions and the
@@ -212,9 +215,25 @@ runs of the workspace that still run, then waits for the lock. Just before the f
 sessions](../task-session/module.md#ending-claude-sessions) copies each Claude Code task session's
 transcript into the session's node, and once the task is closed it removes those sessions from
 Claude's session list; what it could not keep or remove is named in the close's `warnings`, and
-never fails the close. The history is never changed afterwards; [Tracing](../../tracing/module.md)'s retention may remove it whole. A
-task name used again after its branch was deleted gets a new history key, so no closed task
-replaces another. A
+never fails the close. The history is never changed afterwards;
+[Tracing](../../tracing/module.md)'s retention removes its conversation records after a while and
+may remove it whole. A task name used again after its branch was deleted gets a new history key,
+free both in the history and among the committed decision logs, so no closed task replaces another.
+
+<a id="decision-log-in-git"></a>
+
+**The decision log in Git.** Every task that ends leaves its decision log on the primary branch at
+`.concorde/decisions/<history key>.md`. A task merged with `concorde task merge` carries it in its
+merge commit (below), as the log stood when it was merged. A task closed any other way, with
+`--completed`, `--failed` or `--merged` after a merge made by hand, gets a commit of that file
+alone on the primary branch, with the subject `concorde: keep the decision log of <task-id>` and the
+trailer `Concorde-Task: <task-id>`, made after the closing was appended and under the merge lock the
+close holds; other changes of the primary worktree, staged or not, stay as they were and are not
+committed. A close whose history key's file the primary branch already holds commits nothing. When
+Git refuses that commit, such as on a detached `HEAD` or during an unfinished merge in the primary
+worktree, the close refuses with `decision_log_uncommitted`, after the record was closed and the log
+appended, and leaves the folder current: the same close run again commits the log and finishes.
+The log in Git is a copy: the task's folder keeps its own, and nothing reads the copy back. A
 worktree with checked-out submodules, such as the vendored references, is removed too: its
 submodules are deinitialized first, which refuses a submodule with local changes unless `--force`,
 and only then is the worktree removed.
@@ -241,9 +260,14 @@ could not be closed as merged apart from not being merged yet (`not_merged`,
 primary worktree with uncommitted or untracked paths or a detached `HEAD` (`primary_dirty`). The
 branch head those checks accepted, the task's latest delivery commit, is the commit it merges: it
 records the task as **merging**, with the primary branch's commit before the merge, that checked
-commit and the checks it will run, and only then runs `git merge <checked commit>` there, never
-`git merge` of the branch name, which could take a commit nobody checked. A conflict is aborted and refused with `merge_conflict`, naming the
-paths: the conflict is resolved in the task worktree by merging the primary branch into the task
+commit, the history key the task will close under and the checks it will run, and only then runs
+`git merge --no-ff --no-commit <checked commit>` there, never `git merge` of the branch name, which
+could take a commit nobody checked. It then adds the task's decision log as
+`.concorde/decisions/<history key>.md` and commits the merge with the trailer
+`Concorde-Task: <task-id>`, so the merge commit is always a real merge, even where the primary
+branch could fast-forward: its second parent is the delivery commit and it carries the log that
+explains it. A Git refusal of that commit aborts the merge, removes the log's copy and refuses with
+`git_failed`. A conflict is aborted and refused with `merge_conflict`, naming the paths: the conflict is resolved in the task worktree by merging the primary branch into the task
 branch, validating and delivering again, never in the primary worktree. After the merge, Tasks
 records the merge commit and runs the checks in the primary worktree: `concorde spec-validation`
 of the merged checkout by default, or exactly the `--check` commands given, such as a project that
@@ -266,7 +290,7 @@ direction: down
 locks: "Take the workspace lock, then the merge lock"
 preflight: "Check the task and the primary worktree"
 record: "Record the task merging"
-merge: "git merge the checked commit"
+merge: "git merge the checked commit, add the decision log, commit"
 checks: "Run the checks on the merge commit"
 reset: "git reset --keep to the commit before"
 close: "Close the task as merged"
@@ -396,9 +420,9 @@ siblings of the path to its own worktree.
 Task folders live in the primary worktree, not the task worktrees: the main agent works there and
 must see every task in one place, including ones whose worktree is gone; and a task worktree is
 exactly what workers and Delivery commit, so records kept there would be swept into commits.
-`.concorde/tasks/` and `.concorde/history/` are thus local, Git-ignored state: the
-[evidence bundle](../../glossary.json#concept.evidence-bundle) Delivery commits is what travels with
-the code. Any process finds the primary worktree through Git's common directory. One folder per
+`.concorde/tasks/` and `.concorde/history/` are thus local, Git-ignored state: what travels with the
+code is the [delivery commit](../../glossary.json#concept.delivery-commit) and, once the task ended,
+its decision log, which Tasks commits to the primary branch. Any process finds the primary worktree through Git's common directory. One folder per
 task, organized by the task's lifecycle as [Tracing](../../tracing/module.md) lays it out, means a
 task's record, log, sessions and runs are read in one place and ended in one move; the record
 stays small because the task's history is its trace, which only grows by new nodes.
@@ -445,6 +469,27 @@ The decision log is free Markdown, since its readers are the main agent and the 
 Tasks gives it only a fixed place and lifetime. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
+### Why the decision log goes to Git
+
+Of everything a task leaves, the decision log is what a later reader of the code needs: the
+decisions taken without the developer, the escalations and their answers, the results that were not
+`ok` with their error chains, a few kilobytes per task. The rest of a task's folder, above all the
+transcripts of its sessions and workers, is large, local and removed by retention. So the log is
+committed when the task ends, and nothing else of the folder is.
+
+Tasks commits it, not Delivery, because Delivery is part of Execution and knows no task, while the
+log lives in the task's folder of the primary worktree and belongs to the task level. A merged task
+carries its log in its merge commit, so that Git itself relates the two: the commit that brings the
+delivery into the primary branch, whose second parent is the delivery commit, adds the log that
+explains it, and a merge undone by a failed check takes its log with it. That is why a merge always
+makes a merge commit. A task that ends without a merge has no such commit, so its log gets one of
+its own; every ended task is thus in Git, completed and failed ones too. The log's file is named by
+the history key rather than the task's name, and a key is free only when neither the history nor
+the committed logs hold it, because a task name can be used again once its branch is deleted, and
+retention may by then have removed the earlier task's history folder while its log stays in Git.
+The merge records the key it chose in the `merging` record, so that `--resume` closes the task under
+the key its merge commit already used.
+
 <a id="realization.tasks.store"></a>
 
 The **[Task](../../glossary.json#concept.task) store** realization holds the `concorde task`
@@ -452,7 +497,7 @@ commands (`cli.py`), the records, the derived state, the binding written at open
 updates task sessions call (`store.py`), the merge under the merge lock (`merge.py`), and their
 tests, run on real Git repositories with delivery commits and run store entries written the way
 Execution writes them. It is the only writer of task records, writing each decision log once, at
-open, and appending only escalations and closings. The command dispatches `concorde task session` to
+open, appending only escalations and closings, and committing a copy of it when the task ends. The command dispatches `concorde task session` to
 the code of Task sessions.
 
 Record, log and state fit together this way:
@@ -469,7 +514,7 @@ tasks: Tasks {
   task: Task
   lock: Merge lock
   store -> record: writes
-  store -> log: creates
+  store -> log: creates, commits a copy of
   store -> lock: holds while merging, opening or closing
   record -> task: describes
   log -> task: explains the choices of
@@ -487,12 +532,13 @@ the task level alone knows: why the task exists, what it may touch, who escalate
 sessions work it and how it ended. Everything about what happened in the worktree is read where
 Execution recorded it, each time Tasks needs it: a task is active when its workspace has a run or a
 change, delivered when Git shows a delivery commit of its workspace at the branch head with nothing
-after it and that commit verifies against the evidence bundle it carries, and mergeable only then.
-The subject and trailers alone would not do: any commit can carry them, and only the bundle ties the
-commit to the readiness it claims. With no second copy there is nothing to recover and nothing that
-can disagree.
+after it and that commit has exactly one parent, and mergeable only then. The subject is a mark, not
+a proof: only the task level and Delivery commit on the branch, and the task level has no reason to
+forge the mark, while the one-parent check keeps a merge that happens to carry the subject, such as
+one resolving a conflict, from counting. With no second copy there is nothing to recover and nothing
+that can disagree.
 
-Deriving costs a scan of the workspace folder, a `git log` of the task branch and a few Git reads to
+Deriving costs a scan of the workspace folder, a `git log` of the task branch and a Git read to
 verify its head whenever a task is listed or shown, which is small next to what a run costs, and it
 holds however a run ended: a run whose runner died is `lost` in the listing, and the kernel has
 already released its workspace lock.
@@ -530,20 +576,15 @@ neither finished nor alive is shown as `lost` rather than trusted as running.
 
 **Delivery** commits a delivered workspace as a
 [delivery commit](../../glossary.json#concept.delivery-commit) on the bound
-branch, whose subject and trailers name the workspace, its evidence bundle and the run that decided
-its readiness. Tasks relies on that commit being the only record of a delivery and reads the
-delivery commits of the task's workspace on the task branch since its base commit, with Delivery's
-own reader, to derive `delivered`, to list deliveries in `task show`, and to decide whether a task
-may be merged or closed as merged. A task branch with no delivery commit is refused with
-`not_merged`. Subject and trailers alone, which any commit can carry, do not make a delivery:
-Tasks counts the head as delivered only when it verifies against its
-[evidence bundle](../../execution/commands/delivery/contracts.md#contract.delivery.evidence-bundle)
-by Delivery's own check, the one Delivery applies before it reports a delivered head
+branch, whose subject names the workspace. Tasks relies on that commit being the only record of a
+delivery and reads the delivery commits of the task's workspace on the task branch since its base
+commit, with Delivery's own reader, to derive `delivered`, to list deliveries in `task show`, and to
+decide whether a task may be merged or closed as merged. A task branch with no delivery commit is
+refused with `not_merged`. Tasks counts the head as delivered only when it verifies by Delivery's
+own check, the one Delivery applies before it reports a delivered head
 ([req.delivery.recovered-verified](../../execution/commands/delivery/requirements.md#req.delivery.recovered-verified)):
-its only parent is the bundle's `parent_commit`, it adds the bundle its `Concorde-Evidence` trailer
-names, and the bundle's readiness run is its `Concorde-Readiness` trailer. A head that does not
-verify is refused with `delivery_unverified`, naming each mismatch, since it may not hold what was
-validated.
+it has exactly one parent. A head that does not verify is refused with `delivery_unverified`,
+naming the mismatch, since Delivery did not create it.
 
 - <a id="uses-task-session"></a>**Task sessions** starts
   [task sessions](../../glossary.json#concept.task-session) when `concorde task session`

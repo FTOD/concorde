@@ -5,7 +5,8 @@ before the merge to the close after it: the merge, the post-merge checks, the re
 merge whose checks failed, and closing the task. The kernel releases the lock however the process
 ends, so no other session has to wait for this one to announce that it is done. It also holds the
 task's workspace lock, so no run of the task changes its branch meanwhile, and merges the exact
-commit it checked. Before ``git merge`` it stores the task as ``merging``; a process that ends
+commit it checked, always as a merge commit that also adds the task's decision log as
+``.concorde/decisions/<history key>.md`` and names the task in its ``Concorde-Task`` trailer. Before ``git merge`` it stores the task as ``merging``; a process that ends
 before its checks decided leaves that state behind, which refuses every other mutating task
 command until ``--resume`` reruns the checks or ``--abort`` resets the primary branch.
 
@@ -257,22 +258,78 @@ def _rollback(primary: Path, task_id: str, before: str, failure: str) -> str:
     return f"; the primary branch is back at {before}, clean"
 
 
-def _merge(primary: Path, record: dict, branch: str, before: str, checked: str) -> str:
-    """Merge the checked commit; the merge's head, or an aborted conflict refused."""
-    message = f"Merge branch '{record['branch']}' at {checked}"
+def _merge(
+    primary: Path, record: dict, branch: str, before: str, checked: str, key: str
+) -> str:
+    """Merge the checked commit as a merge commit that adds the task's decision log; the
+    merge's head, or an aborted conflict or Git refusal refused."""
     merged = store._git(
-        primary, "merge", "--no-edit", "-m", message, checked, check=False
+        primary, "merge", "--no-ff", "--no-commit", checked, check=False
     )
-    if merged.returncode == 0:
+    if merged.returncode != 0:
+        output = (merged.stdout + merged.stderr).strip() or "(no output)"
+        conflicts = store._git(
+            primary, "diff", "--name-only", "--diff-filter=U", check=False
+        ).stdout.split()
+        failure = (
+            f"git merge --no-ff --no-commit {checked} ({record['branch']}) into {branch} of "
+            f"{primary} exited {merged.returncode}: {output[-OUTPUT_TAIL:]}"
+        )
+        _undo_merge(primary, record, branch, before, failure, conflicts)
+    in_progress = store._git(
+        primary, "rev-parse", "-q", "--verify", "MERGE_HEAD", check=False
+    )
+    if in_progress.returncode != 0:
+        # Already contained: nothing to merge, and closing commits the decision log alone.
         return _head(primary)
-    output = (merged.stdout + merged.stderr).strip() or "(no output)"
-    conflicts = store._git(
-        primary, "diff", "--name-only", "--diff-filter=U", check=False
-    ).stdout.split()
-    failure = (
-        f"git merge {checked} ({record['branch']}) into {branch} of {primary} exited "
-        f"{merged.returncode}: {output[-OUTPUT_TAIL:]}"
-    )
+    path = store.committed_log(key)
+    target = primary / path
+    source = store.decision_log_path(primary, record["id"])
+    message = f"Merge branch '{record['branch']}' at {checked}\n\nConcorde-Task: {record['id']}\n"
+    try:
+        if source.is_file():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(source.read_bytes())
+            added = store._git(primary, "add", "-f", "--", path, check=False)
+            if added.returncode != 0:
+                raise OSError(
+                    f"git add -f {path} exited {added.returncode}: "
+                    f"{(added.stdout + added.stderr).strip() or '(no output)'}"
+                )
+        committed = subprocess.run(
+            ["git", "commit", "-q", "-F", "-"],
+            cwd=primary,
+            input=message,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if committed.returncode != 0:
+            raise OSError(
+                f"git commit of the merge exited {committed.returncode}: "
+                f"{(committed.stdout + committed.stderr).strip()[-OUTPUT_TAIL:] or '(no output)'}"
+            )
+    except OSError as error:
+        failure = (
+            f"merging {checked} ({record['branch']}) into {branch} of {primary} with the "
+            f"decision log {source} as {path} failed: {error}"
+        )
+        _undo_merge(primary, record, branch, before, failure, [], target)
+    return _head(primary)
+
+
+def _undo_merge(
+    primary: Path,
+    record: dict,
+    branch: str,
+    before: str,
+    failure: str,
+    conflicts: list[str],
+    written: Path | None = None,
+) -> None:
+    """Abort the merge in progress, remove the decision log it wrote, return the primary branch
+    to ``before`` and the task to delivered, and refuse with ``merge_conflict`` or
+    ``git_failed``."""
     in_progress = store._git(
         primary, "rev-parse", "-q", "--verify", "MERGE_HEAD", check=False
     )
@@ -286,6 +343,8 @@ def _merge(primary: Path, record: dict, branch: str, before: str, checked: str) 
                 f"{_head(primary)} and its worktree as Git left it"
                 + _stays_merging(record["id"]),
             )
+    if written is not None:
+        written.unlink(missing_ok=True)
     left = (
         _rollback(primary, record["id"], before, failure)
         if _head(primary) != before
@@ -299,7 +358,15 @@ def _merge(primary: Path, record: dict, branch: str, before: str, checked: str) 
             f"{len(conflicts)} path(s): {_listed(conflicts)}; the merge was aborted{left} and "
             f"the task is still delivered",
         )
-    raise TaskError("git_failed", failure + left)
+    raise TaskError(
+        "git_failed",
+        failure
+        + (
+            left
+            or f"; the merge was aborted and the primary branch is back at {before}"
+        )
+        + "; the task is still delivered",
+    )
 
 
 def _check(
@@ -419,6 +486,7 @@ def _merge_new(primary: Path, task_id: str, commands: list[list[str]], waited) -
         "checked": checked,
         "branch": branch,
         "after": None,
+        "history": store.history_key(primary, task_id),
         "checks": commands,
         "since": store.now(),
         "pid": os.getpid(),
@@ -426,7 +494,7 @@ def _merge_new(primary: Path, task_id: str, commands: list[list[str]], waited) -
     store.begin_merge(primary, task_id, merging)
     attempt = Attempt(primary, task_id, "merge", merging, waited)
     try:
-        after = _merge(primary, record, branch, before, checked)
+        after = _merge(primary, record, branch, before, checked, merging["history"])
     except TaskError as refusal:
         attempt.refused(refusal)
         raise
@@ -492,9 +560,10 @@ def _checked_close(
             again=f"`concorde task merge {task_id} --resume`",
             before_move=lambda: attempt.end("ok", "merged"),
             warnings=warnings,
+            key=merging.get("history"),
         )
     except TaskError as error:
-        if error.code == "decision_log_failed":
+        if error.code in ("decision_log_failed", "decision_log_uncommitted"):
             raise TaskError(
                 error.code,
                 f"task {task_id} was merged into {branch} at {after}, every check passed and "

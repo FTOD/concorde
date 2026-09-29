@@ -1,10 +1,9 @@
 """Delivery commits and run store entries for task tests that need them without running delivery.
 
 A delivery commit is the only record of a delivery: ``deliver`` commits a change in a task worktree
-with the subject, trailers and evidence bundle ``concorde delivery`` writes, so the task level
-reads it back from Git as a real one that verifies, or, asked to, as one that does not.
-``write_run`` places a run result or progress file in the run store of the primary worktree, as
-the Execution runner would.
+with the subject and body ``concorde delivery`` writes, so the task level reads it back from Git as
+a real one that verifies, or, asked to, as one that does not. ``write_run`` places a run result or
+progress file in the run store of the primary worktree, as the Execution runner would.
 """
 
 from __future__ import annotations
@@ -13,16 +12,11 @@ import json
 import subprocess
 from pathlib import Path
 
-from concorde.delivery.bundle import (
-    build_bundle,
-    bundle_path,
-    commit_message,
-    delivery_commits,
-)
+from concorde.delivery.commits import commit_message
 from concorde.execution import binding
 
-READINESS_RUN = "r-20260927T000000-task_validation-0000000a"
 FIXED = "def add(a, b):\n    return a + b\n"
+IDENTITY = ("-c", "user.name=t", "-c", "user.email=t@t")
 
 
 def git(root: Path, *arguments: str, stdin: str | None = None) -> str:
@@ -41,56 +35,39 @@ def deliver(
     path: str = "src/a/calc.py",
     text: str = FIXED,
     *,
-    bundle_run: str | None = READINESS_RUN,
+    verifies: bool = True,
 ) -> str:
     """Change ``path`` in the bound ``worktree`` and commit it as the workspace's next delivery
-    commit, with an evidence bundle whose readiness run is ``bundle_run``; the new head.
+    commit; the new head.
 
-    The commit verifies when ``bundle_run`` is the ``Concorde-Readiness`` trailer's run, the
-    default; another run makes the bundle disagree, and None commits no bundle at all."""
+    The commit verifies by default; with ``verifies`` false it gets a second parent, a side
+    commit, as a merge given the delivery subject would, so it does not."""
     bound = binding.load(worktree)
     head = git(worktree, "rev-parse", "HEAD")
-    sequence = (
-        len(delivery_commits(worktree, bound["base_commit"], head, bound["workspace"]))
-        + 1
-    )
-    bundle = bundle_path(bound["workspace"], sequence)
     (worktree / path).write_text(text)
-    if bundle_run is not None:
-        value = build_bundle(
-            bound,
-            worktree,
-            [],
-            since=None,
-            run_id=bundle_run,
-            sequence=sequence,
-            parent=head,
-            readiness_run=bundle_run,
-            readiness={
-                "inputs": {"digest": "sha256:" + "0" * 64},
-                "modules": bound["modules"],
-                "checks": [],
-                "warnings": [],
-            },
-            confirmations=[],
-        )
-        (worktree / bundle).parent.mkdir(parents=True, exist_ok=True)
-        (worktree / bundle).write_text(json.dumps(value, indent=2) + "\n")
     git(worktree, "add", "-A")
-    git(
-        worktree,
-        "-c",
-        "user.name=t",
-        "-c",
-        "user.email=t@t",
-        "commit",
-        "-q",
-        "--cleanup=verbatim",
-        "-F",
-        "-",
-        stdin=commit_message(bound, bundle, READINESS_RUN),
+    message = commit_message(bound)
+    if verifies:
+        git(
+            worktree,
+            *IDENTITY,
+            "commit",
+            "-q",
+            "--cleanup=verbatim",
+            "-F",
+            "-",
+            stdin=message,
+        )
+        return git(worktree, "rev-parse", "HEAD")
+    tree = git(worktree, "write-tree")
+    side = git(
+        worktree, *IDENTITY, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", "side"
     )
-    return git(worktree, "rev-parse", "HEAD")
+    commit = git(
+        worktree, *IDENTITY, "commit-tree", tree, "-p", head, "-p", side, stdin=message
+    )
+    git(worktree, "update-ref", "HEAD", commit)
+    return commit
 
 
 def write_run(
@@ -156,4 +133,4 @@ def write_run(
     return path
 
 
-__all__ = ["FIXED", "READINESS_RUN", "deliver", "git", "write_run"]
+__all__ = ["FIXED", "deliver", "git", "write_run"]

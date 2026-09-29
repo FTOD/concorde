@@ -109,7 +109,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a task whose branch head is its first delivery commit, with a clean worktree
 - WHEN the main agent shows it
-- THEN it is `delivered`, and its deliveries list that commit with its [evidence bundle](../../glossary.json#concept.evidence-bundle) `.concorde/evidence/<task-id>/1.json`
+- THEN it is `delivered`, and its deliveries list that commit with no mismatch
 - AND a later run that changes nothing leaves it `delivered`
 - BUT an uncommitted change, or a commit after the delivery commit, makes it `active`
 - AND a second delivery commit makes it `delivered` again, with both deliveries listed in order
@@ -131,11 +131,11 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.delivery-unverified — A delivery commit that does not verify is not delivered
 
-- GIVEN a task whose branch head has the subject and trailers of a delivery commit of its workspace
-- AND the commit does not add the [evidence bundle](../../glossary.json#concept.evidence-bundle) its `Concorde-Evidence` trailer names, or that bundle's readiness run is not its `Concorde-Readiness` trailer
+- GIVEN a task whose branch head has the subject of a delivery commit of its workspace
+- AND the commit has two parents, as a merge given that subject has
 - WHEN the main agent lists or shows it, merges it, or closes it with `--merged` after merging its branch by hand
-- THEN list and show give it as `active`, and show lists that commit among its deliveries with each mismatch
-- AND merge and close fail with `delivery_unverified` and the reason `decision`, naming the head, its bundle and each mismatch
+- THEN list and show give it as `active`, and show lists that commit among its deliveries with the mismatch
+- AND merge and close fail with `delivery_unverified` and the reason `decision`, naming the head and the mismatch
 - AND the primary branch, the task record and the worktree are unchanged
 - AND a later delivery commit that verifies makes the task `delivered` again
 
@@ -149,6 +149,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - THEN the worktree is removed
 - AND the record's state is `closed` with outcome `merged` and the primary branch's head recorded
 - AND the task's whole folder, with the record, the decision log and the trace node ended `ok` with outcome `merged`, is now `.concorde/history/<task-id>/`, and `.concorde/tasks/<task-id>/` no longer exists
+- AND the primary branch's head is a commit adding only `.concorde/decisions/<task-id>.md`, the decision log with its closing, with the trailer `Concorde-Task: <task-id>`
 - AND the branch remains, and the task's workspace and task locks are gone
 
 ### scenario.tasks.close-submodules — Close a task whose worktree has submodules
@@ -180,6 +181,14 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - AND the state is `closed` with outcome `completed` and the note
 - AND the branch is kept, and the decision log records the outcome and the note
 - AND the task's folder is in the history
+
+### scenario.tasks.close-commits-log — A close commits the decision log alone
+
+- GIVEN an open task, and a primary worktree with a staged change and an unstaged change of its own
+- WHEN the main agent closes the task with `--failed`, a reason and `--no-error`
+- THEN the primary branch's head is a new commit, with the subject `concorde: keep the decision log of <task-id>` and the trailer `Concorde-Task: <task-id>`, that adds only `.concorde/decisions/<task-id>.md`, the decision log with its closing
+- AND the primary worktree's staged and unstaged changes are still there, uncommitted
+- BUT on a detached `HEAD` the close fails with `decision_log_uncommitted`, commits nothing and leaves the task's folder current, and the same close on the branch again commits the log and moves the folder
 
 ### scenario.tasks.close-completed-no-note — Refuse to close as completed without a note
 
@@ -244,7 +253,8 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - GIVEN a delivered task whose latest delivery commit is the head of its branch and whose worktree is clean
 - AND a clean primary worktree on its branch
 - WHEN the main agent runs `concorde task merge <task-id>` in the primary worktree
-- THEN the task branch is merged into the primary branch
+- THEN the task branch is merged into the primary branch in a merge commit whose second parent is the delivery commit, even though the primary branch could fast-forward
+- AND the merge commit adds the task's decision log as it stood as `.concorde/decisions/<task-id>.md` and carries the trailer `Concorde-Task: <task-id>`
 - AND `concorde spec-validation` ran in the primary worktree after the merge and passed, recorded as the merge attempt's node `merges/1/` of the task with the check's node and its `output.log` below it
 - AND the task is closed as merged with its worktree removed
 - AND the output names the commits before and after the merge, each check with its exit status, and how long the command waited for the lock
@@ -303,8 +313,16 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - GIVEN a delivered task
 - WHEN the main agent merges it with a `--check` that exits with status 1, or with checks that leave an uncommitted path
 - THEN the command fails with `check_failed`, naming for a failing check the check, its exit status, the log and the end of its output, and for checks that left paths those paths and the log
-- AND the primary branch is back at the commit it had before the merge, clean apart from the paths the checks created, which stay
+- AND the primary branch is back at the commit it had before the merge, without the decision log the merge commit added, clean apart from the paths the checks created, which stay
 - AND the task is still delivered with its worktree
+
+### scenario.tasks.merge-commit-refused — A refused merge commit is undone
+
+- GIVEN a delivered task, and a commit hook in the primary worktree that rejects every commit
+- WHEN the main agent merges it with `concorde task merge`
+- THEN the command fails with `git_failed`, naming the decision log's path and the hook's output
+- AND the merge was aborted, the log's copy removed, and the primary branch is clean at the commit it had before
+- AND the task is still delivered with its worktree, and its merge attempt's node ended `failed`
 
 ### scenario.tasks.merge-refused-early — Refuse a merge that cannot close
 
@@ -444,7 +462,8 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a closed task `retry` in the history whose branch was deleted
 - WHEN a new task `retry` is opened and closed
-- THEN its folder moves to `.concorde/history/retry.2/`, and the first task's folder is unchanged
+- THEN its folder moves to `.concorde/history/retry.2/`, its decision log is committed as `.concorde/decisions/retry.2.md`, and the first task's folder and log are unchanged
+- AND after retention removed both history folders, a third task `retry` closes as `retry.3`, since the committed logs still hold `retry` and `retry.2`
 
 ## Waiting
 

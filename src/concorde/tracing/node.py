@@ -71,12 +71,12 @@ METADATA = (
     "concorde_commit",
     "protocol_version",
 )
-RELATIONS = ("input", "cites", "commit", "bundle", "found_commit", "found_bundle")
+RELATIONS = ("input", "cites", "commit", "found_commit")
 _TEXT = {"$ref": "#/$defs/text"}
 _COUNT = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
 _AMOUNT = {"anyOf": [{"type": "null"}, {"type": "number", "minimum": 0}]}
 
-# contract.tracing.node, version 2
+# contract.tracing.node, version 3
 NODE_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,

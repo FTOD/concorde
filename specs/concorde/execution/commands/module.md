@@ -42,9 +42,7 @@ is `blocked` and names every blocking finding at once, to repair before trying a
 then decides the readiness again itself rather than trusting the preview and, when it is ready,
 creates the [delivery commit](../../glossary.json#concept.delivery-commit)
 `concorde: deliver severity` on `concorde/severity` and returns that commit as its output. Both
-runs are recorded in the [run store](../../glossary.json#concept.run-store), and the delivery's
-[evidence bundle](../../glossary.json#concept.evidence-bundle) lists the `task-validation` run
-among the runs of the workspace that led to it.
+runs are recorded in the [run store](../../glossary.json#concept.run-store).
 
 The execution commands and their arguments:
 

@@ -11,13 +11,12 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from concorde.delivery.bundle import BUNDLE_SCHEMA, OUTPUT_SCHEMA
+from concorde.delivery.commits import OUTPUT_SCHEMA
 from concorde.delivery.command import DELIVERY, IndexRecord, State, undo
 from concorde.errors import codes
 from concorde.spec.repository import SpecRepository
-from concorde.spec.schema import validate as check_schema
 from concorde.spec.verification import verifies
-from concorde.validation.measurement import measure, sha256
+from concorde.validation.measurement import measure
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import write_checks
 from tests.concorde.validation.project import (
@@ -107,7 +106,6 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(
             (self.worktree / "specs/a/module.md.json").read_bytes(), metadata
         )
-        self.assertFalse((self.worktree / ".concorde/evidence").exists())
         digest = self.saved_readiness(envelope)["inputs"]["digest"]
         self.assertEqual(measure(self.worktree, self.base)["digest"], digest)
         self.assertEqual(self.project.deliveries(), [])
@@ -115,19 +113,16 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(self.commit_references(envelope), [])
 
     def commit_references(self, envelope: dict) -> list[tuple[str, str]]:
-        """The run node's references to commits and bundles, created or found."""
+        """The run node's references to commits, created or found."""
         return [
             (item["relation"], item["target"])
             for item in self.node(envelope)["references"]
-            if item["relation"] in {"commit", "bundle", "found_commit", "found_bundle"}
+            if item["relation"] in {"commit", "found_commit"}
         ]
 
-    def assert_found(self, envelope: dict, commit: str, bundle: str):
+    def assert_found(self, envelope: dict, commit: str):
         """The run node leads to the delivery it found, which an earlier run created."""
-        self.assertEqual(
-            self.commit_references(envelope),
-            [("found_commit", commit), ("found_bundle", f"{commit}:{bundle}")],
-        )
+        self.assertEqual(self.commit_references(envelope), [("found_commit", commit)])
 
     def assert_inert(self, envelope: dict, code: str, deliveries: int = 0):
         self.assertEqual(envelope["status"], "blocked", envelope)
@@ -195,7 +190,6 @@ class DeliveryTests(unittest.TestCase):
             {
                 "commit": commit,
                 "branch": "concorde/t1",
-                "bundle": ".concorde/evidence/t1/1.json",
                 "sequence": 1,
                 "confirmed": [],
                 "recovered": False,
@@ -212,53 +206,31 @@ class DeliveryTests(unittest.TestCase):
                     self.worktree, "diff", "--name-only", self.base, commit
                 ).splitlines()
             ),
-            [".concorde/evidence/t1/1.json", "src/a/calc.py", "src/a/extra.py"],
+            ["src/a/calc.py", "src/a/extra.py"],
         )
         self.assertEqual(self.committed("src/a/calc.py") + "\n", FIXED)
         message = git(self.worktree, "log", "-1", "--format=%B")
-        self.assertEqual(
-            message,
-            "concorde: deliver t1\n\nFix A.\n\nConcorde-Workspace: t1\n"
-            "Concorde-Evidence: .concorde/evidence/t1/1.json\n"
-            f"Concorde-Readiness: {envelope['run_id']}",
-        )
+        self.assertEqual(message, "concorde: deliver t1\n\nFix A.")
         self.assertEqual(
             git(self.worktree, "log", "-1", "--format=%an <%ae>"),
             "Delivery Test <delivery@test>",
         )
-        bundle = json.loads(self.committed(".concorde/evidence/t1/1.json"))
-        check_schema(bundle, BUNDLE_SCHEMA)
-        self.assertEqual(bundle["parent_commit"], self.base)
-        # Delivery decides the readiness itself; an earlier validate run is only listed.
-        self.assertEqual(bundle["readiness"]["run_id"], envelope["run_id"])
+        # Delivery decides the readiness itself, over the same inputs an earlier validate run
+        # measured, and keeps it in its own trace node.
+        readiness = self.saved_readiness(envelope)
+        self.assertTrue(readiness["ready"])
         self.assertEqual(
-            bundle["readiness"]["input_digest"],
-            validation["output"]["inputs"]["digest"],
+            readiness["inputs"]["digest"], validation["output"]["inputs"]["digest"]
         )
-        self.assertTrue(self.saved_readiness(envelope)["ready"])
-        # The delivery run's node leads to what was committed: the commit and the bundle in it.
+        # The delivery run's node leads to what was committed.
         node = self.node(envelope)
         self.assertEqual(("run", envelope["run_id"]), (node["kind"], node["id"]))
-        self.assertEqual(
-            self.commit_references(envelope),
-            [("commit", commit), ("bundle", f"{commit}:.concorde/evidence/t1/1.json")],
-        )
-        self.assertEqual(
-            [run["run_id"] for run in bundle["runs"]], [validation["run_id"]]
-        )
-        saved = workspace_run(self.project.root, validation) / "result.json"
-        self.assertEqual(bundle["runs"][0]["result_digest"], sha256(saved.read_bytes()))
+        self.assertEqual(self.commit_references(envelope), [("commit", commit)])
         # The delivery commit is the only record of the delivery: the task record is untouched
         # and the task level reads the delivery back from Git.
         self.assertEqual(self.project.record()["state"], "open")
         self.assertEqual(self.project.state(), "delivered")
-        self.assertEqual(
-            [
-                (d["commit"], d["bundle"], d["readiness_run"])
-                for d in self.project.deliveries()
-            ],
-            [(commit, ".concorde/evidence/t1/1.json", envelope["run_id"])],
-        )
+        self.assertEqual(self.project.deliveries(), [{"commit": commit}])
         self.assertEqual(status_lines(self.worktree), "")
         self.assertEqual(
             ("command", "delivery", "t1"),
@@ -317,17 +289,6 @@ class DeliveryTests(unittest.TestCase):
             if item["type"] == "realization"
         }
         self.assertEqual(pending["realization.a.new"], [])
-        bundle = json.loads(self.committed(".concorde/evidence/t1/1.json"))
-        self.assertEqual(
-            bundle["confirmations"],
-            [
-                {
-                    "module": "module.a",
-                    "realization": "realization.a.new",
-                    "entry": "src/new.py",
-                }
-            ],
-        )
         self.assertEqual(status_lines(self.worktree), "")
 
     @verifies("scenario.delivery.second")
@@ -336,22 +297,16 @@ class DeliveryTests(unittest.TestCase):
         self.validated()
         first = self.project.deliver()[1]["output"]["commit"]
         (self.worktree / "src/a/more.py").write_text("MORE = 1\n")
-        second_validation = self.validated()
+        self.validated()
         status, envelope = self.project.deliver()
         self.assertEqual(status, 0, envelope)
         output = envelope["output"]
-        self.assertEqual(
-            (output["sequence"], output["bundle"]), (2, ".concorde/evidence/t1/2.json")
-        )
+        self.assertEqual(output["sequence"], 2)
         self.assertEqual(
             git(
                 self.worktree, "rev-list", "--parents", "-n1", output["commit"]
             ).split()[1:],
             [first],
-        )
-        bundle = json.loads(self.committed(".concorde/evidence/t1/2.json"))
-        self.assertEqual(
-            [run["run_id"] for run in bundle["runs"]], [second_validation["run_id"]]
         )
         self.assertEqual(
             [item["commit"] for item in self.project.deliveries()],
@@ -370,18 +325,17 @@ class DeliveryTests(unittest.TestCase):
             git(self.worktree, "rev-list", "--parents", "-n1", commit).split()[1:],
             [step],
         )
+        # Nothing was left to commit: the commit changes no file and its subject marks it.
         self.assertEqual(
-            git(self.worktree, "diff", "--name-only", step, commit).splitlines(),
-            [".concorde/evidence/t1/1.json"],
+            git(self.worktree, "diff", "--name-only", step, commit).splitlines(), []
+        )
+        self.assertEqual(
+            git(self.worktree, "log", "-1", "--format=%s", commit),
+            "concorde: deliver t1",
         )
         readiness = self.saved_readiness(envelope)
         self.assertEqual(
             [item["path"] for item in readiness["inputs"]["changed"]], ["src/a/calc.py"]
-        )
-        bundle = json.loads(self.committed(".concorde/evidence/t1/1.json"))
-        self.assertEqual(
-            (bundle["parent_commit"], bundle["readiness"]["input_digest"]),
-            (step, readiness["inputs"]["digest"]),
         )
         self.assertEqual(status_lines(self.worktree), "")
         self.assertEqual(self.project.state(), "delivered")
@@ -425,9 +379,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn("already delivered", envelope["summary"])
         self.assertEqual(self.head(), first["output"]["commit"])
         self.assertEqual(len(self.project.deliveries()), 1)
-        self.assert_found(
-            envelope, first["output"]["commit"], first["output"]["bundle"]
-        )
+        self.assert_found(envelope, first["output"]["commit"])
 
     @verifies("scenario.delivery.commit-refused")
     def test_git_refuses_the_commit(self):
@@ -461,7 +413,6 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(error["unhandled"]["reason"], "decision")
         self.assertIn("is not the staged tree", error["detail"])
         self.assertIn("M src/a/calc.py", error["detail"])
-        self.assertNotIn(".concorde/evidence", error["detail"])
         # The commit stays: Delivery never rewrites history.
         commit = self.head()
         self.assertEqual(
@@ -478,16 +429,18 @@ class DeliveryTests(unittest.TestCase):
         self.assertIsNone(envelope["output"])
 
     @verifies("scenario.delivery.stage-refused")
-    def test_git_refuses_to_stage_the_bundle(self):
-        # A required clean filter that fails refuses the bundle after every other change is
-        # staged, so the index must be given back, not merely left alone.
+    def test_git_refuses_to_stage_a_change(self):
+        # A required clean filter that fails refuses a new file while git add stages the others,
+        # so the index must be given back, not merely left alone.
         (self.project.root / ".git/info").mkdir(exist_ok=True)
         (self.project.root / ".git/info/attributes").write_text(
-            ".concorde/evidence/** filter=refuse\n"
+            "src/a/extra.py filter=refuse\n"
         )
         git(self.project.root, "config", "filter.refuse.clean", "false")
         git(self.project.root, "config", "filter.refuse.required", "true")
         index = self.stage_before_delivery()
+        (self.worktree / "src/a/extra.py").write_text("EXTRA = 1\n")
+        index = (status_lines(self.worktree), *index[1:])
         metadata = (self.worktree / "specs/a/module.md.json").read_bytes()
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
@@ -558,7 +511,6 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(
             (self.worktree / "specs/a/module.md.json").read_bytes(), metadata
         )
-        self.assertFalse((self.worktree / ".concorde/evidence").exists())
         self.assertEqual(self.head(), self.base)
         self.assertEqual(self.project.deliveries(), [])
 
@@ -585,82 +537,43 @@ class DeliveryTests(unittest.TestCase):
             [d["commit"] for d in self.project.deliveries()], [delivered["commit"]]
         )
         self.assertEqual(status_lines(self.worktree), "")
-        self.assert_found(envelope, delivered["commit"], ".concorde/evidence/t1/1.json")
+        self.assert_found(envelope, delivered["commit"])
 
     @verifies("scenario.delivery.recover-unverified")
     def test_a_head_that_only_looks_delivered_is_not_reported(self):
         (self.worktree / "src/a/calc.py").write_text(FIXED)
         step = self.commit_step()
-        _, first = self.project.deliver()
-        self.assertEqual(first["status"], "ok", first)
-        delivered = first["output"]["commit"]
-        run = first["run_id"]
-
-        def message(bundle: str, readiness: str) -> str:
-            return (
-                "concorde: deliver t1\n\nFix A.\n\nConcorde-Workspace: t1\n"
-                f"Concorde-Evidence: {bundle}\nConcorde-Readiness: {readiness}\n"
-            )
-
-        def commit(*arguments: str, text: str):
-            subprocess.run(
-                ["git", "commit", "-q", *arguments, "-F", "-"],
-                cwd=self.worktree,
-                input=text,
-                text=True,
-                check=True,
-                capture_output=True,
-            )
-
-        def reworded():
-            commit("--amend", text=message(".concorde/evidence/t1/1.json", "r-other"))
-
-        def cherry_picked():
-            git(self.worktree, "reset", "-q", "--hard", step)
-            (self.worktree / "src/a/more.py").write_text("MORE = 1\n")
-            self.commit_step("Another step")
-            git(self.worktree, "cherry-pick", delivered)
-
-        def without_bundle():
-            commit("--allow-empty", text=message(".concorde/evidence/t1/2.json", "r-x"))
-
-        def with_the_parents_bundle():
-            commit("--allow-empty", text=message(".concorde/evidence/t1/1.json", run))
-
-        cases = [
-            (
-                reworded,
-                "readiness run "
-                + run
-                + " is not the Concorde-Readiness trailer's r-other",
-            ),
-            (cherry_picked, f"is not the bundle's parent_commit {step}"),
-            (
-                without_bundle,
-                ".concorde/evidence/t1/2.json its Concorde-Evidence trailer names "
-                "is not in the commit",
-            ),
-            (
-                with_the_parents_bundle,
-                "does not add the bundle .concorde/evidence/t1/1.json",
-            ),
-        ]
-        for forge, mismatch in cases:
-            with self.subTest(forge.__name__):
-                git(self.worktree, "reset", "-q", "--hard", delivered)
-                forge()
-                head = self.head()
-                self.assertEqual(status_lines(self.worktree), "")
-                status, envelope = self.project.deliver()
-                self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
-                error = envelope["error"]
-                self.assertEqual(["commit_unverified"], codes(error))
-                self.assertEqual(error["unhandled"]["reason"], "decision")
-                self.assertIn(mismatch, error["detail"])
-                self.assertIn(head, error["detail"])
-                self.assertIsNone(envelope["output"])
-                self.assertEqual((self.head(), status_lines(self.worktree)), (head, ""))
-                self.assertEqual(self.commit_references(envelope), [])
+        # A side branch merged with the subject of a delivery commit: two parents.
+        git(self.worktree, "checkout", "-q", "-b", "side", self.base)
+        (self.worktree / "src/a/more.py").write_text("MORE = 1\n")
+        self.commit_step("A side step")
+        git(self.worktree, "checkout", "-q", "concorde/t1")
+        git(
+            self.worktree,
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "concorde: deliver t1",
+            "side",
+        )
+        head = self.head()
+        self.assertEqual(
+            git(self.worktree, "rev-list", "--parents", "-n1", head).split()[1:],
+            [step, git(self.worktree, "rev-parse", "side")],
+        )
+        self.assertEqual(status_lines(self.worktree), "")
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(["commit_unverified"], codes(error))
+        self.assertEqual(error["unhandled"]["reason"], "decision")
+        self.assertIn("it has 2 parent(s)", error["detail"])
+        self.assertIn(head, error["detail"])
+        self.assertIsNone(envelope["output"])
+        self.assertEqual((self.head(), status_lines(self.worktree)), (head, ""))
+        self.assertEqual(self.commit_references(envelope), [])
+        self.assertNotEqual(self.project.state(), "delivered")
 
     @verifies("scenario.delivery.unbound")
     def test_a_delivery_needs_a_bound_workspace(self):
@@ -693,9 +606,7 @@ class DeliveryTests(unittest.TestCase):
 class ContractTests(unittest.TestCase):
     def test_the_schemas_are_the_delivery_contracts(self):
         contracts = SpecRepository(REPOSITORY_ROOT).contract_nodes
-        self.assertEqual(
-            contracts["contract.delivery.evidence-bundle"]["schema"], BUNDLE_SCHEMA
-        )
+        self.assertNotIn("contract.delivery.evidence-bundle", contracts)
         self.assertEqual(contracts["contract.delivery.output"]["schema"], OUTPUT_SCHEMA)
 
     def test_delivery_is_a_recorded_command_of_a_bound_workspace(self):

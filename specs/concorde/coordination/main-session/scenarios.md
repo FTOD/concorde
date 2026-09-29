@@ -89,7 +89,7 @@ guides.
 ### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
 
 - GIVEN the rendered main-session guidance
-- WHEN a main agent reads what to do after `delivery` committed a task's change with its evidence
+- WHEN a main agent reads what to do after `delivery` committed a task's change
 - THEN it is told to merge the task from the primary worktree without asking the developer, with the project MCP server's `task_merge` or with `concorde task merge <task>` in background Bash
 - AND never to merge with `git merge` itself, because other main sessions may be merging, and that the merge runs `concorde spec-validation` unless it names other checks
 - AND to run the command again on `merge_busy`

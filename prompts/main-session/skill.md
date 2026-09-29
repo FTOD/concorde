@@ -91,7 +91,7 @@ concorde delivery
 
 A typical order is `understand` to assess and plan, `specify` when the Spec must change first,
 `implement` and `test`, the reviews when the change deserves them, then `task-validation` and
-`delivery`, which validates the whole workspace again and commits the evidence on the task branch.
+`delivery`, which validates the whole workspace again and commits the result on the task branch.
 Each run prints one JSON run result and saves it in its own folder in the task's folder of the
 primary worktree, `.concorde/tasks/<task>/workspace/runs/<run-id>/result.json` (an unbound run's in
 `.concorde/unbound/<run-id>/`), where you can read it too. Every level of the work leaves such a
@@ -181,7 +181,10 @@ task session, record there the task's **brief**: the developer's decisions the t
 the workflow and mode when one applies, anything the goal leaves out, and what you leave for the
 session to decide; the session reads it first. Record there too every result of the task's runs
 that is not `ok` and every decision you made without the developer, with the reason, and your
-answers to the session's escalations. Append; never rewrite earlier entries.
+answers to the session's escalations. Append; never rewrite earlier entries. When the task ends,
+its merge or close commits the log to the primary branch as `.concorde/decisions/<history key>.md`:
+it is the one record of the task that stays with the code once the local history is gone, so write
+it for a later reader of the code.
 
 ## Decide, and escalate only what matters
 
@@ -266,7 +269,7 @@ the rest to the developer with your own link on top, naming its escalation as a 
 
 ## Merge delivered work
 
-When `delivery` has committed a task's change with its evidence on the task branch, merge it
+When `delivery` has committed a task's change on the task branch, merge it
 from the primary worktree without asking the developer for authorization: with the project MCP
 server's `task_merge`, which returns at once (see "The project MCP server" below), or with
 `concorde task merge <task>` in background Bash. Never merge a task with `git merge` yourself:
@@ -310,7 +313,10 @@ changes in either case.
 Act on every warning that `task merge` and `task close` print. A warning about the decision log
 means nobody wrote in it; a warning about a task session names a Claude Code task session whose
 transcript the close could not keep or that it could not remove, with the reason and the
-`claude rm <id>` command that removes it by hand.
+`claude rm <id>` command that removes it by hand. A close refused with `decision_log_uncommitted`
+has closed the task but could not commit its decision log on the primary branch, such as on a
+detached `HEAD` or during an unfinished merge there: fix what the refusal names and run the same
+close again, which commits the log and finishes the close.
 
 ## Issues
 

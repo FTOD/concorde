@@ -1,7 +1,6 @@
 # Delivery requirements
 
-The Module-wide obligations of [Delivery](module.md). The commit, the
-[evidence bundle](../../../glossary.json#concept.evidence-bundle) and the output are defined in the
+The Module-wide obligations of [Delivery](module.md). The commit and the output are defined in the
 [contracts](contracts.md); the [scenarios](scenarios.md) show the obligations at work.
 
 ## Preconditions
@@ -44,8 +43,8 @@ A delivery run that ends `blocked` SHALL leave the workspace, its index and its 
 
 ### req.delivery.exact-content — The commit holds what was validated
 
-A delivery commit SHALL contain exactly the uncommitted changes the readiness examined, the metadata
-changed by the applied confirmations and the evidence bundle.
+A delivery commit SHALL contain exactly the uncommitted changes the readiness examined and the
+metadata changed by the applied confirmations.
 
 Its parent is fixed by [req.delivery.bound-branch](#req.delivery.bound-branch).
 
@@ -55,9 +54,10 @@ Delivery SHALL create its commit only on the branch the
 [workspace binding](../../../glossary.json#concept.workspace-binding) names, with the validated head
 as its only parent.
 
-### req.delivery.evidence — Every delivery commit carries its bundle
+### req.delivery.marked — Every delivery commit is marked by its subject
 
-Every delivery commit SHALL contain one evidence bundle that satisfies the evidence bundle contract.
+Delivery SHALL give every delivery commit the subject `concorde: deliver <workspace>` and give no
+other commit it creates that subject, making the commit even when it changes nothing.
 
 ### req.delivery.commit-verified — The commit is proven to hold what was staged
 
@@ -80,8 +80,8 @@ Restoring the index while undoing an uncommitted delivery, as
 
 ### req.delivery.atomic — A failed commit leaves the validated workspace
 
-When writing the bundle, staging or the commit fails, Delivery SHALL restore the workspace and its
-index to the state the readiness examined.
+When staging or the commit fails, Delivery SHALL restore the workspace and its index to the state
+the readiness examined.
 
 ## Records
 
@@ -104,20 +104,19 @@ Such a run reports the existing commit instead, as
 ### req.delivery.recovered-referenced — A delivered head is referenced as found
 
 The [trace node](../../../glossary.json#concept.trace-node) of a delivery run that reports an
-existing delivery commit SHALL reference that commit with the relation `found_commit` and its
-evidence bundle, as `<commit>:<path>`, with `found_bundle`, and neither with `commit` nor `bundle`.
+existing delivery commit SHALL reference that commit with the relation `found_commit`, and not with
+`commit`.
 
-`commit` and `bundle` name only what a node created, as
+`commit` names only what a node created, as
 [Tracing requires](../../../tracing/requirements.md#req.tracing.created-or-found); a recovered
-delivery created neither, yet its trace still leads to the delivery it reported.
+delivery created none, yet its trace still leads to the delivery it reported.
 
 ### req.delivery.recovered-verified — A delivered head is verified before it is reported
 
-Delivery SHALL report an existing delivery commit at the branch head as delivered only when its
-only parent is the `parent_commit` of its evidence bundle, the commit adds the bundle its
-`Concorde-Evidence` trailer names, and that bundle's `readiness.run_id` is its `Concorde-Readiness`
-trailer, and otherwise fail with `commit_unverified`, naming each mismatch and committing nothing.
+Delivery SHALL report an existing delivery commit at the branch head as delivered only when it has
+exactly one parent, and otherwise fail with `commit_unverified`, naming the mismatch and committing
+nothing.
 
-A delivery commit is recognised by its subject and trailers alone, which any commit can carry; the
-bundle is what ties it to the readiness it claims, as
+A delivery commit is recognised by its subject alone, which any commit can carry; a commit with
+another number of parents, such as a merge given the subject, cannot be one Delivery created, as
 [scenario.delivery.recover-unverified](scenarios.md#scenario.delivery.recover-unverified) shows.

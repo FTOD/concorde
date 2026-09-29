@@ -1,7 +1,7 @@
 """``concorde trace show|list|prune``: read traces, and remove what retention allows.
 
 ``show`` and ``list`` write nothing. Each prints one JSON value (``contract.tracing.view``), or
-with ``--format tree`` the same as an indented text tree; ``prune`` prints the folders it removed.
+with ``--format tree`` the same as an indented text tree; ``prune`` prints the paths it removed.
 Exit status 0 on success, 1 for a refusal printed as ``{"error": <link>}``, 2 for a malformed
 command line.
 """

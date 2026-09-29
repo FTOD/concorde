@@ -363,16 +363,12 @@ class TaskFlowTests(unittest.TestCase):
         head = git(self.root, "rev-parse", "concorde/t1")
         message = git(self.root, "log", "-1", "--format=%B", head)
         self.assertTrue(message.startswith("concorde: deliver t1"), message)
-        self.assertIn("Concorde-Workspace: t1", message)
         changed = git(
             self.root, "diff", "--name-only", f"{self.project.base_commit}..{head}"
         )
         self.assertIn("src/a/calc.py", changed.splitlines())
-        self.assertTrue(
-            any(
-                line.startswith(".concorde/evidence/t1/")
-                for line in changed.splitlines()
-            )
+        self.assertFalse(
+            any(line.startswith(".concorde/evidence/") for line in changed.splitlines())
         )
         self.assertEqual(primary_before, project_status())
         git(self.root, "merge", "--ff-only", "concorde/t1")

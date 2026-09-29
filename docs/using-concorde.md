@@ -465,16 +465,16 @@ concorde task-validation
 concorde delivery
 ```
 
-| Operation                   | Worker       | What it does                                                                                                                                                            |
-| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                          |
-| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents, including declaring files that do not exist yet.                                                                         |
-| `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                           |
-| `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                    |
-| `spec_review`               | reads only   | Reviews the bound Modules' Specs against their review memory: reports new findings, updates and resolves earlier ones (`--check-findings` has each finding checked).    |
-| `code_review`               | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                                                                |
-| `task-validation` (command) | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                          |
-| `delivery` (command)        | none         | Deterministic: validates the whole workspace again, then commits its evidence bundle on the task branch; the delivery commit is the record that the task was delivered. |
+| Operation                   | Worker       | What it does                                                                                                                                                         |
+| --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                       |
+| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents, including declaring files that do not exist yet.                                                                      |
+| `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                        |
+| `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                 |
+| `spec_review`               | reads only   | Reviews the bound Modules' Specs against their review memory: reports new findings, updates and resolves earlier ones (`--check-findings` has each finding checked). |
+| `code_review`               | reads only   | Reviews the task's code changes against the Specs (`--base`, `--focus`).                                                                                             |
+| `task-validation` (command) | none         | Deterministic: structural validation and the checks of the changed Modules; decides readiness.                                                                       |
+| `delivery` (command)        | none         | Deterministic: validates the whole workspace again, then commits it on the task branch; the delivery commit is the record that the task was delivered.               |
 
 Spec reviews keep a **review memory** per Module in `.concorde/reviews/spec/`, committed with the
 task. A repeated review reports only what is new, what changed and what was fixed, and a Module
@@ -624,19 +624,25 @@ slow or expensive. `concorde trace show <run-id>` shows one run, `concorde trace
 `--format tree` every command prints JSON for your own analysis.
 
 While a task is open, everything about it lives in one folder, `.concorde/tasks/<task>/`. Closing
-the task moves that folder to `.concorde/history/<task>/`, where it stays as it was. Runs without a
-task are kept seven days after they end; `concorde trace prune` removes what has expired, which
-`task open` and `task close` also do. To keep them longer, or to remove closed tasks after some
+the task moves that folder to `.concorde/history/<task>/`, where it stays as it was, and commits
+the task's decision log to your primary branch as `.concorde/decisions/<task>.md`. Runs without a
+task are kept seven days after they end, and the transcripts of a closed task's sessions and
+workers thirty days after it closed; `concorde trace prune` removes what has expired, which
+`task open` and `task close` also do. To change those periods, or to remove closed tasks after some
 days, write `.concorde/tracing.json`:
 
 ```json
 {
   "schema_version": 1,
-  "retention": { "unbound_days": 30, "history_days": 180 }
+  "retention": {
+    "unbound_days": 30,
+    "history_days": 180,
+    "conversation_days": 60
+  }
 }
 ```
 
-The evidence bundle each delivery commits stays in Git whatever is removed.
+The decision log each task commits stays in Git whatever is removed.
 
 ## What workers can and cannot do
 
@@ -774,8 +780,8 @@ Neither user documents nor custom docs may contain a registered Spec document.
 | `.concorde/history/`                       | The folders of closed tasks, kept as they were (ignored by Git).                        |
 | `.concorde/unbound/`                       | Runs without a task, such as an `understand` of your primary checkout (ignored by Git). |
 | `.concorde/locks/`                         | Every lock Concorde takes (ignored by Git).                                             |
-| `.concorde/tracing.json`                   | How long unbound runs and closed tasks are kept (optional).                             |
-| `.concorde/evidence/`                      | Evidence bundles committed by `delivery`.                                               |
+| `.concorde/tracing.json`                   | How long unbound runs, closed tasks and their transcripts are kept (optional).          |
+| `.concorde/decisions/`                     | The decision logs of ended tasks, committed when each task ends.                        |
 | `.concorde/issues/`                        | Issue records.                                                                          |
 | `.claude/skills/concorde/SKILL.md`         | The main agent's guidance.                                                              |
 
