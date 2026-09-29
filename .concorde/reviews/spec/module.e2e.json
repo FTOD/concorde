@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "module": "module.e2e",
+  "findings": [
+    {
+      "id": "f.1",
+      "status": "open",
+      "path": "specs/concorde/e2e/scenarios.md",
+      "anchor": "scenario.e2e.owner-not-woken",
+      "line": 100,
+      "dimension": "obligations",
+      "severity": "blocking",
+      "problem": "The missing-owner-wake scenario specifies ending at the wake deadline, whereas the entry requires an additional grace window even when the owner never wakes. These give different observable stopping times and disagree about whether late notifications must still be observed.",
+      "evidence": "scenarios.md:100: \"THEN the case ends `failed` once `--wake` seconds have passed after the result\". module.md:294–296: \"most `--wake` seconds (180 by default) after the result; then, and for the unowned run at once, it waits `--grace` seconds more (20 by default)\".",
+      "suggestion": "Give the scenario explicit positive wake and grace values and require observation through their sum after the result before judging the missing wake. Distinguish the observation deadline from subsequent visibility queries and final case completion.",
+      "first_run": "r-20260929T205653-spec_review-90427697",
+      "last_run": "r-20260929T205653-spec_review-90427697",
+      "resolution": null
+    },
+    {
+      "id": "f.2",
+      "status": "open",
+      "path": "specs/concorde/e2e/module.md",
+      "anchor": "owners-case",
+      "line": 287,
+      "dimension": "design",
+      "severity": "advisory",
+      "problem": "The synchronization explanation does not establish the claimed separation between launching and observing a wake. A run entering the run store does not establish that the owner's launching tool or turn has ended; releasing the lock then permits completion before the stated observation interval starts.",
+      "evidence": "\"which it releases only once the run is in the run store, so that the run outlives its launch and its end reaches the owner as a wake, never as the launching tool's own answer\"; later, the phase is judged \"since the owner's launching turn ended\".",
+      "suggestion": "Explain the additional synchronization needed before releasing the workspace lock for an owned run, such as observing completion of the owner's launching turn as well as the run's presence in the store. Show that barrier in the owners workflow diagram so readers can see why completion falls within the unprompted observation interval.",
+      "first_run": "r-20260929T205653-spec_review-90427697",
+      "last_run": "r-20260929T205653-spec_review-90427697",
+      "resolution": null
+    },
+    {
+      "id": "f.3",
+      "status": "open",
+      "path": "specs/concorde/execution/module.md",
+      "anchor": "The life of a run",
+      "line": 233,
+      "dimension": "design",
+      "severity": "advisory",
+      "problem": "The provider's lifecycle explanation contradicts its earlier lock semantics: writing the result while holding the lock allows an observer to see the result while the workspace is still busy. E2E's owners case observes this same result-and-lock lifecycle.",
+      "evidence": "\"writes it while it still holds the lock, so that whoever sees the result never finds the workspace busy with that run\". Earlier, under Workspaces: \"a result on disk, though, does not mean the lock is free yet.\"",
+      "suggestion": "Replace the claim about result observers with the actual ordering guarantee: a subsequent run admitted after lock release finds the previous result written, while an observer of the result may still find the lock held.",
+      "first_run": "r-20260929T205653-spec_review-90427697",
+      "last_run": "r-20260929T205653-spec_review-90427697",
+      "resolution": null
+    }
+  ],
+  "reviewed": {
+    "context_identity": "sha256:ef2fe0c6fe27602669351e049a481da5a96da124e42fe7cf6f934656c5cc3823",
+    "run": "r-20260929T205653-spec_review-90427697"
+  }
+}
