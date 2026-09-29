@@ -1,0 +1,178 @@
+{
+  "workspace": "typed-value-json-schema",
+  "goal": "Make Spec core's typed-value checker follow JSON Schema: an object schema without additionalProperties is open, and the type number is known; then give the merge trace's waited_seconds its type number as its contract says",
+  "modules": [
+    "module.spec",
+    "module.tasks"
+  ],
+  "sequence": 1,
+  "base_commit": "c2d108b62159a4a8696abd96b415b092e5e9b3e1",
+  "parent_commit": "47ac91037c466048c717828d01f30c24bd482d42",
+  "readiness": {
+    "run_id": "r-20260929T105007-delivery-fcc7add5",
+    "input_digest": "sha256:559a3788e4566d6ae53944d9a0600e596ae2d4e1d444a9fae5ee8ea71be2896c",
+    "modules": [
+      "module.issues",
+      "module.spec",
+      "module.tasks"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:660720e68bf1072395209db5c5796c805f581c74d3d1cab4248d55dbb2e44ca8"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:5cf708606dd57f572e5f01f1e14cf14d314ee746021a0800d3edfd33e3c94619"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:d69370f945306ec7ed10ae284044ba8c50efa61a05bb0ada548cf798b3a9631d"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:6048f67126e08884c8bb19d326cadbaf73d3d12db0d558326429886974da7864"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:9efb92c11474d653619c743511a2d77876ea9609c49d60141c044df01f467b4f"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:34995e1ad21787cfa02c07df1af9ca65279d8df8f1a475149a4cc82dae4f7b5d"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:5a8b714a120a86dda8f2d7b2cccbb9226c873b49fd00b5ad27546dd698424fca"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:b76caeb1ba8b01f1480d26f210c45ed6f7bcd0d5294bd3fd573f09bbbbd03eca"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:b76caeb1ba8b01f1480d26f210c45ed6f7bcd0d5294bd3fd573f09bbbbd03eca"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:e6ff5c4dcc2f2543a391d61f0b4cca9f08388b2e350b502eefe2d143f80a2862"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:5f96e75f9215d294baf7e0eb2352c5d1fc8f4b88312789bbaa286e1f27b8f471"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:76d97edc5b8a8551266c80498c97129a8b946582153da74ca53830faa4aa160f"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:c5462223f46db0030074fdadc6f26b4b69b03b7271019335c52cda1d62f9c535"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:f8ed8ef84a41fe2c92faee2ae932658cd008a8b6f2a804a5be1eb251bc14ef10"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:cff39a053b30eea8b48ec06e26ed133a41226cdac0067cf92fd17adf3396e974"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:43a90a15a02e07b81a012200cf1f3336d974f53c3379527a1a137c19f32cc66f"
+      },
+      {
+        "check": "check.tracing.tests",
+        "module": "module.tracing",
+        "status": "passed",
+        "measured_digest": "sha256:38b9fb5ad46429ce9772e01839852570bce40e0e7666106316d7e2907f6989fe"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:bfa89c6e28bde4568423a999fae5baeada74959b9e739bf1815c13b9d0e8a770"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:c929b7298499e53dec6f4635f24265acc89d16f600e443d95489851fe5715cea"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:e5c974495cd1f4d099752929c883c0a3c7371f08b9dd2e9e2b959d09b6eabe7c"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:e5c974495cd1f4d099752929c883c0a3c7371f08b9dd2e9e2b959d09b6eabe7c"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:e5c974495cd1f4d099752929c883c0a3c7371f08b9dd2e9e2b959d09b6eabe7c"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:5edddd7184c6fe088c9295ae93fc348939a0007917301af41ef90bd44a8ed126"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260929T104425-task_validation-fbdbe8b6",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.spec",
+        "module.tasks"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:9a5cf7cef0c571ef66014aed2c67049333dc50275d575523882d141a99be60c8"
+    }
+  ],
+  "created_at": "2026-09-29T10:55:48Z"
+}
