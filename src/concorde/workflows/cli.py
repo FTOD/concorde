@@ -1,10 +1,8 @@
 """``concorde workflow step|report``: run one keyed step of a workflow, or report its result.
 
 Both work in the bound workspace they are started in, whose binding names it; a workflow never
-names a task. ``step`` prints the step outcome and exits 0 once the run has finished, 3 while it still runs and
-1 when the step is lost, refused or rejected; with ``--stdin``, for pi's command-runner agent, it
-waits until the run ends and exits 0 whenever it printed an outcome, since that agent reads only
-standard output. ``report`` prints the workflow result and exits 0 when its status is ``ok`` and
+names a task. ``step`` prints the step outcome and exits 0 once the run has finished, 3 while it
+still runs and 1 when the step is lost, refused or rejected. ``report`` prints the workflow result and exits 0 when its status is ``ok`` and
 1 otherwise. A malformed command line or request prints ``{"error": <link>}`` and exits 2.
 """
 
@@ -43,11 +41,9 @@ def parser() -> argparse.ArgumentParser:
     step.add_argument("--restart")
     step.add_argument("--wait", type=float, default=WAIT)
     step.add_argument("--json", dest="request")
-    step.add_argument("--stdin", action="store_true")
     step.add_argument("argv", nargs="*")
     report_ = sub.add_parser("report")
     report_.add_argument("--lost", action="append", default=[])
-    report_.add_argument("--stdin", action="store_true")
     return command
 
 
@@ -65,20 +61,7 @@ def usage(message: str) -> int:
     return 2
 
 
-def json_in(text: str):
-    """The JSON object in a prompt: the text from its first ``{`` to its last ``}``.
-
-    pi-subagents hands a command-runner agent its assembled prompt, which may wrap the task.
-    """
-    start, end = text.find("{"), text.rfind("}")
-    if start < 0 or end < start:
-        raise ValueError("no JSON object in the request")
-    return json.loads(text[start : end + 1])
-
-
 def step_request(arguments) -> dict:
-    if arguments.stdin:
-        return json_in(sys.stdin.read())
     if arguments.request:
         return json.loads(arguments.request)
     missing = [
@@ -87,7 +70,7 @@ def step_request(arguments) -> dict:
     if missing or not arguments.argv:
         raise UsageError(
             "a step needs --workflow, --mode, --key and the Operation or command after --, or "
-            "--json or --stdin; missing: "
+            "--json; missing: "
             + ", ".join(
                 [f"--{name}" for name in missing]
                 + ([] if arguments.argv else ["the Operation or command"])
@@ -134,17 +117,8 @@ def main(argv, cwd: Path | None = None) -> int:
     except WorkflowError as error:
         return refused(error, arguments.command)
     if arguments.command == "report":
-        lost = arguments.lost
-        if arguments.stdin:
-            try:
-                value = json_in(sys.stdin.read())
-                lost = list(value.get("lost") or [])
-            except (ValueError, AttributeError, TypeError) as error:
-                return usage(
-                    f"the report request on standard input is not usable: {error}"
-                )
         try:
-            result = report(space, lost)
+            result = report(space, arguments.lost)
         except WorkflowError as error:
             return refused(error, "report")
         except Exception as error:  # noqa: BLE001 -- say why instead of a traceback
@@ -162,20 +136,18 @@ def main(argv, cwd: Path | None = None) -> int:
             sys.stdout.write(json.dumps({"error": link}, indent=2) + "\n")
             return 1
         sys.stdout.write(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
-        return 0 if arguments.stdin or result["status"] == "ok" else 1
+        return 0 if result["status"] == "ok" else 1
     try:
         request = check_request(step_request(arguments))
     except (UsageError, ValueError, OSError, ContractError) as error:
         return usage(f"the step request is not usable: {error}")
     try:
-        status, value = run_step(
-            space, request, None if arguments.stdin else arguments.wait
-        )
+        status, value = run_step(space, request, arguments.wait)
     except StepError as refusal:
         sys.stdout.write(json.dumps({"error": refusal.link}, indent=2) + "\n")
-        return 0 if arguments.stdin else 1
+        return 1
     sys.stdout.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
-    return 0 if arguments.stdin else status
+    return status
 
 
 __all__ = ["main"]

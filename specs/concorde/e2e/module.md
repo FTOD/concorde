@@ -129,15 +129,16 @@ under `.concorde/tasks/<task>/workspace/workflow/` of the project, and logs the 
   conditions are handled for it: `claude -p` otherwise stops a background workflow after ten idle
   minutes, so the session keeps `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`; and an untrusted project
   ignores its allow rules, so the workflow and its step commands are granted with `--allowedTools`.
-- A **driver run** (`--via driver`) runs the rendered pi
+- A **driver run** (`--via driver`) runs the rendered Claude Code
   script of the workflow from the runtime the installer places under `.concorde/framework/`, which
   every install carries, and refuses with `script_missing` when that script
-  is absent. It runs the script under the stand-in runtime of the Workflows tests, whose
-  [step agents](../glossary.json#concept.step-agent) execute the real
-  `concorde workflow step --stdin` and `concorde workflow report --stdin` in the task's worktree, so
-  every [workflow step](../glossary.json#concept.workflow-step) is a real one. It has no
-  main-session model between steps, while its Operations still launch real workers, so it tests
-  Concorde's side without the client runtime.
+  is absent. It runs the script under the stand-in for Claude Code's workflow runtime of the
+  Workflows tests, whose [step agents](../glossary.json#concept.step-agent) execute, without a
+  model, the real `concorde workflow step` and `concorde workflow report` command lines the script
+  hands them in the task's worktree, so every
+  [workflow step](../glossary.json#concept.workflow-step) is a real one. It has no model between
+  steps, while its Operations still launch real workers, so it tests Concorde's side without Claude
+  Code's workflow runtime.
 
 `--workflow` names the workflow (default `brownfield`), `--module` the Module it works on (default
 the root Module, `module.project`) and `--mode` its
@@ -205,18 +206,18 @@ whose findings become ordinary tasks.
 
 The headless run and the driver run answer different questions. The headless run is what a user's
 task session does, Claude Code's workflow runtime and its step agents included. The driver run
-removes the session's model and the client runtime from between the steps, but its
+removes the session's model and Claude Code's workflow runtime from between the steps, but its
 Operations still launch real workers, so a failure there lies on Concorde's side, in its commands,
 Operations or workers. When a headless run fails, a driver run of the same task with `--retry` for
-the failed step's key runs that step again without the client runtime, reusing the steps that
-succeeded, and so points to whether Concorde or the client runtime is at fault; without `--retry`
+the failed step's key runs that step again without Claude Code's workflow runtime, reusing the
+steps that succeeded, and so points to whether Concorde or that runtime is at fault; without `--retry`
 it would only find the failed run recorded. Since the workers are real, one such comparison is
 evidence, not proof.
 
 The driver run does not have a runtime of its own: it runs the JavaScript sandbox of the Workflows
 tests, `tests/concorde/workflows/run_script.mjs`, with step agents that execute the real commands.
 This couples End-to-end testing to a test file of Workflows, and the coupling is accepted: a second
-stand-in runtime would have to follow every change of the rendered scripts' adapters that the
+stand-in runtime would have to follow every change of the rendered script's step adapter that the
 Workflows tests already follow, and could drift from them. The file stays Workflows' and is listed
 by both Modules, so a change to it concerns the driver run too.
 
@@ -231,7 +232,7 @@ watching test projects, and the command line of its children's `session`, `repai
 and `dogfood` commands; `scripts/e2e/common.py` holds what the tools share, the checkout, the
 end-to-end root, the error type, running a command and cloning a revision. It also lists
 `tests/concorde/workflows/run_script.mjs`, the JavaScript sandbox of the Workflows tests that
-stands in for the client runtime and that a driver run runs, as a file it shares with Workflows.
+stands in for Claude Code's workflow runtime and that a driver run runs, as a file it shares with Workflows.
 
 <a id="realization.e2e.tests"></a>
 

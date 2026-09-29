@@ -87,7 +87,7 @@ class AdoptionTests(unittest.TestCase):
 
 
 class BrownfieldFlowTests(unittest.TestCase):
-    """The brownfield workflow end to end: installed, initialized, run by the pi script."""
+    """The brownfield workflow end to end: installed, initialized, run by the Claude Code script."""
 
     @verifies("scenario.concorde.adopt-brownfield")
     def test_describe_an_existing_codebase_in_no_ask_mode(self):
@@ -256,18 +256,21 @@ class BrownfieldFlowTests(unittest.TestCase):
         home = base / "home"
         (home / ".claude").mkdir(parents=True)
         script = base / "brownfield.js"
-        script.write_text(render("brownfield", "pi", package))
+        script.write_text(render("brownfield", package))
         harness = REPOSITORY_ROOT / "tests/concorde/workflows/run_script.mjs"
         completed = subprocess.run(
             ["node", str(harness)],
             input=json.dumps(
                 {
                     "script": str(script),
-                    "client": "pi",
-                    "args": {"module": "module.project", "mode": "no-ask"},
+                    "args": {
+                        "module": "module.project",
+                        "mode": "no-ask",
+                        "concorde": concorde,
+                    },
                     "outcomes": {},
                     "report": None,
-                    "execute": {"command": concorde, "cwd": str(worktree)},
+                    "execute": {"cwd": str(worktree)},
                 }
             ),
             capture_output=True,

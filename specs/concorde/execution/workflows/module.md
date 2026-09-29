@@ -6,7 +6,7 @@ Workflows is level 3 of Concorde's [levels of work](../../module.md#the-levels-o
 [Execution](../module.md): a workflow orders the runs of one bound workspace for a known procedure,
 such as describing existing code in Specs, and handles their results and
 [decision points](../../glossary.json#concept.decision-point). Each workflow's procedure is written
-once and the build renders it into a Claude Code workflow and a pi-subagents workflow. Whoever works
+once and the build renders it into a Claude Code workflow. Whoever works
 a workspace, in Concorde the task level inside a task worktree, starts the workflow there; it runs
 Operations and execution commands one at a time, records its steps in its own
 [workflow record](../../glossary.json#concept.workflow-record), the
@@ -43,9 +43,7 @@ concorde task open adopt --goal "describe the existing code in Specs" --modules 
 ```
 
 and the task session then, inside the task worktree, runs the installed Claude Code workflow `/concorde-brownfield`
-with the arguments `{"module": "module.shop", "mode": "no-ask"}`, or, in pi, the installed script
-`.concorde/workflows/pi/brownfield.js` through pi-subagents with the task worktree as its working
-directory and the same arguments. The arguments name no workspace: every command the workflow runs
+with the arguments `{"module": "module.shop", "mode": "no-ask"}`. The arguments name no workspace: every command the workflow runs
 starts in that worktree, whose [workspace binding](../../glossary.json#concept.workspace-binding)
 names it. A worktree without a binding runs no workflow: both workflow commands answer there with
 `binding_required`.
@@ -136,7 +134,6 @@ a base **step key**:
 ```text
 concorde workflow step --workflow <name> --mode <interactive|no-ask> --key <base key> [--answers <file>] [--retry] [--restart <label>] [--wait <seconds>] -- <operation or command> [arguments]
 concorde workflow step --json '<step request>' [--wait <seconds>]
-concorde workflow step --stdin
 ```
 
 The step's key is the base key, followed by `#` and the generation label when `--restart` names one,
@@ -159,8 +156,7 @@ in the workflow's node and writes the step's node.
 It waits for the result at most `--wait` seconds (default 540). Asked again, it finds the recorded
 run and only waits for it. `--retry` starts a new run for a key whose recorded run did not end `ok`.
 `--json` takes the same request as one [step request](contracts.md#contract.workflows.step-request),
-as the Claude Code [step agent](../../glossary.json#concept.step-agent) passes it, and `--stdin`
-reads it from standard input and waits until the run has finished.
+as the [step agent](../../glossary.json#concept.step-agent) passes it.
 
 Starting a new run for a base key that already has a step, by `--retry`, with a new restart label
 or with new answers, **supersedes** that earlier step and every step recorded after it: a
@@ -173,7 +169,6 @@ The command prints the [step outcome](contracts.md#contract.workflows.step) and 
 once the run has finished, 3 while it is still running, so a caller that must not block longer than
 a few minutes simply asks again, 1 when the step is lost or refused or the command cannot work at
 all, and 2 when the command line or request breaks the step request contract (`invalid_request`).
-With `--stdin` it exits 0 whatever step outcome it printed, which the pi step agent passes on.
 Before it starts a run, the command waits, within the same bound, until the workspace lock is free,
 since a workspace runs one run at a time. When the bound ends while the lock is still held, it
 starts and records nothing and prints an outcome with state `running`, no run and no error, exiting
@@ -201,26 +196,28 @@ step nodes, and only while they hold the workflow lock. Whoever prepared the wor
 workflow in the workspace folder, next to the runs started directly, and a task's
 [trace](../../glossary.json#concept.trace) holds it.
 
-### One procedure, two client workflows
+### One procedure, rendered as a Claude Code workflow
 
-A workflow's source is a procedure that the build adapts for the client, not a prompt asking a
-model to invent the next steps. The adapters preserve the selection of Operations and commands and
-their arguments, step order, branches, admitted results and decision points; they adapt only how a
-step is invoked and awaited and how the final report is requested. The same procedure therefore
-runs as a Claude Code workflow or a pi-subagents workflow, both starting Concorde's ordinary runs.
+A workflow's source is a procedure that the build wraps with a step adapter, not a prompt asking a
+model to invent the next steps. The adapter preserves the selection of Operations and commands and
+their arguments, step order, branches, admitted results and decision points; it decides only how a
+step is invoked and awaited and how the final report is requested. The procedure therefore runs as
+a Claude Code workflow that starts Concorde's ordinary runs. Workflows are rendered for Claude Code
+alone because the task level that starts them runs on Claude Code; workers, which run on pi or
+Claude Code, never start a workflow.
 
-The platform's step agent is an adapter, not a Concorde worker: it relays a command and result,
-while the run decides whether to launch AI workers. Converting a workflow does not expand Operations
-into platform agents or expose Concorde's services to those agents. The two clients use the same run
-command lines, the same workspace lock and the same recorded results. The current mechanism renders
-authored JavaScript [workflow scripts](../../glossary.json#concept.workflow-script); it is not a
-general converter for arbitrary platform workflows or free-form plans.
+The step agent is an adapter, not a Concorde worker: it relays a command and result, while the run
+decides whether to launch AI workers. Rendering a workflow does not expand Operations into Claude
+Code agents or expose Concorde's services to those agents. The workflow uses the same run command
+lines, the same workspace lock and the same recorded results as runs started directly. The current
+mechanism renders authored JavaScript
+[workflow scripts](../../glossary.json#concept.workflow-script); it is not a general converter for arbitrary platform workflows or free-form plans.
 
 <a id="concept.step-agent"></a><a id="concept.workflow-script"></a>
 
 A **workflow script** holds a workflow's procedure once, in plain JavaScript without asynchronous
-helper functions, so that the same source runs in both clients. The build wraps it for each: for
-Claude Code with a `meta` block and a step function whose **step agent** is a subagent that runs the
+helper functions, kept apart from the step adapter. The build wraps it with a `meta` block and the
+Claude Code step adapter, whose step function's **step agent** is a subagent that runs the
 step command once, waiting at most 100 seconds, and returns the JSON it printed, while the step
 function itself asks again as long as the run is still running and treats an outcome that names
 another step or no real run as no answer. A model retypes the command, and a live
@@ -229,14 +226,8 @@ which the step command then refused as `invalid_request`; so the step function a
 outcome that is no answer, three times in a row at most, since the same key never starts a run
 twice. A step still without an answer is reported lost, and the script's result carries what its
 agents relayed last as `relayed`, marked unverified, so that the step command's own refusal stays in
-the error chain. For pi the step function's step agent is the installed command-runner agent
-`concorde-step`, which runs `concorde workflow step --stdin` without a model, and the report goes
-through its twin `concorde-report`, which runs `concorde workflow report --stdin`. Both read the
-JSON object in the prompt pi-subagents hands them: a
-[step request](contracts.md#contract.workflows.step-request) for the step, and a
-[report request](contracts.md#contract.workflows.report-request) for the report, whose `lost` lists
-the keys the `--lost` option would name. A step agent only relays; what counts is what the runs
-recorded.
+the error chain. The report is relayed the same way, by one more such subagent. A step agent only
+relays; what counts is what the runs recorded.
 
 <a id="concept.workflow-result"></a>
 
@@ -302,7 +293,7 @@ brownfield -> workflow: is a
 
 ## Design
 
-A workflow orchestrates runs from the client of whoever works the workspace. Each run completes one
+A workflow orchestrates runs from the Claude Code session of whoever works the workspace. Each run completes one
 job, an Operation by combining workers, services and host steps, an execution command
 deterministically, and never starts another run. The workflow sees only their command lines and
 results; it leaves worker prompts, grants, check calls, audits and repair loops inside the run. Each
@@ -315,7 +306,7 @@ started it.
 
 Workflows is level 3 of the [levels of work](../../module.md#the-levels-of-work). It is called from
 the task level only: the task session a task was delegated to starts a workflow in the task worktree and may go on with other work while it runs
-in its client's background. It calls only the level directly below: its commands start each step as
+in Claude Code's background. It calls only the level directly below: its commands start each step as
 a run, and it never reaches a worker or a service, which only a run calls. What goes back up is one
 workflow result, assembled from what the runs recorded, in which every run's error chain stays whole
 under the workflow's own link. The task level is free to skip this level and start a run directly
@@ -428,11 +419,11 @@ created, and the step outcome lists them with the `uses` the survey proposed amo
 relies on the record listing every Module the scaffold created, which the brownfield workflow then
 describes one by one.
 
-### Steps in the client
+### Steps in Claude Code
 
-The procedure lives in the client's workflow runtime because both clients offer one and run it in
-the background while the task level stays responsive. That runtime has no shell, so each step is
-carried by a step agent. On Claude Code that agent is a model, whose Bash command ends after two
+The procedure lives in Claude Code's workflow runtime because it runs the procedure in the
+background while the task level stays responsive. That runtime has no shell, so each step is
+carried by a step agent. That agent is a model, whose Bash command ends after two
 minutes unless it asks for more, while a run may take much longer. So a step starts a
 [detached run](../../glossary.json#concept.detached-run) and each call waits at most 100
 seconds, and the repetition is the script's, not the model's: a live headless run showed a step
@@ -548,15 +539,14 @@ commands and the step outcome, step request and workflow result schemas.
 
 <a id="realization.workflows.scripts"></a>
 
-The **Workflow scripts** realization holds each workflow's procedure (`brownfield.js`), the Claude
-Code and pi step adapters the build wraps it with, and the definitions of the pi command-runner
-agents `concorde-step` and `concorde-report`.
+The **Workflow scripts** realization holds each workflow's procedure (`brownfield.js`) and the Claude
+Code step adapter (`claude.js`) the build wraps it with.
 
 <a id="realization.workflows.tests"></a>
 
 The **Workflows tests**, under `tests/concorde/workflows/` with the existing-codebase fixture
 `tests/concorde/support/brownfield_project.py`, run the step and report commands in a real bound
 task worktree against stand-in run results, one step through a real detached `task-validation`
-run, and run the rendered scripts with both adapters in a small JavaScript sandbox that stands in
-for the client runtime, verifying the [requirements](requirements.md) and
+run, and run the rendered script in a small JavaScript sandbox that stands in for Claude Code's
+workflow runtime, verifying the [requirements](requirements.md) and
 [scenarios](scenarios.md).

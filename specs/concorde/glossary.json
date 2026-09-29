@@ -610,7 +610,7 @@
       "id": "concept.step-agent",
       "title": "Step agent",
       "owner": "module.workflows",
-      "definition": "The client-side relay of a workflow step: on Claude Code a small subagent that runs `concorde workflow step` once, waiting at most 100 seconds, while the step function asks again until the run has finished; on pi a command-runner agent that runs it once with `--stdin`, waiting until the run has finished.",
+      "definition": "The relay of a workflow step: a small Claude Code subagent that runs `concorde workflow step` once, waiting at most 100 seconds, while the step function asks again until the run has finished.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.step-agent",
       "relates": [
         {
@@ -801,7 +801,7 @@
       "id": "concept.workflow",
       "title": "Workflow",
       "owner": "module.workflows",
-      "definition": "A named procedure that orders the runs of one bound workspace and handles their results and decision points, written once and rendered for Claude Code and pi.",
+      "definition": "A named procedure that orders the runs of one bound workspace and handles their results and decision points, written once and rendered as a Claude Code workflow.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow",
       "relates": [
         {
@@ -855,7 +855,7 @@
       "id": "concept.workflow-script",
       "title": "Workflow script",
       "owner": "module.workflows",
-      "definition": "The JavaScript source of one workflow's procedure, rendered by the build into a Claude Code workflow and a pi-subagents workflow script.",
+      "definition": "The JavaScript source of one workflow's procedure, rendered by the build into a Claude Code workflow.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-script",
       "relates": [
         {

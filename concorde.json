@@ -2,7 +2,7 @@
   "schema_version": 6,
   "name": "concorde",
   "version": "9.0.0",
-  "description": "Concorde Framework: Spec tooling that checks, serves and publishes architecture Specs, and Operations that run headless Claude Code or pi workers under Spec-derived permissions for a Claude Code or pi main agent",
+  "description": "Concorde Framework: Spec tooling that checks, serves and publishes architecture Specs, and Operations that run headless Claude Code or pi workers under Spec-derived permissions for a Claude Code main agent",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",
@@ -23,8 +23,7 @@
     "receipt": ".concorde/install.json"
   },
   "clients": [
-    "claude-code",
-    "pi"
+    "claude-code"
   ],
   "tools": {
     "d2": {

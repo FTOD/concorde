@@ -16,8 +16,8 @@ realization that keeps its own installed files bound.
 ## Usage
 
 **The package.** `concorde.json` is the package's identity: name, version, licence, the roots the
-installer ships, install locations, the clients `claude-code` and `pi` the build renders workflows
-for, and the pinned third-party programs under `tools` (today `d2`, by release, URL and
+installer ships, install locations, the client `claude-code` the build renders workflows for, and
+the pinned third-party programs under `tools` (today `d2`, by release, URL and
 per-platform SHA-256). The build reads it too, so a changed descriptor makes every render stale.
 
 <a id="concept.build-manifest"></a>
@@ -25,10 +25,9 @@ per-platform SHA-256). The build reads it too, so a changed descriptor makes eve
 **Building.** `python3 scripts/concorde.py build` expands every prompt root into `generated/`
 ([requirements](requirements.md#req.distribution.build-reachable)), `{{name}}` becoming the literal
 text `{name}` so that a prompt can show a placeholder such as a check's `{python}`, and wraps every
-[workflow script](../glossary.json#concept.workflow-script) of the workflow catalog for each client:
+[workflow script](../glossary.json#concept.workflow-script) of the workflow catalog as
 `generated/workflows/claude/concorde-<name>.js` with its `meta` block and Claude Code step adapter,
-`generated/workflows/pi/<name>.js` with the pi step adapter, and the pi command-runner agents
-`generated/workflows/pi/agents/concorde-step.md` and `concorde-report.md`, and writes
+and writes
 `generated/build-manifest.json` with every source's and output's digest. The prompt roots are the
 Protocol's `prompts/protocol/principles.md` and `prompts/protocol/kinds/module.md` and every file
 directly in `prompts/workers/`, `prompts/main-session/` and `prompts/dogfooding/`, each rendered
@@ -322,9 +321,8 @@ new execution command is one more catalog entry and no change here.
 <a id="uses-workflows"></a>
 
 **Workflows** owns each workflow's script, its catalog entry with name and description, the step
-adapters and the pi command-runner agents, and the `concorde workflow` command that `workflow`
-routes to. Distribution only wraps and places them: the build renders each script for both clients
-unchanged in its steps, and the installer places the Claude Code renders and the permission rules
+adapter, and the `concorde workflow` command that `workflow` routes to. Distribution only wraps and
+places them: the build renders each script for Claude Code unchanged in its steps, and the installer places the Claude Code renders and the permission rules
 their step agents need, refusing stale renders like any other build output.
 
 ### Inside

@@ -14,7 +14,7 @@ The workflow commands SHALL refuse to run a step or build a report in a worktree
 
 A [workflow step](../../glossary.json#concept.workflow-step) SHALL start its run only as `concorde run <operation> --detach` or `concorde <command> --detach` of the workspace's own `concorde`, in the workspace the step runs in.
 
-The workflow leaves worker launches and service calls inside the run. What client
+The workflow leaves worker launches and service calls inside the run. What
 [step agents](../../glossary.json#concept.step-agent) may do is stated in
 [req.workflows.step-agent-relays](#req.workflows.step-agent-relays) and
 [req.workflows.step-agent-no-change](#req.workflows.step-agent-no-change).
@@ -58,7 +58,7 @@ A step whose command line the runner rejected, or whose detached runner did not 
 
 ### req.workflows.bounded-wait — A step call waits a bounded time
 
-`concorde workflow step` without `--stdin` SHALL return within its `--wait` seconds, exiting with status 3 when the run has not finished.
+`concorde workflow step` SHALL return within its `--wait` seconds, exiting with status 3 when the run has not finished.
 
 ### req.workflows.answers-new-key — Answers make a new step
 
@@ -138,13 +138,13 @@ level's decision.
 
 ## Scripts
 
-### req.workflows.one-source — One procedure for both clients
+### req.workflows.one-source — One procedure, rendered for Claude Code
 
-Each workflow's procedure SHALL be written once and rendered by the build for Claude Code and for pi without change to its steps, run arguments, branches, admitted inputs or decision points.
+Each workflow's procedure SHALL be written once, apart from the step adapter, and rendered by the build into a Claude Code workflow without change to its steps, run arguments, branches, admitted inputs or decision points.
 
-Adapters may differ in command transport and waiting: Claude Code uses a relay subagent and pi a
-command-runner agent. Both execute the same procedure against the same run command lines and
-assemble the report from the recorded runs.
+The adapter decides only how a step is invoked and awaited and how the report is requested: through
+relay subagents that run the same run command lines a developer could run, with the report
+assembled from the recorded runs.
 
 ### req.workflows.script-repeats — The script, not a model, waits for a run
 

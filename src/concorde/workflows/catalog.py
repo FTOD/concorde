@@ -1,11 +1,11 @@
-"""The workflow catalog, and the rendering of a workflow's procedure for each client.
+"""The workflow catalog, and the rendering of a workflow's procedure as a Claude Code workflow.
 
 A workflow's procedure is written once, in ``scripts/<name>.js``, as plain JavaScript with no
-asynchronous helper functions. It calls three functions an adapter defines: ``step(key, argv)``
-returns a promise of the step outcome (or null when the step agent returned nothing), ``report(lost)``
-a promise of the reported status, and ``note(text)`` shows progress. ``render`` puts the client's
-header and adapter in front of it: for Claude Code a ``meta`` block and a subagent that runs
-``concorde workflow step``; for pi a call of the command-runner agent ``concorde-step``.
+asynchronous helper functions. It calls three functions the adapter ``scripts/claude.js`` defines:
+``step(key, argv)`` returns a promise of the step outcome (or null when the step agent returned
+nothing), ``report(lost)`` a promise of the reported status, and ``note(text)`` shows progress.
+``render`` puts a ``meta`` block and that adapter, whose small subagents run ``concorde workflow
+step``, in front of it.
 """
 
 from __future__ import annotations
@@ -16,7 +16,8 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = "src/concorde/workflows/scripts"
 CATALOG = "src/concorde/workflows/catalog.py"
-CLIENTS = ("claude", "pi")
+# The Claude Code adapter every procedure is rendered with.
+ADAPTER = "claude.js"
 
 WORKFLOWS: dict[str, dict] = {
     "brownfield": {
@@ -34,7 +35,7 @@ WORKFLOWS: dict[str, dict] = {
 
 
 class WorkflowError(ValueError):
-    """An unknown workflow or client, or a missing script."""
+    """An unknown workflow or a missing script."""
 
 
 def claude_name(name: str) -> str:
@@ -42,11 +43,9 @@ def claude_name(name: str) -> str:
     return f"concorde-{name}"
 
 
-def output_path(name: str, client: str) -> str:
+def output_path(name: str) -> str:
     """Where the build writes the render, relative to the package root."""
-    if client == "claude":
-        return f"generated/workflows/claude/{claude_name(name)}.js"
-    return f"generated/workflows/pi/{name}.js"
+    return f"generated/workflows/claude/{claude_name(name)}.js"
 
 
 def _read(name: str, root: Path = PACKAGE_ROOT) -> str:
@@ -56,33 +55,23 @@ def _read(name: str, root: Path = PACKAGE_ROOT) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def render(name: str, client: str, root: Path = PACKAGE_ROOT) -> str:
-    """The script of one workflow for one client, from the sources under ``root``."""
+def render(name: str, root: Path = PACKAGE_ROOT) -> str:
+    """The Claude Code workflow script of one workflow, from the sources under ``root``."""
     if name not in WORKFLOWS:
         raise WorkflowError(
             f"unknown workflow {name!r}; the catalog has {', '.join(sorted(WORKFLOWS))}"
         )
-    if client not in CLIENTS:
-        raise WorkflowError(
-            f"unknown client {client!r}; expected one of {', '.join(CLIENTS)}"
-        )
     entry = WORKFLOWS[name]
     procedure = _read(f"{name}.js", root)
-    adapter = _read(f"{client}.js", root)
+    adapter = _read(ADAPTER, root)
     constant = f"const WORKFLOW = {json.dumps(name)}\n"
-    if client == "claude":
-        meta = {
-            "name": claude_name(name),
-            "description": entry["description"],
-            "whenToUse": entry["when"],
-            "phases": [{"title": title} for title in entry["phases"]],
-        }
-        header = f"export const meta = {json.dumps(meta, indent=2)}\n\n"
-    else:
-        header = (
-            f"// Concorde workflow {name} for pi-subagents; run with "
-            "subagent({ workflowScriptPath, args }).\n\n"
-        )
+    meta = {
+        "name": claude_name(name),
+        "description": entry["description"],
+        "whenToUse": entry["when"],
+        "phases": [{"title": title} for title in entry["phases"]],
+    }
+    header = f"export const meta = {json.dumps(meta, indent=2)}\n\n"
     return (
         header
         + constant
@@ -93,38 +82,21 @@ def render(name: str, client: str, root: Path = PACKAGE_ROOT) -> str:
     )
 
 
-AGENTS = ("concorde-step", "concorde-report")
-
-
-def agent(name: str, root: Path = PACKAGE_ROOT) -> str:
-    """A pi command-runner agent that carries workflow steps or reports."""
-    return _read(f"{name}.md", root)
-
-
 def renders(root: Path = PACKAGE_ROOT) -> dict[str, tuple[str, tuple[str, ...]]]:
     """Every file the build writes for workflows: its path relative to ``root``, mapped to its
     content and the sources it was rendered from."""
     files = {}
     for name in sorted(WORKFLOWS):
-        for client in CLIENTS:
-            files[output_path(name, client)] = (
-                render(name, client, root),
-                (f"{SCRIPTS}/{name}.js", f"{SCRIPTS}/{client}.js", CATALOG),
-            )
-    for name in AGENTS:
-        files[f"generated/workflows/pi/agents/{name}.md"] = (
-            agent(name, root),
-            (f"{SCRIPTS}/{name}.md",),
+        files[output_path(name)] = (
+            render(name, root),
+            (f"{SCRIPTS}/{name}.js", f"{SCRIPTS}/{ADAPTER}", CATALOG),
         )
     return files
 
 
 __all__ = [
-    "AGENTS",
-    "CLIENTS",
     "WORKFLOWS",
     "WorkflowError",
-    "agent",
     "claude_name",
     "output_path",
     "render",

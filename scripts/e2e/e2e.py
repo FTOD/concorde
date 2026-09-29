@@ -5,7 +5,8 @@ This is a tool for developing Concorde, never installed into a project. It takes
 the Python repositories SWE-bench draws from (``references/swe-bench/``), sets it up as a user
 would (clone, install Concorde from this checkout, initialize, open a task), and runs a workflow
 in it with real workers, either through a headless Claude Code session working as the task's
-task session or through the deterministic driver that plays the pi runtime.
+task session or through the deterministic driver that plays Claude Code's workflow runtime, its
+step agents running the commands they are given without a model.
 
     python3 scripts/e2e/e2e.py repos
     python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0 [--worker-model <model>]
@@ -280,21 +281,21 @@ def claude_command(workflow: str, args: dict, task: str) -> tuple[list[str], dic
 
 
 def driver_input(project: Path, worktree: Path, workflow: str, args: dict) -> dict:
-    """The request of the deterministic driver: the project's rendered pi script, run with its
-    agents executing the real ``concorde workflow`` commands in the task's worktree."""
-    script = project / f".concorde/framework/generated/workflows/pi/{workflow}.js"
+    """The request of the deterministic driver: the project's rendered Claude Code workflow, run
+    with its step agents executing the real ``concorde workflow`` commands in the task's
+    worktree."""
+    script = (
+        project
+        / f".concorde/framework/generated/workflows/claude/concorde-{workflow}.js"
+    )
     if not script.is_file():
         raise E2EError("script_missing", f"{script} does not exist; reinstall Concorde")
     return {
         "script": str(script),
-        "client": "pi",
-        "args": args,
+        "args": {**args, "concorde": str(worktree / ".concorde/bin/concorde")},
         "outcomes": {},
         "report": None,
-        "execute": {
-            "command": str(worktree / ".concorde/bin/concorde"),
-            "cwd": str(worktree),
-        },
+        "execute": {"cwd": str(worktree)},
     }
 
 

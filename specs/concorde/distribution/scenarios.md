@@ -21,13 +21,13 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND each continues with the render of its prompt root, byte for byte
 - AND the [build manifest](../glossary.json#concept.build-manifest) records both
 
-### scenario.distribution.build-workflows — Render every workflow for both clients
+### scenario.distribution.build-workflows — Render every workflow for Claude Code
 
 - GIVEN a workflow catalog with the [brownfield workflow](../glossary.json#concept.brownfield-workflow)
 - WHEN the developer runs `build`
 - THEN `generated/workflows/claude/concorde-brownfield.js` starts with a `meta` block naming `concorde-brownfield`, followed by the Claude Code step adapter and the procedure
-- AND `generated/workflows/pi/brownfield.js` holds the pi step adapter and the same procedure, and `generated/workflows/pi/agents/` the command-runner agents `concorde-step.md` and `concorde-report.md`
-- AND the [build manifest](../glossary.json#concept.build-manifest) records all four
+- AND it is the only workflow render under `generated/workflows/`
+- AND the [build manifest](../glossary.json#concept.build-manifest) records it
 
 ### scenario.distribution.build-check-stale — Report a stale build without writing
 

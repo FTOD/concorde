@@ -197,28 +197,28 @@ class BuildTests(unittest.TestCase):
                 self.assertIn(f"generated/skills/{name}/SKILL.md", manifest["outputs"])
 
     @verifies("scenario.distribution.build-workflows")
-    def test_the_build_renders_every_workflow_for_both_clients(self):
+    def test_the_build_renders_every_workflow_for_claude_code(self):
         root = package_copy(self)
         claude = (
             root / "generated/workflows/claude/concorde-brownfield.js"
         ).read_text()
-        pi = (root / "generated/workflows/pi/brownfield.js").read_text()
         self.assertTrue(claude.startswith("export const meta = {"))
         self.assertIn('"name": "concorde-brownfield"', claude)
         procedure = (
             (root / "src/concorde/workflows/scripts/brownfield.js").read_text().strip()
         )
         self.assertIn(procedure, claude)
-        self.assertIn(procedure, pi)
-        self.assertIn("function step(key, argv)", pi)
+        self.assertIn("function step(key, argv)", claude)
         manifest = json.loads((root / "generated/build-manifest.json").read_text())
-        for path in (
-            "generated/workflows/claude/concorde-brownfield.js",
-            "generated/workflows/pi/brownfield.js",
-            "generated/workflows/pi/agents/concorde-step.md",
-            "generated/workflows/pi/agents/concorde-report.md",
-        ):
-            self.assertIn(path, manifest["outputs"])
+        workflows = sorted(
+            path
+            for path in manifest["outputs"]
+            if path.startswith("generated/workflows/")
+        )
+        self.assertEqual(
+            ["generated/workflows/claude/concorde-brownfield.js"], workflows
+        )
+        self.assertFalse((root / "generated/workflows/pi").exists())
         self.assertIn(
             "src/concorde/workflows/scripts/brownfield.js", manifest["sources"]
         )
@@ -226,7 +226,9 @@ class BuildTests(unittest.TestCase):
         script.write_text(script.read_text() + "\n// changed\n")
         ok, differences = check_build(root)
         self.assertFalse(ok)
-        self.assertIn("generated/workflows/pi/brownfield.js", " ".join(differences))
+        self.assertIn(
+            "generated/workflows/claude/concorde-brownfield.js", " ".join(differences)
+        )
 
     @verifies("scenario.distribution.build-check-stale")
     def test_a_stale_build_is_reported_without_writing(self):

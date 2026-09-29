@@ -1,7 +1,7 @@
 # Workflows contracts
 
-The exact shapes of [Workflows](module.md): what one step prints, the step and report requests a
-pi [step agent](../../glossary.json#concept.step-agent) passes on standard input, the
+The exact shapes of [Workflows](module.md): what one step prints, the step request a
+[step agent](../../glossary.json#concept.step-agent) passes with `--json`, the
 [workflow result](../../glossary.json#concept.workflow-result), and the error codes of the
 workflow's own links, and the content of the workflow's and each step's trace node. Error links
 follow the Framework's
@@ -301,8 +301,8 @@ Printed by `concorde workflow step`, from the workspace's
 
 ## Step request
 
-What `concorde workflow step --stdin` reads, what `--json` takes, and what the pi step agent
-receives as its task.
+What `concorde workflow step --json` takes, as the
+[step agent](../../glossary.json#concept.step-agent) passes it.
 
 ```concorde-contract
 {
@@ -409,43 +409,6 @@ receives as its task.
     ],
     "retry": false,
     "restart": null
-  }
-}
-```
-
-## Report request
-
-What `concorde workflow report --stdin` reads, and what the pi report agent `concorde-report`
-receives as its task.
-
-```concorde-contract
-{
-  "id": "contract.workflows.report-request",
-  "version": 1,
-  "schema": {
-    "type": "object",
-    "properties": {
-      "lost": {
-        "anyOf": [
-          {
-            "type": "null"
-          },
-          {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        ]
-      }
-    }
-  },
-  "semantics": "One report request, with the meaning of the command line's --lost options: lost lists the base keys the script reports as lost because their step agents returned nothing, as each --lost <key> would. lost is optional and means the empty list when left out or null, so the ordinary request is the empty object. The command reads the text from its first { to its last }, since pi-subagents may wrap the task in its prompt, and ignores other fields. A text without a JSON object is answered with an invalid_request link and exit status 2, and nothing is reported or saved. With --stdin the report command exits 0 whatever status the result has. A behaviour or field change increments the version.",
-  "example": {
-    "lost": [
-      "describe:module.checkout"
-    ]
   }
 }
 ```
@@ -1663,8 +1626,8 @@ cannot work at all: `binding_required` when the worktree they start in has no
 [workspace binding](../../glossary.json#concept.workspace-binding), `binding_unreadable`,
 `binding_invalid` or `binding_misplaced` when its binding is refused, and, for the report,
 `no_workflow` when the workspace ran no [workflow step](../../glossary.json#concept.workflow-step)
-and `record_unreadable` when its workflow record cannot be read. A command line, or a
-standard-input request, that breaks the [step request](#contract.workflows.step-request) or
-[report request](#contract.workflows.report-request) contract is answered with a `component` link of
+and `record_unreadable` when its workflow record cannot be read. A command line that breaks the
+[step request](#contract.workflows.step-request) contract, or a malformed report command line, is
+answered with a `component` link of
 the actor `Workflows (concorde workflow)`, code `invalid_request`, reason `input`, and exit status
 2.

@@ -312,6 +312,24 @@ class E2ETests(unittest.TestCase):
                 e2e.driver_input(Path(directory), Path(directory), "brownfield", {})
             self.assertEqual("script_missing", raised.exception.code)
 
+    def test_the_driver_runs_the_claude_code_render_with_the_worktrees_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project, worktree = Path(directory), Path(directory) / "t1"
+            script = (
+                project
+                / ".concorde/framework/generated/workflows/claude/concorde-brownfield.js"
+            )
+            script.parent.mkdir(parents=True)
+            script.write_text("export const meta = {}\n")
+            value = e2e.driver_input(
+                project, worktree, "brownfield", {"module": "m", "mode": "no-ask"}
+            )
+        self.assertEqual(str(script), value["script"])
+        self.assertEqual(
+            str(worktree / ".concorde/bin/concorde"), value["args"]["concorde"]
+        )
+        self.assertEqual({"cwd": str(worktree)}, value["execute"])
+
 
 if __name__ == "__main__":
     unittest.main()

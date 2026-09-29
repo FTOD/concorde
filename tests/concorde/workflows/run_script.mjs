@@ -1,11 +1,12 @@
-// Runs a rendered Concorde workflow script under a stand-in for its client's runtime.
+// Runs a rendered Concorde workflow script under a stand-in for Claude Code's workflow runtime.
 //
-// Standard input: {"script": <path>, "client": "claude" | "pi", "args": {...},
+// Standard input: {"script": <path>, "args": {...},
 //                  "outcomes": {<key>: <step outcome> | null}, "report": {status, summary}}
 // A step whose key has no outcome gets null (its agent "returned nothing"). With
-// "execute": {"command": <path of concorde>, "cwd": <dir>} a pi script's agents run the real
-// commands, as its command-runner agents would: `workflow step --stdin` and `workflow report --stdin`. Standard output:
-// {"meta": <Claude meta or null>, "calls": [{"key", "request" | "lost", "agent", "options"}],
+// "execute": {"cwd": <dir>} every agent runs the command its prompt names in that directory, as a
+// step agent would with its Bash tool, and returns what it printed: the step outcome, or the
+// status and summary of the report. Standard output:
+// {"meta": <Claude meta>, "calls": [{"key", "request" | "lost", "options", "prompt"}],
 //  "notes": [...], "result": <what the script returned>, "error": <message or null>}.
 
 import { spawnSync } from "node:child_process"
@@ -36,59 +37,48 @@ function lostOf(text) {
   return match ? match[1] : null
 }
 
-let body = source
-let meta = null
-if (input.client === "claude") {
-  const match = source.match(/^export const meta = (\{[\s\S]*?\n\})\n/)
-  if (!match) throw new Error("the Claude script does not start with an export const meta block")
-  meta = JSON.parse(match[1])
-  body = source.slice(match[0].length)
+// The command a relay prompt names: the line after "Run exactly this command ..." and a blank one.
+function commandOf(text) {
+  return text.split("\n")[2]
 }
+
+// Runs the prompt's command through the shell and returns the JSON object it printed, or null.
+function executed(prompt) {
+  const done = spawnSync("/bin/sh", ["-c", commandOf(prompt)], {
+    cwd: input.execute.cwd,
+    encoding: "utf-8",
+  })
+  try {
+    return JSON.parse(done.stdout)
+  } catch (error) {
+    return null
+  }
+}
+
+const match = source.match(/^export const meta = (\{[\s\S]*?\n\})\n/)
+if (!match) throw new Error("the Claude script does not start with an export const meta block")
+const meta = JSON.parse(match[1])
+const body = source.slice(match[0].length)
 
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 let result = null
 let error = null
 try {
-  if (input.client === "claude") {
-    const agent = function (prompt, options) {
-      if (options.label === "report") {
-        calls.push({ key: "report", lost: lostOf(prompt), options })
-        return Promise.resolve(input.report)
-      }
-      const request = requestOf(prompt)
-      calls.push({ key: request.key, request, options, prompt })
-      const outcome = next(request.key)
-      return Promise.resolve(outcome === undefined ? null : outcome)
+  const agent = function (prompt, options) {
+    if (options.label === "report") {
+      calls.push({ key: "report", lost: lostOf(prompt), options })
+      if (!input.execute) return Promise.resolve(input.report)
+      const value = executed(prompt)
+      return Promise.resolve(value && { status: value.status, summary: value.summary })
     }
-    const run = new AsyncFunction("agent", "log", "phase", "args", body)
-    result = await run(agent, (text) => notes.push(text), () => {}, input.args)
-  } else {
-    const execute = input.execute
-    const runs = {
-      run(key, options) {
-        const request = JSON.parse(options.task)
-        if (execute) {
-          const verb = options.agent === "concorde-report" ? "report" : "step"
-          calls.push({ key: verb === "report" ? "report" : request.key, request, agent: options.agent })
-          const done = spawnSync(execute.command, ["workflow", verb, "--stdin"], {
-            cwd: execute.cwd, input: options.task, encoding: "utf-8",
-          })
-          return Promise.resolve({ ok: done.status === 0, output: done.stdout, stderr: done.stderr })
-        }
-        if (options.agent === "concorde-report") {
-          calls.push({ key: "report", lost: request.lost[0] || null, agent: options.agent })
-          return Promise.resolve({ ok: true, output: JSON.stringify(input.report) })
-        }
-        calls.push({ key: request.key, request, agent: options.agent })
-        const outcome = next(request.key)
-        if (outcome === undefined || outcome === null) return Promise.resolve({ ok: false, output: "" })
-        return Promise.resolve({ ok: true, output: JSON.stringify(outcome) })
-      },
-    }
-    const console_ = { log: (text) => notes.push(text) }
-    const run = new AsyncFunction("runs", "console", "args", body)
-    result = await run(runs, console_, input.args)
+    const request = requestOf(prompt)
+    calls.push({ key: request.key, request, options, prompt })
+    if (input.execute) return Promise.resolve(executed(prompt))
+    const outcome = next(request.key)
+    return Promise.resolve(outcome === undefined ? null : outcome)
   }
+  const run = new AsyncFunction("agent", "log", "phase", "args", body)
+  result = await run(agent, (text) => notes.push(text), () => {}, input.args)
 } catch (caught) {
   error = String(caught && caught.message ? caught.message : caught)
 }

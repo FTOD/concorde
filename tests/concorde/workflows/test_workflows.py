@@ -1,4 +1,4 @@
-"""Workflows: keyed steps, the workflow result, and the rendered scripts under stand-in clients."""
+"""Workflows: keyed steps, the workflow result, and the rendered script under a stand-in Claude Code."""
 
 from __future__ import annotations
 
@@ -772,23 +772,22 @@ class ReportTests(unittest.TestCase):
 
 
 class ScriptTests(unittest.TestCase):
-    """The rendered scripts, run under stand-ins for Claude Code's and pi's workflow runtimes."""
+    """The rendered script, run under a stand-in for Claude Code's workflow runtime."""
 
     def setUp(self):
         self.directory = Path(self.id().replace(".", "_"))
 
-    def run_script(self, client, args, outcomes, report_status="ok"):
+    def run_script(self, args, outcomes, report_status="ok"):
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:
             script = Path(directory) / "script.js"
-            script.write_text(catalog.render("brownfield", client))
+            script.write_text(catalog.render("brownfield"))
             completed = subprocess.run(
                 ["node", str(HARNESS)],
                 input=json.dumps(
                     {
                         "script": str(script),
-                        "client": client,
                         "args": args,
                         "outcomes": outcomes,
                         "report": {"status": report_status, "summary": "s"},
@@ -842,57 +841,45 @@ class ScriptTests(unittest.TestCase):
     ARGS: ClassVar[dict] = {"module": "module.shop", "mode": "no-ask"}
 
     @verifies("scenario.workflows.no-ask-complete")
-    def test_both_clients_run_the_whole_procedure_providers_first(self):
-        for client in ("claude", "pi"):
-            with self.subTest(client=client):
-                run = self.run_script(
-                    client, self.ARGS, self.full(points=2, describe_status="blocked")
-                )
-                self.assertIsNone(run["error"])
-                self.assertEqual(
-                    [
-                        "survey",
-                        "scaffold",
-                        "describe:module.inventory",
-                        "describe:module.checkout",
-                        "describe:module.shop",
-                        "spec_review",
-                        "validate",
-                        "delivery",
-                        "report",
-                    ],
-                    [call["key"] for call in run["calls"]],
-                )
-                review = next(c for c in run["calls"] if c["key"] == "spec_review")
-                self.assertEqual(
-                    [
-                        "spec_review",
-                        "--modules",
-                        "module.inventory,module.checkout,module.shop",
-                    ],
-                    review["request"]["argv"],
-                )
-                self.assertEqual("ok", run["result"]["reported"]["status"])
-        claude = self.run_script("claude", self.ARGS, self.full())
-        self.assertEqual("concorde-brownfield", claude["meta"]["name"])
-        self.assertEqual("haiku", claude["calls"][0]["options"]["model"])
-        pi = self.run_script("pi", self.ARGS, self.full())
+    def test_the_script_runs_the_whole_procedure_providers_first(self):
+        run = self.run_script(self.ARGS, self.full(points=2, describe_status="blocked"))
+        self.assertIsNone(run["error"])
         self.assertEqual(
-            {"concorde-step", "concorde-report"}, {c["agent"] for c in pi["calls"]}
+            [
+                "survey",
+                "scaffold",
+                "describe:module.inventory",
+                "describe:module.checkout",
+                "describe:module.shop",
+                "spec_review",
+                "validate",
+                "delivery",
+                "report",
+            ],
+            [call["key"] for call in run["calls"]],
         )
+        review = next(c for c in run["calls"] if c["key"] == "spec_review")
+        self.assertEqual(
+            [
+                "spec_review",
+                "--modules",
+                "module.inventory,module.checkout,module.shop",
+            ],
+            review["request"]["argv"],
+        )
+        self.assertEqual("ok", run["result"]["reported"]["status"])
+        self.assertEqual("concorde-brownfield", run["meta"]["name"])
+        self.assertEqual("haiku", run["calls"][0]["options"]["model"])
 
     @verifies("scenario.workflows.interactive-pause")
     def test_an_interactive_run_stops_after_the_survey(self):
-        run = self.run_script(
-            "claude", {**self.ARGS, "mode": "interactive"}, self.full(points=1)
-        )
+        run = self.run_script({**self.ARGS, "mode": "interactive"}, self.full(points=1))
         self.assertEqual(["survey", "report"], [c["key"] for c in run["calls"]])
 
     @verifies("scenario.workflows.interactive-resume")
     def test_answers_and_retries_reach_their_steps(self):
         answers = {"survey": [{"id": "d.db-helper", "question": "q", "answer": "yes"}]}
         run = self.run_script(
-            "pi",
             {
                 **self.ARGS,
                 "mode": "interactive",
@@ -910,9 +897,7 @@ class ScriptTests(unittest.TestCase):
         self.assertNotIn("retry", requests["survey"])
 
     def test_restart_labels_reach_their_steps(self):
-        run = self.run_script(
-            "claude", {**self.ARGS, "restart": {"scaffold": "2"}}, self.full()
-        )
+        run = self.run_script({**self.ARGS, "restart": {"scaffold": "2"}}, self.full())
         requests = {
             c["key"]: c["request"] for c in run["calls"] if c["key"] != "report"
         }
@@ -921,28 +906,23 @@ class ScriptTests(unittest.TestCase):
 
     def test_interactive_stops_at_a_failed_description_and_no_ask_goes_on(self):
         outcomes = self.full(describe_status="failed")
-        interactive = self.run_script(
-            "claude", {**self.ARGS, "mode": "interactive"}, outcomes
-        )
+        interactive = self.run_script({**self.ARGS, "mode": "interactive"}, outcomes)
         self.assertEqual("report", interactive["calls"][-1]["key"])
         self.assertEqual("describe:module.inventory", interactive["calls"][-2]["key"])
-        no_ask = self.run_script("claude", self.ARGS, outcomes)
+        no_ask = self.run_script(self.ARGS, outcomes)
         self.assertIn("delivery", [c["key"] for c in no_ask["calls"]])
 
     @verifies("scenario.workflows.lost")
     def test_a_step_agent_that_returned_nothing_is_reported_lost(self):
         outcomes = self.full()
         outcomes["scaffold"] = None
-        # The Claude step function asks its relay three times before it gives up.
-        for client, asked in (("claude", 3), ("pi", 1)):
-            with self.subTest(client=client):
-                run = self.run_script(client, self.ARGS, outcomes)
-                self.assertEqual(
-                    ["survey", *["scaffold"] * asked, "report"],
-                    [c["key"] for c in run["calls"]],
-                )
-                self.assertEqual("scaffold", run["calls"][-1]["lost"])
-                self.assertNotIn("relayed", run["result"])
+        # The step function asks its relay three times before it gives up.
+        run = self.run_script(self.ARGS, outcomes)
+        self.assertEqual(
+            ["survey", *["scaffold"] * 3, "report"], [c["key"] for c in run["calls"]]
+        )
+        self.assertEqual("scaffold", run["calls"][-1]["lost"])
+        self.assertNotIn("relayed", run["result"])
 
     def test_a_rejected_step_travels_with_the_report(self):
         outcomes = self.full()
@@ -954,21 +934,17 @@ class ScriptTests(unittest.TestCase):
             error={"code": "step_rejected", "level": "workflow"},
         )
         outcomes["scaffold"] = rejected
-        for client in ("claude", "pi"):
-            with self.subTest(client=client):
-                run = self.run_script(client, self.ARGS, outcomes)
-                self.assertEqual(
-                    ["survey", "scaffold", "report"], [c["key"] for c in run["calls"]]
-                )
-                self.assertEqual("scaffold", run["calls"][-1]["lost"])
-                self.assertEqual(
-                    "step_rejected", run["result"]["rejected"]["error"]["code"]
-                )
+        run = self.run_script(self.ARGS, outcomes)
+        self.assertEqual(
+            ["survey", "scaffold", "report"], [c["key"] for c in run["calls"]]
+        )
+        self.assertEqual("scaffold", run["calls"][-1]["lost"])
+        self.assertEqual("step_rejected", run["result"]["rejected"]["error"]["code"])
 
     def test_a_step_still_running_ends_a_no_ask_run(self):
         outcomes = self.full()
         outcomes["describe:module.inventory"]["state"] = "running"
-        run = self.run_script("claude", self.ARGS, outcomes)
+        run = self.run_script(self.ARGS, outcomes)
         self.assertEqual("report", run["calls"][-1]["key"])
         self.assertEqual("describe:module.inventory", run["calls"][-2]["key"])
 
@@ -983,7 +959,7 @@ class ScriptTests(unittest.TestCase):
             running,
             outcomes["describe:module.inventory"],
         ]
-        run = self.run_script("claude", self.ARGS, outcomes)
+        run = self.run_script(self.ARGS, outcomes)
         keys = [c["key"] for c in run["calls"]]
         self.assertEqual(3, keys.count("describe:module.inventory"))
         self.assertIn("delivery", keys)
@@ -994,7 +970,7 @@ class ScriptTests(unittest.TestCase):
     def test_a_relayed_outcome_that_names_no_real_run_counts_as_none(self):
         outcomes = self.full()
         outcomes["scaffold"] = dict(outcomes["scaffold"], run_id="bxy9nbcb9")
-        run = self.run_script("claude", self.ARGS, outcomes)
+        run = self.run_script(self.ARGS, outcomes)
         self.assertEqual(
             ["survey", "scaffold", "scaffold", "scaffold", "report"],
             [c["key"] for c in run["calls"]],
@@ -1011,7 +987,7 @@ class ScriptTests(unittest.TestCase):
         }
         outcomes = self.full()
         outcomes["delivery"] = [refusal, outcomes["delivery"]]
-        run = self.run_script("claude", self.ARGS, outcomes)
+        run = self.run_script(self.ARGS, outcomes)
         keys = [c["key"] for c in run["calls"]]
         self.assertEqual(2, keys.count("delivery"))
         self.assertIsNone(run["calls"][-1]["lost"])
@@ -1022,7 +998,7 @@ class ScriptTests(unittest.TestCase):
             set(run["calls"][-2]["request"]),
         )
         outcomes["delivery"] = [refusal]
-        run = self.run_script("claude", self.ARGS, outcomes)
+        run = self.run_script(self.ARGS, outcomes)
         self.assertEqual(3, [c["key"] for c in run["calls"]].count("delivery"))
         self.assertEqual("delivery", run["calls"][-1]["lost"])
         self.assertEqual(
@@ -1048,7 +1024,7 @@ class ScriptTests(unittest.TestCase):
         outcomes["validate"] = self.outcome(
             "validate", "task-validation", "blocked", ready=False
         )
-        run = self.run_script("claude", self.ARGS, outcomes)
+        run = self.run_script(self.ARGS, outcomes)
         self.assertNotIn("delivery", [c["key"] for c in run["calls"]])
 
 
