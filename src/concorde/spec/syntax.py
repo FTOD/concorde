@@ -15,9 +15,6 @@ from dataclasses import dataclass, field
 from .errors import SpecError
 from .repository_base import HEADING, IDENTITY, walk_lines
 
-READING_SECTIONS = ("Purpose", "Usage", "Design")
-# A level-2 section an entry must not have: how a Module relates to others is part of its Design.
-FORBIDDEN_SECTIONS = ("Relationships",)
 HEADING_ANCHOR = re.compile(r"[ \t]+\{#([^{}\s]+)\}[ \t]*$")
 HTML_ANCHOR_LINE = re.compile(r'^[ \t]*(?:<a id="[^"]*"></a>[ \t]*)+$')
 HTML_ANCHOR = re.compile(r'<a id="([^"]*)"></a>')
@@ -650,86 +647,6 @@ def test_declarations(text: str) -> list[int]:
         for number, kind, line in walk_lines(text)
         if kind == "prose" and TEST_DECLARATION.search(line)
     ]
-
-
-def entry_section_problems(text: str) -> list[Problem]:
-    """CHK.document.sections and CHK.document.prose for an entry ``module.md``."""
-    lines = walk_lines(text)
-    found = headings(lines)
-    top = [heading for heading in found if heading.level == 2]
-    problems = []
-    counts = {
-        name: sum(heading.text == name for heading in top) for name in READING_SECTIONS
-    }
-    wrong = [f"{name} ({count} times)" for name, count in counts.items() if count != 1]
-    forbidden = [heading for heading in top if heading.text in FORBIDDEN_SECTIONS]
-    if wrong:
-        problems.append(
-            Problem(
-                "CHK.document.sections",
-                "an entry has the level-2 sections Purpose, Usage and Design, "
-                "each exactly once in any order; found " + ", ".join(wrong),
-            )
-        )
-    for heading in forbidden:
-        problems.append(
-            Problem(
-                "CHK.document.sections",
-                f"an entry has no level-2 section {heading.text!r}: how the Module relates to "
-                "its children and to other Modules belongs in Design; move this section's "
-                "prose and diagrams there and delete the heading",
-                heading.line,
-            )
-        )
-    if wrong:
-        return problems
-    total = lines[-1][0] if lines else 0
-    heading_lines = {heading.line for heading in found}
-    for heading in (heading for heading in top if heading.text in READING_SECTIONS):
-        end = next(
-            (
-                later.line
-                for later in found
-                if later.line > heading.line and later.level <= 2
-            ),
-            total + 1,
-        )
-        region = [(n, k, line) for n, k, line in lines if heading.line < n < end]
-        if heading.text == "Purpose":
-            if not any(k == "prose" and line.strip() for _, k, line in region) or any(
-                k != "prose"
-                or n in heading_lines
-                or re.match(r"\s*(?:\||[-*+] |\d+[.)] |>)", line)
-                for n, k, line in region
-                if line.strip() or k != "prose"
-            ):
-                problems.append(
-                    Problem(
-                        "CHK.document.prose",
-                        "Purpose is nonempty plain prose without headings, lists, tables or fences",
-                        heading.line,
-                    )
-                )
-        else:
-            meaningful = [
-                line
-                for n, k, line in region
-                if k == "prose"
-                and n not in heading_lines
-                and line.strip()
-                and not HTML_ANCHOR_LINE.match(line)
-            ]
-            prose_text = LINK.sub("", " ".join(meaningful))
-            prose_text = re.sub(r"[|\-*+>#:`\s]", "", prose_text)
-            if not prose_text:
-                problems.append(
-                    Problem(
-                        "CHK.document.prose",
-                        f"{heading.text} holds explanatory prose, not only links, headings or diagrams",
-                        heading.line,
-                    )
-                )
-    return problems
 
 
 def _blank(match: re.Match) -> str:

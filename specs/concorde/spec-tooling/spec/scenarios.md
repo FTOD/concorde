@@ -108,21 +108,14 @@ to it.
 - THEN it reports a `CHK.node.explained` warning for that anchor group
 - AND the status is not made `invalid` by it
 
-### scenario.spec.reader-parts — A well-formed entry and topic
+### scenario.spec.reader-parts — Entries of any section structure
 
-- GIVEN an entry whose first level-2 headings are Purpose, Usage and Design, in that order
+- GIVEN an entry whose level-2 sections are Purpose, Usage and Design
+- AND an entry with none of these sections, one with a level-2 Relationships section and one whose Purpose holds a list
 - AND a topic that links every term it uses to the glossary
 - WHEN the validator runs
-- THEN no document-structure finding is reported
+- THEN no document-structure finding is reported for any of them
 - BUT passing says nothing about whether the explanations are sufficient
-
-### scenario.spec.reader-parts-invalid — A malformed entry
-
-- GIVEN an entry with a missing or repeated required section, a level-2 Relationships section, a Purpose containing a list, or a Usage section holding only links
-- WHEN the validator runs
-- THEN it reports `CHK.document.sections` or `CHK.document.prose` for each problem
-- BUT headings inside fences do not count as sections
-- AND the required sections in another order, or an additional level-2 section, are not problems
 
 ### scenario.spec.term-links — Linking another Module's term
 

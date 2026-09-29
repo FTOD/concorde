@@ -433,7 +433,8 @@ class SpecReviewTests(unittest.TestCase):
         self.project.open_task("t1", goal="Review.")
         self.worktree = self.project.worktree("t1")
         entry = self.worktree / "specs/a/module.md"
-        entry.write_text(entry.read_text().replace("## Usage", "## Use"))
+        # A Mermaid block is a structural error (CHK.view.marked).
+        entry.write_text(entry.read_text() + "\n```mermaid\ngraph TD\n  a --> b\n```\n")
         exit_status, envelope = self.project.run(
             "spec_review", "--task", "t1", "--modules", "module.a"
         )

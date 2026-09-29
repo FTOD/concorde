@@ -53,16 +53,20 @@ common format mistakes and writing judgments; the complete guidelines follow.
   next heading or anchor: anchors explained by the same prose go together on one line
   (`<a id="a"></a><a id="b"></a>`), because a blank line between two anchors leaves the first one
   empty.
-- **The entry** `module.md` has the level-2 sections Purpose (plain prose, no lists or tables),
-  Usage and Design, each exactly once, and no `Relationships` section: Design holds
-  how the Module is built inside and how it works with the Modules around it, and explains each
-  child and provider at its `meaning` anchor.
+- **The entry** `module.md` has no required sections; the whole entry is the Module's design.
+  Organize it for a developer who wants to understand the Module quickly: its purpose first, in
+  short plain prose, then its core concepts (the Module's own terms, explained at their glossary
+  anchors, and the terms it builds on, linked), then overview diagrams of its main structure,
+  functions and flows with short prose, then the details: its parts, its collaborations with each
+  child and provider at their `meaning` anchors, its entry points, errors and design reasons.
+  Leave command-level walk-throughs to the Module that owns the commands. Never move the design or
+  the Module's concept explanations into a separate topic.
 - **Diagrams** use D2 wherever they make relationships, order, branching, state or data clearer.
-  Place Usage diagrams next to the normal path or other behaviour they explain, and design diagrams
-  in Design. Choose a lightweight workflow/activity/flow diagram for a process, including branches
-  and retries: action or step nodes, directed edges and a clear main path, with responsibility lanes
-  or stage groups when helpful. Use a sequence diagram when participant message ordering needs
-  explanation; ordinary processes do not need lifelines. Use a state diagram for a lifecycle, or
+  Place overview diagrams near the top of the entry and the others next to the details they
+  explain. Draw every process as a workflow diagram, including branches, retries and an interaction
+  among several Modules or agents: step nodes, directed edges and a clear main path, with a lane per
+  participant or stage groups when helpful. Use a sequence diagram only when the interleaving of
+  messages is itself the point. Use a state diagram for a lifecycle, or
   component, context, deployment and data-model views for the design question at hand. Each diagram
   answers one clear question, uses the Spec's terminology and complements explanatory prose about
   conditions, effects and failure reactions. There is no quota; invent no promises to fill a view.

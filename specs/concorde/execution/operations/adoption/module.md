@@ -105,8 +105,8 @@ a worker, and why it is not an [Operation](../../../glossary.json#concept.operat
 
 **Code to spec.** A worker of [task
 type](../../../glossary.json#concept.task-type) `code-to-spec` reads the bound Modules' code and
-their Specs and rewrites their own documents: Purpose, Usage and Design of each entry document
-(`module.md`), the glossary entries of the words they own, and requirements, scenarios and contracts
+their Specs and rewrites their own documents: each entry document (`module.md`), in the reading
+order the Protocol recommends, the glossary entries of the words they own, and requirements, scenarios and contracts
 in implementation documents. The host prepares the implementation documents the worker may need,
 `requirements.md`, `scenarios.md` and `contracts.md`, as owned stubs before the grant is frozen, and
 removes again every stub the worker left unchanged or deleted, however the run ends. The answers are
