@@ -41,6 +41,27 @@ repository, whose LangGraph pages match that release; when the lock moves to ano
 release, both move with it. `scripts/development/init-references.py` checks them out,
 without their media, at exactly the recorded commits.
 
+## Agent instructions
+
+A session in this checkout, main agent or task session, works as in any Concorde project, plus the
+rules for developing Concorde itself. Both come as skills the build renders: `concorde`, the
+[main-session guidance](glossary.json#concept.main-session-guidance) the installer places in every
+project, and `concorde-development`, rendered from `prompts/development/skill.md`, which includes
+Dogfooding's rule for observing runs. Skills load on demand, so `CLAUDE.md` and `AGENTS.md` keep a
+short part that is always in context: the instruction to load both skills before any work, the core
+rules of the main agent and of a task session, and in `CLAUDE.md` the import of the glossary.
+Claude Code finds the skills through `.claude/skills/<name>`, links into `generated/skills/`, and pi
+through the `skills` of `.pi/settings.json`; in a worktree not built yet, the instructions say to
+build first and to read the rendered files directly.
+
+### scenario.concorde.development-skills — Sessions in this checkout load both skills
+
+- GIVEN this checkout, its primary worktree or a task worktree, after a build
+- WHEN a Claude Code or pi session starts there
+- THEN `CLAUDE.md` and `AGENTS.md` tell it to load the `concorde` and `concorde-development` skills before any work
+- AND `.pi/settings.json` lists `generated/skills/concorde` and `generated/skills/concorde-development`, which hold the rendered skills
+- AND `concorde-development` states Dogfooding's rule for observing runs word for word
+
 ## pi main sessions
 
 A pi session in this checkout is a [main agent](glossary.json#concept.main-agent) like one in an

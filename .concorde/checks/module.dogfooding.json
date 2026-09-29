@@ -16,7 +16,6 @@
       "inputs": [
         "AGENTS.md",
         "CLAUDE.md",
-        "DEVELOPING.md",
         "conftest.py",
         "prompts",
         "protocol",

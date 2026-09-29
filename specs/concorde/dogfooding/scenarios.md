@@ -87,10 +87,10 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 
 ### scenario.dogfooding.concorde-instructions — The Concorde repository knows how to take a report
 
-- GIVEN the Concorde repository's agent instructions
+- GIVEN the Concorde repository's agent instructions, its `concorde-development` skill
 - WHEN a session there is handed a defect report
 - THEN the instructions tell it to record the report as an [Issue](../glossary.json#concept.issue) in a task opened for the [Module](../glossary.json#concept.module) it judges at fault
 - AND to append a report to that Issue naming that Module as its `owner_target_id`
 - AND to fix the defect generally and close the Issue with the fix
-- AND to wait for the developer's decision before a design limitation changes Concorde's design or Protocol or loosens a boundary
+- AND to escalate to the developer before a design limitation changes Concorde's design or Protocol or loosens a boundary
 - AND they contain the same observation rule as the develop guidance

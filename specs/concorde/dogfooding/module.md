@@ -291,10 +291,11 @@ then names exactly the Concorde a defect was seen on, so the Concorde repository
 the defect is already fixed at its head.
 
 **One observation rule.** Watching runs closely is asked of the Concorde repository's own agents
-too. The repository's agent instructions are its `DEVELOPING.md`, which its `CLAUDE.md` imports and
-its `AGENTS.md` has pi read in full; the root Module binds these files, not Dogfooding. Both sides
-receive the same sentence, kept once as a prompt fragment that the develop guidance includes and
-that the Dogfooding tests find word for word in `DEVELOPING.md`
+too. The repository's agent instructions are its `concorde-development` skill, which its `CLAUDE.md`
+and `AGENTS.md` tell every session to load beside the `concorde` skill; the root Module binds its
+source and those files, not Dogfooding. Both sides receive the same sentence, kept once as a prompt
+fragment that the develop guidance and the development skill both include and that the Dogfooding
+tests find word for word in the rendered skill
 ([requirements](requirements.md#req.dogfooding.one-observation-rule)), so that the two sides never
 drift into different ideas of what observing a run means.
 

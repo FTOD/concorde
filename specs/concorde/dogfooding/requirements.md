@@ -113,5 +113,5 @@ The defect report's owner is `null`, and an Issue's owner is its latest report's
 
 ### req.dogfooding.one-observation-rule — Both sides observe runs by the same rule
 
-The develop guidance and the Concorde repository's agent instructions SHALL state the same rule for
-observing runs, taken from the one shared prompt fragment.
+The develop guidance and the Concorde repository's `concorde-development` skill SHALL state the same
+rule for observing runs, taken from the one shared prompt fragment.

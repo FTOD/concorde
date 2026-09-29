@@ -26,7 +26,6 @@
       "inputs": [
         "AGENTS.md",
         "CLAUDE.md",
-        "DEVELOPING.md",
         "prompts",
         "src",
         "protocol",

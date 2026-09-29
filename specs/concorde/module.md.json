@@ -64,7 +64,6 @@
         "README.md",
         "AGENTS.md",
         "CLAUDE.md",
-        "DEVELOPING.md",
         "LICENSE",
         ".gitignore",
         ".gitmodules",
@@ -108,6 +107,16 @@
         "tests/concorde/support/operation_project.py",
         "tests/concorde/support/agent_fakes.py",
         ".pi/settings.json"
+      ],
+      "pending": []
+    },
+    {
+      "id": "realization.concorde.development-guidance",
+      "type": "realization",
+      "title": "Development guidance",
+      "meaning": "#realization.concorde.development-guidance",
+      "entries": [
+        "prompts/development/skill.md"
       ],
       "pending": []
     },

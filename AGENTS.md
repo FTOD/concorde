@@ -1,49 +1,34 @@
 # Developing Concorde with pi
 
-These instructions apply to pi only, including when both `AGENTS.md` and `CLAUDE.md` are loaded.
-Claude Code follows `CLAUDE.md` for its host workflow.
+This is Concorde's own source checkout. Before any work, read two skills in full and follow both:
+`concorde`, how the main agent and task sessions work in every Concorde project, and
+`concorde-development`, what is particular to developing Concorde here. The build renders them as
+`generated/skills/<name>/SKILL.md`, and `.pi/settings.json` loads them once pi trusts the project
+(`/skill:concorde`, `/skill:concorde-development`); in a worktree not built yet, run
+`python3 scripts/concorde.py build` first, and read those files with the read tool when pi does not
+offer them. In this checkout `concorde` means `python3 scripts/concorde.py` of the worktree you are
+in. `.pi/settings.json` also loads Concorde's pi extension from `src/concorde/main_session/`,
+which adds the project's terms from `specs/concorde/glossary.json` to every prompt and gives the
+main agent the `concorde_run` and `concorde_task_session` tools.
 
-Read [DEVELOPING.md](DEVELOPING.md) in full before working on this source checkout; pi does not
-import files named in `AGENTS.md`, so open it with the read tool. It contains shared development
-rules, preparation, verification, delivery, merge checks and defect handling. Also read
-`specs/concorde/glossary.json`: the "Project terms" rule of `DEVELOPING.md` asks you to use every
-term exactly as the glossary defines it.
+The rules that hold before the skills are loaded:
 
-## Main session
-
-Stay in the primary worktree. Open a task as described in `DEVELOPING.md`, then start a Concorde
-task session in its worktree even for a single task. pi has no EnterWorktree or ExitWorktree tool;
-a shell `cd` changes only that command's working directory, not the session's context.
-
-1. Open the task from the primary worktree and obtain its path with
-   `python3 scripts/concorde.py task show <task>`.
-2. Before starting the session, run `python3 scripts/development/init-references.py` from that
-   task worktree, using its own script. The task session cannot register submodules in the shared
-   Git configuration.
-3. Use `concorde_task_session`, which wakes you when each round ends. The checkout's
-   `.pi/settings.json` loads Concorde's pi extension from `src/concorde/main_session/`, so the
-   tool is there once pi trusts the project. Without it, run
-   `CONCORDE_CLIENT=pi python3 scripts/concorde.py task session <task> --main <its session name>`
-   from the primary worktree, and `--answer` on the same command for a subsequent round.
-4. Wait for each round without polling: the extension wakes you with its outcome; without it,
-   run `CONCORDE_CLIENT=pi python3 scripts/concorde.py task session <task> --wait` in bash with no
-   timeout, which returns once the round has ended. Never loop over `sleep` and status files or
-   `task show`. Read any escalation's complete chain with
-   `python3 scripts/concorde.py task show <task>`. Append to the task's decision log (the path
-   `task open` printed) every decision you take without the developer, answer escalations within
-   your authority, and have the session finish validation and delivery.
-5. After delivery, inspect the result and merge from the primary worktree with the command and
-   both merge checks in `DEVELOPING.md`, run in bash with no timeout, and act on every warning the
-   merge prints.
-
-For several tasks, start one session per task and coordinate their results from the primary
-worktree. Do not edit task sources from the primary pi session or treat shell `cd` as entering a
-task. If a merge conflicts, the main agent arranges the Git resolution in the task worktree,
-then resumes its task session for verification and delivery before retrying the checked merge.
-
-## Task session
-
-If you are already a Concorde task session in your assigned worktree, do the task directly there.
-Do not launch another session. Use that worktree's own `python3 scripts/concorde.py`, run commands
-and Operations in foreground Bash with no timeout, and follow the task-session prompt for decision logging,
-escalation and the final `concorde_report`. Validate and deliver; leave merging to the main agent.
+- **The main agent** stays in the primary worktree and never works inside a task worktree: every
+  change of Spec meaning or code behaviour is a task (`task open`) handed to a task session with
+  the `concorde_task_session` tool (after `python3 scripts/development/init-references.py` in the
+  task worktree and the task's brief recorded in its decision log), even a single task. A shell
+  `cd` does not enter a task. The only change it makes in the primary worktree itself is a small
+  change, such as a typo or a one-line fix, that the developer approved after it said what it would
+  change and why it is small, besides `registry --write` and a commit of `.concorde/workers.json`
+  alone. It merges only with `task merge <task> --check "python3 scripts/concorde.py build"
+  --check "python3 scripts/concorde.py spec-validation"`, in bash without a timeout, never with
+  `git merge`. After dispatching tasks it shows the developer each task's name with its goal in
+  one line and reports on the tasks by those names.
+- **A task session** works only inside its task worktree, with that worktree's own
+  `python3 scripts/concorde.py` run in the foreground without a timeout, and follows its first
+  prompt. It never asks the developer in place: it gathers every decision it needs and ends its
+  round `escalated` with all of them. It never merges into the primary branch; its only merge is
+  the primary branch into its task branch when the main agent asks for it after a merge conflict.
+- **Everyone** uses each project term exactly as the glossary defines it, appends every decision
+  taken without the developer and every non-`ok` result to the task's decision log, reads error
+  chains in full and never waits by polling with `sleep`.
