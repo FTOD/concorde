@@ -9,7 +9,7 @@ command to its owning [Module](../glossary.json#concept.module), writes the
 with the [main-session guidance](../glossary.json#concept.main-session-guidance), for Claude Code
 and, on request, for pi. It does not decide what a command does, what the
 [main agent](../glossary.json#concept.main-agent) is told, or a project's Specs and configuration —
-the installer never writes Specs.
+the installer writes no Spec but the realization that keeps its own installed files bound.
 
 ## Usage
 
@@ -155,6 +155,13 @@ project where every check passes, it goes through these steps in order:
    the [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json`
    that each task worktree gets, `.concorde/framework/`, `.concorde/tools/` and
    `.claude/worktrees/`, where task worktrees go, and writes the receipt `.concorde/install.json`.
+9. **It keeps the installed files bound.** In an initialized project it asks Spec core to bring the
+   root Module's Concorde installation realization in step with the receipt: every installed file
+   that exists and that no realization binds by its exact path becomes an exact entry, and an entry
+   whose file is gone is removed, so the pi files of a later `--pi` or the files a newer Concorde
+   adds are bound like those initialization bound
+   ([requirements](requirements.md#req.distribution.installer-keeps-installation-bound)). Specs
+   that cannot be read are left as they are for `spec-validation` to report.
 
 Only the steps that run those programs, `npm ci`, `uv venv` and the installation of the Python
 dependencies, can fail after something was written; an install run again repeats them.
@@ -248,8 +255,9 @@ project, Concorde checkout or argument corrects it and `environment` otherwise
 ([requirements](requirements.md#req.distribution.installer-error-links)). The caller can therefore
 forward it as the cause of its own link like any other refusal.
 
-The installer never writes Specs or the registry, and a plain install never writes the project
-configuration; only update mode rewrites the configuration's Protocol binding, as described above
+The installer never writes Specs or the registry, except the installation realization of step 9,
+and a plain install never writes the project configuration; only update mode rewrites the
+configuration's Protocol binding, as described above
 ([requirements](requirements.md#req.distribution.installer-no-specs)). Afterwards,
 `concorde init --propose --name <name>` prints Spec core's initialization proposal, and
 `concorde init --apply --proposal <file>` applies a proposal read from a file outside the project

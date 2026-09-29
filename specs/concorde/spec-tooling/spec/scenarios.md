@@ -710,6 +710,22 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - AND the realization Existing project files binds `CLAUDE.md` and the project's other files but not the skill
 - AND the applied project validates
 
+### scenario.spec.installation-follows-record — Installed files stay bound after initialization
+
+- GIVEN an initialized project whose Concorde installation realization binds the skill and a workflow
+- AND an installation record that now also lists pi files, which exist, and no longer lists the workflow, which is gone
+- WHEN the installation is bound
+- THEN the pi files are exact entries of the realization and the workflow's entry is removed
+- AND only the root's metadata member changes, and the project validates
+- BUT binding it again changes nothing, and a project without a configuration is left unchanged
+
+### scenario.spec.installation-created — A missing installation realization is created
+
+- GIVEN an initialized project with an installation record whose root Module has no Concorde installation realization
+- WHEN the installation is bound
+- THEN the root's metadata gains the realization Concorde installation with the installed files as exact entries
+- AND the root entry gains its explaining paragraph, and the project validates
+
 ### scenario.spec.apply-initialization — Applying an accepted proposal
 
 - GIVEN a proposal returned by propose whose destinations are all still absent and whose project is unchanged

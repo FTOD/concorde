@@ -185,6 +185,130 @@ class InitialModuleTests(unittest.TestCase):
                 [f.message for f in report.findings if f.severity == "error"],
             )
 
+    def _installed_project(self, root: Path, files: dict[str, str], listed: list[str]):
+        """An initialized project whose receipt lists ``listed`` as the installer's files."""
+        subprocess.run(("git", "init", "-q"), cwd=root, check=True)
+        for path, content in files.items():
+            (root / path).parent.mkdir(parents=True, exist_ok=True)
+            (root / path).write_text(content)
+        install_project_defaults(root, PACKAGE)
+        self._receipt(root, listed)
+        apply_project_proposal(root, PACKAGE, project_proposal(root, PACKAGE, "App"))
+
+    def _receipt(self, root: Path, listed: list[str]):
+        (root / ".concorde/install.json").write_text(
+            json.dumps(
+                {
+                    "files": [*listed, ".concorde/bin/concorde"],
+                    "amended": [".gitignore", "CLAUDE.md"],
+                }
+            )
+        )
+
+    def _installation(self, root: Path) -> dict[str, list[str]]:
+        metadata = json.loads((root / "specs/project/module.md.json").read_text())
+        return {r["id"]: r["entries"] for r in metadata["defines"]}
+
+    def _valid(self, root: Path):
+        subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+        report = validate_repository(root, package_root=PACKAGE)
+        self.assertEqual(
+            "success",
+            report.status,
+            [f.message for f in report.findings if f.severity == "error"],
+        )
+
+    @verifies("scenario.spec.installation-follows-record")
+    def test_the_installation_realization_follows_the_installation_record(self):
+        skill, workflow = (
+            ".claude/skills/concorde/SKILL.md",
+            ".claude/workflows/concorde-brownfield.js",
+        )
+        pi = [".pi/skills/concorde/SKILL.md", ".pi/extensions/concorde/index.ts"]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            # Nothing to bind before initialization.
+            self.assertIsNone(initialize.bind_installation(root))
+            self._installed_project(
+                root,
+                {
+                    "app.py": "print(1)\n",
+                    "CLAUDE.md": "# Rules\n",
+                    skill: "s\n",
+                    workflow: "w\n",
+                },
+                [skill, workflow],
+            )
+            self.assertEqual(
+                [skill, workflow],
+                self._installation(root)["realization.project.concorde-installation"],
+            )
+            # A later install places the pi files and stops placing the workflow.
+            for path in pi:
+                (root / path).parent.mkdir(parents=True, exist_ok=True)
+                (root / path).write_text("pi\n")
+            (root / workflow).unlink()
+            self._receipt(root, [skill, *pi])
+            entry = (root / "specs/project/module.md").read_bytes()
+            existing = self._installation(root)["realization.project.existing-files"]
+            self.assertEqual(
+                {
+                    "realization": "realization.project.concorde-installation",
+                    "bound": sorted(pi),
+                    "released": [workflow],
+                },
+                initialize.bind_installation(root),
+            )
+            self.assertEqual(
+                sorted([skill, *pi]),
+                self._installation(root)["realization.project.concorde-installation"],
+            )
+            self.assertEqual(
+                existing, self._installation(root)["realization.project.existing-files"]
+            )
+            self.assertEqual(entry, (root / "specs/project/module.md").read_bytes())
+            self._valid(root)
+            metadata = (root / "specs/project/module.md.json").read_bytes()
+            self.assertEqual(
+                {
+                    "realization": "realization.project.concorde-installation",
+                    "bound": [],
+                    "released": [],
+                },
+                initialize.bind_installation(root),
+            )
+            self.assertEqual(
+                metadata, (root / "specs/project/module.md.json").read_bytes()
+            )
+
+    @verifies("scenario.spec.installation-created")
+    def test_a_missing_installation_realization_is_created_in_the_root(self):
+        skill, pi = ".claude/skills/concorde/SKILL.md", ".pi/skills/concorde/SKILL.md"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            # Initialized before any installed file existed outside .concorde/.
+            self._installed_project(root, {"app.py": "print(1)\n"}, [])
+            self.assertNotIn(
+                "realization.project.concorde-installation", self._installation(root)
+            )
+            for path in (skill, pi):
+                (root / path).parent.mkdir(parents=True, exist_ok=True)
+                (root / path).write_text("s\n")
+            self._receipt(root, [skill, pi])
+            self.assertEqual(
+                sorted([skill, pi]),
+                initialize.bind_installation(root)["bound"],
+            )
+            self.assertEqual(
+                sorted([skill, pi]),
+                self._installation(root)["realization.project.concorde-installation"],
+            )
+            self.assertIn(
+                '<a id="realization.project.concorde-installation"></a>',
+                (root / "specs/project/module.md").read_text(),
+            )
+            self._valid(root)
+
     def test_existing_version_controlled_files_are_bound_to_the_root(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

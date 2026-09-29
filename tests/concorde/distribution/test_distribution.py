@@ -27,8 +27,10 @@ from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.distribution.tools import platform_key
 from concorde.errors import ERROR_SCHEMA
 from concorde.execution.runs import run_lock
+from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository_base import SpecError
 from concorde.spec.schema import validate
+from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from concorde.views.docsite_template import adapter_files, template_files
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -1086,6 +1088,58 @@ class InstallTests(unittest.TestCase):
             kept = update(project, package, run=fake_npm(calls))["receipt"]
         self.assertEqual((True, True), (kept["pi"], kept["pi_runtime"]))
         self.assertEqual(1, len(calls), "the locked runtime is installed once")
+
+    @verifies("scenario.distribution.install-later-files-bound")
+    def test_files_a_later_install_adds_stay_bound(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        (project / "app.py").write_text("print(1)\n")
+        install(project, package, d2=False, pi_runtime=False, dependencies=False)
+        # A project that is not initialized gets no Spec from the installer.
+        self.assertFalse((project / "specs").exists())
+        apply_project_proposal(
+            project, package, project_proposal(project, package, "Demo")
+        )
+        metadata = project / "specs/project/module.md.json"
+
+        def installation() -> list[str]:
+            return next(
+                r["entries"]
+                for r in json.loads(metadata.read_text())["defines"]
+                if r["id"] == "realization.project.concorde-installation"
+            )
+
+        before = installation()
+        self.assertNotIn(".pi/skills/concorde/SKILL.md", before)
+        entry = (project / "specs/project/module.md").read_bytes()
+        receipt = install(
+            project, package, d2=False, pi=True, pi_runtime=False, dependencies=False
+        )
+        placed = sorted(
+            path
+            for path in receipt["files"]
+            if not path.startswith(".concorde/") and path not in receipt["amended"]
+        )
+        self.assertIn(".pi/skills/concorde/SKILL.md", placed)
+        self.assertEqual(placed, installation())
+        self.assertEqual(entry, (project / "specs/project/module.md").read_bytes())
+        subprocess.run(["git", "add", "-A"], cwd=project, check=True)
+        report = validate_repository(project, package_root=package)
+        self.assertEqual(
+            [],
+            [f.source for f in report.findings if f.rule_id == "CHK.binds.unbound"],
+        )
+        self.assertEqual(
+            "success",
+            report.status,
+            [f.message for f in report.findings if f.severity == "error"],
+        )
+        # An update with nothing new to place leaves the Specs as they are.
+        bound = metadata.read_bytes()
+        with which():
+            update(project, package)
+        self.assertEqual(bound, metadata.read_bytes())
 
     @verifies("scenario.distribution.update-keeps-pi-choices")
     def test_an_update_keeps_a_runtime_that_was_left_out(self):
