@@ -970,6 +970,43 @@ class InstallTests(unittest.TestCase):
             (project / ".claude/workflows/concorde-brownfield.js").exists()
         )
 
+    @verifies(
+        "scenario.distribution.install-project-mcp",
+        "scenario.distribution.install-mcp-config-invalid",
+    )
+    def test_install_registers_the_project_mcp_server(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        config = project / ".mcp.json"
+        mine = {"command": "my-server", "args": ["--x"]}
+        config.write_text(json.dumps({"mcpServers": {"mine": mine}}))
+        receipt = install(
+            project, package, pi_runtime=False, d2=False, dependencies=False
+        )
+        servers = json.loads(config.read_text())["mcpServers"]
+        self.assertEqual(mine, servers["mine"])
+        self.assertEqual(
+            {"command": ".concorde/bin/concorde", "args": ["project-mcp"]},
+            servers["concorde"],
+        )
+        self.assertIn(".mcp.json", receipt["amended"])
+        self.assertNotIn(".mcp.json", receipt["files"])
+        # Installing again leaves the file as it is.
+        before = config.read_text()
+        install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        self.assertEqual(before, config.read_text())
+        # A configuration that is not a JSON object is refused before anything is written.
+        config.write_text("[1]")
+        (project / ".claude/workflows/concorde-brownfield.js").unlink()
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        self.assertEqual("mcp_config_invalid", raised.exception.code)
+        self.assertFalse(
+            (project / ".claude/workflows/concorde-brownfield.js").exists()
+        )
+
     @verifies("scenario.distribution.install-programs-missing")
     def test_install_without_npm_installs_nothing(self):
         package = package_copy(self)

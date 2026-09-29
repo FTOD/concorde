@@ -94,6 +94,20 @@ holder.
 A runner SHALL remove its [run lock](../glossary.json#concept.run-lock) file as it exits, while it
 still holds the lock.
 
+### req.tracing.holder-named — A holder line names the session and the task
+
+The holder line of a lock SHALL name, besides the holder, its process and when it took the lock,
+the Claude Code session its process works for when its environment names one, and the task when
+its taker names it.
+
+### req.tracing.lock-handed-on — A handed lock lives as long as its receiver
+
+A process started with a locked descriptor named in its `CONCORDE_INHERITED_LOCKS` SHALL adopt that
+lock without waiting and hold it until it ends.
+
+It passes neither the lock nor the variable on to the processes it starts, so the lock is released
+when that process ends.
+
 ### req.tracing.history-unchanged — The history is not changed
 
 No Concorde command SHALL change a file inside a history folder; a history folder is only removed

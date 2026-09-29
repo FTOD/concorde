@@ -150,6 +150,20 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN it is refused with `settings_invalid`
 - BUT nothing is written, not even a workflow the project lacks
 
+### scenario.distribution.install-project-mcp — The installer registers the project MCP server
+
+- GIVEN a project whose `.mcp.json` registers a server of its own
+- WHEN the installer runs
+- THEN `.mcp.json` also registers `concorde` as `.concorde/bin/concorde project-mcp`, the project's own server is unchanged, and the receipt lists `.mcp.json` under `amended`
+- AND installing again leaves the file as it is
+
+### scenario.distribution.install-mcp-config-invalid — An unusable `.mcp.json` refuses the install
+
+- GIVEN a project whose `.mcp.json` is not a JSON object
+- WHEN the installer runs
+- THEN it is refused with `mcp_config_invalid`
+- BUT nothing is written, not even a workflow the project lacks
+
 ### scenario.distribution.update — Updating Concorde in a project
 
 - GIVEN an initialized project with an open task, installed from a checkout whose Protocol has since changed

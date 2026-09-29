@@ -144,7 +144,12 @@ log, whose folder no longer exists, rather than recreate it. The open network is
 proxy on `localhost`, because the sandboxed commands have a network namespace of their own; a worker
 those commands start passes that proxy on to its own process (Workers'
 [proxy rule](../execution/workers/launch.md#proxy)), never to its tools, whose sandbox stays without
-network. Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings).
+network. The session's MCP servers are not inside the boundary: Claude Code runs them outside the
+Bash sandbox, and the [project MCP server](../glossary.json#concept.project-mcp-server) that every
+task session receives can change task records and take locks for any task. The developer chose not
+to confine it: it is a management tool, the task-session guidance says what a task session may do
+with it, and the boundary stays a guard against a session's mistakes in its files and shell.
+Exact shapes: [Claude Code mechanics](claude-code.md#task-session-settings).
 
 ## Design
 

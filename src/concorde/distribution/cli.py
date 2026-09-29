@@ -464,8 +464,8 @@ def _failed(tool: str, error: BaseException) -> dict:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
     words = list(sys.argv[1:] if argv is None else argv)
-    # Tasks, Execution, Workflows, Tracing and the Issues command own their command lines and
-    # output; they print no Spec tooling envelope.
+    # Tasks, Execution, Workflows, Tracing, the project MCP server and the Issues command own
+    # their command lines and output; they print no Spec tooling envelope.
     if words and words[0] == "task":
         from ..tasks.cli import main as task_main
 
@@ -479,6 +479,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         from ..workflows.cli import main as workflow_main
 
         return workflow_main(words[1:])
+    if words and words[0] == "project-mcp":
+        # The project MCP server owns standard input and output; it prints no envelope.
+        from ..project_mcp.server import main as serve
+
+        return serve(words[1:])
     if words and words[0] == "trace":
         from ..tracing.command import main as trace_main
 

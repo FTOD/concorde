@@ -17,7 +17,10 @@ main agent, and nothing here constrains the developer. For now the guidance serv
 only: the main agent is a Claude Code session, and so is every task session, since a task session
 runs on the main agent's own program, while the [workers](../../glossary.json#concept.worker) of
 their runs may run on pi. Distribution renders and installs this
-[Module](../../glossary.json#concept.module)'s content.
+[Module](../../glossary.json#concept.module)'s content. Beside the guidance the Module owns one
+program, the [project MCP server](../../glossary.json#concept.project-mcp-server): a thin MCP
+presentation of the task, trace and lock commands through which a Claude Code session queries and
+changes tasks, takes a lock without waiting, and is woken when something it waits for happens.
 
 ## Usage
 
@@ -139,6 +142,7 @@ task. Several main sessions may work on one project at the same time, but a run 
 | What a task session reports | the main session its `--main` names | the task session's SendMessage |
 | A run a task session starts in its worktree | that task session, no main session | Claude Code's own notification in the task session; its main session hears of it in the task session's report |
 | A run started by a command run by hand | no main session | nobody is woken |
+| A wait registered with, or a merge started through, the [project MCP server](../../glossary.json#concept.project-mcp-server) | the session whose server it is | a channel event of that server, or, without a channel, the session's own background Bash running the equivalent `concorde task wait` |
 
 Execution, which knows nothing of main sessions, never records an owner: a run's owner is the
 session whose background Bash started it, and the main session a task session reports to is the
@@ -290,6 +294,68 @@ from the project, and report [Concorde defects](../../glossary.json#concept.conc
 [Concorde repository](../../glossary.json#concept.concorde-repository). Everything above holds
 unchanged; a normal install carries no such section.
 
+### The project MCP server
+
+<a id="concept.project-mcp-server"></a>
+
+The [project MCP server](../../glossary.json#concept.project-mcp-server) is the project's one
+stdio MCP server for the main-session side, `concorde project-mcp`, which the installer registers
+as `concorde` in the project's `.mcp.json`. Each Claude Code session that loads it runs its own
+server process, which lives exactly as long as that session; there is no daemon. Started from any
+worktree, it finds the primary worktree through Git's common directory and serves that project's
+tasks, traces and locks, read afresh on every call. It is a presentation: the `concorde` commands
+stay the source of truth, every answer and every refusal is the command's own, and it adds no
+rule. The exact tools and events are in the [contracts](contracts.md).
+
+- **Queries**: `task_list`, `task_show`, `trace_show` (one node, down to a `depth`, so a large
+  trace need not be read whole), `run_result`, `workflow_report` and `locks`, which says who holds
+  the merge lock and each task's [workspace lock](../../glossary.json#concept.workspace-lock).
+- **Short writes** with structured arguments: `task_open`, `task_escalate`, whose error chain link
+  is typed arguments rather than a command line to quote, and `task_close` without a merge.
+- **Long work**: `task_merge`, which never waits for a lock. It takes the task's workspace lock and
+  the [merge lock](../../glossary.json#concept.merge-lock) at once or is refused at once, with
+  `workspace_busy` or `merge_busy` naming who holds the busy one: the holder's command, process,
+  start time, Claude Code session and task. When it gets both, it starts `concorde task merge` as a
+  process of its own and hands both locks to it: the `flock` belongs to the open file description,
+  which the process inherits, and the server closes its own copy, so the lock belongs to the
+  session's work, never to the server, and is released when the merge ends, however it ends,
+  even when the session and its server end first. It returns at once.
+- **Waiting**: `register_wait` asks to be woken when a task becomes `delivered`, `merging`,
+  `closed` or `failed`, when a run ends, or when a lock is released. The server watches without
+  polling, blocking on the lock itself or on the kernel's notice of each new holder, and wakes its
+  session with a [Claude Code channel](#channels) event when it happens. It only notifies: it never
+  takes a lock for the session it wakes, which asks again and may be refused again.
+
+Using the server is recommended, not enforced. The kernel's `flock` stays the only lock: the CLI
+and the runs of task sessions take the same locks directly, so both paths see each other's
+holders. The server is the better path for the main agent whenever it would otherwise wait:
+`task_merge` instead of a `task merge --wait` that blocks a background command for minutes, and
+`register_wait` instead of watching a task. The CLI remains the way for everything else: `task
+session`, the runs of a task, and anything the server does not present.
+
+<a id="channels"></a>
+
+**Channels.** Claude Code delivers a server's `notifications/claude/channel` only to a session
+started with that server as a channel. Channels are a research preview of Claude Code: a
+self-built server needs `--dangerously-load-development-channels server:concorde` when the session
+starts, which Claude Code confirms once, and they need Anthropic authentication (claude.ai or a
+Console key) and an organization that has not disabled them (`channelsEnabled`). The guidance tells
+the developer to start the main agent's session in the primary worktree with
+`claude --dangerously-load-development-channels server:concorde`, and `concorde task session`
+starts every task session with the server and that flag
+([Task sessions](../task-session/module.md)). A server cannot learn from Claude Code whether it is
+a channel, so it reads it from the session's command line; when it has none, `register_wait` says
+so and returns the equivalent blocking `concorde task wait` command, and `task_merge` returns the
+`concorde task wait … --lock workspace` that returns when the merge ends, to run in background
+Bash, which wakes the session when the command ends. An organization that disabled channels drops
+the events silently; the guidance tells the agent to use the background Bash form then.
+
+**Task sessions** receive the server too, with the same tools: a task session may query its task
+or register a wait, and the developer does not consider its reach to other tasks' management a
+problem, so there is no split by role. The guidance still tells a task session never to merge or
+close its task. [Workers](../../glossary.json#concept.worker) never receive it: they launch with an
+empty MCP configuration.
+
 ### Spec queries
 
 The main agent may configure the Spec MCP server for
@@ -299,7 +365,9 @@ worktree it is rooted in — the primary worktree for the main agent — and wor
 
 ## Design
 
-The guidance is instructions, not a program, because the main agent's work is judgment. Everything
+The guidance is instructions, not a program, because the main agent's work is judgment; the
+project MCP server beside it is a program, but one that only presents commands and adds no rule.
+Everything
 that must hold regardless of judgment is enforced elsewhere — workers by the Harness, Operations by
 their own checks, readiness by `task-validation` and `delivery` — so an agent that ignores the
 guidance wastes effort but cannot widen a worker's boundary.
@@ -377,7 +445,9 @@ every task command with `merge_incomplete` after a merge was interrupted, and te
 to finish that merge first with `--resume` or `--abort` rather than to work around the refusal:
 checking the merge again is the default, since the recorded checks decide as they would have, and
 only a primary branch changed by hand after the merge goes to the developer. A task session has no
-authority to finish a merge, so its guidance sends such a refusal to the main agent.
+authority to finish a merge, so its guidance sends such a refusal to the main agent. The project
+MCP server presents Tasks' commands unchanged, starts `concorde task merge` with the two locks it
+took, and runs the waits of `concorde task wait`, which Tasks provides for background Bash too.
 
 <a id="uses-task-session"></a>
 
@@ -405,7 +475,12 @@ problems there.
 **Tracing** records the whole history of a task as its [trace](../../glossary.json#concept.trace),
 a tree of [trace nodes](../../glossary.json#concept.trace-node) from its sessions down to each
 worker round. For that history with its cost, the guidance points the main agent to
-`concorde trace show <task>`, and to `concorde trace show <run-id>` for one run.
+`concorde trace show <task>`, and to `concorde trace show <run-id>` for one run, which the
+project MCP server presents as `trace_show`. The server also relies on Tracing's locks: their
+holder lines name the holder's session and task, which is how a refusal says who holds a lock; a
+held lock can be handed to a process that inherits its descriptor; and a wait for a release
+blocks on the lock itself. Every refusal the server returns is a link of Tracing's
+[error chain](../../glossary.json#concept.error-chain).
 
 <a id="uses-execution"></a>
 
@@ -417,7 +492,9 @@ the Operations that run [unbound](../../glossary.json#concept.unbound-run) in th
 primary worktree. Each run returns a [run result](../../glossary.json#concept.run-result)
 the main agent can read without inspecting a worker, and none starts the next one: that choice is
 the agent's that started it. Every non-`ok` result of a task's runs is recorded in the decision log, and its
-chain is read in full before deciding or escalating.
+chain is read in full before deciding or escalating. The project MCP server reads a run's
+[run lock](../../glossary.json#concept.run-lock) to tell whether it still runs and waits for its
+release to learn that it ended, and reads the workspace lock Execution's runs hold.
 
 <a id="uses-operations"></a>
 
@@ -458,7 +535,8 @@ about a task's Specs needs a server, or a `concorde` command, rooted in that tas
 
 ### Inside
 
-How this Module is built: the guidance sources and what the build renders from them.
+How this Module is built: the guidance sources and what the build renders from them, and the
+project MCP server.
 
 ```d2
 mainsession: Main session {
@@ -466,6 +544,9 @@ mainsession: Main session {
     "prompts/main-session/"
   }
   guidance: Main-session guidance
+  server: Server program {
+    "src/concorde/project_mcp/"
+  }
   sources -> guidance: authors
 }
 ```
@@ -479,6 +560,17 @@ rendered by Distribution's build into `generated/main-session/`. Their tests, un
 `tests/concorde/main_session/`, check that the rendered guidance states every rule the
 [scenarios](scenarios.md) describe; what the main agent then does is judgment no deterministic test
 observes.
+
+<a id="realization.main-session.project-mcp"></a>
+
+The **project MCP server** lives in `src/concorde/project_mcp/`: `server.py` runs the stdio session,
+finds the project, decides whether the session listens to it as a channel and sends channel events
+from the threads that watch; `tools.py` maps each tool to Tasks, Tracing and Workflows' records and
+starts the merges. Like the Spec MCP server it is a small hand-written JSON-RPC session with no MCP
+library, since its wire is the same few messages plus one notification; it keeps its own session
+code rather than reusing the Spec MCP server's, which is written for one read-only root with its
+tools fixed and sends only from one thread. Its tests, under `tests/concorde/project_mcp/`, talk to
+it over a real stdio connection and watch real locks, merges and channel events.
 
 <a id="uses-workers"></a>
 

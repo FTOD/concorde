@@ -1,5 +1,5 @@
-"""``concorde task open|list|show|session|close|merge|escalate``: print one JSON value; refusals
-exit 1, bad usage 2.
+"""``concorde task open|list|show|session|close|merge|escalate|wait``: print one JSON value;
+refusals exit 1, bad usage 2.
 
 While a merge is unfinished, every one of them that changes something is refused with
 ``merge_incomplete`` apart from ``merge --resume`` and ``merge --abort`` of that task; ``list`` and ``show`` still answer.
@@ -7,6 +7,7 @@ While a merge is unfinished, every one of them that changes something is refused
 A refusal prints ``{"error": <error link>}``: the Tasks component's account of what it refused,
 why it cannot handle it, and what the caller can do. ``session`` starts a Claude Code task
 session in a task worktree.
+``wait`` blocks until a task reaches a state, a run ends or a lock is released, without polling.
 ``escalate`` records the escalating session's own link of an error chain (the main agent's, or a
 task session's to the main agent), with the errors of the named runs, files or earlier escalations
 as its causes; naming none records that link alone as the whole chain, as for a decision an ok run
@@ -24,7 +25,7 @@ from .. import errors
 from ..execution.runs import load_result, result_path
 from ..tracing import reader
 from ..spec.schema import ContractError, validate
-from . import merge, session, store
+from . import merge, session, store, wait
 
 # Why Tasks cannot handle each refusal itself; every other code is an input the caller corrects.
 HANDLING = {
@@ -119,6 +120,15 @@ HANDLING = {
         "the primary branch moved in a way the interrupted merge did not, and Tasks never "
         "resets commits it did not make",
     ),
+    "wait_timeout": (
+        "environment",
+        "what the wait waits for did not happen within its timeout, and how long to keep "
+        "waiting is the caller's choice",
+    ),
+    "wait_failed": (
+        "environment",
+        "the kernel refused to watch the lock the wait depends on",
+    ),
 }
 OPTIONS = {
     "unknown_task": ["run concorde task list to see the tasks"],
@@ -171,6 +181,14 @@ OPTIONS = {
     "not_resumable": [
         "run concorde task merge <task> --abort, which returns the task to delivered, then "
         "merge it again",
+    ],
+    "wait_timeout": [
+        "run the same wait again, or with a longer --timeout",
+        "concorde task show <task> names the run holding the task's workspace lock",
+    ],
+    "wait_unreachable": [
+        "wait for a state the task can still reach, or read how it ended with concorde task "
+        "show <task>",
     ],
     "merge_diverged": [
         "inspect the primary branch, restore it by hand to the commit before the merge or to "
@@ -270,6 +288,13 @@ def parser() -> argparse.ArgumentParser:
     escalating.add_argument("--attempt", action="append", default=[])
     escalating.add_argument("--option", action="append", default=[])
     escalating.add_argument("--recommendation", default="")
+    waiting = commands.add_parser("wait")
+    waiting.add_argument("task_id", nargs="?")
+    target = waiting.add_mutually_exclusive_group(required=True)
+    target.add_argument("--until")
+    target.add_argument("--run")
+    target.add_argument("--lock", choices=list(wait.LOCKS))
+    waiting.add_argument("--timeout", type=float)
     return root
 
 
@@ -429,6 +454,32 @@ def escalate(here: Path, arguments) -> dict:
     }
 
 
+def wait_for(here: Path, arguments) -> dict:
+    """``task wait``: one of a task state, a run's end or a lock's release."""
+    if arguments.run is not None:
+        if arguments.task_id is not None:
+            raise store.TaskError(
+                "invalid_input", "--run names the run alone, not a task"
+            )
+        return wait.wait_run(here, arguments.run, arguments.timeout)
+    primary = store.primary_of(here)
+    if arguments.lock is not None:
+        if arguments.lock == "merge" and arguments.task_id is not None:
+            raise store.TaskError(
+                "invalid_input",
+                "--lock merge names no task: the merge lock is the project's",
+            )
+        if arguments.task_id is not None:
+            store.load_any(primary, arguments.task_id)
+        return wait.wait_lock(
+            primary, arguments.lock, arguments.task_id, arguments.timeout
+        )
+    if arguments.task_id is None:
+        raise store.TaskError("invalid_input", "--until names the states of a task")
+    until = [item.strip() for item in arguments.until.split(",") if item.strip()]
+    return wait.wait_task(primary, arguments.task_id, until, arguments.timeout)
+
+
 def main(argv, cwd: Path | None = None) -> int:
     words = list(argv)
     command = words[0] if words else "?"
@@ -466,6 +517,8 @@ def main(argv, cwd: Path | None = None) -> int:
             value = start_session(here, arguments)
         elif arguments.command == "escalate":
             value = escalate(here, arguments)
+        elif arguments.command == "wait":
+            value = wait_for(here, arguments)
         elif arguments.command == "merge":
             value = merge.merge_task(
                 here,

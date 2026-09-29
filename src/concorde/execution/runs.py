@@ -358,16 +358,18 @@ def workspace_lock(
     holder: str,
     wait: float = 0.0,
     waiting: Callable[[str], None] | None = None,
+    task: str | None = None,
 ):
     """Hold the lock of ``workspace`` or raise ``workspace_busy`` naming its holder.
 
     A busy lock is waited for up to ``wait`` seconds inside this process, so a caller that
     wants to queue behind the running run asks once instead of polling; ``waiting`` is told
-    the holder when the wait begins.
+    the holder when the wait begins. ``task`` is the caller's word for its holder line, which
+    Execution passes on without reading; its own runs never give one.
     """
     path = lock_path(store, workspace)
     try:
-        with locks.hold(path, holder, wait=wait, waiting=waiting):
+        with locks.hold(path, holder, wait=wait, waiting=waiting, task=task):
             yield
     except locks.LockBusy as busy:
         after = f" after waiting {busy.waited:.0f} s" if wait > 0 else ""

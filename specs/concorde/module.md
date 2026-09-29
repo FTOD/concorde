@@ -99,7 +99,8 @@ and validates the result and delivers it.
 | `concorde spec-validation` | check the structure of the Specs | [Spec core](spec-tooling/spec/module.md) |
 | `concorde grant` | compute a [task type](glossary.json#concept.task-type)'s grant for some Modules | [Spec core](spec-tooling/spec/module.md) |
 | `concorde spec-mcp` | let an agent query Modules, context and grants over MCP | [Spec MCP server](spec-tooling/spec-mcp/module.md) |
-| `concorde task` | open, list, show and close tasks, start task sessions, escalate, merge | [Tasks](coordination/tasks/module.md) |
+| `concorde task` | open, list, show and close tasks, start task sessions, escalate, merge, wait for a task, run or lock | [Tasks](coordination/tasks/module.md) |
+| `concorde project-mcp` | give a Claude Code session the project's tasks, traces and locks over MCP, and wake it through a channel | [Main session](coordination/main-session/module.md), as the [project MCP server](glossary.json#concept.project-mcp-server) |
 | `concorde run` | run one Operation in the workspace of the current worktree | [Execution](execution/module.md) with [Operations](execution/operations/module.md) |
 | `concorde task-validation`, `concorde delivery`, `concorde scaffold` | decide readiness, deliver, create surveyed Modules, in the current workspace | [Commands](execution/commands/module.md), with [Validation](execution/commands/validation/module.md), [Delivery](execution/commands/delivery/module.md) and [Scaffold](execution/commands/scaffold/module.md) |
 | `concorde workflow` | run the steps of a workflow in the current workspace and report its result | [Workflows](execution/workflows/module.md) |

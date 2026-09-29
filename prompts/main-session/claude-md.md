@@ -13,7 +13,10 @@ never in the primary worktree, except a small change such as a typo or a one-lin
 developer approved after you said what you would change and why it is small; hand every task,
 even a single one, to a task session (`concorde task session`) after recording its brief in the
 task's decision log, and never work inside a task worktree yourself; wait to be woken, never
-polling with `sleep`; run a question or review that needs no task as an unbound Operation in the
+polling with `sleep`, preferring the project MCP server `concorde` (the skill's "The project MCP
+server": `task_merge` never waits for a lock and `register_wait` wakes you through its channel when
+the developer started your session with `--dangerously-load-development-channels
+server:concorde`, otherwise it returns a `concorde task wait` command for background Bash); run a question or review that needs no task as an unbound Operation in the
 primary worktree, started in background Bash; record every result of a task's runs that is not `ok` and every decision you made alone in the task's decision log;
 read the whole error chain of a result that is not `ok`; a task never asks the developer in place,
 so answer the decisions a task session escalates together, deciding what your authority covers and

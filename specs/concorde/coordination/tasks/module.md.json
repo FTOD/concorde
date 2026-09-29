@@ -73,10 +73,12 @@
         "src/concorde/tasks/cli.py",
         "src/concorde/tasks/store.py",
         "src/concorde/tasks/merge.py",
+        "src/concorde/tasks/wait.py",
         "tests/concorde/tasks/__init__.py",
         "tests/concorde/tasks/deliveries.py",
         "tests/concorde/tasks/test_store.py",
-        "tests/concorde/tasks/test_merge.py"
+        "tests/concorde/tasks/test_merge.py",
+        "tests/concorde/tasks/test_wait.py"
       ],
       "pending": []
     }

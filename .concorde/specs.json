@@ -877,7 +877,8 @@
       "owns": [
         "specs/concorde/coordination/main-session/module.md",
         "specs/concorde/coordination/main-session/requirements.md",
-        "specs/concorde/coordination/main-session/scenarios.md"
+        "specs/concorde/coordination/main-session/scenarios.md",
+        "specs/concorde/coordination/main-session/contracts.md"
       ],
       "contains": [],
       "uses": [
@@ -887,7 +888,9 @@
           "relies_on": [
             "concept.workspace-binding",
             "concept.run-result",
-            "concept.unbound-run"
+            "concept.unbound-run",
+            "concept.run-lock",
+            "concept.workspace-lock"
           ]
         },
         {
@@ -909,7 +912,8 @@
           "meaning": "#uses-tasks",
           "relies_on": [
             "concept.task",
-            "concept.decision-log"
+            "concept.decision-log",
+            "concept.merge-lock"
           ]
         },
         {
@@ -946,12 +950,21 @@
           "meaning": "#uses-tracing",
           "relies_on": [
             "concept.trace",
-            "concept.trace-node"
+            "concept.trace-node",
+            "concept.error-chain"
           ]
         }
       ],
       "includes": [],
-      "participates": []
+      "participates": [
+        {
+          "contract": "contract.main-session.channel-event",
+          "version": 1,
+          "role": "provided",
+          "peer": "external",
+          "meaning": "specs/concorde/coordination/main-session/contracts.md#channel-event-participation"
+        }
+      ]
     },
     {
       "id": "module.distribution",
@@ -1459,7 +1472,8 @@
           "target": "module.main-session",
           "meaning": "#uses-main-session",
           "relies_on": [
-            "concept.main-session-guidance"
+            "concept.main-session-guidance",
+            "concept.project-mcp-server"
           ]
         },
         {

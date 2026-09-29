@@ -216,6 +216,65 @@ starts its sessions without terms and without an error; Spec validation reports 
 it cannot read. A [worker](../../glossary.json#concept.worker) is not such a session: its context is
 only its brief, as the [Harness](../../harness/module.md) describes.
 
+## The project MCP server
+
+### req.main-session.project-mcp-presentation — The server presents the commands
+
+The [project MCP server](../../glossary.json#concept.project-mcp-server) SHALL answer and refuse
+every call exactly as the `concorde` command its tool presents does, from the
+[task records](../../glossary.json#concept.task-record), traces and locks of the primary worktree
+read afresh for that call, adding no rule of its own.
+
+The primary worktree is that of the repository the server was started in, whichever worktree of the
+project it was started from.
+
+### req.main-session.project-mcp-no-wait — The server never waits for a lock
+
+A tool of the server that needs a lock SHALL be refused at once, with `workspace_busy` or
+`merge_busy`, when another process holds it, naming the lock file and the holder's command,
+process, start time, Claude Code session and task as the holder line gives them.
+
+It takes a lock without waiting, and a refused call releases every lock it had taken.
+
+### req.main-session.project-mcp-handover — A granted lock belongs to the work
+
+When `task_merge` has both locks, the server SHALL hand them to the merge process it starts, so
+that they are released exactly when that process ends, however it ends, and never by the server or
+its session ending.
+
+It starts the merge as a process of its own with both locked descriptors inherited, and closes its
+own copies before it answers.
+
+### req.main-session.project-mcp-wait-notifies — A wait only notifies
+
+`register_wait` SHALL NOT take, keep or hand over any lock for the session it wakes.
+
+It answers at once when what it waits for already happened, and otherwise, with a channel, wakes its
+session with one channel event when it happens or ends another way, watching by blocking on the
+lock or on the kernel's notice of its changes, never by polling.
+
+### req.main-session.project-mcp-fallback — Without a channel the server says so
+
+When the server does not know its session to listen to it as a channel, `register_wait` and
+`task_merge` SHALL say so and return the `concorde task wait` command that returns when the same
+thing happens, for background Bash.
+
+For `task_merge` that is the wait for the task's
+[workspace lock](../../glossary.json#concept.workspace-lock), which the merge holds until it ends.
+
+### req.main-session.project-mcp-errors — Every refusal is an error link
+
+Every refusal of the server SHALL be an [error chain](../../glossary.json#concept.error-chain)
+link: the refusing component's own link unchanged, or the server's own `component` link with its
+reason, explanation and options.
+
+### req.main-session.project-mcp-guidance — The guidance says when to use the server
+
+The guidance SHALL tell the main agent how to start its session with the server as a channel, that
+channels are a research preview that may be unavailable, to prefer `task_merge` and `register_wait`
+to commands that wait, to run the returned command in background Bash when no channel is available,
+that a lock is never handed to a woken session, and that the CLI stays the source of truth.
+
 ## Worker models
 
 ### req.main-session.developer-chooses-models — The developer chooses worker models

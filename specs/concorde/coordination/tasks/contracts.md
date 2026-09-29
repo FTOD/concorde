@@ -666,8 +666,8 @@ sessions are [Task sessions](../task-session/contracts.md#session-trace)'.
 
 ## Commands
 
-`open`, `close`, `merge` and `session` run only in the primary worktree. `list`, `show` and
-`escalate` run in any worktree of the repository, so a task session escalates from its task
+`open`, `close`, `merge` and `session` run only in the primary worktree. `list`, `show`,
+`escalate` and `wait` run in any worktree of the repository, so a task session escalates from its task
 worktree; they find the primary worktree, and with it the task folders, through Git's common
 directory.
 Every command prints one JSON value on standard output and exits with status 0 on success. A
@@ -680,7 +680,7 @@ task, [Module](../../glossary.json#concept.module), path, run or Git command con
 message (for an unknown task, the known tasks; for a dirty worktree, the uncommitted paths; for a
 busy [merge lock](../../glossary.json#concept.merge-lock), its holder), and whose reason is
 `environment` for `git_failed`, `worktree_failed`, `record_conflict`, `record_unreadable`,
-`record_unwritable`, `decision_log_failed`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed` and the
+`record_unwritable`, `decision_log_failed`, `binding_failed`, `merge_busy`, `workspace_busy`, `rollback_failed`, `wait_timeout`, `wait_failed` and the
 session codes `session_failed` and `missing_worktree`, `decision` for `dirty_worktree`,
 `not_merged`, `delivery_unverified`, `primary_dirty`, `merge_conflict`, `check_failed`,
 `merge_incomplete`, `not_resumable` and `merge_diverged`, and `input` otherwise. A
@@ -711,6 +711,9 @@ for it. `list` and `show` are never refused for a merge.
 | `concorde task close <task-id> --completed --note <text> [--force] [--wait <seconds>]` | For a task that reached its goal without merging: first stops each task session of the task with `claude stop`, refusing with `session_stop_failed` when one cannot be confirmed stopped, then, with `SIGTERM`, each run of the task's workspace whose [run lock](../../glossary.json#concept.run-lock) a process of this machine holds; then, holding the workspace lock and then the merge lock, waited for as with `--merged`: removes the worktree, discarding uncommitted changes only with `--force`, sets state `closed` with outcome `completed` and the note, ends the trace node, appends the outcome and the note to the decision log, keeps the transcripts, moves the folder to the history and removes the task sessions as with `--merged` | As with `--merged` |
 | `concorde task close <task-id> --failed --reason <text> ((--run <run-id> \| --error-file <path>)… \| --no-error) [--force] [--wait <seconds>]` | For a task that did not reach its goal: stops its task sessions and runs as `--completed` does, then, holding the workspace lock and then the merge lock, waited for as with `--merged`: removes the worktree, discarding uncommitted changes only with `--force`, sets state `failed` with the reason as note and, as errors, the `error` of each named run of the task's workspace, read from its workspace folder, and each error read from a file, unchanged; `--no-error` declares that no error caused the failure; ends the trace node, appends the outcome, the reason and the errors, rendered and as JSON, to the decision log, keeps the transcripts, moves the folder to the history and removes the task sessions as with `--merged` | As with `--merged` |
 | `concorde task escalate <task-id> [--by main-agent\|task-session] [--run <run-id> \| --error-file <path> \| --escalation <n>]… --code <code> --detail <text> --reason <reason> --explanation <text> [--attempt <text>]… [--option <text>]… [--recommendation <text>]` | Builds the escalating session's link, of level `main-agent` (the default, actor `main agent (task <task-id>)`) or `task-session` (actor `task session (task <task-id>)`), whose causes are the `error` of each named run of the task's workspace, read from the [run store](../../glossary.json#concept.run-store), each error read from a file (a link, or a JSON value whose `error` is one) and the error of each named earlier escalation of the task (numbered from 1 in record order), with no causes when it names none (a decision to escalate that no error carries), appends it to the escalations of the task's trace node and to the decision log, rendered and as JSON, under a heading naming the receiver: the [main agent](../../glossary.json#concept.main-agent) for `task-session`, the developer for `main-agent` | `{"escalated": <link>, "number": <its number in the task's trace, from 1>, "decision_log": "<absolute path>", "rendered": "<the chain as indented text>"}` |
+| `concorde task wait <task-id> --until <state>[,<state>…] [--timeout <seconds>]` | None; blocks until the task's derived state is one of the named states, which must be among `delivered`, `merging`, `closed` and `failed`, learning of each new holder of the task's workspace lock through the kernel's notification of changes to its lock file and blocking on the lock until that holder releases it, then reading the state again; answers at once when the state already is one of them | `{"task": "<task-id>", "state": "<state>", "waited_seconds": <number>}` |
+| `concorde task wait --run <run-id> [--timeout <seconds>]` | None; blocks on the run's [run lock](../../glossary.json#concept.run-lock), shared, until its runner releases it, for a run of any task's workspace or an [unbound run](../../glossary.json#concept.unbound-run) a reader finds | `{"run": "<run-id>", "status": "<status of its result, or lost when it has none>", "result": "<absolute path of result.json>\|null", "waited_seconds": <number>}` |
+| `concorde task wait [<task-id>] --lock merge\|workspace [--timeout <seconds>]` | None; blocks on the merge lock, or the workspace lock of the task named, shared, until no process holds it | `{"lock": "merge\|workspace", "task": "<task-id>\|null", "released": true, "held_by": <the holder line when the wait began, or null when the lock was free>, "waited_seconds": <number>}` |
 
 The decision log that `open` creates contains exactly a level-1 heading `Decision log: <task-id>`
 and a paragraph `Goal: <goal>`.
@@ -719,7 +722,9 @@ The merge lock is an exclusive `flock` on `.concorde/locks/merge.lock` of the pr
 process running `open`, `close` or `merge` takes it before reading anything it acts on, holds it
 for the whole command and releases it when it ends; the kernel releases it when the process dies,
 however it dies. While holding it, the process keeps in the file one JSON object
-`{"holder": "`concorde task <open|close|merge>` of task <task-id>", "pid": <pid>, "since": "<RFC 3339 time>"}`, the holder line of every lock under `.concorde/locks/`.
+`{"holder": "`concorde task <open|close|merge>` of task <task-id>", "pid": <pid>, "since": "<RFC 3339 time>", "session": "<Claude Code session>", "task": "<task-id>"}`, the holder line of every lock under `.concorde/locks/`, with `session` only when the process's environment names one in `CLAUDE_CODE_SESSION_ID`.
+A merge started with both locks inherited, as [Tracing](../../tracing/contracts.md#handing-a-lock-on)
+states, adopts them without waiting and writes its own holder line into each.
 Only a process that failed to take the lock reads that object, so an object left by a dead holder
 is overwritten by the next holder and never reported. `open` and `close` wait for the lock as long
 as `merge` does by default.
@@ -766,7 +771,7 @@ holds the first two.
 | --- | --- |
 | `not_primary` | `open`, `close`, `merge` or `session` runs outside the primary worktree. |
 | `worktree_not_ignored` | The worktree path lies inside the primary worktree and Git does not ignore it there; the message names the path and how to ignore it. |
-| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--check` accompanies `--resume` or `--abort`, or `--wait` is negative, or `session` starts a task session without `--main`. |
+| `invalid_input` | A goal or Module list is missing or repeats a Module, or `close` names not exactly one of `--merged`, `--completed` and `--failed`, `--completed` lacks `--note`, `--failed` lacks `--reason`, `--failed` names both or neither of an error source (`--run`, `--error-file`) and `--no-error`, an option belongs to another outcome, or `--force` accompanies `--merged`, or a `--check` is empty or cannot be split into words, or `--check` accompanies `--resume` or `--abort`, or `--wait` is negative, or `session` starts a task session without `--main`, or `wait` names no target or more than one, `--until` without a task or with a state other than `delivered`, `merging`, `closed` and `failed`, `--run` with a task, `--lock workspace` without one or `--lock merge` with one, or a negative `--timeout`. |
 | `worktree_failed` | Git refused to add or remove the worktree; the message carries Git's error. |
 | `binding_failed` | `open` added the worktree but could not write its [workspace binding](../../glossary.json#concept.workspace-binding); the message names the file, the worktree and branch left behind and how to remove them. |
 | `invalid_task_id` | The identity does not match the record's `id` pattern. |
@@ -786,7 +791,7 @@ holds the first two.
 | `record_unwritable` | The file system refused to write the task record; the message names the record and the file system's error. |
 | `decision_log_failed` | `close` or `escalate` wrote the task record and the file system then refused the append to the [decision log](../../glossary.json#concept.decision-log), or a rerun of a close cannot read it; the message says what was written and how to finish (above). |
 | `git_failed` | A Git command Tasks needs failed; the message names the command, its exit status and its output. |
-| `unknown_run` | `escalate` or `close --failed` names a run whose result cannot be read from the run store, or a run of another workspace or of none; the message names the workspace the run belongs to. |
+| `unknown_run` | `escalate` or `close --failed` names a run whose result cannot be read from the run store, or a run of another workspace or of none, or `wait --run` names a run no reader finds; the message names the workspace the run belongs to, or where it looked. |
 | `unknown_escalation` | `escalate` names an escalation number the task's trace does not have. |
 | `merge_busy` | The merge lock stayed held for the whole wait, or `session` or `escalate` names the task a live merge is merging; the message names the holder's command, task, process and start time. |
 | `session_stop_failed` | `close --completed` or `--failed` could not confirm a Claude Code task session of the task stopped with `claude stop`, before it changed the task; the message names the session, Claude Code's answer and the command to stop it ([Task sessions](../task-session/contracts.md#at-the-end-of-a-task)). |
@@ -801,6 +806,9 @@ holds the first two.
 | `rollback_failed` | After a conflict or a failed check, or during `--abort`, Git refused to abort the merge or reset the primary branch; the message carries the original failure, Git's output and the commit the primary branch is at, the primary worktree is left as Git left it, and the task stays `merging`. |
 | `nothing_to_escalate` | `escalate` or `close --failed` names a run that ended without an error. |
 | `invalid_error` | An escalated file or escalation is not an error link, or the escalating session's link does not satisfy the error contract. |
+| `wait_timeout` | `wait` did not see what it waits for within `--timeout` seconds; nothing changed. Reason `environment`. |
+| `wait_unreachable` | `wait --until` finds the task ended `closed` or `failed` in a state it does not name; the message names that state. |
+| `wait_failed` | The kernel refused to watch the directory of the task's workspace lock; the message carries its error. Reason `environment`. |
 | `invalid_command` | The command line is malformed. |
 
 ## Record updates

@@ -130,6 +130,15 @@ trace or a task folder, and its file holds only who holds it now:
 | workflow lock `workflows/<workspace>.lock` | a workflow step of the workspace | until the task is closed |
 | [run lock](../glossary.json#concept.run-lock) `runs/<run>.lock` | the run's runner only | removed by the runner as it exits |
 
+A lock file's holder line names the holder, its process and since when it holds the lock, and,
+when they are known, the Claude Code session it works for and the task, so that whoever is refused
+learns who to wait for. A lock can be handed on: its holder starts a process that inherits the
+locked descriptor, which is how the
+[project MCP server](../glossary.json#concept.project-mcp-server) gives the locks it took to the
+merge it starts, so that the lock belongs to the work and not to the server. A wait for a lock's
+release blocks on the lock itself, so the kernel wakes it when the holder ends or dies
+([contracts](contracts.md#locks)).
+
 **Retention.** Traces are removed only at defined points, never by a process running in the
 background: `concorde trace prune`, and the start of every `task open` and `task close`, remove
 each unbound run that ended more than 7 days ago and, when the project configures it, each history
@@ -251,7 +260,8 @@ error translates it into a link.
 The **tracing library** gives every producer the same means: the layout's paths, writing a node at
 its start and its end atomically with its artifacts' digests, checking a node against the node
 contract and its content against the type its producer registered, the locks under
-`.concorde/locks/`, walking a tree and rolling usage up, finding a node by identity, telling a run
+`.concorde/locks/` with handing a held lock on to a process and waiting for a lock's release or its
+next holder without polling, walking a tree and rolling usage up, finding a node by identity, telling a run
 lost by its run lock, and removing what retention allows. It never decides what a producer records.
 
 <a id="realization.tracing.command"></a>

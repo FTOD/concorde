@@ -5,7 +5,8 @@ It copies the package's runtime (``src``, ``scripts``, ``prompts``, ``protocol``
 ``.concorde/framework/docsite/`` selected by Views' template inventory rule, writes the
 ``.concorde/bin/concorde`` command, the Protocol copy under ``.concorde/protocol/``, the main-session guidance as the project skill
 ``.claude/skills/concorde/SKILL.md`` (the build's rendered skill) and a delimited block in
-``CLAUDE.md``, Concorde-owned defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
+``CLAUDE.md``, the project MCP server's entry ``concorde`` in ``.mcp.json``, Concorde-owned
+defaults when absent, the pinned ``d2`` program under ``.concorde/tools/``, ignore rules for local
 state and task worktrees, and a receipt ``.concorde/install.json``. ``uv`` owns Concorde's Python:
 it creates Concorde's own environment under ``.concorde/framework/python/`` on an interpreter that
 satisfies the package's ``runtime.python`` requirement, a uv-managed CPython when the machine has
@@ -61,6 +62,9 @@ SKILL = ".claude/skills/concorde/SKILL.md"
 CLAUDE_MD = "CLAUDE.md"
 CLAUDE_WORKFLOWS = ".claude/workflows"
 CLAUDE_SETTINGS = ".claude/settings.json"
+# The project's Claude Code MCP configuration, where the project MCP server is registered.
+MCP_CONFIG = ".mcp.json"
+MCP_SERVER = "concorde"
 # The Bash commands every workflow's Claude Code step agents run.
 STEP_RULES = (
     f"Bash({COMMAND} workflow step:*)",
@@ -385,6 +389,39 @@ def _settings(
     return sorted(set(owned))
 
 
+def _read_mcp_config(project: Path) -> dict:
+    """The project's ``.mcp.json``, refused before any write when not a JSON object whose
+    ``mcpServers`` is an object."""
+    path = project / MCP_CONFIG
+    if not path.exists():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as error:
+        raise InstallError(
+            "mcp_config_invalid",
+            f"{path} cannot be read as JSON: {error}; nothing was written",
+        ) from error
+    if not isinstance(value, dict) or not isinstance(value.get("mcpServers", {}), dict):
+        raise InstallError(
+            "mcp_config_invalid",
+            f"{path} is not a JSON object with an optional mcpServers object; nothing was "
+            "written",
+        )
+    return value
+
+
+def _register_server(project: Path, config: dict) -> None:
+    """Register the project MCP server as ``concorde`` in ``.mcp.json``, keeping every other
+    server; Claude Code starts it from the directory the session starts in, the project root."""
+    servers = config.setdefault("mcpServers", {})
+    entry = {"command": COMMAND, "args": ["project-mcp"]}
+    if servers.get(MCP_SERVER) == entry:
+        return
+    servers[MCP_SERVER] = entry
+    (project / MCP_CONFIG).write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+
+
 def _ignore(project: Path) -> None:
     path = project / ".gitignore"
     text = path.read_text(encoding="utf-8") if path.exists() else ""
@@ -445,6 +482,7 @@ def install(
     descriptor = json.loads((package / "concorde.json").read_text())
     requirement = _python_requirement(descriptor, package)
     settings = _read_settings(project)
+    mcp_config = _read_mcp_config(project)
     previous = {}
     if (project / RECEIPT).is_file():
         try:
@@ -526,8 +564,9 @@ def install(
         _permission_rules(placed),
         list(previous.get("permissions") or []),
     )
+    _register_server(project, mcp_config)
     _ignore(project)
-    amended = [".gitignore", CLAUDE_MD] + (
+    amended = [".gitignore", CLAUDE_MD, MCP_CONFIG] + (
         [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
     )
     receipt = {

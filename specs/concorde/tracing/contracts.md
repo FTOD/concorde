@@ -511,8 +511,13 @@ free when the history already holds a task of that name, so no closed task ever 
 
 Every lock is a file under `locks/` locked with `flock`, which the kernel releases however its
 holder ends. While a process holds it, the file holds one line of JSON naming the holder,
-`{"holder": "<what holds it>", "pid": <process>, "since": "<UTC time>"}`, and it is emptied before
-it is released; a waiter that gives up names the holder from it. No lock file holds anything else.
+`{"holder": "<what holds it>", "pid": <process>, "since": "<UTC time>"}`, with
+`"session": "<Claude Code session>"` when the holder's environment names one in
+`CLAUDE_CODE_SESSION_ID` and `"task": "<task>"` when the taker names the task it works for, and it
+is emptied before it is released; a waiter that gives up names the holder from it, with its session
+and task. No lock file holds anything else. Execution never names a task: the holder lines of its
+runs name the workspace in `holder` only, and a task is named only by Tasks and by the
+[project MCP server](../glossary.json#concept.project-mcp-server).
 
 | Lock | File | Taken by | Lifetime |
 | --- | --- | --- | --- |
@@ -522,6 +527,28 @@ it is released; a waiter that gives up names the holder from it. No lock file ho
 | [workspace lock](../glossary.json#concept.workspace-lock) | `workspaces/<workspace>.lock` | every bound run, and `task merge` and `task close` of its task | removed by the close, while it holds the lock |
 | workflow lock | `workflows/<workspace>.lock` | a [workflow step](../glossary.json#concept.workflow-step) or report while it reads and writes the workflow node | removed by the close, while it holds the workspace lock |
 | [run lock](../glossary.json#concept.run-lock) | `runs/<run>.lock` | the run's runner only, from before its first progress file until after its result | the runner removes it as it exits; a file left by a runner killed with `SIGKILL` is not held |
+
+<a id="handing-a-lock-on"></a>
+
+**Handing a lock on.** A process that holds a lock may hand it to a process it starts: it passes
+the locked descriptor to that process, which inherits the same open file description and with it
+the `flock`, and names it in that process's environment variable `CONCORDE_INHERITED_LOCKS`, a JSON
+object `{"<lock file>": <descriptor>}`. The library in that process reads and removes the variable
+once, so that no process it starts in turn believes it inherited the locks; when it takes a lock
+named there, it adopts the descriptor without waiting, provided the descriptor refers to the lock
+file there now and holds its lock, marks it not inherited by the processes it starts, and writes
+its own holder line; otherwise it closes it and takes the lock as usual. Once the process that
+handed the lock on closes its own descriptor, the lock is released exactly when the process it
+started ends. The kernel's lock table keeps naming the process that first took the lock, so
+the holder line, not `/proc/locks`, says who holds a handed lock.
+
+**Waiting for a release.** A process that waits for a lock to be released opens its file and asks
+for a shared `flock`, blocking, in a thread of its own, and lets go of it at once; the kernel grants
+it when the holder releases the lock or dies. A lock whose file is missing is free, and a lock file
+removed while its holder held it, such as a run lock, is released when that holder lets go. To learn
+when a lock is next taken, a process watches the lock's directory through the kernel's file change
+notification: taking a lock writes its holder line, releasing it empties the file and a close
+removes it.
 
 A run is running exactly when its run lock file exists and a process holds it. An observer tries it
 shared and without waiting, or reads the kernel's lock table `/proc/locks` for the file's inode,

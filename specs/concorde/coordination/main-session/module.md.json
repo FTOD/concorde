@@ -10,7 +10,8 @@
     "owns": [
       "specs/concorde/coordination/main-session/module.md",
       "specs/concorde/coordination/main-session/requirements.md",
-      "specs/concorde/coordination/main-session/scenarios.md"
+      "specs/concorde/coordination/main-session/scenarios.md",
+      "specs/concorde/coordination/main-session/contracts.md"
     ],
     "contains": [],
     "uses": [
@@ -20,7 +21,9 @@
         "relies_on": [
           "concept.workspace-binding",
           "concept.run-result",
-          "concept.unbound-run"
+          "concept.unbound-run",
+          "concept.run-lock",
+          "concept.workspace-lock"
         ]
       },
       {
@@ -42,7 +45,8 @@
         "meaning": "#uses-tasks",
         "relies_on": [
           "concept.task",
-          "concept.decision-log"
+          "concept.decision-log",
+          "concept.merge-lock"
         ]
       },
       {
@@ -79,12 +83,21 @@
         "meaning": "#uses-tracing",
         "relies_on": [
           "concept.trace",
-          "concept.trace-node"
+          "concept.trace-node",
+          "concept.error-chain"
         ]
       }
     ],
     "includes": [],
-    "participates": []
+    "participates": [
+      {
+        "contract": "contract.main-session.channel-event",
+        "version": 1,
+        "role": "provided",
+        "peer": "external",
+        "meaning": "specs/concorde/coordination/main-session/contracts.md#channel-event-participation"
+      }
+    ]
   },
   "defines": [
     {
@@ -97,6 +110,17 @@
         "tests/concorde/main_session/"
       ],
       "pending": []
+    },
+    {
+      "id": "realization.main-session.project-mcp",
+      "type": "realization",
+      "title": "Server program",
+      "meaning": "#realization.main-session.project-mcp",
+      "entries": [
+        "src/concorde/project_mcp/",
+        "tests/concorde/project_mcp/"
+      ],
+      "pending": []
     }
   ],
   "relations": [
@@ -105,6 +129,12 @@
       "source": "realization.main-session.guidance",
       "verb": "authors",
       "target": "concept.main-session-guidance"
+    },
+    {
+      "type": "relates",
+      "source": "realization.main-session.project-mcp",
+      "verb": "realizes",
+      "target": "concept.project-mcp-server"
     }
   ],
   "extensions": {}

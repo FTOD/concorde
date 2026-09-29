@@ -328,11 +328,38 @@ Git refuses (`rollback_failed`) and a close that fails after the checks passed a
 The lock is a `flock` held by the command's own process, so no session has to release it or
 announce that it is done: the kernel releases it when the process ends, even when it is killed, and
 a waiting command wakes as soon as it is free. A command that gives up waiting fails with
-`merge_busy`, naming the holder's command, task, process and start time, which the holder writes
-into the lock file while it holds it. `concorde task open` and `concorde task close` take the same
+`merge_busy`, naming the holder's command, task, process, start time and Claude Code session,
+which the holder writes into the lock file while it holds it. The command may also have been handed
+both locks by the process that started it, as the
+[project MCP server](../../glossary.json#concept.project-mcp-server) hands them to the merge it
+starts: it then holds them from its start without waiting, exactly as long as it runs. `concorde task open` and `concorde task close` take the same
 lock, so a task is never based on, or closed against, a merge that may still be undone; `close`
 takes the task's workspace lock before it, as `merge` does, waiting up to its own `--wait` and then
 refusing with `workspace_busy` while a run of the task could still write the worktree it removes.
+
+<a id="waiting"></a>
+
+**Waiting.** A session that wants to learn when something it did not start is over asks once and
+is woken, never polls:
+
+```text
+concorde task wait severity --until delivered
+concorde task wait --run r-20260929T101500-delivery-5f3a
+concorde task wait --lock merge
+concorde task wait severity --lock workspace
+```
+
+`--until` returns once the task's derived state is one of the named states, `--run` once the run's
+runner holds no [run lock](../../glossary.json#concept.run-lock), with how the run ended, and
+`--lock` once nobody holds the merge lock or the task's workspace lock, with who held it. Each
+answers at once when that is already so and prints one JSON value, and `--timeout` bounds the wait.
+A task reaches `delivered`, `merging`, `closed` and `failed` only while its workspace lock is held,
+by a delivery run, a merge or a close, so a task wait learns from the kernel of every new holder of
+that lock, blocks on the lock until that holder lets it go, and reads the state again; those four
+are the states it admits, and a task that ends in another state ends the wait with
+`wait_unreachable`. A lock or run wait blocks on the lock itself, so a holder that dies wakes it
+as surely as one that ends. The project MCP server's `register_wait` runs the same waits for a
+session it can wake through a channel; this command is their form for background Bash.
 
 Only the main agent opens, merges and closes tasks and starts task sessions, only from the primary
 worktree (`not_primary` otherwise); `concorde task session` is dispatched to

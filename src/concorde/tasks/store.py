@@ -365,7 +365,10 @@ def _read_record(path: Path) -> dict:
 def task_locked(primary: Path, task_id: str):
     """Hold the task's lock: every change of its record and trace is made while holding it."""
     with locks.hold(
-        task_lock_path(primary, task_id), f"change of task {task_id}", wait=None
+        task_lock_path(primary, task_id),
+        f"change of task {task_id}",
+        wait=None,
+        task=task_id,
     ):
         yield
 
@@ -393,7 +396,10 @@ def merge_lock(primary: Path, command: str, task_id: str, wait: float = MERGE_WA
     path = merge_lock_path(primary)
     try:
         with locks.hold(
-            path, f"`concorde task {command}` of task {task_id}", wait=wait
+            path,
+            f"`concorde task {command}` of task {task_id}",
+            wait=wait,
+            task=task_id,
         ) as waited:
             yield waited
     except locks.LockBusy as busy:
@@ -431,6 +437,7 @@ def task_workspace_locked(
                 task_id,
                 f"`concorde task {command}` of task {task_id}",
                 wait=wait,
+                task=task_id,
             )
         )
     except RunError as error:

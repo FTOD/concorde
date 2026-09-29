@@ -190,8 +190,11 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("without asking the developer for authorization", self.skill)
         self.assertNotIn("leave the task worktree", self.skill)
         self.assertIn(
-            "run `concorde task merge <task>` from the primary worktree", self.skill
+            "merge it from the primary worktree without asking the developer for "
+            "authorization: with the project MCP server's `task_merge`",
+            self.skill,
         )
+        self.assertIn("or with `concorde task merge <task>` in background Bash", self.skill)
         self.assertIn("Never merge a task with `git merge` yourself", self.skill)
         self.assertIn("When it fails with `merge_busy`", self.skill)
         self.assertIn("merge delivered task branches without asking", self.block)
@@ -527,6 +530,29 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("a question or a review that does not justify a task", self.skill)
         self.assertIn("An `--input` of such a run must be unbound too", self.skill)
         self.assertIn("as an unbound Operation in the primary worktree", self.block)
+
+
+class ProjectMcpGuidanceTests(unittest.TestCase):
+    @verifies("scenario.main-session.project-mcp-guidance")
+    def test_the_guidance_says_how_to_start_with_the_server_and_when_to_use_it(self):
+        skill, block = rendered("skill"), rendered("claude-md")
+        session = rendered("task-session")
+        self.assertIn(
+            "claude --dangerously-load-development-channels server:concorde", skill
+        )
+        self.assertIn("--dangerously-load-development-channels server:concorde", block)
+        self.assertIn("with the project MCP server's `task_merge`, which returns at once", skill)
+        self.assertIn("`register_wait`", skill)
+        self.assertIn("a research preview", skill)
+        self.assertIn(
+            "run that command in background Bash, which wakes you when it returns", skill
+        )
+        self.assertIn(
+            "when you are woken for a lock, ask for it again, and you may be refused again",
+            skill,
+        )
+        self.assertIn("The `concorde` commands stay the source of truth", skill)
+        self.assertIn("you never merge or close your task", session)
 
 
 if __name__ == "__main__":

@@ -102,7 +102,9 @@ one run.
 Never wait by polling, with `sleep` loops over status files, `concorde task show` or run results:
 every wait in Concorde either wakes you or is one command that returns when the thing it waits for
 is done. Start each run of your own in background Bash (`run_in_background`), and you are woken
-when it ends.
+when it ends. To wait for something you did not start, such as a task becoming delivered or
+another session's merge releasing the merge lock, use the project MCP server's `register_wait`
+(see "The project MCP server" below), or run `concorde task wait` in background Bash.
 
 Other main sessions may work on the same project at the same time. Each run wakes only its
 **owner**: the session whose background Bash started it, and a task session reports only to the
@@ -264,9 +266,10 @@ the rest to the developer with your own link on top, naming its escalation as a 
 
 ## Merge delivered work
 
-When `delivery` has committed a task's change with its evidence on the task branch, run
-`concorde task merge <task>` from the primary worktree without asking the developer for
-authorization. Never merge a task with `git merge` yourself:
+When `delivery` has committed a task's change with its evidence on the task branch, merge it
+from the primary worktree without asking the developer for authorization: with the project MCP
+server's `task_merge`, which returns at once (see "The project MCP server" below), or with
+`concorde task merge <task>` in background Bash. Never merge a task with `git merge` yourself:
 other main sessions may be merging into the same primary worktree, and `concorde task merge` takes
 the merge lock that lets only one merge run at a time. It merges the branch, runs
 `concorde spec-validation` there (or exactly the `--check` commands you name, for a project that must build first), undoes the
@@ -420,6 +423,50 @@ but need not be installed to edit the file. A missing program causes `backend_mi
 fallback, and a malformed file `config_invalid` naming the field. An Operation whose worker cannot
 be configured ends `failed` with `worker_model_unavailable`, naming the worker, file or missing
 program.
+
+## The project MCP server
+
+The project's `.mcp.json` registers the **project MCP server** `concorde` (`concorde project-mcp`):
+tools that present the task and trace commands to your session. Each session runs its own server,
+which serves the whole project's tasks, traces and locks from the primary worktree, whatever
+worktree it started in, reading them afresh on every call. The `concorde` commands stay the source
+of truth: every answer and refusal is the command's own, every refusal an error chain link.
+
+- Queries: `task_list`, `task_show`, `trace_show` (a node with a `depth`, so a large trace is read
+  a level at a time), `run_result`, `workflow_report`, and `locks`, which says who holds the merge
+  lock and each task's workspace lock: the holder's command, process, start time, session and
+  task.
+- Short writes with structured arguments: `task_open`, `task_escalate` (your link of the error
+  chain as arguments, with the `runs`, `error_files` and `escalations` it adds as causes) and
+  `task_close` with `outcome` `completed` or `failed`.
+- `task_merge`: merges a delivered task without ever waiting for a lock. It takes the task's
+  workspace lock and the merge lock at once, or is refused at once with `workspace_busy` or
+  `merge_busy` naming who holds the busy one. When it gets both, it starts `concorde task merge`
+  as a process of its own that holds them until it ends, even if your session ends first, and
+  returns at once; its `checks`, `resume` and `abort` are the command's `--check`, `--resume` and
+  `--abort`. Handle its outcome as a merge's (below).
+- `register_wait`: asks to be woken when a task becomes `delivered`, `merging`, `closed` or
+  `failed` (`task` with `until`), when a run ends (`run`), or when a lock is released (`lock`
+  `merge`, or `workspace` with `task`). It answers at once when that already happened. It only
+  notifies: when you are woken for a lock, ask for it again, and you may be refused again.
+
+The server wakes you through a Claude Code **channel**, a research preview: it works only when the
+developer started your session with the server as a channel, from the primary worktree:
+
+```bash
+claude --dangerously-load-development-channels server:concorde
+```
+
+Claude Code asks once to confirm the flag. Channels also need Anthropic authentication (claude.ai
+or a Console key) and an organization that has not disabled them. Without a channel,
+`register_wait` says so and returns the `concorde task wait …` command, and `task_merge` returns
+`concorde task wait <task> --lock workspace`, which returns when its merge has ended: run that
+command in background Bash, which wakes you when it returns, then read the merge's output file the
+answer names. If a channel event you expected never comes although the server said it has a
+channel, the organization may block channels: use the background Bash form. Using the server is
+recommended, not required: the kernel lock is the same whichever path takes it, and everything the
+server does not present, such as `concorde task session`, stays a command. Task sessions receive
+the server too; workers never do.
 
 ## Spec queries
 

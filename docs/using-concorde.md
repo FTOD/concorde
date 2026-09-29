@@ -85,6 +85,8 @@ The installer places:
 - the main agent's guidance, as the Claude Code skill `.claude/skills/concorde/SKILL.md` and a short
   block between `<!-- concorde:start -->` and `<!-- concorde:end -->` in your `CLAUDE.md` (the
   rest of the file is left untouched);
+- the project MCP server, registered as `concorde` in your `.mcp.json` (other servers there are
+  kept), which gives Claude Code sessions your tasks, traces and locks as tools;
 - the [`d2`](https://github.com/d2lang/d2) program that draws your Specs' diagrams, as
   `.concorde/tools/d2`, at a pinned release whose checksum it verifies (`--without-d2` skips it);
 - the sandbox engine pi workers run their commands in, `@anthropic-ai/sandbox-runtime`, under
@@ -270,7 +272,19 @@ check.
 ## Work with the main agent
 
 Open Claude Code in your project's primary checkout. The installed skill makes that session
-the main agent; you talk to it as usual.
+the main agent; you talk to it as usual. Start it with the project MCP server as a channel, so
+that the main agent can be woken when something it waits for happens:
+
+```bash
+claude --dangerously-load-development-channels server:concorde
+```
+
+Claude Code asks you once to confirm the flag, and asks, the first time, whether to use the
+`concorde` server from `.mcp.json`. Channels are a research preview of Claude Code: they need you
+to be logged in with claude.ai or a Console API key, and a Team or Enterprise organization must
+have enabled them. Without a channel everything still works: the server's tools answer as usual,
+and instead of waking the main agent itself it gives the main agent a `concorde task wait` command
+that it runs in background Bash, which wakes it when the command returns.
 
 - **Discuss first.** Ask about the project, agree the direction and the large plan. The main agent
   answers from the Specs.
@@ -298,6 +312,17 @@ with you while they run, and it is woken with the result when a run it started e
 session that started a run is woken: runs of other main sessions, of task sessions and of commands
 run by hand wake nobody. See how any task stands, including another session's, with
 `concorde task show <task>`.
+
+The project MCP server gives the main agent, and every task session, the same commands as tools:
+`task_list`, `task_show`, `trace_show`, `run_result`, `workflow_report` and `locks` to read,
+`task_open`, `task_escalate` and `task_close` to change tasks, `task_merge` to merge, and
+`register_wait` to be woken when a task is delivered or closed, a run ends or a lock is released.
+It never waits for a lock: when another session holds one it needs, it answers at once with who
+holds it (the command, process, start time, Claude Code session and task), and when it gets the
+locks for a merge it hands them to the merge process it starts, so a lock is always released when
+the work holding it ends. You can wait the same way yourself with
+`concorde task wait <task> --until delivered`, `concorde task wait --run <run-id>` or
+`concorde task wait --lock merge`, each of which returns when that happens.
 
 ### Choose the worker models
 
@@ -468,7 +493,7 @@ a change needs, the Operation stops with a **Spec gap**, and the Spec is changed
 
 `delivery` validates the whole task again itself and refuses it while anything blocks. Once it has
 committed, the task session reports the delivery, and the main agent, in your primary checkout,
-runs:
+merges it, with the project MCP server's `task_merge` or with:
 
 ```bash
 concorde task merge retry

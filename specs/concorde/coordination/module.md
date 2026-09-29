@@ -123,7 +123,8 @@ Tasks reads back the task's runs in that part of the
 [delivery commits](../glossary.json#concept.delivery-commit) on the task branch, and derives whether
 a task is active or delivered from them together with its branch head and whether its worktree is
 clean. A main session learns how the runs it did not start stand only by asking Tasks with
-`concorde task show`, and is woken only by the runs its own background Bash started. No record is
+`concorde task show`, and is woken only by the runs its own background Bash started and by the
+waits it registered with its own [project MCP server](../glossary.json#concept.project-mcp-server). No record is
 written by both halves, so neither can leave the other with a state that disagrees with what
 happened.
 

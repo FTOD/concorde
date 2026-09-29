@@ -392,6 +392,19 @@
       ]
     },
     {
+      "id": "concept.project-mcp-server",
+      "title": "Project MCP server",
+      "owner": "module.main-session",
+      "definition": "The project's one stdio MCP server, `concorde project-mcp` registered as `concorde`, of which each Claude Code session runs its own process, that serves the project's tasks, traces and locks from the primary worktree, takes locks without waiting and hands a granted lock to the detached process doing the work, and wakes its session through a Claude Code channel when a registered wait is over.",
+      "explanation": "specs/concorde/coordination/main-session/module.md#concept.project-mcp-server",
+      "contrasts": [
+        {
+          "target": "concept.merge-lock",
+          "reason": "the server never holds a lock it grants: the flock stays the only lock and belongs to the process doing the work"
+        }
+      ]
+    },
+    {
       "id": "concept.protocol-binding",
       "title": "Protocol binding",
       "owner": "module.spec",

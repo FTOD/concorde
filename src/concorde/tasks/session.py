@@ -15,6 +15,11 @@ which the close removes, and guards against mistakes, not a malicious session:
   ``.concorde/locks/`` (the locks those runs take) and the user's package caches; reads and the network stay open, since the
   boundary guards against mistakes, not exfiltration (``allowedDomains`` is ``*``, so no command
   has to name the hosts it reaches);
+- the session is given the project MCP server through ``--mcp-config`` (a background session in
+  a folder it never trusted would not load the project's ``.mcp.json``), loaded as a Claude Code
+  channel with ``--dangerously-load-development-channels server:concorde`` so that a wait it
+  registers wakes it; the server runs outside the Bash sandbox, as every MCP server does, and
+  may change task records, which the developer accepted: it is a management tool, not a boundary;
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
   ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
   and sandbox stay the boundary, and ``auto`` needs no one-time consent the way
@@ -42,6 +47,8 @@ PROMPT = "generated/main-session/task-session.md"
 CACHES = (".cache", ".npm")
 # Every host: the sandbox's proxy otherwise admits only hosts a command names.
 ALL_HOSTS = ("*",)
+# The project MCP server's name, which the channel flag names as server:<name>.
+SERVER = "concorde"
 STARTED = re.compile(r"backgrounded\s+·\s+(?P<id>[0-9A-Za-z-]+)\s+·")
 # The terminal escapes (colour, dimming) Claude Code puts around parts of that line.
 ESCAPES = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
@@ -130,6 +137,23 @@ def settings(
     }
 
 
+def mcp_config(python: str) -> dict:
+    """The MCP configuration of one task session: the project MCP server, by this Python and this
+    package, told that the session listens to it as a channel."""
+    return {
+        "mcpServers": {
+            SERVER: {
+                "command": python,
+                "args": [
+                    (PACKAGE_ROOT / "scripts/concorde.py").as_posix(),
+                    "project-mcp",
+                ],
+                "env": {"CONCORDE_CHANNEL": "1"},
+            }
+        }
+    }
+
+
 def brief(primary: Path, record: dict, main: str) -> str:
     """The session's first prompt: the rendered task-session guidance and this task."""
     path = PACKAGE_ROOT / PROMPT
@@ -192,6 +216,10 @@ def start(
         + "\n",
         encoding="utf-8",
     )
+    servers = directory / "mcp.json"
+    servers.write_text(
+        json.dumps(mcp_config(sys.executable), indent=2) + "\n", encoding="utf-8"
+    )
     name = session_name(task_id)
     command = [
         "claude",
@@ -200,6 +228,10 @@ def start(
         name,
         "--settings",
         path.as_posix(),
+        "--mcp-config",
+        servers.as_posix(),
+        "--dangerously-load-development-channels",
+        f"server:{SERVER}",
         "--permission-mode",
         "auto",
         *(["--model", model] if model else []),
@@ -211,6 +243,7 @@ def start(
             "command": shown,
             "cwd": worktree.as_posix(),
             "settings": path.as_posix(),
+            "mcp_config": servers.as_posix(),
         }
     create_writable(writable(primary, record, home))
     try:
@@ -426,6 +459,7 @@ __all__ = [
     "find_transcript",
     "hook_source",
     "keep_transcripts",
+    "mcp_config",
     "remove_sessions",
     "session_name",
     "settings",

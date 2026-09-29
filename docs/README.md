@@ -107,6 +107,8 @@ print one JSON result. Run them inside a task's worktree, whose workspace bindin
 | `concorde spec-validation`                              | Check every structural rule of the Specs.                                    |
 | `concorde grant --modules <ids> --type <task type>`     | Print the grant of a task type for some Modules.                             |
 | `concorde spec-mcp`                                     | Run the local stdio MCP server rooted at the project.                        |
+| `concorde project-mcp`                                  | Run the project MCP server: tasks, traces and locks as tools, with waking.   |
+| `concorde task wait`                                    | Block until a task reaches a state, a run ends or a lock is released.        |
 | `concorde task open\|list\|show\|session\|merge\|close` | Manage tasks: branch, worktree, record, decision log, task sessions, merges. |
 | `concorde task escalate`                                | Add the main agent's link on top of an error chain and record it.            |
 | `concorde run <operation>`                              | Run one Operation in the current workspace and print its result.             |

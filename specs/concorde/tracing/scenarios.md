@@ -68,3 +68,18 @@ and the command are defined in the [contracts](contracts.md).
 - THEN `.concorde/locks/runs/<run>.lock` exists and is held while the run runs
 - AND the file no longer exists once the runner exited
 - AND no lock file lies inside the run's folder
+
+### scenario.tracing.lock-holder-line — The holder line names the session and the task
+
+- GIVEN a process whose environment names Claude Code session `s-7`
+- WHEN it takes the [merge lock](../glossary.json#concept.merge-lock) for `concorde task merge` of task `t1`
+- THEN the lock file's holder line names that command, the process, the time, the session `s-7` and the task `t1`, and a waiter's description of the holder names both
+- AND the file is empty again once the lock is released
+
+### scenario.tracing.lock-handover — A process adopts a lock it was handed
+
+- GIVEN a process holding a lock that starts another with the locked descriptor and names it in `CONCORDE_INHERITED_LOCKS`, then closes its own descriptor
+- WHEN the started process takes that lock without waiting
+- THEN it holds it at once, writes its own holder line and no longer carries the variable
+- AND the lock is released when that process ends
+

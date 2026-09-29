@@ -35,6 +35,13 @@ The task's folder is writable because the task worktree's
 workspace folder of every run started there, and `.concorde/locks/` because those runs take their
 locks there.
 
+### req.task-session.project-mcp — A task session gets the project MCP server as a channel
+
+Task sessions SHALL start every task session with the
+[project MCP server](../../glossary.json#concept.project-mcp-server) in an MCP configuration it
+passes explicitly, loaded as a Claude Code channel and told so, so that a wait the session
+registers wakes it.
+
 ### req.task-session.boundary-first — The boundary is written before the session starts
 
 Task sessions SHALL write a task session's boundary before it starts the session.

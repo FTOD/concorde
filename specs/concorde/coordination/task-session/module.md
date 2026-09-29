@@ -59,7 +59,10 @@ rule](../../execution/workers/launch.md#proxy)), so they reach their model endpo
 **The start.** Task sessions writes the session's
 [session boundary](../../glossary.json#concept.session-boundary) — a settings file and the Harness's
 task-session [write hook](../../glossary.json#concept.write-hook) with the task's paths embedded —
-under `.concorde/tasks/severity/runtime/`, starts `claude --bg` in the task worktree with the
+under `.concorde/tasks/severity/runtime/`, with an MCP configuration `mcp.json` there that gives
+the session the [project MCP server](../../glossary.json#concept.project-mcp-server), starts
+`claude --bg` in the task worktree with that configuration, the server loaded as a Claude Code
+channel (`--dangerously-load-development-channels server:concorde`), and the
 task-session guidance and the task's goal, Modules, decision log and the main agent's session name
 as its first prompt, and records the started session as a node `sessions/<id>/` of the task's
 trace, with status `unknown`, since nothing tells Concorde when a Claude Code session ends.
@@ -68,6 +71,14 @@ without starting anything. A task that is closed or failed, a missing worktree, 
 that does not report a started background session is refused (`task_closed`, `missing_worktree`,
 `session_failed`) with Claude Code's output in the detail. The session receives the main agent's
 answers and sends its reports through SendMessage; `claude stop` stops it.
+
+The server is passed explicitly because a background session does not load the project-scoped
+`.mcp.json` of a folder nobody trusted, and its configuration tells the server that its session
+listens to it as a channel, since the server cannot learn that from a background session's
+process. The server runs as every MCP server does, outside the Bash sandbox, and its tools may
+change any task's record: the developer accepted that a task session can reach the task
+management tools, which are no boundary, so the guidance, not the boundary, keeps a task session
+from merging or closing its task.
 
 <a id="ending-claude-sessions"></a>
 
@@ -295,7 +306,9 @@ Claude Code, never from the program the task session runs on.
 **Main session** provides the
 [guidance](../../glossary.json#concept.main-session-guidance) a task session starts with: the
 rendered task-session guidance, which carries the same rules for working inside a task that the
-main agent follows. A missing rendered guidance refuses the start with `session_failed`.
+main agent follows. A missing rendered guidance refuses the start with `session_failed`. It also
+provides the [project MCP server](../../glossary.json#concept.project-mcp-server), which Task
+sessions configures for every task session it starts, as a channel.
 
 Two Modules call this one, both from level 1's side: the Main session's guidance has the main
 agent start task sessions, and Tasks dispatches `concorde task session` here after its own checks

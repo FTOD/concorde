@@ -38,7 +38,8 @@
         "src/concorde/tracing/node.py",
         "src/concorde/tracing/locks.py",
         "src/concorde/tracing/reader.py",
-        "src/concorde/tracing/retention.py"
+        "src/concorde/tracing/retention.py",
+        "src/concorde/tracing/watch.py"
       ],
       "pending": []
     },

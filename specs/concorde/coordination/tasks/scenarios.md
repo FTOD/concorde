@@ -446,3 +446,32 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN a new task `retry` is opened and closed
 - THEN its folder moves to `.concorde/history/retry.2/`, and the first task's folder is unchanged
 
+## Waiting
+
+### scenario.tasks.wait-task — A task wait returns when the delivery ends
+
+- GIVEN a task whose delivery run holds its workspace lock
+- WHEN a session runs `concorde task wait <task> --until delivered` and the run commits its delivery and ends
+- THEN the command returns once the lock is released, printing the task and its state `delivered`
+- AND the same wait run again returns at once
+
+### scenario.tasks.wait-task-unreachable — A task that ends elsewhere ends the wait
+
+- GIVEN a session waiting for a task to become delivered
+- WHEN the task is closed as completed
+- THEN the wait ends with `wait_unreachable`, an error link naming the state the task ended in
+- AND a wait for a state a task reaches without its workspace lock, such as `active`, is refused with `invalid_input`
+
+### scenario.tasks.wait-lock — A lock wait returns when its holder dies
+
+- GIVEN a process holding the merge lock for task `t9` in Claude Code session `s-1`
+- WHEN a session runs `concorde task wait --lock merge` and the holder is killed
+- THEN the command returns at once after the kill, saying the lock was released and naming the holder line it waited for, with its session and task
+
+### scenario.tasks.wait-timeout — A wait that times out says so
+
+- GIVEN a run holding a task's workspace lock
+- WHEN a session runs `concorde task wait <task> --lock workspace --timeout 0.3`
+- THEN the command fails with `wait_timeout`, reason `environment`, and nothing changed
+- AND a wait for a run no reader finds fails with `unknown_run`
+

@@ -48,8 +48,9 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `docsite --propose` or `--apply` | proposes or applies the docsite scaffold | [Views](../spec-tooling/views/module.md) |
 | `grant --modules <ids> --type <task type> [--root <worktree>]` | prints a [task type](../glossary.json#concept.task-type)'s grant | [Spec core](../spec-tooling/spec/module.md) |
 | `spec-mcp` | runs the stdio MCP server rooted at `CLAUDE_PROJECT_DIR` or the client's root; it prints no envelope | [Spec MCP server](../spec-tooling/spec-mcp/module.md) |
+| `project-mcp [--name <name>]` | runs the stdio [project MCP server](../glossary.json#concept.project-mcp-server) of the primary worktree; it prints no envelope | [Main session](../coordination/main-session/module.md) |
 | `init --propose --name <name>` or `--apply --proposal <file>` | proposes or applies a project's first [Spec](../glossary.json#concept.spec) | [Spec core](../spec-tooling/spec/module.md) |
-| `task open`, `list`, `show` or `close` | opens, lists, shows or closes tasks; prints the task command's own JSON | [Tasks](../coordination/tasks/module.md) |
+| `task open`, `list`, `show`, `close`, `merge`, `escalate` or `wait` | opens, lists, shows, closes, merges or escalates tasks, or waits for a task, run or lock; prints the task command's own JSON | [Tasks](../coordination/tasks/module.md) |
 | `run <operation>` | runs one [Operation](../glossary.json#concept.operation) in the workspace of the current worktree or, when the Operation allows it, unbound; prints the [run result](../glossary.json#concept.run-result) | [Execution](../execution/module.md), with the catalog of [Operations](../execution/operations/module.md) |
 | `task-validation`, `delivery` or `scaffold` | runs one execution command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with the catalog of [Commands](../execution/commands/module.md) |
 | `workflow step` or `report` | runs one [workflow step](../glossary.json#concept.workflow-step), or reports a workflow's result; prints its own JSON | [Workflows](../execution/workflows/module.md) |
@@ -60,14 +61,14 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `update [--from <checkout>]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
 
 A command is named after the part of Concorde that owns it: `task` gives the coordination
-commands, `spec-validation`, `registry`, `docsite`, `grant`, `spec-mcp` and `init` the Spec tooling
+commands and `project-mcp` the Main session's server, `spec-validation`, `registry`, `docsite`, `grant`, `spec-mcp` and `init` the Spec tooling
 commands, `issues` the Issues commands, `trace` the Tracing commands, and `build`, `protocol-manifest` and `update` the
 **distribution commands**, the only ones
 Distribution owns itself. Of Execution's, `task-validation`, `delivery` and `scaffold` are the
 [execution commands](../glossary.json#concept.execution-command), runs without a worker; `run`
 starts an Operation and `workflow` a workflow step.
 
-Every command but `spec-mcp`, `task`, `run`, the execution commands, `workflow`, `issues`, `trace`
+Every command but `spec-mcp`, `project-mcp`, `task`, `run`, the execution commands, `workflow`, `issues`, `trace`
 and `update` prints exactly one JSON envelope and exits with its
 status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)); those
 route to their owners, which define their own output and exit codes, except `update`, which prints
@@ -98,7 +99,9 @@ project where every check passes, it goes through these steps in order:
    `--develop`, a source that Dogfooding's check refuses; a project in which Concorde is still
    running (`concorde_busy`, described below); a `concorde.json` that names no Python requirement
    (`invalid_descriptor`); a `.claude/settings.json` that is not a JSON object (`settings_invalid`,
-   [checked first](requirements.md#req.distribution.installer-settings-checked)); a machine
+   [checked first](requirements.md#req.distribution.installer-settings-checked)); a `.mcp.json`
+   that is not a JSON object with an optional `mcpServers` object (`mcp_config_invalid`, checked
+   as early); a machine
    without `uv` on `PATH` (`uv_missing`), since uv owns Concorde's Python; and, when the pi runtime described
    below is still to be placed, a machine without `npm` (`npm_missing`)
    ([requirements](requirements.md#req.distribution.installer-programs-first)).
@@ -148,7 +151,12 @@ project where every check passes, it goes through these steps in order:
    [step agents](../glossary.json#concept.step-agent). It adds only rules that are missing,
    records them in the receipt, removes on a later install the recorded rules it no longer ships,
    and leaves every other setting untouched
-   ([requirements](requirements.md#req.distribution.installer-own-permissions)).
+   ([requirements](requirements.md#req.distribution.installer-own-permissions)). It registers the
+   [project MCP server](../glossary.json#concept.project-mcp-server) in the project's `.mcp.json`
+   as `"concorde": {"command": ".concorde/bin/concorde", "args": ["project-mcp"]}`, which Claude
+   Code starts from the directory a session starts in, the project root, keeping every other
+   server, and leaves the file as it is when that entry is already there
+   ([requirements](requirements.md#req.distribution.installer-project-mcp)).
 8. **It records the install.** It adds ignore rules for the folders [Tracing](../tracing/module.md)
    keeps, `.concorde/tasks/`, `.concorde/history/`, `.concorde/unbound/` and `.concorde/locks/`,
    for `.concorde/runs/`, where Dogfooding keeps [defect reports](../glossary.json#concept.defect-report) and End-to-end testing its session
@@ -177,7 +185,7 @@ checkout) and the `mode`, `normal` or, for a
 lists under `files` every file Concorde owns in the project, including a default an earlier
 install wrote and this one found in place
 ([requirements](requirements.md#req.distribution.receipt-complete)), and under `amended` the
-project's own files it only amends: `.gitignore`, `CLAUDE.md` and, once written,
+project's own files it only amends: `.gitignore`, `CLAUDE.md`, `.mcp.json` and, once written,
 `.claude/settings.json` ([requirements](requirements.md#req.distribution.receipt-amended)).
 
 A project in which Concorde is still running is refused with `concorde_busy`, since replacing the

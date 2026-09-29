@@ -151,6 +151,20 @@ class TaskSessionTests(unittest.TestCase):
         )
         return json.loads(decided.stdout) if decided.stdout.strip() else None
 
+    @verifies("scenario.task-session.project-mcp")
+    def test_a_task_session_gets_the_project_mcp_server_as_a_channel(self):
+        claude = FakeClaude()
+        session.start(self.root, "t1", "concorde-7d", run=claude, home=self.project.home)
+        [(command, _)] = claude.calls
+        path = self.folder / "runtime" / "mcp.json"
+        self.assertEqual(str(path), command[command.index("--mcp-config") + 1])
+        flag = command.index("--dangerously-load-development-channels")
+        self.assertEqual("server:concorde", command[flag + 1])
+        server = json.loads(path.read_text())["mcpServers"]["concorde"]
+        self.assertEqual("1", server["env"]["CONCORDE_CHANNEL"])
+        self.assertEqual("project-mcp", server["args"][-1])
+        self.assertTrue(Path(server["args"][0]).is_file())
+
     @verifies("scenario.task-session.boundary")
     def test_the_boundary_confines_the_session_to_its_task(self):
         shown = session.start(

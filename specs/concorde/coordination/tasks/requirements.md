@@ -240,7 +240,29 @@ was killed, without any action by another session.
 ### req.tasks.merge-busy-named — A waiter learns who holds the lock
 
 A merge, open or close that gives up waiting SHALL name the holder's command, task, process and
-start time.
+start time, and the Claude Code session the holder works for when its environment names one.
+
+### req.tasks.merge-handed-locks — A merge may be handed its locks
+
+A merge started with the task's workspace lock and the merge lock already held on descriptors it
+inherited, and named in its environment, SHALL hold them from its start without waiting until it
+ends.
+
+### req.tasks.wait-without-polling — A wait is woken, never polls
+
+`concorde task wait` SHALL return when the task reaches one of the named states, the run's runner
+holds no [run lock](../../glossary.json#concept.run-lock), or nobody holds the lock, learning of each
+change from the kernel and blocking on the lock itself rather than reading the records repeatedly.
+
+It answers at once when that is already so.
+
+### req.tasks.wait-bounded — A wait says why it ended without its answer
+
+A wait SHALL end with `wait_unreachable` when the task ended in a state it does not name, and with
+`wait_timeout` when its `--timeout` passes first, changing nothing.
+
+A task wait admits only `delivered`, `merging`, `closed` and `failed`, the states a task reaches
+while its workspace lock is held.
 
 ### req.tasks.merge-all-or-nothing — A merge is checked or undone
 

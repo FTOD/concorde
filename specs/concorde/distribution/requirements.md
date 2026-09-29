@@ -38,7 +38,7 @@ is missing or changed, or whose rendered asset differs from the tracked manifest
 
 ### req.distribution.one-envelope — One envelope per command
 
-Every invocation of the `concorde` command other than `spec-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `issues` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help`.
+Every invocation of the `concorde` command other than `spec-mcp`, `project-mcp`, `task`, `run`, `task-validation`, `delivery`, `scaffold`, `workflow`, `issues` and `update` SHALL print exactly one JSON result envelope on standard output, except `--help`.
 
 The exit status is the one Spec core's shared envelope assigns to the envelope's status, so it
 follows from this requirement rather than being a separate one: a caller that only checks the status
@@ -71,6 +71,15 @@ it was.
 The installer SHALL refuse, before writing anything, a project whose `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list.
 
 The refusal is `settings_invalid`.
+
+### req.distribution.installer-project-mcp — The installer registers the project MCP server
+
+The installer SHALL register the [project MCP server](../glossary.json#concept.project-mcp-server)
+in the project's `.mcp.json` as the server `concorde`, run as `.concorde/bin/concorde
+project-mcp`, keeping every other server and setting of the file.
+
+It refuses with `mcp_config_invalid`, before writing anything, a `.mcp.json` that is not a JSON
+object with an optional `mcpServers` object.
 
 ### req.distribution.own-python — Concorde runs in its own Python environment
 

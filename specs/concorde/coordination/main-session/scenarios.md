@@ -90,7 +90,7 @@ guides.
 
 - GIVEN the rendered main-session guidance
 - WHEN a main agent reads what to do after `delivery` committed a task's change with its evidence
-- THEN it is told to merge the task with `concorde task merge <task>` from the primary worktree without asking the developer
+- THEN it is told to merge the task from the primary worktree without asking the developer, with the project MCP server's `task_merge` or with `concorde task merge <task>` in background Bash
 - AND never to merge with `git merge` itself, because other main sessions may be merging, and that the merge runs `concorde spec-validation` unless it names other checks
 - AND to run the command again on `merge_busy`
 - AND that the merge waits for the task's run and other merges itself, so that it runs in background Bash
@@ -238,3 +238,79 @@ This illustrates [handoff before closure](requirements.md#req.main-session.issue
 
 This illustrates [conflict handling](requirements.md#req.main-session.issues-conflicts) and the
 [store check](requirements.md#req.main-session.issues-store-check).
+
+## The project MCP server
+
+### scenario.main-session.project-mcp-session — The server declares its tools and the channel capability
+
+- GIVEN a Claude Code session that starts the [project MCP server](../../glossary.json#concept.project-mcp-server), `concorde project-mcp`
+- WHEN it initializes the session and lists the tools
+- THEN the server answers with a protocol version it supports, the tools capability and the experimental `claude/channel` capability
+- AND it lists `task_list`, `task_show`, `trace_show`, `run_result`, `workflow_report`, `locks`, `task_open`, `task_escalate`, `task_close`, `task_merge` and `register_wait`
+
+### scenario.main-session.project-mcp-queries — Queries answer the project from any worktree
+
+- GIVEN a project with an open task `t1`, and a server started in the task's worktree
+- WHEN the session calls `task_list`, `task_show`, `trace_show` and `locks`
+- THEN each answers from the primary worktree's records as `concorde task list`, `task show` and `trace show` do, and `locks` says that nobody holds the merge lock or the workspace lock of `t1`
+
+### scenario.main-session.project-mcp-refusals — Refusals are error links
+
+- GIVEN a running server
+- WHEN a call names an unknown task, lacks a required argument or names no tool of the server
+- THEN each is refused with an error link: Tasks' own `unknown_task` link for the unknown task, and the server's own `invalid_input` link otherwise
+
+### scenario.main-session.project-mcp-short-writes — Short writes take structured arguments
+
+- GIVEN a running server
+- WHEN the session opens a task with `task_open`, escalates in it with `task_escalate` as a task session with two options, and closes it with `task_close` as completed with a note
+- THEN the task is opened, the escalation is recorded as number 1 with the level `task-session`, and the task ends closed, each as the matching `concorde task` command does
+
+### scenario.main-session.project-mcp-lock-busy — A busy lock is refused at once, naming its holder
+
+- GIVEN a delivered task `t1` whose workspace lock another session's process holds for task `t1`
+- WHEN the session calls `task_merge` for `t1`
+- THEN the call is refused at once with `workspace_busy`, whose detail names the other session and the task and whose evidence carries the holder line with its process
+- AND once that lock is free but another process holds the merge lock, `task_merge` is refused with `merge_busy` naming that holder, and the workspace lock it had taken is free again
+- AND the task is still delivered
+
+### scenario.main-session.project-mcp-lock-handover — The merge process owns the locks it was granted
+
+- GIVEN a delivered task `t1` and a merge check that waits for a signal
+- WHEN the session calls `task_merge` for `t1` and the check has started
+- THEN the holder lines of the [merge lock](../../glossary.json#concept.merge-lock) and the task's [workspace lock](../../glossary.json#concept.workspace-lock) name the merge process, the session and the task, the merge process has both lock files open and the server has neither
+- AND when the server is killed the locks stay held, and once the check ends the merge closes the task and releases both
+
+### scenario.main-session.project-mcp-merge-wakes — The end of a merge wakes the session
+
+- GIVEN a server whose session listens to it as a channel, and a delivered task
+- WHEN the session calls `task_merge` and the merge succeeds
+- THEN the answer says the session will be woken, and a `merge_ended` event with exit code 0 arrives whose content carries the merge's output
+
+### scenario.main-session.project-mcp-wait-channel — A registered wait wakes the session
+
+- GIVEN a server whose session listens to it as a channel, and an open task whose workspace lock another process holds
+- WHEN the session registers a wait for that lock and the holder dies
+- THEN a `wait_done` event for the lock arrives naming the holder it waited for
+- AND a wait registered for the task becoming delivered is woken by a `wait_done` event once a delivery made under the workspace lock releases it
+- AND registering the same wait again answers at once that the task is delivered and registers nothing
+
+### scenario.main-session.project-mcp-wait-fallback — Without a channel the wait names its command
+
+- GIVEN a server whose session does not listen to it as a channel, and a held workspace lock of task `t1`
+- WHEN the session registers a wait for that lock, or for `t1` becoming closed or failed
+- THEN nothing is registered, the answer says there is no channel, and it returns `concorde task wait t1 --lock workspace` or `concorde task wait t1 --until closed,failed` to run in background Bash
+
+### scenario.main-session.project-mcp-channel-detection — The server reads its channel from the session's command line
+
+- GIVEN the command lines of the server's ancestor processes
+- WHEN one is a `claude` started with `--dangerously-load-development-channels server:concorde` or with `server:concorde` among the entries of `--channels`
+- THEN the server knows it has a channel
+- BUT `server:concorde` as the value of another option, or another server's entry, does not give it one
+
+### scenario.main-session.project-mcp-guidance — The guidance says how to start with the server and when to use it
+
+- GIVEN the rendered main-session guidance
+- WHEN a main agent reads how to merge a task and how to wait for a task, run or lock
+- THEN it is told to start its session with `--dangerously-load-development-channels server:concorde`, to use `task_merge` and `register_wait`, and, without a channel, to run the `concorde task wait` command they return in background Bash
+- AND that a woken session is never handed a lock and asks again, and that the `concorde` commands stay the source of truth
