@@ -155,13 +155,16 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 ### scenario.tasks.close-submodules — Close a task whose worktree has submodules
 
 - GIVEN a merged task whose worktree has a checked-out submodule without local changes
+- AND the submodule is registered in the repository's shared configuration
 - WHEN the main agent closes it with `--merged`
-- THEN the worktree, with the submodule's checkout, is removed
+- THEN the worktree, with the submodule's checkout and the repository Git kept for it, is removed
+- AND the repository's shared configuration is unchanged, the submodule still registered
 - AND the record's state is `closed` with outcome `merged`
 
 ### scenario.tasks.close-submodules-dirty — Refuse to close a task whose submodule has a change
 
 - GIVEN a merged task whose worktree has a checked-out submodule with a local change
+- AND the submodule's `ignore` setting is `all` or not set
 - WHEN the main agent closes it with `--merged`
 - THEN the command fails with `dirty_worktree`
 - AND the worktree and the record are unchanged

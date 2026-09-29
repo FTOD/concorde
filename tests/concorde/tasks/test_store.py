@@ -935,18 +935,33 @@ class TaskStoreTests(unittest.TestCase):
         )
         head = self.deliver()
         self.assertTrue((worktree / "vendor/lib/README.md").is_file())
+        modules = Path(
+            git(
+                worktree, "rev-parse", "--path-format=absolute", "--git-path", "modules"
+            )
+        )
+        self.assertTrue((modules / "vendor/lib").is_dir())
         (worktree / "vendor/lib/README.md").write_text("changed inside the submodule\n")
         git(self.root, "merge", "--ff-only", "concorde/t1")
         before = self.record()
         self.assertEqual((1, "dirty_worktree"), self.refusal("close", "t1", "--merged"))
+        # A configuration that tells Git to ignore the submodule hides nothing from the close.
+        git(self.root, "config", "submodule.vendor/lib.ignore", "all")
+        self.assertEqual((1, "dirty_worktree"), self.refusal("close", "t1", "--merged"))
         self.assertTrue(worktree.exists())
         self.assertEqual(before, self.record())
         git(worktree / "vendor/lib", "checkout", "--", "README.md")
+        shared = self.root / ".git/config"
+        config = shared.read_text()
+        self.assertIn('[submodule "vendor/lib"]', config)
         status, value = self.close("t1", "--merged")
         self.assertEqual(0, status, value)
         self.assertEqual(head, value["closed"]["primary_commit"])
         self.assertTrue(value["closed"]["worktree_removed"])
         self.assertFalse(worktree.exists())
+        self.assertFalse(modules.exists())
+        # The submodule stays registered for every other worktree.
+        self.assertEqual(config, shared.read_text())
 
     @verifies("scenario.tasks.close-not-merged")
     def test_an_unmerged_task_cannot_close_as_merged(self):
