@@ -293,6 +293,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN the pi runtime is placed and the receipt records `pi_runtime` true
 - BUT no file of the pi main session is placed
 
+### scenario.distribution.install-later-files-bound — Files a later install adds stay bound
+
+- GIVEN a project in which Concorde was installed without `--pi` and then initialized, so that its installation realization binds the files installed then
+- WHEN the developer installs Concorde again with `--pi`, or runs `concorde update` with a Concorde that installs more files
+- THEN every file the receipt names outside `.concorde/` that the install added is an exact entry of the installation realization
+- AND once the files are committed, `concorde spec-validation` reports no `CHK.binds.unbound` for them
+- BUT a project that is not initialized gets no Spec, and installing again with nothing new leaves the Specs unchanged
+
 ### scenario.distribution.update-add-pi — An update adds the pi main session's files on request
 
 - GIVEN a project installed without the pi main session's files

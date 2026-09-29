@@ -371,6 +371,8 @@ class PiSessionTests(unittest.TestCase):
             ),
         )
         self.assertEqual(2, len(answered["rounds"]))
+        # The owner the session was started for stays its owner, whoever answered.
+        self.assertEqual("main-7", answered["main"])
         second = self.wait("t1", 2)
         self.assertEqual(
             ("delivered", delivered, None),

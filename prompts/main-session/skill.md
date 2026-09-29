@@ -106,6 +106,15 @@ Code with background Bash (`run_in_background`), in pi with the `concorde_run` t
 the run and its worker's progress in the run view (pi-subagents' FleetView, and `/concorde`) and
 wakes you with the result; do not poll it.
 
+Other main sessions, Claude Code or pi, may work on the same project at the same time. Each run and
+each task-session round wakes only its **owner**: the session whose background Bash or
+`concorde_run` started the run, or for whom the task session was started. You are never woken for
+the work of another main session, of a task session or of a command someone ran by hand. In pi the
+run view still shows every run and round of the project; in Claude Code nothing of theirs reaches
+you, and when you need to know how another session's task stands, ask once with
+`concorde task show <task>`, which lists its runs with their status and its task sessions with
+their owner and rounds.
+
 Some Operations also run **unbound**, in a worktree without a binding such as the primary
 worktree: `understand`, `survey`, `spec_review`, `spec_panel` and `code_review` (with `--base`).
 They work on a throwaway checkout of that worktree's `HEAD`, with the Modules you name in
@@ -259,7 +268,8 @@ at once: a pi session with your pi configuration then works in the task worktree
 boundary (its `write` and `edit` may change only the task worktree and its decision log, and its
 bash commands write only the worktree, Git, Concorde's records, package caches and its own
 temporary directory; reads and the network stay open). It works in rounds. Each round ends with a
-report, and you are woken with its outcome: `delivered` with the delivery commit, `escalated` with
+report, and you, the session that started it, are woken with its outcome, also for a round
+another session answered: `delivered` with the delivery commit, `escalated` with
 the numbers of the escalations it recorded, whose chains `concorde task show <task>` holds, or
 `failed` with its error chain. Answer with the tool's `answer`, which starts the next round with
 your answer as its prompt and the session's whole context; `stop` ends a running round. The run

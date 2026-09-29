@@ -6,18 +6,23 @@
  * the task's worktree, whose workspace binding the run reads, and returns at once; every run of the
  * project, whoever started it (this tool, a command run with bash, another session), is found in
  * the current tasks' workspace folders and `.concorde/unbound/` and followed through its progress
- * files, shown in pi-subagents' FleetView as an external job, and reported back with a message
- * that wakes the main agent when it finishes. Only the runs and rounds this session started with
- * its own tools are its background work, which `bg_wait` and the drain of a `pi -p` session wait
- * for. `/concorde` lists the runs. The extension only launches and observes: the Execution
- * runner, not this extension, runs and records every run. Without pi-subagents it still launches,
- * wakes and lists; only the FleetView entries and `bg_wait` are missing.
+ * files and shown in pi-subagents' FleetView as an external job. Each run has at most one owner
+ * main session, the one whose `concorde_run` started it, and only the owner is woken with a
+ * message when it finishes: the runs of other sessions, of task sessions and of commands run by
+ * hand are shown, never reported. The runs a session owns are kept as custom entries of its
+ * session file, so a resumed session keeps owning them. The runs and rounds a session owns are its
+ * background work, which `bg_wait` and the drain of a `pi -p` session wait for. `/concorde` lists
+ * the runs. The extension only launches and observes: the Execution runner, not this extension,
+ * runs and records every run. Without pi-subagents it still launches, wakes and lists; only the
+ * FleetView entries and `bg_wait` are missing.
  *
  * `concorde_task_session` starts, answers or stops a pi task session through `concorde task
- * session`; each round of a task session is followed the same way, through the progress file its
- * supervisor keeps and the outcome the round's trace node holds, and wakes the main agent when it
- * ends. Inside a task session itself (`CONCORDE_TASK_SESSION` set), which may load this extension
- * as a project resource, it only marks commands as started from pi and stays otherwise inactive.
+ * session`, starting it with `--main` naming this session, which the session's trace node keeps as
+ * the owner of every round of that task session; each round is followed the same way, through the
+ * progress file its supervisor keeps and the outcome the round's trace node holds, and wakes its
+ * owner, and only its owner, when it ends.
+ * Inside a task session itself (`CONCORDE_TASK_SESSION` set), which may load this extension as a
+ * project resource, it only marks commands as started from pi and stays otherwise inactive.
  */
 
 import { execFile, spawn } from "node:child_process";
@@ -37,12 +42,16 @@ import {
   discoveredRuns,
   glossaryText,
   lockedInodes,
+  OWNED_RUN_ENTRY,
   ownedWork,
+  ownership,
   primaryRoot,
   recordedRuns,
+  REPORTED_ENTRY,
   resultText,
   roundId,
   roundOutcome,
+  roundOwner,
   runError,
   runnerAlive,
   type RunStatus,
@@ -53,6 +62,7 @@ import {
   sessionView,
   taskWorktree,
   view,
+  wakes,
   workersOf,
   worktreeRoot,
 } from "./pi_runs.ts";
@@ -110,8 +120,10 @@ interface Tracked {
   operation: RunStatus;
   shown: RunView | null;
   registered: boolean;
+  // Its end has been given to this session, by a wake or in the tool's own result.
   reported: boolean;
-  // Started by this session's `concorde_run`, and so its background work.
+  // Started by this session's `concorde_run`: this session owns it, is woken when it ends and
+  // counts it as its background work.
   owned: boolean;
 }
 
@@ -120,7 +132,7 @@ interface TrackedRound {
   shown: RunView | null;
   registered: boolean;
   reported: boolean;
-  // Started or answered by this session's `concorde_task_session`, and so its background work.
+  // A round of a task session started for this session, the owner its task record names.
   owned: boolean;
 }
 
@@ -206,7 +218,12 @@ export default function (pi: ExtensionAPI) {
   // When the view began following: a run started since then is reported even if it ended
   // between two looks, one finished before it only listed.
   let since = Date.now();
+  // pi-subagents' name of the session, under which FleetView files its runs.
   let sessionId = "";
+  // The session's own identity, which names it as the owner of the task sessions it starts.
+  let mainId = "";
+  // The runs and rounds whose end this session was given, kept in its session file.
+  let given = new Set<string>();
   let subagents: Subagents = {};
   let timer: ReturnType<typeof setInterval> | undefined;
   let disposeProvider: (() => void) | undefined;
@@ -248,14 +265,17 @@ export default function (pi: ExtensionAPI) {
     for (const status of sessionRounds(root)) {
       const id = roundId(status);
       const known = rounds.get(id);
+      const owned = !!mainId && roundOwner(root, status) === mainId;
       if (known) known.status = status;
-      else if (status.phase === "running")
+      // A round is followed while it runs; a round of this session's own that ended while the
+      // session was closed is followed too, so that its end is given once.
+      else if (status.phase === "running" || (owned && !given.has(id)))
         rounds.set(id, {
           status,
           shown: null,
           registered: false,
-          reported: false,
-          owned: false,
+          reported: given.has(id),
+          owned,
         });
     }
     for (const [id, entry] of rounds) {
@@ -277,8 +297,8 @@ export default function (pi: ExtensionAPI) {
       );
       publish(id, entry, shown);
       entry.shown = shown;
-      if (shown.finished && !entry.reported) {
-        entry.reported = true;
+      if (wakes({ id, ...entry, finished: shown.finished })) {
+        markGiven(id, entry);
         wake("concorde-task-session", sessionText(root, entry.status), {
           task: entry.status.task,
           round: entry.status.round,
@@ -288,13 +308,26 @@ export default function (pi: ExtensionAPI) {
     }
   }
 
+  /** Record that the end of a run or round this session owns has been given to it. */
+  function markGiven(id: string, entry: { reported: boolean }): void {
+    entry.reported = true;
+    if (given.has(id)) return;
+    given.add(id);
+    try {
+      pi.appendEntry(REPORTED_ENTRY, { id });
+    } catch {
+      // A session that cannot record it may be given the end again after a restart.
+    }
+  }
+
   function refresh(ctx?: ExtensionContext): void {
     const operations = new Map(
       recordedRuns(root).map((item) => [item.run_id, item]),
     );
     // One look at the kernel's lock table serves every run of this refresh.
     const locked = lockedInodes();
-    // Runs started elsewhere, by bash or another session, are followed like the tool's own.
+    // Runs started elsewhere, by bash or another session, are followed and shown like the tool's
+    // own, but they wake nobody here.
     if (pendingLaunches === 0)
       for (const operation of discoveredRuns(
         [...operations.values()],
@@ -315,8 +348,8 @@ export default function (pi: ExtensionAPI) {
       );
       publish(id, entry, shown);
       entry.shown = shown;
-      if (shown.finished && !entry.reported) {
-        entry.reported = true;
+      if (wakes({ id, ...entry, finished: shown.finished })) {
+        markGiven(id, entry);
         report(shown);
       }
     }
@@ -360,6 +393,7 @@ export default function (pi: ExtensionAPI) {
     const known = tracked.get(operation.run_id);
     if (known) {
       if (owned) known.owned = true;
+      if (reported) known.reported = true;
       return;
     }
     tracked.set(operation.run_id, {
@@ -378,10 +412,20 @@ export default function (pi: ExtensionAPI) {
     // FleetView and bg_wait show only records under that same name.
     sessionId =
       ctx.sessionManager.getSessionFile() ?? ctx.sessionManager.getSessionId();
+    mainId = ctx.sessionManager.getSessionId();
+    // A new or replaced session starts from what its own session file says it owns.
+    tracked.clear();
+    rounds.clear();
+    const kept = ownership(ctx.sessionManager.getEntries());
+    given = kept.reported;
     subagents = await loadSubagents();
     for (const operation of recordedRuns(root)) {
-      if (operation.phase !== "finished" && runnerAlive(root, operation))
-        track(operation);
+      const owned = kept.runs.has(operation.run_id);
+      // Its own runs whose end it was not given yet are followed even when they ended while the
+      // session was closed, so the owner is given each end once.
+      if (owned && !given.has(operation.run_id)) track(operation, false, true);
+      else if (operation.phase !== "finished" && runnerAlive(root, operation))
+        track(operation, given.has(operation.run_id), owned);
     }
     disposeProvider = subagents.registerBackgroundWorkProvider?.({
       name: SOURCE,
@@ -536,7 +580,13 @@ export default function (pi: ExtensionAPI) {
         workersOf(root, operation),
         operation.phase === "finished" || runnerAlive(root, operation),
       );
+      try {
+        pi.appendEntry(OWNED_RUN_ENTRY, { id: runId });
+      } catch {
+        // Without the entry the session owns the run until it ends or pi closes.
+      }
       track(operation, shown.finished, true);
+      if (shown.finished) markGiven(runId, tracked.get(runId)!);
       refresh(ctx);
       const started = `Started ${params.operation} ${params.task ? `in the worktree of task ${params.task}` : "unbound"} as run ${runId} (runner process ${announced.host_pid}).`;
       return {
@@ -567,9 +617,10 @@ export default function (pi: ExtensionAPI) {
       "the primary worktree). A task session is a pi session with your configuration working in " +
       "the task worktree under Concorde's boundary; it works in rounds, each ending with a " +
       "report: delivered with the delivery commit, or escalated with the escalations it " +
-      "recorded. The tool returns at once; you are woken with each round's outcome when it " +
-      "ends. Do not poll it. Start task sessions only for tasks that may run in parallel, and " +
-      "stay in the primary worktree while any runs.",
+      "recorded. The tool returns at once. The session you start it from owns every round of " +
+      "that task session, whoever answers it, and only the owner is woken with each round's " +
+      "outcome when it ends. Do not poll it. Start task sessions only for tasks that may run " +
+      "in parallel, and stay in the primary worktree while any runs.",
     promptSnippet:
       "Start, answer or stop a Concorde task session and be woken when its round ends",
     parameters: Type.Object({
@@ -598,6 +649,10 @@ export default function (pi: ExtensionAPI) {
         ...(params.answer !== undefined ? ["--answer", params.answer] : []),
         ...(params.stop ? ["--stop"] : []),
         ...(params.model ? ["--model", params.model] : []),
+        // A new task session is started for this session, which owns its rounds.
+        ...(params.answer === undefined && !params.stop && mainId
+          ? ["--main", mainId]
+          : []),
       ];
       const outcome = await concorde(root, args);
       if (outcome.code !== 0 || !outcome.value)
@@ -632,35 +687,43 @@ export default function (pi: ExtensionAPI) {
       };
       const id = roundId(status);
       if (params.stop) {
-        const known = rounds.get(id);
-        if (known) known.reported = true;
+        // The owner stopping its own round is given the outcome here; a round another session
+        // stops still wakes its owner.
+        if (mainId && roundOwner(root, status) === mainId)
+          markGiven(id, rounds.get(id) ?? { reported: false });
         return {
           content: [{ type: "text", text: sessionText(root, status) }],
           details: { session: value.id, round: last.round },
         };
       }
+      const owner = roundOwner(root, status);
+      const owned = !!mainId && owner === mainId;
       const known = rounds.get(id);
-      if (known) known.owned = true;
+      if (known) known.owned = owned;
       else
         rounds.set(id, {
           status,
           shown: null,
           registered: false,
           reported: false,
-          owned: true,
+          owned,
         });
       refresh(ctx);
+      const started =
+        `Started round ${last.round} of the task session of ${params.task} (session ` +
+        `${value.id}, supervisor process ${last.supervisor_pid}). It runs in the background; `;
       return {
         content: [
           {
             type: "text",
-            text:
-              `Started round ${last.round} of the task session of ${params.task} (session ` +
-              `${value.id}, supervisor process ${last.supervisor_pid}). It runs in the ` +
-              "background; you will be woken with its outcome when it ends.",
+            text: owned
+              ? `${started}you will be woken with its outcome when it ends.`
+              : `${started}its owner is ${owner ? `the main session ${owner}` : "no main session"}, ` +
+                "which alone is woken when it ends, so you will not be woken: the run view " +
+                `shows it, and concorde task show ${params.task} gives its outcome once it has ended.`,
           },
         ],
-        details: { session: value.id, round: last.round },
+        details: { session: value.id, round: last.round, owner },
       };
     },
   });

@@ -1230,7 +1230,22 @@
           "relies_on": [
             "concept.workspace-binding",
             "concept.run-store",
-            "concept.run-progress-file"
+            "concept.run-progress-file",
+            "concept.workspace-lock"
+          ]
+        },
+        {
+          "target": "module.main-session",
+          "meaning": "#uses-main-session",
+          "relies_on": [
+            "concept.run-view"
+          ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.task-record"
           ]
         }
       ],

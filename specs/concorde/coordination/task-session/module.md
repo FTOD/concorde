@@ -6,7 +6,7 @@ Task sessions is how the [main agent](../../glossary.json#concept.main-agent) de
 level of the work: it starts a task session for every task, a session of its own agent program
 working inside that task's worktree while the main agent stays in the primary worktree. Task
 sessions starts, confines and follows those sessions: on Claude Code a background session, on pi a
-sequence of headless rounds on one session file, each ending with a report the task record
+sequence of headless rounds on one session file, each ending with a report the task
 confirms. The main agent relies on it to have every task worked, one or several at once, under a
 boundary that keeps each session's writes inside its task. It does not decide how work is split,
 never merges a task into the primary branch or closes it, and does not tell a session how to work
@@ -80,7 +80,10 @@ imports — and starts a detached supervisor process that runs one round:
 resources, which `--approve` trusts for that run), the boundary loaded with `-e`, the session file
 under `pi/` of the session's node `sessions/<session>/`, and `--model` when given. The first round's prompt is the
 task-session guidance for pi followed by the task's goal, Modules and decision log; `--main`, when
-given, is only recorded. A round ends when the session calls `concorde_report` with its
+given, is recorded as the owner of every round of the session, whoever answers it: the only main
+session a round's end wakes. Concorde's pi extension starts every task session with `--main`
+naming the pi main session; a session started without it has no owner, and its rounds wake no main
+session. A round ends when the session calls `concorde_report` with its
 **[session report](../../glossary.json#concept.session-report)**
 ([contract](contracts.md#contract.task-session.report)), when pi exits without one, or when `--stop`
 ends it: the supervisor sends the round's pi process group SIGTERM, so pi ends its session and
@@ -132,8 +135,8 @@ running -> running: "start, --answer: session_busy"
 ended -> ended: "--stop: session_idle"
 ```
 
-The main session's [run view](../../glossary.json#concept.run-view) wakes the main agent when a
-round ends. A main agent without it, such as a pi session that has not loaded Concorde's pi
+The owner's [run view](../../glossary.json#concept.run-view) wakes the main agent when a round
+ends; every other pi main session's run view shows the round without waking its session. A main agent without it, such as a pi session that has not loaded Concorde's pi
 extension, waits with `--wait [<seconds>]` instead of polling: the command waits inside its own
 process until no round of the task's latest pi session runs and prints the session with the
 round's recorded outcome, at once when none runs. With `<seconds>` it returns after that time even

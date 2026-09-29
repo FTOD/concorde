@@ -159,6 +159,118 @@ def installed_files(root: Path) -> list[str]:
     return sorted(path for path in listed(root) if (root / path).is_file())
 
 
+def installation_paragraph(local: str) -> str:
+    """The root entry's explanation of its Concorde installation realization."""
+    return (
+        f'<a id="realization.{local}.{INSTALLATION}"></a>\n\n'
+        "The files the Concorde installer placed outside `.concorde/`, such as the agents' skill and\n"
+        "workflows, are bound to this Module as its Concorde installation. They configure the\n"
+        "agents that work on the project and are not the project's own code; the installer\n"
+        "replaces them on every update, and no task may change them: a grant gives them at\n"
+        "most read access.\n\n"
+    )
+
+
+def bind_installation(root: Path) -> dict | None:
+    """Keep the installed files of an initialized project bound after an install or update.
+
+    Initialization binds the files the installation record names at that time; a later install
+    or update may place more (the pi files of ``--pi``, a newer Concorde's files) or stop placing
+    some. This adds, as exact entries of the Concorde installation realization, every installed
+    file that exists and that no realization binds by its exact path, and removes the
+    realization's entries that no longer exist; it never unbinds an existing file. Without such a
+    realization, and with files to bind, it creates one in the root Module as initialization
+    does. It writes that realization's metadata member, and the root entry only when it creates
+    the realization, in one file transaction.
+
+    It returns what it bound and released, or ``None`` for a project that is not initialized or
+    whose registry or metadata cannot be read, which it leaves unchanged: validation reports why.
+    """
+    from .repository_base import REGISTRY_PATH, entry_exists, is_directory_entry
+
+    if not (root / ".concorde/config.json").is_file():
+        return None
+    try:
+        registry = json.loads((root / REGISTRY_PATH).read_text(encoding="utf-8"))
+        modules = registry["modules"]
+        contained = {
+            item["target"] for record in modules for item in record.get("contains", [])
+        }
+        root_module = next(m for m in modules if m["id"] not in contained)
+        documents = [path for record in modules for path in record["owns"]]
+        metadata = {
+            path: json.loads((root / (path + ".json")).read_text(encoding="utf-8"))
+            for path in documents
+        }
+        entry = root_module["entry"]
+    except (OSError, ValueError, KeyError, TypeError, StopIteration):
+        return None
+    if entry not in metadata:
+        return None
+    local = root_module["id"].split(".")[-1]
+    identity = f"realization.{local}.{INSTALLATION}"
+    found, exact = None, set()
+    for path in documents:
+        for record in metadata[path].get("defines", []):
+            if not isinstance(record, dict) or record.get("type") != "realization":
+                continue
+            entries = [e for e in record.get("entries", []) if isinstance(e, str)]
+            if found is None and str(record.get("id", "")).endswith("." + INSTALLATION):
+                found = (path, record)
+            else:
+                exact.update(e for e in entries if not is_directory_entry(e))
+    installed = [path for path in installed_files(root) if path not in exact]
+    if found is None:
+        if not installed:
+            return None
+        path = entry
+        record = {
+            "id": identity,
+            "type": "realization",
+            "title": "Concorde installation",
+            "meaning": f"#{identity}",
+            "entries": [],
+        }
+        metadata[path].setdefault("defines", []).append(record)
+        text = (root / path).read_text(encoding="utf-8")
+        reading = [
+            file_change(
+                root,
+                path,
+                text.rstrip("\n")
+                + "\n\n"
+                + installation_paragraph(local).rstrip("\n")
+                + "\n",
+            )
+        ]
+    else:
+        path, record = found
+        reading = []
+    current = [e for e in record.get("entries", []) if isinstance(e, str)]
+    kept = [e for e in current if entry_exists(root, e)]
+    bound = [e for e in installed if e not in current]
+    released = [e for e in current if e not in kept]
+    entries = sorted({*kept, *bound})
+    # A realization lists at least one entry; one whose every file is gone stays for validation
+    # to report (CHK.binds.exists), since the installation itself is then broken.
+    if (not bound and not released) or not entries:
+        return {"realization": record["id"], "bound": [], "released": []}
+    record["entries"] = entries
+    apply_files(
+        root,
+        [
+            file_change(
+                root,
+                path + ".json",
+                json.dumps(metadata[path], indent=2, ensure_ascii=False) + "\n",
+            ),
+            *reading,
+        ],
+        {path, path + ".json"},
+    )
+    return {"realization": record["id"], "bound": bound, "released": released}
+
+
 def existing_files(root: Path, documents: set[str]) -> list[str]:
     """Realization entries covering every file the project already keeps under version control.
 
@@ -239,16 +351,7 @@ def initial_module_text(
         "responsibility; binding them describes nothing about what they do.\n\n"
         if bound
         else "No realization binds implementation files yet.\n\n"
-    ) + (
-        f'<a id="realization.{local}.{INSTALLATION}"></a>\n\n'
-        "The files the Concorde installer placed outside `.concorde/`, such as the agents' skill and\n"
-        "workflows, are bound to this Module as its Concorde installation. They configure the\n"
-        "agents that work on the project and are not the project's own code; the installer\n"
-        "replaces them on every update, and no task may change them: a grant gives them at\n"
-        "most read access.\n\n"
-        if installed
-        else ""
-    )
+    ) + (installation_paragraph(local) if installed else "")
     return (
         f"# {name}\n\n## Purpose\n\n"
         f"This Module is the root of the {name} project. The project's purpose, its users and the\n"

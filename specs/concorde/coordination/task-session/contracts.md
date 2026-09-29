@@ -247,7 +247,7 @@ A pi round recorded `failed` carries, as its `error`, a link of one of these cod
 | --- | --- |
 | `session_no_report` | pi ended the round without calling `concorde_report`; the link names pi's exit code, stop reason and error message and the paths of the event stream and standard error. |
 | `session_report_unverified` | the report does not follow the [session report](#contract.task-session.report) contract, names a commit that is no [delivery commit](../../glossary.json#concept.delivery-commit) of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), as Delivery checks it, or names an escalation the task's [trace](../../glossary.json#concept.trace) does not hold at the level `task-session`; the link names each mismatch, and the round keeps the report. |
-| `session_supervisor_lost` | the round's supervisor ended without recording the round; the next start, `--answer`, `--stop` or `--wait` of the [task records](../../glossary.json#concept.task-record) it, and the link names the supervisor's process and the round's logs. |
+| `session_supervisor_lost` | the round's supervisor ended without recording the round; the round is recorded by the next start, `--answer`, `--stop` or `--wait` of that task, and the link names the supervisor's process and the round's logs. |
 
 | Command | Effect | Output |
 | --- | --- | --- |

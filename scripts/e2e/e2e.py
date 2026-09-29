@@ -24,6 +24,12 @@ develop install from a Concorde clone with a known fault must be reported, not w
     python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directories
     python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
 
+Several live Claude Code and pi main sessions at once in one project, checking that a run wakes
+only its owner while the others can see it:
+
+    python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0 --name owners --task t1 --pi
+    python3 scripts/e2e/e2e.py owners /tmp/concorde-e2e/owners --task t1
+
 A SWE-bench case is prepared at its base commit under its own name, and a delivered change is
 graded with the case's tests, which Concorde's workers never see:
 
@@ -50,6 +56,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import cases  # noqa: E402
 import dogfood  # noqa: E402
+import owners  # noqa: E402
 import sessions  # noqa: E402
 from common import (  # noqa: E402
     CHECKOUT,
@@ -94,10 +101,11 @@ def prepare(
     allow_any: bool = False,
     name: str | None = None,
     python: str | None = None,
+    pi: bool = False,
 ) -> dict:
     """Clone ``repo`` at ``rev`` under ``root`` as ``name`` (the repository's name by default),
-    install and initialize Concorde, recording ``python`` as the project's interpreter when
-    given, and open ``task``."""
+    install and initialize Concorde, with its pi extension for pi main sessions when ``pi``,
+    recording ``python`` as the project's interpreter when given, and open ``task``."""
     if not allow_any and repo not in repositories():
         raise E2EError(
             "unknown_repository",
@@ -119,6 +127,7 @@ def prepare(
             str(CHECKOUT / "scripts/install-concorde.py"),
             str(project),
             "--without-d2",
+            *(["--pi"] if pi else []),
         ],
         cwd=CHECKOUT,
     )
@@ -431,6 +440,9 @@ def main(argv) -> int:
     prepare_.add_argument(
         "--python", help="the case's own interpreter, recorded for its checks' {python}"
     )
+    prepare_.add_argument(
+        "--pi", action="store_true", help="also install Concorde's pi extension"
+    )
     trust_ = sub.add_parser("trust")
     trust_.add_argument("projects", nargs="+", type=Path)
     run_ = sub.add_parser("run")
@@ -483,6 +495,14 @@ def main(argv) -> int:
     dogfood_run.add_argument("--rounds", type=int, default=sessions.ROUNDS)
     dogfood_evaluate = dogfood_actions.add_parser("evaluate")
     dogfood_evaluate.add_argument("directory", type=Path)
+    owners_ = sub.add_parser("owners")
+    owners_.add_argument("project", type=Path)
+    owners_.add_argument("--task", default="t1")
+    owners_.add_argument("--claude", type=int, default=2)
+    owners_.add_argument("--pi", type=int, default=2)
+    owners_.add_argument("--claude-model")
+    owners_.add_argument("--pi-model")
+    owners_.add_argument("--grace", type=float, default=owners.GRACE_SECONDS)
     arguments = parser.parse_args(argv)
     try:
         if arguments.command == "repos":
@@ -496,6 +516,7 @@ def main(argv) -> int:
                 arguments.any,
                 arguments.name,
                 arguments.python,
+                arguments.pi,
             )
         elif arguments.command == "trust":
             value = trust(arguments.projects)
@@ -543,6 +564,16 @@ def main(argv) -> int:
             value = session_command(arguments)
         elif arguments.command == "dogfood":
             value = dogfood_command(arguments)
+        elif arguments.command == "owners":
+            value = owners.owners(
+                arguments.project,
+                claude=arguments.claude,
+                pi=arguments.pi,
+                task=arguments.task,
+                claude_model=arguments.claude_model,
+                pi_model=arguments.pi_model,
+                grace=arguments.grace,
+            )
         else:
             value = watch(arguments.project.resolve())
     except E2EError as error:

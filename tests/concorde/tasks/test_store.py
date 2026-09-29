@@ -598,6 +598,55 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual(2, cli.main(["frobnicate"], cwd=self.root))
 
+    @verifies("scenario.main-session.claude-sees-by-query")
+    def test_show_gives_another_session_the_state_of_runs_and_rounds(self):
+        # A main session that owns neither the run nor the task session, such as a Claude Code
+        # session nothing is pushed into, sees both ended by asking once.
+        self.project.open_task("t1")
+        run = write_run(self.root, "r-20260927T000001-implement-00000003", "t1")
+        store.record_session(
+            self.root,
+            "t1",
+            {
+                "program": "pi",
+                "id": "task-t1-s",
+                "name": "task-t1",
+                "main": "0199a3",
+                "model": None,
+                "started_at": store.now(),
+            },
+        )
+        store.begin_round(
+            self.root,
+            "t1",
+            "task-t1-s",
+            {
+                "round": 1,
+                "prompt": "task",
+                "supervisor_pid": 4242,
+                "started_at": store.now(),
+            },
+        )
+        report = {"status": "escalated", "summary": "One question.", "escalations": [1]}
+        store.finish_round(
+            self.root, "t1", "task-t1-s", 1, {"status": "escalated", "report": report}
+        )
+        _, shown = self.command("show", "t1")
+        self.assertEqual(
+            [(run.parent.name, "ok")],
+            [(item["run_id"], item["status"]) for item in shown["runs"]],
+        )
+        # The owner is the `main` of the session's trace node; the round's outcome its node's.
+        session = shown["sessions"][0]
+        self.assertEqual(
+            ("0199a3", "escalated", "One question."),
+            (
+                session["main"],
+                session["rounds"][0]["status"],
+                session["rounds"][0]["report"]["summary"],
+            ),
+        )
+
     @verifies("scenario.tasks.first-run")
     def test_the_first_run_activates_a_task(self):
         self.project.open_task("t1")

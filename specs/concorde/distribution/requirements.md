@@ -105,11 +105,26 @@ Every refusal of the installer and of `concorde update` SHALL be printed as one 
 Framework's [error contract](../tracing/contracts.md#contract.tracing.error), naming the refusal's code and
 what is wrong.
 
-### req.distribution.installer-no-specs — The installer never writes Specs
+### req.distribution.installer-no-specs — The installer writes no Spec but its installation realization
 
 The installer SHALL NOT create, modify or remove a registered [Spec](../glossary.json#concept.spec)
 document, the registry or, except in update mode, the project configuration's
-[Protocol binding](../glossary.json#concept.protocol-binding).
+[Protocol binding](../glossary.json#concept.protocol-binding), other than the Concorde installation
+realization that keeps the installed files bound.
+
+That realization exists only because Concorde is installed, so it is the installer's like the files
+it binds; everything else in the project's Specs stays the project's.
+
+### req.distribution.installer-keeps-installation-bound — Installed files stay bound
+
+In an initialized project, the installer SHALL, after writing the receipt, bring the Concorde
+installation realization in step with the receipt through Spec core, so that every installed file
+it placed is bound whether it was installed before or after initialization.
+
+The binding is [Spec core's](../spec-tooling/spec/requirements.md#req.spec.installation-follows-record):
+an installed file that exists and that no realization binds by its exact path is added, and an entry
+whose file no longer exists is removed. When the project's Specs cannot be read, the installer binds
+nothing and does not fail, since everything else was already written; `spec-validation` reports why.
 
 ### req.distribution.update-unvalidated — An update marks the project Concorde unvalidated
 

@@ -43,6 +43,8 @@ from pathlib import Path
 from ..dogfooding.develop import DevelopError, develop_source, guidance
 from ..errors import link
 from ..execution.runs import pid_alive
+from ..spec.errors import SpecError
+from ..spec.initialize import bind_installation
 from ..tracing import layout, locks, reader
 from ..tracing.layout import IGNORED as TRACES
 from ..views.docsite_template import (
@@ -625,6 +627,12 @@ def install(
         "permissions": owned_rules,
     }
     (project / RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
+    # An initialized project keeps every installed file bound, those this install added too.
+    try:
+        bind_installation(project)
+    except SpecError:
+        # The Specs changed under the install; validation reports what is left unbound.
+        pass
     return receipt
 
 

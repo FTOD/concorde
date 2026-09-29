@@ -863,7 +863,170 @@ class OwnedWorkTests(unittest.TestCase):
         extension = (SOURCE.parent / "pi_extension.ts").read_text()
         self.assertIn("listActiveWork: () =>\n        ownedWork(", extension)
         self.assertIn("track(operation, shown.finished, true);", extension)
-        self.assertIn("owned: true,", extension)
+        self.assertIn("roundOwner(root, status) === mainId", extension)
+
+
+OWNER_PROBE = """
+import { ownership, roundOwner, wakes, OWNED_RUN_ENTRY, REPORTED_ENTRY } from %(source)s;
+const kept = ownership(%(entries)s);
+console.log(JSON.stringify({
+  names: [OWNED_RUN_ENTRY, REPORTED_ENTRY],
+  runs: [...kept.runs].sort(),
+  reported: [...kept.reported].sort(),
+  wakes: %(followed)s.map((entry) => wakes(entry)),
+  owners: ["t1", "t2", "t3", "gone"].map((task) =>
+    roundOwner(%(root)s, { task, session_id: `task-${task}-s` }),
+  ),
+}));
+"""
+
+
+@unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_runs.ts")
+class OwnerTests(unittest.TestCase):
+    """Which runs and rounds a pi main session owns, and which of them wake it."""
+
+    def probe(self, entries, followed, records) -> dict:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(os.path.realpath(directory))
+            (root / ".concorde/tasks").mkdir(parents=True)
+            # Each task session is a node of its task's trace, which names its owner as `main`.
+            for task, record in records.items():
+                for found in record.get("sessions", []):
+                    folder = root / f".concorde/tasks/{task}/sessions/{found['id']}"
+                    folder.mkdir(parents=True)
+                    (folder / "trace.json").write_text(
+                        json.dumps(
+                            {
+                                "id": found["id"],
+                                "kind": "session",
+                                "content": {
+                                    "type_id": "concorde-session-trace",
+                                    "schema_version": 1,
+                                    "data": {
+                                        "program": found["program"],
+                                        "main": found["main"],
+                                    },
+                                },
+                            }
+                        )
+                    )
+            probe = root / "owner.mts"
+            probe.write_text(
+                OWNER_PROBE
+                % {
+                    "source": json.dumps(SOURCE.as_posix()),
+                    "root": json.dumps(root.as_posix()),
+                    "entries": json.dumps(entries),
+                    "followed": json.dumps(followed),
+                }
+            )
+            completed = subprocess.run(
+                ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        return json.loads(completed.stdout)
+
+    @verifies(
+        "scenario.main-session.pi-wake-owner-only",
+        "scenario.main-session.pi-run-finished",
+    )
+    def test_only_a_finished_run_the_session_owns_wakes_it_once(self):
+        followed = [
+            {"id": "r-mine", "owned": True, "finished": True, "reported": False},
+            {"id": "r-mine-given", "owned": True, "finished": True, "reported": True},
+            {
+                "id": "r-mine-running",
+                "owned": True,
+                "finished": False,
+                "reported": False,
+            },
+            {"id": "r-other-main", "owned": False, "finished": True, "reported": False},
+            {
+                "id": "r-task-session",
+                "owned": False,
+                "finished": True,
+                "reported": False,
+            },
+            {"id": "r-by-bash", "owned": False, "finished": True, "reported": False},
+        ]
+        out = self.probe([], followed, {})
+        self.assertEqual([True, False, False, False, False, False], out["wakes"])
+        # The extension shows every followed run and round but wakes only through this rule.
+        extension = (SOURCE.parent / "pi_extension.ts").read_text()
+        self.assertEqual(
+            2, extension.count("if (wakes({ id, ...entry, finished: shown.finished }))")
+        )
+        self.assertNotIn("if (shown.finished && !entry.reported)", extension)
+
+    @verifies("scenario.main-session.pi-owner-resumed")
+    def test_a_resumed_session_reads_what_it_owns_and_was_given(self):
+        entries = [
+            {
+                "type": "message",
+                "customType": "concorde-owned-run",
+                "data": {"id": "no"},
+            },
+            {
+                "type": "custom",
+                "customType": "concorde-owned-run",
+                "data": {"id": "r-1"},
+            },
+            {
+                "type": "custom",
+                "customType": "concorde-owned-run",
+                "data": {"id": "r-2"},
+            },
+            {
+                "type": "custom",
+                "customType": "concorde-reported",
+                "data": {"id": "r-1"},
+            },
+            {
+                "type": "custom",
+                "customType": "concorde-reported",
+                "data": {"id": "t1:s:1"},
+            },
+            {"type": "custom", "customType": "other-extension", "data": {"id": "r-3"}},
+            {"type": "custom", "customType": "concorde-owned-run", "data": {}},
+        ]
+        out = self.probe(entries, [], {})
+        self.assertEqual(["concorde-owned-run", "concorde-reported"], out["names"])
+        self.assertEqual(["r-1", "r-2"], out["runs"])
+        self.assertEqual(["r-1", "t1:s:1"], out["reported"])
+        # The extension appends both entries and reads them back when a session starts.
+        extension = (SOURCE.parent / "pi_extension.ts").read_text()
+        self.assertIn("pi.appendEntry(OWNED_RUN_ENTRY, { id: runId });", extension)
+        self.assertIn("pi.appendEntry(REPORTED_ENTRY, { id });", extension)
+        self.assertIn("ownership(ctx.sessionManager.getEntries())", extension)
+
+    @verifies("scenario.main-session.pi-round-owner")
+    def test_the_rounds_of_a_task_session_belong_to_the_main_it_names(self):
+        def record(task, main):
+            return {
+                "id": task,
+                "sessions": [{"program": "pi", "id": f"task-{task}-s", "main": main}],
+            }
+
+        records = {
+            "t1": record("t1", "0199a3"),
+            "t2": record("t2", None),
+            "t3": record("t3", ""),
+        }
+        out = self.probe([], [], records)
+        self.assertEqual(["0199a3", None, None, None], out["owners"])
+        # A start names this session with --main; an answer leaves the owner as it is.
+        extension = (SOURCE.parent / "pi_extension.ts").read_text()
+        self.assertIn('? ["--main", mainId]', extension)
+        self.assertIn(
+            "params.answer === undefined && !params.stop && mainId", extension
+        )
+        self.assertIn(
+            "which alone is woken when it ends, so you will not be woken", extension
+        )
 
 
 if __name__ == "__main__":

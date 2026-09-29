@@ -113,8 +113,9 @@ pi in it, pi asks; choose to trust it, or the run view and the guidance are skip
 pi-subagents is installed; without it, `concorde_run`, the completion wake and `/concorde` still
 work.
 
-The installer never writes your Specs or your registry, and writes your project configuration
-only to bind a new Protocol copy when you update.
+The installer never writes your Specs or your registry, except the Concorde installation
+realization, which it keeps in step with the files it installs, and writes your project
+configuration only to bind a new Protocol copy when you update.
 
 To update Concorde, pull the checkout and build it again, then run `concorde update` in your
 project (`--from <checkout>` if the checkout moved). It installs the new version the way the first
@@ -309,8 +310,12 @@ tool starts `concorde run` in the background and returns at once; when the run e
 is woken with its result. Meanwhile every run of the project appears in pi-subagents' **FleetView**
 as an external job: its task and Operation, the step it is in, and, while a worker runs, the
 worker's round and latest tool call, such as `implement worker (pi) round 2 · worker: bash pytest
--q`. When it ends, the view shows its status and summary. `/concorde` lists the recent runs, also
-without pi-subagents. The view only observes: the Operation keeps running if you close pi.
+-q`. When it ends, the view shows its status and summary. Only the session that started a run is
+woken when it ends: the runs of other main sessions, of task sessions and of commands run by hand
+are shown but wake nobody, and a task session's rounds wake only the main session that started it.
+In Claude Code, see how another session's task stands with `concorde task show <task>`.
+`/concorde` lists the recent runs, also without pi-subagents. The view only observes: the Operation
+keeps running if you close pi.
 
 ### Choose the worker models
 

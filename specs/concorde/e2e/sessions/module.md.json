@@ -51,7 +51,8 @@
       "title": "Session driver",
       "meaning": "#realization.headless-sessions.driver",
       "entries": [
-        "scripts/e2e/sessions.py"
+        "scripts/e2e/sessions.py",
+        "scripts/e2e/live.py"
       ]
     },
     {

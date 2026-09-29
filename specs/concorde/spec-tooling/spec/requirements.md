@@ -387,6 +387,21 @@ The initial Module stub SHALL bind the files the installer's receipt names outsi
 The installer's skill, workflows and pi files configure the agents, not the project; the project's
 `.gitignore` and `CLAUDE.md`, which the installer only amends, stay the project's files.
 
+### req.spec.installation-follows-record — The installation realization follows the receipt
+
+Binding the installation of an initialized project SHALL add, as an exact entry of its Concorde
+installation realization, every file the installer's receipt names outside `.concorde/`, other than
+the amended ones, that exists and that no realization binds by its exact path, and remove from
+that realization every entry that no longer exists, writing nothing else.
+
+It never unbinds an existing file and never adds a directory entry, so `CHK.binds.installed` keeps
+holding. Without such a realization and with files to bind, it creates the realization in the root
+Module, with its explaining paragraph in the root entry, as initialization does. The metadata
+member, and the entry only when the realization is created, are written in one
+[file transaction](../../glossary.json#concept.file-transaction). A project without a configuration,
+or whose registry or metadata cannot be read, is left unchanged; a realization whose every entry is
+gone is left for validation to report.
+
 ### req.spec.init-no-installer-files — Installer outputs are not initialization outputs
 
 Initialization SHALL NOT create files that exist only because Concorde is installed, such as the

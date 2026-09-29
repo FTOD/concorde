@@ -656,6 +656,17 @@ not listed under `amended` are left out of that realization and bound instead by
 as the agents' configuration the installer replaces on every update. Without a receipt, or without
 such files, there is no such realization.
 
+Initialization binds the installed files of its time; the installer, after every later install or
+update, **binds the installation** to keep that realization in step with the receipt
+([requirements](requirements.md#req.spec.installation-follows-record)). The function
+`bind_installation(root)` adds, as exact entries, the receipt's installed files that exist and
+that no realization binds by its exact path, removes the entries whose files are gone, and never
+touches another realization. When no realization's identity ends in `.concorde-installation` it
+creates `realization.<local>.concorde-installation` in the root Module and appends its explaining
+paragraph to the root entry. It returns the realization's identity with the entries it `bound`
+and `released`, or nothing for a project that is not initialized or whose registry or metadata it
+cannot read, which it leaves unchanged.
+
 Apply checks a proposal's shape, the integrity its digest gives and its freshness, not its
 provenance: the proposal digest is one any caller can compute, so apply cannot tell a proposal
 propose returned from one built to the same shape. Its guarantee is that an applied proposal had
