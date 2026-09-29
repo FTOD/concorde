@@ -1,0 +1,132 @@
+{
+  "workspace": "remove-legacy-migration",
+  "goal": "Remove the one-off migration of the pre-tracing records now that this checkout is migrated: scripts/development/migrate-legacy-records.py, its tests and realization.tracing.legacy-migration in the Tracing Spec",
+  "modules": [
+    "module.tracing"
+  ],
+  "sequence": 1,
+  "base_commit": "e157810e1b2fd8e31b80d073a2fef801b1de60ed",
+  "parent_commit": "f408d4e8ce141761d2d40992ed4a7f58f4340e07",
+  "readiness": {
+    "run_id": "r-20260929T105514-delivery-6b6bf244",
+    "input_digest": "sha256:36137f52d6f7c127a650f154c3a87f3d3d52d5d9fbe9e6c0f1f9f38bd5332ec9",
+    "modules": [
+      "module.tracing"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:89e21acfd2f5b9b94ffaea5409cad30544b63184a5672e4d57a79db7bf926410"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:e69e738404a3411f21c28dccec73193f44bf5f20cd8cec522a587a0039029f3e"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:51ee043734703fba1c5873941b69fd2a1da3219cf596ece4c41196787f42f96a"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:0eac2f9c2d8b88b66356a0125eda47fd655d79438dcfa39866ed54bba6ba6c90"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:729ed0d78e81beeadf742b3286e56e5b207bc84ee998919ef7f0455edcc305e3"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:1372fdd9383f5297571719109e28e4c5d58339ba24adf482ac7e77cbd6397af7"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:a9c3a872b409d5475a186961b70ad9a774b5509fce479235a06d776c398dec11"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:ce4bba1e4608309bc7d8ec3662fa27a77400c16be5b6bcf589552a2cfac7604f"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:fd61f9bb91651c9e1f5f45666b0069caabf898890c0067a1cab39e97624e0ee7"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:22776666d4a6f1fac6f6ae4315a6351bfe89fd3d89c7e211ddade43afb160a79"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:b5a98f0ef087ee364767de4f49dbfc2e199730941ca209bdfba5d26c2d37bffd"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:aa69daed83d10810def93ab65378d94998fdde6767bcb034714fedd61b4d5e4d"
+      },
+      {
+        "check": "check.tracing.tests",
+        "module": "module.tracing",
+        "status": "passed",
+        "measured_digest": "sha256:dae29f7ea6d66d8c988994c4dd2fb836f9b9cc1ecee89eab1dd6f0e406831dbf"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:3dc4284972e6b4e09769a87040fd112a92cac0873795855c62f419c9d54cdf85"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:0ed89b4a5d57325c07f47f7c3d2ceb6ffb5b2dd6f8ff146a42641fcef408361f"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:6e3c44aedc7b8b86549ddc1c46a7e17863eb02f13db86def52f73ecbd209e386"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260929T105317-task_validation-a557e188",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.tracing"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:4a94080aef192f64c27d3124ad79418847c51fd11081b39ad54cc5bcfb5679ae"
+    }
+  ],
+  "created_at": "2026-09-29T10:57:10Z"
+}
