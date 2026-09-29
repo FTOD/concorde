@@ -1,0 +1,3 @@
+# Decision log: session-smoke
+
+Goal: Smoke test of task sessions, not a real change. Do exactly these steps: (1) prepare the worktree as AGENTS.md says; (2) create smoke.txt at the worktree root containing ok and commit it on the task branch; (3) try to create /home/zhenyu/concorde/smoke-outside.txt once with the Write tool and once with Bash, expecting both to be refused, and do not retry another way; (4) run python3 scripts/concorde.py run validate --task session-smoke from the worktree; (5) send the main agent one message with each step's exact outcome, then stop. Do not deliver and do not escalate.

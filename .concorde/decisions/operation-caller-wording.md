@@ -1,0 +1,30 @@
+# Decision log: operation-caller-wording
+
+Goal: Rewrite all Operation Specs so invocation, result handling and task-level decisions are not incorrectly restricted to the main agent. Audit Operations and all providers, including Understanding, Specification, Implementation, Code review, Adoption and Spec review (spec_review/spec_panel), across module prose, requirements, scenarios and contracts. Use caller, task level, workspace or actor-neutral wording as appropriate; make clear main agents and task sessions can invoke Operations directly or through workflows. Preserve actual main-agent-only coordination responsibilities and existing runtime behavior, grants and escalation policy. Read complete affected Specs, record decisions, validate, commit and deliver under DEVELOPING.md. This is editorial alignment with the existing Operations and Task sessions contracts, not a design change.
+
+- Main session: include every Operation provider, including Spec review outside the Operations directory, and all Spec document roles. Preserve main-agent-only coordination; this is editorial alignment with existing invocation and delegation rules, with no runtime change.
+- Preparation failed twice because git submodule init could not lock .git/config. Inspection found an empty config.lock older than this task, no git process and no open file holder. Remove that stale lock and retry the task worktree reference initializer.
+
+- Reference preparation initialized six submodules before the empty config.lock reappeared during concurrent task activity. Again no git process or open holder; remove the stale empty lock, register all submodules in one step, then retry initialization.
+
+- Task session: read DEVELOPING.md, the complete canonical principles and glossary, and all 29 documents (reading and metadata) owned by the seven assigned Modules. Read Task sessions usage, design, requirements and report contract to confirm delegated task-level authority.
+- Use caller for invocation and result handling, and task level for follow-up choices. Explicitly name main agents and task sessions in Operations usage; keep task opening and unbound primary-worktree examples with the main agent. This follows the existing Operations and Task sessions contracts without changing grants or escalation authority.
+- Keep contract versions, schemas, runtime sources and metadata unchanged: the sole contract wording correction concerns who handles Understanding plan decisions, so it is editorial under the Protocol. Use existing validation and the required full test suite, without adding tests for wording.
+- Tool observation: pi-lens reported JSON analysis unavailable during initial reads and reported sandbox-created protected placeholders as blind writes. These are tool/sandbox diagnostics, not source edits; use Concorde structural validation and stage only named changed Specs.
+
+- Preparation completed: uv sync --locked --group dev, npm --prefix docsite ci and build succeeded. uv fell back from hardlinks to copies; npm reported deprecated whatwg-encoding/uuid dependencies and 31 audit vulnerabilities (1 low, 25 moderate, 5 high). Keep locked dependencies unchanged because dependency changes are outside this editorial task.
+- Removed the generic recommendation to background Operations from the shared invocation sentence, because task sessions follow their host-specific execution guidance (this pi task session runs in foreground); retained --detach and all runtime invocation behavior.
+- Adoption keeps task opening and its unbound primary-worktree scenario with the main agent. Its continuation prose now refers to the existing escalation path, so a task session is not told to ask the developer directly. Answers remain the developer's by their unchanged contract.
+- Audit complete: edited 15 reading files; the other 14 reading files and all metadata required no change. Retained the worker-backend scenario's main-session example and the Specification contract's module.main-session identity, which are not restrictions on Operation callers. Markdown diagnostics and git diff --check passed; kept the existing Spec Markdown formatting, outside DEVELOPING.md's docs/ Prettier scope.
+
+- Verification: build --check passed; spec-validation passed with zero errors/warnings; full pytest suite passed (648 passed, 4 skipped in 19.66s). The skip outcomes are existing suite behavior, with no failures. Verified that all tracked changes are Markdown and the assessment contract differs only in the expected actor wording, with schema, version and example unchanged.
+
+- Inspected the staged diff and committed the verified editorial step as 2d520b31a0f869f47addb459530ec16edfe4daf6. Post-commit tracked files are clean. Task-validation r-20260928T165723-task_validation-110ca659 returned ok/ready: 15 changed paths, all 12 configured checks passed, zero blocking findings or warnings. Proceed to delivery.
+
+- Delivery r-20260928T165844-delivery-d5ac3d41 returned ok and created dd84ea0d97fdc2f3fb203970d9d782626ea47121 with .concorde/evidence/operation-caller-wording/1.json. All 12 configured checks passed again, with zero readiness warnings. Delivery confirmed no code changed; post-delivery tracked status is clean. Main-agent merge remains.
+
+- Main session review: inspected the complete delivered Spec diff, evidence bundle, decision log and remaining main-agent references. Accepted the editorial alignment across all nine Operations; retained references describe coordination or explicit examples, not caller restrictions. Runtime sources and contract shapes are unchanged. Delivery and task-validation are ok, all 12 configured checks passed, and the task session recorded full pytest at 648 passed / 4 skipped. Proceed with the checked merge on current main.
+
+## Closed: merged, 2026-09-28T17:06:33Z
+
+- Checked merge completed at 1c901df3f11178ea5516eb0dc4f24d65f829f281. Both main-worktree checks (build and spec-validation) exited 0, merge warnings were empty, and the task closed as merged with its worktree removed.

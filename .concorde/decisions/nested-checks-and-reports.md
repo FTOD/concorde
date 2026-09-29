@@ -1,0 +1,62 @@
+# Decision log: nested-checks-and-reports
+
+Goal: Fix the scratch fallback regression test to use an explicit writable fallback; preserve narrowly defined proxy/certificate environment for nested configured checks while excluding runtime pollution; change task session reports to fixed required fields with nullable commit and empty/nonempty escalations, update contracts and add regression coverage; validate, deliver and merge.
+
+## Developer-authorized implementation brief
+
+The developer explicitly approved all three proposed fixes, including the check environment design change and the session report contract change. This is one bounded task; do not request approval for those decisions again. Read the canonical principles and complete affected Specs and paired metadata before source edits. References are already initialized by the main agent.
+
+1. Scratch regression: tests/concorde/harness/checks/test_check_executor.py::test_project_tmpdir_cannot_become_a_writable_project_mount patches tempfile.gettempdir to return the project. Inside a task-session sandbox this masks the valid TMPDIR, and unscoped /tmp and /var/tmp are read-only. Fix the test's precondition by capturing/creating an independently writable temporary fallback before the patch and explicitly passing it via CONCORDE_CHECK_TMPDIR for the patch's scope. Preserve the assertion that the project cannot become writable; do not open global /tmp, relax boundaries, or change production scratch selection just for this test. Test inside the existing task-session sandbox without externally exporting CONCORDE_CHECK_TMPDIR.
+
+2. Nested check networking: src/concorde/harness/checks.py::environment currently inherits PATH and LANG only. The outer task-session sandbox routes network through HTTP(S)/ALL_PROXY and related variables. A direct execute_check(... environment=os.environ) succeeded for npm view and the full check-docsite-types.py while the configured service path failed. Define a narrow, explicit inherited allowlist of proxy variables (upper/lower case, no_proxy) and standard TLS trust-location variables that the relevant tools need (resolve exact names and precedence deliberately). Keep Python/runtime pollution excluded. Preserve project check env overrides and executor-owned scratch/cache variables. Never copy all os.environ or log proxy credentials. Update check Specs to match and add meaningful tests for inherited transport settings, absent runtime variables, explicit env precedence, and a nested local-proxy network check that also proves project writes remain denied. Use deterministic local fixtures, not public npm as a unit-test dependency. Broader tests should confirm the previously failing real configured checks work from a task session.
+
+3. Report interface: update contract.task-session.report to v2 with all six fields required: status, summary, commit, escalations, decisions, open. delivered requires a full valid commit and escalations=[]; escalated requires commit=null and a nonempty unique array of positive escalation numbers. Use a provider-compatible top-level object tool schema. Reconcile Python REPORT_SCHEMA/TOOL_SCHEMA, TypeScript reportProblem, fixtures/fake sessions, prompts/examples, Specs and any declared participants. Preserve supervisor verification against actual task records and reject fabricated commits/escalations, omitted fields and mixed states. Do not silently ignore commit="". Add positive and negative validation tests plus both supervisor report paths. Consider existing v1 persisted records explicitly: do not rewrite history; clearly scope v2 admission to new tool reports. The live session that edits this code was launched with the OLD boundary/schema; do not edit its generated boundary to self-upgrade or fake evidence. If the old report tool prevents final reporting, a plain final handoff after the verified commit and delivery is authorized; the main host will inspect artifacts and complete reporting/verification as needed.
+
+Scope includes module.checks, module.harness and module.task-session. Also authorized: the minimum module.main-session prompt/Spec changes and other participant metadata necessary to reconcile the report contract; register any added Modules through an Operation --modules list and read their Specs first. Keep unrelated runtime changes out. Use complete call-chain checks rather than tests that only duplicate constants.
+
+Prepare dependencies, format explicitly and verify a second pass, build (prompts may change), registry mirror only if module blocks change, run build --check, structural validate, targeted tests and final full pytest. Inspect and commit verified steps on this branch. Run validate and delivery from this worktree (now that transport inheritance is fixed, exercise normal nested execution rather than bypassing it). Report actual results and exact commit; the main agent reviews and merges. Keep decision log append-only, including non-ok outcomes and causes. Avoid repeated known-failing tool calls: record one failure then use the authorized handoff if the old report schema blocks you.
+
+## Round 1 preparation and implementation decisions
+
+- Prepared this worktree with uv sync --locked --group dev, npm --prefix docsite ci and build. They succeeded; uv used copies across filesystems and npm reported existing dependency advisories, neither blocks this task. No dependency versions changed.
+- A source-location search used an incorrect harness/pi_session glob and returned an error; corrected the path to tasks/pi_session. No source impact.
+- Use an explicit temporary sibling fallback in the scratch regression without changing production mounts or scratch selection, as authorized.
+- Preserve only named upper/lower-case HTTP, HTTPS, ALL and NO proxy variables and standard trust-location variables (SSL_CERT_FILE, SSL_CERT_DIR, REQUESTS_CA_BUNDLE, CURL_CA_BUNDLE, NODE_EXTRA_CA_CERTS). Check env overrides inherited values; executor scratch/cache assignments remain authoritative. This supports the sandbox network route without importing Python, Node or Concorde runtime settings.
+- Admit report v2 only for new reports; leave persisted v1 records unchanged. Require all six fields and validate status combinations at both the extension and supervisor. No contract participants are declared.
+
+- The run --help probe returned unknown Operation; used its printed operation usage. One contract edit partially applied because of a capitalized text mismatch; reread it and applied the remaining wording.
+- LSP found pre-existing optional-type findings in unchanged timeout validation, session lookup and error formatting, plus broad static warnings on unchanged filesystem calls; deferred them rather than mixing unrelated changes into this task. Fixed newly introduced HTTP handler signature and test style findings.
+- Formatting initially failed because uvx defaulted to the read-only user tools directory and Prettier was given a wrong relative path. Use UV_TOOL_DIR under the issued session TMPDIR (within the existing boundary) and the worktree-relative source path. No permissions or mounts changed.
+- The authorized prompt reconciliation also updates the main-session scenario; include module.main-session in validation/delivery Operations to register this minimal scope addition.
+
+- First targeted pytest run: 3 failures, 64 passed, 136 subtests passed. All transport and scratch cases passed. The historical-record fixture used supervisor_pid=0 (invalid in the task schema), and the guidance test still expected v1 wording; fixed both. The existing session teardown sent SIGTERM without waiting, racing temporary-directory removal; changed test cleanup to stop and wait before removing short temporary paths. This is test-lifetime cleanup only, needed for reliable supervisor regressions.
+
+## Verification before commit
+
+- Targeted checks passed after fixture repairs: 67 passed, 136 subtests passed. During final review made the commit regex use a portable strict end assertion instead of dollar (which accepts a trailing newline), with a negative case exercised by Python and TypeScript and by the supervisor.
+- The first --modules invocation used spaces and was refused as invalid CLI arguments; corrected it to the documented comma-separated list. validate run r-20260926T193704-validate-5909261f returned ok/ready, 15 configured checks passed, no warnings or confirmations, and registered module.main-session.
+- Final complete pytest on the finished source: 581 passed, 4 skipped. Formatting second passes were unchanged; build --check passed; final structural validate passed with zero errors/warnings.
+- Ran the actual module.views checks through run_checks from this task-session shell, with no proxy or scratch override: check.views.publication-types, check.views.repository-regressions and check.views.tests all passed. Logs and digests are retained under .concorde/tasks/nested-checks-and-reports.session/transport-checks in the primary worktree. This exercises the previously failing configured npm/typecheck route under the normal nested sandbox. No module.views sources were changed.
+- No participant metadata changes or registry refresh are needed: the report contract has no declared participants, and no module block changed. Existing persisted v1 reports remain untouched; v2 applies to newly admitted reports.
+
+## Main-agent review
+
+- Reviewed the scratch fixture and retained production sandbox limits: the test provisions its fallback before replacing gettempdir and verifies the issued path remains outside the project.
+- Reviewed transport allowlist and explicit-env precedence, including preserved empty values and executor-owned scratch/cache paths. The local proxy regression exercises run_checks inside execute_check and asserts network success, denied project writes and writable private scratch.
+- Reviewed fixed-field report contract v2, Python/TypeScript validators, mandatory-field and mixed-state rejection, supervisor verification and persisted v1 record handling. Prompt changes name both neutral values explicitly.
+- After the task hands off, the main agent will use the task branch CLI to refresh the session boundary and exercise the new delivered report tool in a real pi round before merging. This is verification of the authorized report fix; it must report the actual recorded delivery commit and make no further source changes.
+
+## Delivered handoff
+
+- Verified implementation commit: 790f33d9412d1a8fee0f6498918c4a6eb56eb496. Delivery r-20260926T194319-delivery-05982795 succeeded, reran all 15 configured checks, confirmed all three added/changed scenarios have test declarations, and committed .concorde/evidence/nested-checks-and-reports/1.json. Delivery/head commit: ef20cc125345a94408d177d2d18887d3e46ab60f. Task record state is delivered.
+- The tracked worktree is clean after delivery; sandbox-created protected configuration placeholders (including .claude/agents and .claude/commands) are untracked and were never staged or modified.
+- No implementation questions or escalations remain. Main agent must inspect and perform the checked merge from primary; this task session did not merge or close the task.
+- This live session was launched with v1 TOOL_SCHEMA/reportProblem, so its available report tool still requires incompatible field treatment. Its generated boundary has not been self-upgraded. I will call concorde_report exactly once with the delivered commit and empty escalations; if the old boundary refuses it, the previously authorized plain handoff and recorded delivery remain the evidence for the main agent. No retries or fabricated evidence.
+
+## Closed: merged, 2026-09-26T19:46:35Z
+
+## Main-agent completion
+
+- Delivery ef20cc125345a94408d177d2d18887d3e46ab60f passed all 15 configured checks. Final full suite: 581 passed, 4 skipped. The real module.views check service run passed inside the task sandbox, including npm-dependent checks.
+- Refreshed the task session using the task branch CLI, which regenerated the v2 boundary without hand-editing generated files. Live round 2 called concorde_report once with all six fields and the actual delivery commit; the tool succeeded, and the updated supervisor recorded delivered with error=null. The initial round used the old startup boundary and its failed report is retained as historical evidence.
+- Checked task merge succeeded; primary build and structural validate both exited 0. Task closed as merged and the task worktree was removed.
