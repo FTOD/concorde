@@ -37,10 +37,14 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    `.claude/worktrees/<task>` and its decision log the `decision_log` path the command prints.
 2. Before starting the task's session, the main agent runs
    `python3 scripts/development/init-references.py` in the task worktree itself, with that
-   worktree's own script: it registers the reference submodules in the shared `.git/config`, which
-   the session's sandbox keeps read-only. It records the task's brief in the decision log and starts
-   the session with `python3 scripts/concorde.py task session <task> --main <its session name>`
-   from the primary worktree.
+   worktree's own script: it registers in the shared `.git/config`, which the session's sandbox
+   keeps read-only, each reference submodule not registered yet, and checks them all out. While
+   another task session runs a command, its sandbox holds `.git/config.lock`; the script then
+   still checks out registered submodules but refuses to register a new one. Run it again once
+   that command ends, and never delete the lock. It records the task's brief in the decision log
+   and starts the session with
+   `python3 scripts/concorde.py task session <task> --main <its session name>` from the primary
+   worktree.
 3. The task session creates what Git ignores in its worktree: `uv sync --locked --group dev`,
    `npm --prefix docsite ci` and `python3 scripts/concorde.py build`.
 4. It changes the sources, verifies, and commits each verified step on the task branch. It runs
