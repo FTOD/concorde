@@ -147,7 +147,7 @@ transcript path, the worker result verbatim and the deletions performed; and the
 with its error link. Each round is a node of its own below it, with its session, prompt kind, audit
 and [check results](../../glossary.json#concept.check-result), its standard error, and the tokens,
 cost and turns the agent program reported for it — evidence that never restates a worker's claim as
-fact. Delivery later lists these records' identities in a workspace's evidence.
+fact.
 
 ### Two backends from one grant
 
@@ -220,8 +220,7 @@ which turns it into the Operation's [run result](../../glossary.json#concept.run
 worker could not finish, its `error` is the first link of the
 [error chain](../../glossary.json#concept.error-chain), and Workers adds its own link above it
 saying why it cannot handle the failure — a [Spec gap](../../glossary.json#concept.spec-gap) or
-grant violation is not its to retry — before the Operation adds the next. Delivery later lists the
-run records' identities in the workspace's evidence.
+grant violation is not its to retry — before the Operation adds the next.
 
 A run's collaborators: the Operations that call it and the providers it relies on, among them
 Operations itself for its catalog.
@@ -241,7 +240,7 @@ workers -> execution
 workers -> operations
 ```
 
-The Operation providers, Spec review and Delivery use this Module; the worker runtime knows none of
+The Operation providers and Spec review use this Module; the worker runtime knows none of
 them. They rely on the run record and on the rule that a worker's result is kept apart from host
 evidence. The configuration validator looks at the Operation catalog when a worker launches.
 
