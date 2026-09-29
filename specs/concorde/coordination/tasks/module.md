@@ -6,7 +6,9 @@ Tasks manages the workspace of the task level: it gives every unit of work the
 [main agent](../../glossary.json#concept.main-agent) starts its own place, a Git branch, a worktree
 checked out on it and bound as an [Execution](../../execution/module.md) workspace, a
 [task record](../../glossary.json#concept.task-record) and a
-[decision log](../../glossary.json#concept.decision-log). The main agent, and the task session it
+[decision log](../../glossary.json#concept.decision-log), kept with the task's
+[trace](../../glossary.json#concept.trace) in one folder of its own that moves to the
+[history](../../glossary.json#concept.history) when the task ends. The main agent, and the task session it
 delegates every task to, rely on it to run pieces of work side by side without their changes mixing, to know each task's state, and to
 keep the reasons behind choices made without the developer. Tasks binds each task worktree when it
 opens the task and learns what happened in it only from what Execution recorded, the workspace's
@@ -37,8 +39,10 @@ concorde task open severity --goal "let Issue reports carry a severity" --module
 Tasks checks the identity is new and every named [Module](../../glossary.json#concept.module) exists
 in the [registry](../../glossary.json#concept.registry), creates branch `concorde/severity` from the
 primary worktree's commit (or `--base <ref>`), adds a worktree at `.claude/worktrees/severity`
-inside the primary worktree by default (or `--path <dir>`), binds the worktree as a workspace,
-writes the record and log, and prints the record. The
+inside the primary worktree by default (or `--path <dir>`), creates the task's folder
+`.concorde/tasks/severity/` in the primary worktree, binds the worktree as a workspace, writes the
+record, the task's [trace node](../../glossary.json#concept.trace-node) and the log, and prints the
+record. The
 [worker configuration](../../glossary.json#concept.worker-configuration) is tracked by Git, so the
 task carries the one of its base commit: its workers keep the models chosen then, whatever the
 primary branch chooses later, and a change the task makes to its own copy merges with the task. A
@@ -53,21 +57,24 @@ writes its [workspace binding](../../glossary.json#concept.workspace-binding),
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "workspace": "severity",
   "root": "/home/dev/shop/.claude/worktrees/severity",
   "branch": "concorde/severity",
   "base_commit": "d460b95e0c1a2b3c4d5e6f708192a3b4c5d6e7f8",
   "goal": "let Issue reports carry a severity",
   "modules": ["module.issues"],
-  "records": "/home/dev/shop/.concorde"
+  "traces": "/home/dev/shop/.concorde/tasks/severity/workspace",
+  "concorde": "/home/dev/shop/.concorde"
 }
 ```
 
-The workspace is named after the task, so its runs, its workspace lock and its delivery commits are
-found by the task identity. The records directory is the primary worktree's `.concorde`, so the
-runs of every task land in one [run store](../../glossary.json#concept.run-store)
-beside the task records, and survive the worktree. From then on the task's work happens inside that
+The workspace is named after the task, so its workspace lock and its delivery commits are found by
+the task identity. Its workspace folder is `workspace/` inside the task's own folder, so every run
+of the task, started directly or by a workflow, lands in the task's
+[trace](../../glossary.json#concept.trace), below the task's own node, and survives the worktree;
+its locks lie under the primary worktree's `.concorde/locks/`. Execution never learns that the
+folder belongs to a task. From then on the task's work happens inside that
 worktree with the worktree's own `concorde`: every Operation, execution command and workflow started
 there reads the binding and works on this task's goal, Modules, branch and base without naming the
 task. Tasks writes the binding once and never again; closing removes it with the worktree. A
@@ -78,21 +85,32 @@ one thing at a time.
 
 <a id="concept.task-record"></a>
 
-**The record.** The **task record** lives at `.concorde/tasks/<task-id>.json`: identity, goal,
-Modules, branch, worktree path, base commit, stored state, escalations, started task sessions and,
-once the task ended, how it ended ([exact fields](contracts.md#contract.tasks.record)). It keeps no
-runs, deliveries or workflow: those are recorded by Execution, and a copy in the record could
-disagree with them after a crash or a run nobody announced. Its goal and Modules are those named at
+**The task folder.** Everything about a current task lives in `.concorde/tasks/<task-id>/` of the
+primary worktree: its record `task.json`, its trace node `trace.json`, its decision log
+`decisions.md`, the boundary configuration of its task session under `runtime/`, the nodes of its
+task sessions under `sessions/` and of its merge attempts under `merges/`, and the workspace folder
+`workspace/` that Execution fills. **The task record** holds only what the task commands need to act
+on the task: identity, goal, Modules, branch, worktree path, base commit, stored state, the merge in
+progress and, once the task ended, how it ended ([exact fields](contracts.md#contract.tasks.record)).
+Its history is in its trace instead: the task's node records when it was opened, every change of
+its stored state, every escalation and how it ended; each task session and each round of a pi task
+session is a node below it, and so is each merge attempt with its checks
+([exact content](contracts.md#task-trace)). Neither keeps runs, deliveries or workflow: those are
+recorded by Execution, and a copy could disagree with them after a crash or a run nobody announced. Its goal and Modules are those named at
 open and never change; a run that names further Modules with `--modules` records them in its own
 [run result](../../glossary.json#concept.run-result).
 
-`concorde task list` prints the records with their derived state, optionally filtered by
-`--state`. `concorde task show <task-id>` prints what the task level needs to know about one task
-in one value: the record with its derived state, the workspace's
-[runs](../../glossary.json#concept.run) read from the run store (each with its kind,
-name, Modules and status, `running` while its runner lives and `lost` when the runner died without
-a result), its [delivery commits](../../glossary.json#concept.delivery-commit)
-read from the task branch, who holds its workspace lock now, and the path of the decision log.
+`concorde task list` prints the records of the current tasks and of the tasks in the history with
+their derived state, optionally filtered by `--state`. `concorde task show <task-id>` prints what
+the task level needs to know about one task in one value: the record with its derived state, the
+workspace's [runs](../../glossary.json#concept.run) read from its workspace folder, those started
+directly and those of its workflow's steps (each with its kind, name, Modules and status, `running`
+while its runner lives and `lost` when the runner died without a result), its
+[delivery commits](../../glossary.json#concept.delivery-commit) read from the task branch, its task
+sessions with their rounds and its escalations read from its trace, who holds its workspace lock
+now, and the paths of the decision log and of the task's folder. A closed task is shown from the
+history the same way. `concorde trace show <task-id>` shows the whole trace with its timing and
+cost.
 
 The record's Modules are not kept in step with the task worktree's registry: a Module the task
 branch removes or renames stays in the record and in the binding, and Execution leaves each bound
@@ -101,7 +119,7 @@ only to open a task.
 
 <a id="concept.decision-log"></a>
 
-**The decision log** lives at `.concorde/tasks/<task-id>.decisions.md`. Tasks creates it with a
+**The decision log** lives at `.concorde/tasks/<task-id>/decisions.md`. Tasks creates it with a
 heading and the goal at open, then only appends escalations and how the task ended; the session
 working on the task, the main agent or the task's task session, appends directly: every uncertainty
 it decided alone, with options and reason, every non-`ok` run result and what it did about it, and
@@ -119,7 +137,8 @@ with `--by task-session` to the main agent; the main agent's own link, the defau
 developer and may name a task session's escalation as a cause with `--escalation <n>`. Tasks reads
 each named run's error from its run result, refusing a run of another workspace or an unbound one
 with `unknown_run`, puts those errors unchanged under that link as its causes, appends the resulting
-chain to the record's escalations and to the decision log (rendered and as JSON), and prints it, so
+chain to the escalations of the task's trace node, numbered from 1, and to the decision log
+(rendered and as JSON), and prints it, so
 the reader gets one chain from the question down to where the error started. A session that names
 no error, because what needs deciding is no failure but a decision it may not keep alone, such as
 one a run that ended `ok` took without the developer, escalates its own link with no causes as the
@@ -157,7 +176,7 @@ delivered -> failed: task close --failed
 
 A task is **delivered** when its branch head is a delivery commit of its workspace that verifies
 against its [evidence bundle](../../glossary.json#concept.evidence-bundle) and its worktree is
-clean; **active** when its workspace has a run in the run store, running or finished, or its
+clean; **active** when its workspace has a run in the [run store](../../glossary.json#concept.run-store), running or finished, or its
 branch moved past the base commit, or its worktree has uncommitted changes; and **open** before any
 of these. A run that changes nothing, such as a review after delivery, leaves a delivered task
 delivered; a change after the delivery commit, committed or not, makes it active until the next
@@ -183,9 +202,16 @@ never merged (below). A task ends in one of two states, and the record keeps the
   whether an error caused the failure is never left unsaid.
 
 Closing without a merge refuses uncommitted changes unless `--force`. Closing appends the outcome,
-the note and any error chains to the decision log and removes the worktree, and with it the
-workspace binding, keeping the branch, record and log; no run of the task's workspace can start
-there any more, and a closed or failed task stays so whatever its workspace records afterwards. A
+the note and any error chains to the decision log, removes the worktree, and with it the workspace
+binding, and moves the task's whole folder to the history, `.concorde/history/<task-id>/`, keeping
+the branch; no run of the task's workspace can start there any more, and a closed or failed task
+stays so whatever happens afterwards. A task closes only once it has really ended: the close holds
+the task's workspace lock, so no run of it is running and none can start, while it moves the
+folder, and a close with `--completed` or `--failed` first stops the runs of the workspace that
+still run and a running round of the task's pi task session, then waits for the lock. The history
+is never changed afterwards; [Tracing](../../tracing/module.md)'s retention may remove it whole. A
+task name used again after its branch was deleted gets a new history key, so no closed task
+replaces another. A
 worktree with checked-out submodules, such as the vendored references, is removed too: its
 submodules are deinitialized first, which refuses a submodule with local changes unless `--force`,
 and only then is the worktree removed.
@@ -220,8 +246,10 @@ records the merge commit and runs the checks in the primary worktree: `concorde 
 of the merged checkout by default, or exactly the `--check` commands given, such as a project that
 must build first. A failed check, or checks that leave uncommitted paths, returns the primary
 branch with `git reset --keep` to the commit it had and refuses with `check_failed`, naming the
-check, its exit status, its log, `.concorde/tasks/<task-id>.merge.log`, and any paths the checks
-created, which the reset leaves in the primary worktree. When everything passed, Tasks closes the
+check, its exit status, its log in the merge attempt's node, and any paths the checks created, which
+the reset leaves in the primary worktree. Every merge attempt, whether it merged, conflicted, failed
+a check or was undone, is a node `merges/<n>/` of the task's trace, each check a node below it with
+its `output.log`. When everything passed, Tasks closes the
 task as merged and prints the record with the commits before and after, each check, how long it
 waited and its warnings, such as a decision log nobody wrote in. A merge thus ends with the task
 closed on a checked merge commit or delivered again on the commit the primary branch had; after a
@@ -336,19 +364,25 @@ files of the primary branch; the Workers' [deny rules](../../glossary.json#conce
 hide the primary worktree's other files and the other task worktrees from a worker, since those are
 siblings of the path to its own worktree.
 
-Records live in the primary worktree, not the task worktrees: the main agent works there and must
-see every task in one place, including ones whose worktree is gone; and a task worktree is exactly
-what workers and Delivery commit, so records kept there would be swept into commits.
-`.concorde/tasks/` is thus local, Git-ignored state, like the run store: the
+Task folders live in the primary worktree, not the task worktrees: the main agent works there and
+must see every task in one place, including ones whose worktree is gone; and a task worktree is
+exactly what workers and Delivery commit, so records kept there would be swept into commits.
+`.concorde/tasks/` and `.concorde/history/` are thus local, Git-ignored state: the
 [evidence bundle](../../glossary.json#concept.evidence-bundle) Delivery commits is what travels with
-the code. Any process finds the primary worktree through Git's common directory.
+the code. Any process finds the primary worktree through Git's common directory. One folder per
+task, organized by the task's lifecycle as [Tracing](../../tracing/module.md) lays it out, means a
+task's record, log, sessions and runs are read in one place and ended in one move; the record
+stays small because the task's history is its trace, which only grows by new nodes.
 
-Several processes may write a record at once, a task session recording a round while the main agent
-escalates, so every write is one
-[file transaction](../../glossary.json#concept.file-transaction) bound to the
-digest it replaces: a concurrent change is detected, Tasks rereads and reapplies if preconditions
-still hold, and refuses with `record_conflict` after three attempts. Each task has its own record
-file, so tasks never contend.
+Several processes may change a task at once, a task session recording a round while the main agent
+escalates, so every change of a task's record or trace is made while holding the task's lock,
+`locks/tasks/<task-id>.lock`, and every record write is one
+[file transaction](../../glossary.json#concept.file-transaction) bound to the digest it replaces: a
+change made meanwhile by a process that did not take the lock is detected, Tasks rereads and
+reapplies if preconditions still hold, and refuses with `record_conflict` after three attempts. Each
+task has its own lock and folder, so tasks never contend. Every lock lies under `.concorde/locks/`,
+apart from the folders it protects, since a close must hold the task's workspace lock precisely
+while it moves the task's folder.
 
 The merge lock is held by the process doing the merge rather than recorded as an owner that others
 wait on and that must wake them: a recorded owner that crashed, was closed or forgot to notify
@@ -429,7 +463,7 @@ The subject and trailers alone would not do: any commit can carry them, and only
 commit to the readiness it claims. With no second copy there is nothing to recover and nothing that
 can disagree.
 
-Deriving costs a scan of the run store, a `git log` of the task branch and a few Git reads to
+Deriving costs a scan of the workspace folder, a `git log` of the task branch and a few Git reads to
 verify its head whenever a task is listed or shown, which is small next to what a run costs, and it
 holds however a run ended: a run whose runner died is `lost` in the listing, and the kernel has
 already released its workspace lock.
@@ -454,8 +488,7 @@ store -> commits: reads from the task branch and verifies
 [workspace binding](../../glossary.json#concept.workspace-binding) as the
 [binding contract](../../execution/contracts.md#contract.execution.workspace-binding) requires, and
 relies on Execution only reading it, working on the Modules, branch and base it names, recording
-every run of the workspace in the [run store](../../glossary.json#concept.run-store) of the records
-directory it names, under the workspace's name, and holding the
+every run of the workspace as a trace node in the workspace folder it names, and holding the
 [workspace lock](../../glossary.json#concept.workspace-lock) for every bound run, so that Tasks,
 holding the same lock, after waiting for a running run to release it, while it merges or closes the task, knows no run of it is
 changing the branch or worktree meanwhile. It reads a run's
@@ -494,6 +527,14 @@ validated.
   hands it a task that passed Tasks' checks. Tasks relies on it recording sessions and
   [rounds](../../glossary.json#concept.session-round) only through the record updates,
   and prints its refusals in the shape of every `concorde task` refusal.
+- <a id="uses-tracing"></a>**Tracing** lays out the task's folder, its history and the locks, and
+  gives the task, each session and round, each merge attempt and its checks the shape of a
+  [trace node](../../glossary.json#concept.trace-node). Tasks writes those nodes through Tracing's
+  library, takes the task, workspace and merge locks under `.concorde/locks/`, runs Tracing's
+  retention at the start of every `task open` and `task close`, and reports in the error contract.
+  It relies on the [layout](../../tracing/contracts.md#layout), the
+  [locks](../../tracing/contracts.md#locks) and the
+  [node contract](../../tracing/contracts.md#contract.tracing.node).
 - <a id="uses-spec"></a>**Spec core** provides two things Tasks relies on: its registry, so a
   record never names a Module that doesn't exist at open; and its
   [file transactions](../../glossary.json#concept.file-transaction), so every

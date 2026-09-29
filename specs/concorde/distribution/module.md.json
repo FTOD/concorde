@@ -70,6 +70,14 @@
         "relies_on": [
           "concept.execution-command"
         ]
+      },
+      {
+        "target": "module.tracing",
+        "meaning": "#uses-tracing",
+        "relies_on": [
+          "contract.tracing.node",
+          "concept.trace"
+        ]
       }
     ],
     "includes": [],

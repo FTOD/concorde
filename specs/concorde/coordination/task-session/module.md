@@ -36,27 +36,31 @@ concorde task session severity --wait                  # pi: wait until the runn
 The command belongs to the `concorde task` family, which [Tasks](../tasks/module.md) runs: its
 command line checks that it runs in the primary worktree, reads the main session's program and
 checks the options, and Task sessions does the rest. What Task sessions writes for a session goes
-under `.concorde/tasks/<task>.session/` of the primary worktree, next to the task record, and the
-started session and each round are recorded in the
-[task record](../../glossary.json#concept.task-record) through Tasks.
+into the task's folder of the primary worktree: the session's boundary configuration under
+`runtime/`, which the close removes with the folder, and the session's
+[trace node](../../glossary.json#concept.trace-node) under `sessions/<session>/`, with one node per
+pi round below it, written through Tasks' updates so the task's
+[trace](../../glossary.json#concept.trace) holds every session and round.
 
 **The boundary.** Whatever the program, a task session may write only what working its task needs:
 with its file tools, the task worktree and the task's decision log; with its shell, also the
-repository's Git directory, where its commits on the task branch are written, the primary worktree's
-[run store](../../glossary.json#concept.run-store) `.concorde/runs/`, which the task worktree's
-[workspace binding](../../glossary.json#concept.workspace-binding) names as the records directory of
-every run started there, including the [workspace lock](../../glossary.json#concept.workspace-lock)
-and the [workflow record](../../glossary.json#concept.workflow-record), the primary worktree's
-`.concorde/tasks/`, where `concorde task escalate` records its escalations, and the user's package
-caches, and in pi also the session's private temporary directory, where sandbox-runtime keeps its
-sockets. Reads and the network stay open.
+repository's Git directory, where its commits on the task branch are written, the task's own folder
+`.concorde/tasks/<task>/` of the primary worktree, which holds the workspace folder the task
+worktree's [workspace binding](../../glossary.json#concept.workspace-binding) names for every run
+started there, including the [workflow record](../../glossary.json#concept.workflow-record), and the
+task's record and trace, where `concorde task escalate` records its escalations, the primary
+worktree's `.concorde/locks/`, where those runs take the
+[workspace lock](../../glossary.json#concept.workspace-lock) and their [run locks](../../glossary.json#concept.run-lock), and the user's
+package caches, and in pi also the session's private temporary directory, where sandbox-runtime
+keeps its sockets. Reads and the network stay open.
 
 **In Claude Code**, Task sessions writes the session's [session
 boundary](../../glossary.json#concept.session-boundary) — a settings file and the Harness's
 task-session [write hook](../../glossary.json#concept.write-hook) with the task's paths embedded —
-under `.concorde/tasks/severity.session/`, starts `claude --bg` in the task worktree with the
+under `.concorde/tasks/severity/runtime/`, starts `claude --bg` in the task worktree with the
 task-session guidance and the task's goal, Modules, decision log and the main agent's session name
-as its first prompt, and appends the started session to the record. `--main` is required: a start
+as its first prompt, and records the started session as a node `sessions/<id>/` of the task's
+trace, with status `unknown`, since nothing tells Concorde when a Claude Code session ends. `--main` is required: a start
 without it is refused with `invalid_input`. `--dry-run` writes the boundary and prints the command
 without starting anything. A task that is closed or failed, a missing worktree, or a Claude Code
 that does not report a started background session is refused (`task_closed`, `missing_worktree`,
@@ -68,29 +72,30 @@ its reports through SendMessage and is stopped with `claude stop`.
 
 **In pi**, which has neither background sessions nor messages between sessions, a task session is a
 sequence of **[session rounds](../../glossary.json#concept.session-round)** on one pi session file.
-Task sessions writes the boundary under `.concorde/tasks/severity.session/` — the Harness's
+Task sessions writes the boundary under `.concorde/tasks/severity/runtime/` — the Harness's
 task-session extension as `boundary.ts` with the task's paths embedded, beside the path decisions it
 imports — and starts a detached supervisor process that runs one round:
 `pi -p --mode json --approve` in the task worktree with the developer's own pi configuration
 (packages, extensions, settings, credentials and context files, and the task worktree's project
 resources, which `--approve` trusts for that run), the boundary loaded with `-e`, the session file
-under `pi/` of that directory, and `--model` when given. The first round's prompt is the
+under `pi/` of the session's node `sessions/<session>/`, and `--model` when given. The first round's prompt is the
 task-session guidance for pi followed by the task's goal, Modules and decision log; `--main`, when
 given, is only recorded. A round ends when the session calls `concorde_report` with its
 **[session report](../../glossary.json#concept.session-report)**
 ([contract](contracts.md#contract.task-session.report)), when pi exits without one, or when `--stop`
 ends it: the supervisor sends the round's pi process group SIGTERM, so pi ends its session and
 sandbox-runtime removes its sockets and bridge, and SIGKILL to what is left of the group 3 seconds
-later. Meanwhile the supervisor keeps the round's status file `status.json` in that directory
-current —
-the round, its phase and the session's latest tool call — and writes pi's event stream and standard
-error beside it. It then records the round's outcome in the task record:
+later. Meanwhile the supervisor keeps the session's status file `status.json` in the session's node
+current — the round, its phase and the session's latest tool call — and writes the round's node
+`rounds/<n>/` with the round's prompt `prompt.md`, pi's event stream `events.jsonl`, pi's standard
+error `stderr.log` and its own output `supervisor.log`. It then ends the round's node with the
+round's outcome and the tokens, cost and turns pi reported for it:
 
 | Outcome | When |
 | --- | --- |
 | `delivered` | the report says delivered and names a commit that the task branch holds as a [delivery commit](../../glossary.json#concept.delivery-commit) of the task's workspace, read from Git |
-| `escalated` | the report says escalated and names escalations the task record holds with the level `task-session` |
-| `failed` | pi exited without a report, or the report names a commit that is no delivery commit of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), or an escalation the record does not hold; the round's `error` is a link naming pi's exit code, stop reason and error message, the logs, and each mismatch |
+| `escalated` | the report says escalated and names escalations the task's trace holds with the level `task-session` |
+| `failed` | pi exited without a report, or the report names a commit that is no delivery commit of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), or an escalation the task's trace does not hold; the round's `error` is a link naming pi's exit code, stop reason and error message, the logs, and each mismatch |
 | `stopped` | `--stop` ended the round |
 
 The main agent answers the round's escalations, all together, or asks for more after a delivery,
@@ -174,7 +179,7 @@ and code, starts workflows (level 3) and runs Operations and
 worktree, and never reaches a worker except through an Operation. Its results go up to level 1 only,
 never to the developer: a Claude Code session reports to the main agent with SendMessage, and a pi
 session ends each round with a session report that this Module checks against the task branch and
-the task record and records there, where the main session's
+the task's trace and records in the round's node, where the main session's
 [run view](../../glossary.json#concept.run-view) finds it. What the session may not decide it
 escalates with `concorde task escalate --by task-session`, a link of level `task-session` on top of
 the failed runs' chains, for the main agent to decide or to pass on with its own link.
@@ -277,7 +282,7 @@ extensions add, such as MCP tools or a formatter that writes files, are outside 
 MCP tools are outside the Claude Code session's write hook. pi has no counterpart of Claude Code's
 `auto` classifier, so the extension and the sandbox are the whole boundary, which is enough for
 what it guards against. A sandbox makes only existing paths writable, so Task sessions creates the
-writable directories that do not exist yet, such as a first run's `.concorde/runs/`, before a
+writable directories that do not exist yet, such as the task's `.concorde/locks/`, before a
 session starts, in Claude Code as in pi. Concorde's main-session extension, which the task worktree
 may load as a project resource, stays inactive when `CONCORDE_TASK_SESSION` is set, so a task
 session neither starts background runs nor watches the project's runs as a main session does.
@@ -289,7 +294,7 @@ its agent stops: the session reports once per round through a tool whose argumen
 contract, and the main agent's answer starts the next round with `--session-id` on the same session
 file. The report is checked rather than trusted: its delivery commit against the delivery commits
 of the task's workspace that Git shows on the task branch, which must also verify against its
-evidence bundle as for a delivered task, its escalations against the task record,
+evidence bundle as for a delivered task, its escalations against the task's trace,
 so a delivery or an escalation that did not happen makes the round `failed`. No record copies the
 delivery, so the check reads the one place it is recorded. The supervisor is detached from the
 command that started it, so closing the main session never ends a round, and a main session that

@@ -40,14 +40,7 @@
         "src/concorde/tracing/reader.py",
         "src/concorde/tracing/retention.py"
       ],
-      "pending": [
-        "src/concorde/tracing/__init__.py",
-        "src/concorde/tracing/layout.py",
-        "src/concorde/tracing/node.py",
-        "src/concorde/tracing/locks.py",
-        "src/concorde/tracing/reader.py",
-        "src/concorde/tracing/retention.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.tracing.command",
@@ -57,9 +50,7 @@
       "entries": [
         "src/concorde/tracing/command.py"
       ],
-      "pending": [
-        "src/concorde/tracing/command.py"
-      ]
+      "pending": []
     },
     {
       "id": "realization.tracing.error-chain",

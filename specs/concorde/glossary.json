@@ -118,7 +118,7 @@
       "id": "concept.decision-log",
       "title": "Decision log",
       "owner": "module.tasks",
-      "definition": "The Markdown file next to a task record in which the session working on the task writes the choices it made without the developer, and to which escalations are appended.",
+      "definition": "The Markdown file `decisions.md` in a task's folder in which the session working on the task writes the choices it made without the developer, and to which escalations are appended.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.decision-log",
       "relates": [
         {
@@ -324,7 +324,7 @@
       "id": "concept.merge-lock",
       "title": "Merge lock",
       "owner": "module.tasks",
-      "definition": "The lock of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task or closes one; the kernel releases it when that process ends.",
+      "definition": "The lock `.concorde/locks/merge.lock` of the primary worktree that one process at a time holds while it merges a task into the primary branch, opens a task or closes one; the kernel releases it when that process ends.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.merge-lock"
     },
     {
@@ -599,7 +599,7 @@
       "id": "concept.session-round",
       "title": "Session round",
       "owner": "module.task-session",
-      "definition": "One headless run of a pi task session, from its prompt (the task at the start, or the main agent's answer) to its session report, a failure or a stop; a pi task session is a sequence of rounds on one pi session file.",
+      "definition": "One headless run of a pi task session, from its prompt (the task at the start, or the main agent's answer) to its session report, a failure or a stop, recorded as a [trace node](#concept.trace-node) below the session's; a pi task session is a sequence of rounds on one pi session file.",
       "explanation": "specs/concorde/coordination/task-session/module.md#concept.session-round",
       "relates": [
         {
@@ -674,7 +674,7 @@
       "id": "concept.task",
       "title": "Task",
       "owner": "module.tasks",
-      "definition": "One unit of work of the main agent, made of a branch, a worktree checked out on it and bound as the workspace named after the task, a task record and a decision log.",
+      "definition": "One unit of work of the main agent, made of a branch, a worktree checked out on it and bound as the workspace named after the task, and a folder in the primary worktree holding its task record, decision log and trace, which moves to the [history](#concept.history) when the task ends.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.task"
     },
     {
@@ -688,7 +688,7 @@
       "id": "concept.task-record",
       "title": "Task record",
       "owner": "module.tasks",
-      "definition": "The JSON file in the primary worktree that holds a task's identity, goal, Modules, branch, worktree path, base commit, stored state, escalated error chains, started task sessions and, once it ended, how it ended.",
+      "definition": "The JSON file `task.json` in a task's folder of the primary worktree that holds what the task commands need to act on it: its identity, goal, Modules, branch, worktree path, base commit, stored state, the merge in progress and, once it ended, how it ended.",
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.task-record",
       "relates": [
         {

@@ -5,11 +5,13 @@ The Module-wide obligations of [Tasks](module.md). Exact fields, commands and er
 
 ## Records
 
-### req.tasks.primary-records — Records live in the primary worktree
+### req.tasks.primary-records — Each task has one folder in the primary worktree
 
-Tasks SHALL keep every [task record](../../glossary.json#concept.task-record) and
-[decision log](../../glossary.json#concept.decision-log) under `.concorde/tasks/` of the primary
-worktree and nowhere else.
+Tasks SHALL keep every current task's [task record](../../glossary.json#concept.task-record),
+[decision log](../../glossary.json#concept.decision-log) and trace in the task's folder
+`.concorde/tasks/<task-id>/` of the primary worktree, and those of a closed task in its folder in
+the [history](../../glossary.json#concept.history), `.concorde/history/<history key>/`, and nowhere
+else.
 
 ### req.tasks.store-writes — Only the Task store writes records
 
@@ -55,10 +57,11 @@ so no second copy can disagree with it.
 Tasks SHALL NOT write the [run store](../../glossary.json#concept.run-store), a
 [workflow record](../../glossary.json#concept.workflow-record) or a
 [delivery commit](../../glossary.json#concept.delivery-commit), apart from holding a task's
-[workspace lock](../../glossary.json#concept.workspace-lock) through Execution's own lock.
+[workspace lock](../../glossary.json#concept.workspace-lock) through Execution's own lock and moving
+the task's whole folder, workspace folder included, to the history when the task is closed.
 
-The lock file lives in the run store, and its holder is named there while Tasks merges or closes
-the task, and nothing else in it is written.
+The lock file lives under `.concorde/locks/workspaces/`, and its holder is named there while Tasks
+merges or closes the task, and nothing else in it is written.
 
 ## Lifecycle
 
@@ -88,8 +91,8 @@ the workspace.
 
 The binding satisfies the
 [binding contract](../../execution/contracts.md#contract.execution.workspace-binding), names the
-primary worktree's `.concorde` as the records directory and is never rewritten by Tasks afterwards;
-closing removes it with the worktree.
+task folder's `workspace/` as its workspace folder and the primary worktree's `.concorde` for its
+locks, and is never rewritten by Tasks afterwards; closing removes it with the worktree.
 
 ### req.tasks.transitions — Only merging and closing change the stored state
 
@@ -104,7 +107,7 @@ is `merging`.
 ### req.tasks.derived-state — Active and delivered are derived
 
 Tasks SHALL derive whether a task that is not closed or failed is `open`, `active` or `delivered`
-from its workspace's runs in the run store, its branch and its worktree each time the task is
+from its workspace's runs in its workspace folder, its branch and its worktree each time the task is
 listed or shown.
 
 A `merging` task is shown as `merging`. Otherwise it is `delivered` when the branch head is a
@@ -136,9 +139,23 @@ explicit declaration that no error caused it.
 
 Tasks SHALL keep a closed or failed task in that state whatever its workspace records afterwards.
 
-Closing removes the worktree and with it the workspace binding, so no run of the task's workspace
-can start there; one task runs one thing at a time by Execution's
+Closing removes the worktree and with it the workspace binding, and moves the task's folder, whose
+workspace folder the binding named, to the history, so no run of the task's workspace can start;
+one task runs one thing at a time by Execution's
 [workspace lock](../../glossary.json#concept.workspace-lock), not by the record.
+
+### req.tasks.close-when-ended — A task moves to the history only once it has ended
+
+Tasks SHALL move a closed task's folder to the history only while it holds the task's workspace
+lock, after it stopped, for a close without a merge, every run of the workspace still running and a
+running round of the task's pi task session.
+
+A run of the task therefore never writes into a folder that has moved: none runs while the close
+holds the lock, and none starts after it, since its binding names a folder that no longer exists.
+
+### req.tasks.history-unique — No closed task replaces another
+
+Tasks SHALL move a closed task's folder to a history folder that no other task used.
 
 ### req.tasks.closed-no-session — A closed task gets no task session
 
@@ -182,7 +199,7 @@ step leave that step done, and say so:
   removed the worktree leaves the task in its state without its worktree, which the refusal says;
 - a close's `decision_log_failed` leaves the task closed or failed in its record without its
   closing in the decision log;
-- an escalation's `decision_log_failed` leaves the escalation in the record and not in the
+- an escalation's `decision_log_failed` leaves the escalation in the task's trace and not in the
   decision log; the refusal names its number, carries the rendered chain, says that escalating
   again would record it twice and asks for the chain to be appended by hand.
 

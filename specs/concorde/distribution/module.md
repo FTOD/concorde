@@ -53,20 +53,21 @@ dependencies; an installed copy has no `.venv` and runs on Concorde's own enviro
 | `task-validation`, `delivery` or `scaffold` | runs one execution command in the workspace of the current worktree; prints the run result | [Execution](../execution/module.md), with the catalog of [Commands](../execution/commands/module.md) |
 | `workflow step` or `report` | runs one [workflow step](../glossary.json#concept.workflow-step), or reports a workflow's result; prints its own JSON | [Workflows](../execution/workflows/module.md) |
 | `issues list`, `show`, `check`, `report`, `close` or `reopen` | the Issues bookkeeping command `scripts/issues.py`; prints its own JSON | [Issues](../issues/module.md) |
+| `trace show`, `list` or `prune` | shows a [trace](../glossary.json#concept.trace) with its timing and cost rolled up, lists traces, or removes what retention allows; prints its own JSON | [Tracing](../tracing/module.md) |
 | `build [--check]` | renders or checks the generated files | Distribution |
 | `protocol-manifest [--write] [--bind-project]` | reconciles the Protocol manifest | Distribution |
 | `update [--from <checkout>] [--pi]` | updates the installed Concorde, as described below; prints the installer's own JSON | Distribution |
 
 A command is named after the part of Concorde that owns it: `task` gives the coordination
 commands, `spec-validation`, `registry`, `docsite`, `grant`, `spec-mcp` and `init` the Spec tooling
-commands, `issues` the Issues commands, and `build`, `protocol-manifest` and `update` the
+commands, `issues` the Issues commands, `trace` the Tracing commands, and `build`, `protocol-manifest` and `update` the
 **distribution commands**, the only ones
 Distribution owns itself. Of Execution's, `task-validation`, `delivery` and `scaffold` are the
 [execution commands](../glossary.json#concept.execution-command), runs without a worker; `run`
 starts an Operation and `workflow` a workflow step.
 
-Every command but `spec-mcp`, `task`, `run`, the execution commands, `workflow`, `issues` and
-`update` prints exactly one JSON envelope and exits with its
+Every command but `spec-mcp`, `task`, `run`, the execution commands, `workflow`, `issues`, `trace`
+and `update` prints exactly one JSON envelope and exits with its
 status, even when refused ([requirements](requirements.md#req.distribution.one-envelope)); those
 route to their owners, which define their own output and exit codes, except `update`, which prints
 the installer's result or its
@@ -151,7 +152,10 @@ project where every check passes, it goes through these steps in order:
    records them in the receipt, removes on a later install the recorded rules it no longer ships,
    and leaves every other setting untouched
    ([requirements](requirements.md#req.distribution.installer-own-permissions)).
-8. **It records the install.** It adds ignore rules for `.concorde/runs/`, `.concorde/tasks/`,
+8. **It records the install.** It adds ignore rules for the folders [Tracing](../tracing/module.md)
+   keeps, `.concorde/tasks/`, `.concorde/history/`, `.concorde/unbound/` and `.concorde/locks/`,
+   for `.concorde/runs/`, where Dogfooding keeps [defect reports](../glossary.json#concept.defect-report) and End-to-end testing its session
+   logs,
    the [workspace binding](../glossary.json#concept.workspace-binding) `.concorde/workspace.json`
    that each task worktree gets, `.concorde/framework/`, `.concorde/tools/` and
    `.claude/worktrees/`, where task worktrees go, and writes the receipt `.concorde/install.json`.
@@ -306,15 +310,21 @@ the skill and the `CLAUDE.md` block and records the mode and the checked commit 
 `scaffold` do: the entry point hands each the rest of its command line and the Execution runner
 parses it, reads the workspace binding, runs the steps and prints the run result, with its own exit
 codes. Distribution names no Operation or command's meaning and passes no task. The installer also
-reads the [run store](../glossary.json#concept.run-store)'s
-[run progress files](../glossary.json#concept.run-progress-file) to refuse while a run of either
-kind lives, relying on each naming its kind, its runner's process and its phase.
+reads the [run locks](../glossary.json#concept.run-lock) under `.concorde/locks/runs/` to refuse
+while a run of either kind lives.
+
+<a id="uses-tracing"></a>
+
+**Tracing** owns `trace`: the entry point hands it the rest of the command line, and Tracing's
+trace command prints its own output. The installer takes from Tracing's
+[layout](../tracing/contracts.md#layout) the folders it has Git ignore and the run locks it reads,
+relying on a runner holding its run lock for as long as it runs.
 
 <a id="uses-task-session"></a>
 
 **Task session** owns the pi task session's
 [session rounds](../glossary.json#concept.session-round) and the progress file `status.json` its
-supervisor keeps for each round under `.concorde/tasks/<task>.session/`. The installer reads those
+supervisor keeps for each session under `.concorde/tasks/<task>/sessions/<session>/`. The installer reads those
 files to refuse while a round runs, relying on each naming its task, its round, its phase and its
 supervisor's process, and never starts, stops or answers a task session.
 

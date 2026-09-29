@@ -30,14 +30,14 @@ the task-session extension. Both leave reads open.
 
 ### req.task-session.shell-boundary — A task session's shell writes only what its task needs
 
-The boundary Task sessions writes for a task session SHALL let the session's shell commands write only the task worktree, the repository's Git directory, the primary worktree's `.concorde/runs/` and `.concorde/tasks/`, the user's package caches and, in pi, the session's private temporary directory.
+The boundary Task sessions writes for a task session SHALL let the session's shell commands write only the task worktree, the repository's Git directory, the task's own folder `.concorde/tasks/<task>/` and `.concorde/locks/` of the primary worktree, the user's package caches and, in pi, the session's private temporary directory.
 
 In Claude Code the shell is Bash in Claude Code's sandbox; in pi `bash` commands run in
 sandbox-runtime, whose sockets need the private temporary directory. Both leave reads and the
-network open, allowing every host. The [run store](../../glossary.json#concept.run-store)
-`.concorde/runs/` is writable because the task worktree's
-[workspace binding](../../glossary.json#concept.workspace-binding) names the primary worktree's
-`.concorde` as the records directory of every run started there.
+network open, allowing every host. The task's folder is writable because the task worktree's
+[workspace binding](../../glossary.json#concept.workspace-binding) names its `workspace/` as the
+workspace folder of every run started there, and `.concorde/locks/` because those runs take their
+locks there.
 
 ### req.task-session.boundary-first — The boundary is written before the session starts
 
@@ -47,9 +47,9 @@ Task sessions SHALL write a task session's boundary before it starts the session
 
 ### req.task-session.recorded — A started session is recorded
 
-Task sessions SHALL append a task session to the [task record](../../glossary.json#concept.task-record), through Tasks' record updates, only after Claude Code reported it started, or after the supervisor of its first pi round started.
+Task sessions SHALL record a task session as a node of the task's [trace](../../glossary.json#concept.trace), through Tasks' record updates, only after Claude Code reported it started, or after the supervisor of its first pi round started.
 
-A session that did not start leaves the record unchanged.
+A session that did not start leaves the task unchanged.
 
 ### req.task-session.round-recorded — Every pi round ends with a recorded outcome
 
@@ -73,4 +73,4 @@ Task sessions SHALL record a pi session round as `delivered` only when the task 
 
 ### req.task-session.escalated-verified — Escalated only with the recorded escalations
 
-Task sessions SHALL record a pi session round as `escalated` only when the task record holds the escalations its session report names.
+Task sessions SHALL record a pi session round as `escalated` only when the task's trace holds the escalations its session report names.

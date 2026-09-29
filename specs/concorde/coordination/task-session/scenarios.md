@@ -10,10 +10,10 @@ defined in the [contracts](contracts.md).
 
 - GIVEN an open task `severity` and a Claude Code [main agent](../../glossary.json#concept.main-agent) whose session is named `concorde-7d`
 - WHEN the main agent runs `concorde task session severity --main concorde-7d`
-- THEN `.concorde/tasks/severity.session/` holds a settings file and a [write hook](../../glossary.json#concept.write-hook)
+- THEN `.concorde/tasks/severity/runtime/` holds a settings file and a [write hook](../../glossary.json#concept.write-hook)
 - AND `claude --bg` is started in the task worktree with those settings and a first prompt naming the task, its goal and `concorde-7d`
-- AND the [task record](../../glossary.json#concept.task-record) lists the started session with its identity and name
-- BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying Claude Code's output, and the record is unchanged
+- AND the task's [trace](../../glossary.json#concept.trace) holds the started session as the node `sessions/<id>/` with its identity and name
+- BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying Claude Code's output, and the task is unchanged
 
 ### scenario.task-session.claude-no-rounds — A Claude Code session takes no round options
 
@@ -26,23 +26,23 @@ defined in the [contracts](contracts.md).
 - GIVEN an open task `severity`
 - WHEN `concorde task session severity --main concorde-7d` runs from a Claude Code session, from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and from neither
 - THEN the first starts `claude --bg` and the second a pi [session round](../../glossary.json#concept.session-round)
-- AND the third is refused with `client_unknown`, naming every variable it looked at, and the record is unchanged
+- AND the third is refused with `client_unknown`, naming every variable it looked at, and the task is unchanged
 
 ### scenario.task-session.pi-start — Start a pi task session
 
 - GIVEN a pi main session, an open task `severity`, and pi, `bwrap`, `socat` and the sandbox-runtime package installed
 - WHEN the main agent runs `concorde task session severity`
-- THEN `.concorde/tasks/severity.session/` holds `boundary.ts` with the task worktree and [decision log](../../glossary.json#concept.decision-log) embedded
+- THEN `.concorde/tasks/severity/runtime/` holds `boundary.ts` with the task worktree and [decision log](../../glossary.json#concept.decision-log) embedded
 - AND a detached supervisor runs `pi -p --mode json --approve -e <boundary.ts>` in the task worktree with the developer's pi configuration, `CONCORDE_TASK_SESSION` set and a session file under `pi/`, its prompt the pi [task-session](../../glossary.json#concept.task-session) guidance followed by the task's goal, Modules and decision log
-- AND the task record lists the session with the program `pi` and round 1 as `running`, and the round's status file `status.json` names the round
-- BUT when pi, on Linux `bwrap` or `socat`, or the sandbox-runtime package is missing, the command fails with `session_failed` naming each missing program, and the record is unchanged
+- AND the task's trace holds the session's node with the program `pi` and its round node `rounds/1/` as `running`, and the session's status file `status.json` names the round
+- BUT when pi, on Linux `bwrap` or `socat`, or the sandbox-runtime package is missing, the command fails with `session_failed` naming each missing program, and the task is unchanged
 
 ### scenario.task-session.pi-boundary — The pi boundary confines the session's writes
 
 - GIVEN the boundary written for a pi task session
 - WHEN it judges a `write` of a file in the task worktree, of the decision log and of a file of the primary worktree, and a `bash` command
 - THEN the first two are allowed and the third is blocked with a reason naming the task worktree
-- AND the command is rewritten to run in sandbox-runtime, writing only the task worktree, the Git directory, the primary worktree's `.concorde/runs/` and `.concorde/tasks/`, package caches and the session's private temporary directory, with every network host allowed
+- AND the command is rewritten to run in sandbox-runtime, writing only the task worktree, the Git directory, the task's folder and `.concorde/locks/` of the primary worktree, package caches and the session's private temporary directory, with every network host allowed
 
 ### scenario.task-session.pi-rounds — The main agent's answer starts the next round
 
@@ -61,13 +61,13 @@ defined in the [contracts](contracts.md).
 
 - GIVEN an open task `severity` for which no pi task session was started
 - WHEN the main agent runs `concorde task session severity` with `--answer "<answer>"` or with `--stop`
-- THEN it is refused with `no_session`, no round starts and the task record is unchanged
+- THEN it is refused with `no_session`, no round starts and the task is unchanged
 
-### scenario.task-session.pi-report-verified — A report the record contradicts fails the round
+### scenario.task-session.pi-report-verified — A report the task contradicts fails the round
 
-- GIVEN a pi session round whose report says `delivered` with a commit that is no delivery commit of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), or `escalated` naming an escalation the task record does not have
+- GIVEN a pi session round whose report says `delivered` with a commit that is no delivery commit of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), or `escalated` naming an escalation the task's trace does not have
 - WHEN the supervisor records the round
-- THEN the round is `failed` with a `session_report_unverified` link naming each mismatch, and the round's entry in the task record keeps the report beside that link
+- THEN the round is `failed` with a `session_report_unverified` link naming each mismatch, and the round's node keeps the report beside that link
 
 ### scenario.task-session.pi-report-shape — New reports use one fixed field set
 
@@ -78,9 +78,9 @@ defined in the [contracts](contracts.md).
 
 ### scenario.task-session.pi-report-v1 — Earlier reports stay as they were recorded
 
-- GIVEN a task record whose pi session holds rounds recorded with version 1 reports, which have only the fields of their status: no `escalations` when delivered, no `commit` when escalated
-- WHEN the task record is read or its rounds are settled
-- THEN the report is neither validated again nor rewritten, and the record stays unchanged
+- GIVEN a pi session whose round nodes hold reports recorded with version 1, which have only the fields of their status: no `escalations` when delivered, no `commit` when escalated
+- WHEN the task is shown or its rounds are settled
+- THEN the report is neither validated again nor rewritten, and the round nodes stay unchanged
 
 ### scenario.task-session.pi-failed — A round without a report fails with its evidence
 
@@ -115,5 +115,13 @@ defined in the [contracts](contracts.md).
 - GIVEN the settings written for a task session
 - WHEN its write hook judges an Edit of a file in the task worktree, of the decision log and of a file of the primary worktree
 - THEN the first two are allowed and the third is denied with a reason naming the task worktree
-- AND the sandbox lets Bash write only the task worktree, the Git directory, the primary worktree's `.concorde/runs/` and `.concorde/tasks/` and package caches
+- AND the sandbox lets Bash write only the task worktree, the Git directory, the task's folder and `.concorde/locks/` of the primary worktree and package caches
 - AND the sandbox allows every network host
+
+### scenario.task-session.round-node — A pi round leaves its node
+
+- GIVEN a pi task session whose round 1 delivered after pi reported its tokens and cost
+- WHEN the supervisor records the round
+- THEN `sessions/<session>/rounds/1/` of the task's folder holds `trace.json` ended `ok` with the outcome `delivered`, the report, and the tokens, cost and turns pi reported as its usage, beside `prompt.md`, `events.jsonl`, `stderr.log` and `supervisor.log`
+- AND the session's node lists the round among its children, and `concorde trace show <task>` rolls its cost up into the task's
+

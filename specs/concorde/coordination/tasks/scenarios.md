@@ -11,9 +11,10 @@ records and error codes are defined in the [contracts](contracts.md).
 - WHEN the [main agent](../../glossary.json#concept.main-agent) runs `concorde task open severity --goal "let reports carry a severity" --modules module.issues`
 - THEN branch `concorde/severity` exists at the primary worktree's head commit
 - AND a worktree checked out on that branch exists at `.claude/worktrees/severity` of the primary worktree
-- AND the worktree's `.concorde/workspace.json` binds it as the workspace `severity`, with its real path as root, the branch, the base commit, the goal, `module.issues` and the primary worktree's `.concorde` as records directory, untracked by Git
-- AND `.concorde/tasks/severity.json` holds the record in state `open` with that base commit and no runs, deliveries or workflow
-- AND `.concorde/tasks/severity.decisions.md` holds the heading and the goal
+- AND the worktree's `.concorde/workspace.json` binds it as the workspace `severity`, with its real path as root, the branch, the base commit, the goal, `module.issues`, the workspace folder `.concorde/tasks/severity/workspace/` and the primary worktree's `.concorde`, untracked by Git
+- AND `.concorde/tasks/severity/task.json` holds the record in state `open` with that base commit and no runs, deliveries or workflow
+- AND `.concorde/tasks/severity/trace.json` is the task's [trace node](../../glossary.json#concept.trace-node), `running`, whose transitions begin with `open`
+- AND `.concorde/tasks/severity/decisions.md` holds the heading and the goal
 - AND the command prints the record and the [decision log](../../glossary.json#concept.decision-log)'s absolute path
 
 ### scenario.tasks.open-carries-worker-configuration — A new task carries the worker configuration of its base commit
@@ -57,7 +58,7 @@ records and error codes are defined in the [contracts](contracts.md).
 - GIVEN an open task `quiet` whose workspace has no run and an open task `severity` whose workspace ran `concorde task-validation`
 - WHEN the main agent runs `concorde task list --state active` and `concorde task show severity`
 - THEN the list holds exactly the record of `severity`, whose derived state is `active`, while its stored state stays `open`
-- AND show prints the record of `severity` with its derived state, the workspace's runs from the [run store](../../glossary.json#concept.run-store) with their kind, name, Modules and status, its [delivery commits](../../glossary.json#concept.delivery-commit), who holds its [workspace lock](../../glossary.json#concept.workspace-lock) (null when nobody does) and the absolute path of its decision log
+- AND show prints the record of `severity` with its derived state, the workspace's runs from its workspace folder with their kind, name, Modules and status, its [delivery commits](../../glossary.json#concept.delivery-commit), its sessions and escalations, who holds its [workspace lock](../../glossary.json#concept.workspace-lock) (null when nobody does) and the absolute paths of its decision log and folder
 - AND show of `quiet` prints no runs, no deliveries and no holder
 
 ## State and runs
@@ -65,7 +66,7 @@ records and error codes are defined in the [contracts](contracts.md).
 ### scenario.tasks.first-run — A run of the task's workspace activates the task
 
 - GIVEN an open task `severity` with no change and no run
-- WHEN a run of another workspace and an [unbound run](../../glossary.json#concept.unbound-run) are recorded in the run store
+- WHEN a run of another workspace and an [unbound run](../../glossary.json#concept.unbound-run) are recorded
 - THEN `severity` is still `open`
 - BUT once a run of the workspace `severity` is recorded, running or finished, `concorde task show severity` derives `active` and lists the run
 - AND the stored state stays `open`
@@ -147,7 +148,8 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent runs `concorde task close <task-id> --merged`
 - THEN the worktree is removed
 - AND the record's state is `closed` with outcome `merged` and the primary branch's head recorded
-- AND the branch, the record and the decision log remain
+- AND the task's whole folder, with the record, the decision log and the trace node ended `ok` with outcome `merged`, is now `.concorde/history/<task-id>/`, and `.concorde/tasks/<task-id>/` no longer exists
+- AND the branch remains, and the task's workspace and task locks are gone
 
 ### scenario.tasks.close-submodules — Close a task whose worktree has submodules
 
@@ -177,6 +179,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - THEN the worktree is removed
 - AND the state is `closed` with outcome `completed` and the note
 - AND the branch is kept, and the decision log records the outcome and the note
+- AND the task's folder is in the history
 
 ### scenario.tasks.close-completed-no-note — Refuse to close as completed without a note
 
@@ -250,7 +253,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - AND a clean primary worktree on its branch
 - WHEN the main agent runs `concorde task merge <task-id>` in the primary worktree
 - THEN the task branch is merged into the primary branch
-- AND `concorde spec-validation` ran in the primary worktree after the merge and passed, its output in `.concorde/tasks/<task-id>.merge.log`
+- AND `concorde spec-validation` ran in the primary worktree after the merge and passed, recorded as the merge attempt's node `merges/1/` of the task with the check's node and its `output.log` below it
 - AND the task is closed as merged with its worktree removed
 - AND the output names the commits before and after the merge, each check with its exit status, and how long the command waited for the lock
 
@@ -400,21 +403,21 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - GIVEN a task whose workspace has an Operation run that ended with an error the main agent cannot decide
 - WHEN the main agent runs `concorde task escalate` naming that run with its own code, detail, reason and options
 - THEN the printed chain's top link has the level `main-agent` and the run's error, unchanged, as its cause
-- AND the chain is appended to the task record's escalations and to the decision log, rendered and as JSON
+- AND the chain is appended to the escalations of the task's trace node, as number 1, and to the decision log, rendered and as JSON
 
 ### scenario.tasks.escalate-refused — Refuse to escalate a run that is not the task's or has no error
 
 - GIVEN a task
 - WHEN the main agent runs `concorde task escalate` naming a run of another workspace, an unbound run or a run of the task's workspace that ended without an error
 - THEN the command fails with `unknown_run` for a run that is not of the task's workspace and with `nothing_to_escalate` for a run without an error
-- AND nothing is recorded in the task record or the decision log
+- AND nothing is recorded in the task's trace or the decision log
 
 ### scenario.tasks.escalate-decision — A decision without an error is escalated as a link alone
 
 - GIVEN a task whose no-ask workflow ended `ok` after a worker took a decision of major impact
 - WHEN the task session runs `concorde task escalate --by task-session` naming no run, no file and no earlier escalation, with its code, detail, reason `decision`, options and recommendation
 - THEN the recorded chain is the task session's link alone, with no causes
-- AND it is appended to the task record's escalations and to the decision log like any escalation
+- AND it is appended to the task's escalations and to the decision log like any escalation
 
 ### scenario.tasks.session-escalates — A task session escalates to the main agent
 
@@ -430,4 +433,25 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - WHEN the main agent escalates
 - THEN the command fails with `decision_log_failed`, naming the escalation's number and carrying the rendered chain
 - AND the record holds the escalation once, and the refusal says that escalating again would record it twice
+
+## History
+
+### scenario.tasks.close-stops-runs — A failed task is closed only once its runs stopped
+
+- GIVEN a task whose workspace has a run still running in the background and whose pi task session has a running round
+- WHEN the main agent closes it with `--failed`, a reason and `--no-error`
+- THEN the run is stopped with `SIGTERM` and ends with its own result, the round is recorded `stopped`
+- AND only then, holding the task's workspace lock, the close moves the task's folder to the history, with the stopped run and round in its trace
+
+### scenario.tasks.closed-run-refused — A run of a closed task is refused
+
+- GIVEN a closed task whose worktree was left in place by hand with its binding
+- WHEN a run is started in that worktree
+- THEN it is refused with `binding_invalid`, since the workspace folder its binding names no longer exists, and nothing is written into the history
+
+### scenario.tasks.history-key — A reused name gets its own history folder
+
+- GIVEN a closed task `retry` in the history whose branch was deleted
+- WHEN a new task `retry` is opened and closed
+- THEN its folder moves to `.concorde/history/retry.2/`, and the first task's folder is unchanged
 

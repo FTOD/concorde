@@ -115,13 +115,16 @@ coordination.main -> execution.store: follows runs in pi
 The upper half talks to the lower half only through the binding, Execution's commands and what
 Execution recorded. Tasks writes the
 [workspace binding](../glossary.json#concept.workspace-binding) of each task worktree when it opens
-the task, naming the workspace after the task. The task session that works the task runs
-Execution's commands inside that worktree, never naming the task. Tasks reads back the task's runs in the
+the task, naming the workspace after the task and placing its workspace folder inside the task's
+own folder, so the task's [trace](../glossary.json#concept.trace) holds every run of it. The task
+session that works the task runs Execution's commands inside that worktree, never naming the task.
+Tasks reads back the task's runs in that part of the
 [run store](../glossary.json#concept.run-store) and its
 [delivery commits](../glossary.json#concept.delivery-commit) on the task branch, and derives whether
 a task is active or delivered from them together with its branch head and whether its worktree is
 clean. The Main session's pi [run view](../glossary.json#concept.run-view) follows every run through
-its [run progress file](../glossary.json#concept.run-progress-file) in the run store and the
+its [run progress file](../glossary.json#concept.run-progress-file) in the run store, its [run lock](../glossary.json#concept.run-lock)
+and the
 [progress file](../glossary.json#concept.progress-file) of the worker it launched. No record is
 written by both halves, so neither can leave the other with a state that disagrees with what
 happened.
@@ -134,7 +137,7 @@ review that changes nothing; such a run has no workspace and belongs to no task.
 
 **Execution** gets the bounded work done in a bound workspace and records it. Coordination relies
 on it working only on the workspace the binding names, never writing the binding, recording every
-run of a bound workspace under the binding's records directory by the workspace's name, and
+run of a bound workspace as a [trace node](../glossary.json#concept.trace-node) in the workspace folder the binding names, and
 committing a delivery only as a delivery commit on the bound branch. It relies on nothing inside
 Execution beyond those records and the commands' results. A run whose runner ended without a result
 is taken as lost rather than trusted as running, and a run of another workspace named to Tasks is
@@ -163,8 +166,8 @@ coordination.task -> harness
 The **Harness** generates the [agent harness](../glossary.json#concept.agent-harness) of a task
 session from its task: the [session boundary](../glossary.json#concept.session-boundary), which
 confines what the session's own file tools and shell write to its task worktree, its decision log,
-what its commits, runs and escalations write (the Git directory, the run store and the task
-records), the user's package caches and, in pi, a private temporary directory. Tools that other
+what its commits, runs and escalations write (the Git directory, the task's own folder and the
+locks), the user's package caches and, in pi, a private temporary directory. Tools that other
 extensions or MCP servers add are outside it, and it guards against mistakes, not a malicious
 session; the [Harness](../harness/module.md) states its exact paths and limits. The main session's
 harness is its installed guidance alone, since Concorde places no permission limits on the main
