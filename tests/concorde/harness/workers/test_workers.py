@@ -693,6 +693,14 @@ class WorkerRunTests(unittest.TestCase):
             "usage": {"input_tokens": 120, "output_tokens": 30},
             "total_cost_usd": 0.25,
             "num_turns": 4,
+            "permission_denials": [
+                {
+                    "tool_name": "Write",
+                    "tool_use_id": "toolu_01",
+                    "tool_input": {"file_path": "/elsewhere/x"},
+                }
+            ],
+            "modelUsage": {"m": {"inputTokens": 120, "costUSD": 0.25}},
         }
         seen = []
 
@@ -756,6 +764,20 @@ class WorkerRunTests(unittest.TestCase):
             )
             [check] = round_node["content"]["data"]["checks"]
             self.assertEqual(status, check["status"])
+            # The envelope's other fields are kept as Claude Code gave them, null when absent.
+            claude = round_node["content"]["data"]["agent"]["claude"]
+            self.assertEqual(
+                (
+                    envelope["permission_denials"],
+                    envelope["modelUsage"],
+                    None,
+                ),
+                (
+                    claude["permission_denials"],
+                    claude["modelUsage"],
+                    claude["duration_api_ms"],
+                ),
+            )
             check_node = json.loads(
                 (folder / check["log"]).parent.joinpath("trace.json").read_text()
             )

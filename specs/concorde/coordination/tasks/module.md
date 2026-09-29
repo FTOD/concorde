@@ -296,7 +296,8 @@ running and none can start, while it moves the folder, and a close with `--compl
 first stops the task's task sessions and the runs of the workspace that still run, then waits for
 the lock. Just before the folder moves,
 [Task sessions](../task-session/module.md#ending-claude-sessions) copies each Claude Code task
-session's transcript into the session's node, and once the task is closed it removes those sessions
+session's transcript into the session's node and finishes the node with the session's status, end
+and usage from Claude Code's records, and once the task is closed it removes those sessions
 from Claude's session list; what it could not keep or remove is named in the close's `warnings`,
 and never fails the close. The history is never changed afterwards;
 [Tracing](../../tracing/module.md)'s retention removes its conversation records after a while and
@@ -654,9 +655,9 @@ naming the mismatch, since Delivery did not create it.
 `concorde task session` hands it a task that passed Tasks' checks. Tasks relies on it recording
 sessions only through the record updates, and prints its refusals in the shape of every
 `concorde task` refusal. A close relies on it to stop the task's task sessions before a close
-without a merge, to keep their transcripts in their nodes before the folder moves and to remove
-them from Claude's session list afterwards, returning a warning, never a refusal, for what it could
-not keep or remove.
+without a merge, to keep their transcripts in their nodes and finish those nodes before the folder
+moves and to remove them from Claude's session list afterwards, returning a warning, never a
+refusal, for what it could not keep or remove.
 
 <a id="uses-tracing"></a>
 

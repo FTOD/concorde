@@ -91,11 +91,11 @@ register(
         },
     },
 )
-# contract.workers.worker-round-trace, version 1
+# contract.workers.worker-round-trace, version 2
 WORKER_ROUND_TRACE = "concorde-worker-round-trace"
 register(
     WORKER_ROUND_TRACE,
-    1,
+    2,
     {
         "type": "object",
         "additionalProperties": False,

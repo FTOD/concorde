@@ -343,5 +343,6 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the run ends
 - THEN the run's node holds `workers/<run-id>/` with `trace.json`, `status.json`, `grant.json`, `brief.md`, `transcript.jsonl` and `rounds/1/` and `rounds/2/`, each round with its own `trace.json`, `stderr.log` and check nodes
 - AND each round's usage holds the tokens, cost and turns the agent program reported for it
+- AND on the Claude Code backend each round's content keeps the result envelope's `permission_denials`, `modelUsage` and `duration_api_ms` as Claude Code gave them, null for one it did not give
 - AND the runtime directory, with the credential copy, no longer exists
 - AND the worker run's `trace.json` was already there, `running`, while the worker ran

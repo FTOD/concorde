@@ -35,9 +35,17 @@ Commands, the session's [trace node](../../glossary.json#concept.trace-node) and
 
 - GIVEN a delivered task `severity` whose trace lists two Claude Code task sessions, whose transcripts Claude Code keeps under `projects/` of its configuration folder, one in the project folder of the task worktree and one in another
 - WHEN the main agent merges the task with `concorde task merge severity`
-- THEN each session's node `sessions/<id>/` in the task's history folder holds its transcript as `transcript.jsonl`, listed with its digest among the node's artifacts, and the folder Claude Code keeps beside it as `transcript/`
+- THEN each session's node `sessions/<id>/` in the task's history folder holds its transcript, found by the session's full session id, as `transcript.jsonl`, listed with its digest among the node's artifacts, and the folder Claude Code keeps beside it as `transcript/`
 - AND after the task closed, `claude rm <id>` ran for each session, and the merge's `warnings` name none of them
 - AND no session was stopped, since a merge stops nothing
+
+### scenario.task-session.node-finished — A task session's node receives its figures when the task ends
+
+- GIVEN a task `severity` with a task session whose entry in `claude agents --json --all` has the state `done` and its full session id, and whose transcript records two API messages, one of them over two records, a subagent transcript with a third message, and a last `cost-state` record of 0.42 USD
+- WHEN the task is merged
+- THEN the session's node in the history holds the full session id, the status `ok` with the outcome `done`, and as usage the tokens of the three messages, each counted once, 3 turns, the duration from the transcript's earliest record time to its latest and a cost of 0.42 USD
+- AND its end is the transcript's latest record time, and its content gives each model's tokens and the `cost-state` record's `modelUsage`
+- BUT for a session whose transcript has no `cost-state` record, the cost is null, and for one Claude Code no longer lists, whose transcript is found by the session id recorded at its start, the status stays `unknown`
 
 ### scenario.task-session.close-stops — A close without a merge stops a Claude Code task session first
 

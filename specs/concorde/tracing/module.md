@@ -159,6 +159,14 @@ Every `trace.json` holds the same fields, defined by the
 - and the producer's own **content**, a [typed value](../glossary.json#concept.typed-value) whose
   type the producer registers, such as a run's steps with their timings or a worker round's audit.
 
+The figures of a node's usage come from what the agent program itself reported or recorded, never
+from a computation of Concorde's own: a worker round's from the result its agent process returned,
+a task session's from Claude Code's records of the session, read when its task ends. Concorde keeps
+no price table, so a cost the program did not report stays null. A task session's node is the one
+whose end Concorde does not see happen: Task sessions finishes it when the task ends, from the
+session's transcript and Claude Code's own account of the session, writing the figures into the
+node, since retention later removes the transcript they came from.
+
 A producer writes its node when the node starts and rewrites it when it ends, so a node that is
 still running, or whose process died, is already there. A node never refers to a file or another node by an absolute
 path: it names its files relative to its own folder and other nodes by their identity, since a
