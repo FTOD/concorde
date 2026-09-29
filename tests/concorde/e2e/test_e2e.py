@@ -107,11 +107,11 @@ class E2ETests(unittest.TestCase):
         self.assertNotIn("runtime", e2e.worker_configuration())
         self.assertEqual(
             {
-                "schema_version": 1,
-                "enabled_models": {"local/fast": {}},
-                "default": {"model": "local/fast"},
+                "schema_version": 2,
+                "enabled_models": {"fast": {}},
+                "default": {"model": "fast"},
             },
-            e2e.worker_configuration("local/fast"),
+            e2e.worker_configuration("fast"),
         )
         root = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(root)], check=False))
@@ -139,10 +139,27 @@ class E2ETests(unittest.TestCase):
                 "adopt",
                 allow_any=True,
                 name="demo",
-                worker_model="local/fast",
+                worker_model="fast",
             )
-        self.assertEqual(e2e.worker_configuration("local/fast"), committed["workers"])
-        self.assertEqual(["local/fast"], prepared["worker_models"])
+        self.assertEqual(e2e.worker_configuration("fast"), committed["workers"])
+        self.assertEqual(["fast"], prepared["worker_models"])
+        # A model this machine's model map cannot resolve is refused before anything is set up.
+        with (
+            patch.object(e2e, "clone") as cloned,
+            self.assertRaises(e2e.E2EError) as raised,
+        ):
+            e2e.prepare(
+                "someone/demo",
+                "v1",
+                root,
+                "adopt",
+                allow_any=True,
+                name="other",
+                worker_model="unmapped",
+            )
+        self.assertEqual("model_unmapped", raised.exception.code)
+        self.assertIn("`models.unmapped.pi`", raised.exception.detail)
+        cloned.assert_not_called()
 
     @verifies("scenario.e2e.trust")
     def test_trust_marks_each_repository_root_and_keeps_the_rest(self):

@@ -10,6 +10,9 @@ step agents running the commands they are given without a model.
 
     python3 scripts/e2e/e2e.py repos
     python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0 [--worker-model <model>]
+
+A test project's worker configuration names project model names, resolved on this machine through
+the developer's own model map, which prepare checks first; ``--worker-model`` takes such a name.
     python3 scripts/e2e/e2e.py trust /tmp/concorde-e2e/requests
     python3 scripts/e2e/e2e.py run /tmp/concorde-e2e/requests --via claude
     python3 scripts/e2e/e2e.py watch /tmp/concorde-e2e/requests
@@ -67,6 +70,10 @@ from common import (  # noqa: E402
     run,
 )
 
+sys.path.insert(0, str(CHECKOUT / "src"))
+
+from concorde.harness import models  # noqa: E402
+
 SWE_BENCH = CHECKOUT / "references/swe-bench"
 REPO_LIST = SWE_BENCH / "swebench/harness/log_parsers/python.py"
 HARNESS = CHECKOUT / "tests/concorde/workflows/run_script.mjs"
@@ -99,11 +106,11 @@ def repositories(listing: Path = REPO_LIST) -> list[str]:
 
 def worker_configuration(model: str | None = None) -> dict:
     """The worker configuration a test project gets, as its developer would write it: every
-    worker on ``model`` when given, otherwise the models this checkout's own configuration enables
-    and chooses."""
+    worker on the project model name ``model`` when given, otherwise the models this checkout's
+    own configuration enables and chooses."""
     if model:
         return {
-            "schema_version": 1,
+            "schema_version": models.SCHEMA_VERSION,
             "enabled_models": {model: {}},
             "default": {"model": model},
         }
@@ -118,6 +125,19 @@ def worker_configuration(model: str | None = None) -> dict:
             "model",
         ) from error
     return {field: own[field] for field in WORKER_FIELDS if field in own}
+
+
+def require_mapped(workers: dict) -> None:
+    """Refuse, before anything is set up, a worker configuration whose workers this machine's
+    model map cannot resolve: the test project's workers read the same user-level map."""
+    try:
+        models.check_mapped(workers)
+    except models.ModelConfigError as error:
+        raise E2EError(
+            error.code,
+            f"the test project's worker configuration cannot run here: {error}",
+            model_map=str(models.model_map_path()),
+        ) from error
 
 
 def prepare(
@@ -141,6 +161,7 @@ def prepare(
             f"{repo} is not among SWE-bench's repositories; pass --any to use it anyway",
             known=", ".join(repositories()),
         )
+    require_mapped(workers)
     project = root / (name or repo.split("/")[-1])
     if project.exists():
         raise E2EError(
@@ -443,12 +464,9 @@ def dogfood_command(arguments) -> dict:
     if arguments.action == "list":
         return {"scenarios": dogfood.listing()}
     if arguments.action == "prepare":
-        return dogfood.prepare(
-            arguments.scenario,
-            e2e_root(),
-            worker_configuration(arguments.worker_model),
-            arguments.name,
-        )
+        workers = worker_configuration(arguments.worker_model)
+        require_mapped(workers)
+        return dogfood.prepare(arguments.scenario, e2e_root(), workers, arguments.name)
     if arguments.action == "run":
         return dogfood.run_scenario(arguments.directory.resolve(), arguments.rounds)
     return dogfood.evaluate(arguments.directory.resolve())
@@ -469,8 +487,8 @@ def main(argv) -> int:
     )
     prepare_.add_argument(
         "--worker-model",
-        help="run every worker of the project on this model; this checkout's worker "
-        "configuration by default",
+        help="run every worker of the project on this project model name, which the model map "
+        "must resolve; this checkout's worker configuration by default",
     )
     trust_ = sub.add_parser("trust")
     trust_.add_argument("projects", nargs="+", type=Path)
@@ -514,8 +532,8 @@ def main(argv) -> int:
     dogfood_prepare.add_argument("--name")
     dogfood_prepare.add_argument(
         "--worker-model",
-        help="run every worker of the project on this model; this checkout's worker "
-        "configuration by default",
+        help="run every worker of the project on this project model name, which the model map "
+        "must resolve; this checkout's worker configuration by default",
     )
     dogfood_run = dogfood_actions.add_parser("run")
     dogfood_run.add_argument("directory", type=Path)

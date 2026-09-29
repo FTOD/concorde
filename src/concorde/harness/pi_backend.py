@@ -412,8 +412,8 @@ class PiBackend:
             "--session-id",
             session or paths.run_id,
         ]
-        if request.model:
-            command += ["--model", request.model]
+        if request.local_model:
+            command += ["--model", request.local_model]
         if request.reasoning:
             command += ["--thinking", request.reasoning]
         return command

@@ -182,11 +182,26 @@ mechanics](pi.md).
 The **[worker configuration](../../glossary.json#concept.worker-configuration)** of a worktree is
 its `.concorde/workers.json`, tracked by Git like the project's code, and it is the only source of a
 worker's model and reasoning level: Workers never reads them, or which models may be used, from the
-developer's own pi or Claude Code settings, so every developer's workers of a commit run alike. Only
-how to reach a model, the credentials and pi's provider definitions, comes from the developer's
-installation ([the pi run mechanics](pi.md#run-directory)), since it names no model and credentials
-never go into Git. Every worker needs the file: a worktree without one runs no worker. Its models are
-keyed by **[worker id](../../glossary.json#concept.worker-id)**: every Operation declares the ids of
+developer's own pi or Claude Code settings, so every developer's workers of a commit run alike. It
+names every model by a **project model name**, such as `gpt-6-astra` or `claude-opus-5-5`, that
+depends on no installation, since the ids a program takes, such as pi's `local-openai/gpt-6-astra`,
+are defined by one machine's own pi or Claude Code configuration. Every worker needs the file: a
+worktree without one runs no worker.
+
+<a id="concept.model-map"></a>
+
+The **[model map](../../glossary.json#concept.model-map)** is how one machine reaches those models:
+a JSON file of the user, outside every repository and never committed, that gives each project
+model name its local model id on pi, on Claude Code or on both. One file serves the primary
+worktree, every task worktree, every unbound checkout and every [test
+project](../../glossary.json#concept.test-project) of that user, as pi's
+and Claude Code's own configuration does. It says how to reach a model, never which model a worker
+uses, like the credentials and pi's provider definitions, which also come from the developer's
+installation ([the pi run mechanics](pi.md#run-directory)) and never go into Git. A worker whose
+model has no id for its program in the map runs no more than one without a model: Workers never
+takes the project model name for the local id.
+
+The configuration's models are keyed by **[worker id](../../glossary.json#concept.worker-id)**: every Operation declares the ids of
 the workers it may launch in the [Operation catalog](../../glossary.json#concept.operation-catalog),
 such as `spec_panel`'s `reviewer1` to `reviewer5` and `chair`, `spec_review`'s `reviewer` and
 `checker`, or `worker` for an Operation with one worker, and the same id names the worker in its run
@@ -306,39 +321,39 @@ record -> result: keeps
 
 ### Choosing worker models
 
-The worker configuration holds the required `enabled_models`, the models any worker may run on, each keyed by its
-exact model id as its program takes it and optionally carrying the model's own `reasoning` level.
-It holds a `default`, and under `operations` an Operation's `default` and its `workers`, one entry
-per worker id; each entry may set a `backend`, `pi` or `claude`, a `model` and a `reasoning` level,
-and every model an entry names must be one of `enabled_models`. For each field the most specific
-entry that sets it wins — the worker's, then the Operation's default, then the default — with one
-exception: an entry that chooses a backend starts that program afresh, so the model and level come
-only from that entry or a more specific one, since a model named for one program means nothing to
-the other. The level is the one set by the entry that chose the model or by a more specific entry;
-otherwise the model's own level in `enabled_models`; otherwise one a less specific entry sets;
-otherwise none, which leaves the program's built-in default level. A worker whose entries set no
-model is refused: it never runs on its program's default model. A backend no entry sets is pi. An
-Operation's step asks for the choice of one worker of its Operation by its id, in the worktree the
-run works on, and passes the model with `--model` and the level with `--effort` to Claude Code or
-`--thinking` to pi. The same file holds the `limits` of every worker launch and the `runtime`
-paths, which [the worker limits](../operations/workers.md#worker-limits) describe:
+The worker configuration holds the required `enabled_models`, the models any worker may run on,
+each keyed by its project model name and optionally carrying the model's own `reasoning` level. A
+project model name is letters, digits, `.`, `_` and `-`, starting with a letter or digit, so no
+program's own id, such as pi's `provider/model`, can stand in for one. The configuration holds a
+`default`, and under `operations` an Operation's `default` and its `workers`, one entry per worker
+id; each entry may set a `backend`, `pi` or `claude`, a `model` and a `reasoning` level, and every
+model an entry names must be one of `enabled_models`. For each field the most specific entry that
+sets it wins — the worker's, then the Operation's default, then the default — the backend like any
+other field: an entry that only chooses Claude Code for a worker keeps the model and level it
+inherits, since a project model name means the same model on either program. The level is the one
+set by the entry that chose the model or by a more specific entry; otherwise the model's own level
+in `enabled_models`; otherwise one a less specific entry sets; otherwise none, which leaves the
+program's built-in default level. A worker whose entries set no model is refused: it never runs on
+its program's default model. A backend no entry sets is pi. The same file holds the `limits` of
+every worker launch and the `runtime` paths, which [the worker
+limits](../operations/workers.md#worker-limits) describe:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "enabled_models": {
-    "anthropic/claude-sonnet-5": {"reasoning": "medium"},
-    "anthropic/claude-opus-5-5": {"reasoning": "high"},
-    "local-openai/gpt-6": {},
+    "claude-sonnet-5": {"reasoning": "medium"},
+    "claude-opus-5-5": {"reasoning": "high"},
+    "gpt-6-astra": {},
     "opus": {}
   },
-  "default": {"model": "anthropic/claude-sonnet-5"},
+  "default": {"model": "claude-sonnet-5"},
   "operations": {
     "spec_panel": {
       "workers": {
-        "reviewer1": {"model": "anthropic/claude-opus-5-5"},
-        "reviewer2": {"model": "local-openai/gpt-6", "reasoning": "high"},
-        "reviewer3": {"model": "local-openai/gpt-6"},
+        "reviewer1": {"model": "claude-opus-5-5"},
+        "reviewer2": {"model": "gpt-6-astra", "reasoning": "high"},
+        "reviewer3": {"model": "gpt-6-astra"},
         "chair": {"backend": "claude", "model": "opus"}
       }
     }
@@ -348,25 +363,64 @@ paths, which [the worker limits](../operations/workers.md#worker-limits) describ
 }
 ```
 
-Here every worker runs on pi, on `anthropic/claude-sonnet-5` at that model's own `medium`, except
-`spec_panel`'s: `reviewer1` on `anthropic/claude-opus-5-5` at that model's own `high`, `reviewer2`
-on `local-openai/gpt-6` at `high` from its entry, `reviewer3` on `local-openai/gpt-6` at pi's
-built-in default level, since neither its entries nor that model set one, and the `chair` on Claude
-Code with its `opus` alias at Claude Code's own default level. The JSON file is the source of
-truth, and a human or an AI edits it directly; there is no editor. The validator checks the whole
-file whenever a worker launches: structure, duplicate keys, Operation and worker names against the
-catalog, that `enabled_models` is present and not empty, that every model an entry names is
-enabled, the limits and the effective backend's reasoning vocabulary, including a model's own
-level wherever it applies. That vocabulary is fixed: `low`, `medium`, `high`, `xhigh` and `max` on
-Claude Code, and `off`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max` on pi; an omitted
-level is always valid. It accepts custom model names without discovery, installed backends or
-credentials. A worktree without the file is refused with `config_missing`, a model an entry names
-outside `enabled_models` with `model_not_enabled`, naming the entry, and a worker whose entries set
-no model with `model_unresolved`, naming the worker and the entries its model may come from; each
-says how to repair the file. Any other malformed file is refused with `config_invalid`, naming the
-file and problem; earlier schema versions are not migrated or ignored, and a worktree that still
-has the untracked `.concorde/worker-models.json` of earlier versions but no `.concorde/workers.json`
-is refused with `config_invalid` saying how to move it, rather than silently run on defaults.
+Here every worker runs on pi, on `claude-sonnet-5` at that model's own `medium`, except
+`spec_panel`'s: `reviewer1` on `claude-opus-5-5` at that model's own `high`, `reviewer2` on
+`gpt-6-astra` at `high` from its entry, `reviewer3` on `gpt-6-astra` at pi's built-in default level,
+since neither its entries nor that model set one, and the `chair` on Claude Code with the model the
+project calls `opus` at Claude Code's own default level. The model map of the machine the workers
+run on then gives each of those models its local id for the program that runs it:
+
+```json
+{
+  "schema_version": 1,
+  "models": {
+    "claude-sonnet-5": {"pi": "anthropic/claude-sonnet-5", "claude": "claude-sonnet-5"},
+    "claude-opus-5-5": {"pi": "anthropic/claude-opus-5-5", "claude": "claude-opus-5-5"},
+    "gpt-6-astra": {"pi": "local-openai/gpt-6-astra"},
+    "opus": {"claude": "opus"}
+  }
+}
+```
+
+The map is the file `CONCORDE_MODEL_MAP` names by its absolute path, else `concorde/models.json` of
+the user's XDG configuration directory: `$XDG_CONFIG_HOME` when it is an absolute path, otherwise
+`~/.config`. The variable lets a test or a test harness give its workers a map of its own. The map
+may name models no project enables, and a model may have an id on one program only, as `gpt-6-astra`
+and `opus` have here: a worker that runs it on the other program is refused.
+
+An Operation's step asks for the choice of one worker of its Operation by its id, in the worktree the
+run works on. Workers resolves the backend, the project model name and the level from the worker
+configuration, checks that the backend is installed, then reads the model map and takes the model's
+id for that backend, and passes the id with `--model` and the level with `--effort` to Claude Code
+or `--thinking` to pi. The run record and the Operation's evidence name the project model name, the
+local id and the map it came from.
+
+The JSON files are the source of truth, and a human or an AI edits them directly; there is no
+editor. The validator checks the whole worker configuration whenever a worker launches: structure,
+duplicate keys, Operation and worker names against the catalog, that `enabled_models` is present and
+not empty and names project model names, that every model an entry names is enabled, the limits and
+the effective backend's reasoning vocabulary, including a model's own level wherever it applies.
+That vocabulary is fixed: `low`, `medium`, `high`, `xhigh` and `max` on Claude Code, and `off`,
+`minimal`, `low`, `medium`, `high`, `xhigh` and `max` on pi; an omitted level is always valid. It
+accepts custom model names without discovery, installed backends or credentials. A worktree without
+the file is refused with `config_missing`, a model an entry names outside `enabled_models` with
+`model_not_enabled`, naming the entry, and a worker whose entries set no model with
+`model_unresolved`, naming the worker and the entries its model may come from; each says how to
+repair the file. Any other malformed file is refused with `config_invalid`, naming the file and
+problem; earlier schema versions are not migrated or ignored: a file of schema version 1, whose
+models were one program's local ids, is refused saying how to rename them and map them, and a
+worktree that still has the untracked `.concorde/worker-models.json` of earlier versions but no
+`.concorde/workers.json` is refused with `config_invalid` saying how to move it, rather than
+silently run on defaults.
+
+The map is read whole when a worker launches, and never written. A missing map is refused with
+`model_map_missing`, showing what it holds; one that is not valid JSON, has duplicate keys, unknown
+fields, a model without an id or a name that is not a project model name, or that
+`CONCORDE_MODEL_MAP` names by a relative path, with `model_map_invalid`; and a worker whose project
+model name has no id for its backend there with `model_unmapped`, naming the worker, its backend and
+model and where each came from, the map and the exact entry to add. Each refusal comes before the
+worker launches, and none falls back: the project model name is never taken as the local id, and
+nothing else of the user's environment chooses a model.
 
 Because the file is tracked, a [task](../../glossary.json#concept.task) carries the configuration of
 its base commit: a later change on the primary branch never reaches a task already open, a change
@@ -380,8 +434,11 @@ Discovery is separate and advisory. `python3 scripts/available_models.py --backe
 user settings and environment because it cannot list account entitlements. Discovery makes no
 inference API calls and does not verify access. An empty listing, a missing program or failed
 discovery does not prevent custom/offline edits. The candidate output names the source and
-reasoning levels, with pi's non-reasoning models listing only `off`; these are suggestions for
-`enabled_models`, which alone admits a model.
+reasoning levels, with pi's non-reasoning models listing only `off`, and the project model names the
+model map already gives each candidate as their id on that program; pi's complete listing also
+names the map's pi ids it does not list, such as one a changed pi configuration renamed. A missing
+or unreadable map is reported in the output, never refused. These are suggestions for the model map
+and for `enabled_models`, which alone admits a model.
 
 ### Failures and repeat runs
 
@@ -439,12 +496,14 @@ backend, model and limits before calling Workers.
   the path decisions under Node, and, with `CONCORDE_LIVE_PI=1`, run a real pi worker.
 
 - <a id="realization.workers.models"></a>The **configuration reader** validates and reads
-  `.concorde/workers.json`, resolves the backend, model and level of an Operation's worker by its id
-  and the limits and runtime paths of every launch, refuses a missing file, a model outside
-  `enabled_models` and a worker without a model, and checks that the worker's program is installed
-  at launch; it never writes the file and never reads the developer's own agent settings. The separate `available_models.py` module and
-  `scripts/available_models.py` entry point discover advisory candidates without Git or inference
-  probes.
+  `.concorde/workers.json`, resolves the backend, project model name and level of an Operation's
+  worker by its id and the limits and runtime paths of every launch, refuses a missing file, a model
+  outside `enabled_models` and a worker without a model, checks that the worker's program is
+  installed at launch and resolves the model's local id through the model map, refusing a missing or
+  malformed map and a model it does not map for the backend; it never writes either file and never
+  reads the developer's own agent settings. The separate `available_models.py` module and
+  `scripts/available_models.py` entry point discover advisory candidates, with the project model
+  names the map gives each, without Git or inference probes.
 
 ### Why the run is built this way
 

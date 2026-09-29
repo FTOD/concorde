@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "models": {
+    "sonnet": {"pi": "sonnet", "claude": "sonnet"},
+    "opus": {"pi": "opus", "claude": "opus"},
+    "haiku": {"pi": "haiku", "claude": "haiku"},
+    "fast": {"pi": "local/fast"},
+    "claude-sonnet-5": {"pi": "anthropic/claude-sonnet-5", "claude": "claude-sonnet-5"},
+    "claude-opus-5-5": {"pi": "anthropic/claude-opus-5-5", "claude": "claude-opus-5-5"}
+  }
+}

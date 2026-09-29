@@ -317,7 +317,7 @@ class RunnerTests(unittest.TestCase):
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "enabled_models": {"sonnet": {}, "opus": {}},
                     "default": {
                         "backend": "claude",
@@ -337,18 +337,26 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("medium", argv[argv.index("--effort") + 1])
         record = self.worker_record(envelope)
         self.assertEqual(
-            ("claude", "worker", "opus", "medium"),
-            (record["backend"], record["worker"], record["model"], record["reasoning"]),
+            ("claude", "worker", "opus", "opus", "medium"),
+            (
+                record["backend"],
+                record["worker"],
+                record["model"],
+                record["local_model"],
+                record["reasoning"],
+            ),
         )
+        self.assertEqual(os.environ["CONCORDE_MODEL_MAP"], record["model_map"])
         [shown] = [
             item for item in envelope["host_evidence"] if item["kind"] == "worker-model"
         ]
         self.assertEqual("claude", shown["ref"])
-        self.assertIn("model opus, reasoning medium", shown["detail"])
+        self.assertIn("model opus as opus (model map ", shown["detail"])
+        self.assertIn("reasoning medium", shown["detail"])
         (self.root / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "enabled_models": {"haiku": {}},
                     "default": {"backend": "claude", "model": "haiku"},
                 }
@@ -387,10 +395,10 @@ class RunnerTests(unittest.TestCase):
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
-                    "enabled_models": {"local/fast": {}, "sonnet": {}},
+                    "schema_version": 2,
+                    "enabled_models": {"fast": {}, "sonnet": {}},
                     "operations": {
-                        "implement": {"workers": {"worker": {"model": "local/fast"}}},
+                        "implement": {"workers": {"worker": {"model": "fast"}}},
                         "spec_review": {
                             "workers": {
                                 "worker": {"backend": "claude", "model": "sonnet"}
@@ -410,9 +418,15 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         record = self.worker_record(envelope)
+        # The project model name is resolved to pi's own id through the model map.
         self.assertEqual(
-            ("pi", "Concorde's default worker backend", "local/fast"),
-            (record["backend"], record["backend_source"], record["model"]),
+            ("pi", "Concorde's default worker backend", "fast", "local/fast"),
+            (
+                record["backend"],
+                record["backend_source"],
+                record["model"],
+                record["local_model"],
+            ),
         )
         argv = self.launched(envelope)
         self.assertEqual("local/fast", argv[argv.index("--model") + 1])
@@ -422,6 +436,7 @@ class RunnerTests(unittest.TestCase):
         ]
         self.assertEqual("pi", shown["ref"])
         self.assertIn("Concorde's default worker backend", shown["detail"])
+        self.assertIn("model fast as local/fast", shown["detail"])
         status, envelope = self.project.run(
             "spec_review",
             "--task",
@@ -564,9 +579,9 @@ class RunnerTests(unittest.TestCase):
         (self.worktree / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
-                    "enabled_models": {"local/fast": {}},
-                    "default": {"model": "local/fast"},
+                    "schema_version": 2,
+                    "enabled_models": {"fast": {}},
+                    "default": {"model": "fast"},
                 }
             )
         )
@@ -592,6 +607,26 @@ class RunnerTests(unittest.TestCase):
             any("commit it" in option for option in envelope["error"]["options"])
         )
         self.assertNotIn("--backend", json.dumps(envelope["error"]))
+        validate(envelope["error"], ERROR_SCHEMA)
+        # A model the machine's model map gives no id for its backend is refused too.
+        unmapped = self.project.base / "unmapped.json"
+        unmapped.write_text(json.dumps({"schema_version": 1, "models": {}}))
+        status, envelope = self.project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan([{}]),
+            environ={**self.fake_pi(), "CONCORDE_MODEL_MAP": str(unmapped)},
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], envelope["worker_runs"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("model_unmapped", cause["code"])
+        self.assertIn(str(unmapped), cause["detail"])
+        self.assertTrue(
+            any("model map" in option for option in envelope["error"]["options"])
+        )
         validate(envelope["error"], ERROR_SCHEMA)
 
     @verifies("scenario.operations.worker-ok")
@@ -1319,7 +1354,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         (self.root / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "enabled_models": {"sonnet": {}, "opus": {}},
                     "default": {"backend": "claude", "model": "sonnet"},
                     "operations": {
@@ -1338,7 +1373,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         (self.root / models.CONFIG).write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "enabled_models": {"haiku": {}},
                     "default": {"backend": "claude", "model": "haiku"},
                 }

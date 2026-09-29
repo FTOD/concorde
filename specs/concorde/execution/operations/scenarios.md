@@ -24,14 +24,14 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 - GIVEN a task worktree whose [worker configuration](../../glossary.json#concept.worker-configuration) chooses Claude Code, a default model and a level, and a model for `implement`'s worker `worker`
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in the task worktree
 - THEN the run launches `claude -p` with the worker's model and the default's level as `--effort`
-- AND the [run record](../../glossary.json#concept.run-record) and the result's `worker-model` host evidence name the backend, the [worker id](../../glossary.json#concept.worker-id), the model and the level
+- AND the [run record](../../glossary.json#concept.run-record) and the result's `worker-model` host evidence name the backend, the [worker id](../../glossary.json#concept.worker-id), the project model name with the local id and the [model map](../../glossary.json#concept.model-map) it came from, and the level
 - BUT a change made afterwards to the primary worktree's configuration does not change what the task's next worker runs on
 
 ### scenario.operations.worker-backend-configured — Workers run on pi, whatever the main session
 
 - GIVEN a Claude Code main session, pi installed, and a task worktree whose worker configuration gives `implement`'s worker a pi model and puts another Operation's worker on Claude Code
 - WHEN the task level runs `implement` and then that Operation in the task worktree
-- THEN the run launches `implement`'s worker with `pi -p` and that model, under the same grant a Claude Code worker would get, and the run record and `worker-model` evidence name `pi` as Concorde's default [worker backend](../../glossary.json#concept.worker-backend)
+- THEN the run launches `implement`'s worker with `pi -p` and the local id the model map gives that model on pi, under the same grant a Claude Code worker would get, and the run record and `worker-model` evidence name `pi` as Concorde's default [worker backend](../../glossary.json#concept.worker-backend)
 - AND it launches the other Operation's worker with `claude -p`, naming the entry of its worker id that chose it
 
 ### scenario.operations.worker-model-unavailable — A run whose worker backend or model cannot be settled fails before launch
@@ -41,6 +41,7 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 - THEN no worker starts and the result is `failed` with `worker_model_unavailable`
 - AND when the file is not valid JSON, its cause is the `component` link of Workers' model configuration with `config_invalid`, naming the file
 - AND when pi is missing, its cause is that link with `backend_missing`, saying that the worker runs on pi as Concorde's default worker backend, naming the command looked for and how to choose Claude Code for it
+- AND when pi is installed but the [model map](../../glossary.json#concept.model-map) gives the worker's model no pi id, its cause is that link with `model_unmapped`, naming the map, and the options say to add the id to the map
 
 ### scenario.operations.worker-blocked — A blocked worker escalates
 

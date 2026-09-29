@@ -1,18 +1,24 @@
-"""The worker configuration ``.concorde/workers.json``: backends, models and limits of workers.
+"""The worker configuration ``.concorde/workers.json``: backends, models and limits of workers,
+and the model map that resolves its project model names on this machine.
 
 The file is tracked with the project, so a task starts from its base commit's configuration and
 its own changes merge with it. The worktree's JSON is the source of truth, edited directly, and
 the only source of a worker's model and level: nothing is read from the developer's own pi or
 Claude Code settings. Every worker needs the file, its required ``enabled_models`` admits the
-models any entry may name, each with an optional level of its own, and a worker whose entries
-resolve no model is refused. Validation never discovers models or checks credentials. Explicit
-backend entries reset inherited model/reasoning fields.
+project model names any entry may name, each with an optional level of its own, and a worker whose
+entries resolve no model is refused. Every field is inherited alike, the most specific entry that
+sets it winning. Validation never discovers models or checks credentials.
+
+A project model name, such as ``gpt-6-astra``, depends on no installation. The model map, a JSON
+file of the user outside every repository, gives its local model id for each program; a worker
+whose model has no id for its backend there is refused, and the name is never used as the id.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -21,7 +27,12 @@ from ..spec.schema import ContractError, validate
 CONFIG = ".concorde/workers.json"
 # The untracked file that held worker models before; refused, never read.
 RETIRED = ".concorde/worker-models.json"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+# The model map: the file the environment variable names, else this path below the user's XDG
+# configuration directory.
+MODEL_MAP_VARIABLE = "CONCORDE_MODEL_MAP"
+MODEL_MAP = "concorde/models.json"
+MODEL_MAP_VERSION = 1
 # The limits of every worker launch when the configuration names none.
 LIMITS = {
     "timeout_seconds": 1800,
@@ -42,6 +53,15 @@ TEXT = {
     "minLength": 1,
     "pattern": r"^[^\s\x00-\x1f\x7f](?:[^\x00-\x1f\x7f]*[^\s\x00-\x1f\x7f])?\Z",
 }
+# A project model name names a model independently of any installation, so it holds none of the
+# `provider/` prefixes or other syntax of one program's local ids.
+NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+NAME_RULE = (
+    "a project model name is letters, digits, `.`, `_` and `-`, starting with a letter or "
+    "digit, such as `gpt-6-astra` or `claude-opus-5-5`; it names the model independently of "
+    "any installation, and the model map gives each program's own id for it, such as "
+    "`local-openai/gpt-6-astra`"
+)
 ENTRY_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -58,7 +78,7 @@ SCHEMA = {
     "required": ["schema_version", "enabled_models"],
     "properties": {
         "schema_version": {"const": SCHEMA_VERSION},
-        # The models any entry may name, keyed by exact model id, each with its own level.
+        # The models any entry may name, keyed by project model name, each with its own level.
         "enabled_models": {
             "type": "object",
             "additionalProperties": {
@@ -92,6 +112,23 @@ SCHEMA = {
         "runtime": {"type": "array", "items": TEXT, "uniqueItems": True},
     },
 }
+MODEL_MAP_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["schema_version", "models"],
+    "properties": {
+        "schema_version": {"const": MODEL_MAP_VERSION},
+        # Each project model name's local model id, per program.
+        "models": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {backend: TEXT for backend in CLIENTS},
+            },
+        },
+    },
+}
 
 
 class ModelConfigError(Exception):
@@ -118,8 +155,8 @@ def validate_config(value: dict) -> None:
         raise ModelConfigError(
             "config_invalid",
             "`enabled_models` is missing: it is required and lists every model a worker may "
-            'run on, such as `"enabled_models": {"<provider>/<model>": {"reasoning": '
-            '"medium"}}`; add every model the entries name',
+            'run on by its project model name, such as `"enabled_models": {"gpt-6-astra": '
+            '{"reasoning": "medium"}}`; add every model the entries name',
         )
     try:
         validate(value, SCHEMA)
@@ -132,11 +169,10 @@ def validate_config(value: dict) -> None:
             "`enabled_models` is empty: list every model a worker may run on",
         )
     for model, entry in enabled.items():
-        if not model.strip() or model != model.strip() or not model.isprintable():
+        if not NAME.fullmatch(model):
             raise ModelConfigError(
                 "config_invalid",
-                f"`enabled_models` names the model {json.dumps(model)}; a model id is "
-                "non-empty printable text without surrounding spaces",
+                f"`enabled_models` names the model {json.dumps(model)}; {NAME_RULE}",
             )
         level = entry.get("reasoning")
         if level is not None and level not in LEVELS["pi"]:
@@ -233,14 +269,26 @@ def load(worktree: Path) -> dict:
             "config_missing",
             f"{path} does not exist, and every worker needs it: write it with schema_version "
             f"{SCHEMA_VERSION}, the `enabled_models` workers may run on and a `default` model, "
-            'such as {"schema_version": 1, "enabled_models": {"<provider>/<model>": {}}, '
-            '"default": {"model": "<provider>/<model>"}}, and commit it; Concorde never '
-            "takes a worker's model from the developer's own pi or Claude Code settings",
+            f'such as {{"schema_version": {SCHEMA_VERSION}, "enabled_models": '
+            '{"gpt-6-astra": {}}, "default": {"model": "gpt-6-astra"}}, and commit it; '
+            "Concorde never takes a worker's model from the developer's own pi or Claude Code "
+            "settings",
         ) from None
     except (OSError, ValueError) as error:
         raise ModelConfigError(
             "config_invalid", f"{path} cannot be read as JSON: {error}"
         ) from error
+    if isinstance(value, dict) and value.get("schema_version") == 1:
+        raise ModelConfigError(
+            "config_invalid",
+            f"{path} has schema_version 1; expected {SCHEMA_VERSION}, which names every model by "
+            "a project model name instead of one program's local model id: replace each id in "
+            "`enabled_models` and in every entry's `model`, such as `local-openai/gpt-6-astra`, "
+            "by a project model name such as `gpt-6-astra`, set schema_version "
+            f"{SCHEMA_VERSION}, commit the file, and map each name to its local id in the model "
+            f"map ({MODEL_MAP_VARIABLE}, else $XDG_CONFIG_HOME/{MODEL_MAP}, by default "
+            f"~/.config/{MODEL_MAP})",
+        )
     if isinstance(value, dict) and value.get("schema_version") != SCHEMA_VERSION:
         raise ModelConfigError(
             "config_invalid",
@@ -274,17 +322,24 @@ def _levels_of(
 def choice(
     config: dict, operation: str | None = None, worker: str | None = None
 ) -> dict:
-    levels = _levels_of(config, operation, worker)
-    chosen_at = next(
-        (i for i, (entry, _) in enumerate(levels) if "backend" in entry), None
+    """The backend, model and level of one worker: for each field the most specific entry that
+    sets it, the level of the entry that chose the model or a more specific one before the
+    model's own."""
+    eligible = _levels_of(config, operation, worker)
+    backend_at = next(
+        (i for i, (entry, _) in enumerate(eligible) if "backend" in entry), None
     )
-    if chosen_at is None:
-        backend, source = DEFAULT_BACKEND, "Concorde's default worker backend"
-        eligible = levels
-    else:
-        backend, source = levels[chosen_at][0]["backend"], levels[chosen_at][1]
-        eligible = levels[: chosen_at + 1]
-    chosen = {"backend": backend, "backend_source": source}
+    chosen = (
+        {
+            "backend": DEFAULT_BACKEND,
+            "backend_source": "Concorde's default worker backend",
+        }
+        if backend_at is None
+        else {
+            "backend": eligible[backend_at][0]["backend"],
+            "backend_source": eligible[backend_at][1],
+        }
+    )
     model_at = next(
         (i for i, (entry, _) in enumerate(eligible) if "model" in entry), None
     )
@@ -343,16 +398,7 @@ def worker_choice(config: dict, operation: str, worker: str, environ=None) -> di
             f"A worker never falls back; install its program or edit its backend in {CONFIG}.",
         )
     if chosen["model"] is None:
-        levels = _levels_of(config, operation, worker)
-        at = next(
-            (
-                i
-                for i, (_, where) in enumerate(levels)
-                if where == chosen["backend_source"]
-            ),
-            len(levels) - 1,
-        )
-        names = ", ".join(where for _, where in levels[: at + 1])
+        names = ", ".join(where for _, where in _levels_of(config, operation, worker))
         raise ModelConfigError(
             "model_unresolved",
             f"the {worker} worker of {operation} runs on {backend} "
@@ -361,7 +407,132 @@ def worker_choice(config: dict, operation: str, worker: str, environ=None) -> di
             "`enabled_models`. Concorde never runs a worker on its program's own default model "
             "or on the developer's own.",
         )
-    return chosen
+    path, mapped = load_model_map(environ)
+    return chosen | {
+        "local_model": _local_model(
+            chosen, f"the {worker} worker of {operation}", path, mapped
+        ),
+        "model_map": path.as_posix(),
+    }
+
+
+def model_map_path(environ=None) -> Path:
+    """The model map: the file ``CONCORDE_MODEL_MAP`` names, else ``concorde/models.json`` of the
+    user's XDG configuration directory, ``~/.config`` unless ``XDG_CONFIG_HOME`` is absolute."""
+    environ = os.environ if environ is None else environ
+    named = environ.get(MODEL_MAP_VARIABLE)
+    if named:
+        return Path(named)
+    base = environ.get("XDG_CONFIG_HOME") or ""
+    if not os.path.isabs(base):
+        home = environ.get("HOME") or str(Path.home())
+        base = os.path.join(home, ".config")
+    return Path(base) / MODEL_MAP
+
+
+def load_model_map(environ=None) -> tuple[Path, dict]:
+    """The model map's path and its ``models``, each project model name's id per program."""
+    path = model_map_path(environ)
+    example = (
+        f'{{"schema_version": {MODEL_MAP_VERSION}, "models": {{"gpt-6-astra": '
+        '{"pi": "local-openai/gpt-6-astra"}, "claude-opus-5-5": {"pi": '
+        '"anthropic/claude-opus-5-5", "claude": "claude-opus-5-5"}}}'
+    )
+    if not path.is_absolute():
+        raise ModelConfigError(
+            "model_map_invalid",
+            f"{MODEL_MAP_VARIABLE} names {str(path)!r}, which is not an absolute path; name the "
+            "model map by its absolute path, or unset the variable to use "
+            f"$XDG_CONFIG_HOME/{MODEL_MAP}",
+        )
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object
+        )
+    except FileNotFoundError:
+        raise ModelConfigError(
+            "model_map_missing",
+            f"the model map {path} does not exist, and every worker needs it to find its "
+            "model's local id: write it with every project model name the worker "
+            f"configuration names and each program's own id for it, such as {example}. It "
+            "belongs to this machine and is never committed; `python3 "
+            "scripts/available_models.py --backend pi|claude` lists the local ids",
+        ) from None
+    except (OSError, ValueError) as error:
+        raise ModelConfigError(
+            "model_map_invalid", f"the model map {path} cannot be read as JSON: {error}"
+        ) from error
+    try:
+        validate(value, MODEL_MAP_SCHEMA)
+    except ContractError as error:
+        raise ModelConfigError(
+            "model_map_invalid",
+            f"the model map {path}: {error}; it holds schema_version {MODEL_MAP_VERSION} and "
+            "`models`, each project model name's id for `pi`, `claude` or both, such as "
+            f"{example}",
+        ) from error
+    for name, ids in value["models"].items():
+        if not NAME.fullmatch(name):
+            raise ModelConfigError(
+                "model_map_invalid",
+                f"the model map {path} names the model {json.dumps(name)}; {NAME_RULE}",
+            )
+        if not ids:
+            raise ModelConfigError(
+                "model_map_invalid",
+                f"the model map {path} gives `models.{name}` no id; give its id for `pi`, "
+                "`claude` or both",
+            )
+    return path, value["models"]
+
+
+def _local_model(chosen: dict, who: str, path: Path, mapped: dict) -> str:
+    """The local id the model map gives the chosen model on the chosen backend."""
+    name, backend = chosen["model"], chosen["backend"]
+    local = mapped.get(name, {}).get(backend)
+    if local is None:
+        others = mapped.get(name, {})
+        known = (
+            f"; it maps the model only for {', '.join(sorted(others))}"
+            if others
+            else "; it does not name the model at all"
+        )
+        raise ModelConfigError(
+            "model_unmapped",
+            f"{who} runs on {backend} ({chosen['backend_source']}) with the project model "
+            f"{name!r} ({chosen['model_source']}), but the model map {path} gives no {backend} "
+            f'id for it{known}. Add it as `"{backend}": "<{backend}\'s id of the model>"` '
+            f"under `models.{name}`; `python3 scripts/available_models.py --backend {backend}` "
+            "lists the ids. Concorde never uses a project model name as a local id.",
+        )
+    return local
+
+
+def check_mapped(config: dict, environ=None) -> None:
+    """Refuse with one error every model a worker of any Operation would take that the model map
+    does not give an id for its backend, such as before a test project's workers first run."""
+    validate_config(config)
+    path, mapped = load_model_map(environ)
+    missing: dict[tuple[str, str], list[str]] = {}
+    for operation, workers in worker_ids().items():
+        for worker in workers:
+            chosen = choice(config, operation, worker)
+            if chosen["model"] is not None and chosen["backend"] not in mapped.get(
+                chosen["model"], {}
+            ):
+                missing.setdefault((chosen["model"], chosen["backend"]), []).append(
+                    f"{operation}/{worker}"
+                )
+    if missing:
+        entries = "; ".join(
+            f"`models.{name}.{backend}` (for {', '.join(workers)})"
+            for (name, backend), workers in sorted(missing.items())
+        )
+        raise ModelConfigError(
+            "model_unmapped",
+            f"the model map {path} gives no local id for {entries}; add each, since Concorde "
+            "never uses a project model name as a local id",
+        )
 
 
 HANDLING = {
@@ -394,5 +565,20 @@ HANDLING = {
         "input",
         "every model a worker may run on must be enabled in the worker configuration",
         [f"add the model to `enabled_models` of {CONFIG} or choose an enabled one"],
+    ),
+    "model_map_missing": (
+        "environment",
+        "a project model name reaches a program only through this machine's model map",
+        ["write the model map with each project model name's local id per program"],
+    ),
+    "model_map_invalid": (
+        "environment",
+        "an unreadable model map is never ignored",
+        ["correct the model map as the error says"],
+    ),
+    "model_unmapped": (
+        "environment",
+        "a worker never runs on a project model name its backend has no local id for",
+        ["add the model's id for the worker's backend to the model map"],
     ),
 }

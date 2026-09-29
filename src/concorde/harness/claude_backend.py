@@ -330,8 +330,8 @@ class ClaudeBackend:
         ]
         if request.max_budget_usd is not None:
             command += ["--max-budget-usd", str(request.max_budget_usd)]
-        if request.model:
-            command += ["--model", request.model]
+        if request.local_model:
+            command += ["--model", request.local_model]
         if request.reasoning:
             command += ["--effort", request.reasoning]
         if session:

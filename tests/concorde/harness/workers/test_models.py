@@ -21,6 +21,21 @@ def _backend(chosen: dict) -> tuple[str, str]:
     return chosen["backend"], chosen["backend_source"]
 
 
+def _mapped(*names: str, **backends: tuple[str, ...]) -> dict:
+    """A model map giving each of ``names`` an id on both programs, or on the programs
+    ``backends`` names for it, the id being ``local/<name>``."""
+    return {
+        "schema_version": 1,
+        "models": {
+            name: {
+                backend: f"local/{name}"
+                for backend in backends.get(name, models.CLIENTS)
+            }
+            for name in names
+        },
+    }
+
+
 def _enabled(*names: str, **levels: str) -> dict:
     """``enabled_models`` admitting ``names``, with a level for each model in ``levels``."""
     return {
@@ -36,6 +51,14 @@ class WorkerModelTests(unittest.TestCase):
         self.home = self.base / "home"
         (self.home / ".claude").mkdir(parents=True)
         self.environ = fake_agents(self.base / "bin", self.home)
+        self.map = self.base / "models.json"
+        self.map_models(
+            "a-pi", "opus", "a-default", "a-panel", "a-second", "offline-custom"
+        )
+        self.environ["CONCORDE_MODEL_MAP"] = str(self.map)
+
+    def map_models(self, *names: str, **backends: tuple[str, ...]) -> None:
+        self.map.write_text(json.dumps(_mapped(*names, **backends)))
 
     def save(self, config: dict) -> None:
         path = models.config_path(self.base)
@@ -46,9 +69,9 @@ class WorkerModelTests(unittest.TestCase):
     def test_a_worker_without_an_entry_runs_on_pi(self):
         session = dict(self.environ, CLAUDECODE="1")
         bare = {
-            "schema_version": 1,
-            "enabled_models": _enabled("a/pi"),
-            "default": {"model": "a/pi"},
+            "schema_version": 2,
+            "enabled_models": _enabled("a-pi"),
+            "default": {"model": "a-pi"},
         }
         self.assertEqual(
             ("pi", "Concorde's default worker backend"),
@@ -57,9 +80,9 @@ class WorkerModelTests(unittest.TestCase):
 
     def _checker_on_claude(self) -> dict:
         config = {
-            "schema_version": 1,
-            "enabled_models": _enabled("a/pi", "opus"),
-            "default": {"model": "a/pi"},
+            "schema_version": 2,
+            "enabled_models": _enabled("a-pi", "opus"),
+            "default": {"model": "a-pi"},
             "operations": {
                 "spec_review": {
                     "workers": {
@@ -82,8 +105,15 @@ class WorkerModelTests(unittest.TestCase):
         config = self._checker_on_claude()
         reviewer = models.worker_choice(config, "spec_review", "reviewer", session)
         checker = models.worker_choice(config, "spec_review", "checker", session)
-        self.assertEqual(("pi", "a/pi"), (reviewer["backend"], reviewer["model"]))
-        # Choosing Claude Code starts that program afresh: the pi default model is not inherited.
+        self.assertEqual(
+            ("pi", "a-pi", "local/a-pi", str(self.map)),
+            (
+                reviewer["backend"],
+                reviewer["model"],
+                reviewer["local_model"],
+                reviewer["model_map"],
+            ),
+        )
         self.assertEqual(
             (
                 "claude",
@@ -136,6 +166,41 @@ class WorkerModelTests(unittest.TestCase):
             listed["anthropic/claude-sonnet-5"]["levels"],
         )
         self.assertEqual(["off"], listed["local-openai/plain-7"]["levels"])
+        # The model map says which project model names already reach each candidate, and which
+        # of its pi ids pi does not list.
+        self.map.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "models": {
+                        "claude-sonnet-5": {
+                            "pi": "anthropic/claude-sonnet-5",
+                            "claude": "claude-sonnet-5",
+                        },
+                        "gpt-6": {"pi": "local-openai/gpt-6"},
+                    },
+                }
+            )
+        )
+        pi = candidates("pi", self.environ)
+        listed = {item["id"]: item for item in pi["models"]}
+        self.assertEqual(
+            ["claude-sonnet-5"], listed["anthropic/claude-sonnet-5"]["project_models"]
+        )
+        self.assertEqual([], listed["local-openai/plain-7"]["project_models"])
+        self.assertEqual(
+            {
+                "path": str(self.map),
+                "error": None,
+                "unlisted": [{"model": "gpt-6", "id": "local-openai/gpt-6"}],
+            },
+            pi["model_map"],
+        )
+        self.map.unlink()
+        self.assertEqual(
+            "model_map_missing",
+            candidates("pi", self.environ)["model_map"]["error"]["code"],
+        )
         (self.home / ".claude/settings.json").write_text(
             json.dumps({"model": "claude-opus-5-5"})
         )
@@ -160,14 +225,14 @@ class WorkerModelTests(unittest.TestCase):
     @verifies("scenario.workers.model-resolution")
     def test_the_most_specific_entry_wins_field_by_field(self):
         config = {
-            "schema_version": 1,
-            "enabled_models": _enabled("a/default", "a/panel", "a/second"),
-            "default": {"model": "a/default", "reasoning": "medium"},
+            "schema_version": 2,
+            "enabled_models": _enabled("a-default", "a-panel", "a-second"),
+            "default": {"model": "a-default", "reasoning": "medium"},
             "operations": {
                 "spec_panel": {
-                    "default": {"model": "a/panel"},
+                    "default": {"model": "a-panel"},
                     "workers": {
-                        "reviewer2": {"model": "a/second"},
+                        "reviewer2": {"model": "a-second"},
                         "chair": {"reasoning": "high"},
                     },
                 }
@@ -177,7 +242,7 @@ class WorkerModelTests(unittest.TestCase):
         second = models.choice(config, "spec_panel", "reviewer2")
         chair = models.choice(config, "spec_panel", "chair")
         self.assertEqual(
-            ("a/panel", "operations.spec_panel.default", "medium", "default"),
+            ("a-panel", "operations.spec_panel.default", "medium", "default"),
             (
                 first["model"],
                 first["model_source"],
@@ -186,36 +251,36 @@ class WorkerModelTests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            ("a/second", "operations.spec_panel.workers.reviewer2"),
+            ("a-second", "operations.spec_panel.workers.reviewer2"),
             (second["model"], second["model_source"]),
         )
         self.assertEqual(
-            ("a/panel", "high", "operations.spec_panel.workers.chair"),
+            ("a-panel", "high", "operations.spec_panel.workers.chair"),
             (chair["model"], chair["reasoning"], chair["reasoning_source"]),
         )
         other = models.choice(config, "implement", "worker")
         self.assertEqual(
-            ("a/default", "default"), (other["model"], other["model_source"])
+            ("a-default", "default"), (other["model"], other["model_source"])
         )
 
     @verifies("scenario.workers.model-levels")
     def test_a_models_own_level_applies_when_the_entry_choosing_it_sets_none(self):
         config = {
-            "schema_version": 1,
+            "schema_version": 2,
             "enabled_models": _enabled(
-                "a/default",
-                "a/deep",
-                "a/plain",
-                **{"a/default": "low", "a/deep": "high"},
+                "a-default",
+                "a-deep",
+                "a-plain",
+                **{"a-default": "low", "a-deep": "high"},
             ),
-            "default": {"model": "a/default"},
+            "default": {"model": "a-default"},
             "operations": {
                 "spec_panel": {
                     "default": {"reasoning": "medium"},
                     "workers": {
-                        "reviewer1": {"model": "a/deep"},
-                        "reviewer2": {"model": "a/deep", "reasoning": "xhigh"},
-                        "reviewer3": {"model": "a/plain"},
+                        "reviewer1": {"model": "a-deep"},
+                        "reviewer2": {"model": "a-deep", "reasoning": "xhigh"},
+                        "reviewer3": {"model": "a-plain"},
                     },
                 }
             },
@@ -228,7 +293,7 @@ class WorkerModelTests(unittest.TestCase):
 
         # The default's model at its own level: the entry that chose it sets none.
         self.assertEqual(
-            ("low", 'enabled_models["a/default"]'), level("implement", "worker")
+            ("low", 'enabled_models["a-default"]'), level("implement", "worker")
         )
         # A level set more specifically than the model is meant for it.
         self.assertEqual(
@@ -236,7 +301,7 @@ class WorkerModelTests(unittest.TestCase):
         )
         # A model chosen more specifically than any level takes its own level...
         self.assertEqual(
-            ("high", 'enabled_models["a/deep"]'), level("spec_panel", "reviewer1")
+            ("high", 'enabled_models["a-deep"]'), level("spec_panel", "reviewer1")
         )
         # ...unless its own entry sets one,
         self.assertEqual(
@@ -248,7 +313,7 @@ class WorkerModelTests(unittest.TestCase):
             ("medium", "operations.spec_panel.default"),
             level("spec_panel", "reviewer3"),
         )
-        bare = dict(config, enabled_models=_enabled("a/default"), operations={})
+        bare = dict(config, enabled_models=_enabled("a-default"), operations={})
         self.assertEqual(
             (None, "the backend's own default"),
             (
@@ -258,14 +323,14 @@ class WorkerModelTests(unittest.TestCase):
         )
         for wrong in (
             # a level of neither backend,
-            _enabled("a/default", **{"a/default": "bogus"}),
+            _enabled("a-default", **{"a-default": "bogus"}),
             # and a pi level a worker on Claude Code would take.
-            _enabled("a/default", **{"a/default": "off"}),
+            _enabled("a-default", **{"a-default": "off"}),
         ):
             invalid = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "enabled_models": wrong,
-                "default": {"backend": "claude", "model": "a/default"},
+                "default": {"backend": "claude", "model": "a-default"},
             }
             with (
                 self.subTest(enabled=wrong),
@@ -278,16 +343,16 @@ class WorkerModelTests(unittest.TestCase):
     @verifies("scenario.workers.model-unresolved")
     def test_a_worker_whose_configuration_names_no_model_is_refused(self):
         config = {
-            "schema_version": 1,
-            "enabled_models": _enabled("a/pi"),
+            "schema_version": 2,
+            "enabled_models": _enabled("a-pi"),
             "default": {"reasoning": "high"},
             "operations": {
-                "spec_review": {"default": {"model": "a/pi"}},
+                "spec_review": {"default": {"model": "a-pi"}},
                 "spec_panel": {"workers": {"chair": {"backend": "claude"}}},
             },
         }
         self.assertEqual(
-            "a/pi",
+            "a-pi",
             models.worker_choice(config, "spec_review", "checker", self.environ)[
                 "model"
             ],
@@ -301,7 +366,14 @@ class WorkerModelTests(unittest.TestCase):
                     "default"
                 ),
             ),
-            ("spec_panel", "chair", "(operations.spec_panel.workers.chair)"),
+            (
+                "spec_panel",
+                "chair",
+                (
+                    "operations.spec_panel.workers.chair, operations.spec_panel.default, "
+                    "default"
+                ),
+            ),
         ):
             with (
                 self.subTest(worker=worker),
@@ -320,24 +392,24 @@ class WorkerModelTests(unittest.TestCase):
 
     @verifies("scenario.workers.model-not-enabled")
     def test_a_model_outside_the_enabled_models_is_refused(self):
-        base = {"schema_version": 1, "enabled_models": _enabled("a/one", "a/two")}
-        models.validate_config(dict(base, default={"model": "a/one"}))
+        base = {"schema_version": 2, "enabled_models": _enabled("a-one", "a-two")}
+        models.validate_config(dict(base, default={"model": "a-one"}))
         for config, where in (
-            (dict(base, default={"model": "a/three"}), "default.model"),
+            (dict(base, default={"model": "a-three"}), "default.model"),
             (
                 dict(
                     base,
-                    default={"model": "a/one"},
-                    operations={"spec_panel": {"default": {"model": "a/three"}}},
+                    default={"model": "a-one"},
+                    operations={"spec_panel": {"default": {"model": "a-three"}}},
                 ),
                 "operations.spec_panel.default.model",
             ),
             (
                 dict(
                     base,
-                    default={"model": "a/one"},
+                    default={"model": "a-one"},
                     operations={
-                        "spec_panel": {"workers": {"chair": {"model": "a/three"}}}
+                        "spec_panel": {"workers": {"chair": {"model": "a-three"}}}
                     },
                 ),
                 "operations.spec_panel.workers.chair.model",
@@ -349,10 +421,10 @@ class WorkerModelTests(unittest.TestCase):
             ):
                 models.validate_config(config)
             self.assertEqual("model_not_enabled", raised.exception.code)
-            for part in (where, "'a/three'", "a/one, a/two", "add it to"):
+            for part in (where, "'a-three'", "a-one, a-two", "add it to"):
                 self.assertIn(part, str(raised.exception))
         for missing, text in (
-            ({"schema_version": 1, "default": {"model": "a/one"}}, "is missing"),
+            ({"schema_version": 2, "default": {"model": "a-one"}}, "is missing"),
             (dict(base, enabled_models={}), "is empty"),
         ):
             with (
@@ -381,17 +453,17 @@ class WorkerModelTests(unittest.TestCase):
     @verifies("scenario.workers.model-refused")
     def test_validation_accepts_custom_models_and_rejects_invalid_structure(self):
         config = {
-            "schema_version": 1,
-            "enabled_models": _enabled("offline/custom"),
-            "default": {"model": "offline/custom", "reasoning": "high"},
+            "schema_version": 2,
+            "enabled_models": _enabled("offline-custom"),
+            "default": {"model": "offline-custom", "reasoning": "high"},
         }
         models.validate_config(config)
         self.save(config)
         self.assertEqual(
-            "offline/custom",
+            "offline-custom",
             models.worker_choice(config, "implement", "worker", self.environ)["model"],
         )
-        enabled = {"schema_version": 1, "enabled_models": _enabled("x")}
+        enabled = {"schema_version": 2, "enabled_models": _enabled("x")}
         for invalid in (
             dict(enabled, default={"model": " "}),
             dict(enabled, default={"model": "\x00"}),
@@ -404,6 +476,8 @@ class WorkerModelTests(unittest.TestCase):
             dict(enabled, limits={"timeout": 60}),
             dict(enabled, runtime=[".venv", ".venv"]),
             dict(enabled, enabled_models={" x": {}}),
+            # A program's own id is no project model name.
+            dict(enabled, enabled_models={"local-openai/gpt-6": {}}),
             dict(enabled, enabled_models={"x": {"level": "high"}}),
         ):
             with (
@@ -442,7 +516,7 @@ class WorkerModelTests(unittest.TestCase):
     @verifies("scenario.workers.limits-configured")
     def test_limits_and_runtime_come_from_the_worker_configuration(self):
         enabled = {
-            "schema_version": 1,
+            "schema_version": 2,
             "enabled_models": _enabled("x"),
             "default": {"model": "x"},
         }
@@ -469,7 +543,7 @@ class WorkerModelTests(unittest.TestCase):
             self.assertIn(part, str(raised.exception))
         self.save(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "enabled_models": _enabled("y"),
                 "default": {"model": "y"},
             }
@@ -480,7 +554,7 @@ class WorkerModelTests(unittest.TestCase):
         path = models.config_path(self.base)
         path.parent.mkdir()
         path.write_text(
-            '{"schema_version": 1, "default": {"model": "x", "model": "y"}}'
+            '{"schema_version": 2, "default": {"model": "x", "model": "y"}}'
         )
         with self.assertRaisesRegex(models.ModelConfigError, "duplicate key"):
             models.load(self.base)
@@ -498,7 +572,7 @@ class WorkerModelTests(unittest.TestCase):
         path.write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "enabled_models": _enabled("x"),
                     "operations": {
                         "understand": {
@@ -513,13 +587,245 @@ class WorkerModelTests(unittest.TestCase):
         self.assertEqual("config_invalid", raised.exception.code)
         self.assertIn("modle", str(raised.exception))
         path.write_text(
-            json.dumps({"schema_version": 2, "pi": {"default": {"model": "x"}}})
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "enabled_models": _enabled("x"),
+                    "pi": {"default": {"model": "x"}},
+                }
+            )
         )
         with self.assertRaises(models.ModelConfigError) as raised:
             models.load(worktree)
         self.assertEqual("config_invalid", raised.exception.code)
-        self.assertIn("schema_version 2", str(raised.exception))
-        self.assertIn("expected 1", str(raised.exception))
+        self.assertIn("pi", str(raised.exception))
+        path.write_text(json.dumps({"schema_version": 3, "default": {"model": "x"}}))
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(worktree)
+        self.assertEqual("config_invalid", raised.exception.code)
+        self.assertIn("schema_version 3", str(raised.exception))
+        self.assertIn("expected 2", str(raised.exception))
+        # A file of the schema that named local model ids says how to rewrite it.
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "enabled_models": {"local-openai/gpt-6": {}},
+                    "default": {"model": "local-openai/gpt-6"},
+                }
+            )
+        )
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(worktree)
+        self.assertEqual("config_invalid", raised.exception.code)
+        for part in (
+            "schema_version 1; expected 2",
+            "project model name",
+            "`local-openai/gpt-6-astra`",
+            "`gpt-6-astra`",
+            "model map",
+            models.MODEL_MAP_VARIABLE,
+        ):
+            self.assertIn(part, str(raised.exception))
+
+
+class ModelMapTests(unittest.TestCase):
+    """The model map: where it is, how it resolves a project model name, and its refusals."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.base = Path(directory.name)
+        self.home = self.base / "home"
+        (self.home / ".claude").mkdir(parents=True)
+        self.map = self.base / "models.json"
+        self.environ = dict(
+            fake_agents(self.base / "bin", self.home),
+            CONCORDE_MODEL_MAP=str(self.map),
+        )
+        self.config = {
+            "schema_version": 2,
+            "enabled_models": _enabled("gpt-6-astra", "claude-opus-5-5"),
+            "default": {"model": "gpt-6-astra", "reasoning": "medium"},
+            "operations": {
+                "spec_panel": {
+                    "workers": {
+                        "reviewer1": {"model": "claude-opus-5-5"},
+                        "chair": {"backend": "claude"},
+                    }
+                }
+            },
+        }
+
+    def write(self, value) -> None:
+        self.map.write_text(value if isinstance(value, str) else json.dumps(value))
+
+    def refused(self, operation="implement", worker="worker", environ=None):
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.worker_choice(
+                self.config, operation, worker, environ or self.environ
+            )
+        return raised.exception
+
+    @verifies("scenario.workers.model-map-location")
+    def test_the_model_map_is_the_named_file_else_the_users_xdg_configuration(self):
+        self.assertEqual(self.map, models.model_map_path(self.environ))
+        home = {"HOME": str(self.home)}
+        self.assertEqual(
+            self.home / ".config/concorde/models.json", models.model_map_path(home)
+        )
+        self.assertEqual(
+            self.base / "xdg/concorde/models.json",
+            models.model_map_path(dict(home, XDG_CONFIG_HOME=str(self.base / "xdg"))),
+        )
+        # A relative XDG_CONFIG_HOME is ignored, as the XDG specification says.
+        self.assertEqual(
+            self.home / ".config/concorde/models.json",
+            models.model_map_path(dict(home, XDG_CONFIG_HOME="relative")),
+        )
+        error = self.refused(
+            environ=dict(self.environ, CONCORDE_MODEL_MAP="models.json")
+        )
+        self.assertEqual("model_map_invalid", error.code)
+        self.assertIn("not an absolute path", str(error))
+
+    @verifies("scenario.workers.model-map-resolved")
+    def test_a_project_model_name_resolves_to_its_local_id_on_the_workers_backend(self):
+        self.write(
+            {
+                "schema_version": 1,
+                "models": {
+                    "gpt-6-astra": {"pi": "local-openai/gpt-6-astra"},
+                    "claude-opus-5-5": {
+                        "pi": "anthropic/claude-opus-5-5",
+                        "claude": "claude-opus-5-5",
+                    },
+                    "unused-elsewhere": {"claude": "sonnet"},
+                },
+            }
+        )
+        worker = models.worker_choice(self.config, "implement", "worker", self.environ)
+        self.assertEqual(
+            ("pi", "gpt-6-astra", "local-openai/gpt-6-astra", str(self.map), "medium"),
+            (
+                worker["backend"],
+                worker["model"],
+                worker["local_model"],
+                worker["model_map"],
+                worker["reasoning"],
+            ),
+        )
+        reviewer = models.worker_choice(
+            self.config, "spec_panel", "reviewer1", self.environ
+        )
+        self.assertEqual("anthropic/claude-opus-5-5", reviewer["local_model"])
+
+    @verifies("scenario.workers.backend-switch")
+    def test_an_entry_choosing_a_backend_inherits_the_model_and_level(self):
+        self.write(
+            {
+                "schema_version": 1,
+                "models": {
+                    "gpt-6-astra": {"pi": "local-openai/gpt-6-astra"},
+                    "claude-opus-5-5": {"claude": "claude-opus-5-5"},
+                },
+            }
+        )
+        chair = models.choice(self.config, "spec_panel", "chair")
+        self.assertEqual(
+            ("claude", "gpt-6-astra", "default", "medium", "default"),
+            (
+                chair["backend"],
+                chair["model"],
+                chair["model_source"],
+                chair["reasoning"],
+                chair["reasoning_source"],
+            ),
+        )
+        # The model it inherits has no id on Claude Code, so the chair is refused, never run
+        # on the project model name or on another model.
+        error = self.refused("spec_panel", "chair")
+        self.assertEqual("model_unmapped", error.code)
+        for part in (
+            "the chair worker of spec_panel runs on claude",
+            "operations.spec_panel.workers.chair",
+            "'gpt-6-astra' (default)",
+            str(self.map),
+            "maps the model only for pi",
+            '`"claude": "<claude\'s id of the model>"`',
+            "`models.gpt-6-astra`",
+            "available_models.py --backend claude",
+            "never uses a project model name as a local id",
+        ):
+            self.assertIn(part, str(error))
+
+    @verifies("scenario.workers.model-unmapped")
+    def test_a_model_the_map_does_not_name_is_refused(self):
+        self.write(
+            {"schema_version": 1, "models": {"claude-opus-5-5": {"claude": "x"}}}
+        )
+        error = self.refused()
+        self.assertEqual("model_unmapped", error.code)
+        for part in (
+            "the worker worker of implement runs on pi",
+            "'gpt-6-astra'",
+            "gives no pi id for it",
+            "does not name the model at all",
+        ):
+            self.assertIn(part, str(error))
+        # Every model a test project's workers would take is checked at once.
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.check_mapped(self.config, self.environ)
+        self.assertEqual("model_unmapped", raised.exception.code)
+        for part in (
+            "`models.gpt-6-astra.pi` (for ",
+            "implement/worker",
+            "`models.gpt-6-astra.claude` (for spec_panel/chair)",
+            "`models.claude-opus-5-5.pi` (for spec_panel/reviewer1)",
+        ):
+            self.assertIn(part, str(raised.exception))
+        self.write(
+            {
+                "schema_version": 1,
+                "models": {
+                    "gpt-6-astra": {"pi": "a", "claude": "b"},
+                    "claude-opus-5-5": {"pi": "c"},
+                },
+            }
+        )
+        models.check_mapped(self.config, self.environ)
+
+    @verifies("scenario.workers.model-map-missing")
+    def test_a_missing_or_unreadable_model_map_is_refused(self):
+        error = self.refused()
+        self.assertEqual("model_map_missing", error.code)
+        for part in (
+            f"the model map {self.map} does not exist",
+            '"gpt-6-astra": {"pi": "local-openai/gpt-6-astra"}',
+            "never committed",
+            "available_models.py",
+        ):
+            self.assertIn(part, str(error))
+        for text, part in (
+            ("{not json", "cannot be read as JSON"),
+            (
+                '{"schema_version": 1, "models": {"a": {"pi": "x", "pi": "y"}}}',
+                "duplicate key",
+            ),
+            ('{"schema_version": 2, "models": {}}', "schema_version"),
+            ('{"schema_version": 1, "models": {"a": {}}}', "`pi`, `claude` or both"),
+            ('{"schema_version": 1, "models": {"a": {"codex": "x"}}}', "codex"),
+            (
+                '{"schema_version": 1, "models": {"a/b": {"pi": "x"}}}',
+                "project model name",
+            ),
+        ):
+            self.write(text)
+            with self.subTest(text=text):
+                error = self.refused()
+                self.assertEqual("model_map_invalid", error.code)
+                self.assertIn(str(self.map), str(error))
+                self.assertIn(part, str(error))
 
 
 if __name__ == "__main__":

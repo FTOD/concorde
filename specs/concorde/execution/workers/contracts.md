@@ -190,16 +190,31 @@ The file the [worker configuration](../../glossary.json#concept.worker-configura
 ```concorde-contract
 {
   "id": "contract.workers.worker-configuration",
-  "version": 8,
+  "version": 9,
   "schema": {
     "type": "object",
     "additionalProperties": false,
     "required": [
-      "schema_version"
+      "schema_version",
+      "enabled_models"
     ],
     "properties": {
       "schema_version": {
-        "const": 1
+        "const": 2
+      },
+      "enabled_models": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reasoning": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+            }
+          }
+        }
       },
       "default": {
         "type": "object",
@@ -363,23 +378,29 @@ The file the [worker configuration](../../glossary.json#concept.worker-configura
       }
     }
   },
-  "semantics": "The worker configuration .concorde/workers.json of a worktree, tracked by Git and edited directly. schema_version is 1. default, operations.<operation>.default and operations.<operation>.workers.<worker id> each may set backend (pi or claude), model and reasoning; operation and worker names are those of the Operation catalog, and reasoning must be a level of the effective backend. For each field the most specific entry that sets it wins, except that an entry setting backend starts that program afresh, so model and reasoning come only from that entry or a more specific one. A backend no entry sets is pi, and a model or level no entry sets is the program's own default. limits sets timeout_seconds per round (default 1800), max_turns (default 200), max_budget_usd (default none) and rounds of resume (default 3) for every worker launch; runtime lists the paths Bash may read besides the grant, relative to the workspace or absolute (default .venv and node_modules, each only when it exists). A missing file means every default. Duplicate keys, unknown fields, unknown Operations or workers and levels the backend does not know are refused with config_invalid when a worker launches; so is a worktree without this file that still has the retired untracked .concorde/worker-models.json.",
+  "semantics": "The worker configuration .concorde/workers.json of a worktree, tracked by Git and edited directly. schema_version is 2. enabled_models is required and not empty: it names every model an entry may choose by its project model name, letters, digits, '.', '_' and '-' starting with a letter or digit, which depends on no installation, each with an optional reasoning level of its own. default, operations.<operation>.default and operations.<operation>.workers.<worker id> each may set backend (pi or claude), model (a name of enabled_models) and reasoning; operation and worker names are those of the Operation catalog, and reasoning must be a level of the effective backend. For each field the most specific entry that sets it wins, a backend no more than a model or a level. A backend no entry sets is pi. The level is that of the entry that chose the model or of a more specific one, otherwise the model's own, otherwise one a less specific entry sets, otherwise none, which leaves the program's own default level. A worker whose entries set no model is refused with model_unresolved, and an entry naming a model outside enabled_models with model_not_enabled; the model map of the machine gives the model's local id on the worker's backend (contract.workers.model-map). limits sets timeout_seconds per round (default 1800), max_turns (default 200), max_budget_usd (default none) and rounds of resume (default 3) for every worker launch; runtime lists the paths Bash may read besides the grant, relative to the workspace or absolute (default .venv and node_modules, each only when it exists). A worktree without the file runs no worker (config_missing). Duplicate keys, unknown fields, unknown Operations or workers, a model name that is not a project model name, levels the backend does not know and any other schema_version are refused with config_invalid when a worker launches, schema_version 1, whose models were one program's local ids, with how to rewrite it; so is a worktree without this file that still has the retired untracked .concorde/worker-models.json.",
   "example": {
-    "schema_version": 1,
+    "schema_version": 2,
+    "enabled_models": {
+      "claude-sonnet-5": {
+        "reasoning": "medium"
+      },
+      "gpt-6-astra": {},
+      "claude-opus-5-5": {}
+    },
     "default": {
-      "model": "anthropic/claude-sonnet-5",
-      "reasoning": "medium"
+      "model": "claude-sonnet-5"
     },
     "operations": {
       "spec_panel": {
         "workers": {
           "reviewer2": {
-            "model": "local-openai/gpt-6",
+            "model": "gpt-6-astra",
             "reasoning": "high"
           },
           "chair": {
             "backend": "claude",
-            "model": "opus"
+            "model": "claude-opus-5-5"
           }
         }
       }
@@ -398,6 +419,66 @@ The file the [worker configuration](../../glossary.json#concept.worker-configura
 }
 ```
 
+## Model map
+
+The file the [model map](../../glossary.json#concept.model-map) is, which
+[Choosing worker models](module.md#choosing-worker-models) explains.
+
+```concorde-contract
+{
+  "id": "contract.workers.model-map",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "models"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": 1
+      },
+      "models": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "claude": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+            },
+            "pi": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\s\\x00-\\x1f\\x7f](?:[^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?\\Z"
+            }
+          }
+        }
+      }
+    }
+  },
+  "semantics": "The model map of one machine: a JSON file of the user, outside every repository and never committed, that the file CONCORDE_MODEL_MAP names by its absolute path, else concorde/models.json of the user's XDG configuration directory ($XDG_CONFIG_HOME when it is absolute, otherwise ~/.config). schema_version is 1. models maps each project model name to its local model id on pi, on Claude Code or on both, the id that program takes with --model, such as local-openai/gpt-6-astra on pi or claude-opus-5-5 on Claude Code. It may name models no project enables. Workers reads it only when a worker launches, never writes it, and reads nothing else of the user's environment to choose a model. A missing file is refused with model_map_missing, an unreadable one, with duplicate keys, unknown fields, a model without an id or a name that is not a project model name with model_map_invalid, and a worker whose model has no id for its backend with model_unmapped; each names the file and the entry to add, and the project model name is never used as a local id.",
+  "example": {
+    "schema_version": 1,
+    "models": {
+      "gpt-6-astra": {
+        "pi": "local-openai/gpt-6-astra"
+      },
+      "gpt-6.1-sol": {
+        "pi": "local-openai/gpt-6.1-sol"
+      },
+      "claude-opus-5-5": {
+        "pi": "anthropic/claude-opus-5-5",
+        "claude": "claude-opus-5-5"
+      }
+    }
+  }
+}
+```
+
 ## Worker run trace
 
 Every worker run is a [trace node](../../glossary.json#concept.trace-node) of kind `worker-run`, and each of
@@ -407,13 +488,15 @@ defines them; their contents are these values.
 ```concorde-contract
 {
   "id": "contract.workers.worker-run-trace",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
     "required": [
       "task_type",
       "backend_source",
+      "local_model",
+      "model_map",
       "tools",
       "transcript",
       "worker_result",
@@ -427,6 +510,28 @@ defines them; their contents are these values.
         "minLength": 1
       },
       "backend_source": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "minLength": 1
+          }
+        ]
+      },
+      "local_model": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "minLength": 1
+          }
+        ]
+      },
+      "model_map": {
         "anyOf": [
           {
             "type": "null"
@@ -493,10 +598,12 @@ defines them; their contents are these values.
       }
     }
   },
-  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend (a worker configuration entry, or null when the default applied); tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript the host moved there from the runtime directory once the worker ended (transcript.jsonl), null when no session existed. worker_result is the last worker result verbatim, a claim, or null. deleted lists the proposed deletions the host performed and deletions_refused those it refused. rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, model and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend (a worker configuration entry, or null when the default applied); local_model is the id the model map gave the worker's project model name on its backend, passed with --model, and model_map the path of that map, both null when the request named no local id; tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript the host moved there from the runtime directory once the worker ended (transcript.jsonl), null when no session existed. worker_result is the last worker result verbatim, a claim, or null. deleted lists the proposed deletions the host performed and deletions_refused those it refused. rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, project model name and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
   "example": {
     "task_type": "implement",
     "backend_source": "operations.implement.default",
+    "local_model": "local-openai/gpt-6-astra",
+    "model_map": "/home/dev/.config/concorde/models.json",
     "tools": [
       "Read",
       "Edit",

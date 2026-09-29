@@ -212,7 +212,10 @@ class PiRunTests(unittest.TestCase):
         ):
             settings.write_text(content)
             record = self.project.run(
-                [{}], model="anthropic/claude-sonnet-5", reasoning="low"
+                [{}],
+                model="claude-sonnet-5",
+                local_model="anthropic/claude-sonnet-5",
+                reasoning="low",
             )
             self.assertEqual("ok", record["status"], record["error"])
             kept = self.project.runtime(record) / "config"

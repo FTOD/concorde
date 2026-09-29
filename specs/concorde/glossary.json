@@ -315,6 +315,19 @@
       "explanation": "specs/concorde/coordination/tasks/module.md#concept.merge-lock"
     },
     {
+      "id": "concept.model-map",
+      "title": "Model map",
+      "owner": "module.workers",
+      "definition": "The user's JSON file outside every repository, `~/.config/concorde/models.json` unless `CONCORDE_MODEL_MAP` or `XDG_CONFIG_HOME` places it elsewhere, that gives each project model name of the worker configuration its local model id on pi, on Claude Code or both, and without whose entry for its backend a worker is refused.",
+      "explanation": "specs/concorde/execution/workers/module.md#concept.model-map",
+      "contrasts": [
+        {
+          "target": "concept.worker-configuration",
+          "reason": "the worker configuration is tracked and says which model each worker uses; the model map belongs to one machine and says how that machine's programs reach it"
+        }
+      ]
+    },
+    {
       "id": "concept.module",
       "title": "Module",
       "owner": "module.concorde",
@@ -763,8 +776,14 @@
       "id": "concept.worker-configuration",
       "title": "Worker configuration",
       "owner": "module.workers",
-      "definition": "A worktree's Git-tracked `.concorde/workers.json`, required before any worker runs and the only source of a worker's model and reasoning level: the enabled models, each with an optional level of its own, and a backend, a model and a reasoning level for every worker, for an Operation's workers and for one worker by its id, the most specific entry winning field by field, together with the limits of every worker launch and the runtime paths workers may read.",
-      "explanation": "specs/concorde/execution/workers/module.md#concept.worker-configuration"
+      "definition": "A worktree's Git-tracked `.concorde/workers.json`, required before any worker runs and the only source of a worker's model and reasoning level: the enabled models, each named by a project model name that depends on no installation and each with an optional level of its own, and a backend, a model and a reasoning level for every worker, for an Operation's workers and for one worker by its id, the most specific entry winning field by field, together with the limits of every worker launch and the runtime paths workers may read.",
+      "explanation": "specs/concorde/execution/workers/module.md#concept.worker-configuration",
+      "relates": [
+        {
+          "verb": "is resolved through",
+          "target": "concept.model-map"
+        }
+      ]
     },
     {
       "id": "concept.worker-id",
