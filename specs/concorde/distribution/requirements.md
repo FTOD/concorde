@@ -127,8 +127,9 @@ it binds; everything else in the project's Specs stays the project's.
 ### req.distribution.installer-keeps-installation-bound — Installed files stay bound
 
 In an initialized project, the installer SHALL, after writing the receipt, bring the Concorde
-installation realization in step with the receipt through Spec core, so that every installed file
-it placed is bound whether it was installed before or after initialization.
+installation realization in step with the receipt through Spec core, so that every file the
+receipt names outside `.concorde/`, other than the amended ones, is bound whether it was installed
+before or after initialization.
 
 The binding is [Spec core's](../spec-tooling/spec/requirements.md#req.spec.installation-follows-record):
 an installed file that exists and that no realization binds by its exact path is added, and an entry
@@ -143,9 +144,11 @@ The mark is the file `.concorde/update.json`, which the project ignores; only an
 
 ### req.distribution.unvalidated-reported — Validation reports an unvalidated update
 
-While the project is Concorde unvalidated, `concorde spec-validation` in its primary worktree SHALL report `CONCORDE-UPDATE-001` as an error.
+While the project is Concorde unvalidated, a `concorde spec-validation` in its primary worktree that finds an error SHALL also report `CONCORDE-UPDATE-001` as an error.
 
-Nothing merges before the update is validated, since a `task merge` runs that validation by default.
+A validation that finds no error instead clears the mark ([below](#req.distribution.unvalidated-cleared))
+and reports no `CONCORDE-UPDATE-001`. Nothing merges before the update is validated, since a `task
+merge` runs that validation by default.
 
 ### req.distribution.unvalidated-cleared — The first clean validation clears the mark
 
@@ -189,8 +192,11 @@ after the first write, as can a write itself ([a failed write](#req.distribution
 
 When a file operation of the installer or of `concorde update` fails after the first write, it SHALL refuse with `install_failed`, naming the operating system's error.
 
-Nothing is rolled back: what the earlier steps wrote stays, and the receipt, written after every
-installed file, does not record it. Running the same command again repeats every step.
+Nothing is rolled back: what the earlier steps wrote stays. The receipt is replaced whole after
+every other installed file, so a failure before it leaves the previous receipt, and a failure
+after it, while the installed files are bound or an update rebinds the Protocol and writes its
+mark, leaves the new receipt without the update's mark. Running the same command again repeats
+every step.
 
 ### req.distribution.uv-owns-python — uv creates Concorde's own environment
 

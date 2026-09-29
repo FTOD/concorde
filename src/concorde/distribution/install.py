@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -551,9 +552,10 @@ def _failed_write(action: str, project: Path, error: OSError) -> InstallError:
     """A file operation that failed after the first write, which nothing rolls back."""
     return InstallError(
         "install_failed",
-        f"{action} {project} failed: {error}. What the steps before it wrote stays in place and "
-        f"the receipt {RECEIPT} does not record it; remove the cause and run the same command "
-        "again, which repeats every step",
+        f"{action} {project} failed: {error}. Nothing is rolled back: what the steps before it "
+        f"wrote stays in place, and {RECEIPT} names the previous install unless the failure came "
+        "after it was replaced; remove the cause and run the same command again, which repeats "
+        "every step",
     )
 
 
@@ -664,7 +666,10 @@ def _place(
         "amended": amended,
         "permissions": owned_rules,
     }
-    (project / RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
+    # Replaced whole, so that a failure leaves either the previous receipt or this one.
+    partial = project / (RECEIPT + ".partial")
+    partial.write_text(json.dumps(receipt, indent=2) + "\n")
+    os.replace(partial, project / RECEIPT)
     # An initialized project keeps every installed file bound, those this install added too.
     try:
         bind_installation(project)

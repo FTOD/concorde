@@ -1215,6 +1215,29 @@ class InstallTests(unittest.TestCase):
         )
         self.assertTrue((project / ".claude/skills/concorde/SKILL.md").is_file())
 
+    @verifies("scenario.distribution.update-mark-failed")
+    def test_an_update_failing_after_its_receipt_is_completed_again(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        first = install(
+            project, package, d2=False, pi_runtime=False, dependencies=False
+        )
+        mark = project / ".concorde/update.json"
+        mark.mkdir()
+        with self.assertRaises(InstallError) as refused:
+            update(project, package)
+        self.assertEqual("install_failed", refused.exception.code)
+        self.assertIn(str(mark), str(refused.exception))
+        # The install finished and replaced the receipt; only the mark is missing.
+        receipt = json.loads((project / ".concorde/install.json").read_text())
+        self.assertEqual(first["files"], receipt["files"])
+        self.assertFalse((project / ".concorde/install.json.partial").exists())
+        self.assertFalse(mark.is_file())
+        mark.rmdir()
+        update(project, package)
+        self.assertEqual("unvalidated", json.loads(mark.read_text())["state"])
+
     @verifies("scenario.distribution.install-docsite-template")
     def test_an_installed_concorde_proposes_the_docsite_scaffold(self):
         package = package_copy(self)

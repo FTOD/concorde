@@ -300,9 +300,9 @@ project where every check passes, it goes through these steps in order:
    that each task worktree gets, `.concorde/framework/`, `.concorde/tools/` and
    `.claude/worktrees/`, where task worktrees go, and writes the receipt `.concorde/install.json`.
 9. **It keeps the installed files bound.** In an initialized project it asks Spec core to bring the
-   root Module's Concorde installation realization in step with the receipt: every installed file
-   that exists and that no realization binds by its exact path becomes an exact entry, and an entry
-   whose file is gone is removed, so the files a newer Concorde adds are bound like those
+   root Module's Concorde installation realization in step with the receipt: every file the receipt
+   names outside `.concorde/`, other than the amended ones, that exists and that no realization
+   binds by its exact path becomes an exact entry, and an entry whose file is gone is removed, so the files a newer Concorde adds are bound like those
    initialization bound
    ([requirements](requirements.md#req.distribution.installer-keeps-installation-bound)). Specs
    that cannot be read are left as they are for `spec-validation` to report.
@@ -339,12 +339,21 @@ it, a step that runs a program can still fail (`pi_runtime_failed`, `python_env_
 or a path it may not replace, which it refuses with `install_failed` and the operating system's
 error ([requirements](requirements.md#req.distribution.failed-write-reported)); an installer
 that is killed reports nothing. Nothing is rolled back. What the steps before the failure wrote
-stays: the project may hold the new tools, Protocol copy and a new or partly copied Framework
-runtime beside the previous command, guidance, workflows and settings. The receipt is written after
-every installed file, so it still describes the previous install, or is missing after a first
-install, and the installed command may not run until the install completes: it then says that its
-own Python environment is missing. Running the same install again repeats every step, keeping the
-`d2` and pi runtime already in place, and completes it.
+stays, and what the project holds depends on where the install stopped:
+
+- **Before the receipt**, steps 2 to 8: the project may hold the new tools, Protocol copy and a new
+  or partly copied Framework runtime beside the previous command, guidance, workflows and settings.
+  The receipt still describes the previous install, or is missing after a first install, and the
+  installed command may not run until the install completes: it then says that its own Python
+  environment is missing.
+- **At the receipt**: the receipt is replaced whole, so it is either the previous one or the new
+  one; a killed installer may leave `.concorde/install.json.partial` behind.
+- **After the receipt**, in step 9: every installed file and the new receipt are in place, and
+  only the installation realization may still lag behind the receipt, since Spec core writes it
+  completely or not at all.
+
+Running the same install again repeats every step, keeping the `d2` and pi runtime already in
+place, and completes it.
 
 ### The pi runtime
 
@@ -408,12 +417,14 @@ Open tasks are a separate matter. The result lists them and, when the Protocol c
 for the primary branch to be merged into each, since their worktrees keep the previous copy until
 then; validation does not wait for that merge.
 
-An update that fails during its install ends before it rebinds or marks anything, with the receipt
-of the previous install still in place, so running it again updates from that install. One
-interrupted after its receipt but before its mark is completed the same way, but its mark then
-names the Concorde just installed as the one before. When the installed command no longer runs
-because the failure left its Framework copy or environment incomplete, the update is run again
-with `install-concorde.py --update` from the checkout.
+An update that fails or is interrupted before its install wrote the new receipt ends before it
+rebinds or marks anything, with the previous receipt in place, so running it again updates from
+that install. One that stops after the new receipt, in step 9 of the install or while it rebinds
+or writes the mark ([a failed write](requirements.md#req.distribution.failed-write-reported)), leaves
+the new Concorde installed with the Protocol binding old or new and no mark; running it again
+completes it, but its mark then names the Concorde just installed as the one before. When the
+installed command no longer runs because the failure left its Framework copy or environment
+incomplete, the update is run again with `install-concorde.py --update` from the checkout.
 
 ### Refusals
 
@@ -450,8 +461,12 @@ it by updating the binding; `concorde update` does that itself.
 [structural checks](../glossary.json#concept.structural-check) and
 [registry](../glossary.json#concept.registry) they work on, and the
 [Protocol binding](../glossary.json#concept.protocol-binding) that
-`protocol-manifest --bind-project` rewrites. Distribution relies on its envelope for every command
-and never interprets a Spec itself; a Spec core refusal prints unchanged.
+`protocol-manifest --bind-project` rewrites. Distribution relies on its envelope for the commands that print it, those
+[listed above](#the-command-line) as not routed elsewhere, and never interprets a Spec itself; a
+Spec core refusal of such a command prints unchanged in that envelope. The installer calls Spec
+core only to read the Protocol copy and to bind the installed files: the first refuses as a stale
+build before any write, and a Spec core refusal of the second leaves the Specs to `spec-validation`
+and the install successful.
 
 <a id="uses-views"></a>
 

@@ -217,6 +217,14 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND the Protocol copy and Framework copy placed before stay in place, while no receipt is written
 - AND once the file is moved away, running the installer again completes the install and writes the receipt
 
+### scenario.distribution.update-mark-failed — An update that fails after its receipt is completed by running it again
+
+- GIVEN an installed project in which `concorde update` cannot write its mark, because a directory stands at `.concorde/update.json`
+- WHEN the developer runs `concorde update`
+- THEN the update is refused with `install_failed`, naming the operating system's error
+- AND the receipt already names the new install, while the project is not marked Concorde unvalidated
+- AND once the directory is removed, running the update again marks the project Concorde unvalidated
+
 ### scenario.distribution.own-python — Concorde ignores the caller's Python
 
 - GIVEN a project where Concorde is installed
