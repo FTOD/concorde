@@ -97,8 +97,10 @@ it("lists implementation documents on their Module's entry, not in the navigatio
       continue;
     }
     listed += 1;
-    // The folded list closes the entry, after the whole reading.
-    expect(folded).toBeGreaterThan(source.indexOf('id="design"'));
+    // The folded list closes the entry: after its last heading, inside the article.
+    const articleEnd = source.indexOf("</article>");
+    expect(folded).toBeGreaterThan(source.lastIndexOf("<h2", articleEnd));
+    expect(folded).toBeLessThan(articleEnd);
     expect(source.slice(folded)).toContain(
       `Implementation documents (${details.length})`,
     );

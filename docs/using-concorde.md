@@ -761,7 +761,8 @@ The site's tabs come in a fixed order:
    folders, and its root page (`README.md` or `index.md`) becomes the site's home page at `/`.
    Concorde publishes this guide that way. Without user documents, the home page opens the root
    Module's entry.
-2. **Module documents** and **Implementation documents**, generated from your Specs.
+2. **Module documents**, generated from your Specs. No tab lists implementation documents: each
+   Module's entry ends with a folded list of its own.
 3. Any **custom docs** collections you list under `customDocs`, such as Concorde's Spec Protocol
    tab.
 
