@@ -130,10 +130,10 @@ the survey and a later survey or code_to_spec the run whose questions it answers
 [unbound](../../../glossary.json#concept.unbound-run), in the primary worktree, to show the
 developer a proposal before any task exists. The host gives the worker, as task material, an
 inventory of every file the surveyed Module binds with its size in lines, so the worker can plan
-what to read in a large codebase instead of opening everything. The files of the surveyed Module's Concorde
-installation realization, the skill, workflows and agents the installer placed, are left out of it
-and stay with the surveyed Module: a proposal that gives one of them to a child fails, since they
-configure the agents, not the project, and the installer replaces them on every update.
+what to read in a large codebase instead of opening everything. The files of the surveyed Module's
+Concorde installation realization, the skill, workflows and agents the installer placed, are left
+out of it and stay with the surveyed Module: a proposal that gives one of them to a child fails,
+since they configure the agents, not the project, and the installer replaces them on every update.
 
 **Scaffold.** The execution command `concorde scaffold` of
 [Scaffold](../../commands/scaffold/module.md), with no worker, applies exactly one proposal admitted
