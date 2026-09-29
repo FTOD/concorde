@@ -191,8 +191,9 @@ In pi, the run view SHALL follow every run of the project that is running when t
 or starts afterwards, whoever started it: the `concorde_run` tool, a command run with bash, or
 another session.
 
-It finds them in the primary worktree's [run store](../../glossary.json#concept.run-store), where
-every task worktree's binding records its runs; a run that started and ended between two looks is
+It finds them in the primary worktree's [run store](../../glossary.json#concept.run-store), the
+current tasks' workspace folders, where every task worktree's binding records its runs, and
+`.concorde/unbound/`; a run that started and ended between two looks is
 followed too, and a run that had ended before the session started is not.
 
 ### req.main-session.pi-owned-work — Only its own runs are a pi session's background work
@@ -288,7 +289,7 @@ The guidance SHALL tell the main agent to escalate an error of a task's runs it 
 The guidance SHALL tell the main agent to show the developer the whole rendered
 [error chain](../../glossary.json#concept.error-chain) of an unbound run that is not `ok` and, when
 the failure leads to work, to open a task for it and escalate there with `concorde task escalate`
-naming the run's result file, `.concorde/runs/<run-id>/result.json`, with `--error-file`.
+naming the run's result file, `.concorde/unbound/<run-id>/result.json`, with `--error-file`.
 
 `--run` names only runs of the task's own [workspace](../../glossary.json#concept.workspace), and an
 unbound run has none.

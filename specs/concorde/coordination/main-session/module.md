@@ -132,11 +132,14 @@ primary.report -> developer.read
 its unbound Operations in background Bash and is woken when they exit, and a task session does the
 same with the runs of its task. In pi the installed extension gives the same with more to watch. The `concorde_run`
 tool takes an Operation or an execution command (`task-validation`, `delivery`, `scaffold`), the
-task and further arguments, and starts `concorde run <operation> …` or `concorde <command> …` as a
-detached process in the task's worktree, found through the
+task and further arguments, and starts `concorde run <operation> … --detach` or
+`concorde <command> … --detach` in the task's worktree, found through the
 [task record](../../glossary.json#concept.task-record), since a pi session cannot move into the task
 worktree itself: the task worktree's own `concorde` runs there and reads its workspace binding, so
-the command line never names the task. Without a task it starts an
+the command line never names the task. The runner then runs as a process of its own and writes
+its output to `host.out` in the run's own [trace node](../../glossary.json#concept.trace-node); a
+failure before any run exists, such as a malformed command line, comes back to the tool directly
+with its error. Without a task it starts an
 [unbound](../../glossary.json#concept.unbound-run) Operation in the session's own worktree; an
 execution command without a task starts there too, and Execution refuses it with `binding_required`
 in a worktree without a binding, a run refused at once whose result the tool returns (see below). A
@@ -144,13 +147,14 @@ task without a worktree is refused before anything starts. The tool returns at o
 identity. The extension follows every run of the project, Operation or recorded command, whoever
 started it: the `concorde_run` tool, a command the main agent ran with bash, or another session,
 a pi task session's included. It looks in the primary worktree's
-[run store](../../glossary.json#concept.run-store), where every task worktree's binding records its
-runs, for every run still running when the session starts and every run started since, even one
+[run store](../../glossary.json#concept.run-store), the workspace folders of the current tasks,
+where every task worktree's binding records its runs, and `.concorde/unbound/`, for every run still
+running when the session starts and every run started since, even one
 that ended between two looks; a run that had already ended when the session started is only listed
 by `/concorde` ([requirements](requirements.md#req.main-session.pi-run-follow)). It follows each
 through its [run progress file](../../glossary.json#concept.run-progress-file) there and through
 the [progress file](../../glossary.json#concept.progress-file) of the worker an
-Operation launched, paired by the Operation run's identity; an execution command has no worker.
+Operation launched, which lies in the run's own node; an execution command has no worker.
 It shows each run as an external job in pi-subagents' FleetView — its workspace (or `unbound`) and
 name, its step, the worker's round and latest tool call, and on its end `completed`, `stopped` or
 `failed` for a result of `ok`, `blocked` or `failed`, with the result's summary; a run whose runner
@@ -181,7 +185,7 @@ direction: down
 tool: "concorde_run: an Operation or execution command, with or without a task"
 worktree: "Find the task worktree through the task record"
 refused: "Refused before anything starts, naming the task"
-launch: "Start the worktree's own concorde as a detached process\n(the session's own worktree without a task)"
+launch: "Start the worktree's own concorde with --detach\n(the session's own worktree without a task)"
 elsewhere: "A run still running when the session started,\nor started since with bash or by another session"
 store: "Find the run in the primary worktree's run store"
 done: "Answered in the tool's own result; no message follows"
@@ -209,9 +213,10 @@ wake -> next: between turns
 The view follows pi task sessions the same way. The `concorde_task_session` tool starts a task
 session, answers it (`answer`, which starts the next round) or stops its running round (`stop`), by
 running `concorde task session` from the primary worktree, and returns at once. The extension reads
-each round's status file `status.json` under `.concorde/tasks/<task>.session/` and shows the round
-as an external job — its task, round and the session's latest tool call — and when the round ends it
-wakes the main agent with the outcome recorded in the task record: the report's summary, decisions
+each pi session's status file `status.json` in the session's node
+`.concorde/tasks/<task>/sessions/<session>/` and shows the round as an external job — its task,
+round and the session's latest tool call — and when the round ends it wakes the main agent with the
+outcome recorded in the round's node `rounds/<n>/`: the report's summary, decisions
 and open points, the [delivery commit](../../glossary.json#concept.delivery-commit), the numbers of
 the escalations to read with `concorde task show`, or the failed round's error chain rendered. A
 main session that starts again finds the running rounds from their status files. In a pi task
@@ -237,7 +242,7 @@ task. An [unbound run](../../glossary.json#concept.unbound-run) belongs to none:
 `ok`, the guidance tells the main agent to show the developer its whole chain as rendered, on the
 command's standard error or in the pi run view's message, and, when the failure leads to work, to
 open a task for that work and escalate there with the run's result file,
-`--error-file .concorde/runs/<run-id>/result.json`, since `--run` names only runs of the task's own
+`--error-file .concorde/unbound/<run-id>/result.json`, since `--run` names only runs of the task's own
 workspace ([requirements](requirements.md#req.main-session.unbound-failure)).
 
 **[Worker](../../glossary.json#concept.worker) models.** Workers run on pi, whatever program the
@@ -289,8 +294,9 @@ starts the same workflow again with its `answers` keyed by each step's base key,
 [step key](../../glossary.json#concept.step-key) without a restart label or answer digest, each key
 holding every answer given for that step so far, not only the newest
 ([Workflows](../../execution/workflows/module.md) defines the arguments). The session reads the
-workflow result from the file Workflows saves beside the workspace's
-[workflow record](../../glossary.json#concept.workflow-record) in the run store and treats it like a
+workflow result from the file Workflows saves in the workflow's node beside the workspace's
+[workflow record](../../glossary.json#concept.workflow-record), in the task's workspace folder, and
+treats it like a
 run result: it copies the result's decisions and problems into the task's decision log, since
 Workflows keeps its record apart from the task and in no-ask mode those are decisions taken
 without the developer, gives the decisions in its own report and escalates a result that is not
@@ -449,7 +455,7 @@ authority to finish a merge, so its guidance sends such a refusal to the main ag
 records their [session rounds](../../glossary.json#concept.session-round), whose
 progress files and recorded outcomes the run view reads. It applies to every task. The guidance
 relies on a task session never merging its task into the primary branch or closing it and on every
-round ending with an outcome the task record confirms. A task session's report or
+round ending with an outcome its round's node records. A task session's report or
 escalation is its result travelling up to level 1: the main agent answers the escalations, all at
 once, or asks for more, with the next round's answer, reads a failed round's error chain like any other, and
 merges a delivered task itself.
@@ -466,6 +472,16 @@ them all before the session starts the same workflow again with the answers. Wor
 writes the decision log, so the guidance makes the task session copy a report's decisions and
 problems there.
 
+<a id="uses-tracing"></a>
+
+**Tracing** lays out where the run view finds what it shows: the runs in the current tasks'
+workspace folders and in `.concorde/unbound/`, each a [trace node](../../glossary.json#concept.trace-node)
+with its workers inside it, the nodes of task-session rounds, and the run locks under
+`.concorde/locks/runs/`. The run view relies on the [layout](../../tracing/contracts.md#layout)
+and the [locks](../../tracing/contracts.md#locks), and on a runner removing its run lock file as it
+exits. For a whole task's history with its cost, the guidance points the main agent to
+`concorde trace show <task>`.
+
 <a id="uses-execution"></a>
 
 **Execution** runs the work a task session starts in its task worktree: `concorde run` for an
@@ -477,8 +493,10 @@ primary worktree. Each run returns a [run result](../../glossary.json#concept.ru
 the main agent can read without inspecting a worker, and none starts the next one: that choice is
 the agent's that started it. Every non-`ok` result of a task's runs is recorded in the decision log, and its
 chain is read in full before deciding or escalating. The run view relies on each running run keeping its
-[run progress file](../../glossary.json#concept.run-progress-file) current in the
-primary worktree's run store, which every task worktree's binding names as its records directory.
+[run progress file](../../glossary.json#concept.run-progress-file) current in its trace node in
+the primary worktree's run store, whose workspace folders every task worktree's binding names, and
+on each runner holding its [run lock](../../glossary.json#concept.run-lock) under
+`.concorde/locks/runs/` for as long as it runs.
 
 <a id="uses-operations"></a>
 
@@ -555,16 +573,18 @@ it. It also sets `CONCORDE_CLIENT=pi` for every command the session starts, whic
 that the main session is pi, so that `concorde task session` starts pi task sessions; which
 backend a worker runs on is not affected, since Workers takes it from the worktree's worker
 configuration. It tells an execution command from an Operation by name and starts the first as
-`concorde <command>`, the second as `concorde run <operation>`. It pairs a worker's progress file
-with a run by the Operation run's identity the worker records, never by a process identifier, which
-runners in different PID namespaces, such as sandboxed shells, share. It tells whether a runner
-still lives by its [run lock](../../glossary.json#concept.run-lock), which it finds in the kernel's
-lock table `/proc/locks` by the inode of the run's directory, whichever PID namespace holds it, and
-by the recorded process identifier only where the kernel shows no lock table; a run still marked
-running without a result whose run lock nobody holds is shown `failed`. It looks for runs it does
-not follow yet on every refresh, leaving a run whose runner process `concorde_run` is still
-starting to that tool, which answers a run that ended at once in its own result, so that
-no run is reported twice. `pi_runs.ts` also reads the status files of task-session rounds. The
+`concorde <command>`, the second as `concorde run <operation>`, both with `--detach`, and reads the
+announced run. It finds a worker's progress file in the run's own node, `workers/<worker run>/`,
+never by a process identifier, which runners in different PID namespaces, such as sandboxed shells,
+share. It tells whether a runner still lives by its [run lock](../../glossary.json#concept.run-lock)
+`.concorde/locks/runs/<run-id>.lock`: a missing file means the runner has exited, and an existing
+one is held exactly when the kernel's lock table `/proc/locks` names its inode, whichever PID
+namespace holds it; only where the kernel shows no lock table does it fall back to the recorded
+process identifier. A run still marked running without a result whose run lock nobody holds is
+shown `failed`. It looks for runs it does not follow yet on every refresh, except while
+`concorde_run` is still waiting for a run it started to be announced, which that tool then answers,
+so that no run is reported twice. `pi_runs.ts` also reads the status files of task-session
+sessions and the nodes of their rounds. The
 tests run `pi_runs.ts` under Node against progress files; the extension itself needs a pi session
 and is exercised in one.
 

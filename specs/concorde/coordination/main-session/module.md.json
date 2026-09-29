@@ -79,14 +79,17 @@
         "relies_on": [
           "concept.execution-command"
         ]
+      },
+      {
+        "target": "module.tracing",
+        "meaning": "#uses-tracing",
+        "relies_on": [
+          "contract.tracing.node",
+          "concept.trace-node"
+        ]
       }
     ],
     "includes": [
-      {
-        "kind": "document",
-        "target": "document.tracing.contracts",
-        "reason": "the Framework's error contract, which this Module's errors follow"
-      },
       {
         "kind": "external",
         "target": "references/pi/",

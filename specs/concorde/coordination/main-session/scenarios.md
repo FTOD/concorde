@@ -26,6 +26,13 @@ Situations the [main-session guidance](module.md) prepares the
 - THEN it shows the run with its workspace, Operation, step, the worker's round and latest tool call
 - AND a worker of another run is not attributed to it, even when that run's runner recorded the same process identifier in another PID namespace
 
+### scenario.main-session.pi-run-lock-file — pi tells a live run by its run lock file
+
+- GIVEN a pi main session with the run view, a run of a task's workspace whose runner holds `.concorde/locks/runs/<run-id>.lock`, and a run without a result whose lock file is missing or held by nobody
+- WHEN the run view refreshes
+- THEN it shows the first running and the second `failed`, since its runner ended without a result
+- AND a run `concorde_run` starts is started with `--detach`, its output kept in `host.out` of the run's node, and no `launch-*.log` is written
+
 ### scenario.main-session.pi-run-view-command — pi shows an execution command's run without a worker
 
 - GIVEN a pi main session with the run view and a running `task-validation` run of the task `t1`
@@ -60,7 +67,7 @@ Situations the [main-session guidance](module.md) prepares the
 - GIVEN a pi main session with the run view, and runs of the project started before and after the session started, by a command run with bash or by another session
 - WHEN the run view looks in the [run store](../../glossary.json#concept.run-store) for runs to follow
 - THEN it follows every run still running when the session started and every run started since, even one that already ended, and shows and reports them as it does the runs of `concorde_run`
-- BUT it does not report a run that had already ended before the session started, and leaves a run whose runner `concorde_run` is still starting to that tool
+- BUT it does not report a run that had already ended before the session started, and leaves a run `concorde_run` started and is still waiting to be announced to that tool
 
 ### scenario.main-session.pi-owned-work — A `pi -p` session waits only for its own runs
 
@@ -162,7 +169,7 @@ Situations the [main-session guidance](module.md) prepares the
 ### scenario.main-session.pi-task-session-wake — pi wakes the main agent with a round's recorded outcome
 
 - GIVEN a pi main session following a task-session round
-- WHEN the round ends and its outcome is recorded in the [task record](../../glossary.json#concept.task-record)
+- WHEN the round ends and its outcome is recorded in the round's [trace node](../../glossary.json#concept.trace-node)
 - THEN the run view shows the round finished with its outcome
 - AND the main agent is woken with the recorded outcome: the report's summary, decisions and open points with the delivery commit or the escalation numbers, or the failed round's [error chain](../../glossary.json#concept.error-chain)
 
@@ -259,7 +266,7 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN a main agent reads how to handle its result
 - THEN it is told that the decision log and `concorde task escalate` cover the runs of a task, and that an unbound run belongs to none
 - AND to show the developer the run's whole rendered error chain, never a summary of it
-- AND when the failure leads to work, to open a task for that work and escalate in it with `--error-file .concorde/runs/<run-id>/result.json`, which records the run's chain under its own link
+- AND when the failure leads to work, to open a task for that work and escalate in it with `--error-file .concorde/unbound/<run-id>/result.json`, which records the run's chain under its own link
 - BUT not to name the unbound run with `--run`, which names only runs of the task's own workspace
 
 ## Issues
