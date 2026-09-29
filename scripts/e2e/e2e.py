@@ -20,7 +20,7 @@ develop install from a Concorde clone with a known fault must be reported, not w
     python3 scripts/e2e/e2e.py session start /tmp/concorde-e2e/requests --client pi --prompt "..."
     python3 scripts/e2e/e2e.py session show <session directory>
     python3 scripts/e2e/e2e.py dogfood list
-    python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories
+    python3 scripts/e2e/e2e.py dogfood prepare write-hook-rw-directories [--worker-model <model>]
     python3 scripts/e2e/e2e.py dogfood run /tmp/concorde-e2e/write-hook-rw-directories
     python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/write-hook-rw-directories
 
@@ -453,7 +453,11 @@ def dogfood_command(arguments) -> dict:
         return {"scenarios": dogfood.listing()}
     if arguments.action == "prepare":
         return dogfood.prepare(
-            arguments.scenario, e2e_root(), arguments.name, arguments.client
+            arguments.scenario,
+            e2e_root(),
+            worker_configuration(arguments.worker_model),
+            arguments.name,
+            arguments.client,
         )
     if arguments.action == "run":
         return dogfood.run_scenario(arguments.directory.resolve(), arguments.rounds)
@@ -527,6 +531,11 @@ def main(argv) -> int:
         "--client",
         choices=sessions.CLIENTS,
         help="the scenario's own client by default",
+    )
+    dogfood_prepare.add_argument(
+        "--worker-model",
+        help="run every worker of the project on this model; this checkout's worker "
+        "configuration by default",
     )
     dogfood_run = dogfood_actions.add_parser("run")
     dogfood_run.add_argument("directory", type=Path)

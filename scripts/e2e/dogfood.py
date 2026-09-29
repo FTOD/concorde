@@ -3,11 +3,12 @@
 A scenario (``scenarios/<name>.json`` beside this file) names a project, a fault, the prompt a
 developer gives the main agent and what the session must achieve. ``prepare`` clones this
 checkout's committed Concorde into a scenario directory, injects the fault there as a commit of its
-own, builds it, clones the project and makes a develop install of it from the faulty clone, and
-records the baselines. ``run`` drives a headless session in the project with the scenario's prompt;
-``evaluate`` then decides, from files alone, whether the session left Concorde untouched, wrote
-defect reports that pass ``issues report --check`` and are accepted by a clone of the Concorde
-repository, classified the defect as expected and did not work around it.
+own, builds it, clones the project, makes a develop install of it from the faulty clone, writes the
+project's worker configuration and records the baselines. ``run`` drives a headless session in the
+project with the scenario's prompt; ``evaluate`` then decides, from files alone, whether the
+session left Concorde untouched, wrote defect reports that pass ``issues report --check`` and are
+accepted by a clone of the Concorde repository, classified the defect as expected and did not work
+around it.
 
 Nothing here touches the checkout itself: the fault lives only in the scenario's clone.
 """
@@ -29,6 +30,7 @@ FIELDS = ("name", "description", "project", "fault", "prompt", "expect")
 # The installed framework parts whose bytes a session must leave as they were.
 FRAMEWORK_PARTS = ("src", "scripts", "prompts", "generated")
 GIT = ["git", "-c", "user.name=e2e", "-c", "user.email=e2e@example.com"]
+WORKERS = ".concorde/workers.json"
 
 
 def scenario(name: str) -> dict:
@@ -116,10 +118,15 @@ def install_command(concorde: Path, project: Path, client: str) -> list[str]:
 
 
 def prepare(
-    name: str, root: Path, directory: str | None = None, client: str | None = None
+    name: str,
+    root: Path,
+    workers: dict,
+    directory: str | None = None,
+    client: str | None = None,
 ) -> dict:
     """Set a scenario up under ``root``: the faulty Concorde clone and the project, for the
-    scenario's client or the one given."""
+    scenario's client or the one given, with ``workers`` as the project's worker
+    configuration."""
     chosen = scenario(name)
     client = client or chosen["client"]
     if client not in sessions.CLIENTS:
@@ -151,11 +158,14 @@ def prepare(
     proposal.write_text(json.dumps(proposed["result"]))
     run([command, "init", "--apply", "--proposal", str(proposal)], cwd=project)
     proposal.unlink()
+    # No command writes the worker configuration: a developer writes it by hand, as here.
+    (project / WORKERS).write_text(json.dumps(workers, indent=2) + "\n")
     run(["git", "add", "-A"], cwd=project)
     run([*GIT, "commit", "-qm", "Adopt Concorde (develop install)"], cwd=project)
     record = {
         "scenario": name,
         "client": client,
+        "worker_models": sorted(workers.get("enabled_models", {})),
         "concorde": str(concorde),
         "fault_commit": fault,
         "project": str(project),
