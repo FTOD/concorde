@@ -33,9 +33,9 @@ export function userDocsConfiguration(
       `userDocs.path ${userDocs.path} has no root page; add README.md or index.md, which becomes the site's home page.`,
     );
   }
-  // User documents share the site root with the Spec tabs, search and every custom collection.
+  // User documents share the site root with the Spec pages, search and every custom collection.
   const reserved = new Map<string, string>([
-    ["specs", "the Spec tabs"],
+    ["specs", "the Spec pages"],
     ["search", "search"],
   ]);
   for (const collection of identity.customDocs ?? []) {

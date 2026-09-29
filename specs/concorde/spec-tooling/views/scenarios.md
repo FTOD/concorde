@@ -71,20 +71,21 @@ See [req.views.d2-program](requirements.md#req.views.d2-program).
 - AND a Module's name opens its entry, with its explanatory topics and then its child Modules beneath it
 - AND D2 diagrams render where the document places them
 
-### scenario.views.reading-collections — Two reading collections, one Module specification
+### scenario.views.reading-collections — Implementation documents are reached from their Module
 
 - GIVEN a project in which some documents declare the role `implementation`
 - WHEN the site is built
-- THEN the navigation bar shows the Module documents and Implementation documents tabs
-- AND Module documents lists every entry and `module`-role topic, and Implementation documents lists only `implementation`-role documents under the same Module tree, omitting Modules without such documents
-- AND an implementation page links back to its Module's entry, and the entry's pages link to the Module's implementation documents
-- AND changing only a document's role moves it between tabs without changing its route
+- THEN the navigation bar shows the Module documents tab and no Implementation documents tab, and its sidebar lists every entry and `module`-role topic and no `implementation`-role document
+- AND the entry page of each Module owning `implementation`-role documents ends with a folded list, "Implementation documents" with their count, linking to each of them
+- AND each implementation page is published at its route with every identity anchored, shows the Module documents sidebar without being listed in it, and names its Module, linking to the Module's entry
+- AND changing only a document's role moves it between the sidebar and its Module's list without changing its route
 
-### scenario.views.reading-collections-single — Without implementation documents there is one tab
+### scenario.views.reading-collections-single — The navigation does not depend on implementation documents
 
 - GIVEN a project in which no document declares the role `implementation`
-- WHEN the site is built
-- THEN the navigation bar shows the Module documents tab and no Implementation documents tab
+- WHEN the site is configured
+- THEN the navigation bar shows the same Spec tab, Module documents, as when some document does
+- AND no entry page ends with a list of implementation documents
 
 ### scenario.views.publish-reference-link — A shared document is published once
 
@@ -237,7 +238,7 @@ a link to a page or anchor that does not exist stops promotion, as
 - WHEN the site is built
 - THEN the root page is the site's home page at `/`, and every other document is published at its path in the directory
 - AND the first navigation tab, labelled `userDocs.label` or "User documents", leads to them, with a sidebar that follows the directory's folders
-- AND the Module documents tab, the Implementation documents tab when any document is role `implementation`, and one tab per configured custom docs collection follow in that order
+- AND the Module documents tab and one tab per configured custom docs collection follow in that order
 - BUT user documents are not Spec pages, are not listed in the site manifest, belong to no Module and grant no context
 
 ### scenario.views.publish-homepage-default — No user documents configured
@@ -265,7 +266,7 @@ a link to a page or anchor that does not exist stops promotion, as
 
 - GIVEN `docsite/site.json` configures `customDocs` collections, or the project provides `docsite/custom-docs/index.ts`
 - WHEN the site is built
-- THEN each collection and each extension item has its own navigation entry after the Spec tabs
+- THEN each collection and each extension item has its own navigation entry after the Module documents tab
 - AND custom pages are not listed in the site manifest and belong to no Module
 
 ### scenario.views.custom-docs-refused — Invalid custom docs fail the build

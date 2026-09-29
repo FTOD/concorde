@@ -6,7 +6,6 @@ import {
   roots,
   type ModuleRecord,
   type Page,
-  type ReadingCollection,
   type ScopedRegistry,
 } from "./model";
 import { renderDiagrams } from "./diagrams";
@@ -21,11 +20,10 @@ interface SidebarItem {
   collapsed?: boolean;
   items?: SidebarItem[];
 }
-/** Navigation follows `contains` from each root; each document appears once, under its owner. */
-export function scopedSidebar(
-  registry: ScopedRegistry,
-  collection: ReadingCollection = "module",
-): SidebarItem[] {
+/** Navigation follows `contains` from each root; each `module`-role document appears once, under its
+ * owner. Implementation documents are published but listed in no sidebar: their Module's entry
+ * lists them. */
+export function scopedSidebar(registry: ScopedRegistry): SidebarItem[] {
   const byPath = new Map(registry.pages.map((p) => [p.sourcePath, p]));
   const id = (page: Page) => page.stagedPath.replace(/\.md$/, "");
   const document = (page: Page): SidebarItem => ({
@@ -33,39 +31,26 @@ export function scopedSidebar(
     id: id(page),
     label: posix.basename(page.sourcePath, ".md"),
   });
-  const glossaryItem: SidebarItem | undefined =
-    collection === "module" && registry.glossary
-      ? {
-          type: "doc",
-          id: registry.glossary.stagedPath.replace(/\.md$/, ""),
-          label: "Glossary",
-        }
-      : undefined;
+  const glossaryItem: SidebarItem | undefined = registry.glossary
+    ? {
+        type: "doc",
+        id: registry.glossary.stagedPath.replace(/\.md$/, ""),
+        label: "Glossary",
+      }
+    : undefined;
   const item = (module: ModuleRecord, depth = 0): SidebarItem[] => {
     const entry = byPath.get(module.entry)!;
     const items = [
       ...module.owns
         .filter((path) => path !== module.entry)
         .map((path) => byPath.get(path)!)
-        .filter((page) => page.readingCollection === collection)
+        .filter((page) => page.readingCollection === "module")
         .map(document),
       ...children(registry, module).flatMap((child) => item(child, depth + 1)),
       ...(glossaryItem && registry.glossary!.owner === module.id
         ? [glossaryItem]
         : []),
     ];
-    // Implementation navigation keeps the composition path but never repeats the Module entry.
-    if (collection === "implementation")
-      return items.length
-        ? [
-            {
-              type: "category",
-              label: module.title,
-              collapsed: depth > 0,
-              items,
-            },
-          ]
-        : [];
     return [
       items.length
         ? {
@@ -101,10 +86,8 @@ export async function materializeScoped(registry: ScopedRegistry) {
           slug: page.route.slice("/specs".length),
           title,
           sidebar_label: title,
-          displayed_sidebar:
-            page.readingCollection === "implementation"
-              ? "implementationDocumentsSidebar"
-              : "moduleDocumentsSidebar",
+          // An implementation page shows the Module tree for orientation without being listed in it.
+          displayed_sidebar: "moduleDocumentsSidebar",
           toc_max_heading_level: 3,
         },
       ),
@@ -132,19 +115,7 @@ export async function materializeScoped(registry: ScopedRegistry) {
   await writeFile(
     resolve(generated, "specs-sidebar.json"),
     JSON.stringify(
-      {
-        moduleDocumentsSidebar: scopedSidebar(registry),
-        ...(registry.pages.some(
-          (page) => page.readingCollection === "implementation",
-        )
-          ? {
-              implementationDocumentsSidebar: scopedSidebar(
-                registry,
-                "implementation",
-              ),
-            }
-          : {}),
-      },
+      { moduleDocumentsSidebar: scopedSidebar(registry) },
       null,
       2,
     ) + "\n",

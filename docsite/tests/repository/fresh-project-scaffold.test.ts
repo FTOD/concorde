@@ -276,7 +276,11 @@ describe("a project holding only initialization outputs", () => {
     expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain(
       "Spec Protocol",
     );
-    expect(mainPage).toContain("Implementation documents");
+    // The entry lists its implementation document at its end; the navigation does not.
+    expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain(
+      "Implementation documents",
+    );
+    expect(mainPage).toContain("Implementation documents (1)");
     expect(mainPage).not.toContain("<iframe");
     expect(mainPage).toContain('id="purpose"');
     expect(mainPage).not.toContain('id="requirements"');

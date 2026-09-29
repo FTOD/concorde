@@ -86,9 +86,9 @@ including a metadata-only edit, changes it. It identifies inputs; it is not a cl
 
 A page's staged path is its source path, with a leading `specs/` removed when every registered
 document lies under `specs/`. Its route is `/specs/` followed by the staged path without `.md`.
-A page has no other route. Its model title, which the provenance bar uses when it links an entry
-and its implementation pages, is the document's first level-1 heading, falling back to the owner's
-title.
+A page has no other route. Its model title, which the provenance bar and the entry's list of
+implementation documents use when they link an entry and its implementation pages, is the
+document's first level-1 heading, falling back to the owner's title.
 
 ## Staging
 
@@ -97,8 +97,9 @@ title.
 1. It deletes the staging identity record, then the previous `content/` and `static/` directories.
 2. For every page it writes `content/specs/<staged path>` with front matter giving the slug, the
    title and navigation label (the Module's title for an entry, otherwise the file name without
-   `.md`; the page body still shows the document's own level-1 heading), the sidebar of its
-   reading collection and a table of contents of level-2 and level-3 headings. The body is
+   `.md`; the page body still shows the document's own level-1 heading), the Module documents
+   sidebar, which an implementation page shows for orientation without being listed in it, and a
+   table of contents of level-2 and level-3 headings. The body is
    the reading with these rewrites, applied outside fenced code only:
    - **links**: a relative Markdown link `[label](path)` or image `![label](path)` whose target
      path resolves, relative to the source file, to a registered document is replaced by that
@@ -139,9 +140,8 @@ title.
    anchored by its identity, with its definition (term links inside it pointing to anchors on the
    same page), its owning Module's entry and a link to its explanation, and any retirement or
    external-conflict note. The page's table of contents lists the groups only.
-4. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` and, when any page has the
-   `implementation` collection, `implementationDocumentsSidebar`. The Glossary page is the last
-   item of the declaring Module's category in `moduleDocumentsSidebar`.
+4. It writes `specs-sidebar.json` with `moduleDocumentsSidebar` alone. The Glossary page is the
+   last item of the declaring Module's category.
 5. Last, it writes the staging identity record `scoped-materialization.json`:
    `{"schema_version": 2, "sourceDigest": "<source digest>"}`.
 
@@ -157,27 +157,27 @@ other's files.
 
 ## Navigation
 
-Both sidebars follow the `contains` tree, starting from the uncontained Modules in registry order;
-children follow the parent's `contains` order.
+The Module documents sidebar follows the `contains` tree, starting from the uncontained Modules in
+registry order; children follow the parent's `contains` order. A Module with `module`-role topics
+or children is a category whose label is the Module title and whose link opens its entry; its
+items are its `module`-role topics in `owns` order, then its children. A Module with neither is a
+single link to its entry. The entry is never listed twice, and categories below the top level start
+collapsed. Document labels are file names without `.md`. A document appears only under its owner.
 
-- **Module documents.** A Module with `module`-role topics or children is a category whose label is
-  the Module title and whose link opens its entry; its items are its `module`-role topics in `owns`
-  order, then its children. A Module with neither is a single link to its entry. The entry is never
-  listed twice.
-- **Implementation documents.** A Module is a category labelled with its title, holding its
-  `implementation`-role documents in `owns` order and then its children; a Module with no such
-  document anywhere below it is omitted. Categories below the top level start collapsed.
-
-Document labels are file names without `.md`. A document appears only under its owner.
+No sidebar or tab lists an `implementation`-role document. Readers reach one from its Module's
+entry, which ends with a folded list of them, from links and term links in other documents, from
+search and by its route.
 
 ## Provenance
 
 The content plugin publishes Docusaurus global data with `schema_version`, `rootModule`, `pages`
 (every page without its reading body) and `siteIdentity`. A layout wrapper finds the current page by
-route and renders the provenance bar: the collection label, the source path, links between the entry
-and the owner's implementation pages, and a "Spec metadata" disclosure with the document identity,
-the owner, the selecting Modules with their reasons, the metadata path and both digests. Without
-user documents, the site root uses `rootModule` to
+route and renders the provenance bar: the collection label, on an implementation page a link to its
+owner's entry, the source path, and a "Spec metadata" disclosure with the document identity, the
+owner, the selecting Modules with their reasons, the metadata path and both digests. A footer
+wrapper ends a Module's entry page with a folded "Implementation documents (<count>)" list linking,
+in `owns` order, to each of the owner's implementation pages; it shows nothing when the Module owns
+none. Without user documents, the site root uses `rootModule` to
 redirect to the root Module's entry.
 
 ## Build hooks
@@ -187,7 +187,7 @@ and the model at start-up. The Spec docs instance reads `.generated/content/spec
 `/specs`; user documents are a separate instance at route base `/` with a generated sidebar, and the
 root redirect page is then left out; each custom docs
 collection is a separate instance; local search indexes all of them. The navigation lists user
-documents, then Module documents and Implementation documents, then custom docs. Broken links,
+documents, then Module documents, then custom docs. Broken links,
 anchors and duplicate routes are build errors.
 
 The content plugin:

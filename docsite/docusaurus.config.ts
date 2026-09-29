@@ -106,7 +106,7 @@ const config: Config = {
   themeConfig: {
     navbar: {
       title: identity.title,
-      // User documents come first, then the Spec tabs, then project-owned custom docs.
+      // User documents come first, then the Module documents tab, then project-owned custom docs.
       items: [
         ...(user ? [user.navbarItem] : []),
         {
@@ -115,18 +115,6 @@ const config: Config = {
           label: "Module documents",
           position: "left",
         },
-        ...(registry.pages.some(
-          (page) => page.readingCollection === "implementation",
-        )
-          ? [
-              {
-                type: "docSidebar" as const,
-                sidebarId: "implementationDocumentsSidebar",
-                label: "Implementation documents",
-                position: "left" as const,
-              },
-            ]
-          : []),
         ...custom.navbarItems,
         ...(identity.repository
           ? [

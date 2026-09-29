@@ -223,7 +223,7 @@ neither equal to, inside nor containing another collection's route. `path` (a di
 `sidebarPath` (a file) are relative to `docsite/`, may use `../`, and may not be absolute, use a
 drive prefix or contain a backslash. A collection must not contain a registered Spec document. Each
 collection is published as its own Docusaurus docs instance with its own sidebar, search index and
-navigation entry after the Spec tabs; its landing document uses `slug: /`.
+navigation entry after the Module documents tab; its landing document uses `slug: /`.
 
 A project may also provide `docsite/custom-docs/index.ts`, exporting an object with optional
 `plugins` and `navbarItems` arrays. They are added to the site as they are; their routes must stay

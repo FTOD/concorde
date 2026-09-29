@@ -76,33 +76,51 @@ it("publishes the current registry and verifies the promoted manifest", async ()
   );
 });
 
-// verifies: scenario.views.reading-collections
-it("publishes both reading collections with links between entry and implementation pages", async () => {
+// verifies: scenario.views.reading-collections, scenario.views.reading-collections-single
+it("lists implementation documents on their Module's entry, not in the navigation", async () => {
   const entryHtml = await html(
     registry.pages.find((p) => p.primaryOf === registry.rootModule)!.route,
   );
   const navbar = entryHtml.match(/<nav\b[\s\S]*?<\/nav>/)![0];
   expect(navbar).toContain("Module documents");
-  expect(navbar).toContain("Implementation documents");
+  expect(navbar).not.toContain("Implementation documents");
   expect(navbar).toContain("Spec Protocol");
   const base = loadSiteIdentity(site).baseUrl.replace(/\/$/, "");
+  const sidebar = (source: string) =>
+    source.match(/aria-label="Docs sidebar"[\s\S]*?<\/nav>/)![0];
+  let listed = 0;
   for (const module of registry.modules) {
     const details = registry.pages.filter(
       (p) => p.owner === module.id && p.readingCollection === "implementation",
     );
-    if (!details.length) continue;
     const entry = registry.pages.find((p) => p.primaryOf === module.id)!;
     const source = await html(entry.route);
-    expect(source).toContain('aria-label="Module specification reading paths"');
+    const folded = source.indexOf(
+      'aria-label="Module specification reading paths"',
+    );
+    if (!details.length) {
+      expect(folded, entry.route).toBe(-1);
+      continue;
+    }
+    listed += 1;
+    // The folded list closes the entry, after the whole reading.
+    expect(folded).toBeGreaterThan(source.indexOf('id="design"'));
+    expect(source.slice(folded)).toContain(
+      `Implementation documents (${details.length})`,
+    );
     for (const page of details) {
-      expect(source).toContain(`href="${base}${page.route}"`);
+      expect(source.slice(folded)).toContain(`href="${base}${page.route}"`);
       const detail = await html(page.route);
+      // It shows the Module documents sidebar for orientation without being listed in it.
+      expect(sidebar(detail)).not.toContain(`href="${base}${page.route}"`);
+      expect(detail).toContain('aria-label="Owning Module"');
       expect(detail).toContain(`href="${base}${entry.route}"`);
       expect(detail).toContain(
-        "Both reading paths belong to the same complete Module specification.",
+        "The Module&#x27;s entry and its implementation documents together make its complete specification.",
       );
     }
   }
+  expect(listed).toBeGreaterThan(0);
 });
 
 // verifies: scenario.views.id-anchors
@@ -204,12 +222,7 @@ it("publishes the user documents as the home page and the first tab", async () =
   const tabs = [
     ...home.matchAll(/class="navbar__item navbar__link[^"]*"[^>]*>([^<]+)</g),
   ].map((match) => match[1]);
-  expect(tabs).toEqual([
-    "User documents",
-    "Module documents",
-    "Implementation documents",
-    "Spec Protocol",
-  ]);
+  expect(tabs).toEqual(["User documents", "Module documents", "Spec Protocol"]);
   const guide = await readFile(resolve(output, "using-concorde.html"), "utf8");
   expect(guide).toContain("Using Concorde");
   expect(guide).not.toContain("provenanceShell");
