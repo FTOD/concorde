@@ -15,7 +15,7 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "15.1.0"
+protocol: "16.0.0"
 model_version: 1
 
 context_channels:
@@ -115,7 +115,6 @@ node_types:
     fields: [id, type, title, meaning, entries]
     attributes:
       - {id: entries, type: list of path-literal}
-      - {id: pending, type: list of path-literal, optional: true}
     explanation: meaning anchor
     checks:
       - CHK.node.id
@@ -252,7 +251,6 @@ relation_types:
       - CHK.binds.exists
       - CHK.binds.disjoint
       - CHK.binds.no-spec
-      - CHK.binds.pending-subset
       - CHK.binds.unbound
 
   - id: mentions
@@ -391,7 +389,7 @@ boundary_sets:
   - id: ImplementationScope
     side: write
     derived_from: [binds]
-    contents: every file covered by the Module's realization entries, including pending entries
+    contents: every file covered by the Module's realization entries
 
 access_levels: [none, names, read, write]
 

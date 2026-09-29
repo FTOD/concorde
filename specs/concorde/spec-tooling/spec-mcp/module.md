@@ -119,9 +119,9 @@ sets for the session, one directory by construction, while a client may offer se
 none of them is marked as the project; the roots are the fallback for a client that sets no
 variable, and only when they name exactly one directory.
 
-Rooting at one worktree keeps answers honest across concurrent tasks: a branch may declare a
-pending file or a `uses` the primary lacks, and only its own server sees it. The running Concorde
-package must still carry the Protocol the root binds, or calls fail with `protocol_mismatch`.
+Rooting at one worktree keeps answers honest across concurrent tasks: a branch may bind a new file
+or declare a `uses` the primary lacks, and only its own server sees it. The running Concorde package
+must still carry the Protocol the root binds, or calls fail with `protocol_mismatch`.
 `validate` alone does not fail then: it loads through the validator, which reports Specs it cannot
 load as a finding, so its answer is the `spec-validation` envelope with status `invalid` and one
 error finding that describes the mismatch. Confining path arguments to the root keeps a query from
@@ -134,9 +134,8 @@ an authorization. Workers launch with an empty MCP configuration, so no worker c
 request a different grant, or learn more than its brief tells it — querying it from review workers
 is future work.
 
-The server is read-only by construction — no tool writes, regenerates the registry, confirms
-pending entries, or opens a network listener — and success of its `validate` tool is evidence
-about structure only.
+The server is read-only by construction — no tool writes, regenerates the registry or opens a
+network listener — and success of its `validate` tool is evidence about structure only.
 
 ## The server program
 

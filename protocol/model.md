@@ -164,21 +164,21 @@ Module.
 names.
 
 **Boundaries.** Its entries are the Module's `ImplementationScope`: the code a task bound to the
-Module may be given to change. `pending` entries declare where new files may be created before any
-code is written.
+Module may be given to change. Only paths that exist are bound; a new file is created before it is
+bound, or below a bound directory.
 
 **Fields.** `id`, `type`, `title`, `meaning`, `entries` (exact project-relative paths, or directory
-prefixes ending in `/`); optional `pending` (a subset of `entries` that does not yet exist).
+prefixes ending in `/`).
 
-**Constraints.** Non-pending entries MUST exist. Within a Module no two realizations list the same
+**Constraints.** Every entry MUST exist. Within a Module no two realizations list the same
 entry, and the longest covering entry determines which realization a file belongs to. A directory
 entry binds present and future regular files below it under the tool's deterministic exclusion
 rule. No document member, generated output or project-control record may be bound, and a bound
 directory MUST NOT contain a document member. Several Modules MAY bind the same path; each keeps
 its own promises, and a change concerns all of them.
 
-A pending entry records intent, not evidence, and is removed once the file exists. On the read
-side, listing a path grants its **name**; contents are readable or writable only through a task
+A realization records what exists, never an intent: a path that does not exist yet is not bound.
+On the read side, listing a path grants its **name**; contents are readable or writable only through a task
 boundary. See [Boundaries](boundaries.md).
 
 ## requirement

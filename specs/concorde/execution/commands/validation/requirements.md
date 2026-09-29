@@ -55,11 +55,6 @@ External material is what a Module includes as `external`. A submodule's gitlink
 material when a Module includes the submodule or a path inside it, so bumping a vendored reference
 needs no binding of its own.
 
-### req.validation.confirmations — Filled pending entries are confirmations
-
-Validation SHALL report a pending realization entry whose file exists as a confirmation, not as a
-blocking finding.
-
 ## Effects
 
 ### req.validation.read-only — A task-validation run changes nothing in the workspace
@@ -67,18 +62,3 @@ blocking finding.
 A `task-validation` run SHALL NOT change any file, index entry, branch or commit of the workspace
 outside its own [trace node](../../../glossary.json#concept.trace-node) and the locks directory its
 binding names.
-
-### req.validation.confirm-exact — Confirmation clears only the listed markers
-
-Applying confirmations SHALL clear the pending markers of exactly the listed entries and of no
-other entry.
-
-### req.validation.confirm-digest — A changed declaring document stops confirmation
-
-Applying confirmations SHALL leave every Spec document unchanged when a declaring document no longer
-has the digest the readiness recorded.
-
-### req.validation.confirm-valid — Confirmation keeps the Specs valid
-
-Applying confirmations SHALL leave the Specs unchanged when the confirmed Specs have a structural
-error.

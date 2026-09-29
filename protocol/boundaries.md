@@ -21,7 +21,7 @@ checkout get the same answer.
 | `ExternalContext(M)` | pinned material M includes | `includes` of kind `external` |
 | `ImplementationContext(M)` | the names of every file M's realizations bind | `binds` |
 | `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block, and the glossary entries M owns | `owns`, glossary `owner` |
-| `ImplementationScope(M)` | every file covered by M's realization entries, including pending entries not yet created | `binds` |
+| `ImplementationScope(M)` | every file covered by M's realization entries | `binds` |
 | `ProjectImplementation` | every file any Module's realizations bind and all external material any Module includes; the same for every Module | `binds`, `includes` of kind `external` |
 
 `SpecContext`, `ExternalContext`, `ImplementationContext` and `ProjectImplementation` are **read**
@@ -54,11 +54,13 @@ read access, however the Module binding it is granted. The installer replaces th
 update and the agents working on the project are configured by them, so a Module-scoped task never
 changes them.
 
-A file bound by no Module is therefore not writable by any Module-scoped task. To change or create
-such a file, first bind it: add it to a realization as an entry, or as a `pending` entry when it
-does not exist yet. Declaring the file is a Spec change within `SpecScope(M)`; creating it is then
-within `ImplementationScope(M)`. This two-step shape is what lets a `specify` task decide where
-code may go before an `implement` task writes it.
+A file bound by no Module is therefore not writable by any Module-scoped task. To change such a
+file, first bind it: add it to a realization as an entry. A realization binds only paths that
+exist, so a new file outside every bound directory is created and bound together, before a task
+that fills it starts, by the work that prepares that task rather than by a Module-scoped task:
+the file, with the least content its format needs to be valid, and the entry that binds it are
+one change. A task bound to the Module may then write the file within `ImplementationScope(M)`. A
+file created below a bound directory needs no new entry.
 
 ## The glossary
 
@@ -163,10 +165,10 @@ types that work on Specs alone never see code contents.
 - **`understand`** learns what a Module promises and how it is realized, without reading code:
   explaining, assessing, or planning a change. Planning is one use of understanding, not a task
   type of its own.
-- **`specify`** changes the Module's own documents, including declaring `pending` realization
-  entries for files a later `implement` task will create.
-- **`implement`** changes the Module's realization: its bound files, and the pending files it
-  declares.
+- **`specify`** changes the Module's own documents, including their realization entries for files
+  that exist.
+- **`implement`** changes the Module's realization: its bound files, and new files below its bound
+  directories.
 - **`test`** reads the realization and its tests against the Specs. Running checks is evidence
   produced for the task, not a wider read.
 - **`review-spec`** judges the Module's documents; **`review-code`** judges its realization against

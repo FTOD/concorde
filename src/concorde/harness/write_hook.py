@@ -44,9 +44,9 @@ def decide(data: dict, grant: dict) -> str | None:
     if listed("names"):
         return f"only the name of {relative} is visible to this task"
     return (
-        f"{relative} is not in this task's grant; a file no Module declares must first be "
-        "declared as a pending file of a Module through a specify task, and a file another "
-        "Module declares needs that Module bound to the task"
+        f"{relative} is not in this task's grant; a new file outside the bound directories is "
+        "created and bound to a Module by the task level before a worker fills it, and a "
+        "file another Module binds needs that Module bound to the task"
     )
 
 

@@ -17,10 +17,10 @@ bound Modules that the grant computed from the workspace's Specs.
 The implement worker's grant SHALL NOT make any [Spec](../../../glossary.json#concept.spec) document
 or metadata file writable.
 
-### req.implementation.pending-precreated — Declared files exist before launch
+### req.implementation.no-spec-edits — The Operation never changes a Spec
 
-The implement [Operation](../../../glossary.json#concept.operation) SHALL create every pending file
-and directory the grant makes writable before it launches the worker.
+The implement [Operation](../../../glossary.json#concept.operation) SHALL NOT change any Spec
+document or metadata file itself.
 
 ### req.implementation.audit — Writes outside the grant fail the run
 
@@ -32,12 +32,8 @@ repair failed checks.
 
 ### req.implementation.host-deletes — Deletions are performed by the Operation
 
-Apart from the pending files and directories it pre-created, the implement Operation SHALL delete a
-file only when the worker's result proposes it, the file lies inside the grant's writable paths and
-the audit was clean.
-
-A pre-created path that is still empty is removed without a proposal, whatever the status, as
-[req.implementation.pending-markers](#req.implementation.pending-markers) describes.
+The implement Operation SHALL delete a file only when the worker's result proposes it, the file lies
+inside the grant's writable paths and the audit was clean.
 
 ### req.implementation.checks-follow-uses — The checks of users run too
 
@@ -66,14 +62,6 @@ The implement Operation SHALL run at most the configured number of resume rounds
 `--rounds` gives, or else the
 [worker configuration](../../../glossary.json#concept.worker-configuration)'s `limits.rounds`, or
 else three.
-
-### req.implementation.pending-markers — Pending markers follow the files
-
-At the end of every implement run whose worker was launched, the Operation SHALL clear the pending
-marker of exactly those pending entries of the bound Modules whose files or directories exist.
-
-Before markers are cleared, every file or directory the Operation pre-created that is still empty is
-removed again, so an unused declaration stays pending.
 
 ## Test
 

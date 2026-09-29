@@ -9,9 +9,9 @@ configured checks, resuming the worker with failures for a limited number of rou
 checks itself and lets a read-only worker interpret the results into a
 test report. Neither worker ever changes a Spec — a
 missing or contradictory promise stops the run with a
-[Spec gap](../../../glossary.json#concept.spec-gap) — and `implement`'s only Spec edit is the
-[Operation](../../../glossary.json#concept.operation) clearing a pending marker once its file
-exists; readiness and delivery are the
+[Spec gap](../../../glossary.json#concept.spec-gap) — and neither
+[Operation](../../../glossary.json#concept.operation) edits one either; readiness and delivery are
+the
 [execution commands](../../../glossary.json#concept.execution-command) of other Modules.
 
 ## Core concepts
@@ -20,7 +20,7 @@ exists; readiness and delivery are the
 
 Both Operations are worker-backed. `implement` uses
 [task type](../../../glossary.json#concept.task-type) `implement`: the files bound by the Modules'
-realizations are writable (pending entries included), their Specs stay read-only, and other
+realizations are writable, their Specs stay read-only, and other
 implementation files show by name only. `test` uses task type `test`: the same files readable,
 nothing writable. Neither worker can change a Spec, so disagreement between Spec and code can only
 be reported.
@@ -54,14 +54,14 @@ Module that uses one of them, directly or through further uses, as Check executi
 `checked_modules` computes it. A selective check runs only when some test verifies a scenario of
 those Modules, and a readiness check never runs here; a check that does not run is not listed.
 
-### Pending files
+### New files
 
-A file a Spec declares as pending does not exist until `implement` creates it. Pre-creating pending
-files lets the [write hook](../../../glossary.json#concept.write-hook) and sandbox treat them as
-ordinary writable files. After the worker, an unused file or directory disappears and stays pending;
-one that now exists has its pending marker cleared — the only Spec edit `implement` makes, an
-observed fact rather than the worker's claim. A file meant to stay empty is removed and stays
-pending; it needs some content to count as created.
+A worker writes only the files its Modules bind and new files below the directories they bind,
+since a realization binds only files that exist. A file the change needs anywhere else is created
+and bound to its Module by the task level before the run, with the least content its format needs
+to be valid, so that the grant makes it writable like any other bound file; a worker that needs a
+file nobody created returns `blocked` naming it. `implement` itself creates no file outside the
+worker and changes no Spec.
 
 ## Overview
 
@@ -71,15 +71,13 @@ checks before its worker and only asks it to explain the results.
 ```d2 illustrative
 implement: implement {
   direction: down
-  grant: "Freeze the implement grant;\npre-create pending files"
+  grant: "Freeze the implement grant"
   worker: "Worker changes the\nbound Modules' code"
   checks: "Run the configured checks\noutside the worker"
-  markers: "Clear the pending markers\nof files that now exist"
   output: "Code change"
   grant -> worker -> checks
   worker <- checks: "a check fails, rounds left:\nresume with the failures" {style.stroke-dash: 3}
-  checks -> markers: "all pass, or\nrounds used up"
-  markers -> output
+  checks -> output: "all pass, or\nrounds used up"
 }
 test: test {
   direction: down
@@ -93,8 +91,8 @@ test: test {
 
 ## Running implement and test
 
-The caller runs both Operations after the Specs state what the code must do and declare new files
-as pending entries:
+The caller runs both Operations after the Specs state what the code must do and every new file
+outside the bound directories has been created and bound:
 
 ```text
 concorde run implement [--modules <module-id>[,<module-id>…]] --goal "<text>" [--input <run-id>]… [--rounds <n>]
@@ -109,9 +107,10 @@ workspace's goal as context, as `specify`'s does, beside the run's own argument:
 `--focus` narrows what its worker looks at, never which checks run. `implement` also admits earlier
 `ok` outputs via `--input`, and `--rounds` sets the resume-round limit (0 or more); without it the
 limit is the [worker configuration](../../../glossary.json#concept.worker-configuration)'s
-`limits.rounds`, and three when that is not set. For example, after `specify` declares
-`src/concorde/issues/severity.py` pending, `implement --goal "accept and store the report severity"`
-lets the worker create it and change the other Issues files, returning once the checks pass or the
+`limits.rounds`, and three when that is not set. For example, after the task level created
+`src/concorde/issues/severity.py` and bound it to Issues,
+`implement --goal "accept and store the report severity"` lets the worker fill it and change the
+other Issues files, returning once the checks pass or the
 rounds run out.
 
 `implement`'s `status` is `ok` when the last round's checks passed; `blocked` when the worker
@@ -136,49 +135,41 @@ other run still lists the check results. Running `test` again is safe.
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Compute and freeze the `implement` [grant](../../../glossary.json#concept.grant) | Operation, Spec core | Specs cannot load, or unknown Module (`failed`) |
-| 2 | Pre-create every pending file/directory the grant makes writable, empty | Workers | cannot create (`failed`) |
-| 3 | Generate settings, tools and the [brief](../../../glossary.json#concept.brief) | Workers | — |
-| 4 | Launch the worker and wait for its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error/timeout (`failed`) |
-| 5 | [Audit](../../../glossary.json#concept.write-audit) against the grant | Workers | write outside the grant (`failed`); worker `blocked`/`failed` (passed on) |
-| 6 | After a clean audit of a worker that ended `ok`, run the configured checks of the bound Modules and of every Module that uses one of them | Workers, Check execution | — |
-| 7 | While a check fails with rounds left, resume the session, repeat 5–6 | Workers, worker | rounds used, still failing (`failed`) |
-| 8 | Perform proposed deletions after a clean audit; remove pre-created paths still empty; write the run record | Workers | — |
-| 9 | Remove any pre-created path still empty that step 8 left; clear the pending marker of every entry that now exists | Operation, Spec core | — (a marker update that fails is recorded as `pending-markers` evidence) |
-| 10 | Return the run's output | Operation, Execution runner | — |
+| 2 | Generate settings, tools and the [brief](../../../glossary.json#concept.brief) | Workers | — |
+| 3 | Launch the worker and wait for its [worker result](../../../glossary.json#concept.worker-result) | Workers, worker | launch error/timeout (`failed`) |
+| 4 | [Audit](../../../glossary.json#concept.write-audit) against the grant | Workers | write outside the grant (`failed`); worker `blocked`/`failed` (passed on) |
+| 5 | After a clean audit of a worker that ended `ok`, run the configured checks of the bound Modules and of every Module that uses one of them | Workers, Check execution | — |
+| 6 | While a check fails with rounds left, resume the session, repeat 4–5 | Workers, worker | rounds used, still failing (`failed`) |
+| 7 | Perform proposed deletions after a clean audit; write the run record | Workers | — |
+| 8 | Compose the code change from the run record and return it | Operation, Execution runner | — |
 
-The main path, the resume loop and the exits, which all meet at steps 8–10:
+The main path, the resume loop and the exits, which all meet at steps 7–8:
 
 ```d2 illustrative
 direction: down
 grant: 1 Freeze the implement grant
-precreate: 2 Pre-create pending files
-brief: 3 Settings, tools and brief
-launch: 4 Launch or resume the worker
-audit: 5 Audit against the grant
-checks: 6 Run the configured checks
-record: "8 Proposed deletions after a clean audit, empty pre-created paths removed, run record"
-markers: "9 Leftover empty paths removed, pending markers of existing entries cleared"
-output: 10 Return the code change
+brief: 2 Settings, tools and brief
+launch: 3 Launch or resume the worker
+audit: 4 Audit against the grant
+checks: 5 Run the configured checks
+record: "7 Proposed deletions after a clean audit, run record"
+output: 8 Return the code change
 stopped: "failed, no worker launched" {shape: oval}
-grant -> precreate -> brief -> launch -> audit
+grant -> brief -> launch -> audit
 audit -> checks: worker ok, audit clean
-launch <- checks: "7 a check fails, rounds left: resume with the failures"
+launch <- checks: "6 a check fails, rounds left: resume with the failures"
 checks -> record: "all passed, or none configured: ok"
 checks -> record: "still failing, rounds used up: failed" {style.stroke-dash: 3}
 audit -> record: "write outside the grant, timeout, limit reached, invalid result: failed;\nworker blocked or failed: its status, unresumed" {style.stroke-dash: 3}
 launch -> record: "launch error: failed" {style.stroke-dash: 3}
-precreate -> record: "cannot create: failed" {style.stroke-dash: 3}
 grant -> stopped: Specs not loaded, Module unknown {style.stroke-dash: 3}
-record -> markers -> output
+record -> output
 ```
 
-Once launched, steps 8–10 run whatever the status, so Specs and the run record stay consistent after
-a failure. Steps 1–8 are the
-[standard worker sequence](../../../glossary.json#concept.standard-worker-sequence); step 9 is this
-Operation's own. Workers already removes the pre-created paths that stayed empty when its run ends;
-step 9 repeats that removal for any it left, so the markers it then clears follow the files that
-really exist. When the marker update cannot be read or written, step 9 records the failure as
-`pending-markers` evidence, clears nothing and keeps the status and error chain the run already had.
+Once launched, steps 7–8 run whatever the status, so the run record and the output stay consistent
+after a failure. Steps 1–7 are the
+[standard worker sequence](../../../glossary.json#concept.standard-worker-sequence); step 8 is this
+Operation's own.
 
 The worker can read, search, edit and write files and run commands — Read, Glob, Grep, Edit, Write
 and Bash on the Claude Code backend, their counterparts on pi, the default
@@ -197,7 +188,7 @@ refuses the rest.
 
 Each resume round continues the same session with the failures and is only for failed checks — an
 audit violation, a Spec gap or any other reported problem ends the run at once. Proposed deletions
-and the removal of empty pre-created paths happen after the last round's checks, so the recorded
+happen after the last round's checks, so the recorded
 check results describe the worktree before them; a caller that needs checks of the final state runs
 `test`.
 

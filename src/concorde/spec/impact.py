@@ -13,10 +13,7 @@ from .typed_data import canonical
 
 
 def binding_modules(repository, module_id: str) -> tuple[str, ...]:
-    """The Module and every Module that binds a file in its ImplementationScope.
-
-    Computed from entries alone (``shared_files``), so pending entries count as well.
-    """
+    """The Module and every Module that binds a file in its ImplementationScope (``shared_files``)."""
     return tuple(sorted({module_id, *repository.shared_files(module_id)}))
 
 

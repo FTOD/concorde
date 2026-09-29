@@ -325,10 +325,6 @@ def parent_metadata(
         if not entries:
             continue
         record["entries"] = entries
-        if record.get("pending"):
-            record["pending"] = [
-                entry for entry in record["pending"] if entry in entries
-            ]
         kept.append(record)
     value["defines"] = kept
     return value

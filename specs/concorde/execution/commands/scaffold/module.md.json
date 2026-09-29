@@ -65,8 +65,7 @@
       "entries": [
         "src/concorde/scaffold/",
         "tests/concorde/scaffold/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [],

@@ -419,7 +419,9 @@ def _register_server(project: Path, config: dict) -> None:
     if servers.get(MCP_SERVER) == entry:
         return
     servers[MCP_SERVER] = entry
-    (project / MCP_CONFIG).write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    (project / MCP_CONFIG).write_text(
+        json.dumps(config, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def _ignore(project: Path) -> None:

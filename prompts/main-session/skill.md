@@ -91,7 +91,13 @@ concorde delivery
 
 A typical order is `understand` to assess and plan, `specify` when the Spec must change first,
 `implement` and `test`, the reviews when the change deserves them, then `task-validation` and
-`delivery`, which validates the whole workspace again and commits the result on the task branch.
+`delivery`, which validates the whole workspace again and creates the delivery commit on the task
+branch; only that commit marks the task delivered, while the task session may commit verified
+steps before it. The task session prepares the workers' environment: a worker writes only the
+files its Modules bind and new files inside the directories they bind, and a Module binds only
+files that exist, so the task session itself creates any other new file the work needs, with the
+least content its format needs to be valid, and binds it to its Module before it launches the
+worker that fills it.
 Each run prints one JSON run result and saves it in its own folder in the task's folder of the
 primary worktree, `.concorde/tasks/<task>/workspace/runs/<run-id>/result.json` (an unbound run's in
 `.concorde/unbound/<run-id>/`), where you can read it too. Every level of the work leaves such a

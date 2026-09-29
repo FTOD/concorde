@@ -346,12 +346,12 @@ to it.
 
 ### scenario.spec.write-sets — Spec scope and implementation scope
 
-- GIVEN Module A uses Module B and binds `src/a/` with a pending entry `src/a/new.py`
+- GIVEN Module A uses Module B and binds `src/a/`
 - WHEN A's write sets are computed
 - THEN A's Spec scope contains both members of every document A owns and the glossary file, and nothing of B
 - AND of the glossary's entries, only those A owns, and new ones naming A as owner, are A's to change
-- AND A's implementation scope covers every file below `src/a/` including the not-yet-created `src/a/new.py`
-- BUT A's [implementation context](../../glossary.json#concept.implementation-context) lists only the names of existing bound files and declared entries, never their contents
+- AND A's implementation scope covers every file below `src/a/`, including a file not created yet such as `src/a/new.py`
+- BUT A's [implementation context](../../glossary.json#concept.implementation-context) lists only the names of the files A binds, never their contents
 
 ### scenario.spec.shared-file — A file bound by several Modules
 
@@ -375,32 +375,18 @@ to it.
 - THEN it is the realization with the exact entry
 - AND every other file below `src/a/` belongs to the directory realization
 
-### scenario.spec.pending-entries — A pending entry that does not exist yet
-
-- GIVEN a realization whose `pending` lists an entry that does not exist yet
-- WHEN the validator runs
-- THEN no finding is reported for it
-- AND the entry is part of the Module's implementation scope
-
-### scenario.spec.pending-materialized — A pending entry whose file now exists
-
-- GIVEN a realization whose `pending` lists an entry whose file now exists
-- WHEN the validator runs
-- THEN it reports `CHK.binds.pending-subset` as an error for that entry
-
-### scenario.spec.pending-confirm — Confirming pending entries
-
-- GIVEN realizations whose `pending` lists some entries whose files now exist and some that are still missing
-- WHEN a caller confirms pending entries
-- THEN the existing entries leave `pending` in one [file transaction](../../glossary.json#concept.file-transaction) that rewrites only the affected metadata members
-- AND the result lists each confirmed entry with its Module and realization, and each still-missing entry
-- BUT no reading member and no registry byte changes
-
 ### scenario.spec.missing-entry — A declared entry that does not exist
 
-- GIVEN a realization with a non-pending entry that does not exist, or a `pending` item that is not in `entries`
+- GIVEN a realization with an entry whose file or directory does not exist
 - WHEN the validator runs
-- THEN it reports `CHK.binds.exists` for the missing entry and `CHK.binds.pending-subset` for the stray pending item
+- THEN it reports `CHK.binds.exists` as an error for that entry
+- AND the finding's remediation says to create the file before binding it or to remove the entry
+
+### scenario.spec.pending-rejected — A realization that still declares pending entries
+
+- GIVEN a realization record that carries a `pending` field, as Protocol 15 allowed
+- WHEN the validator runs
+- THEN it reports `CHK.document.schema` naming `pending` as an unknown field of that realization
 
 ### scenario.spec.unbound-file — Every tracked file is bound
 
@@ -486,9 +472,9 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ### scenario.spec.grant-implement — An implementation grant writes the realization
 
-- GIVEN Module A with a realization binding `src/a/` and another with the pending exact entry `src/b.py`
+- GIVEN Module A with a realization binding `src/a/` and another binding the exact entry `src/b.py`
 - WHEN a grant for task type `implement` and Module A is computed
-- THEN `src/a/` and `src/b.py` are listed as `rw`, although `src/b.py` does not exist yet
+- THEN `src/a/` and `src/b.py` are listed as `rw`
 - AND A's documents are listed as `ro`, never `rw`
 - AND no file below `src/a/` is listed separately as `names`
 
@@ -547,7 +533,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ### scenario.spec.grant-worktree — A grant comes from the worktree it names
 
-- GIVEN a primary worktree and a task worktree in which Module A's metadata additionally declares the pending exact entry `lib/extra.py`
+- GIVEN a primary worktree and a task worktree in which the file `lib/extra.py` was created and Module A's metadata additionally binds it
 - WHEN a grant for task type `implement` and Module A is computed with the task worktree as root
 - THEN `lib/extra.py` is listed as `rw`
 - BUT a grant computed with the primary worktree as root does not list it
@@ -636,7 +622,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ### scenario.spec.rollback-on-failure — Restoring original bytes after a failure
 
-- GIVEN a file transaction that has written some of its files
+- GIVEN a [file transaction](../../glossary.json#concept.file-transaction) that has written some of its files
 - WHEN a later write or the final check of the result fails
 - THEN every written file is restored to its original bytes, and files that did not exist are removed
 - AND the failure is reported, never success

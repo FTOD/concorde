@@ -47,8 +47,7 @@
         "src/concorde/harness/check_executor.py",
         "src/concorde/harness/timing.py",
         "src/concorde/harness/checks.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.checks.tests",
@@ -58,8 +57,7 @@
       "entries": [
         "tests/concorde/harness/__init__.py",
         "tests/concorde/harness/checks/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

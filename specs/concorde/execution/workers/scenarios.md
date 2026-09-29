@@ -7,19 +7,17 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.fenced-run — An implement worker changes only its writable files
 
-- GIVEN a worktree and an `implement` grant with a `rw` source file, a pending `rw` file, `ro` Specs and a `names` file of another [Module](../../glossary.json#concept.module)
-- WHEN the host runs a worker that edits the source file, writes the pending file, changes nothing else and ends with a valid `ok` result
+- GIVEN a worktree and an `implement` grant with a `rw` source file, a `rw` directory, `ro` Specs and a `names` file of another [Module](../../glossary.json#concept.module)
+- WHEN the host runs a worker that edits the source file, creates a new file inside the directory, changes nothing else and ends with a valid `ok` result
 - THEN both changes reach the worktree
 - AND the audit is clean, the [configured checks](../../glossary.json#concept.configured-check) run on the worktree, and when they pass the run ends `ok`
 - AND the [run record](../../glossary.json#concept.run-record) holds the grant's [context identity](../../glossary.json#concept.context-identity), the settings and brief digests, the tool set, the transcript path and the [worker result](../../glossary.json#concept.worker-result) verbatim, and the round's node below it its audit, [check results](../../glossary.json#concept.check-result), standard error and the tokens, cost and turns the agent program reported
 
-### scenario.workers.pending-precreated — Pending files exist before launch and vanish if unused
+### scenario.workers.no-precreation — The host creates no file before launch
 
-- GIVEN a grant whose `rw` list names two files that do not exist yet
-- WHEN the host prepares the run
-- THEN both files exist and are empty before the worker starts
-- AND after the run the one the worker left empty and unchanged is removed again
-- BUT the one the worker wrote stays
+- GIVEN a grant whose `rw` list names a file and a directory
+- WHEN the host prepares the run and the worker changes nothing
+- THEN the worktree after the run holds exactly the files it held before the run, with the same content
 
 ### scenario.workers.no-ambient-instructions — The brief is the only instruction
 
@@ -57,7 +55,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a running worker
 - WHEN it uses Write on a path in the worktree that is in no grant list
-- THEN the [write hook](../../glossary.json#concept.write-hook) denies it with a reason saying the path is not in this task's grant, that a file no Module declares must first be declared pending through a `specify` task and that a file another Module declares needs that Module bound
+- THEN the [write hook](../../glossary.json#concept.write-hook) denies it with a reason saying the path is not in this task's grant, that a new file outside the bound directories is created and bound to a Module by the task level before a worker fills it and that a file another Module binds needs that Module bound
 - AND the file does not appear in the worktree
 
 ### scenario.workers.ro-edit-denied — A read-only file cannot be edited

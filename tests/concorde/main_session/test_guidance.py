@@ -132,6 +132,26 @@ class GuidanceTests(unittest.TestCase):
             "Read the task's decision log before you change anything", self.session
         )
 
+    @verifies("scenario.main-session.task-session-prepares-workers")
+    def test_a_task_session_creates_and_binds_new_files_before_a_worker(self):
+        self.assertIn("**Prepare the workers' environment.**", self.session)
+        self.assertIn(
+            "such as one an `understand` plan lists in `new_files`", self.session
+        )
+        self.assertIn(
+            "create it yourself before you launch the worker that fills it",
+            self.session,
+        )
+        self.assertIn(
+            "give it the least content its format needs to be valid", self.session
+        )
+        self.assertIn("`entries` of the right realization", self.session)
+        self.assertIn("commit both together", self.session)
+        self.assertIn("The task session prepares the workers' environment", self.skill)
+        for text in (self.session, self.skill):
+            self.assertIn("creates the delivery commit on the task branch", text)
+            self.assertNotIn("commits the result on the task branch", text)
+
     @verifies("scenario.main-session.task-session-workflow")
     def test_a_task_session_runs_workflows_in_the_mode_of_its_brief(self):
         session = self.session
@@ -194,7 +214,9 @@ class GuidanceTests(unittest.TestCase):
             "authorization: with the project MCP server's `task_merge`",
             self.skill,
         )
-        self.assertIn("or with `concorde task merge <task>` in background Bash", self.skill)
+        self.assertIn(
+            "or with `concorde task merge <task>` in background Bash", self.skill
+        )
         self.assertIn("Never merge a task with `git merge` yourself", self.skill)
         self.assertIn("When it fails with `merge_busy`", self.skill)
         self.assertIn("merge delivered task branches without asking", self.block)
@@ -541,11 +563,14 @@ class ProjectMcpGuidanceTests(unittest.TestCase):
             "claude --dangerously-load-development-channels server:concorde", skill
         )
         self.assertIn("--dangerously-load-development-channels server:concorde", block)
-        self.assertIn("with the project MCP server's `task_merge`, which returns at once", skill)
+        self.assertIn(
+            "with the project MCP server's `task_merge`, which returns at once", skill
+        )
         self.assertIn("`register_wait`", skill)
         self.assertIn("a research preview", skill)
         self.assertIn(
-            "run that command in background Bash, which wakes you when it returns", skill
+            "run that command in background Bash, which wakes you when it returns",
+            skill,
         )
         self.assertIn(
             "when you are woken for a lock, ask for it again, and you may be refused again",
@@ -554,7 +579,9 @@ class ProjectMcpGuidanceTests(unittest.TestCase):
         self.assertIn("The `concorde` commands stay the source of truth", skill)
         self.assertIn("you never merge or close your task", session)
         self.assertIn("A background session is never woken by channel events", session)
-        self.assertIn("Task sessions receive the server too, but without a channel", skill)
+        self.assertIn(
+            "Task sessions receive the server too, but without a channel", skill
+        )
 
 
 if __name__ == "__main__":

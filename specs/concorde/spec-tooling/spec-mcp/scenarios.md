@@ -63,9 +63,9 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 ### scenario.spec-mcp.worktree-answers — Two worktrees answer differently
 
-- GIVEN one server rooted at the primary worktree and one rooted at a task worktree whose Module A declares an additional pending entry
+- GIVEN one server rooted at the primary worktree and one rooted at a task worktree in which a new file was created and bound to Module A
 - WHEN both are asked for the `implement` boundary of Module A
-- THEN only the task worktree's answer lists the pending entry
+- THEN only the task worktree's answer lists the new file
 - AND the two answers carry different context identities
 
 ## Refusals

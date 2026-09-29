@@ -45,8 +45,7 @@
       "meaning": "#realization.views.publisher",
       "entries": [
         "docsite/"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.views.scaffold",
@@ -56,8 +55,7 @@
       "entries": [
         "src/concorde/views/",
         "tests/concorde/views/"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.views.concorde-site",
@@ -70,8 +68,7 @@
         "docsite/tests/repository/",
         ".github/workflows/deploy-docsite.yml",
         "tests/concorde/views/test_repository_checks.py"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

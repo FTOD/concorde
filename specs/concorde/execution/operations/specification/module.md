@@ -5,11 +5,10 @@
 Specification changes Specs on the caller's behalf.
 It provides the `specify` [Operation](../../../glossary.json#concept.operation): a worker bound to
 one or more Modules edits those Modules' own [Spec](../../../glossary.json#concept.spec) documents
-to a stated intent, including declaring pending realization entries for files a later `implement`
-run will create. The Operation reconciles the registry mirror, validates the result and returns the
-[Spec change](../../../glossary.json#concept.spec-change) it observed, so the caller can close
-[Spec gaps](../../../glossary.json#concept.spec-gap) and fix where code may go before anyone writes
-it. Specification never touches code, creates the files it declares or changes another
+to a stated intent. The Operation reconciles the registry mirror, validates the result and returns
+the [Spec change](../../../glossary.json#concept.spec-change) it observed, so the caller can close
+[Spec gaps](../../../glossary.json#concept.spec-gap) before anyone writes code. Specification never
+touches code, creates an implementation file, binds a file that does not exist or changes another
 [Module](../../../glossary.json#concept.module)'s documents; a Spec that still fails validation after
 the worker's bounded repair rounds stops the run for a decision, not another guess.
 
@@ -22,8 +21,8 @@ the worker's bounded repair rounds stops the run for a decision, not another gue
 The Operation returns a [run result](../../../glossary.json#concept.run-result) whose `output` is a
 **Spec change**, defined by the
 [Spec change contract](contracts.md#contract.specification.spec-change): the Operation's own
-observation of the changed, created and deleted documents, added pending entries, affected Modules
-and validation findings, plus the worker's summary of what it changed and what it would still need.
+observation of the changed, created and deleted documents, affected Modules and validation
+findings, plus the worker's summary of what it changed and what it would still need.
 The result's facts come from the Operation's own diff; the worker's account stays a claim.
 
 ### What a specify worker may write
@@ -32,8 +31,8 @@ The Operation is worker-backed, run with [task type](../../../glossary.json#conc
 `specify`: the bound Modules' own documents (reading files and metadata) and the project glossary
 are writable — the write audit reports any glossary entry changed whose owner is not a bound
 Module — other Modules' selected documents stay read-only, and implementation files show by name
-only. Declaring a pending entry is the one way a `specify` worker decides where code goes; only
-`implement` may create it.
+only. A worker may bind to a realization only a file that exists: a new file is created and bound by
+the task level before the run that fills it, never declared ahead of it.
 
 ### Validation against a baseline
 
@@ -61,7 +60,7 @@ classes: {
 intent: "Task level: states the intent and the Modules" {class: agent}
 baseline: "Operation: validate the Specs as a baseline" {class: program}
 prepare: "Operation: freeze the specify grant" {class: program}
-edit: "Worker: edits the bound Modules' own documents,\ndeclares pending entries" {class: agent}
+edit: "Worker: edits the bound Modules'\nown documents" {class: agent}
 check: "Operation: validate against the baseline" {class: program}
 create: "Operation: create the proposed documents,\nempty and owned" {class: program}
 observe: "Operation: regenerate the registry mirror,\nvalidate again, observe the Spec change" {class: program}
@@ -89,10 +88,10 @@ worktree it starts in and briefs the worker with that workspace's goal; it needs
 only a bound workspace may change. `--modules` names the Modules whose documents may change
 (default: the binding's), `--intent` states the change in plain words, and `--input` admits an
 earlier `ok` run's output of the same workspace as material. For example,
-`--intent "add an optional severity to Issue reports; declare src/concorde/issues/severity.py as pending"`
-has the worker edit the Issues entry, contract and scenario documents for
-[Issue reports](../../../glossary.json#concept.issue-report), adding the new file as a pending
-entry.
+`--intent "add an optional severity to Issue reports"` has the worker edit the Issues entry,
+contract and scenario documents for
+[Issue reports](../../../glossary.json#concept.issue-report); the task level then creates
+`src/concorde/issues/severity.py`, binds it to Issues and has `implement` fill it.
 
 `status` is `ok` when the change was made and validation reports no new error; `blocked` when the
 worker could not make the change — a contradicted promise, or an unbound Module's document needed —
@@ -184,8 +183,8 @@ guidelines, `.concorde/protocol/kinds/module.md`, as material: the overview, Req
 Writing guidance and templates. The two parts cover machine-checkable structure and syntax and
 content requiring reader and editor judgment; structural validation does not establish semantic
 sufficiency. The worker runs no [configured checks](../../../glossary.json#concept.configured-check)
-and has only Read, Glob, Grep, Edit and Write — no Bash, web tools or MCP server — and pending files
-are never pre-created, since the grant has no implementation path.
+and has only Read, Glob, Grep, Edit and Write — no Bash, web tools or MCP server — and its grant has
+no writable implementation path.
 
 A finding is the same as a baseline one when its rule, file and message match; line numbers are
 ignored, since any edit shifts them, so an error that only moved stays pre-existing, and another

@@ -66,11 +66,10 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.includes.redundant` | A spec inclusion whose documents are all already selected by `owns`, `contains`, `uses` or another inclusion is reported. | warning |
 | `CHK.external.exists` | External material exists at the declared path and is tracked by the project's version control. | error |
 | `CHK.external.no-overlap` | External paths overlap no document member and no realization entry. | error |
-| `CHK.binds.exists` | Non-pending entries exist; exact entries are files and `/` entries are directories. | error |
+| `CHK.binds.exists` | Every entry exists; exact entries are files and `/` entries are directories. | error |
 | `CHK.binds.disjoint` | No two realizations in one Module list the same entry. | error |
 | `CHK.binds.no-spec` | No document member, the glossary, generated output or control record is bound; a bound directory contains no document member. | error |
 | `CHK.binds.installed` | No directory entry covers an installed file, which is bound only by its exact path. | error |
-| `CHK.binds.pending-subset` | `pending` is a subset of `entries`, and pending entries do not exist. | error |
 | `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, the glossary, generated output, external material or a control record such as the project registry and configuration. | error |
 | `CHK.narrows.acyclic` | `narrows` never relates a concept to itself, directly or through other `narrows`. | error |
 | `CHK.contrasts.required` | A concept and a Module other than its owner whose titles normalize equal have a `contrasts` between them. | error |

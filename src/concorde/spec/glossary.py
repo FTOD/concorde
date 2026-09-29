@@ -1,4 +1,4 @@
-"""Protocol 15 project glossary: the one file of concept entries (``protocol/format.md#glossary``).
+"""Protocol 16 project glossary: the one file of concept entries (``protocol/format.md#glossary``).
 
 The root Module's ``module`` block declares the glossary's path. Each entry is one concept: its
 identity, title, owning Module, one-sentence definition and the reference to its explanation in a

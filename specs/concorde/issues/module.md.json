@@ -49,8 +49,7 @@
         "src/concorde/issues/__init__.py",
         "src/concorde/issues/store.py",
         "src/concorde/issues/shapes.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.issues.command",
@@ -59,8 +58,7 @@
       "meaning": "#realization.issues.command",
       "entries": [
         "scripts/issues.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.issues.tests",
@@ -72,8 +70,7 @@
         "tests/concorde/issues/test_command.py",
         "tests/concorde/issues/test_store.py",
         "tests/concorde/issues/test_store_check.py"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

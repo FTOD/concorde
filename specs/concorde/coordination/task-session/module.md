@@ -301,7 +301,12 @@ lock, so two runs of one task never overlap. The session relies on each
 worker claimed. A failed result is either repaired within the task, by a changed
 [Spec](../../glossary.json#concept.spec) or code and a new run, or escalated with the result's chain
 unchanged beneath the session's link. The session reaches a worker only through an Operation and
-never starts a worker or another agent itself.
+never starts a worker or another agent itself. It prepares each worker's environment instead: a
+realization binds only files that exist and a worker writes only bound files and new files inside
+bound directories, so the session itself creates any other new file the work needs, with the least
+content its format needs to be valid, and binds it to its Module before it starts the run that
+fills it
+([req.main-session.task-session-prepares-workers](../main-session/requirements.md#req.main-session.task-session-prepares-workers)).
 
 <a id="uses-operations"></a>
 

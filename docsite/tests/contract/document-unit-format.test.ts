@@ -43,7 +43,6 @@ const declaration = {
       title: "Example service",
       meaning: "#realization.example.service",
       entries: ["src/example/"],
-      pending: [],
     },
   ],
   relations: [

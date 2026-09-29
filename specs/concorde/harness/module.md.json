@@ -39,8 +39,7 @@
       "meaning": "#realization.harness.package",
       "entries": [
         "src/concorde/harness/__init__.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.harness.claude",
@@ -51,8 +50,7 @@
         "src/concorde/harness/settings.py",
         "src/concorde/harness/write_hook.py",
         "src/concorde/tasks/session_hook.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.harness.pi",
@@ -62,8 +60,7 @@
       "entries": [
         "src/concorde/harness/pi_permission.ts",
         "src/concorde/harness/pi_policy.ts"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

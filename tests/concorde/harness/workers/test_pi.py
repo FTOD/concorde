@@ -423,7 +423,7 @@ class PiPolicyTests(unittest.TestCase):
         out = self.decide(
             writes={
                 "rw": f"{w}/src/a/calc.py",
-                "pending": f"{w}/src/new.py",
+                "rw-file": f"{w}/src/new.py",
                 "ro": f"{w}/specs/a.md",
                 "names": f"{w}/specs/b.md",
                 "undeclared": f"{w}/src/a/../notes.txt",
@@ -438,14 +438,16 @@ class PiPolicyTests(unittest.TestCase):
             },
         )
         self.assertIsNone(out["write:rw"])
-        self.assertIsNone(out["write:pending"])
+        self.assertIsNone(out["write:rw-file"])
         self.assertIn("read-only", out["write:ro"])
         self.assertIn("only the name", out["write:names"])
         self.assertIn(
             "src/notes.txt is not in this task's grant", out["write:undeclared"]
         )
-        self.assertIn("specify task", out["write:undeclared"])
-        self.assertIn("another Module declares", out["write:undeclared"])
+        self.assertIn(
+            "created and bound to a Module by the task level", out["write:undeclared"]
+        )
+        self.assertIn("another Module binds", out["write:undeclared"])
         self.assertEqual("Git metadata is not available to workers", out["write:git"])
         self.assertIn("outside the task worktree", out["write:outside"])
         self.assertIsNone(out["search:src"])

@@ -1,4 +1,4 @@
-"""Shared constants, value types and path helpers of the Protocol 15 Spec tooling.
+"""Shared constants, value types and path helpers of the Protocol 16 Spec tooling.
 
 The Spec graph is loaded by ``content_repository``; this module holds what every part of the
 tooling shares: identities, errors, safe file reads, realization-entry path rules and the
@@ -25,7 +25,7 @@ from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode
 
 PROFILE_VERSION = 19
-PROTOCOL_VERSION = "15.1.0"
+PROTOCOL_VERSION = "16.0.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 # The installed Protocol copy the configuration binds; the installer places it there.
@@ -148,7 +148,7 @@ def check_input_error(check: dict, relative: str, error: Exception) -> SpecError
 def check_input_members(root: Path, relative: str) -> tuple[str, ...]:
     """Required check files, using the same exclusions for preflight and revision hashing.
 
-    Unlike pending realization entries, every explicit input must exist. Directory inputs may be
+    Like realization entries, every explicit input must exist. Directory inputs may be
     empty, but symlinks (even excluded members) cannot alias another source.
     """
     path = checked_path(root, relative, relative)
@@ -533,7 +533,6 @@ class Realization:
     document: str
     meaning: str
     entries: tuple[str, ...]
-    pending: tuple[str, ...]
 
     @property
     def files(self) -> tuple[str, ...]:

@@ -52,17 +52,9 @@ commit and output are defined in the [contracts](contracts.md).
 
 - GIVEN a workspace whose verified steps are committed on its branch and whose worktree is clean
 - AND no `task-validation` run since
-- AND no pending realization entry whose file exists, so there is nothing to confirm
 - WHEN delivery runs
 - THEN Delivery validates every change since the base commit
 - AND the delivery commit, on top of the last step, changes no file and marks the delivery by its subject
-
-### scenario.delivery.confirmations — Pending markers are cleared in the commit
-
-- GIVEN a workspace whose readiness lists a confirmation for a filled pending entry
-- WHEN the workspace is delivered
-- THEN the delivery commit contains the declaring metadata with that entry no longer pending
-- AND the output lists the confirmed entry
 
 ### scenario.delivery.second — Deliver again after further work
 
@@ -110,7 +102,7 @@ commit and output are defined in the [contracts](contracts.md).
 - GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a commit hook that rejects the commit
 - WHEN the workspace is delivered
 - THEN the result has status `failed` with the hook's output as host evidence
-- AND the confirmed metadata is restored and the index restored with the changes staged before, including a staged version the worktree changed since, the intent-to-add path and both flags
+- AND the index is restored with the changes staged before, including a staged version the worktree changed since, the intent-to-add path and both flags
 - AND a fresh measurement yields the readiness's input digest again
 - AND the branch holds no delivery commit
 
@@ -127,7 +119,7 @@ commit and output are defined in the [contracts](contracts.md).
 - GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag, and a Git clean filter that refuses one of its changed files, which the readiness's checks do not read through Git
 - WHEN the workspace is delivered
 - THEN the result has status `failed` with `stage_failed` and a `git add` cause carrying Git's output
-- AND the index is again exactly as before the delivery, and the confirmed metadata is undone
+- AND the index is again exactly as before the delivery
 - AND a fresh measurement yields the readiness's input digest again, and the branch holds no delivery commit
 
 ### scenario.delivery.unmerged-index — An unmerged index is refused before anything changes
@@ -143,7 +135,7 @@ commit and output are defined in the [contracts](contracts.md).
 - GIVEN a delivery run that created its delivery commit and ended without saving its result
 - WHEN delivery runs again
 - THEN no new commit is created
-- AND the output is the existing commit with `recovered` true and no confirmations, and the worktree is clean
+- AND the output is the existing commit with `recovered` true, and the worktree is clean
 - AND the branch still holds exactly that one delivery commit, which alone records the delivery
 - AND the new run's trace node references that commit with `found_commit`
 

@@ -48,8 +48,7 @@
       "entries": [
         "src/concorde/spec_mcp/",
         "tests/concorde/spec_mcp/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

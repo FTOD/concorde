@@ -137,8 +137,6 @@ def read_record(root: Path, run_id: str) -> dict:
         if data["transcript"]
         else None,
         "worker_result": data["worker_result"],
-        "pending_created": data["pending_created"],
-        "pending_removed": data["pending_removed"],
         "deleted": data["deleted"],
         "deletions_refused": data["deletions_refused"],
         "status": node["status"],

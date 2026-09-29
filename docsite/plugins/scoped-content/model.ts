@@ -1,4 +1,4 @@
-/** Module publication model for Spec Protocol 15. Registered documents are the only sources. */
+/** Module publication model for Spec Protocol 16. Registered documents are the only sources. */
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync } from "node:fs";
 import { posix, resolve } from "node:path";

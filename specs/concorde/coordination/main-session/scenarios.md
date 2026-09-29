@@ -68,6 +68,14 @@ guides.
 - AND to report to the main agent when the task is delivered or cannot go further without decisions that are not its own
 - BUT never to merge the task branch into the primary branch or close the task
 
+### scenario.main-session.task-session-prepares-workers — The task session creates and binds new files before a worker fills them
+
+- GIVEN the rendered task-session guidance and the main agent's skill
+- WHEN a task's work needs a new file outside the directories its Modules bind, such as one an `understand` plan lists in `new_files`
+- THEN the task-session guidance tells the session to create the file with the least content its format needs to be valid, to add it to the `entries` of the right realization and to commit both together, before it launches the worker that fills it
+- AND the main agent's skill says the task session prepares the workers' environment this way
+- AND both name the [delivery commit](../../glossary.json#concept.delivery-commit) as what `delivery` creates, the only commit that marks the task delivered
+
 ### scenario.main-session.task-session-workflow — A task session runs its workflow in its brief's mode
 
 - GIVEN the rendered task-session guidance

@@ -33,12 +33,11 @@ def assessment(**changes) -> dict:
 
 
 PLAN = {
-    "summary": "Declare the new file, then implement it.",
+    "summary": "Create and bind the new file, then implement it.",
     "modules": ["module.a"],
-    "pending": [
+    "new_files": [
         {
             "module": "module.a",
-            "realization": "realization.a.code",
             "path": "src/a/second.py",
             "reason": "the second answer",
         }
@@ -121,7 +120,8 @@ class UnderstandTests(unittest.TestCase):
         self.assertEqual(0, status, envelope)
         plan = envelope["output"]["plan"]
         self.assertEqual(["module.a"], plan["modules"])
-        self.assertEqual("realization.a.code", plan["pending"][0]["realization"])
+        self.assertEqual(PLAN["new_files"], plan["new_files"])
+        self.assertNotIn("pending", plan)
         self.assertEqual(
             ["specify", "implement"], [step["run"] for step in plan["steps"]]
         )
@@ -186,6 +186,23 @@ class UnderstandTests(unittest.TestCase):
             "module.zzz", envelope["worker"]["output"]["gaps"][0]["module"]
         )
 
+    def test_a_module_named_only_by_a_new_file_must_exist(self):
+        plan = {
+            **PLAN,
+            "new_files": [{**PLAN["new_files"][0], "module": "module.zzz"}],
+        }
+        status, envelope = self.understand(
+            [{"result": {"output": assessment(plan=plan)}}], "--plan"
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        unknown = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "unknown-module"
+        ]
+        self.assertEqual(["module.zzz"], [item["ref"] for item in unknown])
+        self.assertIsNone(envelope["output"])
+
     @verifies("scenario.understanding.inconsistent")
     def test_an_inconsistent_assessment_fails_the_run(self):
         for rounds, extra in (
@@ -203,6 +220,23 @@ class UnderstandTests(unittest.TestCase):
                 )
             )
             self.assertEqual(1, len(envelope["worker_runs"]))
+
+    def test_a_module_named_only_by_a_new_file_must_exist(self):
+        plan = {
+            **PLAN,
+            "new_files": [{**PLAN["new_files"][0], "module": "module.zzz"}],
+        }
+        status, envelope = self.understand(
+            [{"result": {"output": assessment(plan=plan)}}], "--plan"
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        unknown = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "unknown-module"
+        ]
+        self.assertEqual(["module.zzz"], [item["ref"] for item in unknown])
+        self.assertIsNone(envelope["output"])
 
     @verifies("scenario.understanding.inconsistent")
     def test_extra_or_duplicate_module_entries_fail_the_run(self):

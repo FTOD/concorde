@@ -150,10 +150,11 @@ WORKER_HANDLING = {
     "audit_violation": (
         "permission",
         "an Operation never widens a grant and never retries with a wider one; giving the "
-        "task the path (declaring it pending through specify, or binding more Modules) is the "
-        "main agent's decision",
+        "task the path (creating the file and binding it to a bound Module, or binding more "
+        "Modules) is the task level's decision",
         [
-            "run specify to declare the path as a pending file of a bound Module",
+            "create the file and bind it to a bound Module at the task level, then run the "
+            "Operation again",
             "bind the Module that owns the path and run the Operation again",
             "discard the stray change and run the Operation with a narrower goal",
         ],

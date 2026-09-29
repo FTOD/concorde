@@ -10,12 +10,12 @@ supplies as the Operation-specific part of its answer are its claims and are pas
 ```concorde-contract
 {
   "id": "contract.implementation.code-change",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
     "required": ["goal", "summary", "changed_files", "created_files", "deleted_files",
-                 "refused_deletions", "pending_cleared", "rounds", "checks", "addresses"],
+                 "refused_deletions", "rounds", "checks", "addresses"],
     "properties": {
       "goal": {"type": "string", "minLength": 1},
       "summary": {"type": "string", "minLength": 1},
@@ -23,7 +23,6 @@ supplies as the Operation-specific part of its answer are its claims and are pas
       "created_files": {"type": "array", "items": {"type": "string", "minLength": 1}},
       "deleted_files": {"type": "array", "items": {"type": "string", "minLength": 1}},
       "refused_deletions": {"type": "array", "items": {"type": "string", "minLength": 1}},
-      "pending_cleared": {"type": "array", "items": {"type": "string", "minLength": 1}},
       "rounds": {"type": "integer", "minimum": 1},
       "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
       "addresses": {"type": "array", "items": {"type": "string", "minLength": 1}}
@@ -43,15 +42,14 @@ supplies as the Operation-specific part of its answer are its claims and are pas
       }
     }
   },
-  "semantics": "The outcome of one implement run. goal repeats the --goal argument. summary and addresses are the worker's claims: its account of the change and the requirement or scenario identities it believes the change addresses. Everything else is computed by the Operation: changed_files, created_files and deleted_files from the workspace after the last audit, relative to the state before the run; refused_deletions lists deletions the worker proposed outside its writable paths; pending_cleared lists the realization entries whose pending marker the Operation removed; rounds counts worker rounds including the first; checks holds the configured check results of the last round that ran checks, for the bound Modules and every Module that uses one of them, each with the check identity, the Module it belongs to, its outcome, its exit code and the path of its log. outcome and exit_code project Check execution's result: its status passed and failed keep their name and exit code, and its timeout becomes timed_out with exit_code null, since the check did not exit. A check that cannot start has no outcome: it fails the run without a result. An empty checks list means no round ran checks: either the checked Modules have no configured check, which the run's checks evidence then states, or the run stopped before any round's checks, as after an audit violation or a blocked or failed worker. The run's status is ok only when every listed check passed.",
+  "semantics": "The outcome of one implement run. goal repeats the --goal argument. summary and addresses are the worker's claims: its account of the change and the requirement or scenario identities it believes the change addresses. Everything else is computed by the Operation: changed_files, created_files and deleted_files from the workspace after the last audit, relative to the state before the run; refused_deletions lists deletions the worker proposed outside its writable paths; rounds counts worker rounds including the first; checks holds the configured check results of the last round that ran checks, for the bound Modules and every Module that uses one of them, each with the check identity, the Module it belongs to, its outcome, its exit code and the path of its log. outcome and exit_code project Check execution's result: its status passed and failed keep their name and exit code, and its timeout becomes timed_out with exit_code null, since the check did not exit. A check that cannot start has no outcome: it fails the run without a result. An empty checks list means no round ran checks: either the checked Modules have no configured check, which the run's checks evidence then states, or the run stopped before any round's checks, as after an audit violation or a blocked or failed worker. The run's status is ok only when every listed check passed.",
   "example": {
     "goal": "accept and store the report severity",
     "summary": "Added the severity field to report parsing and storage.",
-    "changed_files": ["src/concorde/issues/shapes.py", "src/concorde/issues/store.py"],
-    "created_files": ["src/concorde/issues/severity.py"],
+    "changed_files": ["src/concorde/issues/severity.py", "src/concorde/issues/shapes.py", "src/concorde/issues/store.py"],
+    "created_files": [],
     "deleted_files": [],
     "refused_deletions": [],
-    "pending_cleared": ["src/concorde/issues/severity.py"],
     "rounds": 2,
     "checks": [
       {"check": "check.issues.store", "module": "module.issues", "outcome": "passed", "exit_code": 0, "log": "/home/dev/shop/.concorde/tasks/severity/workspace/runs/r-0001/checks/check.issues.store/output.log"}

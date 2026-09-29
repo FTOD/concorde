@@ -108,8 +108,7 @@
       "entries": [
         "prompts/main-session/",
         "tests/concorde/main_session/"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.main-session.project-mcp",
@@ -119,8 +118,7 @@
       "entries": [
         "src/concorde/project_mcp/",
         "tests/concorde/project_mcp/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

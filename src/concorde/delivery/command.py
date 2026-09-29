@@ -11,9 +11,9 @@ bound branch are its only record: their subject names the workspace.
 4. Decide the readiness of the whole workspace with Validation's steps, as task-validation does.
 5. Require that readiness to be ready, and every scenario changed with code to be verified.
 6. Record the index with Git (its tree, intent-to-add paths and skip-worktree and
-   assume-unchanged flags), then apply the readiness's confirmations through Validation.
+   assume-unchanged flags).
 7. Stage everything, record the staged tree and create the delivery commit; when staging or the
-   commit fails, undo step 6 and give the recorded index back.
+   commit fails, give the recorded index back.
 8. Verify the new head, its tree (the staged one, which a commit hook may have changed), its
    parent and a clean worktree.
 9. Return the delivery commit as the output.
@@ -34,7 +34,6 @@ from ..execution.context import (
     component,
     evidence,
 )
-from ..validation import confirmations as confirming
 from ..validation.command import (
     READINESS_STEPS,
     measurement_failed,
@@ -105,7 +104,6 @@ class State:
     head: str = ""
     readiness_run: str = ""
     readiness: dict = field(default_factory=dict)
-    backups: dict[str, bytes] = field(default_factory=dict)
     index: IndexRecord | None = None
     sequence: int = 0
     commit: str = ""
@@ -332,7 +330,6 @@ def delivered(ctx: RunContext):
         "commit": state.head,
         "branch": ctx.branch,
         "sequence": len(previous),
-        "confirmed": [],
         "recovered": True,
     }
     # An earlier run created the commit; this run's node leads to it as found.
@@ -511,45 +508,14 @@ def require_verified_scenarios(ctx: RunContext):
     )
 
 
-def apply_confirmations(ctx: RunContext):
-    state = _state(ctx)
-    # Recorded before anything changes, so a failed delivery can give the index back exactly,
-    # staged changes included, rather than resetting it to the head.
+def keep_index(ctx: RunContext):
+    """Record the index before anything changes, so a failed delivery can give it back exactly,
+    staged changes included, rather than resetting it to the head."""
     try:
-        state.index = record_index(ctx.worktree)
+        _state(ctx).index = record_index(ctx.worktree)
     except _IndexRefused as error:
         return _index_unrecorded(ctx, error.link)
-    listed = state.readiness["confirmations"]
-    try:
-        state.backups = confirming.apply(ctx.worktree, listed)
-    except confirming.ConfirmationRefused as error:
-        return _failed(
-            ctx,
-            "confirmations_refused",
-            f"The confirmations could not be applied ({error.code}); nothing was committed.",
-            [evidence("readiness", error.code, str(error))],
-            f"the pending confirmations of readiness {state.readiness_run} could not be "
-            f"applied: {error.code}: {error}",
-            ["run delivery again"],
-            reason="input",
-            explanation="delivery applies exactly the confirmations its readiness lists and "
-            "never recomputes them",
-            causes=[
-                component(
-                    "Validation confirmations",
-                    error.code,
-                    str(error),
-                    "input",
-                    "the metadata no longer matches what the readiness confirmed",
-                )
-            ],
-        )
-    return Continue(
-        evidence=[
-            evidence("readiness", item["entry"], f"confirmed in {item['metadata']}")
-            for item in listed
-        ]
-    )
+    return Continue()
 
 
 def _index_unrecorded(ctx: RunContext, cause: dict) -> Stop:
@@ -594,30 +560,13 @@ def _index_unrecorded(ctx: RunContext, cause: dict) -> Stop:
 
 
 def undo(ctx: RunContext) -> Undone:
-    """Restore the confirmed metadata and give the recorded index back.
+    """Give the recorded index back.
 
-    Every part is attempted even when another fails; each failure is named with its cause, so
-    the caller's result says exactly what is not as the readiness examined it.
+    A failure is named with its cause, so the caller's result says exactly what is not as the
+    readiness examined it.
     """
     state = _state(ctx)
     undone = Undone()
-    for path, data in state.backups.items():
-        try:
-            confirming.restore(ctx.worktree, {path: data})
-        except OSError as error:
-            undone.failed.append(
-                (
-                    f"the metadata {path}",
-                    component(
-                        "Delivery undo",
-                        "metadata_unrestored",
-                        f"the bytes of {path} read before the confirmations could not be "
-                        f"written back in {ctx.worktree}: {type(error).__name__}: {error}",
-                        "environment",
-                        "the file system refused the write",
-                    ),
-                )
-            )
     if state.index is not None:
         undone.failed.extend(restore_index(ctx.worktree, state.index))
     return undone
@@ -772,7 +721,6 @@ def output(ctx: RunContext):
         "commit": state.commit,
         "branch": ctx.branch,
         "sequence": state.sequence,
-        "confirmed": [item["entry"] for item in state.readiness["confirmations"]],
         "recovered": False,
     }
     return Stop(
@@ -799,7 +747,7 @@ DELIVERY = command(
         *READINESS_STEPS,
         decide,
         require_verified_scenarios,
-        apply_confirmations,
+        keep_index,
         commit,
         verify,
         output,

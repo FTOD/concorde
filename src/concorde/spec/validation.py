@@ -1,4 +1,4 @@
-"""Every decidable check of Spec Protocol 15 (``protocol/checks.md``), reported as findings.
+"""Every decidable check of Spec Protocol 16 (``protocol/checks.md``), reported as findings.
 
 A finding's ``rule_id`` is the check identity (``CHK.*``). A few tool findings keep a
 ``CONCORDE-*`` identity: link fragments, scenario coverage, configured check inputs, Issue records
@@ -55,6 +55,10 @@ from .verification import DeclarationError, scan_declarations
 REMEDIATION = {
     "CHK.registry.mirror": "Regenerate the registry's mirrored fields with `concorde.py registry --write`.",
     "CHK.binds.unbound": "Add the file to a realization's entries of the Module it realizes.",
+    "CHK.binds.exists": (
+        "Create the file before binding it, or remove the entry; a realization binds only "
+        "paths that exist."
+    ),
     "CHK.binds.installed": (
         "Replace the directory entry by the exact paths of the Module's own files in it; an "
         "installed file is bound only by its exact path."
@@ -771,21 +775,6 @@ class Checks:
             for realization in repository.realizations(repository.modules[module.id]):
                 source = metadata_path(realization.document)
                 listed.update(realization.entries)
-                for entry in realization.pending:
-                    if entry not in realization.entries:
-                        self.add(
-                            "CHK.binds.pending-subset",
-                            source,
-                            f"{realization.id} pending entry {entry} is not one of its entries",
-                            subject=realization.id,
-                        )
-                    elif entry_exists(repository.root, entry):
-                        self.add(
-                            "CHK.binds.pending-subset",
-                            source,
-                            f"{realization.id} still marks {entry} pending although it exists",
-                            subject=realization.id,
-                        )
                 for entry in realization.entries:
                     base = entry_base(entry)
                     held = sorted(
@@ -818,8 +807,6 @@ class Checks:
                             "or control record, or a directory containing a document member",
                             subject=realization.id,
                         )
-                    if entry in realization.pending:
-                        continue
                     if not entry_exists(repository.root, entry):
                         kind = "directory" if is_directory_entry(entry) else "file"
                         self.add(
@@ -1053,7 +1040,7 @@ class Checks:
         text = label.strip()
         return [
             entry
-            for entry in dict.fromkeys((*node.entries, *node.pending))
+            for entry in node.entries
             if entry == text or entry.endswith("/" + text.lstrip("/"))
         ]
 
@@ -1554,7 +1541,7 @@ def validate_repository(
             },
             "source_digest": digest(sorted(inputs)),
             "claims": [
-                "Protocol 15 structural checks (protocol/checks.md)",
+                "Protocol 16 structural checks (protocol/checks.md)",
                 "registry mirror of the entries' module blocks",
                 "configured check input availability and path safety",
                 "stable-identity link fragments",

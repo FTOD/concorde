@@ -1,4 +1,4 @@
-"""Protocol 15 consumer fixture shared by the test suite."""
+"""Protocol 16 consumer fixture shared by the test suite."""
 
 import json
 import os
@@ -366,15 +366,14 @@ def module_document(
     extra_owned=(),
     contracts="",
 ):
-    """A Protocol 15 Module entry and its obligations document.
+    """A Protocol 16 Module entry and its obligations document.
 
     ``nodes`` is ``(design prose, [node, ...])``; each node has ``id``, ``type`` (``concept`` or
     ``realization``), ``title``, ``meaning`` (explanatory prose), and ``definition`` (concepts) or
-    ``entries`` and optional ``pending`` (realizations). A concept becomes a glossary entry owned
-    by the Module, explained at its anchor, whose prose links it; a ``relations`` item whose source
-    is a concept moves into that entry. ``uses`` items have ``target``, ``explanation`` and
-    optional ``relies_on``. ``imports`` are ``(label, concept identity)`` pairs: the Usage section
-    links each such term.
+    ``entries`` (realizations). A concept becomes a glossary entry owned by the Module, explained
+    at its anchor, whose prose links it; a ``relations`` item whose source is a concept moves into
+    that entry. ``uses`` items have ``target``, ``explanation`` and optional ``relies_on``.
+    ``imports`` are ``(label, concept identity)`` pairs: the Usage section links each such term.
     """
     design, declared = nodes
     metadata = {
@@ -413,8 +412,6 @@ def module_document(
             "meaning": "#" + node["id"],
             "entries": list(node["entries"]),
         }
-        if node.get("pending"):
-            record["pending"] = list(node["pending"])
         metadata["defines"].append(record)
         prose.append(f'<a id="{node["id"]}"></a>\n\n{node["meaning"]}')
     for item in relations:
@@ -722,7 +719,7 @@ WORKSPACE = module_document(
 
 
 class SpecProject:
-    """A small Protocol 15 project written from DocumentSource values, for checks tests."""
+    """A small Protocol 16 project written from DocumentSource values, for checks tests."""
 
     def __init__(self, root: Path, checks=()):
         from concorde.distribution.project_defaults import write_protocol_copy

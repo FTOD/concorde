@@ -4,13 +4,12 @@ An execution command: it launches no worker, and delivery decides the same readi
 
 1. Require that the workspace's head is the branch its binding names.
 2. Measure the inputs.
-3. Validate the structure of the workspace's Specs, as they read with the confirmations applied.
-4. Sort the findings: errors block, filled pending entries become confirmations, warnings are kept.
-5. Require every changed path to be a document member, a control record or bound by a Module.
-6. Derive the changed Modules.
-7. Run the configured checks of the changed and the bound Modules.
-8. Measure the inputs again and compare the input digest.
-9. Save the readiness in the run directory and return it as the output.
+3. Validate the structure of the workspace's Specs: errors block, warnings are kept.
+4. Require every changed path to be a document member, a control record or bound by a Module.
+5. Derive the changed Modules.
+6. Run the configured checks of the changed and the bound Modules.
+7. Measure the inputs again and compare the input digest.
+8. Save the readiness in the run directory and return it as the output.
 """
 
 from __future__ import annotations
@@ -44,7 +43,6 @@ from ..spec.validation import (
     generated_outputs,
     validate_repository,
 )
-from . import confirmations as confirming
 from .measurement import MeasurementError, current_branch, measure
 
 SHA256 = {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
@@ -61,7 +59,6 @@ READINESS_SCHEMA: dict = {
         "modules",
         "blocking",
         "warnings",
-        "confirmations",
         "checks",
     ],
     "properties": {
@@ -99,27 +96,6 @@ READINESS_SCHEMA: dict = {
         "modules": {"type": "array", "items": TEXT},
         "blocking": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
         "warnings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
-        "confirmations": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": [
-                    "module",
-                    "realization",
-                    "entry",
-                    "metadata",
-                    "metadata_digest",
-                ],
-                "properties": {
-                    "module": TEXT,
-                    "realization": TEXT,
-                    "entry": TEXT,
-                    "metadata": TEXT,
-                    "metadata_digest": SHA256,
-                },
-            },
-        },
         "checks": {
             "type": "array",
             "items": {
@@ -165,7 +141,6 @@ class State:
     repository: SpecRepository | None = None
     blocking: list[dict] = field(default_factory=list)
     warnings: list[dict] = field(default_factory=list)
-    confirmations: list[dict] = field(default_factory=list)
     changed_modules: list[str] = field(default_factory=list)
     checks: list[dict] = field(default_factory=list)
     # The error link of each blocking finding, in the order of ``blocking``.
@@ -294,11 +269,9 @@ def _structural(item) -> dict:
 
 def validate_structure(ctx: RunContext):
     state = _state(ctx)
-    overrides: dict[str, bytes] = {}
     load_error = None
     try:
         state.repository = SpecRepository(ctx.worktree)
-        state.confirmations, overrides = confirming.plan(state.repository)
     except (SpecError, OSError, ValueError) as error:
         load_error = error
         state.repository = None
@@ -324,7 +297,7 @@ def validate_structure(ctx: RunContext):
                     f"the binding names {module}, which the workspace's registry does "
                     "not register",
                 )
-    result = validate_repository(ctx.worktree, document_overrides=overrides or None)
+    result = validate_repository(ctx.worktree)
     changed = {
         item["path"] for item in state.inputs["changed"] if item["digest"] is not None
     }
@@ -355,17 +328,10 @@ def validate_structure(ctx: RunContext):
                 "readiness",
                 "structure",
                 f"{summary.get('errors', 0)} error(s), {summary.get('warnings', 0)} "
-                f"warning(s), {len(state.confirmations)} confirmation(s)",
+                "warning(s)",
             )
         ]
     )
-
-
-def sort_findings(ctx: RunContext):
-    """Errors already block and warnings are kept; confirmations are listed, never blocking."""
-    state = _state(ctx)
-    state.confirmations.sort(key=lambda item: (item["module"], item["entry"]))
-    return Continue()
 
 
 def require_accounted(ctx: RunContext):
@@ -537,7 +503,6 @@ def readiness_of(ctx: RunContext) -> tuple[dict, list[dict]]:
         "modules": modules,
         "blocking": state.blocking,
         "warnings": state.warnings,
-        "confirmations": state.confirmations,
         "checks": state.checks,
     }
     path = ctx.run_dir / "readiness.json"
@@ -614,7 +579,6 @@ def issue_readiness(ctx: RunContext):
 READINESS_STEPS = (
     measure_inputs,
     validate_structure,
-    sort_findings,
     require_accounted,
     derive_changed_modules,
     run_configured_checks,

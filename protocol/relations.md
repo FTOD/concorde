@@ -183,7 +183,7 @@ channel: **names only**. On the write side the covered files form the Module's
 [Boundaries](boundaries.md). A file bound by no Module is in no Module's scope.
 
 **Checks.** `CHK.binds.exists`, `CHK.binds.disjoint`, `CHK.binds.no-spec`,
-`CHK.binds.pending-subset`, `CHK.binds.unbound`.
+`CHK.binds.unbound`.
 
 ---
 

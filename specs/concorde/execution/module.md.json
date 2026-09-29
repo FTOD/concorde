@@ -65,8 +65,7 @@
         "src/concorde/execution/",
         "tests/concorde/execution/",
         "tests/concorde/support/runs.py"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

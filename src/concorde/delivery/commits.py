@@ -12,17 +12,15 @@ from pathlib import Path
 
 COMMIT = {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"}
 TEXT = {"type": "string", "minLength": 1}
-TEXTS = {"type": "array", "items": TEXT}
 
 OUTPUT_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["commit", "branch", "sequence", "confirmed", "recovered"],
+    "required": ["commit", "branch", "sequence", "recovered"],
     "properties": {
         "commit": COMMIT,
         "branch": TEXT,
         "sequence": {"type": "integer", "minimum": 1},
-        "confirmed": TEXTS,
         "recovered": {"type": "boolean"},
     },
 }

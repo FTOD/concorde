@@ -142,7 +142,7 @@ The Protocol fixes the registry's content. Its serialization and location are a 
   "document": {"id": "document.checkout.topic.holds", "owner": "module.checkout", "role": "module"},
   "defines": [
     {"id": "realization.checkout.service", "type": "realization", "title": "Checkout service",
-     "meaning": "#realization.checkout.service", "entries": ["src/checkout/"], "pending": []}
+     "meaning": "#realization.checkout.service", "entries": ["src/checkout/"]}
   ],
   "relations": [
     {"type": "relates", "source": "realization.checkout.service", "verb": "records",

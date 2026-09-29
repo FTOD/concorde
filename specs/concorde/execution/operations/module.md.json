@@ -79,8 +79,7 @@
       "meaning": "#realization.operations.catalog",
       "entries": [
         "src/concorde/operations/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [],

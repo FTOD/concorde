@@ -47,7 +47,7 @@ change and the test report are in the
 - GIVEN a goal whose code needs a promise the bound Module's [Spec](../../../glossary.json#concept.spec) does not state
 - WHEN the worker returns `blocked` naming the [Spec gap](../../../glossary.json#concept.spec-gap)
 - THEN the result has status `blocked` with an [error chain](../../../glossary.json#concept.error-chain) that ends in the worker's own link naming the Spec gap, unchanged
-- BUT the Operation neither resumes the worker nor changes any Spec promise; its only Spec edit is clearing the pending marker of a pending entry whose file the worker filled before it stopped
+- BUT the Operation neither resumes the worker nor changes any Spec document
 
 ### scenario.implementation.out-of-grant — A write outside the grant fails the run
 
@@ -56,19 +56,13 @@ change and the test report are in the
 - THEN the result has status `failed` with that path as host evidence
 - BUT no checks run and the worker is not resumed
 
-### scenario.implementation.pending-file — A declared file is created and its marker cleared
+### scenario.implementation.prepared-file — A file the task level created and bound is filled
 
-- GIVEN a bound Module with a pending entry for a file that does not exist
+- GIVEN a new file that the task level created with an empty skeleton and bound to a bound Module before the run
 - WHEN the caller runs `implement` and the worker writes that file
-- THEN the Operation created the file empty before launch
-- AND after the last round the entry is no longer marked pending
-
-### scenario.implementation.unused-pending — An unused declaration stays pending
-
-- GIVEN a bound Module with a pending entry the worker does not need for its goal
-- WHEN the worker leaves the pre-created file empty
-- THEN the Operation removes the empty file
-- AND the entry stays pending
+- THEN the grant lists the file as writable like any other bound file
+- AND the code change lists it among the changed files
+- BUT no Spec document or metadata file changes during the run
 
 ### scenario.implementation.deletion — A proposed deletion is performed by the Operation
 

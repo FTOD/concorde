@@ -62,8 +62,7 @@
       "entries": [
         "src/concorde/delivery/",
         "tests/concorde/delivery/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

@@ -17,9 +17,8 @@ normally. Its parent is the head of the workspace's bound branch that the delive
 commits since the base commit the readiness examined. It contains every uncommitted change of the
 workspace that Git does not ignore, except the untracked paths Validation's
 [input measurement](../validation/contracts.md#input-measurement) leaves out as no content of the
-task, and the metadata changed by the applied confirmations; when
-every step was committed before and nothing was confirmed, it changes nothing and is still made, as
-the mark of the delivery.
+task; when every step was committed before, it changes nothing and is still made, as the mark of
+the delivery.
 
 The [delivery commits](../../../glossary.json#concept.delivery-commit) are the only record of a
 delivery. A commit is a delivery commit of a workspace when it lies on the first-parent history of
@@ -38,7 +37,7 @@ what was committed.
 ```concorde-contract
 {
   "id": "contract.delivery.output",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -46,7 +45,6 @@ what was committed.
       "commit",
       "branch",
       "sequence",
-      "confirmed",
       "recovered"
     ],
     "properties": {
@@ -62,26 +60,16 @@ what was committed.
         "type": "integer",
         "minimum": 1
       },
-      "confirmed": {
-        "type": "array",
-        "items": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
       "recovered": {
         "type": "boolean"
       }
     }
   },
-  "semantics": "The output of a delivery run whose status is ok. commit is the delivery commit, now the head of branch, the workspace's bound branch; sequence is its number among the workspace's delivery commits on the branch, counting from 1; confirmed lists the realization entries whose pending markers the delivery cleared. recovered is true when the run found that the branch head already is a delivery commit of the workspace that verifies, as the delivery commit section defines, and nothing waits to be delivered, such as after a delivery whose run ended after its commit, and reports that commit instead of committing; confirmed is then empty. A head that is a delivery commit but does not verify ends the run failed with commit_unverified. A run whose status is not ok has no output. A behaviour or field change increments the version.",
+  "semantics": "The output of a delivery run whose status is ok. commit is the delivery commit, now the head of branch, the workspace's bound branch; sequence is its number among the workspace's delivery commits on the branch, counting from 1. recovered is true when the run found that the branch head already is a delivery commit of the workspace that verifies, as the delivery commit section defines, and nothing waits to be delivered, such as after a delivery whose run ended after its commit, and reports that commit instead of committing. A head that is a delivery commit but does not verify ends the run failed with commit_unverified. A run whose status is not ok has no output. A behaviour or field change increments the version.",
   "example": {
     "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
     "branch": "concorde/severity",
     "sequence": 1,
-    "confirmed": [
-      "src/concorde/issues/severity.py"
-    ],
     "recovered": false
   }
 }

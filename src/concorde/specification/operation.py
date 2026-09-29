@@ -2,8 +2,8 @@
 
 Steps (the step table of the Specification Module Spec):
 
-1. ``baseline``: validate the task worktree's Specs and remember the errors, the bound Modules'
-   owned documents and their pending realization entries.
+1. ``baseline``: validate the task worktree's Specs and remember the errors and the bound
+   Modules' owned documents.
 2. ``change``: the standard worker sequence for task type ``specify`` (grant, settings, brief,
    launch, audit, proposed deletions, run record) with repair rounds and no checks. When the
    worker ends ``blocked`` proposing new documents of the bound Modules, the host creates them,
@@ -100,7 +100,7 @@ WORKER_OUTPUT_SCHEMA: dict = {
     },
 }
 
-# contract.specification.spec-change, version 2 (specs/concorde/execution/operations/specification/contracts.md)
+# contract.specification.spec-change, version 3 (specs/concorde/execution/operations/specification/contracts.md)
 SPEC_CHANGE_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -110,7 +110,6 @@ SPEC_CHANGE_SCHEMA: dict = {
         "changed_documents",
         "created_documents",
         "deleted_documents",
-        "pending_declared",
         "promise_changes",
         "proposed_documents",
         "affected_modules",
@@ -130,19 +129,6 @@ SPEC_CHANGE_SCHEMA: dict = {
         "deleted_documents": {
             "type": "array",
             "items": {"type": "string", "minLength": 1},
-        },
-        "pending_declared": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["module", "realization", "path"],
-                "properties": {
-                    "module": MODULE_ID,
-                    "realization": {"type": "string", "pattern": "^realization\\."},
-                    "path": {"type": "string", "minLength": 1},
-                },
-            },
         },
         "promise_changes": PROMISE_CHANGES,
         "proposed_documents": PROPOSED_DOCUMENTS,
@@ -172,7 +158,6 @@ class State:
     baseline_errors: set = field(default_factory=set)
     repository: object | None = None
     documents: tuple[str, ...] = ()
-    pending: set = field(default_factory=set)
     stop: Stop | None = None
     record: dict | None = None
     # The run records of every worker launch, the relaunch after creating documents included.
@@ -201,28 +186,6 @@ def finding_value(finding) -> dict:
         "path": finding.source or None,
         "message": finding.message,
     }
-
-
-def pending_entries(worktree: Path, documents) -> set[tuple[str, str, str]]:
-    """(Module, realization, path) of every pending entry declared in the given metadata files."""
-    found = set()
-    for path in documents:
-        if not path.endswith(".json"):
-            continue
-        try:
-            metadata = json.loads((worktree / path).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if not isinstance(metadata, dict):
-            continue
-        owner = (metadata.get("document") or {}).get("owner")
-        for record in metadata.get("defines") or []:
-            if not isinstance(record, dict) or record.get("type") != "realization":
-                continue
-            for entry in record.get("pending") or []:
-                if isinstance(owner, str) and isinstance(entry, str):
-                    found.add((owner, record.get("id", ""), entry))
-    return found
 
 
 def baseline(ctx: RunContext):
@@ -266,7 +229,6 @@ def baseline(ctx: RunContext):
     current.baseline_errors = errors
     current.repository = repository
     current.documents = tuple(documents)
-    current.pending = pending_entries(ctx.worktree, documents)
     return Continue(
         evidence=[
             evidence(
@@ -560,11 +522,6 @@ def observe(ctx: RunContext):
         | set(current.created)
     )
     deleted = sorted({path for each in records for path in each.get("deleted") or []})
-    after = pending_entries(ctx.worktree, current.documents)
-    declared = [
-        {"module": module, "realization": realization, "path": path}
-        for module, realization, path in sorted(after - current.pending)
-    ]
     affected, notes = affected_modules(ctx, set(changed) | set(deleted))
     claims = ((record.get("worker_result") or {}).get("output")) or {}
     output = {
@@ -575,7 +532,6 @@ def observe(ctx: RunContext):
         "changed_documents": changed,
         "created_documents": list(current.created),
         "deleted_documents": deleted,
-        "pending_declared": declared,
         "promise_changes": claims.get("promise_changes", []),
         "proposed_documents": claims.get("proposed_documents", []),
         "affected_modules": affected,
@@ -586,7 +542,7 @@ def observe(ctx: RunContext):
             "spec-change",
             "",
             f"{len(changed)} changed, {len(deleted)} deleted, "
-            f"{len(declared)} pending declared, affected: {', '.join(affected) or 'none'}",
+            f"affected: {', '.join(affected) or 'none'}",
         )
     ]
     found += [

@@ -48,7 +48,7 @@ FILES = (
 def uncopied_listing_roots() -> list[str]:
     """Realization entries whose top-level name this copy would leave out.
 
-    The copied project is validated, so every non-pending entry must exist in it. Deriving the
+    The copied project is validated, so every entry must exist in it. Deriving the
     complaint from the Specs keeps a new implementation root from silently emptying these checks.
     Entries are read from the `defines` realizations of every document the registry's Modules own.
     A source whose registry cannot be read carries no entries to compare, as in the preparation

@@ -52,7 +52,7 @@ inside the fixed [worker result](../../glossary.json#concept.worker-result) sche
 | --- | --- | --- | --- |
 | 1 | Compute the grant for the task type and Modules from the workspace's Specs through Spec core, lower every writable level to read when the provider withholds writes, and freeze it with its [context identity](../../glossary.json#concept.context-identity) | the step, Spec core | the Specs cannot be loaded or a [Module](../../glossary.json#concept.module) is unknown |
 | 2 | Resolve the worker's backend, model and level | the step | the configuration cannot be read or is not valid, or the backend is not installed |
-| 3 | Generate the [worker settings](../../glossary.json#concept.worker-settings), the tool list and the brief from the frozen grant, and pre-create the pending files the grant makes writable | Workers | a pending file cannot be created |
+| 3 | Generate the [worker settings](../../glossary.json#concept.worker-settings), the tool list and the brief from the frozen grant | Workers | — |
 | 4 | Launch the worker with its own [run directory](../../glossary.json#concept.run-directory) inside the run's [trace node](../../glossary.json#concept.trace-node) and wait for its worker result | Workers | launch error, timeout or a result that fails its schema |
 | 5 | Audit the workspace's changes against the grant | Workers | any write outside the grant's writable paths |
 | 6 | When the step asks for checks and the worker ended `ok` with a clean audit, run the configured checks of the bound Modules and of every Module that uses one of them outside the worker | Workers | a worker result `blocked` or `failed`: the step ends with the worker's status, without checks or resume |
@@ -90,7 +90,7 @@ step: Provider step {
   grant -> model
 }
 workers: Workers {
-  prepare: 3 Settings, tools, brief and pending files
+  prepare: 3 Settings, tools and brief
   launch: 4 Launch or resume the worker
   audit: 5 Audit against the grant
   checks: "6 Configured checks, when asked; then the step's own validation, when it has one"
@@ -102,7 +102,6 @@ workers: Workers {
   checks -> record: "a check still fails, rounds used up" {style.stroke-dash: 3}
   launch -> record: launch error {style.stroke-dash: 3}
   audit -> record: "violation, timeout, limit reached, invalid result, worker blocked or failed" {style.stroke-dash: 3}
-  prepare -> record: a pending file cannot be created {style.stroke-dash: 3}
 }
 ok: ok {shape: oval}
 blocked: blocked {shape: oval}

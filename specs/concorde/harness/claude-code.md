@@ -82,7 +82,7 @@ to.
 | in the `rw` list | none (the hook exits 0 without output) | — |
 | a `ro` path | deny | the path is read-only for this task |
 | a `names` path | deny | only the path's name is visible to this task |
-| another path in the task worktree | deny | the path is not in this task's grant; a file no [Module](../glossary.json#concept.module) declares must first be declared as a pending file of a Module through a `specify` task, and a file another Module declares needs that Module bound to the task |
+| another path in the task worktree | deny | the path is not in this task's grant; a new file outside the bound directories is created and bound to a [Module](../glossary.json#concept.module) by the task level before a worker fills it, and a file another Module binds needs that Module bound to the task |
 | unreadable input or any internal error | deny | the hook could not decide |
 
 A denial is the PreToolUse output with `permissionDecision: "deny"` and the reason as

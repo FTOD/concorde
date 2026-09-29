@@ -71,8 +71,7 @@
         ".python-version",
         ".mcp.json",
         ".github/workflows/validate-source-checkout.yml"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.concorde.user-documents",
@@ -81,8 +80,7 @@
       "meaning": "#realization.concorde.user-documents",
       "entries": [
         "docs/"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.concorde.development-environment",
@@ -108,8 +106,7 @@
         "scripts/development/check-docsite-types.py",
         "tests/concorde/support/operation_project.py",
         "tests/concorde/support/agent_fakes.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.concorde.development-guidance",
@@ -118,8 +115,7 @@
       "meaning": "#realization.concorde.development-guidance",
       "entries": [
         "prompts/development/skill.md"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.concorde.acceptance-tests",
@@ -128,8 +124,7 @@
       "meaning": "#realization.concorde.acceptance-tests",
       "entries": [
         "tests/concorde/acceptance/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": []

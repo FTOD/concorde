@@ -26,6 +26,7 @@ from tests.concorde.support.operation_project import (
     worker_error,
 )
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.spec_project import set_realization
 
 FIXED = "def add(a, b):\n    return a + b\n"
 
@@ -67,16 +68,6 @@ def status_lines(root: Path) -> str:
         capture_output=True,
         text=True,
     ).stdout
-
-
-def pending_of(worktree: Path) -> list[str]:
-    value = json.loads((worktree / "specs/a/module.md.json").read_text())
-    return [
-        entry
-        for record in value["defines"]
-        if record.get("type") == "realization"
-        for entry in record.get("pending", [])
-    ]
 
 
 class ImplementTests(unittest.TestCase):
@@ -255,39 +246,40 @@ class ImplementTests(unittest.TestCase):
         self.assertNotIn("check", self.kinds(envelope))
         self.assertEqual(1, len(self.record(envelope)["rounds"]))
 
-    @verifies("scenario.implementation.pending-file")
-    def test_a_declared_file_is_created_and_its_marker_cleared(self):
-        self.assertEqual(["src/new.py"], pending_of(self.worktree))
+    @verifies("scenario.implementation.prepared-file")
+    def test_a_file_the_task_level_created_and_bound_is_filled(self):
+        # The task level creates the skeleton and binds it before the run.
+        (self.worktree / "src/prepared.py").write_text("")
+        set_realization(
+            self.worktree,
+            "realization.a.new",
+            entries=["src/new.py", "src/prepared.py"],
+        )
+
+        def specs():
+            return {
+                path.relative_to(self.worktree).as_posix(): path.read_bytes()
+                for folder in ("specs", ".concorde")
+                for path in sorted((self.worktree / folder).rglob("*"))
+                if path.is_file() and path.suffix in {".md", ".json"}
+            }
+
+        before = specs()
         status, envelope = self.implement(
-            [{"writes": {f"{self.worktree}/src/new.py": "VALUE = 1\n"}}]
+            [{"writes": {f"{self.worktree}/src/prepared.py": "PREPARED = 1\n"}}]
         )
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
-        self.assertEqual(["src/new.py"], self.record(envelope)["pending_created"])
-        self.assertEqual(["src/new.py"], envelope["output"]["created_files"])
-        self.assertEqual(["src/new.py"], envelope["output"]["pending_cleared"])
-        self.assertEqual([], pending_of(self.worktree))
-        self.assertIn("pending-cleared", self.kinds(envelope))
+        record = self.record(envelope)
+        grant = json.loads((Path(record["run_directory"]) / "grant.json").read_text())
+        writable = [item["path"] for item in grant["entries"] if item["level"] == "rw"]
+        self.assertEqual(["src/a/", "src/new.py", "src/prepared.py"], writable)
+        output = envelope["output"]
+        self.assertIn("src/prepared.py", output["changed_files"])
+        self.assertNotIn("src/prepared.py", output["created_files"])
         self.assertEqual(
-            ["src/new.py"], pending_of(self.root)
-        )  # the primary is untouched
-
-    @verifies("scenario.implementation.unused-pending")
-    def test_an_unused_declaration_stays_pending(self):
-        status, envelope = self.implement(
-            [{"writes": {f"{self.worktree}/src/a/calc.py": FIXED}}]
+            "PREPARED = 1\n", (self.worktree / "src/prepared.py").read_text()
         )
-        self.assertEqual("ok", envelope["status"], envelope)
-        self.assertFalse((self.worktree / "src/new.py").exists())
-        self.assertEqual(["src/new.py"], pending_of(self.worktree))
-        self.assertEqual([], envelope["output"]["pending_cleared"])
-
-    def test_an_unused_declaration_is_removed_after_a_failed_run(self):
-        status, envelope = self.implement(
-            [{"writes": {f"{self.worktree}/src/bmod/secret.py": "SECRET = 2\n"}}]
-        )
-        self.assertEqual("failed", envelope["status"])
-        self.assertFalse((self.worktree / "src/new.py").exists())
-        self.assertEqual(["src/new.py"], pending_of(self.worktree))
+        self.assertEqual(before, specs())
 
     @verifies("scenario.implementation.deletion")
     def test_a_proposed_deletion_is_performed_by_the_host(self):

@@ -144,13 +144,3 @@ def apply_files(
             ) from error
         raise
     return changed
-
-
-def confirm_pending_files(
-    root: Path, package_root: Path | None = None
-) -> tuple[list[dict], list[str]]:
-    """Confirm existing entries in metadata without changing human reading."""
-    from .content_changes import confirm_pending_units
-    from .repository import SpecRepository
-
-    return confirm_pending_units(SpecRepository(root, package_root))
