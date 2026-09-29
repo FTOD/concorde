@@ -64,15 +64,17 @@ Each Operation's control flow is a step table in its provider's Spec, which the 
 order until one step stops the run. A worker-backed step follows the
 **[standard worker sequence](../../glossary.json#concept.standard-worker-sequence)**: compute the
 [grant](../../glossary.json#concept.grant) for the task type and Modules from the **workspace's**
-Specs and freeze it with its [context identity](../../glossary.json#concept.context-identity), generate the worker's settings,
-tools and [brief](../../glossary.json#concept.brief), pre-create the pending files the grant makes
-writable, launch the worker, run the [write audit](../../glossary.json#concept.write-audit), run
-the [configured checks](../../glossary.json#concept.configured-check) of the bound Modules and of
-every Module that uses one of them outside the worker when it ended `ok`, feed failures back as a
-[resume round](../../glossary.json#concept.resume-round) until they pass or the rounds run out,
-and write the [run record](../../glossary.json#concept.run-record). The step computes and freezes
-the grant through Spec core and hands it to Workers, which performs the rest; the step decides
-what the outcome means. See [How an Operation runs its workers](workers.md).
+Specs and freeze it with its [context identity](../../glossary.json#concept.context-identity),
+generate the worker's settings, tools and [brief](../../glossary.json#concept.brief), pre-create the
+pending files the grant makes writable, launch the worker, run the [write
+audit](../../glossary.json#concept.write-audit), run the [configured
+checks](../../glossary.json#concept.configured-check) of the bound Modules and of every Module that
+uses one of them outside the worker when it ended `ok`, feed failures back as a [resume
+round](../../glossary.json#concept.resume-round) until they pass or the rounds run out, and write
+the [run record](../../glossary.json#concept.run-record). The step computes and freezes the grant
+through Spec core and hands it to Workers, which performs the rest; the step decides what the
+outcome means.
+See [How an Operation runs its workers](workers.md).
 
 ## Overview
 
