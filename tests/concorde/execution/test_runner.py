@@ -1067,8 +1067,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(envelope["status"], self.run_status(envelope))
         # The detached runner's own output is kept in the run's node.
         self.assertTrue((folder / "host.out").is_file())
-        # A workspace already running something still gets its refusal as the result.
-        with runs.workspace_lock(self.store(), "t1", "implement run r-other"):
+        # A workspace already running something still gets its refusal as the result. The
+        # finished runner may still hold the lock after its result is written, so wait for it.
+        with runs.workspace_lock(self.store(), "t1", "implement run r-other", wait=30):
             status, announced = detach(
                 "command", "task-validation", [], cwd=self.worktree
             )
