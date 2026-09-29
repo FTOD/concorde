@@ -253,8 +253,10 @@ session's boundary (its Edit and Write tools may change only the task worktree a
 and its Bash only the worktree, Git, Concorde's records and package caches; reads and the network
 stay open), starts `claude --bg` with the task's goal and records the session in the task.
 `claude agents` lists them, `claude logs <id>` shows one's recent output and `claude stop <id>`
-stops one; wait for its message rather than watching them. A task session runs in Claude Code's `auto` permission mode, since nobody answers its
-prompts: a classifier approves or refuses each action, inside the boundary above. Pass `--model`
+stops one; wait for its message rather than watching them. Ending the task, by its merge or its
+close, stops its Claude Code task sessions and removes them from Claude's session list, keeping
+their transcripts in the task's trace, so do not remove them yourself. A task session runs in
+Claude Code's `auto` permission mode, since nobody answers its prompts: a classifier approves or refuses each action, inside the boundary above. Pass `--model`
 only with a model that has `auto` mode; without it the session would wait for answers nobody
 gives.
 
@@ -325,6 +327,11 @@ reach its goal with `concorde task close <task> --failed --reason "<why>"` and, 
 caused the failure, the error chains with `--run <run-id>` or `--error-file <json>`; when no error
 did, such as a wrong direction, say so with `--no-error`. Add `--force` to discard uncommitted
 changes in either case.
+
+Act on every warning that `task merge` and `task close` print. A warning about the decision log
+means nobody wrote in it; a warning about a task session names a Claude Code task session whose
+transcript the close could not keep or that it could not remove, with the reason and the
+`claude rm <id>` command that removes it by hand.
 
 ## Issues
 
