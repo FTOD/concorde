@@ -12,30 +12,13 @@ the [main agent](../glossary.json#concept.main-agent) solves an
 [Issue](../glossary.json#concept.issue) with ordinary Operations on its
 [Module](../glossary.json#concept.module), and whoever disposes it answers for the evidence cited.
 
-## Usage
+## Core concepts
 
-### The main agent and Issues
-
-The main agent decides which observations become Issues and when to dispose them. A worker's finding
-or an [Operation](../glossary.json#concept.operation)'s error reaches it in that run's result;
-neither automatically creates or closes an Issue in this version. A concrete problem the current
-task will not fix, such as another Module's [Spec gap](../glossary.json#concept.spec-gap), is worth
-recording for later work. Recording it does not clear a blocker, change a task's outcome, schedule a
-repair or notify another session. The main agent discovers recorded problems by reading `list` and
-`show`.
-
-The bookkeeping command is the main agent's interface. In an installed project it is
-`concorde issues` (`concorde` stands for `.concorde/bin/concorde`); in Concorde's source checkout it
-is `python3 scripts/concorde.py issues`, which routes to `python3 scripts/issues.py`. These reach
-the same store. The [main-session guidance](../coordination/main-session/module.md#issues) puts
-every Issue write in a task worktree, with `--task <task-id>` on `report`; `close` and `reopen` take
-no `--task`. Read-only inspection may use either worktree, and always describes that worktree's
-copy. This is guidance to the main agent: the command still accepts an optional task on a report and
-uses its selected project root, without enforcing the task workflow.
+### Issues and their reports
 
 <a id="concept.issue"></a><a id="concept.issue-report"></a>
 
-**What an Issue is.** Each Issue is one file, `.concorde/issues/I-<32 hex digits>.md`, holding its
+Each Issue is one file, `.concorde/issues/I-<32 hex digits>.md`, holding its
 reports, dispositions and status. Each report classifies the problem as a `bug`, a `gap` (an
 implementation/[Spec](../glossary.json#concept.spec) mismatch, a Spec conflict or a missing promise)
 or a `limitation`. The latest report supplies the current title, classification and owning Module.
@@ -49,29 +32,50 @@ A report may name its **origin**, when the problem was seen in another project, 
 repository, and carry the whole [error chain](../glossary.json#concept.error-chain).
 The observation's origin is distinct from the provenance of the command that records it here.
 
-**Recording and following up.** Read `list` before recording, and `show <id>` for a possible match.
-`list` includes open and closed Issues; a closed match may need reopening. Write the report as
-JSON using the [report contract](interface.md#contract.issues.report), then run
-`concorde issues report --file <report.json> --task <task-id>` in the task worktree. The command
-checks the owner, evidence paths in this project or the named origin, and any error chain; it
-supplies the reporter, reporting Module, registry digest, task and Git `HEAD` itself. A successful
-reply gives a [receipt](interface.md#contract.issues.receipt) naming that immutable report and the
-record's revision. Keep it as the reference for follow-up. `report --check` checks the report
-without recording it, useful before handing a defect report to another project.
+### Issue revisions
 
-What `list` and `show` found decides what the report carries:
+<a id="concept.issue-revision"></a>
 
-- no matching Issue: omit `issue_id` and `expected_revision`, and the report creates an Issue;
-- an open match: put its `issue_id`, and the revision `show` printed as `expected_revision`, and
-  the report is appended to it;
-- a closed match whose closure the new observation calls into question or shows recurring: `reopen`
-  it first, then append as to an open match, with the revision `reopen` printed; otherwise record a
-  new Issue.
+An [Issue revision](../glossary.json#concept.issue-revision) identifies
+the exact file contents, independently of status: appending a report changes the revision while
+leaving the Issue open. `show`, `report`, `close` and `reopen` return revisions. Appending uses the
+revision the main agent read as `expected_revision`; `close` and `reopen` read the current revision
+themselves and submit the disposition against that revision. Their CLI has no argument binding the
+write to an earlier `show`. A concurrent change after the command's read is refused with
+`stale_issue`. Read the Issue again, reconsider the action and retry against its current record;
+never erase a concurrent report to make an old request succeed. A revision protects writes in one
+worktree, not merges between branches.
 
-Running a creation twice creates two Issues even when the
-file and report key are unchanged: each command invocation has new provenance. The store's retry
-handling applies only when a caller reuses the same invocation and report key, as the
-[interface](interface.md#store-operations) explains; it does not deduplicate separate CLI runs.
+## Overview
+
+### Structure
+
+The main agent records and reads Issues with the bookkeeping command, which goes through the Issue
+store; of the Modules, Issues relies only on Spec core.
+
+```d2
+issues: Issues
+core: Spec core
+session: Main session
+issues -> core
+session -> issues
+```
+
+The store alone decides what a record may hold, and the command adds what the main agent must not
+be able to claim; everything else is ordinary work run through Operations.
+
+```d2
+issues: Issues {
+  store: Issue store {
+    "store.py"
+    "shapes.py"
+  }
+  command: Bookkeeping command {
+    "scripts/issues.py"
+  }
+  command -> store: records and reads Issues through
+}
+```
 
 ### Lifecycle
 
@@ -108,33 +112,7 @@ append a new observation afterwards if the problem's description, classification
 to change. A closed Issue cannot receive a new report or close again, and an open one cannot
 reopen. Rejected actions leave its record unchanged.
 
-Use `close <id> --reason <reason> --note <text> --evidence <item>...` or
-`reopen <id> --note <text> --evidence <item>...`; duplicate closure also needs
-`--duplicate-of <other-id>`. The command records `main-agent` as actor. Each disposition needs a
-nonblank note and at least one evidence item. The store validates their form and the transition;
-it does not establish that the evidence proves the decision or that the actor had authority.
-The main agent answers for that judgment. Closed records remain readable and are never deleted
-by the store. The exact state rules are in the [record interface](interface.md#record-file).
-
-<a id="concept.issue-revision"></a>
-
-**Revision and retries.** An [Issue revision](../glossary.json#concept.issue-revision) identifies
-the exact file contents, independently of status: appending a report changes the revision while
-leaving the Issue open. `show`, `report`, `close` and `reopen` return revisions. Appending uses the
-revision the main agent read as `expected_revision`; `close` and `reopen` read the current revision
-themselves and submit the disposition against that revision. Their CLI has no argument binding the
-write to an earlier `show`. A concurrent change after the command's read is refused with
-`stale_issue`. Read the Issue again, reconsider the action and retry against its current record;
-never erase a concurrent report to make an old request succeed. A revision protects writes in one
-worktree, not merges between branches.
-
-### Branch-local records and repair
-
-The primary branch's records describe what the project has integrated; each task branch holds
-its own copy. A receipt confirms a record is on disk in the selected worktree, not that Git has
-committed or merged it. A new Issue in a task is absent from the primary branch until merged;
-closing an existing Issue there leaves the primary branch's copy open until the closure merges.
-The store never commits, merges or transfers records itself.
+### A deferred repair
 
 Solving an Issue is ordinary work: read it, open a task for its current owning Module, run the
 Operations that fix it, and close it on the task branch with the fix's evidence before delivery.
@@ -164,6 +142,71 @@ a.deliver -> primary.merge_a
 primary.merge_a -> b.open
 b.deliver -> primary.merge_b
 ```
+
+## Using Issues
+
+### The main agent and Issues
+
+The main agent decides which observations become Issues and when to dispose them. A worker's finding
+or an [Operation](../glossary.json#concept.operation)'s error reaches it in that run's result;
+neither automatically creates or closes an Issue in this version. A concrete problem the current
+task will not fix, such as another Module's [Spec gap](../glossary.json#concept.spec-gap), is worth
+recording for later work. Recording it does not clear a blocker, change a task's outcome, schedule a
+repair or notify another session. The main agent discovers recorded problems by reading `list` and
+`show`.
+
+The bookkeeping command is the main agent's interface. In an installed project it is
+`concorde issues` (`concorde` stands for `.concorde/bin/concorde`); in Concorde's source checkout it
+is `python3 scripts/concorde.py issues`, which routes to `python3 scripts/issues.py`. These reach
+the same store. The [main-session guidance](../coordination/main-session/module.md#issues) puts
+every Issue write in a task worktree, with `--task <task-id>` on `report`; `close` and `reopen` take
+no `--task`. Read-only inspection may use either worktree, and always describes that worktree's
+copy. This is guidance to the main agent: the command still accepts an optional task on a report and
+uses its selected project root, without enforcing the task workflow.
+
+### Recording and following up
+
+Read `list` before recording, and `show <id>` for a possible match.
+`list` includes open and closed Issues; a closed match may need reopening. Write the report as
+JSON using the [report contract](interface.md#contract.issues.report), then run
+`concorde issues report --file <report.json> --task <task-id>` in the task worktree. The command
+checks the owner, evidence paths in this project or the named origin, and any error chain; it
+supplies the reporter, reporting Module, registry digest, task and Git `HEAD` itself. A successful
+reply gives a [receipt](interface.md#contract.issues.receipt) naming that immutable report and the
+record's revision. Keep it as the reference for follow-up. `report --check` checks the report
+without recording it, useful before handing a defect report to another project.
+
+What `list` and `show` found decides what the report carries:
+
+- no matching Issue: omit `issue_id` and `expected_revision`, and the report creates an Issue;
+- an open match: put its `issue_id`, and the revision `show` printed as `expected_revision`, and
+  the report is appended to it;
+- a closed match whose closure the new observation calls into question or shows recurring: `reopen`
+  it first, then append as to an open match, with the revision `reopen` printed; otherwise record a
+  new Issue.
+
+Running a creation twice creates two Issues even when the
+file and report key are unchanged: each command invocation has new provenance. The store's retry
+handling applies only when a caller reuses the same invocation and report key, as the
+[interface](interface.md#store-operations) explains; it does not deduplicate separate CLI runs.
+
+### Closing and reopening
+
+Use `close <id> --reason <reason> --note <text> --evidence <item>...` or
+`reopen <id> --note <text> --evidence <item>...`; duplicate closure also needs
+`--duplicate-of <other-id>`. The command records `main-agent` as actor. Each disposition needs a
+nonblank note and at least one evidence item. The store validates their form and the transition;
+it does not establish that the evidence proves the decision or that the actor had authority.
+The main agent answers for that judgment. Closed records remain readable and are never deleted
+by the store. The exact state rules are in the [record interface](interface.md#record-file).
+
+### Branch-local records and repair
+
+The primary branch's records describe what the project has integrated; each task branch holds
+its own copy. A receipt confirms a record is on disk in the selected worktree, not that Git has
+committed or merged it. A new Issue in a task is absent from the primary branch until merged;
+closing an existing Issue there leaves the primary branch's copy open until the closure merges.
+The store never commits, merges or transfers records itself.
 
 A task that ends without merging has not published its Issue changes to the primary branch. Closing
 a task removes its worktree but retains its branch,
@@ -199,23 +242,20 @@ and gives a code and explanation so the main agent can correct the request. The 
 2 for an unusable request and 1 for a refused one; exact shapes, actions and codes are in the
 [Issue interface](interface.md).
 
-## Design
+## How it is built
+
+<a id="design"></a>
+
+Issues' design has an outside, the Modules it relies on and the one that relies on it, and an
+inside, the store and the bookkeeping command that divide its work.
 
 ### Around it
-
-```d2
-issues: Issues
-core: Spec core
-session: Main session
-issues -> core
-session -> issues
-```
 
 No program but the store writes a record; the one hand edit Issues expects is the main agent's
 resolution of a Git merge conflict in a record, described under
 [branch-local records](#branch-local-records-and-repair). The bookkeeping command is how the main
 agent adds reports and dispositions, usually closing an Issue on the task branch that fixed it. Main
-session declares `session -> issues` above; its
+session declares `session -> issues` in the [structure](#structure) diagram; its
 [guidance](../coordination/main-session/module.md) says when to record, solve and close Issues.
 
 Of the Modules, Issues relies only on Spec core. It also follows the Framework's
@@ -235,22 +275,6 @@ the command reads for which Modules exist, and the
 stale transaction is refused, reported `stale_issue`, writing nothing.
 
 ### Inside
-
-The store alone decides what a record may hold, and the command adds what the main agent must not
-be able to claim; everything else is ordinary work run through Operations.
-
-```d2
-issues: Issues {
-  store: Issue store {
-    "store.py"
-    "shapes.py"
-  }
-  command: Bookkeeping command {
-    "scripts/issues.py"
-  }
-  command -> store: records and reads Issues through
-}
-```
 
 <a id="realization.issues.store"></a>
 
