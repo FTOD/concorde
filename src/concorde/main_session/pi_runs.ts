@@ -210,17 +210,52 @@ export function discoveredRuns(
 /** One run or task-session round the view follows, as far as its background work goes. */
 export interface Followed {
   id: string;
-  /** Started by this session's own `concorde_run` or `concorde_task_session` tool. */
+  /** Owned by this session: a run its own `concorde_run` started, or a round of a task session
+   * started for it. */
   owned: boolean;
   finished: boolean;
 }
 
+/** The custom session entry naming a run this session's `concorde_run` started, which it owns. */
+export const OWNED_RUN_ENTRY = "concorde-owned-run";
+/** The custom session entry naming a run or round whose end this session has been given. */
+export const REPORTED_ENTRY = "concorde-reported";
+
+/**
+ * What a session owns and has been given, from the custom entries the run view appended to its
+ * session file: the runs its `concorde_run` started, and the runs and rounds whose end it was
+ * given. Read when a session starts, so a resumed session keeps owning its runs and is given the
+ * end of one that ended while it was closed, but never an end it was already given.
+ */
+export function ownership(
+  entries: { type?: string; customType?: string; data?: unknown }[],
+): { runs: Set<string>; reported: Set<string> } {
+  const runs = new Set<string>();
+  const reported = new Set<string>();
+  for (const entry of entries) {
+    if (entry.type !== "custom") continue;
+    const id = (entry.data as { id?: unknown } | undefined)?.id;
+    if (typeof id !== "string") continue;
+    if (entry.customType === OWNED_RUN_ENTRY) runs.add(id);
+    if (entry.customType === REPORTED_ENTRY) reported.add(id);
+  }
+  return { runs, reported };
+}
+
+/**
+ * Whether a followed run or round wakes this session now: it has ended, this session owns it, and
+ * its end has not been given yet. A run or round of another session, of a task session or of a
+ * command run by hand is shown but never wakes this session.
+ */
+export function wakes(entry: Followed & { reported: boolean }): boolean {
+  return entry.owned && entry.finished && !entry.reported;
+}
+
 /**
  * The background work this session owns, which pi-subagents' `bg_wait` and the auto-drain of a
- * `pi -p` session wait for: the runs and task-session rounds the session started with its own tools
- * that have not finished. A run or round it only follows, started with bash or by another session,
- * is shown and reported but never its work, so a `pi -p` session never waits for another
- * session's runs before it exits.
+ * `pi -p` session wait for: the runs and task-session rounds it owns that have not finished. A run
+ * or round it only follows, started with bash or by another session, is shown but never its work,
+ * so a `pi -p` session never waits for another session's runs before it exits.
  */
 export function ownedWork(
   followed: Followed[],
@@ -493,14 +528,36 @@ export function sessionView(
   };
 }
 
+function recordedSession(
+  root: string,
+  status: { task: string; session_id: string },
+): Record<string, unknown> | null {
+  const record = readJson(join(tasksDirectory(root), `${status.task}.json`));
+  return (
+    ((record?.sessions as Record<string, unknown>[] | undefined) ?? []).find(
+      (item) => item.id === status.session_id,
+    ) ?? null
+  );
+}
+
+/**
+ * The main session that owns every round of a task session, whoever answered it: the `main` the
+ * task record holds for that session, given with `--main` when it was started, or null when it was
+ * started without one, whose rounds wake no main session.
+ */
+export function roundOwner(
+  root: string,
+  status: { task: string; session_id: string },
+): string | null {
+  const main = recordedSession(root, status)?.main;
+  return typeof main === "string" && main ? main : null;
+}
+
 function recordedRound(
   root: string,
   status: { task: string; session_id: string; round: number },
 ): Record<string, unknown> | null {
-  const record = readJson(join(tasksDirectory(root), `${status.task}.json`));
-  const session = (
-    (record?.sessions as Record<string, unknown>[] | undefined) ?? []
-  ).find((item) => item.id === status.session_id);
+  const session = recordedSession(root, status);
   return (
     ((session?.rounds as Record<string, unknown>[] | undefined) ?? []).find(
       (item) => item.round === status.round,

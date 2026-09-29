@@ -39,9 +39,9 @@ Situations the [main-session guidance](module.md) prepares the
 - WHEN the run view reads the run's run progress file
 - THEN it shows the run as `unbound · understand`, with `unbound` in place of the workspace
 
-### scenario.main-session.pi-run-finished — pi shows a finished run and wakes the main agent
+### scenario.main-session.pi-run-finished — pi shows a finished run and wakes its owner
 
-- GIVEN a pi main session with the run view and a run that has finished with the status `ok`, `blocked` or `failed`
+- GIVEN a pi main session with the run view and a run it started with `concorde_run` that has finished with the status `ok`, `blocked` or `failed`
 - WHEN the run view reads its run progress file
 - THEN it shows the run `completed`, `stopped` or `failed` respectively, with the result's summary
 - AND the message the main agent is given names the run, its workspace and name, its status and summary, and its [run result](../../glossary.json#concept.run-result)'s file
@@ -59,15 +59,30 @@ Situations the [main-session guidance](module.md) prepares the
 
 - GIVEN a pi main session with the run view, and runs of the project started before and after the session started, by a command run with bash or by another session
 - WHEN the run view looks in the [run store](../../glossary.json#concept.run-store) for runs to follow
-- THEN it follows every run still running when the session started and every run started since, even one that already ended, and shows and reports them as it does the runs of `concorde_run`
-- BUT it does not report a run that had already ended before the session started, and leaves a run whose runner `concorde_run` is still starting to that tool
+- THEN it follows every run still running when the session started and every run started since, even one that already ended, and shows them as it does the runs of `concorde_run`
+- BUT it does not follow a run that had already ended before the session started, and leaves a run whose runner `concorde_run` is still starting to that tool
+
+### scenario.main-session.pi-wake-owner-only — pi wakes a session only for the runs it owns
+
+- GIVEN a pi main session with the run view that started one run with `concorde_run`, while a run another main session started, a run a task session started and a run started with bash are running
+- WHEN all four runs end
+- THEN the run view shows each of them ended
+- AND the main agent is woken once, with the result of the run it started
+- AND it is not woken for the other three
+
+### scenario.main-session.pi-owner-resumed — A resumed pi session keeps owning its runs
+
+- GIVEN a pi main session that started a run with `concorde_run`, recorded in its session file, and was closed before the run ended
+- WHEN the same session is resumed after the run ended
+- THEN the run view wakes the main agent once with the run's result
+- BUT a run whose end the session was already given, recorded in its session file too, does not wake it again, and a new session with another identity is woken for neither
 
 ### scenario.main-session.pi-owned-work — A `pi -p` session waits only for its own runs
 
-- GIVEN a pi main session with the run view that started one run with `concorde_run` and one round with `concorde_task_session`, while another session's run and a run started with bash are running
+- GIVEN a pi main session with the run view that started one run with `concorde_run` and one task session with `concorde_task_session`, while another session's run and a run started with bash are running
 - WHEN pi-subagents asks the run view for the session's background work, as `bg_wait` and `pi -p` do before the session ends
-- THEN it lists the unfinished run and round the session started with its tools
-- AND it lists neither the other session's run nor the run started with bash, which the view still shows and reports
+- THEN it lists the unfinished run and round the session owns
+- AND it lists neither the other session's run nor the run started with bash, which the view still shows
 - AND a finished run of the session is no longer listed
 
 ### scenario.main-session.project-terms — Every session starts with the project's terms
@@ -161,10 +176,25 @@ Situations the [main-session guidance](module.md) prepares the
 
 ### scenario.main-session.pi-task-session-wake — pi wakes the main agent with a round's recorded outcome
 
-- GIVEN a pi main session following a task-session round
+- GIVEN a pi main session following a round of a task session it started
 - WHEN the round ends and its outcome is recorded in the [task record](../../glossary.json#concept.task-record)
 - THEN the run view shows the round finished with its outcome
 - AND the main agent is woken with the recorded outcome: the report's summary, decisions and open points with the delivery commit or the escalation numbers, or the failed round's [error chain](../../glossary.json#concept.error-chain)
+
+### scenario.main-session.pi-round-owner — The rounds of a task session wake the session it was started for
+
+- GIVEN two pi main sessions of one project, the first of which started a task session with `concorde_task_session`, so that the task record names it as the session's `main`
+- WHEN the second answers the task session's round and the next round ends
+- THEN both show the round, and only the first is woken with its outcome
+- AND the second's tool result names the first as the owner that alone will be woken
+- AND a round of a task session started without `--main` wakes neither
+
+### scenario.main-session.claude-sees-by-query — A Claude Code main session sees another session's work by asking
+
+- GIVEN a Claude Code main session and another main session of the same project that owns a run of the task `t1` or a round of its task session
+- WHEN that run or round ends
+- THEN the Claude Code main session is not woken, since nothing is pushed into it
+- AND `concorde task show t1`, when it asks, lists the run with its status and the task session with its `main` and the round's outcome
 
 ### scenario.main-session.merge-delivered — The guidance merges delivered work without asking
 

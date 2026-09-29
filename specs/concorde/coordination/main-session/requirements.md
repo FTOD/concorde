@@ -185,11 +185,38 @@ its glossary entry defines it.
 
 ## The pi extension and session context
 
-### req.main-session.pi-run-follow — pi follows every run, wherever it started
+### req.main-session.single-owner — Only a run's or round's owner is woken
 
-In pi, the run view SHALL follow every run of the project that is running when the session starts
-or starts afterwards, whoever started it: the `concorde_run` tool, a command run with bash, or
-another session.
+Every run and every [session round](../../glossary.json#concept.session-round) SHALL wake at most
+one main session when it ends, its owner, in Claude Code and pi alike: for a run, the main session
+whose own background Bash or `concorde_run` started it; for a round, the main session its task
+session was started for.
+
+A run a task session starts belongs to that task session and wakes no main session; a run started
+by a command run by hand, or a round of a pi task session started without `--main`, wakes nobody.
+Every other main session may see the state of the run or round, never be woken by it.
+
+### req.main-session.owner-recorded-by-coordination — Ownership is kept on the main session's side
+
+The owner of a run SHALL be recorded, where it must be recorded, by the owner's side, never in a
+run's [run progress file](../../glossary.json#concept.run-progress-file) or
+[run result](../../glossary.json#concept.run-result).
+
+A pi main session keeps the runs its `concorde_run` started, and every end it was given, as
+entries of its own session file, so that the same session resumed keeps owning them and is given
+each end once; the owner of a task session's rounds is the `main` of its entry in the
+[task record](../../glossary.json#concept.task-record).
+
+### req.main-session.claude-sees-by-query — A Claude Code main session sees others' work by asking
+
+A Claude Code main session SHALL see the state of a task's runs and rounds it does not own only by
+asking with `concorde task show <task>`; nothing is pushed into its session.
+
+### req.main-session.pi-run-follow — pi shows every run, wherever it started
+
+In pi, the run view SHALL follow and show every run of the project that is running when the session
+starts or starts afterwards, whoever started it: the `concorde_run` tool, a command run with bash,
+a task session or another main session.
 
 It finds them in the primary worktree's [run store](../../glossary.json#concept.run-store), where
 every task worktree's binding records its runs; a run that started and ended between two looks is
@@ -198,29 +225,32 @@ followed too, and a run that had ended before the session started is not.
 ### req.main-session.pi-owned-work — Only its own runs are a pi session's background work
 
 In pi, the run view SHALL report to pi-subagents as the session's background work only the
-unfinished runs and task-session rounds the session started with its `concorde_run` and
-`concorde_task_session` tools.
+unfinished runs and task-session rounds the session owns: the runs its `concorde_run` started and
+the rounds of the task sessions started for it.
 
-The runs and rounds it only follows, started with bash or by another session, are still shown and
-reported, but neither `bg_wait` nor the drain of a `pi -p` session before it exits waits for them.
+The runs and rounds it only follows, started with bash, by a task session or by another main
+session, are still shown, but neither `bg_wait` nor the drain of a `pi -p` session before it exits
+waits for them.
 
-### req.main-session.pi-run-wake — pi reports every run's end once
+### req.main-session.pi-run-wake — pi gives the owner every run's end once
 
-In pi, the run view SHALL give the main agent the result of every run it follows once, when the run
-ends.
+In pi, the run view SHALL give the main agent the result of every run the session owns once, when
+the run ends, and the result of no other run.
 
 A run that has already finished when `concorde_run` finds it is answered in the tool's own result;
-every other run wakes the main agent with a message. Either way a result that carries an
+every other run the session owns wakes the main agent with a message, also when it ended while the
+same session was closed and is resumed. Either way a result that carries an
 [error chain](../../glossary.json#concept.error-chain) is given with the whole chain.
 
 ### req.main-session.pi-task-session-view — pi shows every running task-session round
 
 In pi, the run view SHALL show every running task-session round.
 
-### req.main-session.pi-task-session-wake — pi wakes the main agent on every round
+### req.main-session.pi-task-session-wake — pi wakes the owner on every round
 
-In pi, the run view SHALL wake the main agent with each task-session round's recorded outcome when
-the round ends.
+In pi, the run view SHALL wake the main agent with the recorded outcome of each round of the task
+sessions started for its session when the round ends, whoever answered it, and with no other
+round's.
 
 ### req.main-session.terms-in-context — Sessions start with the glossary
 
