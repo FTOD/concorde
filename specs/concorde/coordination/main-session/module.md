@@ -42,7 +42,10 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   applies, and what is left to the session; the session reads it first. A task session runs on the
   main agent's own program. In Claude Code the command names the main agent's session with
   `--main`, and the [session reports](../../glossary.json#concept.session-report) back with
-  SendMessage. In pi the main agent uses the `concorde_task_session` tool: each
+  SendMessage; ending the task, by its merge or its close, stops its Claude Code task sessions and
+  removes them from Claude's session list, keeping their transcripts in the task's
+  [trace](../../glossary.json#concept.trace), so the main agent never removes them itself. In pi
+  the main agent uses the `concorde_task_session` tool: each
   [session round](../../glossary.json#concept.session-round) ends with a report that wakes the main
   agent that started the task session, which starts the next round with the tool's `answer`. The task session changes Specs and
   code in the task worktree directly or by running
@@ -84,7 +87,10 @@ in a Concorde project's primary worktree that it is the main agent, and gives it
   failed check as new work, never by discarding someone's change. Finish a merge that a
   `merge_incomplete` refusal names before anything else, with `concorde task merge <task> --resume`,
   or `--abort` when the merge commit is no longer the primary branch's head, and leave a
-  `merge_diverged` primary branch to the developer.
+  `merge_diverged` primary branch to the developer. Act on every warning of `task merge` and
+  `task close`: each names a decision log nobody wrote in, or a Claude Code task session whose
+  transcript the close could not keep or that it could not remove, with the command that removes
+  it by hand.
 - **Report.** Close each piece of work with a short summary for the developer: what was merged,
   what was decided on the developer's behalf, and what is still open.
 - **Use the project's terms.** Every session of the project starts with all the terms of its
