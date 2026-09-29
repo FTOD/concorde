@@ -234,7 +234,8 @@ class SpecMcpTests(unittest.TestCase):
     @verifies("scenario.spec-mcp.validate")
     def test_validate_returns_the_command_envelope(self):
         path = self.root / "specs/a/module.md"
-        path.write_text(path.read_text().replace("## Usage", "## Use"))
+        # A Mermaid block is a structural error (CHK.view.marked).
+        path.write_text(path.read_text() + "\n```mermaid\ngraph TD\n  a --> b\n```\n")
         before = self.snapshot()
         value, error = self.client(root=self.root).call("validate")
         self.assertFalse(error)
