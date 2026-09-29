@@ -1,5 +1,14 @@
 {
   "schema_version": 1,
+  "enabled_models": {
+    "local-openai/gpt-6": {},
+    "anthropic/claude-opus-5-5": {}
+  },
+  "default": {
+    "backend": "pi",
+    "model": "local-openai/gpt-6",
+    "reasoning": "medium"
+  },
   "operations": {
     "spec_panel": {
       "workers": {

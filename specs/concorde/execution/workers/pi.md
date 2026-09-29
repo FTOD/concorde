@@ -17,7 +17,7 @@ runtime directory:
 | Path | Content | Worker access |
 | --- | --- | --- |
 | `control/permission.ts` | The permission extension with the run's policy embedded | none |
-| `config/` | `PI_CODING_AGENT_DIR`: copies of the user's pi `auth.json` and `models.json`, a generated `settings.json` with the user's default model and level, and `sessions/` with the session transcript | none |
+| `config/` | `PI_CODING_AGENT_DIR`: copies of the user's pi `auth.json` and `models.json`, a generated `settings.json` of Concorde's own, and `sessions/` with the session transcript | none |
 
 There is no `control/settings.json` and no `control/write_hook.py`: the permission extension
 replaces both. Before the first round the host copies `auth.json` and `models.json` from the
@@ -25,20 +25,13 @@ user's pi configuration directory (`PI_CODING_AGENT_DIR`, with a leading `~` exp
 or `~/.pi/agent`) into the runtime directory, where they are removed with it when the run ends, and
 writes a `settings.json` of its own there.
 
-The generated `settings.json` holds `"defaultProjectTrust": "never"` and, of the user's own pi
-`settings.json` in that directory, only `defaultProvider`, `defaultModel` and
-`defaultThinkingLevel`, each when the user's file sets it. A pi worker whose
-[worker configuration](../../glossary.json#concept.worker-configuration) names no model or level
-therefore starts on the model and level the user's own pi starts on, rather than pi's built-in
-default; a `--model` or `--thinking` the configuration gives still wins for its field, and a field
-neither sets is left to pi. No other setting is copied, so no user package, extension, skill, theme
-or model filter reaches the worker. When the user's file does not exist or cannot be read, the
-generated file holds only the trust setting and the worker starts on pi's built-in default. An
-empty file, which pi reads as no settings, chooses nothing either. A file that is not UTF-8 JSON
-text holding an object, or that sets one of the three fields to anything but a non-empty string,
-or `defaultThinkingLevel` to anything but one of pi's levels (`off`, `minimal`, `low`, `medium`,
-`high`, `xhigh`, `max`), is refused with `pi_settings_invalid` before launch rather than skipped,
-since skipping it would run the worker on a model the user did not choose.
+The generated `settings.json` holds only `"defaultProjectTrust": "never"`. The user's own pi
+`settings.json` is never read: its default provider, model and thinking level, its enabled models,
+its per-model thinking levels and every other setting stay the developer's, and no user package,
+extension, skill, theme or model filter reaches the worker. The worker's model and level come only
+from the [worker configuration](../../glossary.json#concept.worker-configuration), passed with
+`--model` and `--thinking` (see [choosing worker models](module.md#choosing-worker-models)). What
+is copied, `auth.json` and `models.json`, says how to reach a provider, never which model to use.
 
 ## Launch
 
@@ -96,7 +89,6 @@ The pi backend uses the codes of [the run mechanics](launch.md#errors) except `c
 | Code | Detail | Reason | Causes |
 | --- | --- | --- | --- |
 | `pi_runtime_missing` | every missing program or package and how to provide it | `environment` | none |
-| `pi_settings_invalid` | the user's pi settings file, what is wrong with it (the JSON error with its line and column, or the field and its value) and how to repair it | `environment` | none |
 | `pi_failed` | the round and the error pi reported: it ended without a [worker result](../../glossary.json#concept.worker-result) and with a non-zero exit status, without a session record, or with the stop reason `error` or `aborted` | `environment` | the pi process's link |
 
 A pi worker that ends normally without a worker result ends `failed` with `worker_result_invalid`,
@@ -125,9 +117,9 @@ Every command the pi `bash`, `grep`, `find` or `ls` tool runs SHALL run inside t
 
 The host SHALL start every pi round with extension discovery, context files, skills and prompt templates disabled, the permission extension as the only extension, and its own `PI_CODING_AGENT_DIR`.
 
-### req.workers.pi-user-default — A pi worker starts on the user's pi default
+### req.workers.pi-settings-independent — A pi worker takes nothing from the user's pi settings
 
-The host SHALL give every pi worker a `settings.json` that carries `defaultProvider`, `defaultModel` and `defaultThinkingLevel` from the user's pi settings file when that file sets them, copies no other setting of it, and refuses a run with `pi_settings_invalid` before launch when that file exists and can be read but pi could not use it or one of those fields is invalid.
+The host SHALL give every pi worker a `settings.json` of its own that holds only `defaultProjectTrust` `never`, without reading the user's pi `settings.json`, and copy from the user's pi configuration directory only `auth.json` and `models.json`.
 
 ### req.workers.pi-limits — pi runs stop at their limits
 

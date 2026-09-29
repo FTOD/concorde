@@ -69,13 +69,21 @@ def commit(root: Path, message: str = "change") -> str:
     ).stdout.strip()
 
 
+# Every worker on Claude Code, on a model the fake ``claude`` accepts like any other.
+CLAUDE_WORKERS = {
+    "schema_version": 1,
+    "enabled_models": {"sonnet": {}},
+    "default": {"backend": "claude", "model": "sonnet"},
+}
+
+
 def claude_workers(root: Path) -> Path:
     """Choose Claude Code for every worker of ``root``, whose workers would otherwise run on pi, so
     that the fake ``claude`` answers them. The worker configuration is tracked, so when ``root``
     already has a commit the choice is committed, for the tasks opened from it to carry."""
     path = root / ".concorde/workers.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text('{"schema_version": 1, "default": {"backend": "claude"}}\n')
+    path.write_text(json.dumps(CLAUDE_WORKERS) + "\n")
     head = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", "HEAD"],
         cwd=root,

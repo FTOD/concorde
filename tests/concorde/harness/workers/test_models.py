@@ -21,6 +21,13 @@ def _backend(chosen: dict) -> tuple[str, str]:
     return chosen["backend"], chosen["backend_source"]
 
 
+def _enabled(*names: str, **levels: str) -> dict:
+    """``enabled_models`` admitting ``names``, with a level for each model in ``levels``."""
+    return {
+        name: {"reasoning": levels[name]} if name in levels else {} for name in names
+    }
+
+
 class WorkerModelTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -62,19 +69,30 @@ class WorkerModelTests(unittest.TestCase):
     @verifies("scenario.workers.backend-default")
     def test_a_worker_without_an_entry_runs_on_pi(self):
         session = dict(self.environ, CLAUDECODE="1")
-        empty = {"schema_version": 1}
+        bare = {
+            "schema_version": 1,
+            "enabled_models": _enabled("a/pi"),
+            "default": {"model": "a/pi"},
+        }
         self.assertEqual(
             ("pi", "Concorde's default worker backend"),
-            _backend(models.worker_choice(empty, "implement", "worker", session)),
+            _backend(models.worker_choice(bare, "implement", "worker", session)),
         )
 
     def _checker_on_claude(self) -> dict:
         config = {
             "schema_version": 1,
+            "enabled_models": _enabled("a/pi", "opus"),
             "default": {"model": "a/pi"},
             "operations": {
                 "spec_review": {
-                    "workers": {"checker": {"backend": "claude", "reasoning": "high"}}
+                    "workers": {
+                        "checker": {
+                            "backend": "claude",
+                            "model": "opus",
+                            "reasoning": "high",
+                        }
+                    }
                 }
             },
         }
@@ -94,8 +112,8 @@ class WorkerModelTests(unittest.TestCase):
             (
                 "claude",
                 "operations.spec_review.workers.checker",
-                None,
-                "the backend's own default",
+                "opus",
+                "operations.spec_review.workers.checker",
                 "high",
             ),
             (
@@ -167,6 +185,7 @@ class WorkerModelTests(unittest.TestCase):
     def test_the_most_specific_entry_wins_field_by_field(self):
         config = {
             "schema_version": 1,
+            "enabled_models": _enabled("a/default", "a/panel", "a/second"),
             "default": {"model": "a/default", "reasoning": "medium"},
             "operations": {
                 "spec_panel": {
@@ -203,10 +222,191 @@ class WorkerModelTests(unittest.TestCase):
             ("a/default", "default"), (other["model"], other["model_source"])
         )
 
+    @verifies("scenario.workers.model-levels")
+    def test_a_models_own_level_applies_when_the_entry_choosing_it_sets_none(self):
+        config = {
+            "schema_version": 1,
+            "enabled_models": _enabled(
+                "a/default",
+                "a/deep",
+                "a/plain",
+                **{"a/default": "low", "a/deep": "high"},
+            ),
+            "default": {"model": "a/default"},
+            "operations": {
+                "spec_panel": {
+                    "default": {"reasoning": "medium"},
+                    "workers": {
+                        "reviewer1": {"model": "a/deep"},
+                        "reviewer2": {"model": "a/deep", "reasoning": "xhigh"},
+                        "reviewer3": {"model": "a/plain"},
+                    },
+                }
+            },
+        }
+        models.validate_config(config)
+
+        def level(operation, worker):
+            chosen = models.choice(config, operation, worker)
+            return chosen["reasoning"], chosen["reasoning_source"]
+
+        # The default's model at its own level: the entry that chose it sets none.
+        self.assertEqual(
+            ("low", 'enabled_models["a/default"]'), level("implement", "worker")
+        )
+        # A level set more specifically than the model is meant for it.
+        self.assertEqual(
+            ("medium", "operations.spec_panel.default"), level("spec_panel", "chair")
+        )
+        # A model chosen more specifically than any level takes its own level...
+        self.assertEqual(
+            ("high", 'enabled_models["a/deep"]'), level("spec_panel", "reviewer1")
+        )
+        # ...unless its own entry sets one,
+        self.assertEqual(
+            ("xhigh", "operations.spec_panel.workers.reviewer2"),
+            level("spec_panel", "reviewer2"),
+        )
+        # and a model without a level of its own keeps the one inherited.
+        self.assertEqual(
+            ("medium", "operations.spec_panel.default"),
+            level("spec_panel", "reviewer3"),
+        )
+        bare = dict(config, enabled_models=_enabled("a/default"), operations={})
+        self.assertEqual(
+            (None, "the backend's own default"),
+            (
+                models.choice(bare, "implement", "worker")["reasoning"],
+                models.choice(bare, "implement", "worker")["reasoning_source"],
+            ),
+        )
+        for wrong in (
+            # a level of neither backend,
+            _enabled("a/default", **{"a/default": "bogus"}),
+            # and a pi level a worker on Claude Code would take.
+            _enabled("a/default", **{"a/default": "off"}),
+        ):
+            invalid = {
+                "schema_version": 1,
+                "enabled_models": wrong,
+                "default": {"backend": "claude", "model": "a/default"},
+            }
+            with (
+                self.subTest(enabled=wrong),
+                self.assertRaises(models.ModelConfigError) as raised,
+            ):
+                models.validate_config(invalid)
+            self.assertEqual("config_invalid", raised.exception.code)
+            self.assertIn("reasoning", str(raised.exception))
+
+    @verifies("scenario.workers.model-unresolved")
+    def test_a_worker_whose_configuration_names_no_model_is_refused(self):
+        config = {
+            "schema_version": 1,
+            "enabled_models": _enabled("a/pi"),
+            "default": {"reasoning": "high"},
+            "operations": {
+                "spec_review": {"default": {"model": "a/pi"}},
+                "spec_panel": {"workers": {"chair": {"backend": "claude"}}},
+            },
+        }
+        self.assertEqual(
+            "a/pi",
+            models.worker_choice(config, "spec_review", "checker", self.environ)[
+                "model"
+            ],
+        )
+        for operation, worker, entries in (
+            (
+                "implement",
+                "worker",
+                (
+                    "operations.implement.workers.worker, operations.implement.default, "
+                    "default"
+                ),
+            ),
+            ("spec_panel", "chair", "(operations.spec_panel.workers.chair)"),
+        ):
+            with (
+                self.subTest(worker=worker),
+                self.assertRaises(models.ModelConfigError) as raised,
+            ):
+                models.worker_choice(config, operation, worker, self.environ)
+            self.assertEqual("model_unresolved", raised.exception.code)
+            for part in (
+                f"the {worker} worker of {operation}",
+                entries,
+                models.CONFIG,
+                "`enabled_models`",
+                "never runs a worker on its program's own default model",
+            ):
+                self.assertIn(part, str(raised.exception))
+
+    @verifies("scenario.workers.model-not-enabled")
+    def test_a_model_outside_the_enabled_models_is_refused(self):
+        base = {"schema_version": 1, "enabled_models": _enabled("a/one", "a/two")}
+        models.validate_config(dict(base, default={"model": "a/one"}))
+        for config, where in (
+            (dict(base, default={"model": "a/three"}), "default.model"),
+            (
+                dict(
+                    base,
+                    default={"model": "a/one"},
+                    operations={"spec_panel": {"default": {"model": "a/three"}}},
+                ),
+                "operations.spec_panel.default.model",
+            ),
+            (
+                dict(
+                    base,
+                    default={"model": "a/one"},
+                    operations={
+                        "spec_panel": {"workers": {"chair": {"model": "a/three"}}}
+                    },
+                ),
+                "operations.spec_panel.workers.chair.model",
+            ),
+        ):
+            with (
+                self.subTest(where=where),
+                self.assertRaises(models.ModelConfigError) as raised,
+            ):
+                models.validate_config(config)
+            self.assertEqual("model_not_enabled", raised.exception.code)
+            for part in (where, "'a/three'", "a/one, a/two", "add it to"):
+                self.assertIn(part, str(raised.exception))
+        for missing, text in (
+            ({"schema_version": 1, "default": {"model": "a/one"}}, "is missing"),
+            (dict(base, enabled_models={}), "is empty"),
+        ):
+            with (
+                self.subTest(enabled=missing.get("enabled_models")),
+                self.assertRaises(models.ModelConfigError) as raised,
+            ):
+                models.validate_config(missing)
+            self.assertEqual("config_invalid", raised.exception.code)
+            self.assertIn("`enabled_models` " + text, str(raised.exception))
+
+    @verifies("scenario.workers.config-missing")
+    def test_a_worktree_without_a_worker_configuration_runs_no_worker(self):
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.load(self.base)
+        self.assertEqual("config_missing", raised.exception.code)
+        for part in (
+            str(models.config_path(self.base)),
+            "every worker needs it",
+            "`enabled_models`",
+            "`default` model",
+            "commit it",
+            "never takes a worker's model from the developer's own pi",
+        ):
+            self.assertIn(part, str(raised.exception))
+
     @verifies("scenario.workers.model-refused")
     def test_validation_accepts_custom_models_and_rejects_invalid_structure(self):
         config = {
             "schema_version": 1,
+            "enabled_models": _enabled("offline/custom"),
             "default": {"model": "offline/custom", "reasoning": "high"},
         }
         models.validate_config(config)
@@ -215,17 +415,20 @@ class WorkerModelTests(unittest.TestCase):
             "offline/custom",
             models.worker_choice(config, "implement", "worker", self.environ)["model"],
         )
+        enabled = {"schema_version": 1, "enabled_models": _enabled("x")}
         for invalid in (
-            {"schema_version": 1, "default": {"model": " "}},
-            {"schema_version": 1, "default": {"model": "\x00"}},
-            {"schema_version": 1, "default": {"model": "custom\n"}},
-            {"schema_version": 1, "default": {"reasoning": "bogus"}},
-            {"schema_version": 1, "default": {"backend": "claude", "reasoning": "off"}},
-            {"schema_version": 1, "operations": {"typo": {"default": {"model": "x"}}}},
-            {"schema_version": 1, "operations": {"delivery": {}}},
-            {"schema_version": 1, "limits": {"max_turns": 0}},
-            {"schema_version": 1, "limits": {"timeout": 60}},
-            {"schema_version": 1, "runtime": [".venv", ".venv"]},
+            dict(enabled, default={"model": " "}),
+            dict(enabled, default={"model": "\x00"}),
+            dict(enabled, default={"model": "custom\n"}),
+            dict(enabled, default={"reasoning": "bogus"}),
+            dict(enabled, default={"backend": "claude", "reasoning": "off"}),
+            dict(enabled, operations={"typo": {"default": {"model": "x"}}}),
+            dict(enabled, operations={"delivery": {}}),
+            dict(enabled, limits={"max_turns": 0}),
+            dict(enabled, limits={"timeout": 60}),
+            dict(enabled, runtime=[".venv", ".venv"]),
+            dict(enabled, enabled_models={" x": {}}),
+            dict(enabled, enabled_models={"x": {"level": "high"}}),
         ):
             with (
                 self.subTest(config=invalid),
@@ -262,16 +465,16 @@ class WorkerModelTests(unittest.TestCase):
 
     @verifies("scenario.workers.limits-configured")
     def test_limits_and_runtime_come_from_the_worker_configuration(self):
-        empty = models.load(self.base)
-        self.assertEqual(models.LIMITS, models.limits(empty))
-        self.assertEqual((".venv", "node_modules"), models.runtime(empty))
-        self.save(
-            {
-                "schema_version": 1,
-                "limits": {"max_turns": 50, "rounds": 1},
-                "runtime": ["env"],
-            }
-        )
+        enabled = {
+            "schema_version": 1,
+            "enabled_models": _enabled("x"),
+            "default": {"model": "x"},
+        }
+        self.save(enabled)
+        plain = models.load(self.base)
+        self.assertEqual(models.LIMITS, models.limits(plain))
+        self.assertEqual((".venv", "node_modules"), models.runtime(plain))
+        self.save(dict(enabled, limits={"max_turns": 50, "rounds": 1}, runtime=["env"]))
         config = models.load(self.base)
         self.assertEqual(
             {**models.LIMITS, "max_turns": 50, "rounds": 1}, models.limits(config)
@@ -288,7 +491,13 @@ class WorkerModelTests(unittest.TestCase):
         self.assertEqual("config_invalid", raised.exception.code)
         for part in (models.RETIRED, models.CONFIG, "commit it"):
             self.assertIn(part, str(raised.exception))
-        self.save({"schema_version": 1, "default": {"model": "y"}})
+        self.save(
+            {
+                "schema_version": 1,
+                "enabled_models": _enabled("y"),
+                "default": {"model": "y"},
+            }
+        )
         self.assertEqual({"model": "y"}, models.load(self.base)["default"])
 
     def test_duplicate_json_keys_are_refused(self):
@@ -314,6 +523,7 @@ class WorkerModelTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_version": 1,
+                    "enabled_models": _enabled("x"),
                     "operations": {
                         "understand": {
                             "workers": {"worker": {"model": "x", "modle": "y"}}

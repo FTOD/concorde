@@ -216,22 +216,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN it refuses before launch with `pi_runtime_missing`, naming the missing package and how to install it
 - AND it still writes the run record
 
-### scenario.workers.pi-user-default — A pi worker without a configured model starts on the user's pi default
+### scenario.workers.pi-settings-independent — A pi worker takes nothing from the user's pi settings
 
-- GIVEN the user's pi settings choosing a default provider, model and thinking level beside packages and other settings
-- AND a [worker configuration](../../glossary.json#concept.worker-configuration) that names no model or level for a pi worker
-- WHEN the host prepares the worker's runtime directory
-- THEN its generated pi settings carry the user's default provider, model and thinking level with `defaultProjectTrust` `never`, and no other setting
-- AND the worker is launched without `--model` and `--thinking`
-- BUT a model or level the configuration names is passed with `--model` or `--thinking` and wins for its field
-- AND without a user settings file, or with an empty one, the generated settings hold only the trust setting
-
-### scenario.workers.pi-settings-invalid — Unusable pi settings are refused, never skipped
-
-- GIVEN the user's pi settings file holding text that is not JSON, a JSON value that is not an object, a default model that is not a string or a default thinking level that is not one of pi's levels
-- WHEN the host is asked to start a pi worker
-- THEN it refuses before launch with `pi_settings_invalid`, naming the file, what is wrong with it and how to repair it
-- AND it still writes the run record
+- GIVEN the user's pi settings choosing a default provider, model and thinking level, enabled models, per-model thinking levels, packages and other settings, and then a settings file pi would refuse
+- AND a [worker configuration](../../glossary.json#concept.worker-configuration) that chooses a model and a level for a pi worker
+- WHEN the host prepares the worker's runtime directory and launches it
+- THEN its generated pi settings hold only `defaultProjectTrust` `never`, in both cases, and the run is not refused
+- AND the worker is launched with the configured model and level as `--model` and `--thinking`
+- AND its pi configuration directory holds copies of the user's `auth.json` and `models.json`
 
 ### scenario.workers.pi-limit — A pi run over its turn limit stops
 
@@ -252,14 +244,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.backend-configured — Workers run on pi unless their configuration chooses Claude Code
 
-- GIVEN a command started from a Claude Code session, both programs installed, and a [worker configuration](../../glossary.json#concept.worker-configuration) whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a level
+- GIVEN a command started from a Claude Code session, both programs installed, and a [worker configuration](../../glossary.json#concept.worker-configuration) whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a Claude Code model and a level
 - WHEN the choices of `spec_review`'s `reviewer` and `checker` are resolved
 - THEN the reviewer runs on pi with the default's model
-- AND the checker runs on `claude` from its own entry, with its own level and Claude Code's own default model, since choosing Claude Code does not carry the pi model over
+- AND the checker runs on `claude` with the model and level of its own entry
 
 ### scenario.workers.backend-default — Without a configuration entry a worker runs on pi
 
-- GIVEN a command started from a Claude Code session and an empty worker configuration
+- GIVEN a command started from a Claude Code session and a worker configuration whose default names only a model
 - WHEN the choice of `implement`'s worker is resolved
 - THEN it runs on `pi`, from Concorde's default [worker backend](../../glossary.json#concept.worker-backend), not from the main session's program
 
@@ -285,12 +277,42 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the choices of `reviewer1`, `reviewer2`, `chair` and `implement`'s `worker` are resolved
 - THEN `reviewer1` gets the [Operation](../../glossary.json#concept.operation)'s model and the default level, `reviewer2` its own model, the `chair` the Operation's model and its own level, and `implement` the default, each naming the entry it came from
 
+### scenario.workers.model-levels — A model's own level applies when the entry that chose it sets none
+
+- GIVEN `enabled_models` giving two models a level of their own and a third none, a default naming the first model without a level, a level for `spec_panel`'s default, and `spec_panel` workers naming the second model without a level, the second model with a level, and the third model
+- WHEN the choices are resolved
+- THEN a worker on the default gets its model's own level, and a worker with no entry of its own in `spec_panel` the Operation's level
+- AND a worker whose entry names the second model without a level gets that model's own level, and one whose entry sets a level its own
+- AND the worker on the third model keeps the Operation's level, and a worker with no level anywhere gets none, which leaves its program's built-in default
+- BUT a model's own level of neither backend, or one the backend of a worker taking it does not have, is refused with `config_invalid`
+
+### scenario.workers.model-unresolved — A worker whose configuration names no model is refused
+
+- GIVEN a worker configuration whose default sets only a level, which names a model for `spec_review`'s default and puts `spec_panel`'s `chair` on `claude` without a model
+- WHEN the choices of `spec_review`'s `checker`, `implement`'s worker and `spec_panel`'s `chair` are resolved
+- THEN the checker gets the model of its Operation's default
+- AND `implement`'s worker and the chair are refused with `model_unresolved`, naming the worker, every entry its model may come from and how to set one, and saying that no program's or developer's default model is used
+
 ### scenario.workers.model-refused — Validation admits custom models but rejects invalid entries
 
 - GIVEN a configuration with a custom model absent from discovery
 - WHEN the shared validator checks it without installed backends or credentials
 - THEN the custom model is accepted
-- BUT invalid structure, unknown Operation or worker names, and reasoning outside the effective backend's vocabulary are refused with `config_invalid`
+- BUT invalid structure, unknown Operation or worker names, malformed `enabled_models` entries and reasoning outside the effective backend's vocabulary are refused with `config_invalid`
+
+### scenario.workers.model-not-enabled — A model outside the enabled models is refused
+
+- GIVEN a worker configuration whose `enabled_models` admits two models
+- WHEN the default, an Operation's default or a worker's entry names a third model
+- THEN the whole configuration is refused with `model_not_enabled`, naming the entry, the model, the enabled models and how to repair it
+- BUT a configuration without `enabled_models`, or with an empty one, is refused with `config_invalid` saying that the list is required
+
+### scenario.workers.config-missing — A worktree without a worker configuration runs no worker
+
+- GIVEN a worktree without `.concorde/workers.json`
+- WHEN Workers reads the worker configuration for a launch
+- THEN it is refused with `config_missing`, naming the file, what it must hold and that it must be committed
+- AND it says that a worker's model is never taken from the developer's own pi or Claude Code settings
 
 ### scenario.workers.model-config-invalid — An unreadable configuration is reported, never ignored
 
@@ -301,7 +323,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.limits-configured — Limits and runtime paths come from the worker configuration
 
-- GIVEN a worktree without a worker configuration, and then one whose `.concorde/workers.json` sets `limits.max_turns` and `limits.rounds` and a `runtime` list
+- GIVEN a worktree whose `.concorde/workers.json` sets neither `limits` nor `runtime`, and then one that sets `limits.max_turns` and `limits.rounds` and a `runtime` list
 - WHEN Workers reads the limits and runtime paths of a launch
 - THEN the first gets the default limits and the runtime paths `.venv` and `node_modules`
 - AND the second gets its own `max_turns`, `rounds` and runtime paths, with the default for every limit it does not set
