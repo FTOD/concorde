@@ -97,6 +97,53 @@ class E2ETests(unittest.TestCase):
         self.assertEqual(Path(tempfile.gettempdir()) / "concorde-e2e", root)
         self.assertFalse(root.is_relative_to(Path.home()))
 
+    @verifies("scenario.e2e.worker-configuration")
+    def test_a_test_project_gets_a_worker_configuration_before_its_first_commit(self):
+        own = json.loads((REPOSITORY_ROOT / e2e.WORKERS).read_text())
+        self.assertEqual(
+            {field: own[field] for field in e2e.WORKER_FIELDS if field in own},
+            e2e.worker_configuration(),
+        )
+        self.assertNotIn("runtime", e2e.worker_configuration())
+        self.assertEqual(
+            {
+                "schema_version": 1,
+                "enabled_models": {"local/fast": {}},
+                "default": {"model": "local/fast"},
+            },
+            e2e.worker_configuration("local/fast"),
+        )
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(root)], check=False))
+        committed = {}
+
+        def fake_run(command, cwd, **options):
+            if command[:2] == ["git", "add"]:
+                path = Path(cwd) / e2e.WORKERS
+                committed["workers"] = json.loads(path.read_text())
+            stdout = json.dumps({"result": {}, "record": {"worktree": "w"}})
+            return subprocess.CompletedProcess(command, 0, stdout, "")
+
+        def fake_clone(url, rev, project):
+            # The clone, and the install that makes `.concorde/`, as far as prepare reads them.
+            (project / ".concorde").mkdir(parents=True)
+
+        with (
+            patch.object(e2e, "clone", fake_clone),
+            patch.object(e2e, "run", fake_run),
+        ):
+            prepared = e2e.prepare(
+                "someone/demo",
+                "v1",
+                root,
+                "adopt",
+                allow_any=True,
+                name="demo",
+                worker_model="local/fast",
+            )
+        self.assertEqual(e2e.worker_configuration("local/fast"), committed["workers"])
+        self.assertEqual(["local/fast"], prepared["worker_models"])
+
     @verifies("scenario.e2e.trust")
     def test_trust_marks_each_repository_root_and_keeps_the_rest(self):
         with tempfile.TemporaryDirectory() as directory:

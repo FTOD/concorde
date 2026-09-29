@@ -1,9 +1,12 @@
 """The worker configuration ``.concorde/workers.json``: backends, models and limits of workers.
 
 The file is tracked with the project, so a task starts from its base commit's configuration and
-its own changes merge with it. The worktree's JSON is the source of truth, edited directly.
-Validation never discovers models or checks credentials. Explicit backend entries reset
-inherited model/reasoning fields.
+its own changes merge with it. The worktree's JSON is the source of truth, edited directly, and
+the only source of a worker's model and level: nothing is read from the developer's own pi or
+Claude Code settings. Every worker needs the file, its required ``enabled_models`` admits the
+models any entry may name, each with an optional level of its own, and a worker whose entries
+resolve no model is refused. Validation never discovers models or checks credentials. Explicit
+backend entries reset inherited model/reasoning fields.
 """
 
 from __future__ import annotations
@@ -52,9 +55,18 @@ ENTRY_SCHEMA = {
 SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["schema_version"],
+    "required": ["schema_version", "enabled_models"],
     "properties": {
         "schema_version": {"const": SCHEMA_VERSION},
+        # The models any entry may name, keyed by exact model id, each with its own level.
+        "enabled_models": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"reasoning": TEXT},
+            },
+        },
         "default": ENTRY_SCHEMA,
         "operations": {
             "type": "object",
@@ -121,11 +133,39 @@ def worker_ids() -> dict[str, tuple[str, ...]]:
 
 
 def validate_config(value: dict) -> None:
-    """Check structure, catalog names and backend reasoning vocabulary, never model availability."""
+    """Check structure, catalog names, enabled models and backend reasoning vocabulary, never
+    model availability."""
+    if isinstance(value, dict) and "enabled_models" not in value:
+        raise ModelConfigError(
+            "config_invalid",
+            "`enabled_models` is missing: it is required and lists every model a worker may "
+            'run on, such as `"enabled_models": {"<provider>/<model>": {"reasoning": '
+            '"medium"}}`; add every model the entries name',
+        )
     try:
         validate(value, SCHEMA)
     except ContractError as error:
         raise ModelConfigError("config_invalid", str(error)) from error
+    enabled = value["enabled_models"]
+    if not enabled:
+        raise ModelConfigError(
+            "config_invalid",
+            "`enabled_models` is empty: list every model a worker may run on",
+        )
+    for model, entry in enabled.items():
+        if not model.strip() or model != model.strip() or not model.isprintable():
+            raise ModelConfigError(
+                "config_invalid",
+                f"`enabled_models` names the model {json.dumps(model)}; a model id is "
+                "non-empty printable text without surrounding spaces",
+            )
+        level = entry.get("reasoning")
+        if level is not None and level not in LEVELS["pi"]:
+            raise ModelConfigError(
+                "config_invalid",
+                f"enabled_models[{json.dumps(model)}].reasoning: {level!r} is not a level of "
+                f"either backend; expected one of {', '.join(LEVELS['pi'])}",
+            )
     ids = worker_ids()
     scopes: list[tuple[str | None, str | None]] = [(None, None)]
     for operation, entry in value.get("operations", {}).items():
@@ -142,6 +182,15 @@ def validate_config(value: dict) -> None:
                     f"unknown worker {worker!r} of {operation}; expected {', '.join(ids[operation])}",
                 )
             scopes.append((operation, worker))
+    for entry, where in _entries(value):
+        model = entry.get("model")
+        if model is not None and model not in enabled:
+            raise ModelConfigError(
+                "model_not_enabled",
+                f"{where}.model: {model!r} is not in `enabled_models` "
+                f"({', '.join(sorted(enabled))}); add it to `enabled_models` or choose one of "
+                "those",
+            )
     for operation, worker in scopes:
         selected = choice(value, operation, worker)
         level = selected["reasoning"]
@@ -150,6 +199,17 @@ def validate_config(value: dict) -> None:
                 "config_invalid",
                 f"{selected['reasoning_source']}.reasoning: {level!r} is not a {selected['backend']} level; expected {', '.join(LEVELS[selected['backend']])}",
             )
+
+
+def _entries(config: dict):
+    """Every entry of the file with the path that names it."""
+    if "default" in config:
+        yield config["default"], "default"
+    for operation, scope in config.get("operations", {}).items():
+        if "default" in scope:
+            yield scope["default"], f"operations.{operation}.default"
+        for worker, entry in scope.get("workers", {}).items():
+            yield entry, f"operations.{operation}.workers.{worker}"
 
 
 def config_path(worktree: Path) -> Path:
@@ -190,7 +250,14 @@ def load(worktree: Path) -> dict:
                 f"default and operations into {CONFIG} with schema_version {SCHEMA_VERSION}, "
                 f"commit it and delete {RETIRED}",
             ) from None
-        return {"schema_version": SCHEMA_VERSION}
+        raise ModelConfigError(
+            "config_missing",
+            f"{path} does not exist, and every worker needs it: write it with schema_version "
+            f"{SCHEMA_VERSION}, the `enabled_models` workers may run on and a `default` model, "
+            'such as {"schema_version": 1, "enabled_models": {"<provider>/<model>": {}}, '
+            '"default": {"model": "<provider>/<model>"}}, and commit it; Concorde never '
+            "takes a worker's model from the developer's own pi or Claude Code settings",
+        ) from None
     except (OSError, ValueError) as error:
         raise ModelConfigError(
             "config_invalid", f"{path} cannot be read as JSON: {error}"
@@ -239,14 +306,31 @@ def choice(
         backend, source = levels[chosen_at][0]["backend"], levels[chosen_at][1]
         eligible = levels[: chosen_at + 1]
     chosen = {"backend": backend, "backend_source": source}
-    for field in ("model", "reasoning"):
-        found = next(
-            ((entry[field], where) for entry, where in eligible if field in entry), None
+    model_at = next(
+        (i for i, (entry, _) in enumerate(eligible) if "model" in entry), None
+    )
+    chosen["model"], chosen["model_source"] = (
+        (eligible[model_at][0]["model"], eligible[model_at][1])
+        if model_at is not None
+        else (None, "no entry")
+    )
+    level_at = next(
+        (i for i, (entry, _) in enumerate(eligible) if "reasoning" in entry), None
+    )
+    own = config.get("enabled_models", {}).get(chosen["model"], {})
+    if level_at is not None and (model_at is None or level_at <= model_at):
+        # A level set with the model, or more specifically, is meant for it.
+        found = (eligible[level_at][0]["reasoning"], eligible[level_at][1])
+    elif "reasoning" in own:
+        found = (
+            own["reasoning"],
+            f"enabled_models[{json.dumps(chosen['model'])}]",
         )
-        chosen[field], chosen[f"{field}_source"] = found or (
-            None,
-            "the backend's own default",
-        )
+    elif level_at is not None:
+        found = (eligible[level_at][0]["reasoning"], eligible[level_at][1])
+    else:
+        found = (None, "the backend's own default")
+    chosen["reasoning"], chosen["reasoning_source"] = found
     return chosen
 
 
@@ -279,6 +363,25 @@ def worker_choice(config: dict, operation: str, worker: str, environ=None) -> di
             f"but the {backend} command is not installed: PATH and {variable} name no executable. "
             f"A worker never falls back; install its program or edit its backend in {CONFIG}.",
         )
+    if chosen["model"] is None:
+        levels = _levels_of(config, operation, worker)
+        at = next(
+            (
+                i
+                for i, (_, where) in enumerate(levels)
+                if where == chosen["backend_source"]
+            ),
+            len(levels) - 1,
+        )
+        names = ", ".join(where for _, where in levels[: at + 1])
+        raise ModelConfigError(
+            "model_unresolved",
+            f"the {worker} worker of {operation} runs on {backend} "
+            f"({chosen['backend_source']}), but none of the entries its model may come from "
+            f"({names}) of {CONFIG} sets `model`; set one of them to a model of "
+            "`enabled_models`. Concorde never runs a worker on its program's own default model "
+            "or on the developer's own.",
+        )
     return chosen
 
 
@@ -307,5 +410,20 @@ HANDLING = {
         "input",
         "invalid configuration is never ignored",
         [f"correct {CONFIG} as the error says"],
+    ),
+    "config_missing": (
+        "input",
+        "a worker runs only on what the project's worker configuration chooses",
+        [f"write {CONFIG} with `enabled_models` and a `default` model and commit it"],
+    ),
+    "model_unresolved": (
+        "input",
+        "a worker never runs on a model its configuration does not name",
+        [f"set `model` in the worker's entry or a default of {CONFIG}"],
+    ),
+    "model_not_enabled": (
+        "input",
+        "every model a worker may run on must be enabled in the worker configuration",
+        [f"add the model to `enabled_models` of {CONFIG} or choose an enabled one"],
     ),
 }

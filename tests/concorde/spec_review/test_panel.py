@@ -210,6 +210,7 @@ class SpecPanelTests(unittest.TestCase):
     def test_each_reviewer_runs_on_the_model_configured_for_its_worker_id(self):
         config = {
             "schema_version": 1,
+            "enabled_models": {"claude-sonnet-5": {}, "claude-opus-5-5": {}},
             "default": {"backend": "claude"},
             "operations": {
                 "spec_panel": {

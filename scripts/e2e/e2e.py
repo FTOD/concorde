@@ -8,7 +8,7 @@ in it with real workers, either through a headless Claude Code session working a
 task session or through the deterministic driver that plays the pi runtime.
 
     python3 scripts/e2e/e2e.py repos
-    python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0
+    python3 scripts/e2e/e2e.py prepare psf/requests --rev v2.31.0 [--worker-model <model>]
     python3 scripts/e2e/e2e.py trust /tmp/concorde-e2e/requests
     python3 scripts/e2e/e2e.py run /tmp/concorde-e2e/requests --via claude
     python3 scripts/e2e/e2e.py watch /tmp/concorde-e2e/requests
@@ -70,6 +70,10 @@ from common import (  # noqa: E402
 SWE_BENCH = CHECKOUT / "references/swe-bench"
 REPO_LIST = SWE_BENCH / "swebench/harness/log_parsers/python.py"
 HARNESS = CHECKOUT / "tests/concorde/workflows/run_script.mjs"
+WORKERS = ".concorde/workers.json"
+# The parts of this checkout's worker configuration a test project takes; `runtime` names this
+# checkout's own paths.
+WORKER_FIELDS = ("schema_version", "enabled_models", "default", "operations", "limits")
 # The permissions a headless session needs to run a workflow without the project's trust:
 # given on the command line, they apply whether or not the folder is trusted.
 WORKFLOW_TOOLS = (
@@ -93,6 +97,29 @@ def repositories(listing: Path = REPO_LIST) -> list[str]:
     return sorted(set(re.findall(r'"([\w.-]+/[\w.-]+)":\s*parse_log', text)))
 
 
+def worker_configuration(model: str | None = None) -> dict:
+    """The worker configuration a test project gets, as its developer would write it: every
+    worker on ``model`` when given, otherwise the models this checkout's own configuration enables
+    and chooses."""
+    if model:
+        return {
+            "schema_version": 1,
+            "enabled_models": {model: {}},
+            "default": {"model": model},
+        }
+    source = CHECKOUT / WORKERS
+    try:
+        own = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise E2EError(
+            "worker_configuration_unreadable",
+            f"this checkout's worker configuration {source} cannot be read as JSON ({error}); "
+            "repair it, or pass --worker-model to run every worker of the test project on one "
+            "model",
+        ) from error
+    return {field: own[field] for field in WORKER_FIELDS if field in own}
+
+
 def prepare(
     repo: str,
     rev: str,
@@ -102,10 +129,13 @@ def prepare(
     name: str | None = None,
     python: str | None = None,
     pi: bool = False,
+    worker_model: str | None = None,
 ) -> dict:
     """Clone ``repo`` at ``rev`` under ``root`` as ``name`` (the repository's name by default),
     install and initialize Concorde, with its pi extension for pi main sessions when ``pi``,
-    recording ``python`` as the project's interpreter when given, and open ``task``."""
+    recording ``python`` as the project's interpreter when given, write its worker configuration
+    (every worker on ``worker_model``, or this checkout's models) and open ``task``."""
+    workers = worker_configuration(worker_model)
     if not allow_any and repo not in repositories():
         raise E2EError(
             "unknown_repository",
@@ -151,6 +181,8 @@ def prepare(
         run([concorde, "init", "--apply", "--proposal", str(proposal)], cwd=project)
     finally:
         proposal.unlink(missing_ok=True)
+    # No command writes the worker configuration: a developer writes it by hand, as here.
+    (project / WORKERS).write_text(json.dumps(workers, indent=2) + "\n")
     run(["git", "add", "-A"], cwd=project)
     run(["git", "commit", "-q", "-m", "Adopt Concorde"], cwd=project)
     opened = json.loads(
@@ -174,6 +206,7 @@ def prepare(
         "revision": rev,
         "task": task,
         "worktree": opened["record"]["worktree"],
+        "worker_models": sorted(workers.get("enabled_models", {})),
     }
 
 
@@ -443,6 +476,11 @@ def main(argv) -> int:
     prepare_.add_argument(
         "--pi", action="store_true", help="also install Concorde's pi extension"
     )
+    prepare_.add_argument(
+        "--worker-model",
+        help="run every worker of the project on this model; this checkout's worker "
+        "configuration by default",
+    )
     trust_ = sub.add_parser("trust")
     trust_.add_argument("projects", nargs="+", type=Path)
     run_ = sub.add_parser("run")
@@ -517,6 +555,7 @@ def main(argv) -> int:
                 arguments.name,
                 arguments.python,
                 arguments.pi,
+                arguments.worker_model,
             )
         elif arguments.command == "trust":
             value = trust(arguments.projects)

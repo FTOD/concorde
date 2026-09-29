@@ -139,20 +139,30 @@ mechanics](pi.md).
 <a id="concept.worker-configuration"></a><a id="concept.worker-id"></a>
 
 The **worker configuration** of a worktree is its `.concorde/workers.json`, tracked by Git like
-the project's code. Its models are keyed by
+the project's code, and it is the only source of a worker's model and reasoning level: Workers
+never reads them, or which models may be used, from the developer's own pi or Claude Code
+settings, so every developer's workers of a commit run alike. Only how to reach a model, the
+credentials and pi's provider definitions, comes from the developer's installation ([the pi run
+mechanics](pi.md#run-directory)), since it names no model and credentials never go into Git. Every
+worker needs the file: a worktree without one runs no worker. Its models are keyed by
 **[worker id](../../glossary.json#concept.worker-id)**: every Operation declares the ids of the
 workers it may launch in the [Operation catalog](../../glossary.json#concept.operation-catalog),
 such as `spec_panel`'s `reviewer1` to `reviewer5` and `chair`, `spec_review`'s `reviewer` and
 `checker`, or `worker` for an Operation with one worker, and the same id names the worker in its run
-record and in the Operation's evidence. The file holds a `default`, and under `operations` an
-Operation's `default` and its `workers`, one entry per worker id; each entry may set a `backend`,
-`pi` or `claude`, a `model` and a `reasoning` level. For each field the most specific entry that
-sets it wins — the worker's, then the Operation's default, then the default — with one exception: an
-entry that chooses a backend starts that program afresh, so the model and level come only from that
-entry or a more specific one, since a model named for one program means nothing to the other. A
-field no entry sets leaves the program's own default — on pi the default the user's own pi
-settings choose, which the worker inherits ([the pi run mechanics](pi.md#run-directory)), or pi's
-built-in default when they choose none — and a backend no entry sets is pi. An
+record and in the Operation's evidence.
+
+The file holds the required `enabled_models`, the models any worker may run on, each keyed by its
+exact model id as its program takes it and optionally carrying the model's own `reasoning` level.
+It holds a `default`, and under `operations` an Operation's `default` and its `workers`, one entry
+per worker id; each entry may set a `backend`, `pi` or `claude`, a `model` and a `reasoning` level,
+and every model an entry names must be one of `enabled_models`. For each field the most specific
+entry that sets it wins — the worker's, then the Operation's default, then the default — with one
+exception: an entry that chooses a backend starts that program afresh, so the model and level come
+only from that entry or a more specific one, since a model named for one program means nothing to
+the other. The level is the one set by the entry that chose the model or by a more specific entry;
+otherwise the model's own level in `enabled_models`; otherwise one a less specific entry sets;
+otherwise none, which leaves the program's built-in default level. A worker whose entries set no
+model is refused: it never runs on its program's default model. A backend no entry sets is pi. An
 Operation's step asks for the choice of one worker of its Operation by its id, in the worktree the
 run works on, and passes the model with `--model` and the level with `--effort` to Claude Code or
 `--thinking` to pi. The same file holds the `limits` of every worker launch and the `runtime`
@@ -161,11 +171,17 @@ paths, which [the worker limits](../operations/workers.md#worker-limits) describ
 ```json
 {
   "schema_version": 1,
-  "default": {"model": "anthropic/claude-sonnet-5", "reasoning": "medium"},
+  "enabled_models": {
+    "anthropic/claude-sonnet-5": {"reasoning": "medium"},
+    "anthropic/claude-opus-5-5": {"reasoning": "high"},
+    "local-openai/gpt-6": {},
+    "opus": {}
+  },
+  "default": {"model": "anthropic/claude-sonnet-5"},
   "operations": {
     "spec_panel": {
       "workers": {
-        "reviewer1": {"model": "anthropic/claude-opus-5-5", "reasoning": "high"},
+        "reviewer1": {"model": "anthropic/claude-opus-5-5"},
         "reviewer2": {"model": "local-openai/gpt-6", "reasoning": "high"},
         "reviewer3": {"model": "local-openai/gpt-6"},
         "chair": {"backend": "claude", "model": "opus"}
@@ -177,20 +193,25 @@ paths, which [the worker limits](../operations/workers.md#worker-limits) describ
 }
 ```
 
-Here every worker runs on pi, on `anthropic/claude-sonnet-5` at `medium`, except `spec_panel`'s:
-`reviewer1` on `anthropic/claude-opus-5-5` at `high`, `reviewer2` on `local-openai/gpt-6` at
-`high`, `reviewer3` on `local-openai/gpt-6` at the default's `medium`, and the `chair` on Claude
-Code with its `opus` alias at Claude Code's own default level, since choosing Claude Code does not
-carry the pi default's level over. The JSON file is the source of truth, and a human or an AI edits
-it directly; there is no editor. The validator checks structure, duplicate keys, Operation and
-worker names against the catalog, the limits and the effective backend's reasoning vocabulary
-whenever a worker launches. That vocabulary is fixed: `low`, `medium`, `high`, `xhigh` and `max` on
+Here every worker runs on pi, on `anthropic/claude-sonnet-5` at that model's own `medium`, except
+`spec_panel`'s: `reviewer1` on `anthropic/claude-opus-5-5` at that model's own `high`, `reviewer2`
+on `local-openai/gpt-6` at `high` from its entry, `reviewer3` on `local-openai/gpt-6` at pi's
+built-in default level, since neither its entries nor that model set one, and the `chair` on Claude
+Code with its `opus` alias at Claude Code's own default level. The JSON file is the source of
+truth, and a human or an AI edits it directly; there is no editor. The validator checks the whole
+file whenever a worker launches: structure, duplicate keys, Operation and worker names against the
+catalog, that `enabled_models` is present and not empty, that every model an entry names is
+enabled, the limits and the effective backend's reasoning vocabulary, including a model's own
+level wherever it applies. That vocabulary is fixed: `low`, `medium`, `high`, `xhigh` and `max` on
 Claude Code, and `off`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max` on pi; an omitted
 level is always valid. It accepts custom model names without discovery, installed backends or
-credentials. A malformed file is refused with `config_invalid`, naming the file and problem;
-earlier schema versions are not migrated or ignored, and a worktree that still has the untracked
-`.concorde/worker-models.json` of earlier versions but no `.concorde/workers.json` is refused with
-`config_invalid` saying how to move it, rather than silently run on defaults.
+credentials. A worktree without the file is refused with `config_missing`, a model an entry names
+outside `enabled_models` with `model_not_enabled`, naming the entry, and a worker whose entries set
+no model with `model_unresolved`, naming the worker and the entries its model may come from; each
+says how to repair the file. Any other malformed file is refused with `config_invalid`, naming the
+file and problem; earlier schema versions are not migrated or ignored, and a worktree that still
+has the untracked `.concorde/worker-models.json` of earlier versions but no `.concorde/workers.json`
+is refused with `config_invalid` saying how to move it, rather than silently run on defaults.
 
 Because the file is tracked, a [task](../../glossary.json#concept.task) carries the configuration of
 its base commit: a later change on the primary branch never reaches a task already open, a change
@@ -204,8 +225,8 @@ Discovery is separate and advisory. `python3 scripts/available_models.py --backe
 user settings and environment because it cannot list account entitlements. Discovery makes no
 inference API calls and does not verify access. An empty listing, a missing program or failed
 discovery does not prevent custom/offline edits. The candidate output names the source and
-reasoning levels, with pi's non-reasoning models listing only `off`; these are suggestions, not the
-configuration's admission policy.
+reasoning levels, with pi's non-reasoning models listing only `off`; these are suggestions for
+`enabled_models`, which alone admits a model.
 
 ### What the worker gets and leaves behind
 
@@ -470,8 +491,9 @@ backend, model and limits before calling Workers.
 
 - <a id="realization.workers.models"></a>The **configuration reader** validates and reads
   `.concorde/workers.json`, resolves the backend, model and level of an Operation's worker by its id
-  and the limits and runtime paths of every launch, and checks that the worker's program is
-  installed at launch; it never writes the file. The separate `available_models.py` module and
+  and the limits and runtime paths of every launch, refuses a missing file, a model outside
+  `enabled_models` and a worker without a model, and checks that the worker's program is installed
+  at launch; it never writes the file and never reads the developer's own agent settings. The separate `available_models.py` module and
   `scripts/available_models.py` entry point discover advisory candidates without Git or inference
   probes. It also detects the main session's program for Task sessions.
 

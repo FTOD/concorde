@@ -283,13 +283,21 @@ open a task for that work and escalate there with the run's result file,
 `--error-file .concorde/unbound/<run-id>/result.json`, since `--run` names only runs of the task's own
 workspace ([requirements](requirements.md#req.main-session.unbound-failure)).
 
-**[Worker](../../glossary.json#concept.worker) models.** Workers run on pi, whatever program the
-main agent runs on, unless the worktree's
-[worker configuration](../../glossary.json#concept.worker-configuration), the tracked
-`.concorde/workers.json`, chooses Claude Code for some of them, and take their model, level and
-limits from it, per [worker id](../../glossary.json#concept.worker-id). The guidance tells the main
-agent to change it only when the developer asks, by editing the JSON directly and preserving
-unrelated entries; there is no editor. It chooses Claude Code for a worker by setting that entry's
+**[Worker](../../glossary.json#concept.worker) models.** Every worker runs only on what the
+worktree's [worker configuration](../../glossary.json#concept.worker-configuration), the tracked
+`.concorde/workers.json`, enables and chooses per [worker
+id](../../glossary.json#concept.worker-id), never on the developer's own pi or Claude Code settings;
+it runs on pi, whatever program the main agent runs on, unless the file chooses Claude Code for
+it. No worker runs without the file, which the installer does not write: the guidance tells the
+main agent, when the project has none, to ask the developer which models workers may use and which
+is the default, and to write the file with its required enabled models and a default model and
+commit it alone on the primary branch before any Operation runs
+([requirements](requirements.md#req.main-session.worker-configuration-first)). It describes the
+enabled models, each with an optional level of its own, the refusals of a model that is not
+enabled and of a worker without a model, and which level a worker takes. The guidance tells the
+main agent to change the file only when the developer asks, by editing the JSON directly and
+preserving unrelated entries, adding every model it names to the enabled models; there is no
+editor. It chooses Claude Code for a worker by setting that entry's
 `backend` to `claude`; the chosen program must be installed when a worker launches, not when the
 file is edited. A change meant for future tasks is committed alone directly on the primary branch,
 the one change the main agent makes in the primary worktree, never while a merge is unfinished; a

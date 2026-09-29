@@ -25,10 +25,12 @@ the developer the whole rendered chain of an unbound run that is not `ok`; merge
 branches without asking, always with `concorde task merge <task>`, never `git merge`, have the
 task's session merge the primary branch into its task branch on `merge_conflict`, and finish a
 merge that a `merge_incomplete` refusal names with `concorde task merge <task> --resume` (or
-`--abort`) before anything else; change the models workers use only when the developer asks, by
-editing the tracked `.concorde/workers.json` directly: commit a change of that file alone on the
-primary branch for future tasks, or change it in a task that is to use it (the skill's "Worker
-models"); run a task that follows a known procedure as its workflow (the skill's "Workflows"), such
+`--abort`) before anything else; run workers only on the models the tracked
+`.concorde/workers.json` enables and chooses, never on anyone's own pi or Claude Code settings,
+and when the project has no such file ask the developer for its models before any Operation runs;
+change the models workers use only when the developer asks, by editing that file directly: commit
+a change of that file alone on the primary branch for future tasks, or change it in a task that is
+to use it (the skill's "Worker models"); run a task that follows a known procedure as its workflow (the skill's "Workflows"), such
 as `brownfield` right after adopting Concorde in a codebase whose code came before its Specs. A
 session started by `concorde task session` is a task session, not the main agent: its first prompt
 says how it works.

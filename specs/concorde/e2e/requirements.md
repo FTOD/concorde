@@ -15,7 +15,7 @@ The tool SHALL prepare only repositories SWE-bench's harness names, unless the d
 
 ### req.e2e.user-setup — A test project is set up as a user's
 
-The tool SHALL set up a [test project](../glossary.json#concept.test-project) only through this checkout's installer and `concorde` command, the same steps a user takes, never writing the project's Specs or configuration itself.
+The tool SHALL set up a [test project](../glossary.json#concept.test-project) only through this checkout's installer and `concorde` command, the same steps a user takes, never writing the project's Specs or configuration itself except its [worker configuration](../glossary.json#concept.worker-configuration), which a user writes by hand since no command writes it.
 
 ### req.e2e.never-installed — End-to-end testing reaches no user
 

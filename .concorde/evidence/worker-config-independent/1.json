@@ -1,0 +1,248 @@
+{
+  "workspace": "worker-config-independent",
+  "goal": "Worker configuration is independent of the developer's own pi settings: models, reasoning levels and a required enabled-models list come only from .concorde/workers.json, and any unresolved or unlisted model is refused",
+  "modules": [
+    "module.workers",
+    "module.main-session",
+    "module.e2e"
+  ],
+  "sequence": 1,
+  "base_commit": "7c997504d5370e60df014e7fe188d2920eb0881f",
+  "parent_commit": "d902da4ee60f3d6e7e55cb5146e60dd35e39d328",
+  "readiness": {
+    "run_id": "r-20260929T123233-delivery-a14a736d",
+    "input_digest": "sha256:a0e35eac907d842ce8b2a57fb4d53180b64608f2a64d55dd26bb07b591fecd6a",
+    "modules": [
+      "module.adoption",
+      "module.checks",
+      "module.code-review",
+      "module.commands",
+      "module.concorde",
+      "module.coordination",
+      "module.delivery",
+      "module.distribution",
+      "module.dogfood-scenarios",
+      "module.dogfooding",
+      "module.e2e",
+      "module.execution",
+      "module.harness",
+      "module.headless-sessions",
+      "module.implementation",
+      "module.issues",
+      "module.main-session",
+      "module.operations",
+      "module.scaffold",
+      "module.spec",
+      "module.spec-mcp",
+      "module.spec-review",
+      "module.spec-tooling",
+      "module.specification",
+      "module.swe-bench-cases",
+      "module.task-session",
+      "module.tasks",
+      "module.tracing",
+      "module.understanding",
+      "module.validation",
+      "module.views",
+      "module.workers",
+      "module.workflows"
+    ],
+    "checks": [
+      {
+        "check": "check.checks.runtime",
+        "module": "module.checks",
+        "status": "passed",
+        "measured_digest": "sha256:c1f09c30b3c4172433130a0342ebe63f644b22e7bf6f2bb831cf746487f0f892"
+      },
+      {
+        "check": "check.code-review.tests",
+        "module": "module.code-review",
+        "status": "passed",
+        "measured_digest": "sha256:120ab4e4dfb8a65c6b73a265b080b85c5f40d7085d535b04ded477d33c7b0c9c"
+      },
+      {
+        "check": "check.concorde.tests",
+        "module": "module.concorde",
+        "status": "passed",
+        "measured_digest": "sha256:ba6a57040cf600d9df495bfe13bfe37c00498206b6a86ea3b4e79042c1de84d0"
+      },
+      {
+        "check": "check.delivery.tests",
+        "module": "module.delivery",
+        "status": "passed",
+        "measured_digest": "sha256:e4a534de01ced6e2e4d3be2b2385998c5cdbd4861cd280d6ceaabd853cf0b12a"
+      },
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:00add5116937587e27e0388b5e238bcf6d4d4d8f81cf8106bd39dc9fb285abac"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:111972b9fe546ebd7f4227e24c9568a485a1a6c869bf2c60f4e4dbb2ea98dd06"
+      },
+      {
+        "check": "check.execution.tests",
+        "module": "module.execution",
+        "status": "passed",
+        "measured_digest": "sha256:cb90bec74c034dec46494e1bfacc2afcaa6c6bbe71c68d704113c0c1ddc30233"
+      },
+      {
+        "check": "check.implementation.tests",
+        "module": "module.implementation",
+        "status": "passed",
+        "measured_digest": "sha256:1b5861bc3196144774e4c6866215a9499dbb3b9e8e88649aac252cefb53fdc04"
+      },
+      {
+        "check": "check.issues.store",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:cbfab66aa55877210a4b676c54ec3a22ecf78e8c4f23618adbac8a47f82dd5ef"
+      },
+      {
+        "check": "check.issues.tests",
+        "module": "module.issues",
+        "status": "passed",
+        "measured_digest": "sha256:cbfab66aa55877210a4b676c54ec3a22ecf78e8c4f23618adbac8a47f82dd5ef"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:81a11ecb539b192e2209706ff25a5a4d6dbbb0f8a160ca5c4d085a995ef9f861"
+      },
+      {
+        "check": "check.spec.model",
+        "module": "module.spec",
+        "status": "passed",
+        "measured_digest": "sha256:923fe063be50fe3a35753157a35a0dc1ed9b34be7f9ce53aadd66a6e4bcdb8d1"
+      },
+      {
+        "check": "check.spec-mcp.tests",
+        "module": "module.spec-mcp",
+        "status": "passed",
+        "measured_digest": "sha256:cafe5c05171a35ff3029dcfab2ae6cd143045279962a7d524e6bd97a08dd9e6a"
+      },
+      {
+        "check": "check.spec-review.tests",
+        "module": "module.spec-review",
+        "status": "passed",
+        "measured_digest": "sha256:714187aa0a565a3f03092cee9d194ae2535f30783a8a82c845e664263eee5687"
+      },
+      {
+        "check": "check.specification.tests",
+        "module": "module.specification",
+        "status": "passed",
+        "measured_digest": "sha256:c1311cd19cc320a7e4fdc76ff946c4eb16b9660e4339f87e60b5572d1210e4f9"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:3ddec80113cca3af91eb7d1ac72e5aea823fede0d5f37101a697f18f265c2d69"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:eedf38010ef1ddf0a6d8f4d31a5af4dddb531793da5b6bf1ada892db85da3457"
+      },
+      {
+        "check": "check.tracing.tests",
+        "module": "module.tracing",
+        "status": "passed",
+        "measured_digest": "sha256:b808ebf84050f2123d9f55bbc20a66d98fef15dcc87be47a9852d2854fe4e291"
+      },
+      {
+        "check": "check.understanding.tests",
+        "module": "module.understanding",
+        "status": "passed",
+        "measured_digest": "sha256:82f8de0692a9eb32bbead1ab63289a6be15691023c1b7c7b44e770dd1a347cd6"
+      },
+      {
+        "check": "check.validation.tests",
+        "module": "module.validation",
+        "status": "passed",
+        "measured_digest": "sha256:35243d767ec52c71a9d83de0dfca8092c8962a118c92b51e0566058e4d32841c"
+      },
+      {
+        "check": "check.views.publication-types",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:a482f17e10b80beeadf1cf9769be0f6bd3dbc64679bc2d7566e2388b1fc3423b"
+      },
+      {
+        "check": "check.views.repository-regressions",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:a482f17e10b80beeadf1cf9769be0f6bd3dbc64679bc2d7566e2388b1fc3423b"
+      },
+      {
+        "check": "check.views.tests",
+        "module": "module.views",
+        "status": "passed",
+        "measured_digest": "sha256:a482f17e10b80beeadf1cf9769be0f6bd3dbc64679bc2d7566e2388b1fc3423b"
+      },
+      {
+        "check": "check.workers.tests",
+        "module": "module.workers",
+        "status": "passed",
+        "measured_digest": "sha256:57dc8a10290811a661437cd856ba41e97f1a31629fcd4026fba5f0f211870944"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260929T122018-understand-ab587245",
+      "kind": "operation",
+      "name": "understand",
+      "modules": [
+        "module.workers",
+        "module.main-session",
+        "module.e2e"
+      ],
+      "status": "failed",
+      "summary": "The worker run w-20260929T122019-c4e64a ended failed (audit_violation).",
+      "worker_runs": [
+        "w-20260929T122019-c4e64a"
+      ],
+      "result_digest": "sha256:4857f56b2f8c614a898ecca36476ecced6728c50d1a72c2db703461d3f75ca13"
+    },
+    {
+      "run_id": "r-20260929T122513-understand-161119e7",
+      "kind": "operation",
+      "name": "understand",
+      "modules": [
+        "module.workers",
+        "module.main-session",
+        "module.e2e"
+      ],
+      "status": "ok",
+      "summary": "understand finished for module.workers, module.main-session, module.e2e.",
+      "worker_runs": [
+        "w-20260929T122515-c80a73"
+      ],
+      "result_digest": "sha256:0d1009736fc78d0850c5b343183bd49cecdc7764b92261d1d56845c563d2ccdd"
+    },
+    {
+      "run_id": "r-20260929T122634-task_validation-322e8ac5",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.workers",
+        "module.main-session",
+        "module.e2e"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:ea0f05dec5687281aa4d33dd73d2e4584640073f0eee7d744a1df28d752d17a0"
+    }
+  ],
+  "created_at": "2026-09-29T12:38:31Z"
+}

@@ -800,7 +800,7 @@
       "id": "concept.worker-configuration",
       "title": "Worker configuration",
       "owner": "module.workers",
-      "definition": "A worktree's Git-tracked `.concorde/workers.json`, which gives a backend, a model and a reasoning level for every worker, for an Operation's workers and for one worker by its id, the most specific entry winning field by field, together with the limits of every worker launch and the runtime paths workers may read.",
+      "definition": "A worktree's Git-tracked `.concorde/workers.json`, required before any worker runs and the only source of a worker's model and reasoning level: the enabled models, each with an optional level of its own, and a backend, a model and a reasoning level for every worker, for an Operation's workers and for one worker by its id, the most specific entry winning field by field, together with the limits of every worker launch and the runtime paths workers may read.",
       "explanation": "specs/concorde/execution/workers/module.md#concept.worker-configuration"
     },
     {

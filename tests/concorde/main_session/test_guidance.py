@@ -491,10 +491,35 @@ class GuidanceTests(unittest.TestCase):
             with self.subTest(instruction=instruction):
                 self.assertIn(instruction, issues)
 
+    @verifies("scenario.main-session.worker-configuration-required")
+    def test_workers_run_only_on_the_models_the_configuration_enables(self):
+        models = self.skill.split("## Worker models", 1)[1]
+        for instruction in (
+            "never takes a worker's model or reasoning level from your or the developer's own pi",
+            "only credentials and pi's provider definitions come from there",
+            "no worker runs without it",
+            "`config_missing`",
+            "The installer does not write it",
+            "ask the developer which models workers may use",
+            "commit it alone on the primary branch before any Operation runs",
+            "the required `enabled_models`",
+            "`model_not_enabled`",
+            "`model_unresolved`, so give the `default` a model",
+            "otherwise its model's own level in `enabled_models`",
+            "goes into `enabled_models` too",
+        ):
+            with self.subTest(instruction=instruction):
+                self.assertIn(instruction, models)
+        self.assertNotIn("pi's default model", self.skill)
+        self.assertIn("never on anyone's own pi or Claude Code settings", self.block)
+        self.assertIn("ask the developer for its models", self.block)
+
     @verifies("scenario.main-session.choose-models")
     def test_the_developer_chooses_worker_models(self):
         self.assertIn("Workers run on pi, whatever program you are", self.skill)
-        self.assertIn("unless the worktree's `.concorde/workers.json`", self.skill)
+        self.assertIn(
+            "what the worktree's `.concorde/workers.json` chooses", self.skill
+        )
         self.assertIn("The file is tracked by Git", self.skill)
         self.assertIn("A task carries the file of its base commit", self.skill)
         self.assertIn("Change worker models only when the developer asks", self.skill)
@@ -503,14 +528,14 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("there is no editor", self.skill)
         self.assertIn("scripts/available_models.py --backend pi", self.skill)
         self.assertIn("custom/offline model names", self.skill)
-        self.assertIn("keyed by **worker id**", self.skill)
+        self.assertIn("one entry per **worker id**", self.skill)
         self.assertIn("`reviewer1` to `reviewer5` and `chair`", self.skill)
         self.assertIn("`limits` of every worker launch", self.skill)
         self.assertIn(
             "change the models workers use only when the developer asks", self.block
         )
         self.assertIn("tracked `.concorde/workers.json`", self.block)
-        self.assertIn('Set `backend: "claude"`', self.skill)
+        self.assertIn('unless an entry sets `backend: "claude"`', self.skill)
         self.assertIn("The chosen backend must be installed then", self.skill)
         for old in (
             "configure-workers",

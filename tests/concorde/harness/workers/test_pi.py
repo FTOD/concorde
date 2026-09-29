@@ -192,120 +192,51 @@ class PiRunTests(unittest.TestCase):
         self.assertEqual([], record["rounds"])
         self.assertTrue((Path(record["run_directory"]) / "trace.json").is_file())
 
-    @verifies("scenario.workers.pi-user-default")
-    def test_a_pi_worker_starts_on_the_users_pi_default(self):
-        (self.project.pi_config / "settings.json").write_text(
+    @verifies("scenario.workers.pi-settings-independent")
+    def test_a_pi_worker_reads_nothing_of_the_users_pi_settings(self):
+        settings = self.project.pi_config / "settings.json"
+        for content in (
             json.dumps(
                 {
                     "defaultProvider": "local-openai",
                     "defaultModel": "gpt-6",
                     "defaultThinkingLevel": "high",
                     "enabledModels": ["local-openai/*"],
+                    "modelThinkingLevels": {"local-openai/gpt-6": "xhigh"},
                     "packages": ["npm:other"],
                     "defaultProjectTrust": "always",
                 }
-            )
-        )
-        record = self.project.run([{}])
-        self.assertEqual("ok", record["status"], record["error"])
-        self.assertEqual(
-            {
-                "defaultProvider": "local-openai",
-                "defaultModel": "gpt-6",
-                "defaultThinkingLevel": "high",
-                "defaultProjectTrust": "never",
-            },
-            json.loads(
-                (self.project.runtime(record) / "config/settings.json").read_text()
             ),
-        )
-        [first] = self.project.rounds(record)
-        self.assertNotIn("--model", first["argv"])
-        self.assertNotIn("--thinking", first["argv"])
-
-        # A configured model or level still wins for its own field.
-        record = self.project.run([{}], model="anthropic/claude-sonnet-5")
-        [first] = self.project.rounds(record)
-        arguments = first["argv"]
-        self.assertEqual(
-            "anthropic/claude-sonnet-5", arguments[arguments.index("--model") + 1]
-        )
-        self.assertNotIn("--thinking", arguments)
-        record = self.project.run([{}], reasoning="low")
-        [first] = self.project.rounds(record)
-        arguments = first["argv"]
-        self.assertEqual("low", arguments[arguments.index("--thinking") + 1])
-        self.assertNotIn("--model", arguments)
-
-    @verifies("scenario.workers.pi-user-default")
-    def test_without_user_settings_pi_keeps_its_built_in_default(self):
-        settings = self.project.pi_config / "settings.json"
-        for content in (None, "", "﻿"):
-            if content is None:
-                settings.unlink(missing_ok=True)
-            else:
-                settings.write_text(content, encoding="utf-8")
-            record = self.project.run([{}])
+            # Not even a file pi would refuse stops the worker: it is never read.
+            '{"defaultModel": 6,\n',
+        ):
+            settings.write_text(content)
+            record = self.project.run(
+                [{}], model="anthropic/claude-sonnet-5", reasoning="low"
+            )
             self.assertEqual("ok", record["status"], record["error"])
+            kept = self.project.runtime(record) / "config"
             self.assertEqual(
                 {"defaultProjectTrust": "never"},
-                json.loads(
-                    (self.project.runtime(record) / "config/settings.json").read_text()
-                ),
-                repr(content),
+                json.loads((kept / "settings.json").read_text()),
             )
-
-    @verifies("scenario.workers.pi-settings-invalid")
-    def test_unusable_pi_settings_are_refused(self):
-        settings = self.project.pi_config / "settings.json"
-        settings.write_text('{"defaultModel": "gpt-6",\n')
-        record = self.project.run([{}])
-        self.assertEqual("failed", record["status"])
-        error = record["error"]
-        self.assertEqual("pi_settings_invalid", error["code"])
-        self.assertEqual("environment", error["unhandled"]["reason"])
-        self.assertIn(str(settings), error["detail"])
-        self.assertIn("not JSON", error["detail"])
-        self.assertIn("line 2", error["detail"])
-        self.assertIn("repair the file", error["detail"])
-        self.assertEqual([], record["rounds"])
-        self.assertTrue((Path(record["run_directory"]) / "trace.json").is_file())
-
-    @verifies("scenario.workers.pi-settings-invalid")
-    def test_each_unusable_default_is_named(self):
-        settings = self.project.pi_config / "settings.json"
-        for content, named in (
-            ("[]", "JSON list, not an object"),
-            (b"\xff\xfe{}", "not UTF-8"),
-            ('{"defaultModel": 6}', "`defaultModel` is 6"),
-            ('{"defaultProvider": " "}', '`defaultProvider` is " "'),
-            ('{"defaultThinkingLevel": null}', "`defaultThinkingLevel` is null"),
-            ('{"defaultThinkingLevel": "extreme"}', "not one of pi's levels"),
-        ):
-            if isinstance(content, bytes):
-                settings.write_bytes(content)
-            else:
-                settings.write_text(content)
-            with self.assertRaises(pi_backend.BackendRefusal) as caught:
-                pi_backend.user_defaults(settings)
-            self.assertEqual("pi_settings_invalid", caught.exception.code)
-            self.assertIn(named, caught.exception.detail)
-        settings.write_text('{"defaultModel": "gpt-6", "theme": 3}')
-        self.assertEqual({"defaultModel": "gpt-6"}, pi_backend.user_defaults(settings))
-
-    def test_an_unreadable_pi_settings_file_chooses_nothing(self):
-        settings = self.project.pi_config / "settings.json"
-        settings.write_text('{"defaultModel": "gpt-6"}')
-        with patch.object(Path, "read_bytes", side_effect=PermissionError("denied")):
-            self.assertEqual({}, pi_backend.user_defaults(settings))
-        # A directory in the file's place cannot be read as settings either.
-        settings.unlink()
-        settings.mkdir()
-        self.assertEqual({}, pi_backend.user_defaults(settings))
+            # How to reach a model still comes from the user's pi.
+            for name in ("auth.json", "models.json"):
+                self.assertEqual(
+                    (self.project.pi_config / name).read_text(),
+                    (kept / name).read_text(),
+                )
+            [first] = self.project.rounds(record)
+            arguments = first["argv"]
+            self.assertEqual(
+                "anthropic/claude-sonnet-5", arguments[arguments.index("--model") + 1]
+            )
+            self.assertEqual("low", arguments[arguments.index("--thinking") + 1])
 
     def test_the_pi_directory_is_found_as_pi_finds_it(self):
         agent = self.project.base / "home/agent-dir"
         agent.mkdir(parents=True)
+        (agent / "auth.json").write_text('{"local": {"key": "found"}}')
         (agent / "settings.json").write_text('{"defaultModel": "gpt-6"}')
         config = self.project.base / "config"
         config.mkdir()
@@ -319,7 +250,10 @@ class PiRunTests(unittest.TestCase):
         ):
             pi_backend.PiBackend()._configure(request, SimpleNamespace(config=config))
         self.assertEqual(
-            {"defaultModel": "gpt-6", "defaultProjectTrust": "never"},
+            '{"local": {"key": "found"}}', (config / "auth.json").read_text()
+        )
+        self.assertEqual(
+            {"defaultProjectTrust": "never"},
             json.loads((config / "settings.json").read_text()),
         )
 

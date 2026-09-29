@@ -23,7 +23,7 @@ command and `{"error": …}` with the failed command and its output otherwise:
 
 ```text
 python3 scripts/e2e/e2e.py repos
-python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--name <dir>] [--python <interpreter>] [--task <task>] [--any] [--pi]
+python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--name <dir>] [--python <interpreter>] [--task <task>] [--any] [--pi] [--worker-model <model>]
 python3 scripts/e2e/e2e.py trust <project>…
 python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--module <id>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
 python3 scripts/e2e/e2e.py watch <project>
@@ -65,11 +65,15 @@ repositories SWE-bench's harness names, read from the vendored `references/swe-b
 `prepare psf/requests --rev v2.31.0` fetches that revision, a tag, a branch or a commit, without
 earlier history into the **end-to-end root**, under
 `--name` or the repository's name, checks it out as a `main` branch, installs Concorde from this
-checkout without `d2`, initializes it, commits and opens a task bound to the root
+checkout without `d2`, initializes it, writes its [worker
+configuration](../glossary.json#concept.worker-configuration), commits and opens a task bound to the root
 [Module](../glossary.json#concept.module), which makes a **test project**. The task is `--task`
 (default `adopt`), and `--python` records the project's interpreter, which its
 [configured checks](../glossary.json#concept.configured-check) run for `{python}`. `--pi` also
-installs Concorde's pi extension, which a pi main session in the project needs. It refuses a
+installs Concorde's pi extension, which a pi main session in the project needs. The worker
+configuration runs every worker on `--worker-model` when it is given, enabling only that model, and
+otherwise takes this checkout's own `.concorde/workers.json` without its `runtime` paths, which name
+this checkout's directories. It refuses a
 repository SWE-bench does not name unless `--any` is given, and a project directory that already
 exists. The end-to-end root is `CONCORDE_E2E_ROOT` when it is set, and otherwise `concorde-e2e` in
 the system's temporary directory (`/tmp/concorde-e2e` on Linux), never the developer's home: test
@@ -84,6 +88,10 @@ Each of `prepare`'s choices has its reason:
   because [SWE-bench cases](cases/module.md)' `grade` grades `main` unless `--ref` names another.
 - It installs without `d2`, which only renders the Specs' diagrams for a docsite a test project
   never publishes, and which every preparation would otherwise download again.
+- It writes the worker configuration, because no worker runs without one and neither the
+  installer nor `init` writes it: the models are the developer's choice, which a user writes into
+  the file by hand. This checkout's models are the ones its developer already uses, so a test
+  project runs its workers as this checkout's own tasks do.
 - It commits the installed and initialized project before it opens the task, because the task's
   branch starts from the committed head, and a merge refuses a primary worktree with uncommitted
   paths.

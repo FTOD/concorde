@@ -27,7 +27,7 @@ A run is requested with:
 | validation | Optionally the caller's own validation, run after a round whose checks pass: nothing to repair, or the text naming what to repair |
 | runtime paths | Extra absolute paths Bash may read, such as the toolchain, `.venv` or `node_modules` |
 | limits | Timeout per round, `--max-turns`, `--max-budget-usd`, and the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3) |
-| model | Optionally the model passed with `--model`, from the run worktree's [worker configuration](../../glossary.json#concept.worker-configuration) for the worker's id |
+| model | The model passed with `--model`, from the run worktree's [worker configuration](../../glossary.json#concept.worker-configuration) for the worker's id, which every Operation gives |
 | operation, worker | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for, recorded only |
 | reasoning | Optionally the reasoning level from the same configuration, passed with `--effort` on the Claude Code backend and `--thinking` on the pi backend |
 
@@ -254,7 +254,7 @@ by every code whose round had one, even when the round also timed out or failed 
 | `worker_timeout` | the round and the timeout | `exhausted` | none |
 | `worker_limit_reached` | the round and the limit Claude Code reported | `exhausted` | the Claude Code process's link |
 | `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope (Claude Code backend) | `environment` | the Claude Code process's link |
-| `pi_runtime_missing`, `pi_settings_invalid`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment` | the pi process's link for `pi_failed` |
+| `pi_runtime_missing`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment` | the pi process's link for `pi_failed` |
 | `worker_result_invalid` | the schema violation, or the worker's final text when it gave no structured result | `capability` | none |
 | `audit_violation` | every violating path and the worker's own reported status | `permission` | the worker's link, when its result was valid |
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
@@ -302,6 +302,10 @@ A worker's working directory SHALL be its runtime directory's `work/` directory,
 ### req.workers.clean-environment — Nothing ambient reaches the worker
 
 The host SHALL start every worker round with only the environment variables listed in [Launch](#launch), or on the pi backend in [the pi launch](pi.md#launch).
+
+### req.workers.configured-model — A worker's model comes from its worker configuration alone
+
+The configuration reader SHALL resolve every worker's model and reasoning level from the worktree's [worker configuration](../../glossary.json#concept.worker-configuration) alone, never from the developer's own agent settings, refusing before launch a worker whose configuration is missing, names no model for it or names a model outside `enabled_models`.
 
 ### req.workers.proxy-passed — A worker's model calls use the host's proxy
 

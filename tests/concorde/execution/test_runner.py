@@ -319,6 +319,7 @@ class RunnerTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_version": 1,
+                    "enabled_models": {"sonnet": {}, "opus": {}},
                     "default": {
                         "backend": "claude",
                         "model": "sonnet",
@@ -349,6 +350,7 @@ class RunnerTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_version": 1,
+                    "enabled_models": {"haiku": {}},
                     "default": {"backend": "claude", "model": "haiku"},
                 }
             )
@@ -387,9 +389,14 @@ class RunnerTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_version": 1,
+                    "enabled_models": {"local/fast": {}, "sonnet": {}},
                     "operations": {
                         "implement": {"workers": {"worker": {"model": "local/fast"}}},
-                        "spec_review": {"workers": {"worker": {"backend": "claude"}}},
+                        "spec_review": {
+                            "workers": {
+                                "worker": {"backend": "claude", "model": "sonnet"}
+                            }
+                        },
                     },
                 }
             )
@@ -557,7 +564,15 @@ class RunnerTests(unittest.TestCase):
         [cause] = envelope["error"]["causes"]
         self.assertEqual("config_invalid", cause["code"])
         self.assertIn(str(self.worktree / models.CONFIG), cause["detail"])
-        (self.worktree / models.CONFIG).write_text(json.dumps({"schema_version": 1}))
+        (self.worktree / models.CONFIG).write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "enabled_models": {"local/fast": {}},
+                    "default": {"model": "local/fast"},
+                }
+            )
+        )
         status, envelope = self.project.run(
             "implement",
             "--task",
@@ -1308,7 +1323,8 @@ class UnboundCheckoutTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_version": 1,
-                    "default": {"backend": "claude"},
+                    "enabled_models": {"sonnet": {}, "opus": {}},
+                    "default": {"backend": "claude", "model": "sonnet"},
                     "operations": {
                         "understand": {"workers": {"worker": {"model": "opus"}}}
                     },
@@ -1326,6 +1342,7 @@ class UnboundCheckoutTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_version": 1,
+                    "enabled_models": {"haiku": {}},
                     "default": {"backend": "claude", "model": "haiku"},
                 }
             )
