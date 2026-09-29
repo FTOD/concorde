@@ -35,7 +35,8 @@ class RepositoryCheckPreparationTests(unittest.TestCase):
     def test_real_registry_listing_roots_are_copied(self):
         wrapper = load_wrapper()
         self.assertEqual([], wrapper.uncopied_listing_roots())
-        self.assertIn("agents", wrapper.DIRECTORIES)
+        for name in wrapper.DIRECTORIES:
+            self.assertTrue((REPOSITORY_ROOT / name).is_dir(), name)
 
     def make_source(self, root, wrapper, *, stale=False):
         for name in wrapper.FILES:
