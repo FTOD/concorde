@@ -37,6 +37,7 @@ FILES = (
     ".gitignore",
     ".gitmodules",
     ".python-version",
+    ".mcp.json",
     "concorde.json",
     "conftest.py",
     "pyproject.toml",

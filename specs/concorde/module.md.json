@@ -70,6 +70,7 @@
         ".gitignore",
         ".gitmodules",
         ".python-version",
+        ".mcp.json",
         ".github/workflows/validate-source-checkout.yml"
       ],
       "pending": []

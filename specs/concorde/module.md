@@ -420,8 +420,10 @@ The root also binds files that belong to no single child. They keep the reposito
 than carry the framework's function, so no diagram above draws them:
 
 - <a id="realization.concorde.project-files"></a>**Project files** are what belongs to no single
-  responsibility: README, agent instructions, licence, repository configuration and the CI workflow
-  that validates this checkout.
+  responsibility: README, agent instructions, licence, repository configuration, the `.mcp.json`
+  that gives this checkout's Claude Code sessions the
+  [project MCP server](glossary.json#concept.project-mcp-server) run by the worktree's own
+  `scripts/concorde.py`, and the CI workflow that validates this checkout.
 - <a id="realization.concorde.user-documents"></a>**User documents** under `docs/` are written for
   the people who use Concorde, starting with the guide to using it. They follow no Spec Protocol
   structure and are never agent context; the docsite publishes them as its
