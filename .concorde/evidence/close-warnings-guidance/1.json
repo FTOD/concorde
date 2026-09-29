@@ -1,0 +1,66 @@
+{
+  "workspace": "close-warnings-guidance",
+  "goal": "The main-session guidance says that closing a task removes its Claude Code task sessions from Claude's session list, and that the main agent acts on every warning of task close and task merge, each naming a task session that could not be kept or removed and the command to remove it by hand",
+  "modules": [
+    "module.main-session"
+  ],
+  "sequence": 1,
+  "base_commit": "6eb07bd8002f8d6722c51e285ca068e00769b8ab",
+  "parent_commit": "3e9a5c86f5909e39f4498a64bf9e562be09f6e4c",
+  "readiness": {
+    "run_id": "r-20260929T124751-delivery-4dc06c87",
+    "input_digest": "sha256:8c6729b73f78e76721d1ece1943ce1a57f33d9f7a6c002c493eef8ca85848d58",
+    "modules": [
+      "module.main-session"
+    ],
+    "checks": [
+      {
+        "check": "check.distribution.tests",
+        "module": "module.distribution",
+        "status": "passed",
+        "measured_digest": "sha256:f453ea372e8165aa92e72dd8c2f9ea9c59de1a0cfa2a8e19782f7a4cabd70acd"
+      },
+      {
+        "check": "check.dogfooding.tests",
+        "module": "module.dogfooding",
+        "status": "passed",
+        "measured_digest": "sha256:836afe270355dbcef69c29afef5f8af76427591191fd56686ec61c0db16f09a7"
+      },
+      {
+        "check": "check.main-session.tests",
+        "module": "module.main-session",
+        "status": "passed",
+        "measured_digest": "sha256:913e7fb02b55d8b51b42078260c2adbb894be3feab0618b40907d33be084ff3d"
+      },
+      {
+        "check": "check.task-session.tests",
+        "module": "module.task-session",
+        "status": "passed",
+        "measured_digest": "sha256:c580e81cc1750459a6e9aab4b1baf2162081dc0038ea5a4557369858d18c7395"
+      },
+      {
+        "check": "check.tasks.tests",
+        "module": "module.tasks",
+        "status": "passed",
+        "measured_digest": "sha256:73c9d5a7f1f0bf1719007e2d0c66f70be8cf2a25d8364cfb4d91152a59ffafbd"
+      }
+    ],
+    "warnings": 0
+  },
+  "confirmations": [],
+  "runs": [
+    {
+      "run_id": "r-20260929T124648-task_validation-c10b99cf",
+      "kind": "command",
+      "name": "task-validation",
+      "modules": [
+        "module.main-session"
+      ],
+      "status": "ok",
+      "summary": "Readiness decided: ready.",
+      "worker_runs": [],
+      "result_digest": "sha256:6dc478900c59dfb3d07e4fcc251feabcf216fa7908a4aacb477c74b822970e87"
+    }
+  ],
+  "created_at": "2026-09-29T12:48:54Z"
+}
