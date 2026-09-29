@@ -261,16 +261,6 @@ lost by its run lock, and removing what retention allows. It never decides what 
 The **trace command** is `concorde trace`: `show`, `list` and `prune` over the library. It is the
 one command of this Module and, like every command, is named after its owner.
 
-<a id="realization.tracing.legacy-migration"></a>
-
-The **legacy records migration**, `scripts/development/migrate-legacy-records.py`, is a one-off
-development script of Concorde's own checkout. Before this Module a task left flat files side by
-side in `.concorde/tasks/`, its record, decision log, merge log and session material, and runs lay
-in `.concorde/runs/`; the script gives every such task that ended a history folder in this layout,
-keeping each old file it cannot express as a node unchanged beside the nodes, and packs the old run
-store into an archive outside the repository, removing it only once the archive is verified. It is
-removed once the checkout's records are migrated.
-
 <a id="realization.tracing.tests"></a>
 
 The **Tracing tests** exercise the library and the command on traces they build, and the error

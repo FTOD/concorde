@@ -64,16 +64,6 @@
       "pending": []
     },
     {
-      "id": "realization.tracing.legacy-migration",
-      "type": "realization",
-      "title": "Legacy records migration",
-      "meaning": "#realization.tracing.legacy-migration",
-      "entries": [
-        "scripts/development/migrate-legacy-records.py"
-      ],
-      "pending": []
-    },
-    {
       "id": "realization.tracing.tests",
       "type": "realization",
       "title": "Tracing tests",
@@ -102,12 +92,6 @@
       "source": "realization.tracing.error-chain",
       "verb": "builds",
       "target": "concept.error-chain"
-    },
-    {
-      "type": "relates",
-      "source": "realization.tracing.legacy-migration",
-      "verb": "moves old task records into",
-      "target": "concept.history"
     }
   ],
   "extensions": {}
