@@ -2,7 +2,11 @@
 
 A starter for `module.md`. Begin with [Spec writing guidelines](../writing.md) and use both parts:
 [Required format](../format.md) for structure and syntax, and [Writing guidance](../module.md) for
-what each section must explain. Satisfying this shape establishes nothing about meaning.
+what the entry must explain. Satisfying this shape establishes nothing about meaning.
+
+The Protocol requires no section of an entry. The headings below follow the recommended reading
+order, purpose, core concepts, overview, then details; rename, merge or split them as the Module's
+reader needs, and give the details whatever headings suit the Module.
 
 Register the entry in the project registry and write its paired `.md.json` with
 `schema_version: 3`, `document.role: module`, the `module` block and explicit `defines` and
@@ -17,40 +21,18 @@ Register the entry in the project registry and write its paired `.md.json` with
 [What this Module is for, who relies on it, where its promises stop, and the relevant non-goals.
 Short plain prose. Do not restate the directory or package name as a responsibility.]
 
-## Usage
-
-[Audience, use conditions, prerequisites and actual entry points. Follow one representative input
-through its result and effects. Then errors, repeat invocation, cancellation and compatibility.
-Include a concrete illustration where abstraction would hide a user decision. Name unsupported
-behaviour as unsupported. Use a diagram next to the normal path when it makes the process clearer.
-The lightweight workflow below shows progression; replace its placeholders with the actual steps
-and explain their conditions and effects in prose, or omit it if it adds no clarity. Add lanes or
-stage groups only when responsibility or phases matter.]
-
-```d2 illustrative
-direction: right
-start: "[User's first step]"
-act: "[Module's action]"
-finish: "[Result and effects]"
-start -> act -> finish
-```
+## Core concepts
 
 <a id="concept.example-record"></a>
 
-[Explain the [example record](../glossary.json#concept.example-record) where understanding it
-matters. Link every term where the document first uses it, such as the provider's
-[thing](../glossary.json#concept.thing).]
+[Explain the [example record](../glossary.json#concept.example-record): what it is, why the Module
+needs it and how it relates to the other ideas here. Link every term of another Module where the
+document first uses it, such as the provider's [thing](../glossary.json#concept.thing).]
 
-## Design
+## Overview
 
-<a id="realization.example.service"></a>
-
-[How the Module is built and why: the decomposition, state, flow and failure containment, and how
-each significant choice fulfils a guarantee or prevents a problem. Distinguish significant choices
-from incidental implementation and open questions.]
-
-[The inside, if the Module has structure worth drawing: its children and the realizations that
-carry its function, with the files they bind and the edges that matter.]
+[How the Module is built and how it meets the Modules around it, in one picture if one suffices,
+with short prose saying what it shows.]
 
 ```d2
 example: Example {
@@ -60,51 +42,66 @@ example: Example {
   record: Example record
   service -> record: saves
 }
-```
-
-[The outside: how the Module works with the Modules around it, and which of its parts meets which
-of theirs.]
-
-```d2
-example: Example {
-  service: Example service
-}
 provider: Provider
 example.service -> provider: reserves stock through
 example -> provider
 ```
 
+[How a typical piece of work progresses, as a workflow with a lane per participant when who does
+each step matters. Replace the placeholders with the actual steps and explain their conditions and
+effects in prose, or omit the diagram if it adds no clarity.]
+
+```d2 illustrative
+direction: right
+user: User {
+  request: "[User's request]"
+  result: "[Result and effects]"
+}
+example: Example {
+  act: "[Module's action]"
+}
+user.request -> example.act -> user.result
+```
+
+## [A detail, under a heading that names it]
+
+<a id="realization.example.service"></a>
+
+[The details, in the order that suits the Module: its parts and how each carries the function; its
+actual entry points, following a representative input through its result and effects, then errors,
+repeat invocation, cancellation and compatibility, naming unsupported behaviour as unsupported; the
+reasons for significant choices, distinguished from incidental implementation and open questions.]
+
 <a id="uses-example-provider"></a>
 
 [For each child and provider: its responsibility, when the collaboration applies, the canonical
 promises relied upon, and this Module's own duties and failure reactions. This is the anchor a
-`contains` or `uses` relation points to. Explain the conditions and reactions a picture cannot
-carry. Use further diagrams wherever they clarify relationships, order, branching, state or data:
-a workflow/activity/flow view for a process and its branches or retries, a sequence for participant
-message ordering, a state view for a lifecycle, or a component, context, deployment or data-model
-view for the design question at hand. Each answers one question next to explanatory prose, using
-the same terminology. There is no required count or set of diagrams; invent no promises to fill
-them.]
+`contains` or `uses` relation points to. Add further diagrams beside the details they clarify: a
+state view for a lifecycle, a workflow for a process with its branches and retries, or a component,
+context, deployment or data-model view for the design question at hand. Draw a sequence diagram
+only when the interleaving of messages is itself the point. There is no required count or set of
+diagrams; invent no promises to fill them.]
 ````
 
 The two term links declare that this document mentions `concept.example-record`, which Example
 owns, and `concept.thing`, which the provider owns: a reader of Example receives both definitions.
-The anchor `concept.example-record` holds the extended explanation the glossary entry names.
+The anchor `concept.example-record` holds the extended explanation the glossary entry names, in the
+entry of its owner rather than in a separate topic.
 
-The Usage workflow is `d2 illustrative`: its steps and progression explain behaviour, not declared
-static relations. Sequence lifelines are useful when message ordering needs explanation, not a
-prerequisite for drawing a process. Keep Usage views by the normal path or other behaviour they
-explain, and design views in Design.
+The overview diagram is checked and answers one question: how Example is built and how it meets
+its provider. `Example` and `Provider` resolve to Module titles, `Example service` and `Example
+record` to this Module's nodes, and `src/example/` to the entry the service binds. Nesting asserts
+that Example owns both nodes and that the service binds its entry; the labelled edges match the
+`relates` declarations below and the unlabelled edge between the two Modules matches the `uses`. A
+Module with more structure may draw its inside and its outside in two diagrams. Checked diagrams
+use only the D2 semantic subset and declared static relations; the look is the publisher's.
 
-Both Design diagrams are checked, and each answers one question: the first how Example is built,
-the second how it meets its provider. `Example` and `Provider` resolve to Module titles, `Example
-service` and `Example record` to this Module's nodes, and `src/example/` to the entry the service
-binds. Nesting asserts that Example owns both nodes and that the service binds its entry; the
-labelled edges match the `relates` declarations below and the unlabelled edge between the two
-Modules matches the `uses`. Checked diagrams use only the D2 semantic subset and declared static
-relations; the look is the publisher's. All other views use `d2 illustrative`, with no authority
-beyond the surrounding prose and no substitute for declaring load-bearing collaborations. There
-is no separate Relationships section: the design holds both the inside and the outside.
+The workflow is `d2 illustrative`: its steps and progression explain behaviour, not declared
+static relations. Its lanes show who does each step, and an edge between lanes is a hand-off, which
+is why a process among several participants needs no sequence lifelines. Illustrative views carry
+no authority beyond the surrounding prose and never substitute for declaring load-bearing
+collaborations. How the Module fits with the rest is part of its explanation, not a separate list
+of relationships.
 
 ## Paired metadata
 

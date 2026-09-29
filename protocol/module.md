@@ -63,51 +63,65 @@ algorithms, persistence layouts, internal limits and executable topology belong 
 public entry points and any limit or hazard a consumer needs for correct use belong to `module`
 reading. A topic is an explanation, never a second owner or a nested requirements container.
 
-A Module's design is written only in its entry's Design section, never in a topic, so a reader
-never has to leave the entry to learn why the Module is built the way it is. A topic explains
-something else, such as what a result means for its reader or the words several Modules share; when
-it needs a design reason, it links to the entry's Design section.
+A Module's design is its entry: no part of it moves to a topic, so a reader never has to leave the
+entry to learn what the Module is and why it is built the way it is. The concepts a Module owns
+SHOULD be explained in its entry too, at the anchors their glossary entries name, not in a separate
+topic collecting them. A topic explains something else, such as what a result means for its reader
+or how to proceed in one situation; when it needs a design reason, it links to the entry.
 
 ## The entry
 
-Every entry has the same three sections in the same order, so that every Module reads the same way
-and a newcomer meets them in the order they need: what it is for, how to use it, and how it is
-built and why, inside and in the Modules around it. How a Module fits with the
-rest is part of its design, never a separate section: a separate list of relationships only
-repeats the design, or draws a picture for its own sake.
+The entry is where a reader meets the Module, and the whole entry is its design: what the Module is
+for, the ideas it rests on, how its parts and the Modules around it work together, and why it is
+built that way. The Protocol imposes no section structure on it. No section is required, and its
+headings, their titles and their order are chosen for its reader.
 
-### Purpose
+A writer SHOULD follow this reading order, because it serves a developer who wants to understand
+the Module quickly: the picture first, and the details once the picture is clear.
 
-State what the Module is for, who relies on it, and where its promises stop, including relevant
-non-goals. Short plain prose. A directory or package name establishes no responsibility.
+1. **Purpose.** What the Module is for, who relies on it and where its promises stop, including
+   relevant non-goals, in short plain prose. A directory or package name establishes no
+   responsibility.
+2. **Core concepts.** The ideas a reader needs before the rest makes sense: the Module's own terms,
+   each explained at the anchor its glossary entry names, and the terms of other Modules it builds
+   on, linked.
+3. **Overview.** Diagrams of the Module's main structure, functions and flows, each with short
+   prose saying what it shows: how the parts are arranged, what the Module does with its input, how
+   a typical piece of work progresses. See [Diagrams](#diagrams).
+4. **Details.** Everything else the reader needs, in the order that suits the Module: its parts and
+   how each carries the function, its collaborations with its children and providers, its actual
+   entry points, errors and limits, and the reasons for its significant choices.
 
-### Usage
+Keep operational detail with the Module that owns it. A parent or the root shows a process its
+children carry out at the level of its own concepts and links to the child whose Spec walks through
+the commands; it does not repeat that walk-through. How a Module fits with the rest is part of its
+explanation, so a separate list of relationships that only repeats it adds nothing.
 
-Explain the audience, use conditions, prerequisites, the concepts involved and the actual entry
-points. Follow a representative input through its result and effects before turning to errors,
-repeat invocation, cancellation and compatibility.
+Whatever its structure, the entry satisfies [the intended reader](#the-intended-reader). The
+following explains what its content must communicate.
 
-Start with a coherent normal path. A reader MUST NOT have to assemble instructions from formal
-statements. Include a concrete illustration wherever abstraction would otherwise hide a decision the
-user has to make. An unsupported behaviour is identified as unsupported, never invented to fill a
-template. A logical responsibility may participate in a collaboration without having any callable
-entry point, and MUST NOT invent one.
+### How the Module is used
 
-Usage is canonical explanatory prose, not a second summary with weaker promises. Link to precise
-definitions rather than restating them. Place a diagram next to the normal path wherever it makes
-the process clearer. A lightweight workflow can show steps and progression, with responsibility
-lanes when they help. Use a sequence diagram when the order of messages between participants is
-what needs explaining. The [diagram guidance](#diagrams) applies to Usage as well as Design.
+Explain the audience, use conditions and prerequisites, and the actual entry points. Where the
+Module has entry points, follow a representative input through its result and effects on a coherent
+normal path before turning to errors, repeat invocation, cancellation and compatibility.
 
-### Design
+A reader MUST NOT have to assemble instructions from formal statements. Include a concrete
+illustration wherever abstraction would otherwise hide a decision the user has to make. An
+unsupported behaviour is identified as unsupported, never invented to fill a template. A logical
+responsibility may participate in a collaboration without having any callable entry point, and MUST
+NOT invent one.
 
-This section holds the Module's whole design, however long it grows; no part of it moves to a
-topic. The design has an inside and an outside. Inside, it explains how the Module is built: its
+The entry's prose is canonical explanation, not a second summary with weaker promises. Link to
+precise definitions rather than restating them.
+
+### Why it is built this way
+
+The design has an inside and an outside. Inside, the entry explains how the Module is built: its
 children, the realizations that carry its function and the files they bind, and how these work
 together. Outside, it explains how the Module works with the Modules around it: the providers it
 relies on and, where a reader needs them, the Modules that rely on it, including which of its parts
-meets which of theirs. Level-3 headings MAY divide the section, for example into its inside and its
-outside.
+meets which of theirs.
 
 Explain why the decomposition, state, control and data flow, collaboration and failure containment
 fulfil the guarantees. Connect each significant choice to a problem it prevents. A list of class or
@@ -123,37 +137,39 @@ Record significant choices and required internal constraints, and distinguish th
 current implementation and unresolved questions. Prefer linking to a guarantee over restating it as
 a new obligation.
 
-Concepts and realizations are explained here or in Usage, where understanding them matters.
 Identity and bindings stay in metadata. Several nodes may share one coherent explanation with
 distinct anchors, provided the prose explains all of them.
 
-#### Diagrams
+### Diagrams
 
 Use diagrams wherever they make relationships, order, branching, state or data clearer. Choose the
 view by the reader's question, not by a quota or a fixed set of pictures. Each diagram answers one
-clear question and stands next to the prose that explains it: Usage diagrams next to the normal
-path or other behaviour they explain, design diagrams in Design.
+clear question and stands next to the prose that explains it: overview diagrams near the top of the
+entry, the others beside the details they clarify.
 
 | Reader's question | Useful view |
 | --- | --- |
-| How does a process progress, including branches, joins, retries and stopping points? | Lightweight workflow, activity or flow diagram, with responsibility lanes or stage groups when helpful |
-| In what order do participants send and receive messages? | Sequence diagram |
+| How does a process progress, including branches, joins, retries, stopping points and hand-offs between participants? | Workflow diagram: steps and directed edges, with a lane per participant or stage groups when helpful |
+| Does the exact interleaving of messages between participants matter, as in a request and reply protocol? | Sequence diagram, only then |
 | What states can a record or task occupy, and what causes each transition? | State diagram |
 | How do the children and realizations carry the Module's function together? | Component view of the inside, with the bindings and edges that explain it |
 | How does the Module interact with its users, providers and consumers? | Context view of the outside, or of the parts that meet across Modules |
 | Where do processes or services run, and which boundaries do they cross? | Deployment view |
 | How do records relate, or how is data transformed and passed between parts? | Data-model or data-flow view |
 
-For a process, start with action or step nodes and directed edges. Make the main path easy to
-follow and separate branches, recovery and evidence where these matter. Add lanes when ownership
-helps explain the process; ordinary process descriptions do not need sequence lifelines.
+A process is a workflow diagram by default, including an interaction among several Modules or
+agents: start with step nodes and directed edges, make the main path easy to follow, and separate
+branches, recovery and evidence where these matter. Give each participant a lane when who does a
+step matters, so that an edge between lanes shows a hand-off. A sequence diagram is heavier to
+read, since the reader must follow lifelines and messages to find the steps; use one only when the
+interleaving of messages is itself the point.
 
 All these views use D2. A checked `d2` diagram uses only the semantic subset and asserts only
 declared static relations: nesting for containment, ownership and bindings, unlabelled edges
 between Modules for `uses`, and labelled edges for `relates` with their declared verbs. Mark every
-other view `d2 illustrative`, including workflow/activity/flow, sequence, state and deployment views
-that show behaviour or runtime facts beyond those relations. A component, context or data-model view
-is checked only when it fits those same rules. See [Views](views.md).
+other view `d2 illustrative`, including workflow, sequence, state and deployment views that show
+behaviour or runtime facts beyond those relations. A component, context or data-model view is
+checked only when it fits those same rules. See [Views](views.md).
 
 Keep names and meanings consistent with the surrounding Spec. A diagram complements explanatory
 prose: explain the conditions, invariants, effects and failure reactions it cannot carry, and do
@@ -163,8 +179,8 @@ never replaces the declaration and prose of a load-bearing collaboration.
 Draw the relationships that matter to the question. An inventory of disconnected boxes or files
 usually adds nothing to a list; leave realizations that only keep the repository running, such as
 project configuration, development tooling or test suites, to prose. A small Module may need no
-diagram, while a Module with little static structure may still benefit from a workflow, sequence
-or state view. Use as many diagrams as help understanding, with none drawn only to have one.
+diagram, while a Module with little static structure may still benefit from a workflow or state
+view. Use as many diagrams as help understanding, with none drawn only to have one.
 
 ## Terms
 

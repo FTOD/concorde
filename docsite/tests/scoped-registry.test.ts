@@ -277,31 +277,22 @@ it("rejects a concept record in defines like any unknown defines type", () => {
   expect(load).toThrow(/A defines record is a realization: concept/);
 });
 
-// verifies: scenario.views.reject-reading-collection
-it("requires the three entry sections exactly once, in any order, and no Relationships section", () => {
+it("accepts an entry of any section structure", () => {
   const path = "specs/ledger/module.md";
   const original = read(project, path);
-  for (const invalid of [
+  for (const free of [
+    original
+      .replace("## Purpose", "## What it is for")
+      .replace("## Usage", "## Core concepts")
+      .replace("## Design", "## Overview"),
     original.replace("## Purpose", "### Purpose"),
-    original.replace("## Usage", "## Use"),
     original + "\n## Design\n\nAgain.\n",
+    original + "\n## Relationships\n\nThe parts.\n",
   ]) {
-    put(project, path, invalid);
-    expect(load).toThrow(/Purpose, Usage, Design, each exactly once/);
+    put(project, path, free);
+    expect(load).not.toThrow();
   }
-  put(project, path, original + "\n## Relationships\n\nThe parts.\n");
-  expect(load).toThrow(/relationships belong in its Design/);
-  put(
-    project,
-    path,
-    original.replace(
-      /## Usage([\s\S]*)## Design([\s\S]*)$/,
-      "## Design$2## Usage$1",
-    ),
-  );
-  expect(load).not.toThrow();
-  put(project, path, original + "\n## Open questions\n\nNone.\n");
-  expect(load).not.toThrow();
+  put(project, path, original);
 });
 
 // verifies: scenario.views.reading-collections

@@ -278,37 +278,17 @@ export function readingMeanings(
   }
   return result;
 }
-const ENTRY_SECTIONS = ["Purpose", "Usage", "Design"];
-/** A Module's relationships belong in its Design, never in a section of their own. */
-const FORBIDDEN_ENTRY_SECTIONS = ["Relationships"];
 export function requireReading(
   content: string,
   path: string,
   entry: boolean,
   role: "module" | "implementation",
 ): void {
-  const headings = headingList(content),
-    fences = fenceRanges(content);
+  const fences = fenceRanges(content);
   requireThat(
     !entry || role === "module",
     `module.md must have document.role module: ${path}`,
   );
-  if (entry) {
-    const top = headings.filter((h) => h.level === 2).map((h) => h.text);
-    requireThat(
-      ENTRY_SECTIONS.every(
-        (name) => top.filter((text) => text === name).length === 1,
-      ),
-      `Module entry requires level-2 Purpose, Usage, Design, each exactly once: ${path}`,
-    );
-    const forbidden = top.filter((text) =>
-      FORBIDDEN_ENTRY_SECTIONS.includes(text),
-    );
-    requireThat(
-      forbidden.length === 0,
-      `Module entry has a level-2 ${forbidden.join(", ")} section; a Module's relationships belong in its Design: ${path}`,
-    );
-  }
   requireThat(
     role === "implementation" ||
       (definitionHeadings(content).length === 0 &&

@@ -15,7 +15,7 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "15.0.0"
+protocol: "15.1.0"
 model_version: 1
 
 context_channels:
@@ -57,7 +57,7 @@ node_types:
     declared_in: entry
     mirrored_in: registry
     fields: [id, title]
-    explanation: Purpose section of the entry document
+    explanation: its entry document, which opens with its purpose
     checks: [CHK.node.id, CHK.node.title, CHK.document.entry]
 
   - id: document
@@ -72,8 +72,6 @@ node_types:
       - CHK.document.path
       - CHK.document.role
       - CHK.document.schema
-      - CHK.document.sections
-      - CHK.document.prose
       - CHK.term.link
       - CHK.term.unlinked
       - CHK.registry.mirror

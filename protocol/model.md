@@ -43,8 +43,8 @@ survives file movement. The Protocol accepts over-inclusion in read sets deliber
 reader cannot detect meaning that was silently withheld.
 
 **Fields.** `id` (the entry's owner) and `title`, declared in the entry's `module` block and
-mirrored in the registry. Its owner is itself. Its explanation is the
-Purpose section of its entry document.
+mirrored in the registry. Its owner is itself. Its explanation is its entry document, which
+opens with its purpose.
 
 **Constraints.** A Module MUST own exactly one document whose role is `module` and whose reading
 path ends in `module.md`; that document is its **entry**. A Module need not correspond to a package,

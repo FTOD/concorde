@@ -205,48 +205,37 @@ class CheckTests(unittest.TestCase):
             list(repository.referenced_by("concept.provider.thing")),
         )
 
-    @verifies("scenario.spec.reader-parts-invalid")
-    def test_entry_sections_and_prose(self):
+    @verifies("scenario.spec.reader-parts")
+    def test_an_entry_has_no_required_sections(self):
         entry = self.entry("consumer")
         original = (self.root / entry).read_text()
+        free = (
+            original.replace("## Purpose\n", "## What it is for\n")
+            .replace("## Usage\n", "## Core concepts\n")
+            .replace("## Design\n", "## Overview\n")
+        )
         cases = {
-            "missing": original.replace("## Design\n", "## Drawing\n"),
-            "repeated": original + "\n## Purpose\n\nAgain.\n",
-            "level": original.replace("## Usage", "### Usage"),
+            "none of the former sections": free,
             "relationships": original + "\n## Relationships\n\nThe parts.\n",
-            "fenced": original.replace("## Usage", "```text\n## Usage\n```"),
+            "purpose list": original.replace(
+                "The consumer shows things to people.", "- The consumer shows things."
+            ),
+            "repeated": original + "\n## Purpose\n\nAgain.\n",
+            "no level-2 section": "\n".join(
+                line for line in original.splitlines() if not line.startswith("## ")
+            )
+            + "\n",
         }
         for label, text in cases.items():
             with self.subTest(label):
                 (self.root / entry).write_text(text)
-                self.assertIn("CHK.document.sections", self.rules())
-        for label, text in {
-            "purpose list": original.replace(
-                "The consumer shows things to people.", "- The consumer shows things."
-            ),
-            "usage only links": original.replace(
-                "Use the declared boundary for the cases below; rejected input has no implicit retry.",
-                "[Provider](../provider/module.md)",
-            ).replace(
-                "It uses the terms [Thing](../glossary.json#concept.provider.thing).",
-                "",
-            ),
-        }.items():
-            with self.subTest(label):
-                (self.root / entry).write_text(text)
-                self.assertIn("CHK.document.prose", self.rules())
-        (self.root / entry).write_text(
-            original.replace("## Purpose\n", "## Purpose ##\n").rstrip()
-        )
-        self.assertNotIn("CHK.document.sections", self.rules())
-        # The sections may come in any order, and further sections may be added.
-        reordered = (
-            original.replace("## Usage", "## Tmp")
-            .replace("## Design", "## Usage")
-            .replace("## Tmp", "## Design")
-        )
-        (self.root / entry).write_text(reordered + "\n## Structure\n\nMore detail.\n")
-        self.assertNotIn("CHK.document.sections", self.rules())
+                report = self.project.validate()
+                self.assertEqual(
+                    "success", report.status, [f.message for f in report.findings]
+                )
+                self.assertFalse(
+                    {rule for rule in self.rules() if rule.startswith("CHK.document.")}
+                )
 
     @verifies("scenario.spec.term-unlinked", "scenario.spec.reader-parts")
     def test_a_term_used_without_a_link_is_a_warning(self):

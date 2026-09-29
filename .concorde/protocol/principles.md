@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 15.0.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 15.1.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -252,8 +252,8 @@ survives file movement. The Protocol accepts over-inclusion in read sets deliber
 reader cannot detect meaning that was silently withheld.
 
 **Fields.** `id` (the entry's owner) and `title`, declared in the entry's `module` block and
-mirrored in the registry. Its owner is itself. Its explanation is the
-Purpose section of its entry document.
+mirrored in the registry. Its owner is itself. Its explanation is its entry document, which
+opens with its purpose.
 
 **Constraints.** A Module MUST own exactly one document whose role is `module` and whose reading
 path ends in `module.md`; that document is its **entry**. A Module need not correspond to a package,
@@ -1185,9 +1185,10 @@ readers need and the judgments authors and reviewers must make. Semantic require
 where they accompany a format rule; the [Checks](checks.md) chapter states what tools establish.
 
 This chapter defines how the [node types](model.md) and [relations](relations.md) are written.
-The fixed reading structure serves understanding: every Module reads the same way. The fixed
-declaration syntax serves boundaries: a tool computes every set without interpreting prose.
-Satisfying the syntax establishes structural conformance only; it proves nothing about meaning.
+The fixed declaration syntax serves boundaries: a tool computes every set without interpreting
+prose. The reading itself has no fixed section structure: how an entry is organized is a writing
+judgment, which [Writing guidance](module.md#the-entry) explains. Satisfying the syntax establishes
+structural conformance only; it proves nothing about meaning.
 
 ## Documents
 
@@ -1351,19 +1352,10 @@ choice for an item in a list of short explanations.
 
 ## Reading structure
 
-An entry `module.md` has these level-2 sections, outside fences, each exactly once and in any order:
-
-```text
-Purpose
-Usage
-Design
-```
-
-It MAY have further level-2 sections, but none titled `Relationships`: how the Module relates to its
-children and to other Modules is part of Design. A level-1 title and brief navigation may precede
-the first of them. Purpose is nonempty plain prose: no lists, tables, nested headings or fences.
-Usage and Design contain explanatory prose, not only links, headings or diagrams. Honest unknowns
-are stated explicitly.
+An entry `module.md` has no required sections: the Protocol checks no heading of an entry, and its
+level-2 sections, their titles and their order are the writer's choice. [Writing
+guidance](module.md#the-entry) recommends an order, starting with the Module's purpose. Honest
+unknowns are stated explicitly.
 
 A `module`-role topic begins with a short orienting introduction. A document holds no table of
 term definitions: definitions live in the glossary, and a document links the terms it uses.
@@ -1539,8 +1531,6 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.document.role` | `role` is exactly `module` or `implementation`, explicitly declared. | error |
 | `CHK.document.schema` | Metadata is `schema_version` 3 with the required fields and no unknown keys outside `extensions`. | error |
 | `CHK.document.entry` | Each Module owns exactly one `module`-role document whose reading path ends in `module.md`; its metadata, and no other, has the `module` block, whose `owns` includes the entry. | error |
-| `CHK.document.sections` | An entry has the level-2 sections Purpose, Usage and Design, each exactly once, in any order, and no level-2 section `Relationships`. | error |
-| `CHK.document.prose` | Purpose is plain prose; Usage and Design are not only links, headings or diagrams. | error |
 | `CHK.term.link` | Every term link, in reading or in a definition, addresses the glossary and names a declared concept. | error |
 | `CHK.term.unlinked` | A document whose reading uses a concept's title outside code, headings, links and anchors links that concept somewhere. A one-word title counts only as written, a longer title in any letter case, each also with a plural `s`. | warning |
 
@@ -1622,8 +1612,8 @@ These checks are weaker than the obligations they serve:
 | `CHK.view.edges` | That a drawn label describes the declared relation accurately. |
 | `CHK.participates.version` | That the participant behaves as the contract says; that is implementation conformance. |
 
-Not checked at all: whether a requirement is true of the implementation, whether reading is
-sufficient for its reader, whether a scenario is worth having, and whether an illustrative block is
+Not checked at all: whether a requirement is true of the implementation, how an entry is
+organized, whether reading is sufficient for its reader, whether a scenario is worth having, and whether an illustrative block is
 accurate.
 
 ## Tool obligations
@@ -1711,8 +1701,8 @@ Any other nesting is an error. Containment is drawn only by nesting, never by an
 - A file shape has no edges; it asserts only its binding.
 
 A checked diagram need not show every declared relation; like a derived view, its omissions are
-scope decisions. An entry's Design draws its structure in as many diagrams as it needs, each
-answering one question: typically the inside, where a Module whose function is carried by several
+scope decisions. An entry draws its structure in as many diagrams as it needs, each answering one
+question: typically the inside, where a Module whose function is carried by several
 realizations draws them with the files they bind and the edges between them, and the outside, where
 the Module stands among the Modules it uses and those that use it. An edge may join any two shapes
 whose relation is declared, whichever Module declares it, so the outside view may draw a consumer's
@@ -1746,17 +1736,24 @@ local one.
 
 ## Illustrative blocks
 
-Explanation sometimes needs a picture that is not a relationship inventory: a flow over time, a
-state sketch, a before/after comparison. Such a block is marked `illustrative` in its info string
-and may use the whole D2 language:
+Explanation sometimes needs a picture that is not a relationship inventory: a workflow, a state
+sketch, a before/after comparison. Such a block is marked `illustrative` in its info string and may
+use the whole D2 language:
 
 ````markdown
 ```d2 illustrative
-shape: sequence_diagram
-client: Client
-checkout: Checkout
-client -> checkout: submit
-checkout -> client: order number
+direction: right
+customer: Customer {
+  submit: Submit basket
+  receive: Receive order number
+}
+checkout: Checkout {
+  hold: Hold stock
+  order: Create order
+  hold -> order
+}
+customer.submit -> checkout.hold
+checkout.order -> customer.receive
 ```
 ````
 

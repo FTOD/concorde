@@ -53,12 +53,6 @@ it("publishes the current registry and verifies the promoted manifest", async ()
     expect(source, page.sourcePath).toContain(page.sourcePath);
     expect(source).toContain(page.metadataDigest);
     expect(source).toContain("theme-doc-sidebar-container");
-    if (!page.primaryOf) continue;
-    const sections = ["purpose", "usage", "design"];
-    for (let i = 1; i < sections.length; i++)
-      expect(source.indexOf(`id="${sections[i - 1]}"`)).toBeLessThan(
-        source.indexOf(`id="${sections[i]}"`),
-      );
   }
   const entry = registry.pages.find(
     (p) => p.primaryOf === registry.rootModule,

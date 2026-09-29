@@ -13,6 +13,11 @@ suffix, checked out at exactly the commit the superproject records.
 
 Run it once in a fresh clone (after ``python3 scripts/concorde.py build``); with no submodule in
 ``.gitmodules`` it does nothing.
+
+The submodules' registration (``submodule.<name>.url`` and ``.active``) lives in the repository's
+shared ``.git/config``, which every worktree reads. A registered submodule is not registered again,
+so preparing another worktree only reads that file: writing it needs its lock, ``config.lock``,
+which a Claude Code task session's sandbox keeps in place for as long as one of its commands runs.
 """
 
 from __future__ import annotations
@@ -27,10 +32,14 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def git(
-    *arguments: str, cwd: Path = ROOT, check: bool = True
+    *arguments: str, cwd: Path | None = None, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ("git", *arguments), cwd=cwd, text=True, capture_output=True, check=check
+        ("git", *arguments),
+        cwd=cwd or ROOT,
+        text=True,
+        capture_output=True,
+        check=check,
     )
 
 
@@ -51,6 +60,64 @@ def submodules() -> list[dict[str, str]]:
 def recorded_commit(path: str) -> str | None:
     listing = git("ls-files", "--stage", "--", path, check=False).stdout.split()
     return listing[1] if len(listing) >= 4 and listing[0] == "160000" else None
+
+
+def config_value(key: str) -> str | None:
+    found = git("config", "--get", key, check=False)
+    return found.stdout.strip() if found.returncode == 0 else None
+
+
+def registered(entry: dict[str, str]) -> bool:
+    """Whether ``git submodule init`` would leave the shared configuration as it is.
+
+    It writes ``submodule.<name>.active`` unless the submodule is active, its ``url`` unless one
+    is set and its ``update`` when ``.gitmodules`` gives one that is not set. Without
+    ``submodule.<name>.active`` or ``submodule.active`` a submodule is active when its ``url`` is
+    set; a ``submodule.active`` pathspec is left to Git by reporting the entry unregistered.
+    """
+    name = entry["name"]
+    if config_value(f"submodule.{name}.url") is None:
+        return False
+    active = git("config", "--bool", "--get", f"submodule.{name}.active", check=False)
+    if active.returncode == 0:
+        if active.stdout.strip() != "true":
+            return False
+    elif config_value("submodule.active") is not None:
+        return False
+    return "update" not in entry or config_value(f"submodule.{name}.update") is not None
+
+
+def register(entry: dict[str, str]) -> None:
+    """Register the submodule in the shared configuration unless it already is."""
+    if registered(entry):
+        return
+    path = entry["path"]
+    config = (
+        Path(
+            git(
+                "rev-parse", "--path-format=absolute", "--git-common-dir"
+            ).stdout.strip()
+        )
+        / "config"
+    )
+    lock = config.with_name("config.lock")
+    busy = (
+        f"{lock} exists, so Git cannot write {config}. A Claude Code session's sandbox keeps "
+        "that lock in place while one of its commands runs (a task session's sandbox keeps "
+        "the shared Git configuration read-only), or a Git command is writing the "
+        "configuration now. Wait until that command ends and run this script again; never "
+        "delete the lock"
+    )
+    if lock.exists():
+        raise SystemExit(f"cannot register the submodule {path} in {config}: {busy}")
+    done = git("submodule", "init", "--", path, check=False)
+    if done.returncode or not registered(entry):
+        said = done.stderr.strip() or done.stdout.strip() or "no output"
+        cause = busy if lock.exists() or "lock" in said else "see Git's output"
+        raise SystemExit(
+            f"cannot register the submodule {path} in {config}: git submodule init exited "
+            f"{done.returncode} ({said}) and left it unregistered; {cause}"
+        )
 
 
 def checked_out(path: str) -> bool:
@@ -75,7 +142,6 @@ def initialize(entry: dict[str, str]) -> None:
             f"{module_dir} already exists; remove it or finish the checkout by hand"
         )
     module_dir.parent.mkdir(parents=True, exist_ok=True)
-    git("submodule", "init", "--", path)
     git(
         "clone",
         "--quiet",
@@ -124,6 +190,12 @@ def main(argv: list[str] | None = None) -> int:
     if not entries:
         print("no submodules declared in .gitmodules")
         return 0
+    if not arguments.check:
+        # Register every missing submodule before cloning any, so that a busy configuration lock
+        # stops the script before it leaves some references checked out and others not.
+        for entry in entries:
+            if not checked_out(entry["path"]):
+                register(entry)
     missing = 0
     for entry in entries:
         path = entry["path"]

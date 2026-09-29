@@ -70,8 +70,8 @@ Any other nesting is an error. Containment is drawn only by nesting, never by an
 - A file shape has no edges; it asserts only its binding.
 
 A checked diagram need not show every declared relation; like a derived view, its omissions are
-scope decisions. An entry's Design draws its structure in as many diagrams as it needs, each
-answering one question: typically the inside, where a Module whose function is carried by several
+scope decisions. An entry draws its structure in as many diagrams as it needs, each answering one
+question: typically the inside, where a Module whose function is carried by several
 realizations draws them with the files they bind and the edges between them, and the outside, where
 the Module stands among the Modules it uses and those that use it. An edge may join any two shapes
 whose relation is declared, whichever Module declares it, so the outside view may draw a consumer's
@@ -105,17 +105,24 @@ local one.
 
 ## Illustrative blocks
 
-Explanation sometimes needs a picture that is not a relationship inventory: a flow over time, a
-state sketch, a before/after comparison. Such a block is marked `illustrative` in its info string
-and may use the whole D2 language:
+Explanation sometimes needs a picture that is not a relationship inventory: a workflow, a state
+sketch, a before/after comparison. Such a block is marked `illustrative` in its info string and may
+use the whole D2 language:
 
 ````markdown
 ```d2 illustrative
-shape: sequence_diagram
-client: Client
-checkout: Checkout
-client -> checkout: submit
-checkout -> client: order number
+direction: right
+customer: Customer {
+  submit: Submit basket
+  receive: Receive order number
+}
+checkout: Checkout {
+  hold: Hold stock
+  order: Create order
+  hold -> order
+}
+customer.submit -> checkout.hold
+checkout.order -> customer.receive
 ```
 ````
 

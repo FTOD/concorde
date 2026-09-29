@@ -43,7 +43,6 @@ from .syntax import (
     NODE_PREFIXES,
     DiagramError,
     diagram_model,
-    entry_section_problems,
     explained,
     link_target,
     one_sentence,
@@ -199,13 +198,6 @@ class Checks:
                     f"Module {module.id} owns several module-role module.md documents: {entries}",
                     subject=module.id,
                 )
-            if module.entry in repository.readings:
-                for problem in entry_section_problems(
-                    repository.readings[module.entry].text
-                ):
-                    self.add(
-                        problem.check, module.entry, problem.message, line=problem.line
-                    )
 
     # --- the glossary and term links -----------------------------------------------------
 
