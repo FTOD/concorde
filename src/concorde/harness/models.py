@@ -100,27 +100,6 @@ class ModelConfigError(Exception):
         self.code = code
 
 
-def detect_client(environ=None) -> tuple[str, str]:
-    """The main session's program; unrelated to the default worker backend."""
-    environ = os.environ if environ is None else environ
-    named = environ.get("CONCORDE_CLIENT", "").strip()
-    if named:
-        if named not in CLIENTS:
-            raise ModelConfigError(
-                "invalid_client", f"CONCORDE_CLIENT is {named!r}; expected claude or pi"
-            )
-        return named, f"CONCORDE_CLIENT={named}"
-    if environ.get("CLAUDECODE") == "1":
-        return "claude", "CLAUDECODE=1"
-    for name in ("PI_SESSION_ID", "PI_CODING_AGENT"):
-        if environ.get(name):
-            return "pi", f"{name} is set"
-    raise ModelConfigError(
-        "client_unknown",
-        "CONCORDE_CLIENT is unset, CLAUDECODE is not 1 and neither PI_SESSION_ID nor PI_CODING_AGENT is set",
-    )
-
-
 def worker_ids() -> dict[str, tuple[str, ...]]:
     """Load the catalog lazily, avoiding provider import cycles at runtime."""
     from ..operations.catalog import CATALOG, provider
@@ -386,16 +365,6 @@ def worker_choice(config: dict, operation: str, worker: str, environ=None) -> di
 
 
 HANDLING = {
-    "client_unknown": (
-        "input",
-        "the main session's program is unknown",
-        ["set CONCORDE_CLIENT to claude or pi"],
-    ),
-    "invalid_client": (
-        "input",
-        "only claude and pi are supported",
-        ["set CONCORDE_CLIENT to claude or pi"],
-    ),
     "backend_missing": (
         "environment",
         "the machine must provide the program",

@@ -153,7 +153,7 @@ INSTALLATION = "concorde-installation"
 
 def installed_files(root: Path) -> list[str]:
     """The files the installer's receipt names that live outside ``.concorde/`` and exist:
-    Concorde's own skill, workflows and pi files, never a file of the project it only amends."""
+    Concorde's own skill and workflows, never a file of the project it only amends."""
     from .repository_base import installed_files as listed
 
     return sorted(path for path in listed(root) if (root / path).is_file())
@@ -175,7 +175,7 @@ def bind_installation(root: Path) -> dict | None:
     """Keep the installed files of an initialized project bound after an install or update.
 
     Initialization binds the files the installation record names at that time; a later install
-    or update may place more (the pi files of ``--pi``, a newer Concorde's files) or stop placing
+    or update may place more (a newer Concorde's files) or stop placing
     some. This adds, as exact entries of the Concorde installation realization, every installed
     file that exists and that no realization binds by its exact path, and removes the
     realization's entries that no longer exist; it never unbinds an existing file. Without such a

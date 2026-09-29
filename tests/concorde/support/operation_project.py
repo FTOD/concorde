@@ -126,27 +126,15 @@ class OperationProject(WorkerProject):
         self,
         *argv: str,
         cwd: Path | None = None,
-        client: str | None = "claude",
         environ: dict | None = None,
     ) -> tuple[int, dict | None]:
         """Run ``<name> [--task <task>] [arguments]`` with the fake claude and this project's
-        home, in the task's worktree, as if started from a main session of ``client``, or from no
-        main session when it is None; ``environ`` adds or replaces variables."""
+        home, in the task's worktree; ``environ`` adds or replaces variables."""
         values = {"CONCORDE_CLAUDE": str(self.fake), **(environ or {})}
-        if client:
-            values["CONCORDE_CLIENT"] = client
         with (
             patch.dict(os.environ, values),
             patch("pathlib.Path.home", return_value=self.home),
         ):
-            if not client:
-                for name in (
-                    "CONCORDE_CLIENT",
-                    "CLAUDECODE",
-                    "PI_SESSION_ID",
-                    "PI_CODING_AGENT",
-                ):
-                    os.environ.pop(name, None)
             return runs.run(argv, self.root, cwd)
 
     @staticmethod

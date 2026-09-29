@@ -70,8 +70,8 @@ The host refuses to launch when any deny rule it generated covers `work/`, `home
 
 ## Progress file
 
-`status.json` tells an observer, such as the main session's
-[run view](../../glossary.json#concept.run-view), what the run is doing while it runs. The host
+`status.json` tells an observer, such as the Execution runner that launched the run, what the run
+is doing while it runs. The host
 rewrites it atomically at every phase change and at most once a second for worker activity:
 
 | Field | Content |

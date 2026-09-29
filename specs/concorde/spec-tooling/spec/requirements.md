@@ -389,7 +389,7 @@ promises nothing about them.
 
 The initial Module stub SHALL bind the files the installer's receipt names outside `.concorde/`, other than the files it lists as amended, in a realization of their own, Concorde installation, and not among the existing project files.
 
-The installer's skill, workflows and pi files configure the agents, not the project; the project's
+The installer's skill and workflows configure the agents, not the project; the project's
 `.gitignore` and `CLAUDE.md`, which the installer only amends, stay the project's files.
 
 ### req.spec.installation-follows-record — The installation realization follows the receipt

@@ -1351,7 +1351,7 @@ class Checks:
 
 
 def generated_outputs(root: Path) -> set[str]:
-    """Outputs the build records in generated/build-manifest.json (e.g. under .pi/)."""
+    """Outputs the build records in generated/build-manifest.json."""
     try:
         manifest = json.loads(read_file(root, "generated/build-manifest.json").decode())
         return {

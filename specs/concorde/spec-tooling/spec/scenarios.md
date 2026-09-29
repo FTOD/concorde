@@ -720,9 +720,9 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 ### scenario.spec.installation-follows-record — Installed files stay bound after initialization
 
 - GIVEN an initialized project whose Concorde installation realization binds the skill and a workflow
-- AND an installation record that now also lists pi files, which exist, and no longer lists the workflow, which is gone
+- AND an installation record that now also lists files a newer Concorde installs, which exist, and no longer lists the workflow, which is gone
 - WHEN the installation is bound
-- THEN the pi files are exact entries of the realization and the workflow's entry is removed
+- THEN the newer files are exact entries of the realization and the workflow's entry is removed
 - AND only the root's metadata member changes, and the project validates
 - BUT binding it again changes nothing, and a project without a configuration is left unchanged
 

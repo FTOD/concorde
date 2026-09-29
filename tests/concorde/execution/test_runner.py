@@ -246,7 +246,7 @@ class RunnerTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def implement(self, steps, *extra, client="claude"):
+    def implement(self, steps, *extra):
         return self.project.run(
             "implement",
             "--task",
@@ -254,7 +254,6 @@ class RunnerTests(unittest.TestCase):
             "--goal",
             OperationProject.plan(steps),
             *extra,
-            client=client,
         )
 
     def store(self, workspace: str | None = "t1") -> runs.Store:
@@ -407,7 +406,6 @@ class RunnerTests(unittest.TestCase):
             "t1",
             "--goal",
             OperationProject.plan([{}]),
-            client="claude",
             environ=environ,
         )
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
@@ -430,7 +428,6 @@ class RunnerTests(unittest.TestCase):
             "t1",
             "--goal",
             OperationProject.plan([{}]),
-            client="claude",
             environ=environ,
         )
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)

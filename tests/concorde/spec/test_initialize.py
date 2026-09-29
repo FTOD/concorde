@@ -224,7 +224,10 @@ class InitialModuleTests(unittest.TestCase):
             ".claude/skills/concorde/SKILL.md",
             ".claude/workflows/concorde-brownfield.js",
         )
-        pi = [".pi/skills/concorde/SKILL.md", ".pi/extensions/concorde/index.ts"]
+        newer = [
+            ".claude/skills/concorde-extra/SKILL.md",
+            ".claude/workflows/concorde-review.js",
+        ]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             # Nothing to bind before initialization.
@@ -243,24 +246,24 @@ class InitialModuleTests(unittest.TestCase):
                 [skill, workflow],
                 self._installation(root)["realization.project.concorde-installation"],
             )
-            # A later install places the pi files and stops placing the workflow.
-            for path in pi:
+            # A newer Concorde places more files and stops placing the workflow.
+            for path in newer:
                 (root / path).parent.mkdir(parents=True, exist_ok=True)
-                (root / path).write_text("pi\n")
+                (root / path).write_text("n\n")
             (root / workflow).unlink()
-            self._receipt(root, [skill, *pi])
+            self._receipt(root, [skill, *newer])
             entry = (root / "specs/project/module.md").read_bytes()
             existing = self._installation(root)["realization.project.existing-files"]
             self.assertEqual(
                 {
                     "realization": "realization.project.concorde-installation",
-                    "bound": sorted(pi),
+                    "bound": sorted(newer),
                     "released": [workflow],
                 },
                 initialize.bind_installation(root),
             )
             self.assertEqual(
-                sorted([skill, *pi]),
+                sorted([skill, *newer]),
                 self._installation(root)["realization.project.concorde-installation"],
             )
             self.assertEqual(
@@ -283,7 +286,10 @@ class InitialModuleTests(unittest.TestCase):
 
     @verifies("scenario.spec.installation-created")
     def test_a_missing_installation_realization_is_created_in_the_root(self):
-        skill, pi = ".claude/skills/concorde/SKILL.md", ".pi/skills/concorde/SKILL.md"
+        skill, workflow = (
+            ".claude/skills/concorde/SKILL.md",
+            ".claude/workflows/concorde-brownfield.js",
+        )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             # Initialized before any installed file existed outside .concorde/.
@@ -291,16 +297,16 @@ class InitialModuleTests(unittest.TestCase):
             self.assertNotIn(
                 "realization.project.concorde-installation", self._installation(root)
             )
-            for path in (skill, pi):
+            for path in (skill, workflow):
                 (root / path).parent.mkdir(parents=True, exist_ok=True)
                 (root / path).write_text("s\n")
-            self._receipt(root, [skill, pi])
+            self._receipt(root, [skill, workflow])
             self.assertEqual(
-                sorted([skill, pi]),
+                sorted([skill, workflow]),
                 initialize.bind_installation(root)["bound"],
             )
             self.assertEqual(
-                sorted([skill, pi]),
+                sorted([skill, workflow]),
                 self._installation(root)["realization.project.concorde-installation"],
             )
             self.assertIn(

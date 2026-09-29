@@ -94,9 +94,8 @@ Throughout, the host keeps the worker run's
 round, the worker's latest tool call, the process identifier of the Execution runner it runs in and
 the identity of the Operation run that launched it, by which an observer pairs it with that run's
 own [run progress file](../../glossary.json#concept.run-progress-file); process identifiers are
-not unique across PID namespaces, so they never pair the two. The main session's
-[run view](../../glossary.json#concept.run-view) reads it; the run record, not the progress file, is
-the run's evidence. Every run ends both, however it ends: a run interrupted from outside, such as by
+not unique across PID namespaces, so they never pair the two. The run record, not the progress
+file, is the run's evidence. Every run ends both, however it ends: a run interrupted from outside, such as by
 the cancellation of the Operation that launched it, is recorded as `failed` with `interrupted` and
 its progress file as finished before the interruption travels on, so no reader sees a worker that
 runs forever. The launching Operation learns the run's identity as soon as the run exists, so it can
@@ -109,9 +108,9 @@ name the run even when it is interrupted before the run returns.
 The **[worker backend](../../glossary.json#concept.worker-backend)** is the agent program a worker
 runs on. The [worker configuration](../../glossary.json#concept.worker-configuration)
 may choose it for one worker, for an Operation's workers or for every worker; when no entry chooses
-it, the worker runs on **pi**, whatever program the main session runs on. A Claude Code main session
-so runs pi workers unless it chooses Claude Code for some of them, and a pi main session may do the
-same. A worker's backend must be installed: when its command (`claude` or `pi`, or the path in
+it, the worker runs on **pi**, although the [main agent](../../glossary.json#concept.main-agent)
+and its task sessions run on Claude Code only for now: a Claude Code main agent so runs pi workers
+unless the configuration chooses Claude Code for some of them. A worker's backend must be installed: when its command (`claude` or `pi`, or the path in
 `CONCORDE_CLAUDE` or `CONCORDE_PI`) is missing, the worker is refused with `backend_missing`, naming
 the worker, the program and what chose it, and how to choose the other program for it; it never
 falls back to the other program. This refusal comes from resolving the worker's backend, which the
@@ -120,13 +119,6 @@ reports it in its own error, with `backend_missing` as the cause. Everything but
 is shared: the grant, the brief, the run directory, the progress file, the audit, the checks, the
 rounds and the run record, so workers of one Operation on different backends exchange nothing but
 the structured results the host validates.
-
-Workers also reads the **main session's program** from the environment, for
-[Task sessions](../../coordination/task-session/module.md),
-which run on it: `CONCORDE_CLIENT` when set (Concorde's pi extension sets it to `pi`), otherwise
-`claude` when `CLAUDECODE=1`, which Claude Code sets for its commands, otherwise `pi` when pi's
-`PI_SESSION_ID` or `PI_CODING_AGENT` is set. It refuses with `client_unknown` when none names one
-and with `invalid_client` when `CONCORDE_CLIENT` names neither program. No worker depends on it.
 
 On Claude Code the worker's harness is applied by its [worker
 settings](../../glossary.json#concept.worker-settings), on pi by the [permission
@@ -437,11 +429,8 @@ Operations launch workers and the ids of their workers. The shared validator che
 Operation and worker names against it. It relies on the catalog naming every worker an Operation may
 launch.
 
-Two Modules read Workers' definitions without launching a run: the [Main
-session](../../coordination/main-session/module.md) shows the progress file and changes the worker
-configuration by editing it directly, and [Task
-sessions](../../coordination/task-session/module.md) reads the main session's program from the
-environment, as [Two backends from one grant](#two-backends-from-one-grant) describes. A task
+The [Main session](../../coordination/main-session/module.md) reads Workers' definitions without
+launching a run: it changes the worker configuration by editing it directly. A task
 worktree carries the worker configuration of its base commit through Git, with nothing copied.
 
 ### Inside
@@ -495,7 +484,7 @@ backend, model and limits before calling Workers.
   `enabled_models` and a worker without a model, and checks that the worker's program is installed
   at launch; it never writes the file and never reads the developer's own agent settings. The separate `available_models.py` module and
   `scripts/available_models.py` entry point discover advisory candidates without Git or inference
-  probes. It also detects the main session's program for Task sessions.
+  probes.
 
 What one run leaves behind. The runtime generates the brief, keeps the progress file and writes the
 run record; both files sit in the run directory, and the record is the run's evidence:

@@ -1,7 +1,7 @@
 """The progress file of a worker run: ``status.json``, kept current while the run goes on.
 
 The host rewrites it atomically at every phase change and at most once a second for the worker's
-activity, so an observer such as the main session's run view can show what a run is doing. It is
+activity, so an observer such as the Execution runner can tell what a run is doing. It is
 an observation aid only; the run record is the run's evidence.
 """
 

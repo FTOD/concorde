@@ -189,7 +189,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.pi-fenced-run — A pi worker is fenced by the same grant
 
-- GIVEN a run started from a pi main session, and an `implement` grant with a `rw` source file, `ro` Specs, a `names` file and an ungranted file
+- GIVEN a run whose worker runs on pi, and an `implement` grant with a `rw` source file, `ro` Specs, a `names` file and an ungranted file
 - WHEN the host runs a pi worker that reads the Specs, edits the source file and ends with `concorde_result`
 - THEN the edit reaches the worktree, the audit is clean and the run ends `ok` with the worker result verbatim
 - AND the run record holds the session identifier, the transcript path and the tool set of the pi backend
@@ -211,7 +211,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ### scenario.workers.pi-runtime-missing — A pi run without its runtime is refused
 
-- GIVEN a run started from a pi main session on a machine without the sandbox-runtime package
+- GIVEN a run whose worker runs on pi, on a machine without the sandbox-runtime package
 - WHEN the host is asked to start a worker
 - THEN it refuses before launch with `pi_runtime_missing`, naming the missing package and how to install it
 - AND it still writes the run record
@@ -234,14 +234,6 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 ## Worker models
 
-### scenario.workers.backend-from-client — The main session's program is read from the environment
-
-- GIVEN a command started from a Claude Code session, one started from a pi session whose Concorde extension set `CONCORDE_CLIENT=pi`, and one started from neither
-- WHEN each reads the main session's program, as a [task session](../../glossary.json#concept.task-session) does
-- THEN the first reads `claude` from `CLAUDECODE=1` and the second `pi` from `CONCORDE_CLIENT`
-- AND the third is refused with `client_unknown`, naming every variable it looked at and how to set one
-- BUT a `CONCORDE_CLIENT` naming neither program is refused with `invalid_client`
-
 ### scenario.workers.backend-configured — Workers run on pi unless their configuration chooses Claude Code
 
 - GIVEN a command started from a Claude Code session, both programs installed, and a [worker configuration](../../glossary.json#concept.worker-configuration) whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a Claude Code model and a level
@@ -253,7 +245,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a command started from a Claude Code session and a worker configuration whose default names only a model
 - WHEN the choice of `implement`'s worker is resolved
-- THEN it runs on `pi`, from Concorde's default [worker backend](../../glossary.json#concept.worker-backend), not from the main session's program
+- THEN it runs on `pi`, from Concorde's default [worker backend](../../glossary.json#concept.worker-backend), not from the program of the [main agent](../../glossary.json#concept.main-agent)
 
 ### scenario.workers.backend-missing — A worker whose backend is not installed is refused
 

@@ -276,7 +276,6 @@ class BrownfieldFlowTests(unittest.TestCase):
             env={
                 **os.environ,
                 "CONCORDE_CLAUDE": str(fake),
-                "CONCORDE_CLIENT": "claude",
                 "HOME": str(home),
             },
         )
@@ -484,7 +483,6 @@ class TaskFlowTests(unittest.TestCase):
             **os.environ,
             "CONCORDE_CLAUDE": str(self.project.fake),
             "HOME": str(self.project.home),
-            "CONCORDE_CLIENT": "claude",
         }
         # Each run starts in its task's worktree, whose workspace binding it works on.
         runs = [

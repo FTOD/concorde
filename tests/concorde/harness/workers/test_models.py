@@ -42,30 +42,6 @@ class WorkerModelTests(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(config))
 
-    @verifies("scenario.workers.backend-from-client")
-    def test_the_backend_is_the_main_sessions_program(self):
-        self.assertEqual(
-            ("claude", "CLAUDECODE=1"), models.detect_client({"CLAUDECODE": "1"})
-        )
-        self.assertEqual(
-            ("pi", "CONCORDE_CLIENT=pi"),
-            models.detect_client({"CONCORDE_CLIENT": "pi", "CLAUDECODE": "1"}),
-        )
-        self.assertEqual("pi", models.detect_client({"PI_SESSION_ID": "s1"})[0])
-        with self.assertRaises(models.ModelConfigError) as raised:
-            models.detect_client({})
-        self.assertEqual("client_unknown", raised.exception.code)
-        for name in (
-            "CONCORDE_CLIENT",
-            "CLAUDECODE",
-            "PI_SESSION_ID",
-            "PI_CODING_AGENT",
-        ):
-            self.assertIn(name, str(raised.exception))
-        with self.assertRaises(models.ModelConfigError) as raised:
-            models.detect_client({"CONCORDE_CLIENT": "codex"})
-        self.assertEqual("invalid_client", raised.exception.code)
-
     @verifies("scenario.workers.backend-default")
     def test_a_worker_without_an_entry_runs_on_pi(self):
         session = dict(self.environ, CLAUDECODE="1")

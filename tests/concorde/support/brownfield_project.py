@@ -108,7 +108,7 @@ class BrownfieldProject:
         return Path(store.load_task(self.root, task_id)["worktree"])
 
     def run(self, *argv: str, cwd: Path | None = None) -> tuple[int, dict]:
-        values = {"CONCORDE_CLAUDE": str(self.fake), "CONCORDE_CLIENT": "claude"}
+        values = {"CONCORDE_CLAUDE": str(self.fake)}
         with (
             patch.dict(os.environ, values),
             patch("pathlib.Path.home", return_value=self.home),
