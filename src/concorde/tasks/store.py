@@ -1346,6 +1346,7 @@ def close_locked(
     before_move=None,
     warnings: list[str] | None = None,
     key: str | None = None,
+    at: str | None = None,
 ) -> dict:
     """``close_task`` for a caller already holding the merge lock and the workspace lock.
 
@@ -1354,9 +1355,10 @@ def close_locked(
     them says what this close did and that ``again`` (by default the same close) finishes it; the
     same close of a task whose record is closed but that is still current finishes the steps it
     lacks. Once the closing is logged, the decision log is committed on the primary branch as
-    ``.concorde/decisions/<key>.md`` unless that file is already there, as the merge commit of
-    ``concorde task merge`` adds it; ``key``, the history key, is the one that merge chose, and
-    free otherwise. Before the folder moves, the transcripts of the task's Claude Code task
+    ``.concorde/decisions/<key>.md`` unless that file already holds it, as the merge commit of
+    ``concorde task merge`` does with the closing dated ``at``; ``key``, the history key, is the
+    one that merge chose, and free otherwise, and ``at`` the time the closing names, by default
+    now. Before the folder moves, the transcripts of the task's Claude Code task
     sessions are copied into their nodes, adding to ``warnings`` each one that cannot be, and
     ``before_move`` runs, such as a merge ending its attempt's node.
     """
@@ -1435,7 +1437,7 @@ def close_locked(
         removed = True
     primary_head = _git(primary, "rev-parse", "HEAD").stdout.strip()
 
-    stamp = now()
+    stamp = at or now()
     state = "failed" if outcome == "failed" else "closed"
     key = key or history_key(primary, task_id)
     closing = {
@@ -1458,7 +1460,7 @@ def close_locked(
     try:
         with task_locked(primary, task_id):
             closed = update(primary, task_id, change, locked=True)
-            _end_task_node(primary, task_id, closing)
+            _end_task_node(primary, task_id, closing, now())
     except TaskError as error:
         if not removed:
             raise
@@ -1477,8 +1479,9 @@ def close_locked(
     return closed
 
 
-def _end_task_node(primary: Path, task_id: str, closing: dict) -> None:
-    """End the task's trace node with how it ended; the caller holds the task's lock."""
+def _end_task_node(primary: Path, task_id: str, closing: dict, ended: str) -> None:
+    """End the task's trace node at ``ended`` with how it ended, which a merge dates earlier,
+    when its merge commit was made; the caller holds the task's lock."""
     folder = task_folder(primary, task_id)
     record = _node_of(folder)
     content = _task_content(record)
@@ -1499,14 +1502,14 @@ def _end_task_node(primary: Path, task_id: str, closing: dict) -> None:
     }
     status = "failed" if closing["state"] == "failed" else "ok"
     record.update(
-        ended_at=closing["at"],
+        ended_at=ended,
         status=status,
         outcome=closing["outcome"],
         error=closing["errors"][0]
         if status == "failed" and closing["errors"]
         else None,
         usage=trace.usage(
-            duration_seconds=trace.seconds_between(record["started_at"], closing["at"])
+            duration_seconds=trace.seconds_between(record["started_at"], ended)
         ),
         content={"type_id": TASK_TRACE, "schema_version": 1, "data": content},
         artifacts=[
@@ -1562,13 +1565,23 @@ def _move_to_history(primary: Path, task_id: str, key: str, again: str) -> None:
 def commit_decision_log(primary: Path, task_id: str, closed: dict, again: str) -> None:
     """Commit the closed task's decision log on the primary branch as
     ``.concorde/decisions/<history key>.md``, in a commit of that file alone, unless the branch
-    already holds it; other changes of the primary worktree, staged or not, stay as they were.
+    already holds it exactly, as it does after a merge whose log did not change once its merge
+    commit copied it; other changes of the primary worktree, staged or not, stay as they were.
     """
     path = committed_log(closed["history"])
-    if _in_head(primary, path):
-        return
     source = decision_log_path(primary, task_id)
     target = primary / path
+    held = subprocess.run(
+        ["git", "cat-file", "blob", f"HEAD:{path}"],
+        cwd=primary,
+        capture_output=True,
+        check=False,
+    )
+    try:
+        if held.returncode == 0 and held.stdout == source.read_bytes():
+            return
+    except OSError:
+        pass  # Committing reads the log again and says why it cannot.
     branch = _git(primary, "symbolic-ref", "-q", "--short", "HEAD", check=False)
 
     def refuse(problem: str) -> TaskError:
@@ -1609,10 +1622,21 @@ def commit_decision_log(primary: Path, task_id: str, closed: dict, again: str) -
     )
     if committed.returncode != 0:
         output = (committed.stdout + committed.stderr).strip() or "(no output)"
-        _git(
-            primary, "rm", "-q", "--cached", "--ignore-unmatch", "--", path, check=False
-        )
-        target.unlink(missing_ok=True)
+        if _in_head(primary, path):
+            # The branch holds an earlier copy: put it back, in the index and the worktree.
+            _git(primary, "checkout", "-q", "HEAD", "--", path, check=False)
+        else:
+            _git(
+                primary,
+                "rm",
+                "-q",
+                "--cached",
+                "--ignore-unmatch",
+                "--",
+                path,
+                check=False,
+            )
+            target.unlink(missing_ok=True)
         raise refuse(
             f"git {'commit' if added.returncode == 0 else 'add'} exited "
             f"{committed.returncode} on {branch.stdout.strip()}: {output[-2000:]}"
@@ -1621,6 +1645,22 @@ def commit_decision_log(primary: Path, task_id: str, closed: dict, again: str) -
 
 def _closing_heading(closed: dict) -> str:
     return f"## Closed: {closed['outcome']}, {closed['at']}"
+
+
+def closing_entry(closed: dict) -> str:
+    """The entry a close appends to the decision log: how the task ended, with ``note`` and
+    the error chains of ``errors`` rendered and as JSON, dated ``at``."""
+    from ..errors import render
+
+    lines = [f"\n{_closing_heading(closed)}\n"]
+    if closed["note"]:
+        lines.append(f"\n{closed['note']}\n")
+    for error in closed["errors"]:
+        lines.append(
+            f"\n{render(error)}\n\n"
+            f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
+        )
+    return "".join(lines)
 
 
 def _closing_logged(primary: Path, task_id: str, closed: dict) -> bool:
@@ -1641,20 +1681,10 @@ def _closing_logged(primary: Path, task_id: str, closed: dict) -> bool:
 
 def _log_closing(primary: Path, task_id: str, closed: dict) -> None:
     """Append how the task ended, with any error chains rendered and as JSON."""
-    from ..errors import render
-
-    lines = [f"\n{_closing_heading(closed)}\n"]
-    if closed["note"]:
-        lines.append(f"\n{closed['note']}\n")
-    for error in closed["errors"]:
-        lines.append(
-            f"\n{render(error)}\n\n"
-            f"```json\n{json.dumps(error, indent=2, ensure_ascii=False)}\n```\n"
-        )
     path = decision_log_path(primary, task_id)
     try:
         with path.open("a", encoding="utf-8") as stream:
-            stream.write("".join(lines))
+            stream.write(closing_entry(closed))
     except OSError as error:
         raise TaskError(
             "decision_log_failed",
@@ -1675,6 +1705,7 @@ __all__ = [
     "begin_merge",
     "close_locked",
     "close_task",
+    "closing_entry",
     "commit_decision_log",
     "committed_log",
     "decision_log_path",

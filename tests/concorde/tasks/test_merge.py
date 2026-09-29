@@ -144,15 +144,22 @@ class MergeTests(unittest.TestCase):
         status, value = self.command("merge", "t1")
         self.assertEqual(0, status, value)
         # Always a merge commit, of the commit before and the delivery commit, which adds the
-        # task's decision log as it stood and names the task.
+        # task's decision log as it stood with the closing the close appends, and names the task.
         after = self.head()
         self.assertEqual([before, head], self.parents(after))
         self.assertEqual(
             [".concorde/decisions/t1.md", "src/a/calc.py"],
             sorted(git(self.root, "diff", "--name-only", before, after).splitlines()),
         )
+        closed_at = value["record"]["closed"]["at"]
         self.assertEqual(
-            log.strip(), git(self.root, "show", f"{after}:.concorde/decisions/t1.md")
+            f"{log}\n## Closed: merged, {closed_at}\n",
+            git(self.root, "show", f"{after}:.concorde/decisions/t1.md") + "\n",
+        )
+        # The copy is the log as the task ended, so the close committed nothing more.
+        self.assertEqual(
+            (self.history() / "decisions.md").read_text(),
+            (self.root / ".concorde/decisions/t1.md").read_text(),
         )
         self.assertEqual(
             f"Merge branch 'concorde/t1' at {head}\n\nConcorde-Task: t1",
@@ -670,6 +677,35 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(
             0, trace.read(merges / "2/checks/1")["content"]["data"]["exit_code"]
         )
+
+    @verifies("scenario.tasks.merge-log-changed")
+    def test_a_log_changed_after_the_merge_commit_is_committed_again(self):
+        before, after = self.interrupted()
+        log = self.root / ".concorde/tasks/t1/decisions.md"
+        with log.open("a") as stream:
+            stream.write("\n## Main agent: the merge was interrupted; resuming\n")
+        status, value = self.command("merge", "t1", "--resume")
+        self.assertEqual(0, status, value)
+        # The merge commit's copy lacks the entry; a commit of the log alone keeps it.
+        self.assertEqual(after, value["merge"]["after"])
+        self.assertEqual([after], self.parents())
+        self.assertEqual(
+            [".concorde/decisions/t1.md"],
+            git(self.root, "diff", "--name-only", after, "HEAD").splitlines(),
+        )
+        self.assertEqual(
+            "concorde: keep the decision log of t1\n\nTask t1 ended merged.\n\n"
+            "Concorde-Task: t1",
+            git(self.root, "log", "-1", "--format=%B"),
+        )
+        ended = (self.history() / "decisions.md").read_text()
+        self.assertEqual(
+            ended.strip(), git(self.root, "show", "HEAD:.concorde/decisions/t1.md")
+        )
+        self.assertTrue(
+            ended.endswith(f"\n## Closed: merged, {value['record']['closed']['at']}\n")
+        )
+        self.assertEqual("", git(self.root, "status", "--porcelain"))
 
     @verifies("scenario.tasks.close-rerun")
     def test_a_merge_whose_close_stopped_part_way_is_finished(self):

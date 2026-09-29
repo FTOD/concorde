@@ -258,11 +258,12 @@ def _rollback(primary: Path, task_id: str, before: str, failure: str) -> str:
     return f"; the primary branch is back at {before}, clean"
 
 
-def _merge(
-    primary: Path, record: dict, branch: str, before: str, checked: str, key: str
-) -> str:
-    """Merge the checked commit as a merge commit that adds the task's decision log; the
-    merge's head, or an aborted conflict or Git refusal refused."""
+def _merge(primary: Path, record: dict, merging: dict) -> str:
+    """Merge the checked commit as a merge commit that adds the task's decision log as the
+    close will leave it, with the closing dated ``merging.since``; the merge's head, or an
+    aborted conflict or Git refusal refused."""
+    branch, before = merging["branch"], merging["before"]
+    checked, key = merging["checked"], merging["history"]
     merged = store._git(
         primary, "merge", "--no-ff", "--no-commit", checked, check=False
     )
@@ -286,16 +287,21 @@ def _merge(
     target = primary / path
     source = store.decision_log_path(primary, record["id"])
     message = f"Merge branch '{record['branch']}' at {checked}\n\nConcorde-Task: {record['id']}\n"
+    # The closing the close will append once the checks pass, so that the copy equals the log
+    # as the task ends; a log changed after this commit gets a commit of its own at the close.
+    closing = store.closing_entry(
+        {"outcome": "merged", "at": merging["since"], "note": None, "errors": []}
+    )
     try:
-        if source.is_file():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(source.read_bytes())
-            added = store._git(primary, "add", "-f", "--", path, check=False)
-            if added.returncode != 0:
-                raise OSError(
-                    f"git add -f {path} exited {added.returncode}: "
-                    f"{(added.stdout + added.stderr).strip() or '(no output)'}"
-                )
+        logged = source.read_bytes() if source.is_file() else b""
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(logged + closing.encode("utf-8"))
+        added = store._git(primary, "add", "-f", "--", path, check=False)
+        if added.returncode != 0:
+            raise OSError(
+                f"git add -f {path} exited {added.returncode}: "
+                f"{(added.stdout + added.stderr).strip() or '(no output)'}"
+            )
         committed = subprocess.run(
             ["git", "commit", "-q", "-F", "-"],
             cwd=primary,
@@ -494,7 +500,7 @@ def _merge_new(primary: Path, task_id: str, commands: list[list[str]], waited) -
     store.begin_merge(primary, task_id, merging)
     attempt = Attempt(primary, task_id, "merge", merging, waited)
     try:
-        after = _merge(primary, record, branch, before, checked, merging["history"])
+        after = _merge(primary, record, merging)
     except TaskError as refusal:
         attempt.refused(refusal)
         raise
@@ -561,6 +567,7 @@ def _checked_close(
             before_move=lambda: attempt.end("ok", "merged"),
             warnings=warnings,
             key=merging.get("history"),
+            at=merging["since"],
         )
     except TaskError as error:
         if error.code in ("decision_log_failed", "decision_log_uncommitted"):

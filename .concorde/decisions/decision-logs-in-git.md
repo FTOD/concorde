@@ -173,3 +173,5 @@ That merge also commits this task's own decision log as `.concorde/decisions/dec
   (`git archive concorde/decision-logs-in-git src scripts`), through `task merge` with the usual
   `--check` commands. Main moved to 1f061513 (drop-pi-subagents-reference merged) meanwhile; its
   decision log will be backfilled after this merge.
+
+## Closed: merged, 2026-09-29T17:15:29Z
