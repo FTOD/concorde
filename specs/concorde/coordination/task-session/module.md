@@ -10,8 +10,9 @@ worktree. For now that program is Claude Code, the only one a main agent runs on
 sessions starts, confines and ends those sessions. The main agent relies on it to have every task
 worked, one or several at once, under a boundary that keeps each session's writes inside its task.
 It does not decide how work is split, never merges a task into the primary branch or closes it, and
-does not tell a session how to work in a task; that method is the main agent's own, given by the [Main session](../main-session/module.md) guidance, and the session
-follows it at a smaller scale. Its boundary guards against mistakes, not a malicious session.
+does not tell a session how to work in a task; that method is the main agent's own, given by the
+[Main session](../main-session/module.md) guidance, and the session follows it at a smaller scale.
+Its boundary guards against mistakes, not a malicious session.
 
 Task sessions matter to the developer only through the main agent: the developer talks to main
 sessions, and a task session is a means of the main agent that has served its purpose once its
@@ -21,14 +22,129 @@ sessions is removed from Claude's session list, where finished task sessions wou
 up beside the developer's main sessions, after its transcript has been kept in the task's trace,
 which moves to the history with the task.
 
-## Usage
+## Core concepts
+
+A **[task session](../../glossary.json#concept.task-session)**, a term of the root, is not a level
+of its own but the task level delegated, and the main agent delegates every task. Keeping the main
+agent out of task worktrees keeps it free to talk with the developer and to answer every session
+while tasks run, and puts every task under a write boundary, which the main agent itself does not
+have. A task session escalates to the main agent while the main agent escalates to the developer, it
+has a start and ends with its task, and it never merges its task into the primary branch; the one
+merge it makes is the primary branch into its task branch when the main agent answers a merge
+conflict, a change inside its own worktree and branch. It runs on the main agent's own program and
+configuration, because it does the main agent's own task-level work at a smaller scale: an isolated
+configuration, such as a worker gets, would give it other tools and instructions than the main
+agent's.
+
+Its **[session boundary](../../glossary.json#concept.session-boundary)**, a term of the Harness, is
+the settings and write hook that confine what its own file tools and shell write to its task while
+leaving reads and the network open.
+
+## Overview
+
+### A task session's life
 
 The task level of the work is always delegated: the main agent never works inside a task worktree
 but, from the primary worktree, starts a [task session](../../glossary.json#concept.task-session)
 for every task, even a single one, after recording the task's brief in its
-[decision log](../../glossary.json#concept.decision-log). A task session runs on the main
-agent's own program and configuration, because it does the main agent's own task-level work at a
-smaller scale: a background Claude Code session.
+[decision log](../../glossary.json#concept.decision-log). How a task session travels over time, from
+the main agent's start to the end of its task:
+
+```d2 illustrative
+grid-columns: 4
+horizontal-gap: 110
+main: "Main agent\nlevel 1, primary worktree" {
+  grid-columns: 1
+  vertical-gap: 50
+  start: "concorde task session\n<task> --main <session>"
+  g1: "" {style.opacity: 0}
+  g2: "" {style.opacity: 0}
+  g3: "" {style.opacity: 0}
+  answer: "Read the report,\nanswer every escalation\nat once"
+  end: "concorde task merge\nor task close"
+}
+tasks: Tasks {
+  grid-columns: 1
+  vertical-gap: 50
+  check: "Check the primary\nworktree, the task\nand the options"
+  g1: "" {style.opacity: 0}
+  g2: "" {style.opacity: 0}
+  record: "Record the session\nin the task's trace"
+  g3: "" {style.opacity: 0}
+  close: "Close the task"
+}
+starter: "Session starter" {
+  grid-columns: 1
+  vertical-gap: 50
+  g1: "" {style.opacity: 0}
+  boundary: "Write the session\nboundary and the\nMCP configuration"
+  launch: "claude --bg: guidance,\ngoal, Modules,\ndecision log"
+  g2: "" {style.opacity: 0}
+  g3: "" {style.opacity: 0}
+  stop: "Stop its sessions,\nkeep their transcripts,\nremove them"
+}
+session: "Task session\nlevel 2, task worktree" {
+  grid-columns: 1
+  vertical-gap: 50
+  g1: "" {style.opacity: 0}
+  g2: "" {style.opacity: 0}
+  work: "Work the task:\nworkflows, Operations,\ndelivery"
+  g3: "" {style.opacity: 0}
+  report: "SendMessage: delivered,\nor every escalation"
+  g4: "" {style.opacity: 0}
+}
+main.start -> tasks.check
+tasks.check -> starter.boundary: checks passed
+starter.boundary -> starter.launch
+starter.launch -> session.work: starts
+starter.launch -> tasks.record
+session.work -> session.report
+session.report <-> main.answer: "the report,\nevery answer"
+main.answer -> main.end: delivered
+main.end -> tasks.close
+tasks.close -> starter.stop
+```
+
+The main agent starts the session through `concorde task session`, which Tasks checks before it
+hands the start here. Task sessions writes the session's boundary, starts it in the task worktree
+with its first prompt and records it in the task's [trace](../../glossary.json#concept.trace). The
+session then works the task following its guidance and reports to the main agent with SendMessage:
+its delivery, or every decision it needs, which the main agent answers together the same way. When
+the main agent merges or closes the task, Tasks' close has Task sessions stop the task's sessions if
+the task ends without a merge, keep their transcripts and remove them from Claude's session list.
+
+### Its place in the levels of work
+
+A task session plays level 2 of Concorde's [levels of work](../../module.md#the-levels-of-work), the
+task level, in place of the main agent. Only the main agent at level 1 calls this
+[Module](../../glossary.json#concept.module), with `concorde task session` from the primary
+worktree; the call arrives through Tasks, whose command line checks the task and the options before
+handing it here. Task sessions then starts one agent session in the task worktree, and that
+session, not this Module, does the task's work: following its guidance, it changes Specs and code,
+starts workflows (level 3) and runs Operations and
+[execution commands](../../glossary.json#concept.execution-command) (level 4) inside its task
+worktree, and never reaches a worker except through an Operation. Its results go up to level 1
+only, never to the developer: the session reports to the main agent with SendMessage. What the
+session may not decide it escalates with `concorde task escalate --by task-session`, a link of level
+`task-session` on top of the failed runs' chains, for the main agent to decide or to pass on with
+its own link.
+
+```d2 illustrative
+main: Main session
+module: Task sessions
+tasksession: "Task session (agent, level 2)"
+workflows: Workflows
+runs: "Runs: Operations and execution commands"
+workers: Workers
+main -> module: starts
+module -> tasksession: starts in its task worktree
+tasksession -> workflows: starts in its task worktree
+tasksession -> runs: starts in its task worktree
+workflows -> runs: runs one at a time
+runs -> workers: an Operation launches
+```
+
+## Starting a session
 
 ```text
 concorde task session severity --main concorde-7d
@@ -42,32 +158,18 @@ folder, and the session's [trace node](../../glossary.json#concept.trace-node) u
 `sessions/<session>/`, written through Tasks' updates so the task's
 [trace](../../glossary.json#concept.trace) holds every session.
 
-**The boundary.** A task session may write only what working its task needs: with its file tools, the task worktree and the task's decision log; with its shell, also the
-repository's Git directory, where its commits on the task branch are written, the task's own folder
-`.concorde/tasks/<task>/` of the primary worktree, which holds the workspace folder the task
-worktree's [workspace binding](../../glossary.json#concept.workspace-binding) names for every run
-started there, including the [workflow record](../../glossary.json#concept.workflow-record), and the
-task's record and trace, where `concorde task escalate` records its escalations, the primary
-worktree's `.concorde/locks/`, where those runs take the
-[workspace lock](../../glossary.json#concept.workspace-lock) and their [run locks](../../glossary.json#concept.run-lock), and the user's
-package caches. Reads and the network stay open. The shell's sandbox reaches the network through a proxy of its own on `localhost`, named in the proxy variables of the commands
-it runs, since those commands have a network namespace holding only a loopback interface; the
-workers of the Operations a session starts pass that proxy on ([Workers' proxy
-rule](../../execution/workers/launch.md#proxy)), so they reach their model endpoints, one on
-`localhost` included, as a main session's workers do, while their own tools keep no network.
-
-**The start.** Task sessions writes the session's
+Task sessions writes the session's
 [session boundary](../../glossary.json#concept.session-boundary) — a settings file and the Harness's
 task-session [write hook](../../glossary.json#concept.write-hook) with the task's paths embedded —
 under `.concorde/tasks/severity/runtime/`, with an MCP configuration `mcp.json` there that gives
 the session the [project MCP server](../../glossary.json#concept.project-mcp-server), starts
-`claude --bg` in the task worktree with that configuration and the
-task-session guidance and the task's goal, Modules, decision log and the main agent's session name
-as its first prompt, and records the started session as a node `sessions/<id>/` of the task's
-trace, with status `unknown`, since nothing tells Concorde when a Claude Code session ends.
-`--main` is required: a start without it is refused with `invalid_input`. `--dry-run` writes the boundary and prints the command
-without starting anything. A task that is closed or failed, a missing worktree, or a Claude Code
-that does not report a started background session is refused (`task_closed`, `missing_worktree`,
+`claude --bg` in the task worktree with that configuration and the task-session guidance and the
+task's goal, Modules, decision log and the main agent's session name as its first prompt, and
+records the started session as a node `sessions/<id>/` of the task's trace, with status `unknown`,
+since nothing tells Concorde when a Claude Code session ends. `--main` is required: a start without
+it is refused with `invalid_input`. `--dry-run` writes the boundary and prints the command without
+starting anything. A task that is closed or failed, a missing worktree, or a Claude Code that does
+not report a started background session is refused (`task_closed`, `missing_worktree`,
 `session_failed`) with Claude Code's output in the detail. The session receives the main agent's
 answers and sends its reports through SendMessage; `claude stop` stops it.
 
@@ -76,17 +178,57 @@ The server is passed explicitly because a background session does not load the p
 (`CONCORDE_CHANNEL=0`): Claude Code does not wake a background session with channel events. A
 probe on 2026-09-29 (Claude Code 2.1.284) started a `claude --bg` session with
 `--dangerously-load-development-channels server:concorde`; the server loaded and registered a wait
-on a held [merge lock](../../glossary.json#concept.merge-lock), and when the lock was released the idle session was never woken. So
-`register_wait` answers a task session with the `concorde task wait` command, which it runs in
-background Bash and is woken by when it returns. The server runs as every MCP server does, outside the Bash sandbox, and its tools may
-change any task's record: the developer accepted that a task session can reach the task
-management tools, which are no boundary, so the guidance, not the boundary, keeps a task session
-from merging or closing its task.
+on a held [merge lock](../../glossary.json#concept.merge-lock), and when the lock was released the
+idle session was never woken. So `register_wait` answers a task session with the `concorde task
+wait` command, which it runs in background Bash and is woken by when it returns. The server runs as
+every MCP server does, outside the Bash sandbox, and its tools may change any task's record: the
+developer accepted that a task session can reach the task management tools, which are no boundary,
+so the guidance, not the boundary, keeps a task session from merging or closing its task.
+
+## The session boundary
+
+A task session may write only what working its task needs: with its file tools, the task worktree
+and the task's decision log; with its shell, also the repository's Git directory, where its commits
+on the task branch are written, the task's own folder `.concorde/tasks/<task>/` of the primary
+worktree, which holds the workspace folder the task worktree's
+[workspace binding](../../glossary.json#concept.workspace-binding) names for every run started
+there, including the [workflow record](../../glossary.json#concept.workflow-record), and the task's
+record and trace, where `concorde task escalate` records its escalations, the primary worktree's
+`.concorde/locks/`, where those runs take the
+[workspace lock](../../glossary.json#concept.workspace-lock) and their
+[run locks](../../glossary.json#concept.run-lock), and the user's package caches. Reads and the
+network stay open. The shell's sandbox reaches the network through a proxy of its own on
+`localhost`, named in the proxy variables of the commands it runs, since those commands have a
+network namespace holding only a loopback interface; the workers of the Operations a session starts
+pass that proxy on ([Workers' proxy rule](../../execution/workers/launch.md#proxy)), so they reach
+their model endpoints, one on `localhost` included, as a main session's workers do, while their own
+tools keep no network.
+
+The session boundary guards against mistakes, not a malicious session. It costs only generated
+settings (see the [Harness](../../glossary.json#concept.session-boundary) for what they hold).
+Nobody answers permission prompts in a background session, so it runs in Claude Code's `auto` mode:
+a classifier approves or refuses each action instead of asking, an extra check inside the hook and
+sandbox, which stay the boundary. `bypassPermissions` would skip that check, and Claude Code starts
+a background session in it only after the developer accepted a disclaimer once. A model without
+`auto` mode would fall back to asking and stall, so `--model` must name one that has it. Reads stay
+open, because the session needs the whole project's context, and so does the network: a command
+that did not foresee a host fails, sometimes only partly, as when a package manager falls back to
+its cache or Git cannot fetch an object of a partial clone, and keeping the network closed would
+guard against exfiltration, which is outside what this boundary is for. Claude Code's sandbox keeps
+the repository's `.git/config` and Git's hooks read-only inside the writable Git directory, since
+writing them could run code outside the sandbox; a session commits but cannot register a submodule,
+so the main agent prepares that before starting it.
+
+Tools that MCP servers add are outside the write hook, which guards Edit and Write only. A sandbox
+makes only existing paths writable, so Task sessions creates the writable directories that do not
+exist yet, such as the task's `.concorde/locks/`, before a session starts.
+
+## When the task ends
 
 <a id="ending-claude-sessions"></a>
 
-**When the task ends**, Tasks' close hands its task sessions, every one the task's trace lists, to
-Task sessions at three points:
+Tasks' close hands its task sessions, every one the task's trace lists, to Task sessions at three
+points:
 
 - A close without a merge (`--completed` or `--failed`) first runs `claude stop <id>` for each, so
   no session goes on working in the worktree the close removes or starts another run there; a
@@ -109,56 +251,20 @@ Task sessions at three points:
   lost, never fails the close, and the close's `warnings` name the session, the whole reason and
   the command that removes it by hand.
 
+## Escalating
+
 A task session escalates what it may not decide with `concorde task escalate --by task-session`,
 which Tasks records as a link of level `task-session` on top of the failed runs' chains; the main
 agent adds its own link above it when the developer must decide. A task never asks the developer
 in place: the session gathers every decision it needs, records each as an escalation and reports
 them together, in one SendMessage, and the main agent answers them together. Exact commands and
-error codes are in the [contracts](contracts.md), the obligations in the [requirements](requirements.md) and
-the behaviour in the [scenarios](scenarios.md).
+error codes are in the [contracts](contracts.md), the obligations in the
+[requirements](requirements.md) and the behaviour in the [scenarios](scenarios.md).
 
-## Design
+## What the started session relies on
 
-A task session is not a level of its own but the task level delegated, and the main agent delegates
-every task. Keeping the main agent out of task worktrees keeps it free to talk with the developer
-and to answer every session while tasks run, and puts every task under a write boundary, which the
-main agent itself does not have. A task session escalates to the main agent while the main agent
-escalates to the developer, it has a start and ends with its task, and it never merges its task
-into the primary branch; the one merge it makes is the primary branch into its task branch when the
-main agent answers a merge conflict, a change inside its own worktree and branch. Keeping its
-program and configuration the main agent's is what makes the task the main agent's own work at a
-smaller scale: an isolated configuration, such as a worker gets, would give it other tools and
-instructions than the main agent's.
-
-### Its place in the levels of work
-
-A task session plays level 2 of Concorde's [levels of work](../../module.md#the-levels-of-work), the
-task level, in place of the main agent. Only the main agent at level 1 calls this
-[Module](../../glossary.json#concept.module), with `concorde task session` from the primary
-worktree; the call arrives through Tasks, whose command line checks the task and the options before
-handing it here. Task sessions then starts one agent session in the task worktree, and that
-session, not this Module, does the task's work: following its guidance, it changes Specs and code,
-starts workflows (level 3) and runs Operations and
-[execution commands](../../glossary.json#concept.execution-command) (level 4) inside its task
-worktree, and never reaches a worker except through an Operation. Its results go up to level 1
-only, never to the developer: the session reports to the main agent with SendMessage. What the
-session may not decide it escalates with `concorde task escalate --by task-session`, a link of level `task-session` on top of
-the failed runs' chains, for the main agent to decide or to pass on with its own link.
-
-```d2 illustrative
-main: Main session
-module: Task sessions
-tasksession: "Task session (agent, level 2)"
-workflows: Workflows
-runs: "Runs: Operations and execution commands"
-workers: Workers
-main -> module: starts
-module -> tasksession: starts in its task worktree
-tasksession -> workflows: starts in its task worktree
-tasksession -> runs: starts in its task worktree
-workflows -> runs: runs one at a time
-runs -> workers: an Operation launches
-```
+These three collaborations are the started session's, which follows its guidance; Task sessions
+itself starts no workflow or run and owes them nothing.
 
 <a id="uses-workflows"></a>
 
@@ -196,52 +302,9 @@ never starts a worker or another agent itself.
 <a id="uses-operations"></a>
 
 **Operations** provides the catalog of the Operations a task session may run in its task, the same
-the main agent would run, with the same arguments. Task sessions itself starts no workflow or run:
-this collaboration and those with Workflows and Execution are the started session's, which follows
-its guidance, and Task sessions owes them nothing.
+the main agent would run, with the same arguments.
 
-How a task session travels over time, from the main agent's start to the end of its task:
-
-```d2 illustrative
-shape: sequence_diagram
-main: Main agent (level 1)
-tasks: Tasks
-starter: Session starter
-session: Task session (level 2)
-main -> tasks: concorde task session <task> --main <session>
-tasks -> starter: start, after Tasks' checks
-starter -> starter: write the session boundary
-starter -> session: "claude --bg: guidance, goal, Modules, decision log"
-starter -> tasks: record the session
-session -> session: work the task: workflows, Operations, delivery
-session -> main: "SendMessage: delivered, or every escalation" {style.stroke-dash: 3}
-main -> session: "SendMessage: every answer" {style.stroke-dash: 3}
-main -> tasks: concorde task merge or close
-tasks -> starter: keep the transcript, remove the session
-```
-
-### The session boundary
-
-The session boundary guards against mistakes, not a malicious session. It costs only generated
-settings (see the [Harness](../../glossary.json#concept.session-boundary)
-for what they hold). Nobody answers permission prompts in a background session, so it runs in
-Claude Code's `auto` mode: a classifier approves or refuses each action instead of asking, an
-extra check inside the hook and sandbox, which stay the boundary. `bypassPermissions` would skip
-that check, and Claude Code starts a background session in it only after the developer accepted a
-disclaimer once. A model without `auto` mode would fall back to asking and stall, so `--model` must
-name one that has it. Reads stay open, because the session needs the whole project's context, and
-so does the network: a command that did not foresee a host fails, sometimes only partly, as when a
-package manager falls back to its cache or Git cannot fetch an object of a partial clone, and
-keeping the network closed would guard against exfiltration, which is outside what this boundary is
-for. Claude Code's sandbox keeps the repository's `.git/config` and Git's hooks read-only inside
-the writable Git directory, since writing them could run code outside the sandbox; a session
-commits but cannot register a submodule, so the main agent prepares that before starting it.
-
-Tools that MCP servers add are outside the write hook, which guards Edit and Write only. A sandbox
-makes only existing paths writable, so Task sessions creates the writable directories that do not
-exist yet, such as the task's `.concorde/locks/`, before a session starts.
-
-### Inside
+## Inside and around it
 
 ```d2
 tasksession: Task sessions {
@@ -258,8 +321,6 @@ starts `claude --bg`, and ends a task's task sessions: their stop, the copy of t
 their removal, which Tasks' close calls. The boundary files themselves, the task-session write hook
 among them, are the [Harness](../../harness/module.md)'s. The tests (`test_session.py` under
 `tests/concorde/tasks/`) run on real Git repositories with a fake `claude`.
-
-### Around it
 
 A start touches one piece of each provider: the session starter writes the Harness's boundary,
 prompts the session with the Main session's guidance and records the session in the task's trace
