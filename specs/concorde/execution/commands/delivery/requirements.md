@@ -43,8 +43,7 @@ A delivery run that ends `blocked` SHALL leave the workspace, its index and its 
 
 ### req.delivery.exact-content — The commit holds what was validated
 
-A delivery commit SHALL contain exactly the uncommitted changes the readiness examined and the
-metadata changed by the applied confirmations.
+A delivery commit SHALL contain exactly the uncommitted changes the readiness examined.
 
 Its parent is fixed by [req.delivery.bound-branch](#req.delivery.bound-branch).
 

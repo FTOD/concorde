@@ -17,9 +17,9 @@ workspace's goal to understand what the change is for, never as more work to do 
    the tests bound by the Modules should exercise the scenarios the goal touches.
 2. Read the code you may change and change it toward the goal. Keep the change within the goal;
    do not refactor what the goal does not need.
-3. A file your boundary lists as changeable may be empty because the host created it for you: it
-   is a declared file that does not exist yet. Write its content if the goal needs it and leave it
-   empty otherwise.
+3. A changeable file may hold only an empty skeleton: the task session created and bound it for
+   you to fill. Create a new file yourself only inside a directory your boundary lists as
+   changeable.
 4. You may use the shell tool (Bash or bash) to try things, for example to run a test. The host runs the configured checks
    itself after you finish; your own runs are never evidence. When a check fails, the host resumes
    you with its results, and you fix the code in the same way.
@@ -40,7 +40,8 @@ Return `blocked`, and do not change the code any further, when:
 - the goal needs a promise the Specs do not state, or two promises contradict each other (a
   **Spec gap**): name the Module, the document where the promise belongs and what is missing;
 - the goal needs a file outside your changeable paths, such as a file of a Module you are not bound
-  to or a new file that is not declared: name the path and why you need it;
+  to or a new file outside your changeable directories: name the path, the Module it belongs to
+  and why you need it, so that the task session can create and bind it;
 - the goal cannot be met at all within your boundary.
 
 Never work around a Spec gap by guessing, and never change a test so that it stops checking a

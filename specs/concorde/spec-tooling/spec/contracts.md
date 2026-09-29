@@ -243,10 +243,10 @@ computed from declarations alone:
 | --- | --- | --- |
 | [Spec context](../../glossary.json#concept.spec-context) | both members of each owned and selected document, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context` |
 | [External context](../../glossary.json#concept.external-context) | per external inclusion: the entry, whether it is a directory, whether it exists, the readable files below it and one digest over their paths and bytes | `external_context`; `external_inclusions` lists the declared entries, `external_files` and `external_digest` expand and digest one entry |
-| Implementation context | the names of the existing files the realizations bind, and of pending exact entries | `implementation_context`; `bound_files` lists only the existing bound files |
+| Implementation context | the names of the files the realizations bind | `implementation_context`; `bound_files` lists the same files |
 | Spec scope | both members of each owned document, and the project glossary, of whose entries only those the Module owns or adds are its to change | `spec_scope` |
-| Implementation scope | the realization entries, pending entries included; a directory entry covers every present and future file below it | `implementation_scope`; `missing_entries` lists the entries not yet on disk |
-| ProjectImplementation | the names of the files every Module's realizations bind, with their pending exact entries, and every Module's external inclusions; the same for every Module | `project_implementation` |
+| Implementation scope | the realization entries; a directory entry covers every present and future file below it | `implementation_scope`; `missing_entries` lists the entries not on disk, which `CHK.binds.exists` reports |
+| ProjectImplementation | the names of the files every Module's realizations bind and every Module's external inclusions; the same for every Module | `project_implementation` |
 | selected-by | the Modules whose Spec context contains a document | `selected_by` |
 | referenced-by | the declarations that name a concept, requirement, scenario or contract, each with its Module | `referenced_by` |
 | implemented-by | the Modules whose realizations bind a path or list it as an entry | `implemented_by` |
@@ -341,14 +341,14 @@ The sets contribute these paths:
 - Spec context and Spec scope: both members of each document, as exact paths. Spec scope also
   contributes the project glossary, so a task that writes Specs may change the entries its bound
   Modules own; which entries it changed is checked after the task, not by the grant.
-- Implementation context: the existing files the realizations bind, expanded below directory
-  entries by the [exclusion rule](#implementation-exclusions), and the pending exact entries.
-- Implementation scope: each realization entry as declared, pending entries included; an entry
-  ending with `/` covers every present and future file below it under the exclusion rule.
+- Implementation context: the files the realizations bind, expanded below directory entries by the
+  [exclusion rule](#implementation-exclusions).
+- Implementation scope: each realization entry as declared; an entry ending with `/` covers every
+  present and future file below it under the exclusion rule.
 - External context: each external inclusion's declared path; a directory path ends with `/` and
   covers the readable files below it.
-- ProjectImplementation: the files every registered Module's realizations bind, their pending exact
-  entries and their external inclusions, so a task that reads code reads the code it uses and the
+- ProjectImplementation: the files every registered Module's realizations bind and their external
+  inclusions, so a task that reads code reads the code it uses and the
   code that uses it. Only the bound Modules' own scopes are ever `rw`.
 
 The computation runs in this order. Over every bound Module and every set, a path receives the
@@ -575,7 +575,6 @@ keys are refused with a `FrontMatterError` naming the file and line.
 ```python
 file_change(root: Path, path: str, content: str) -> dict
 apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]
-confirm_pending_files(root: Path, package_root: Path | None = None) -> tuple[list[dict], list[str]]
 ```
 
 `file_change` returns `{path, before_digest, content}`, where `before_digest` is the digest of the
@@ -604,12 +603,6 @@ A failure then propagates as follows:
 These guarantees hold for failures the process observes as an exception. A killed or interrupted
 process restores nothing: each file already renamed into place keeps its new content, every other
 file keeps its original bytes, and `.concorde-write-` temporary files may remain beside them.
-
-`confirm_pending_files` removes from every realization's `pending` the entries that now exist. It
-rewrites only the affected metadata members, in one file transaction whose final check requires the
-project to load and no other Spec source to have changed meanwhile. It returns the confirmed
-entries, each as `{module, realization, path}`, and the entries that are still missing. It always
-loads the repository from the files on disk, because only files on disk can be confirmed.
 
 ## Initialization {#initialization}
 

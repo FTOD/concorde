@@ -1,5 +1,4 @@
-"""The ``concorde task-validation`` execution command end to end on a fixture task, and the
-confirmation service."""
+"""The ``concorde task-validation`` execution command end to end on a fixture task."""
 
 from __future__ import annotations
 
@@ -14,7 +13,6 @@ from concorde.harness import checks as check_service
 from concorde.harness.check_executor import CheckSandboxError
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
-from concorde.validation import confirmations
 from concorde.validation.command import READINESS_SCHEMA, TASK_VALIDATION
 from concorde.validation.measurement import measure
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -61,6 +59,7 @@ class ValidateTests(unittest.TestCase):
         readiness = envelope["output"]
         self.assertTrue(readiness["ready"])
         self.assertEqual(readiness["blocking"], [])
+        self.assertNotIn("confirmations", readiness)
         self.assertEqual(
             readiness["inputs"], measure(self.worktree, readiness["inputs"]["base"])
         )
@@ -349,28 +348,6 @@ class ValidateTests(unittest.TestCase):
         self.assertTrue(load["detail"])
         self.assertEqual(readiness["checks"], [])
 
-    @verifies("scenario.validation.confirmation")
-    def test_a_filled_pending_entry_becomes_a_confirmation(self):
-        (self.worktree / "src/new.py").write_text("NEW = 1\n")
-        readiness = self.project.validate()[1]["output"]
-        self.assertTrue(readiness["ready"], readiness["blocking"])
-        metadata = self.worktree / "specs/a/module.md.json"
-        self.assertEqual(
-            readiness["confirmations"],
-            [
-                {
-                    "module": "module.a",
-                    "realization": "realization.a.new",
-                    "entry": "src/new.py",
-                    "metadata": "specs/a/module.md.json",
-                    "metadata_digest": SpecRepository(self.worktree)
-                    .units["specs/a/module.md"]
-                    .metadata.digest,
-                }
-            ],
-        )
-        self.assertIn('"src/new.py"', metadata.read_text())  # nothing was cleared yet
-
     @verifies("scenario.validation.inputs-changed")
     def test_a_worktree_changing_during_the_run_gets_no_readiness(self):
         original = check_service.run_checks
@@ -498,65 +475,6 @@ class SharedFileTests(unittest.TestCase):
             sorted(item["check"] for item in readiness["checks"]),
             ["check.a", "check.b"],
         )
-
-
-class ConfirmationTests(unittest.TestCase):
-    def setUp(self):
-        self.project = ValidationProject(self)
-        self.worktree = self.project.task()
-        (self.worktree / "src/new.py").write_text("NEW = 1\n")
-        self.readiness = self.project.validate()[1]["output"]
-        self.metadata = self.worktree / "specs/a/module.md.json"
-
-    def pending(self) -> dict:
-        value = json.loads(self.metadata.read_text())
-        return {
-            item["id"]: item.get("pending", [])
-            for item in value["defines"]
-            if item["type"] == "realization"
-        }
-
-    @verifies("scenario.validation.confirm")
-    def test_confirmations_are_applied_exactly(self):
-        before = self.metadata.read_bytes()
-        backups = confirmations.apply(self.worktree, self.readiness["confirmations"])
-        self.assertEqual(backups, {"specs/a/module.md.json": before})
-        self.assertEqual(
-            self.pending(), {"realization.a.code": [], "realization.a.new": []}
-        )
-        from concorde.spec.validation import validate_repository
-
-        errors = [
-            f
-            for f in validate_repository(self.worktree).findings
-            if f.severity == "error"
-        ]
-        self.assertEqual(errors, [])
-        self.assertEqual(
-            sorted(line[3:] for line in status_lines(self.worktree).splitlines()),
-            ["specs/a/module.md.json", "src/new.py"],
-        )
-
-    @verifies("scenario.validation.confirm-refused")
-    def test_a_changed_document_stops_confirmation(self):
-        value = json.loads(self.metadata.read_text())
-        value["extensions"] = {"note": "changed"}
-        self.metadata.write_text(json.dumps(value, indent=2) + "\n")
-        changed = self.metadata.read_bytes()
-        with self.assertRaises(confirmations.ConfirmationRefused) as refused:
-            confirmations.apply(self.worktree, self.readiness["confirmations"])
-        self.assertEqual(refused.exception.code, "stale_confirmation")
-        self.assertEqual(self.metadata.read_bytes(), changed)
-
-    @verifies("scenario.validation.confirm-invalid")
-    def test_a_structural_error_after_confirmation_rolls_back(self):
-        other = self.worktree / "specs/b/module.md"
-        other.write_text(other.read_text() + BROKEN_LINK)
-        before = self.metadata.read_bytes()
-        with self.assertRaises(confirmations.ConfirmationRefused) as refused:
-            confirmations.apply(self.worktree, self.readiness["confirmations"])
-        self.assertEqual(refused.exception.code, "invalid_after_confirmation")
-        self.assertEqual(self.metadata.read_bytes(), before)
 
 
 class ContractTests(unittest.TestCase):

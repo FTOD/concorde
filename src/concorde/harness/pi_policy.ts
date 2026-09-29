@@ -137,9 +137,9 @@ export function writeDecision(policy: Policy, path: string): string | null {
   if (listed(relative, policy.names))
     return `only the name of ${relative} is visible to this task`;
   return (
-    `${relative} is not in this task's grant; a file no Module declares must first be ` +
-    "declared as a pending file of a Module through a specify task, and a file another " +
-    "Module declares needs that Module bound to the task"
+    `${relative} is not in this task's grant; a new file outside the bound directories is ` +
+    "created and bound to a Module by the task level before a worker fills it, and a " +
+    "file another Module binds needs that Module bound to the task"
   );
 }
 

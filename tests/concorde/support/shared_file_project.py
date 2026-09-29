@@ -1,4 +1,4 @@
-"""A three-Module Protocol 15 project in which Modules A and B both bind ``source/shared.py``."""
+"""A three-Module Protocol 16 project in which Modules A and B both bind ``source/shared.py``."""
 
 from __future__ import annotations
 
@@ -22,14 +22,13 @@ from .spec_project import (
 PACKAGE = Path(__file__).resolve().parents[3]
 
 
-def realization(identity, title, meaning, entries, pending=()):
+def realization(identity, title, meaning, entries):
     return {
         "id": identity,
         "type": "realization",
         "title": title,
         "meaning": meaning,
         "entries": list(entries),
-        "pending": list(pending),
     }
 
 
@@ -191,13 +190,11 @@ class SharedFileProject:
         return SpecRepository(self.root, PACKAGE)
 
     def relist(self, entries, module_id="module.a"):
-        """Rewrite realization entries: ``{realization id: (entries, pending)}``."""
+        """Rewrite realization entries: ``{realization id: entries}``."""
         value = self.metadata(module_id)
         for record in value["defines"]:
             if record["id"] in entries:
-                files, pending = entries[record["id"]]
-                record["entries"] = list(files)
-                record["pending"] = list(pending)
+                record["entries"] = list(entries[record["id"]])
         self.save_metadata(module_id, value)
 
     def configure_checks(self, checks):

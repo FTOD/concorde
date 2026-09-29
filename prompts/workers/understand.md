@@ -35,12 +35,12 @@ nothing: you have no tool that writes, and any change to the task worktree fails
   promise belongs, what is `missing`, why the goal needs it (`needed_for`) and a `suggestion` for
   the repair. `gaps` is empty exactly when `sufficient` is `true`.
 - `plan`: `null` unless a plan was requested **and** the Specs are sufficient. When both hold, give
-  a plan: a `summary`, the `modules` to change, the files to declare as `pending` entries (each with
-  its `module`, the `realization` it belongs to, the project-relative `path` and a `reason`), the
-  ordered `steps` (each names in `run` an Operation among `understand`, `specify`, `implement`,
-  `test`, `spec_review` and `code_review`, or one of the commands `task-validation` and
-  `delivery`, with its `modules` and `purpose`) and the open `decisions` the main agent has to
-  take.
+  a plan: a `summary`, the `modules` to change, the `new_files` the change needs that do not exist
+  yet, which the task session creates and binds before the run that fills them (each with the
+  `module` that will bind it, the project-relative `path` and a `reason`), the ordered `steps`
+  (each names in `run` an Operation among `understand`, `specify`, `implement`, `test`,
+  `spec_review` and `code_review`, or one of the commands `task-validation` and `delivery`, with
+  its `modules` and `purpose`) and the open `decisions` the main agent has to take.
 
 Name only Module identities that exist in the Specs you read. The host fails the run if the
 assessment names an unknown Module or breaks the rules above.

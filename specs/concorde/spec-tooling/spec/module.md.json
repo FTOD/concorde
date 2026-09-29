@@ -38,8 +38,7 @@
         "src/concorde/spec/repository.py",
         "src/concorde/spec/repository_base.py",
         "src/concorde/spec/syntax.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.spec.errors",
@@ -49,8 +48,7 @@
       "entries": [
         "src/concorde/spec/errors.py",
         "tests/concorde/spec/test_errors.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.spec.grants",
@@ -60,8 +58,7 @@
       "entries": [
         "src/concorde/spec/grants.py",
         "tests/concorde/spec/test_grants.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.spec.validator",
@@ -73,8 +70,7 @@
         "src/concorde/spec/registry.py",
         "src/concorde/spec/validation.py",
         "src/concorde/spec/verification.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.spec.typed-values",
@@ -85,8 +81,7 @@
         "src/concorde/spec/frontmatter.py",
         "src/concorde/spec/schema.py",
         "src/concorde/spec/typed_data.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.spec.transactions",
@@ -94,10 +89,8 @@
       "title": "Transaction writer",
       "meaning": "#realization.spec.transactions",
       "entries": [
-        "src/concorde/spec/changes.py",
-        "src/concorde/spec/content_changes.py"
-      ],
-      "pending": []
+        "src/concorde/spec/changes.py"
+      ]
     },
     {
       "id": "realization.spec.initializer",
@@ -106,8 +99,7 @@
       "meaning": "#realization.spec.initializer",
       "entries": [
         "src/concorde/spec/initialize.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.spec.protocol-text",
@@ -116,8 +108,7 @@
       "meaning": "#realization.spec.protocol-text",
       "entries": [
         "protocol/"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.spec.protocol-assets",
@@ -127,8 +118,7 @@
       "entries": [
         "prompts/protocol/",
         "protocol/manifest.json"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.spec.tests",
@@ -145,8 +135,7 @@
         "tests/concorde/spec/test_requirements_and_verification.py",
         "tests/concorde/spec/test_typed_data.py",
         "tests/concorde/spec/test_structured_results.py"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

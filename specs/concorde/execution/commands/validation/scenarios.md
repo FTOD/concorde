@@ -85,13 +85,6 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the configuration digest differs from the one measured before, as it would for a changed `.concorde/config.json`
 - AND so does the input digest
 
-### scenario.validation.confirmation — A filled pending entry becomes a confirmation
-
-- GIVEN a realization entry marked pending whose file an `implement` run created
-- WHEN `task-validation` runs
-- THEN the entry is listed in `confirmations` with its declaring document and that document's digest
-- AND it is not a blocking finding
-
 ## Failures
 
 ### scenario.validation.inputs-changed — The worktree changes during the run
@@ -124,25 +117,3 @@ readiness is defined in the [contracts](contracts.md).
 - AND the error's cause is Check execution's `check_sandbox_unavailable` link
 - AND no check runs outside the boundary
 
-## Confirmation for Delivery
-
-### scenario.validation.confirm — Confirmations are applied exactly
-
-- GIVEN a ready readiness with one confirmation whose declaring document is unchanged
-- WHEN Delivery asks Validation to apply the confirmations
-- THEN the pending marker of exactly that entry is cleared in one [file transaction](../../../glossary.json#concept.file-transaction)
-- AND the Specs validate without a structural error
-
-### scenario.validation.confirm-refused — A changed document stops confirmation
-
-- GIVEN a confirmation whose declaring document no longer has the recorded digest
-- WHEN Delivery asks Validation to apply the confirmations
-- THEN the application is refused
-- AND every Spec document is left as it was
-
-### scenario.validation.confirm-invalid — A confirmation that would break the Specs is refused
-
-- GIVEN a confirmation whose clearing would leave a structural error
-- WHEN Delivery asks Validation to apply the confirmations
-- THEN the application is refused
-- AND every Spec document is left as it was

@@ -1,4 +1,4 @@
-"""Protocol 15 reading syntax: anchors, sections, definitions, term links and diagrams.
+"""Protocol 16 reading syntax: anchors, sections, definitions, term links and diagrams.
 
 Every parser here reads one reading document's text and returns what it declares together with
 the problems it found, each tagged with the identity of the check it violates. Nothing here reads

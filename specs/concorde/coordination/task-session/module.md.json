@@ -90,8 +90,7 @@
       "entries": [
         "src/concorde/tasks/session.py",
         "tests/concorde/tasks/test_session.py"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

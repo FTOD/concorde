@@ -20,7 +20,8 @@ The Operation returns a [run result](../../../glossary.json#concept.run-result) 
 [assessment contract](contracts.md#contract.understanding.assessment): for each bound
 [Module](../../../glossary.json#concept.module), what it promises that matters for the goal, and
 whether the Spec is **sufficient**. When it is and a plan was requested, the plan names the Modules
-to change, the files to declare as pending entries and where, the ordered next runs — the
+to change, the new files the change needs, which the task level creates and binds before the run
+that fills them, the ordered next runs — the
 Operations `understand`, `specify`, `implement`, `test`, `spec_review` and `code_review`, and the
 [execution commands](../../../glossary.json#concept.execution-command) `task-validation` and
 `delivery` that end a task's work — and the open decisions left to the task level. The plan has
@@ -130,8 +131,7 @@ file names of their implementation context, and nothing to write.
 
 The worker gets only its [worker backend](../../../glossary.json#concept.worker-backend)'s reading
 tools (Read, Glob and Grep on Claude Code; `read`, `grep`, `find` and `ls` on pi) — no editing,
-shell or web tool and no MCP server. Pending files are not pre-created and checks are not run, since
-nothing is writable or executed; a malformed assessment is not repaired either, so every accepted
+shell or web tool and no MCP server. Checks are not run, since nothing is writable or executed; a malformed assessment is not repaired either, so every accepted
 assessment is one reading of one frozen grant.
 
 The Operation treats the assessment as the worker's claim, verifying only what it can decide from

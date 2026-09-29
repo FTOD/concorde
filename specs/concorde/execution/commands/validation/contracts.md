@@ -47,7 +47,7 @@ the same workspace.
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -58,7 +58,6 @@ the same workspace.
       "modules",
       "blocking",
       "warnings",
-      "confirmations",
       "checks"
     ],
     "properties": {
@@ -161,42 +160,6 @@ the same workspace.
           "$ref": "#/$defs/finding"
         }
       },
-      "confirmations": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "module",
-            "realization",
-            "entry",
-            "metadata",
-            "metadata_digest"
-          ],
-          "properties": {
-            "module": {
-              "type": "string",
-              "minLength": 1
-            },
-            "realization": {
-              "type": "string",
-              "minLength": 1
-            },
-            "entry": {
-              "type": "string",
-              "minLength": 1
-            },
-            "metadata": {
-              "type": "string",
-              "minLength": 1
-            },
-            "metadata_digest": {
-              "type": "string",
-              "pattern": "^sha256:[0-9a-f]{64}$"
-            }
-          }
-        }
-      },
       "checks": {
         "type": "array",
         "items": {
@@ -278,7 +241,7 @@ the same workspace.
       }
     }
   },
-  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path with its mode and digest; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. confirmations lists every pending realization entry whose file exists, with the metadata document declaring it and that document's digest, for Delivery to clear; blocking and warnings are those of the Specs as they read with these markers cleared. checks lists one result per configured check run, in run order, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. A behaviour or field change increments the version.",
+  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path with its mode and digest; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path), check for a configured check that failed or timed out (ref is the check identity) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. A behaviour or field change increments the version.",
   "example": {
     "workspace": "severity",
     "ready": true,
@@ -309,15 +272,6 @@ the same workspace.
         "kind": "structural",
         "ref": "CONCORDE-COVERAGE-001 specs/concorde/issues/scenarios.md",
         "detail": "no test declares that it verifies scenario.issues.severity"
-      }
-    ],
-    "confirmations": [
-      {
-        "module": "module.issues",
-        "realization": "realization.issues.store",
-        "entry": "src/concorde/issues/severity.py",
-        "metadata": "specs/concorde/issues/module.md.json",
-        "metadata_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
       }
     ],
     "checks": [

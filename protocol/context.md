@@ -131,7 +131,7 @@ ProjectImplementation = ⋃ { ImplementationContext(M) ∪ ExternalContext(M) : 
 ```
 
 Exact entries and files below directory prefixes resolve under an explicit deterministic exclusion
-rule. Pending entries record intent without pretending that missing content exists.
+rule. Every entry exists, so implementation context never names missing content.
 
 Document members never belong to implementation context. When another Module binds the same file,
 a change to it concerns that Module too; this adds neither that Module's Specs nor its code to this

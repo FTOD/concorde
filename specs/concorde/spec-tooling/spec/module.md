@@ -276,7 +276,6 @@ core: Spec core {
   }
   writer: Transaction writer {
     "changes.py"
-    "content_changes.py"
   }
   types: Typed values {
     "typed_data.py"
@@ -316,7 +315,7 @@ Python sources are under `src/concorde/spec/` and tests under `tests/concorde/sp
 - <a id="realization.spec.initializer"></a>**Project initializer** proposes and applies the first
   Spec of a project.
 - <a id="realization.spec.transactions"></a>**Transaction writer** applies digest-bound file
-  transactions and confirms pending entries whose files now exist.
+  transactions.
 - <a id="realization.spec.typed-values"></a>**Typed values** hold the registration table, the offline
   checker that checks data as JSON Schema does, shared schema building blocks, strict JSON, safe
   paths and the front-matter parser.
@@ -363,9 +362,10 @@ granted at most `ro`, because the installer replaces it on every update and the 
 the project are configured by it.
 
 The context identity covers no implementation contents, so a worker's writes to code never make its
-context stale; a task that writes Specs changes its own context identity. The grant does not yet
-mark which of its entries are pending, so the Operation learns which files to create by checking
-what exists; whether it should is not settled.
+context stale; a task that writes Specs changes its own context identity. Every path a grant lists
+from a realization exists, since a realization binds only paths that exist: a new file outside the
+bound directories is created and bound at the task level before the grant is computed, so the grant
+needs no mark for files still to be created.
 
 The computation runs in a fixed order ([definition](contracts.md#grants)), so that the refusal of a
 shared file sees every level the task type assigns and an installed file is lowered only after it:
@@ -403,8 +403,8 @@ Registration inverts a dependency that would otherwise point upward: a record's 
 schema, and Spec core stays below every owner. A reference to another type is resolved by name at
 check time, so an owner never imports the owner of a type it embeds. The registration table, the
 checker, the shared building blocks, strict JSON, the safe-path rules and the front-matter parser
-live together because they change together. Initialization, registry regeneration, pending-entry
-confirmation and other Modules' deterministic steps all write through file transactions, so a
+live together because they change together. Initialization, registry regeneration and other
+Modules' deterministic steps all write through file transactions, so a
 failure they observe never leaves half an update behind, and a restore that fails is named instead
 of hidden.
 

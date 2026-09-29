@@ -152,7 +152,7 @@
       "id": "concept.delivery-commit",
       "title": "Delivery commit",
       "owner": "module.delivery",
-      "definition": "The commit Delivery creates on top of a workspace's branch it validated, holding the metadata its confirmations changed and every change not yet committed, and marked as the delivery of the workspace by its subject `concorde: deliver <workspace>` alone.",
+      "definition": "The commit Delivery creates on top of a workspace's branch it validated, holding every change not yet committed, and marked as the delivery of the workspace by its subject `concorde: deliver <workspace>` alone.",
       "explanation": "specs/concorde/execution/commands/delivery/module.md#concept.delivery-commit"
     },
     {
@@ -416,7 +416,7 @@
       "id": "concept.readiness",
       "title": "Readiness",
       "owner": "module.validation",
-      "definition": "The outcome of Validation's readiness steps in one `task-validation` or `delivery` run: whether the workspace may be delivered, with its blocking findings, the checks run and the pending entries to confirm, bound to a digest of the exact inputs examined.",
+      "definition": "The outcome of Validation's readiness steps in one `task-validation` or `delivery` run: whether the workspace may be delivered, with its blocking findings and the checks run, bound to a digest of the exact inputs examined.",
       "explanation": "specs/concorde/execution/commands/validation/module.md#concept.readiness"
     },
     {
@@ -582,7 +582,7 @@
       "id": "concept.spec-change",
       "title": "Spec change",
       "owner": "module.specification",
-      "definition": "The result of one specify run: the documents the worker changed, the documents the Operation created for it, the pending entries declared, the worker's account of the promises it changed, the Modules affected and the validation outcome.",
+      "definition": "The result of one specify run: the documents the worker changed, the documents the Operation created for it, the worker's account of the promises it changed, the Modules affected and the validation outcome.",
       "explanation": "specs/concorde/execution/operations/specification/module.md#concept.spec-change"
     },
     {

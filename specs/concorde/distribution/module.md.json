@@ -84,8 +84,7 @@
       "meaning": "#realization.distribution.descriptor",
       "entries": [
         "concorde.json"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.distribution.build",
@@ -95,8 +94,7 @@
       "entries": [
         "src/concorde/distribution/build.py",
         "src/concorde/distribution/prompt_resolver.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.distribution.command",
@@ -110,8 +108,7 @@
         "scripts/concorde.py",
         "scripts/concorde.sh",
         "scripts/concorde.ps1"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.distribution.protocol-copy-writer",
@@ -120,8 +117,7 @@
       "meaning": "#realization.distribution.protocol-copy-writer",
       "entries": [
         "src/concorde/distribution/project_defaults.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.distribution.installer",
@@ -133,8 +129,7 @@
         "src/concorde/distribution/install.py",
         "src/concorde/distribution/tools.py",
         "src/concorde/distribution/pi_runtime/"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.distribution.tests",
@@ -143,8 +138,7 @@
       "meaning": "#realization.distribution.tests",
       "entries": [
         "tests/concorde/distribution/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

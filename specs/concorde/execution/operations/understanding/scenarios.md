@@ -18,7 +18,7 @@ is in the [contracts](contracts.md).
 - GIVEN a workspace whose bound Modules state every promise a goal needs
 - WHEN the caller runs `understand` in it for them with the goal and `--plan`
 - THEN the result has status `ok` and a sufficient assessment with a plan
-- AND the plan names the Modules to change, the files to declare as pending entries with their Module and realization, and the ordered next runs
+- AND the plan names the Modules to change, the new files the change needs with the Module that will bind each, and the ordered next runs
 
 ### scenario.understanding.gap — A missing promise is reported, not inferred
 

@@ -32,10 +32,9 @@ established, not only the first, each of one kind:
 | `load` | the Specs fail to load at all |
 | `structural` | a [structural check](../../../glossary.json#concept.structural-check) error, e.g. a broken link or stale registry mirror, or one of the run's [Modules](../../../glossary.json#concept.module) that the workspace's registry no longer registers |
 | `unbound` | a changed path is not a Spec document, the glossary, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
-| `check` | a [configured check](../../../glossary.json#concept.configured-check) of a Module whose checks run failed or timed out, or Check execution could not run a Module's checks (see step 7) |
+| `check` | a [configured check](../../../glossary.json#concept.configured-check) of a Module whose checks run failed or timed out, or Check execution could not run a Module's checks (see step 6) |
 
-Warnings, such as missing scenario coverage, are reported but never block. A pending entry whose
-file now exists is not an error but a **confirmation**, cleared by Delivery on commit. Changed
+Warnings, such as missing scenario coverage, are reported but never block. Changed
 Modules bind a changed file or own a changed Spec document, found through the
 [impact indexes](../../../glossary.json#concept.impact-index); a shared file runs
 all its Modules' checks.
@@ -48,27 +47,26 @@ change of the workspace alters it.
 
 ### Deciding a readiness
 
-A run decides a readiness in nine steps. Steps 1, 2, 7 and 8 can fail the run, which then decides
-no readiness; steps 3 to 7 collect every blocking finding rather than stopping at the first, and
-step 9 saves what they found:
+A run decides a readiness in eight steps. Steps 1, 2, 6 and 7 can fail the run, which then decides
+no readiness; steps 3 to 6 collect every blocking finding rather than stopping at the first, and
+step 8 saves what they found:
 
 ```d2 illustrative
 direction: down
 branch: "1. Head on the bound branch?"
 measure: "2. Measure the inputs"
 structure: "3. Validate the Spec structure"
-sort: "4. Sort the findings"
-paths: "5. Every changed path\naccounted for?"
-modules: "6. Derive the changed Modules"
-checks: "7. Run the configured checks"
-remeasure: "8. Remeasure the inputs"
-save: "9. Save the readiness"
+paths: "4. Every changed path\naccounted for?"
+modules: "5. Derive the changed Modules"
+checks: "6. Run the configured checks"
+remeasure: "7. Remeasure the inputs"
+save: "8. Save the readiness"
 ok: "ok: ready"
 blocked: "blocked: not_deliverable,\none cause per finding"
 failed: "failed: no readiness\n(wrong_branch, measurement_failed,\nchecks_unavailable, inputs_changed)"
 branch -> measure: yes
-measure -> structure -> sort -> paths -> modules -> checks -> remeasure
-sort -> remeasure: "Specs fail to load:\nskip 5 to 7" {style.stroke-dash: 3}
+measure -> structure -> paths -> modules -> checks -> remeasure
+structure -> remeasure: "Specs fail to load:\nskip 4 to 6" {style.stroke-dash: 3}
 remeasure -> save: "digest unchanged"
 save -> ok: "no blocking finding"
 save -> blocked: "blocking findings"
@@ -171,35 +169,30 @@ validation always covers the whole workspace, since a
 | --- | --- | --- | --- |
 | 1 | Require the workspace's head to be on the branch its binding names | host | wrong or detached branch (`failed`) |
 | 2 | Measure inputs: head, base, changed paths' modes and digests, config digest, combined | host, read-only Git | Git can't report the changes (`failed`) |
-| 3 | Validate the workspace's Spec structure | Spec core | — (Specs that fail to load skip steps 5–7) |
-| 4 | Sort findings: errors block, filled pending entries become confirmations, warnings kept | host | — |
-| 5 | Require every changed path be accounted for, as the `unbound` kind lists | host, Spec core | — |
-| 6 | Derive the changed Modules via the impact indexes | Spec core | — |
-| 7 | Run the configured checks of the changed Modules, the run's Modules and every Module using one of them | Check execution | check boundary unavailable (`failed`, `checks_unavailable`); a check input changed (`failed`, `inputs_changed`) |
-| 8 | Remeasure inputs, compare the digest | host | digest changed (`failed`, `inputs_changed`) |
-| 9 | Save the readiness and return it | host | — |
+| 3 | Validate the workspace's Spec structure: errors block, warnings are kept | Spec core | — (Specs that fail to load skip steps 4–6) |
+| 4 | Require every changed path be accounted for, as the `unbound` kind lists | host, Spec core | — |
+| 5 | Derive the changed Modules via the impact indexes | Spec core | — |
+| 6 | Run the configured checks of the changed Modules, the run's Modules and every Module using one of them | Check execution | check boundary unavailable (`failed`, `checks_unavailable`); a check input changed (`failed`, `inputs_changed`) |
+| 7 | Remeasure inputs, compare the digest | host | digest changed (`failed`, `inputs_changed`) |
+| 8 | Save the readiness and return it | host | — |
 
-Steps 3–7 collect every blocking finding rather than stopping at the first: step 3 reads the Specs
-as they will look once confirmed, so a filled pending entry is no error, and an unbound path is
-reported once, at step 5. When the Specs fail to load, steps 5–7 are skipped and the load failure
+Steps 3–6 collect every blocking finding rather than stopping at the first; an unbound path is
+reported once, at step 4. When the Specs fail to load, steps 4–6 are skipped and the load failure
 itself blocks, naming the file and the loader's error. One of the run's Modules that the loaded
-registry does not register is a structural blocking finding. At step 7, Check execution's
+registry does not register is a structural blocking finding. At step 6, Check execution's
 `check_sandbox_unavailable` fails the run with `checks_unavailable`, and its `stale_evidence` with
 `inputs_changed`; any other error it raises for a Module's checks, such as a missing check input or
 an invalid check, is a blocking `check` finding naming the Modules whose checks could not run, and
 the other Modules' checks still run. Each of these keeps Check execution's own error link as its
 cause. Unlike an Operation, the command diagnoses the Specs itself, so
 the runner does not load them before the steps and these diagnoses always reach the caller as
-findings rather than as a refusal. Step 8 catches changes of the workspace during a check, which can
+findings rather than as a refusal. Step 7 catches changes of the workspace during a check, which can
 take minutes.
 
 A `task-validation` run writes nothing in the workspace; its checks' nodes with their logs and its
 readiness go to its trace node in the run store, under the binding's workspace folder, and its locks
 under the binding's `locks/`; those are the only places it writes, even when they lie inside the
-worktree. Delivery reuses the readiness steps and a
-confirmation service that clears exactly the listed pending markers in one
-[file transaction](../../../glossary.json#concept.file-transaction), bound to the measured metadata
-digests, then revalidates and rolls back on any remaining error. See the
+worktree. Delivery reuses the readiness steps. See the
 [requirements](requirements.md) and [scenarios](scenarios.md).
 
 ### The command
@@ -207,7 +200,7 @@ digests, then revalidates and rolls back on any remaining error. See the
 <a id="realization.validation.command"></a>
 
 The **[Task](../../../glossary.json#concept.task) validation command** realization holds the steps,
-the input measurement, the confirmation service Delivery calls, and their tests, with the
+the input measurement and their tests, with the
 bound-workspace fixture Delivery's tests share.
 
 ## What Validation relies on
@@ -223,11 +216,11 @@ bound-workspace fixture Delivery's tests share.
 - <a id="uses-commands"></a>**Commands** lists `task-validation` in its catalog, which is how
   the runner finds this Module's definition by the command's name.
 - <a id="uses-spec"></a>**Spec core** validates the Specs, answers through its impact indexes which
-  Modules bind a path or own a document, and applies confirmations as a file transaction.
+  Modules bind a path or own a document.
   Validation relies on the validator being deterministic and on loading refusing, not partially
   reading, a Spec that cannot support a boundary; it always roots Spec core at the workspace.
 - <a id="uses-checks"></a>**Check execution** runs the
-  [configured checks](../../../glossary.json#concept.configured-check) of the Modules step 7 selects
+  [configured checks](../../../glossary.json#concept.configured-check) of the Modules step 6 selects
   read-only, with the workspace as the project, and returns one
   [check result](../../../glossary.json#concept.check-result) per check. The readiness keeps
   each result's check identity as `check`, its Module, status and exit code, its measured

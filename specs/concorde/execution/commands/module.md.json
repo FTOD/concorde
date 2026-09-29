@@ -46,8 +46,7 @@
       "meaning": "#realization.commands.catalog",
       "entries": [
         "src/concorde/commands/"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

@@ -380,7 +380,6 @@ them is in [How a run is executed](runner.md).
         }
       ],
       "warnings": [],
-      "confirmations": [],
       "checks": [
         {
           "check": "check.http.tests",

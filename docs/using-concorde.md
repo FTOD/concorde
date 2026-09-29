@@ -471,7 +471,7 @@ concorde delivery
 | Operation                   | Worker       | What it does                                                                                                                                                         |
 | --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `understand`                | reads only   | Assesses what the Modules promise and whether the Spec suffices; returns a plan with `--plan`.                                                                       |
-| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents, including declaring files that do not exist yet.                                                                      |
+| `specify`                   | writes Specs | Changes the bound Modules' own Spec documents.                                                                                                                       |
 | `implement`                 | writes code  | Changes the bound Modules' code; the host runs your checks and resumes the worker on failures (`--rounds` limits the rounds).                                        |
 | `test`                      | reads only   | The host runs your checks; the worker interprets the results (`--focus` narrows it).                                                                                 |
 | `spec_review`               | reads only   | Reviews the bound Modules' Specs against their review memory: reports new findings, updates and resolves earlier ones (`--check-findings` has each finding checked). |
@@ -683,16 +683,16 @@ rounds, is kept in its run's folder. A Claude Code worker runs with:
 A pi worker runs with Concorde's permission extension as its only extension:
 
 - `read`, `write` and `edit` are checked against the grant first, and a denial tells the worker
-  why, for example that a file is read-only or must first be declared through `specify`;
+  why, for example that a file is read-only or must first be created and bound by the task session;
 - `bash`, `grep`, `find` and `ls` run inside the same sandbox engine Claude Code uses, so files
   outside the grant do not exist for them and there is no network;
 - the worker has a cleared environment and a private pi configuration, and no context files,
   skills, prompt templates or other extensions;
 - it ends by calling the `concorde_result` tool, and stops at the turn and budget limits you set.
 
-After each round the host audits the worktree; any write outside `rw` fails the run. A file that
-does not exist yet can only be written once `specify` has declared it as a pending file of its
-Module.
+After each round the host audits the worktree; any write outside `rw` fails the run. A worker
+creates a new file only inside a directory its Module binds; any other new file is created and
+bound to its Module by the task session before the worker that fills it runs.
 
 These layers guard against scope drift and mistakes, not against a malicious actor. Their known
 limits are stated in the [Harness](https://ftod.github.io/concorde/specs/concorde/harness/module)

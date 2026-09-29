@@ -1,12 +1,11 @@
 """Run one worker: prepare its run directory, launch and resume it, audit and check.
 
 ``run_worker`` performs the standard sequence of the Workers Module on the backend the request
-names, Claude Code or pi: freeze the grant, pre-create the pending files it makes writable, let the
-backend generate its configuration from the grant, launch the worker in its own process group while
-keeping the progress file current, audit the task worktree after every round, run the configured
-checks outside the worker, resume the same session when a check fails, perform the deletions it
-proposed, and write the run record. The returned record keeps the worker's answer verbatim and
-apart from what the host observed itself.
+names, Claude Code or pi: freeze the grant, let the backend generate its configuration from the
+grant, launch the worker in its own process group while keeping the progress file current, audit
+the task worktree after every round, run the configured checks outside the worker, resume the same
+session when a check fails, perform the deletions it proposed, and write the run record. The
+returned record keeps the worker's answer verbatim and apart from what the host observed itself.
 
 The run directory is the worker run's trace node ``workers/<run-id>/`` inside the node of the run
 that asked, holding ``trace.json`` (the run record), ``status.json``, ``grant.json``, ``brief.md``,
@@ -52,11 +51,11 @@ _PATHS = {"type": "array", "items": {"type": "string", "minLength": 1}}
 _NULLABLE_TEXT = {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]}
 # A free-form object: the typed-value check closes an object without additionalProperties.
 _OBJECT = {"type": "object", "additionalProperties": {}}
-# contract.workers.worker-run-trace, version 1
+# contract.workers.worker-run-trace, version 2
 WORKER_RUN_TRACE = "concorde-worker-run-trace"
 register(
     WORKER_RUN_TRACE,
-    1,
+    2,
     {
         "type": "object",
         "additionalProperties": False,
@@ -66,8 +65,6 @@ register(
             "tools",
             "transcript",
             "worker_result",
-            "pending_created",
-            "pending_removed",
             "deleted",
             "deletions_refused",
             "rounds",
@@ -88,8 +85,6 @@ register(
                 ]
             },
             "worker_result": {"anyOf": [{"type": "null"}, _OBJECT]},
-            "pending_created": _PATHS,
-            "pending_removed": _PATHS,
             "deleted": _PATHS,
             "deletions_refused": _PATHS,
             "rounds": {"type": "integer", "minimum": 0},
@@ -321,22 +316,6 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
     )
 
 
-def _precreate(worktree: Path, grant: dict) -> list[str]:
-    """Create every ``rw`` path that does not exist yet: files empty, directories empty."""
-    created = []
-    for path in grant_view(grant).paths("rw"):
-        target = worktree / path.rstrip("/")
-        if target.exists() or target.is_symlink():
-            continue
-        if path.endswith("/"):
-            target.mkdir(parents=True)
-        else:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.touch()
-        created.append(path)
-    return created
-
-
 def _launch(request, paths, command, environment, prompt: str, on_line) -> dict:
     """One round: run the command in its own process group, reading standard output as it
     arrives, and always kill the group after."""
@@ -537,8 +516,6 @@ def run_worker(request: WorkerRequest) -> dict:
         "transcript": None,
         "stderr_tail": "",
         "worker_result": None,
-        "pending_created": [],
-        "pending_removed": [],
         "deleted": [],
         "deletions_refused": [],
         "status": "failed",
@@ -581,7 +558,6 @@ def run_worker(request: WorkerRequest) -> dict:
     def finish(status: str, error: dict | None = None) -> dict:
         _keep_transcript(source["transcript"], trace)
         remove_runtime(paths)
-        _remove_unused_pending(worktree, record)
         for number, round_node in list(rounds.items()):
             if round_node.record["status"] == "running":
                 _finish_round(
@@ -697,16 +673,6 @@ def run_worker(request: WorkerRequest) -> dict:
             brief_digest=record["brief_digest"],
             settings_digest=record["settings_digest"],
         )
-        try:
-            record["pending_created"] = _precreate(worktree, request.grant)
-        except OSError as error:
-            return fail(
-                "pending_not_created",
-                f"a pending file of the grant could not be pre-created in {worktree}: "
-                f"{type(error).__name__}: {error}",
-                "environment",
-                "Workers cannot create files the file system refuses",
-            )
         try:
             before = snapshot(worktree, request.grant.get("glossary"))
         except (OSError, subprocess.CalledProcessError) as error:
@@ -996,8 +962,6 @@ def _run_content(record: dict) -> dict:
         else None,
         "transcript": TRANSCRIPT if record["transcript"] else None,
         "worker_result": record["worker_result"],
-        "pending_created": list(record["pending_created"]),
-        "pending_removed": list(record["pending_removed"]),
         "deleted": list(record["deleted"]),
         "deletions_refused": list(record["deletions_refused"]),
         "rounds": len(record["rounds"]),
@@ -1075,21 +1039,6 @@ def _keep_transcript(source: str | None, trace: Path) -> None:
         shutil.copyfile(source, trace / TRANSCRIPT)
     except OSError:
         pass
-
-
-def _remove_unused_pending(worktree: Path, record: dict) -> None:
-    """Remove every pre-created pending path the worker left empty; runs on every exit path."""
-    for path in record["pending_created"]:
-        if path in record["pending_removed"]:
-            continue
-        target = worktree / path.rstrip("/")
-        if path.endswith("/"):
-            if target.is_dir() and not any(target.iterdir()):
-                target.rmdir()
-                record["pending_removed"].append(path)
-        elif target.is_file() and target.stat().st_size == 0:
-            target.unlink()
-            record["pending_removed"].append(path)
 
 
 def _finalize(worktree: Path, record: dict, result: dict, *, clean: bool) -> None:

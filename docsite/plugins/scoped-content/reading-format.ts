@@ -1,4 +1,4 @@
-/** Protocol 15 reading and metadata parsing for publication.
+/** Protocol 16 reading and metadata parsing for publication.
  *
  * Publication reads what it renders: document pairs, identities, anchors, the project glossary,
  * definition headings, contract fences and D2 blocks. Structural conformance as a whole is
@@ -136,7 +136,7 @@ export function isIllustrative(info: string): boolean {
   const words = info.split(/\s+/);
   return words[0] === "d2" && words.slice(1).includes("illustrative");
 }
-/** Diagrams in reading are D2; a Mermaid block is not part of Protocol 15 reading. */
+/** Diagrams in reading are D2; a Mermaid block is not part of Protocol 16 reading. */
 export function requireMarkedDiagrams(content: string, path: string): void {
   for (const fence of fenceRanges(content)) {
     const line = content.slice(0, fence.start).split("\n").length;
@@ -326,7 +326,6 @@ export interface NodeRecord {
   title: string;
   meaning: string;
   entries: string[];
-  pending?: string[];
 }
 export interface Selection {
   target: string;
@@ -509,12 +508,7 @@ export function metadata(
       node && node.type === "realization",
       `A defines record is a realization: ${String(node?.type)} (${path})`,
     );
-    fields(
-      node,
-      ["id", "type", "title", "meaning", "entries"],
-      ["pending"],
-      path,
-    );
+    fields(node, ["id", "type", "title", "meaning", "entries"], [], path);
     requireThat(
       typeof node.id === "string" &&
         identityPattern.test(node.id) &&
@@ -525,9 +519,7 @@ export function metadata(
       `Invalid ${node.type} record ${String(node.id)}: ${path}`,
     );
     requireThat(
-      uniqueStrings(node.entries) &&
-        node.entries.length &&
-        (node.pending === undefined || uniqueStrings(node.pending)),
+      uniqueStrings(node.entries) && node.entries.length,
       `Invalid realization entries: ${path}`,
     );
   }

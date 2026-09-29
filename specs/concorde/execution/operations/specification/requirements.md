@@ -21,12 +21,12 @@ entry a round changed whose owner is not a bound Module.
 The specify worker's grant SHALL NOT give read or write access to the contents of any
 implementation file.
 
-### req.specification.declare-not-create — Declared files are not created
+### req.specification.no-implementation-files — Implementation files are neither created nor changed
 
-The specify [Operation](../../../glossary.json#concept.operation) SHALL leave every pending entry it
-declares absent from the workspace.
+The specify [Operation](../../../glossary.json#concept.operation) SHALL NOT create, change or delete
+any implementation file.
 
-Creating a declared file is the work of an `implement` run, whose worker sequence pre-creates it.
+A new implementation file is created and bound by the task level before the run that fills it.
 
 ### req.specification.audit — Writes outside the grant fail the run
 
@@ -94,6 +94,5 @@ it created.
 
 ### req.specification.observed-facts — The result reports what the Operation observed
 
-The Spec change's changed documents, declared pending entries, affected Modules and validation
-findings SHALL be computed by the Operation from the workspace, never taken from the worker's
+The Spec change's changed documents, affected Modules and validation findings SHALL be computed by the Operation from the workspace, never taken from the worker's
 result.

@@ -221,6 +221,7 @@ class SpecMcpTests(unittest.TestCase):
         self.assertFalse(error, module)
         self.assertEqual(["module.b"], [item["target"] for item in module["uses"]])
         self.assertEqual(["src/a/"], module["realizations"][0]["entries"])
+        self.assertNotIn("pending", module["realizations"][0])
         context, _ = client.call("context", id="module.a")
         self.assertEqual(
             repository.spec_context("module.a").value["sources"], context["sources"]
@@ -266,7 +267,7 @@ class SpecMcpTests(unittest.TestCase):
         for record in value["defines"]:
             if record["id"] == "realization.a.code":
                 record["entries"] = ["src/a/", "src/extra.py"]
-                record["pending"] = ["src/extra.py"]
+        (task / "src/extra.py").write_text("value = 1\n")
         (task / "specs/a/module.md.json").write_text(json.dumps(value, indent=2))
         sync_registry(task)
         answers = [

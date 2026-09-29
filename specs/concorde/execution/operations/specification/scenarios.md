@@ -14,11 +14,11 @@ Concrete situations that show the [requirements](requirements.md) at work. The
 - AND the [Operation](../../../glossary.json#concept.operation) regenerates the registry mirror and validates the workspace
 - AND the result has status `ok` with the changed documents, the affected Modules and an empty `validation.new_errors`
 
-### scenario.specification.declare-pending — A new file is declared, not created
+### scenario.specification.missing-entry — A worker that binds a file that does not exist
 
-- GIVEN an intent that needs a new implementation file in a bound Module
-- WHEN the worker adds the file as a pending entry of one of the Module's realizations
-- THEN the Spec change lists the declared entry with its Module and realization
+- GIVEN an intent that needs a new implementation file in a bound Module, which the task level has not created
+- WHEN the worker adds the file's path to the `entries` of one of the Module's realizations
+- THEN validation reports `CHK.binds.exists` for the entry as a new error and the result has status `blocked`
 - BUT the file does not exist in the workspace after the run
 
 ### scenario.specification.repair-broken — A run repairs Specs that were already invalid

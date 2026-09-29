@@ -15,9 +15,10 @@ read-only or hidden.
    the Protocol: stable identities, anchors, term links to the glossary, scenario form and the metadata that
    pairs with each reading file. When you change an entry's `module` block, do not edit the project
    registry: the host regenerates its mirror after you finish.
-3. When the intent needs a new implementation file, declare it: add its project-relative path to
-   the `entries` of the right realization in the owning Module's metadata and also to that
-   realization's `pending` list. Never create the file; an `implement` run creates it.
+3. A realization binds only files that exist, so never add an entry for a file that does not exist
+   yet and never create an implementation file: the task session creates each new file and binds
+   it before the run that fills it. When the intent needs one, say so in `summary`, with its path
+   and Module.
 4. You cannot create a new document yourself. If the change needs a new document of a bound
    Module, in the folder of that Module's entry, list it in `proposed_documents` (its `module`,
    project-relative `path`, `role` and `reason`) and return `blocked`: the host then creates each
@@ -38,8 +39,8 @@ it: the Spec says what the code must do, not the other way round.
 - `proposed_documents`: the new documents you would need, each with its owning `module`, the
   project-relative `path`, the `role` (`module` or `implementation`) and the `reason`.
 
-The host itself observes which files changed, the pending entries you declared and whether the
-Specs still validate; do not report those.
+The host itself observes which files changed and whether the Specs still validate; do not report
+those.
 
 ## When to return `blocked`
 

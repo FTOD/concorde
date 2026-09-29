@@ -77,8 +77,7 @@
         "tests/concorde/tasks/test_store.py",
         "tests/concorde/tasks/test_merge.py",
         "tests/concorde/tasks/test_wait.py"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [

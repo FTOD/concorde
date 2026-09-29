@@ -39,7 +39,7 @@ RUNS = [
     "delivery",
 ]
 
-# contract.understanding.assessment, version 3
+# contract.understanding.assessment, version 4
 # (specs/concorde/execution/operations/understanding/contracts.md)
 ASSESSMENT_SCHEMA: dict = {
     "type": "object",
@@ -88,22 +88,24 @@ ASSESSMENT_SCHEMA: dict = {
                 {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["summary", "modules", "pending", "steps", "decisions"],
+                    "required": [
+                        "summary",
+                        "modules",
+                        "new_files",
+                        "steps",
+                        "decisions",
+                    ],
                     "properties": {
                         "summary": {"type": "string", "minLength": 1},
                         "modules": {"type": "array", "minItems": 1, "items": MODULE_ID},
-                        "pending": {
+                        "new_files": {
                             "type": "array",
                             "items": {
                                 "type": "object",
                                 "additionalProperties": False,
-                                "required": ["module", "realization", "path", "reason"],
+                                "required": ["module", "path", "reason"],
                                 "properties": {
                                     "module": MODULE_ID,
-                                    "realization": {
-                                        "type": "string",
-                                        "pattern": "^realization\\.",
-                                    },
                                     "path": {"type": "string", "minLength": 1},
                                     "reason": {"type": "string", "minLength": 1},
                                 },
@@ -185,7 +187,7 @@ def named_modules(assessment: dict) -> set[str]:
     plan = assessment.get("plan")
     if plan:
         names |= set(plan["modules"])
-        names |= {item["module"] for item in plan["pending"]}
+        names |= {item["module"] for item in plan["new_files"]}
         for step in plan["steps"]:
             names |= set(step["modules"])
     return names

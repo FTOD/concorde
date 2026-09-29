@@ -361,6 +361,16 @@ agent with its own link on top of the [error chain](../../glossary.json#concept.
 A task session records every escalation and then sends them together with SendMessage
 ([Decisions go up together and come back together](#req.main-session.batched-decisions)).
 
+### req.main-session.task-session-prepares-workers — A task session prepares the workers' environment
+
+The task-session guidance SHALL tell a task session to create every new file the work needs outside
+the directories its Modules bind, with the least content its format needs to be valid, and to bind
+it to its [Module](../../glossary.json#concept.module) before it launches the
+[worker](../../glossary.json#concept.worker) that fills it.
+
+A realization binds only files that exist, and a worker writes only bound files and new files
+inside bound directories, so no worker and no Operation creates such a file.
+
 ### req.main-session.task-session-workflow — A task session runs workflows in its brief's mode
 
 The task-session guidance SHALL tell a task session to run a

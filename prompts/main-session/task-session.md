@@ -28,8 +28,16 @@ by default (`concorde task show <task>` prints its path):
   code yourself within the task's goal, verify the change and commit each verified step on the
   task branch, or run Operations for bounded steps and read their results. Never change a file
   outside the task worktree except the task's decision log.
+- **Prepare the workers' environment.** A worker writes only files its Modules bind and new files
+  inside the directories they bind, and a Module binds only files that exist. When the work needs
+  a new file anywhere else, such as one an `understand` plan lists in `new_files`, create it
+  yourself before you launch the worker that fills it, or fill it yourself: give it the least
+  content its format needs to be valid (empty where an empty file is valid), add it to the
+  `entries` of the right realization in the metadata of the Module it realizes, check it with
+  `concorde spec-validation` and commit both together.
 - **Deliver.** `concorde task-validation` shows what would block; `concorde delivery` validates
-  the whole workspace again and commits the result on the task branch. Never rebase or switch
+  the whole workspace again and creates the delivery commit on the task branch, which alone marks
+  the task delivered: the steps you commit yourself before it do not. Never rebase or switch
   branches, and never merge the task branch into the primary branch: that merge is the main
   agent's step, from the primary worktree. The only merge you make is the one the main agent asks
   for after its merge of the task failed with `merge_conflict`: merging the primary branch into

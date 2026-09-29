@@ -1,6 +1,6 @@
 """A committed fixture project with an open task, for tests that run Operations end to end.
 
-The project has Module A (``src/a/``, pending ``src/new.py``, a configured check that passes while
+The project has Module A (``src/a/``, ``src/new.py``, a configured check that passes while
 ``src/a/flag`` is absent or says ``ok``) and Module B (``src/bmod/``). ``open_task`` creates a task
 through the Task store; ``run`` runs an Operation or execution command in-process, in the worktree
 of the task a ``--task`` names, with the fake ``claude`` of the worker tests, whose plan is taken

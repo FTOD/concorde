@@ -2,9 +2,8 @@
 
 ``implement`` runs one ``implement`` worker through the standard worker sequence with the bound
 Modules' configured checks, so Workers audits every round, runs the checks outside the worker and
-resumes the same session only while a check fails. Once the worker was launched, the host removes
-pre-created files that stayed empty, clears the pending marker of every pending entry of the bound
-Modules that now exists, and composes the code change from the run record.
+resumes the same session only while a check fails. Once the worker was launched, the host composes
+the code change from the run record.
 
 ``test`` runs the configured checks on the host first, then a read-only ``test`` worker that
 interprets the results; the host's check results are the only evidence of whether they passed.
@@ -60,7 +59,6 @@ CODE_CHANGE_SCHEMA: dict = {
         "created_files",
         "deleted_files",
         "refused_deletions",
-        "pending_cleared",
         "rounds",
         "checks",
         "addresses",
@@ -72,7 +70,6 @@ CODE_CHANGE_SCHEMA: dict = {
         "created_files": _STRINGS,
         "deleted_files": _STRINGS,
         "refused_deletions": _STRINGS,
-        "pending_cleared": _STRINGS,
         "rounds": {"type": "integer", "minimum": 1},
         "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
         "addresses": _STRINGS,
@@ -237,43 +234,6 @@ def _present(worktree: Path) -> set[str]:
     }
 
 
-def remove_unused(worktree: Path, record: dict) -> list[str]:
-    """Remove pre-created files and directories that are still empty; return their entries."""
-    removed = list(record.get("pending_removed") or [])
-    for path in record.get("pending_created") or []:
-        if path in removed:
-            continue
-        target = worktree / path.rstrip("/")
-        if path.endswith("/"):
-            if (
-                target.is_dir()
-                and not target.is_symlink()
-                and not any(target.iterdir())
-            ):
-                target.rmdir()
-                removed.append(path)
-        elif (
-            target.is_file() and not target.is_symlink() and target.stat().st_size == 0
-        ):
-            target.unlink()
-            removed.append(path)
-    return removed
-
-
-def clear_pending(worktree: Path, modules: list[str]) -> list[str]:
-    """Remove the pending marker of every pending entry of ``modules`` that now exists."""
-    from ..spec.changes import apply_files
-    from ..spec.content_changes import pending_changes
-
-    repository = SpecRepository(worktree)
-    changes, confirmed, _missing = pending_changes(repository)
-    owners = {unit.metadata.path: unit.owner for unit in repository.units.values()}
-    selected = [item for item in changes if owners.get(item["path"]) in modules]
-    if selected:
-        apply_files(worktree, selected, {item["path"] for item in selected})
-    return sorted(item["path"] for item in confirmed if item["module"] in modules)
-
-
 def _latest_checks(record: dict) -> list[dict]:
     for item in reversed(record.get("rounds") or []):
         if item.get("checks") is not None:
@@ -281,9 +241,7 @@ def _latest_checks(record: dict) -> list[dict]:
     return []
 
 
-def code_change(
-    ctx: RunContext, record: dict, before: set[str], cleared: list[str], summary: str
-) -> dict:
+def code_change(ctx: RunContext, record: dict, before: set[str], summary: str) -> dict:
     rounds = record.get("rounds") or []
     audit = (rounds[-1].get("audit") if rounds else None) or {}
     changed = [
@@ -298,7 +256,6 @@ def code_change(
         "created_files": [path for path in changed if path not in before],
         "deleted_files": list(record.get("deleted") or []),
         "refused_deletions": list(record.get("deletions_refused") or []),
-        "pending_cleared": cleared,
         "rounds": max(len(rounds), 1),
         "checks": check_results(_latest_checks(record)),
         "addresses": list(output.get("addresses") or []),
@@ -335,28 +292,16 @@ def implement_step(ctx: RunContext):
         rounds=ctx.arguments.rounds,
     )
     if len(ctx.worker_runs) == launched:
-        return outcome  # no worker run: nothing was pre-created or changed
+        return outcome  # no worker run: nothing was changed
     record = ctx.last_record
     extra: list[dict] = []
-    removed = remove_unused(ctx.worktree, record)
-    if removed:
-        extra.append(evidence("pending-removed", ", ".join(removed), "empty, removed"))
-    cleared: list[str] = []
-    try:
-        cleared = clear_pending(ctx.worktree, ctx.modules)
-    except (SpecError, OSError) as error:
-        extra.append(
-            evidence("pending-markers", getattr(error, "code", "error"), str(error))
-        )
-    if cleared:
-        extra.append(evidence("pending-cleared", ", ".join(cleared), "marker removed"))
     for path in record.get("deleted") or []:
         extra.append(evidence("deleted", path, "proposed by the worker, inside rw"))
     for path in record.get("deletions_refused") or []:
         extra.append(evidence("deletion-refused", path, "outside the writable paths"))
     if record.get("worker_result") is not None:
         summary = outcome.summary if isinstance(outcome, Stop) else "implemented"
-        ctx.output = code_change(ctx, record, before, cleared, summary)
+        ctx.output = code_change(ctx, record, before, summary)
     if isinstance(outcome, Continue):
         if not _latest_checks(record):
             extra.append(

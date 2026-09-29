@@ -126,40 +126,26 @@ class SpecifyTests(unittest.TestCase):
         self.assertEqual(0, status, envelope)
         self.assertEqual([], envelope["output"]["validation"]["new_errors"])
 
-    @verifies("scenario.specification.declare-pending")
-    def test_a_new_file_is_declared_not_created(self):
+    @verifies("scenario.specification.missing-entry")
+    def test_binding_a_file_that_does_not_exist_is_a_new_error(self):
+        # A new file is created and bound by the task level; specify only binds what exists.
         worktree = self.open()
-        metadata = json.loads((worktree / "specs/a/module.md.json").read_text())
-        realization = metadata["defines"][1]
-        realization["entries"].append("src/second.py")
-        realization["pending"].append("src/second.py")
+        path = worktree / "specs/a/module.md.json"
+        metadata = json.loads(path.read_text())
+        metadata["defines"][1]["entries"].append("src/second.py")
+        bound = json.dumps(metadata, indent=2) + "\n"
         status, envelope = self.specify(
             [
-                {
-                    "writes": {
-                        str(worktree / "specs/a/module.md.json"): json.dumps(
-                            metadata, indent=2
-                        )
-                        + "\n"
-                    },
-                    "result": {"output": CLAIMS},
-                }
+                {"writes": {str(path): bound}, "result": {"output": CLAIMS}},
+                {"result": {"output": CLAIMS}},
             ]
         )
-        self.assertEqual(0, status, envelope)
-        self.assertEqual(
-            [
-                {
-                    "module": "module.a",
-                    "realization": "realization.a.new",
-                    "path": "src/second.py",
-                }
-            ],
-            envelope["output"]["pending_declared"],
-        )
-        self.assertEqual(
-            ["specs/a/module.md.json"], envelope["output"]["changed_documents"]
-        )
+        self.assertEqual((1, "blocked"), (status, envelope["status"]), envelope)
+        self.assertEqual("new_structural_errors", envelope["error"]["code"])
+        new = envelope["output"]["validation"]["new_errors"]
+        self.assertEqual(["CHK.binds.exists"], [item["rule_id"] for item in new])
+        self.assertIn("src/second.py", new[0]["message"])
+        self.assertNotIn("pending_declared", envelope["output"])
         self.assertFalse((worktree / "src/second.py").exists())
 
     @verifies("scenario.specification.repair-broken")

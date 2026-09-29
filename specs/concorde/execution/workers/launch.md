@@ -174,7 +174,7 @@ tools run in their own sandbox without network ([req.workers.bash-sandbox](#req.
 
 ## Audit
 
-Before the first round, after pre-creating the pending files, the host records a snapshot of the
+Before the first round the host records a snapshot of the
 worktree: `HEAD`, the index digest, and the digest of every tracked change and untracked file
 that already exists. After each round it runs read-only Git
 (`git status --porcelain=v2 -z --untracked-files=all` and the digests of the listed files) and
@@ -188,11 +188,11 @@ compares.
 | a changed `HEAD`, index or branch | violation |
 | a change under a path Git ignores | not observed |
 
-When the run ends, however it ends, the host removes each pre-created pending file or directory
-that is still empty. After the last round, and only when its audit was clean, it deletes each path
-in `proposed_deletions` that is in the `rw` list; a proposed deletion outside `rw` is refused and
-recorded. Both happen after the last round's checks, so the recorded [check results](../../glossary.json#concept.check-result) describe the
-worktree before these removals.
+After the last round, and only when its audit was clean, the host deletes each path in
+`proposed_deletions` that is in the `rw` list; a proposed deletion outside `rw` is refused and
+recorded. This happens after the last round's checks, so the recorded
+[check results](../../glossary.json#concept.check-result) describe the worktree before these
+deletions.
 
 ## Rounds
 
@@ -248,7 +248,6 @@ by every code whose round had one, even when the round also timed out or failed 
 | `grant_unavailable` | which of the task type, grant, context identity or entries is missing | `input` | none |
 | `grant_malformed` | the first grant entry that is not an object with a worktree-relative path and a level of `rw`, `ro` or `names`, and what is wrong with it | `input` | none |
 | `run_directory_denied` | the deny rule that would cover the worker's own directories of the runtime directory | `environment` | none |
-| `pending_not_created` | the pending path that could not be created and why | `environment` | none |
 | `snapshot_failed` | the Git command that failed and its output | `environment` | none |
 | `launch_failed` | the command that could not be started and the operating system's error | `environment` | none |
 | `worker_timeout` | the round and the timeout | `exhausted` | none |
@@ -345,11 +344,11 @@ Every run that does not end `ok` SHALL carry Workers' error link with the worker
 
 ### req.workers.host-deletes — Only the host deletes
 
-Apart from the pending files and directories it pre-created, the host SHALL delete a file only when the worker proposed it, the file is in the `rw` list and the audit was clean.
+The host SHALL delete a file only when the worker proposed it, the file is in the `rw` list and the audit was clean.
 
-### req.workers.pending-cleanup — Unused pending paths are removed
+### req.workers.no-precreation — The host creates no file for the worker
 
-When a run ends, however it ends, the host SHALL remove each pending file or directory it pre-created that is still empty.
+The host SHALL NOT create any file or directory in the worktree before or while the worker runs.
 
 ### req.workers.process-group — No worker process outlives its round
 

@@ -64,7 +64,7 @@ work: "3. A commit since the base\nor an uncommitted change?"
 readiness: "4. Decide the whole workspace's\nreadiness with Validation's steps"
 ready: "5. Ready?"
 tests: "6. Changed code: every added or\nchanged scenario has a verifying test?\n(skipped with --adoption)"
-index: "7. Record the index,\napply the confirmations"
+index: "7. Record the index"
 commit: "8. Stage every change, record\nthe staged tree, commit"
 verify: "9. Verify the commit"
 output: "10. Return the commit"
@@ -85,7 +85,7 @@ work -> blocked: "no: nothing_to_deliver" {style.stroke-dash: 3}
 readiness -> failed: "measurement, checks\nor inputs fail" {style.stroke-dash: 3}
 ready -> blocked: "no: not_ready" {style.stroke-dash: 3}
 tests -> blocked: "no: unverified_scenarios" {style.stroke-dash: 3}
-index -> failed: "index_unrecorded,\nconfirmations refused" {style.stroke-dash: 3}
+index -> failed: "index_unrecorded" {style.stroke-dash: 3}
 commit -> failed: "Git refuses: 7 and 8 undone" {style.stroke-dash: 3}
 verify -> failed: "mismatch: commit_unverified,\nthe commit stays" {style.stroke-dash: 3}
 ```
@@ -116,9 +116,8 @@ earlier `task-validation` run is only a preview; Delivery never trusts it or the
 steps. When the workspace **changed code** — a changed path outside `specs/` and `.concorde/` that a
 Module's realization binds, tests included — Delivery also requires a test whose
 [verification declaration](../../../glossary.json#concept.verification-declaration) names every
-scenario the workspace added or changed. Ready, it clears the pending markers of the realization
-entries whose files now exist (the readiness's confirmations) and commits them with any uncommitted
-change on the bound branch. The
+scenario the workspace added or changed. Ready, it commits every uncommitted change on the bound
+branch as the [delivery commit](../../../glossary.json#concept.delivery-commit). The
 [run result](../../../glossary.json#concept.run-result), of kind `command` with no worker, carries
 the commit ([contract](contracts.md#contract.delivery.output)). The task level then has the branch
 merged, in Concorde by the main agent, and ends the task.
@@ -137,7 +136,7 @@ Every other rule applies unchanged.
 | `blocked` | `nothing_to_deliver` | `decision` | no commit since the base commit and no uncommitted change (`git` evidence) |
 | `blocked` | `not_ready` | `decision` | the whole workspace is not ready; Validation's `not_deliverable` link is the cause, with one cause per finding |
 | `blocked` | `unverified_scenarios` | `decision` | the workspace changed code while a scenario it added or changed has no verifying test; names each with its document |
-| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), `confirmations_refused`, Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify, the one it made or the delivery commit it found at the head (`commit_unverified`) |
+| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify, the one it made or the delivery commit it found at the head (`commit_unverified`) |
 
 The error is the run's own link of level `command`, with the actor `Command delivery <run-id>
 (workspace <workspace>)`. Every `blocked` code carries a host evidence `ref` of the same name and
@@ -164,9 +163,9 @@ run; the commit follows at once, so it is exactly what was validated, or nothing
 carries no evidence file of its own: its subject is the whole mark of a delivery. Run identities
 and digests committed with it could never be checked later, since the results they name are local
 and removed by retention, and nothing ever read them; the readiness's record stays in the delivery
-run's trace node for as long as it is kept. Clearing the pending markers happens last,
-before the commit, since until then a filled pending file is still a proposal; doing it in the same
-commit keeps the [Spec](../../../glossary.json#concept.spec) and its files consistent.
+run's trace node for as long as it is kept. Delivery changes no [Spec](../../../glossary.json#concept.spec)
+itself: every realization entry already exists when the readiness is decided, since the task level
+binds a new file only once it has created it, so the commit holds exactly what was validated.
 
 Delivery is an execution command rather than an
 [Operation](../../../glossary.json#concept.operation) because it involves no model; it is a run
@@ -195,7 +194,7 @@ is: the commit names the workspace, which the binding names, and nothing else.
 | 4 | Decide the whole workspace's readiness with Validation's steps | Validation | measurement, checks or inputs fail (`failed`) |
 | 5 | Require the readiness ready | host | not ready (`blocked`, `not_ready`) |
 | 6 | When the workspace changed code, require a test declaring that it verifies every scenario it added or changed since its base commit, unless `--adoption` | host, Spec core, read-only Git | an unverified scenario (`blocked`, `unverified_scenarios`, naming each with its document) |
-| 7 | Record the index with Git; apply confirmations via Validation | host, Git, Validation | the index cannot be recorded (`failed`, `index_unrecorded`) or confirmations refused (`failed`) |
+| 7 | Record the index with Git | host, Git | the index cannot be recorded (`failed`, `index_unrecorded`) |
 | 8 | Stage every change; record the staged tree; commit | host, Git | Git refuses (`failed`; undone, index restored) |
 | 9 | Verify the commit is head, its tree the staged tree, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit stays) |
 | 10 | Return the commit as the output, numbered after the delivery commits on the branch | host | — |
@@ -203,22 +202,19 @@ is: the commit names the workspace, which the binding names, and nothing else.
 Every step before 7 leaves the workspace as it was — Validation writes its check nodes and the
 readiness only to the run's [trace node](../../../glossary.json#concept.trace-node) — so a blocked
 delivery changes nothing in the workspace. Steps 7 and 8 are undone together when step 8 fails
-(`measurement_failed` while staging, `stage_failed`, `commit_failed`): confirmed metadata is
-restored from the bytes read before and the index given back as step 7 recorded it, so the
-workspace is again what the readiness describes. Step 7 records the index with Git's own means rather than a copy Delivery
+(`measurement_failed` while staging, `stage_failed`, `commit_failed`): the index is given back as
+step 7 recorded it, so the workspace is again what the readiness describes. Step 7 records the index with Git's own means rather than a copy Delivery
 would keep: `git write-tree` for its entries, which `git read-tree` restores; the paths `git
 ls-files` lists that the tree lacks, which are intent-to-add entries a tree cannot hold and
 `git add -N` marks again; and the skip-worktree and assume-unchanged flags `git ls-files -v`
 shows, which `git update-index` sets again. So changes staged before the delivery, including a
 staged version the worktree has changed since, stay staged. Every part of the undo is attempted
-even when another fails; each part that fails — a metadata file, the index, the intent-to-add
-entries or a kind of flag — is named in the run's summary and detail, which then say the
+even when another fails; each part that fails — the index, the intent-to-add entries or a kind of
+flag — is named in the run's summary and detail, which then say the
 workspace is not as the readiness examined it, and is a `component` cause of its error with the
 file system's or Git's own account. A
 `commit_unverified` failure comes after the commit exists: Delivery leaves it in place, since it
-never rewrites history, and repairing the branch is the task level's decision. Checks are not
-repeated after confirmations, since clearing a marker changes no code and Validation revalidates the
-Spec structure when it applies them. See the [requirements](requirements.md) and
+never rewrites history, and repairing the branch is the task level's decision. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
 Delivery proves what it committed rather than assuming it. The repository's commit hooks run
@@ -248,10 +244,10 @@ delivery commits, and their tests.
   readiness and the commit, and records the run.
 - <a id="uses-commands"></a>**Commands** lists `delivery` in its catalog, which is how the runner
   finds this [Module](../../../glossary.json#concept.module)'s definition by the command's name.
-- <a id="uses-validation"></a>**Validation** provides the readiness steps and the confirmations.
-  Delivery runs those steps as its own, so its readiness is decided exactly as a `task-validation`
-  run's, relies on their final remeasurement to prove that the measured inputs at the end are
-  those the readiness records, and on confirmations applying exactly or not at all; it never
+- <a id="uses-validation"></a>**Validation** provides the readiness steps. Delivery runs those
+  steps as its own, so its readiness is decided exactly as a `task-validation` run's, and relies on
+  their final remeasurement to prove that the measured inputs at the end are those the readiness
+  records; it never
   changes a finding, treating a readiness that is not ready as blocking.
 - <a id="uses-spec"></a>**Spec core** answers step 6 on the workspace's Specs as they read now:
   which changed paths a Module's realization binds and, through its structural validation's

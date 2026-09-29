@@ -407,7 +407,7 @@ defines them; their contents are these values.
 ```concorde-contract
 {
   "id": "contract.workers.worker-run-trace",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -417,8 +417,6 @@ defines them; their contents are these values.
       "tools",
       "transcript",
       "worker_result",
-      "pending_created",
-      "pending_removed",
       "deleted",
       "deletions_refused",
       "rounds"
@@ -475,20 +473,6 @@ defines them; their contents are these values.
           }
         ]
       },
-      "pending_created": {
-        "type": "array",
-        "items": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "pending_removed": {
-        "type": "array",
-        "items": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
       "deleted": {
         "type": "array",
         "items": {
@@ -509,7 +493,7 @@ defines them; their contents are these values.
       }
     }
   },
-  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend (a worker configuration entry, or null when the default applied); tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript the host moved there from the runtime directory once the worker ended (transcript.jsonl), null when no session existed. worker_result is the last worker result verbatim, a claim, or null. pending_created lists the pending paths of the grant the host pre-created, pending_removed those it removed again because the worker left them empty, deleted the proposed deletions it performed and deletions_refused those it refused. rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, model and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend (a worker configuration entry, or null when the default applied); tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript the host moved there from the runtime directory once the worker ended (transcript.jsonl), null when no session existed. worker_result is the last worker result verbatim, a claim, or null. deleted lists the proposed deletions the host performed and deletions_refused those it refused. rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, model and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
   "example": {
     "task_type": "implement",
     "backend_source": "operations.implement.default",
@@ -529,8 +513,6 @@ defines them; their contents are these values.
       "proposed_deletions": [],
       "output": {}
     },
-    "pending_created": [],
-    "pending_removed": [],
     "deleted": [],
     "deletions_refused": [],
     "rounds": 2

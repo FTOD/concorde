@@ -1,4 +1,4 @@
-"""Protocol 15 Spec graph loader and the repository API every consumer reads.
+"""Protocol 16 Spec graph loader and the repository API every consumer reads.
 
 The registry says which Modules exist and where each entry is. Every declaration is read from the
 entries' ``module`` blocks, from the registered documents and from the project glossary the root
@@ -215,7 +215,7 @@ class _Load:
 
 
 class DocumentUnitRepository:
-    """The loaded Protocol 15 graph of one project checkout."""
+    """The loaded Protocol 16 graph of one project checkout."""
 
     def __init__(
         self,
@@ -373,7 +373,7 @@ class DocumentUnitRepository:
         ):
             raise SpecError(
                 'the Spec registry must be {"schema_version": 3, "modules": [...]} '
-                "(Protocol 15); migrate explicitly",
+                "(Protocol 16); migrate explicitly",
                 "unsupported_profile",
             )
         self.registry = value
@@ -705,18 +705,12 @@ class DocumentUnitRepository:
                     if isinstance(entries, list)
                     else ()
                 )
-                pending = record.get("pending", [])
-                pending = (
-                    tuple(x for x in pending if isinstance(x, str))
-                    if isinstance(pending, list)
-                    else ()
-                )
                 if not self._register(
                     NodeRef(record["id"], "realization", owner, path, title)
                 ):
                     continue
                 self.realization_nodes[record["id"]] = Realization(
-                    record["id"], title, owner, path, meaning, entries, pending
+                    record["id"], title, owner, path, meaning, entries
                 )
         for identity, title, line, statement in reading.requirements:
             if self._register(
@@ -1509,14 +1503,8 @@ class DocumentUnitRepository:
     # --- read sets: ImplementationContext and ExternalContext ----------------------------
 
     def implementation_context(self, module: ModuleRef) -> tuple[str, ...]:
-        """ImplementationContext(M): names of existing bound files and of pending exact entries."""
-        target = self._resolve(module)
-        names = set(self.bound_files(target))
-        for realization in self.realizations(target):
-            names.update(
-                entry for entry in realization.pending if not is_directory_entry(entry)
-            )
-        return tuple(sorted(names))
+        """ImplementationContext(M): names of the files M's realizations bind."""
+        return self.bound_files(module)
 
     def bound_files(self, module: ModuleRef) -> tuple[str, ...]:
         """Existing regular files the Module's entries bind, directory entries expanded."""
@@ -1589,7 +1577,7 @@ class DocumentUnitRepository:
         return tuple(sorted(members))
 
     def implementation_scope(self, module: ModuleRef) -> tuple[str, ...]:
-        """ImplementationScope(M): M's realization entries, pending entries included.
+        """ImplementationScope(M): M's realization entries.
 
         A directory entry covers every present and future file below it under the exclusion
         rule; use ``BoundarySets.writable`` or ``bound_by`` to test one path.

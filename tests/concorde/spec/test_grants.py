@@ -24,14 +24,13 @@ from tests.concorde.support.spec_project import (
 )
 
 
-def realization(identity, entries, pending=()):
+def realization(identity, entries):
     return {
         "id": identity,
         "type": "realization",
         "title": identity.rsplit(".", 1)[-1].title(),
         "meaning": "It binds files of the Module.",
         "entries": list(entries),
-        "pending": list(pending),
     }
 
 
@@ -55,7 +54,13 @@ class GrantTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
         self.project = SpecProject(self.root)
-        for path in ("src/a/one.py", "src/a/two.py", "src/bmod/b.py", "src/shared.py"):
+        for path in (
+            "src/a/one.py",
+            "src/a/two.py",
+            "src/b.py",
+            "src/bmod/b.py",
+            "src/shared.py",
+        ):
             (self.root / path).parent.mkdir(parents=True, exist_ok=True)
             (self.root / path).write_text("value = 1\n")
         (self.root / "references/lib").mkdir(parents=True)
@@ -68,7 +73,7 @@ class GrantTests(unittest.TestCase):
                 "A",
                 [
                     realization("realization.a.code", ["src/a/"]),
-                    realization("realization.a.extra", ["src/b.py"], ["src/b.py"]),
+                    realization("realization.a.extra", ["src/b.py"]),
                 ],
                 used=("b",),
             ),
@@ -145,11 +150,10 @@ class GrantTests(unittest.TestCase):
         self.assertEqual({"names"}, set(code.values()))
 
     @verifies("scenario.spec.grant-implement")
-    def test_implement_writes_the_realization_including_pending_entries(self):
+    def test_implement_writes_the_realization(self):
         levels = self.levels(self.grant(["module.a"], "implement"))
         self.assertEqual("rw", levels["src/a/"])
         self.assertEqual("rw", levels["src/b.py"])
-        self.assertFalse((self.root / "src/b.py").exists())
         for path in self.own_documents("a"):
             self.assertEqual("ro", levels[path], path)
         self.assertNotIn("src/a/one.py", levels)
@@ -311,7 +315,8 @@ class GrantTests(unittest.TestCase):
         for record in value["defines"]:
             if record["id"] == "realization.a.extra":
                 record["entries"] = ["src/b.py", "lib/extra.py"]
-                record["pending"] = ["src/b.py", "lib/extra.py"]
+        (other / "lib").mkdir()
+        (other / "lib/extra.py").write_text("value = 1\n")
         (other / "specs/a/module.md.json").write_text(json.dumps(value, indent=2))
         sync_registry(other)
         task = self.grant(["module.a"], "implement", root=other)

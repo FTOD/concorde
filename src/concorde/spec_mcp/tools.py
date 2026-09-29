@@ -205,7 +205,6 @@ def module(root: Path, arguments: dict) -> dict:
                 "id": item.id,
                 "title": item.title,
                 "entries": list(item.entries),
-                "pending": list(item.pending),
             }
             for item in repository.realizations(identity)
         ],

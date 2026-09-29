@@ -1,4 +1,4 @@
-"""Protocol 15 document metadata (schema 3): closed shapes of every declaration record.
+"""Protocol 16 document metadata (schema 3): closed shapes of every declaration record.
 
 A registered reading document and its ``.md.json`` companion are one document. This module checks
 the companion's shape and returns every problem it finds, attributed to a check identity; the
@@ -227,7 +227,7 @@ def define_problems(record: Any) -> list[tuple[str, str]]:
             )
         ]
     problems = []
-    shape = _shape(record, {"id", "type", "title", "meaning", "entries"}, {"pending"})
+    shape = _shape(record, {"id", "type", "title", "meaning", "entries"}, set())
     if shape:
         problems.append(
             ("CHK.document.schema", f"{kind} {record.get('id')!r}: {shape}")
@@ -252,15 +252,6 @@ def define_problems(record: Any) -> list[tuple[str, str]]:
                 f"realization {record.get('id')} entries: {entries}",
             )
         )
-    if "pending" in record:
-        pending = _path_list(record["pending"], nonempty=False)
-        if pending:
-            problems.append(
-                (
-                    "CHK.document.schema",
-                    f"realization {record.get('id')} pending: {pending}",
-                )
-            )
     return problems
 
 

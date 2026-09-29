@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol **15.1.0** describes a project as a set of Modules, each explaining one
+Concorde Spec Protocol **16.0.0** describes a project as a set of Modules, each explaining one
 responsibility, connected by declared relations. It serves two purposes:
 
 1. **Understanding** — a human grasps the backbone of the project, its parts and main flows,
@@ -43,8 +43,8 @@ either assert only declared relations or are marked illustrative.
    guidance](module.md) for content requiring reader and editor judgment.
 7. [Checks](checks.md) — every decidable rule and its limits.
 8. [Views](views.md) — derived views, checked D2 diagrams and illustrative blocks.
-9. [Migration](migration.md) — what changed from version 10, in 11.1, in 13, 13.1, 13.2, 13.3, 14
-   and 15.
+9. [Migration](migration.md) — what changed from version 10, in 11.1, in 13, 13.1, 13.2, 13.3, 14,
+   15, 15.1 and 16.
 10. [`model.yaml`](model.yaml) — the machine-readable vocabulary.
 11. Templates: [Module](templates/module.md) and [Scenario fragment](templates/scenario.md).
 

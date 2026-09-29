@@ -1,4 +1,4 @@
-# Migration to Protocol 11, 12, 13, 14 and 15
+# Migration to Protocol 11, 12, 13, 14, 15 and 16
 
 Version 11 replaces Protocol 10's prose model with a declared one. Version-10 registries, metadata
 and reading structures are invalid and MUST be migrated explicitly. No tool may silently
@@ -192,3 +192,22 @@ guidance, reorder an entry so that its purpose and core concepts come first and 
 diagrams follow them, move command-level walk-throughs to the Module that owns the commands, fold a
 topic that only explains the Module's concepts into its entry, and redraw a sequence diagram whose
 point is the steps rather than the interleaving as a workflow.
+
+## Version 16
+
+Version 16 removes pending realization entries. Under 15, a realization could list in `pending`
+entries whose files did not exist yet, so that a Spec change could declare where code would go
+before any code was written; the file was created later and the marker cleared once it existed.
+The marker was intent stored beside evidence, a grant had to tell its pending paths from the
+bound ones, and the file appeared only when some later task wrote it. Now:
+
+- A realization has no `pending` field, and every entry MUST exist. `CHK.binds.pending-subset` is
+  removed and `CHK.binds.exists` applies to every entry.
+- A new file outside every bound directory is created and bound together, with the least content
+  its format needs to be valid, by the work that prepares the task that fills it, never by a
+  Module-scoped task. A new file below a bound directory still needs no new entry.
+- `ImplementationScope` and implementation context hold only bound paths, all of which exist.
+
+To migrate, for every realization with a `pending` field, either create each listed file and keep
+its entry, or delete the entry, then delete the field. Metadata that still carries `pending` is
+invalid.

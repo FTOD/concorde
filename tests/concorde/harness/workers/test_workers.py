@@ -85,8 +85,8 @@ def git(root, *arguments):
 
 
 class WorkerProject:
-    """A committed fixture project: A binds ``src/a/`` and the pending ``src/new.py``; B binds
-    ``src/bmod/``; A's configured check passes while ``src/a/flag`` is absent or says ``ok``."""
+    """A committed fixture project: A binds ``src/a/`` and ``src/new.py``; B binds ``src/bmod/``;
+    A's configured check passes while ``src/a/flag`` is absent or says ``ok``."""
 
     def __init__(self, test, *, check=True):
         directory = tempfile.TemporaryDirectory()
@@ -122,6 +122,7 @@ class WorkerProject:
         )
         for path, content in {
             "src/a/calc.py": "def add(a, b):\n    return a - b\n",
+            "src/new.py": "VALUE = 0\n",
             "src/bmod/secret.py": "SECRET = 1\n",
             "checks/a_check.py": (
                 "import pathlib, sys\n"
@@ -144,7 +145,7 @@ class WorkerProject:
                 "A",
                 [
                     realization("realization.a.code", ["src/a/"]),
-                    realization("realization.a.new", ["src/new.py"], ["src/new.py"]),
+                    realization("realization.a.new", ["src/new.py"]),
                 ],
                 used=("b",),
             ),
@@ -305,9 +306,8 @@ class SettingsTests(unittest.TestCase):
             {"tool_input": {"file_path": f"{root}/src/a/../notes.txt"}}, data
         )
         self.assertIn("src/notes.txt is not in this task's grant", undeclared)
-        self.assertIn("pending file", undeclared)
-        self.assertIn("specify", undeclared)
-        self.assertIn("another Module declares", undeclared)
+        self.assertIn("created and bound to a Module by the task level", undeclared)
+        self.assertIn("another Module binds", undeclared)
         self.assertEqual(
             "Git metadata is not available to workers",
             write_hook.decide(
@@ -456,21 +456,35 @@ class WorkerRunTests(unittest.TestCase):
 
     @verifies("scenario.workers.fenced-run")
     def test_a_fenced_run_changes_only_writable_files(self):
+        # B's file is only named to this worker, as another Module's file may be.
+        for entry in self.project.grant["entries"]:
+            if entry["path"] == "src/bmod/secret.py":
+                entry["level"] = "names"
+        levels = {e["path"]: e["level"] for e in self.project.grant["entries"]}
+        self.assertEqual("rw", levels["src/a/"])
+        self.assertEqual("rw", levels["src/new.py"])
+        self.assertEqual("ro", levels["specs/a/module.md"])
+        self.assertEqual("names", levels["src/bmod/secret.py"])
         record = self.project.run(
             [
                 {
                     "writes": {
                         f"{self.root}/src/a/calc.py": "def add(a, b):\n    return a + b\n",
-                        f"{self.root}/src/new.py": "VALUE = 1\n",
+                        f"{self.root}/src/a/added.py": "ADDED = 1\n",
                     }
                 }
             ]
         )
         self.assertEqual("ok", record["status"], record["error"])
+        audit = record["rounds"][0]["audit"]
+        self.assertEqual({"src/a/calc.py", "src/a/added.py"}, set(audit["changed"]))
+        self.assertEqual("clean", audit["verdict"])
+        self.assertEqual([], audit["violations"])
         self.assertEqual(
-            {"src/a/calc.py", "src/new.py"},
-            set(record["rounds"][0]["audit"]["changed"]),
+            "def add(a, b):\n    return a + b\n",
+            (self.root / "src/a/calc.py").read_text(),
         )
+        self.assertEqual("ADDED = 1\n", (self.root / "src/a/added.py").read_text())
         self.assertEqual("passed", record["rounds"][0]["checks"][0]["status"])
         self.assertEqual(
             self.project.grant["context_identity"], record["context_identity"]
@@ -483,20 +497,29 @@ class WorkerRunTests(unittest.TestCase):
             {k: v for k, v in record.items() if k not in RUNTIME_ONLY}, stored
         )
 
-    @verifies("scenario.workers.pending-precreated")
-    def test_pending_files_exist_before_launch_and_vanish_if_unused(self):
-        self.project.grant["entries"].append({"path": "src/unused.py", "level": "rw"})
-        record = self.project.run(
-            [{"writes": {f"{self.root}/src/new.py": "VALUE = 1\n"}}],
-            check_modules=None,
-        )
+    @verifies("scenario.workers.no-precreation")
+    def test_rw_paths_are_not_created_before_the_run(self):
+        # rw entries the worktree does not hold yet stay absent, as do the bound ones untouched.
+        self.project.grant["entries"] += [
+            {"path": "src/absent.py", "level": "rw"},
+            {"path": "src/absent/", "level": "rw"},
+        ]
+
+        def files():
+            return {
+                path.relative_to(self.root).as_posix(): path.read_bytes()
+                for path in sorted(self.root.rglob("*"))
+                if path.is_file() and ".git" not in path.relative_to(self.root).parts
+            }
+
+        before = files()
+        record = self.project.run([{}], check_modules=None)
         self.assertEqual("ok", record["status"], record["error"])
-        self.assertEqual(
-            {"src/new.py", "src/unused.py"}, set(record["pending_created"])
-        )
-        self.assertEqual(["src/unused.py"], record["pending_removed"])
-        self.assertTrue((self.root / "src/new.py").exists())
-        self.assertFalse((self.root / "src/unused.py").exists())
+        self.assertEqual(before, files())
+        self.assertFalse((self.root / "src/absent.py").exists())
+        self.assertFalse((self.root / "src/absent").exists())
+        self.assertNotIn("pending_created", record)
+        self.assertNotIn("pending_removed", record)
 
     @verifies("scenario.workers.no-ambient-instructions")
     def test_the_worker_gets_only_the_listed_environment(self):
@@ -702,11 +725,12 @@ class WorkerRunTests(unittest.TestCase):
             self.assertTrue((run / name).is_file(), name)
         node = json.loads((run / "trace.json").read_text())
         self.assertEqual(
-            ("worker-run", "ok", "concorde-worker-run-trace", 2),
+            ("worker-run", "ok", "concorde-worker-run-trace", 2, 2),
             (
                 node["kind"],
                 node["status"],
                 node["content"]["type_id"],
+                node["content"]["schema_version"],
                 node["content"]["data"]["rounds"],
             ),
         )

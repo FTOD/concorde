@@ -256,27 +256,25 @@ the trace node folder of its run, the frozen grant and context identity, task in
 brief, checks to run after the worker, and run limits — getting back a run record (status
 `ok`/`blocked`/`failed`) with the worker result kept verbatim beside the host's own evidence.
 
-Take an `implement` run whose grant makes `src/shop/cart.py` and pending `src/shop/discounts.py`
-writable (`rw`), the [Module](../../glossary.json#concept.module)'s Specs readable (`ro`), and
+Take an `implement` run whose grant makes `src/shop/cart.py` and `src/shop/discounts.py`, which the
+task level created and bound for the run to fill, writable (`rw`), the [Module](../../glossary.json#concept.module)'s Specs readable (`ro`), and
 another Module's `src/shop/pricing.py` visible by name only (`names`):
 
 ```d2 illustrative
 grant: Frozen grant
-precreate: Pre-create pending files
 generate: Generate settings, hook, tools and brief
 launch: Launch or resume the worker
 audit: Write audit
 record: Write the run record
 checks: Run configured checks
-grant -> precreate -> generate -> launch -> audit
+grant -> generate -> launch -> audit
 audit -> record: violation
 audit -> checks: clean
 checks -> launch: a check fails, rounds left
 checks -> record: pass, or rounds used up
 ```
 
-The host pre-creates `src/shop/discounts.py` empty — a worker can write only files that
-already exist — generates the worker's harness and brief, launches the worker's program headless in
+The host generates the worker's harness and brief, launches the worker's program headless in
 `work/` with a cleared environment, which passes on only the proxy its model calls go through
 ([the proxy](launch.md#proxy)) — on pi, the default, `pi -p` with the permission extension as
 its only extension ([the pi run mechanics](pi.md#launch)); on Claude Code `claude -p` with
@@ -456,10 +454,10 @@ every `--add-dir`) to the Bash sandbox's read/write set, defeating per-file conf
 brief uses absolute paths. The runtime directory must also avoid any deny-rule path, or the host
 refuses to launch.
 
-Pending files are pre-created since a worker must never create an undeclared file, and Bash can only
-grant writes to existing files; for the same reason it can't delete — only propose deletions,
-performed by the host inside `rw` after a clean audit. An untouched pre-created file is removed
-again, staying pending.
+A worker creates a new file only below a `rw` directory: every exact `rw` path already exists,
+since a realization binds only files that exist and the task level creates and binds any other new
+file before the run. The host creates no file for the worker. A worker cannot delete either — it
+only proposes deletions, performed by the host inside `rw` after a clean audit.
 
 Resume rounds reuse the worker's context — the spike confirmed this fixes a failing check — and
 on Claude Code each resume returns a session id the host continues from. Rounds are only for

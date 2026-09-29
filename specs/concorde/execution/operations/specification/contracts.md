@@ -12,7 +12,7 @@ of its answer.
 ```concorde-contract
 {
   "id": "contract.specification.spec-change",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -22,7 +22,6 @@ of its answer.
       "changed_documents",
       "created_documents",
       "deleted_documents",
-      "pending_declared",
       "promise_changes",
       "proposed_documents",
       "affected_modules",
@@ -56,32 +55,6 @@ of its answer.
         "items": {
           "type": "string",
           "minLength": 1
-        }
-      },
-      "pending_declared": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "module",
-            "realization",
-            "path"
-          ],
-          "properties": {
-            "module": {
-              "type": "string",
-              "pattern": "^module\\."
-            },
-            "realization": {
-              "type": "string",
-              "pattern": "^realization\\."
-            },
-            "path": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
         }
       },
       "promise_changes": {
@@ -240,7 +213,7 @@ of its answer.
       }
     }
   },
-  "semantics": "The outcome of one specify run. intent repeats the --intent argument. summary, promise_changes and proposed_documents are the worker's claims: its account of the promises it added, changed or removed in each bound Module (id is the stable identity when the promise has one, null for an explanation), and the new documents it would need, with their owning Module and role, which it cannot create itself. When a blocked worker proposes documents of bound Modules in the folders of their entries, the Operation creates them empty and launches a second worker once; the second worker's proposals are only reported. Every other field is computed by the Operation from the workspace after the audit. changed_documents lists every changed or new reading or metadata file, the project glossary when it changed, and every document the Operation created. created_documents lists the documents the Operation created, empty and owned, for a second worker to fill, because the first proposed them; each also appears in changed_documents. deleted_documents lists every owned document file the Operation deleted at the worker's request inside the grant. pending_declared lists every pending realization entry that was not pending before the run. affected_modules lists every Module whose Spec context, before or after the change, contains a changed or deleted document. validation holds the structural findings after the change, split into errors the baseline did not have, errors it already had, and warnings; a finding matches a baseline one when its rule_id, path and message match. The run's status is ok only when new_errors is empty and the worker ended ok.",
+  "semantics": "The outcome of one specify run. intent repeats the --intent argument. summary, promise_changes and proposed_documents are the worker's claims: its account of the promises it added, changed or removed in each bound Module (id is the stable identity when the promise has one, null for an explanation), and the new documents it would need, with their owning Module and role, which it cannot create itself. When a blocked worker proposes documents of bound Modules in the folders of their entries, the Operation creates them empty and launches a second worker once; the second worker's proposals are only reported. Every other field is computed by the Operation from the workspace after the audit. changed_documents lists every changed or new reading or metadata file, the project glossary when it changed, and every document the Operation created. created_documents lists the documents the Operation created, empty and owned, for a second worker to fill, because the first proposed them; each also appears in changed_documents. deleted_documents lists every owned document file the Operation deleted at the worker's request inside the grant. affected_modules lists every Module whose Spec context, before or after the change, contains a changed or deleted document. validation holds the structural findings after the change, split into errors the baseline did not have, errors it already had, and warnings; a finding matches a baseline one when its rule_id, path and message match. The run's status is ok only when new_errors is empty and the worker ended ok.",
   "example": {
     "intent": "add an optional severity to Issue reports",
     "summary": "Added severity to the report contract and a scenario for reporting with a severity.",
@@ -250,7 +223,6 @@ of its answer.
     ],
     "created_documents": [],
     "deleted_documents": [],
-    "pending_declared": [],
     "promise_changes": [
       {
         "module": "module.issues",

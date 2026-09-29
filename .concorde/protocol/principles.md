@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 15.1.0 defines how a project describes itself as a set of Modules, what each
+Concorde Spec Protocol 16.0.0 defines how a project describes itself as a set of Modules, what each
 Module promises, and how the Modules and their files relate. The Protocol applies to project Specs,
 including those of software implementing the Protocol. The standard's own chapters need not
 describe themselves as Modules.
@@ -373,21 +373,21 @@ Module.
 names.
 
 **Boundaries.** Its entries are the Module's `ImplementationScope`: the code a task bound to the
-Module may be given to change. `pending` entries declare where new files may be created before any
-code is written.
+Module may be given to change. Only paths that exist are bound; a new file is created before it is
+bound, or below a bound directory.
 
 **Fields.** `id`, `type`, `title`, `meaning`, `entries` (exact project-relative paths, or directory
-prefixes ending in `/`); optional `pending` (a subset of `entries` that does not yet exist).
+prefixes ending in `/`).
 
-**Constraints.** Non-pending entries MUST exist. Within a Module no two realizations list the same
+**Constraints.** Every entry MUST exist. Within a Module no two realizations list the same
 entry, and the longest covering entry determines which realization a file belongs to. A directory
 entry binds present and future regular files below it under the tool's deterministic exclusion
 rule. No document member, generated output or project-control record may be bound, and a bound
 directory MUST NOT contain a document member. Several Modules MAY bind the same path; each keeps
 its own promises, and a change concerns all of them.
 
-A pending entry records intent, not evidence, and is removed once the file exists. On the read
-side, listing a path grants its **name**; contents are readable or writable only through a task
+A realization records what exists, never an intent: a path that does not exist yet is not bound.
+On the read side, listing a path grants its **name**; contents are readable or writable only through a task
 boundary. See [Boundaries](boundaries.md).
 
 ## requirement
@@ -635,7 +635,7 @@ channel: **names only**. On the write side the covered files form the Module's
 [Boundaries](boundaries.md). A file bound by no Module is in no Module's scope.
 
 **Checks.** `CHK.binds.exists`, `CHK.binds.disjoint`, `CHK.binds.no-spec`,
-`CHK.binds.pending-subset`, `CHK.binds.unbound`.
+`CHK.binds.unbound`.
 
 ---
 
@@ -931,7 +931,7 @@ ProjectImplementation = ⋃ { ImplementationContext(M) ∪ ExternalContext(M) : 
 ```
 
 Exact entries and files below directory prefixes resolve under an explicit deterministic exclusion
-rule. Pending entries record intent without pretending that missing content exists.
+rule. Every entry exists, so implementation context never names missing content.
 
 Document members never belong to implementation context. When another Module binds the same file,
 a change to it concerns that Module too; this adds neither that Module's Specs nor its code to this
@@ -1009,7 +1009,7 @@ checkout get the same answer.
 | `ExternalContext(M)` | pinned material M includes | `includes` of kind `external` |
 | `ImplementationContext(M)` | the names of every file M's realizations bind | `binds` |
 | `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block, and the glossary entries M owns | `owns`, glossary `owner` |
-| `ImplementationScope(M)` | every file covered by M's realization entries, including pending entries not yet created | `binds` |
+| `ImplementationScope(M)` | every file covered by M's realization entries | `binds` |
 | `ProjectImplementation` | every file any Module's realizations bind and all external material any Module includes; the same for every Module | `binds`, `includes` of kind `external` |
 
 `SpecContext`, `ExternalContext`, `ImplementationContext` and `ProjectImplementation` are **read**
@@ -1042,11 +1042,13 @@ read access, however the Module binding it is granted. The installer replaces th
 update and the agents working on the project are configured by them, so a Module-scoped task never
 changes them.
 
-A file bound by no Module is therefore not writable by any Module-scoped task. To change or create
-such a file, first bind it: add it to a realization as an entry, or as a `pending` entry when it
-does not exist yet. Declaring the file is a Spec change within `SpecScope(M)`; creating it is then
-within `ImplementationScope(M)`. This two-step shape is what lets a `specify` task decide where
-code may go before an `implement` task writes it.
+A file bound by no Module is therefore not writable by any Module-scoped task. To change such a
+file, first bind it: add it to a realization as an entry. A realization binds only paths that
+exist, so a new file outside every bound directory is created and bound together, before a task
+that fills it starts, by the work that prepares that task rather than by a Module-scoped task:
+the file, with the least content its format needs to be valid, and the entry that binds it are
+one change. A task bound to the Module may then write the file within `ImplementationScope(M)`. A
+file created below a bound directory needs no new entry.
 
 ## The glossary
 
@@ -1151,10 +1153,10 @@ types that work on Specs alone never see code contents.
 - **`understand`** learns what a Module promises and how it is realized, without reading code:
   explaining, assessing, or planning a change. Planning is one use of understanding, not a task
   type of its own.
-- **`specify`** changes the Module's own documents, including declaring `pending` realization
-  entries for files a later `implement` task will create.
-- **`implement`** changes the Module's realization: its bound files, and the pending files it
-  declares.
+- **`specify`** changes the Module's own documents, including their realization entries for files
+  that exist.
+- **`implement`** changes the Module's realization: its bound files, and new files below its bound
+  directories.
 - **`test`** reads the realization and its tests against the Specs. Running checks is evidence
   produced for the task, not a wider read.
 - **`review-spec`** judges the Module's documents; **`review-code`** judges its realization against
@@ -1293,7 +1295,7 @@ The Protocol fixes the registry's content. Its serialization and location are a 
   "document": {"id": "document.checkout.topic.holds", "owner": "module.checkout", "role": "module"},
   "defines": [
     {"id": "realization.checkout.service", "type": "realization", "title": "Checkout service",
-     "meaning": "#realization.checkout.service", "entries": ["src/checkout/"], "pending": []}
+     "meaning": "#realization.checkout.service", "entries": ["src/checkout/"]}
   ],
   "relations": [
     {"type": "relates", "source": "realization.checkout.service", "verb": "records",
@@ -1559,11 +1561,10 @@ Severities: **error** blocks structural conformance. **warning** is reported and
 | `CHK.includes.redundant` | A spec inclusion whose documents are all already selected by `owns`, `contains`, `uses` or another inclusion is reported. | warning |
 | `CHK.external.exists` | External material exists at the declared path and is tracked by the project's version control. | error |
 | `CHK.external.no-overlap` | External paths overlap no document member and no realization entry. | error |
-| `CHK.binds.exists` | Non-pending entries exist; exact entries are files and `/` entries are directories. | error |
+| `CHK.binds.exists` | Every entry exists; exact entries are files and `/` entries are directories. | error |
 | `CHK.binds.disjoint` | No two realizations in one Module list the same entry. | error |
 | `CHK.binds.no-spec` | No document member, the glossary, generated output or control record is bound; a bound directory contains no document member. | error |
 | `CHK.binds.installed` | No directory entry covers an installed file, which is bound only by its exact path. | error |
-| `CHK.binds.pending-subset` | `pending` is a subset of `entries`, and pending entries do not exist. | error |
 | `CHK.binds.unbound` | Every version-controlled file is bound by some Module, unless it is a document member, the glossary, generated output, external material or a control record such as the project registry and configuration. | error |
 | `CHK.narrows.acyclic` | `narrows` never relates a concept to itself, directly or through other `narrows`. | error |
 | `CHK.contrasts.required` | A concept and a Module other than its owner whose titles normalize equal have a `contrasts` between them. | error |

@@ -79,11 +79,11 @@ class DeliveryTests(unittest.TestCase):
         (which only the index holds), an intent-to-add path, and skip-worktree and
         assume-unchanged flags: none of which a reset to the head would keep.
         """
-        (self.worktree / "src/new.py").write_text("NEW = 1\n")
+        (self.worktree / "src/a/added.py").write_text("ADDED = 1\n")
         (self.worktree / "src/a/calc.py").write_text(
             "def add(a, b):\n    return b + a\n"
         )
-        git(self.worktree, "add", "src/new.py", "src/a/calc.py")
+        git(self.worktree, "add", "src/a/added.py", "src/a/calc.py")
         (self.worktree / "src/a/calc.py").write_text(FIXED)
         (self.worktree / "src/a/later.py").write_text("LATER = 1\n")
         git(self.worktree, "add", "-N", "src/a/later.py")
@@ -96,16 +96,13 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn("h checks/a_check.py", state[2])
         return state
 
-    def assert_undone(self, envelope: dict, index: tuple[str, ...], metadata: bytes):
+    def assert_undone(self, envelope: dict, index: tuple[str, ...]):
         """Nothing was committed and the workspace is again what the readiness examined."""
         self.assertIn(
             "were restored as the readiness examined them", envelope["summary"]
         )
         self.assertEqual(self.index_state(), index)
         self.assertEqual(self.head(), self.base)
-        self.assertEqual(
-            (self.worktree / "specs/a/module.md.json").read_bytes(), metadata
-        )
         digest = self.saved_readiness(envelope)["inputs"]["digest"]
         self.assertEqual(measure(self.worktree, self.base)["digest"], digest)
         self.assertEqual(self.project.deliveries(), [])
@@ -191,7 +188,6 @@ class DeliveryTests(unittest.TestCase):
                 "commit": commit,
                 "branch": "concorde/t1",
                 "sequence": 1,
-                "confirmed": [],
                 "recovered": False,
             },
         )
@@ -274,22 +270,6 @@ class DeliveryTests(unittest.TestCase):
         )
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
-
-    @verifies("scenario.delivery.confirmations")
-    def test_pending_markers_are_cleared_in_the_commit(self):
-        (self.worktree / "src/new.py").write_text("NEW = 1\n")
-        self.validated()
-        status, envelope = self.project.deliver()
-        self.assertEqual(status, 0, envelope)
-        self.assertEqual(envelope["output"]["confirmed"], ["src/new.py"])
-        metadata = json.loads(self.committed("specs/a/module.md.json"))
-        pending = {
-            item["id"]: item.get("pending", [])
-            for item in metadata["defines"]
-            if item["type"] == "realization"
-        }
-        self.assertEqual(pending["realization.a.new"], [])
-        self.assertEqual(status_lines(self.worktree), "")
 
     @verifies("scenario.delivery.second")
     def test_deliver_again_after_further_work(self):
@@ -387,13 +367,12 @@ class DeliveryTests(unittest.TestCase):
         hook.write_text("#!/bin/sh\necho 'hook says no' >&2\nexit 1\n")
         hook.chmod(0o755)
         index = self.stage_before_delivery()
-        metadata = (self.worktree / "specs/a/module.md.json").read_bytes()
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
         self.assertIn("hook says no", evidence_of(envelope, "git")[-1]["detail"])
         self.assertEqual(["commit_failed", "git_failed"], codes(envelope["error"]))
         self.assertIn("hook says no", envelope["error"]["causes"][0]["detail"])
-        self.assert_undone(envelope, index, metadata)
+        self.assert_undone(envelope, index)
 
     @verifies("scenario.delivery.hook-changed-commit")
     def test_a_commit_hook_that_changes_the_content_is_caught(self):
@@ -441,42 +420,29 @@ class DeliveryTests(unittest.TestCase):
         index = self.stage_before_delivery()
         (self.worktree / "src/a/extra.py").write_text("EXTRA = 1\n")
         index = (status_lines(self.worktree), *index[1:])
-        metadata = (self.worktree / "specs/a/module.md.json").read_bytes()
         status, envelope = self.project.deliver()
         self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
         self.assertEqual(["stage_failed", "git_failed"], codes(envelope["error"]))
         self.assertIn("refuse", envelope["error"]["causes"][0]["detail"])
-        self.assert_undone(envelope, index, metadata)
+        self.assert_undone(envelope, index)
 
     def test_a_failed_undo_names_what_it_could_not_restore(self):
         with tempfile.TemporaryDirectory() as directory:
             worktree = Path(directory)
             subprocess.run(["git", "init", "-q"], cwd=worktree, check=True)
-            # Writing metadata back over a directory fails, as does reading a missing tree.
-            (worktree / "specs.json").mkdir()
+            # Reading a missing tree back into the index fails.
             ctx = SimpleNamespace(
                 worktree=worktree,
-                delivery=State(
-                    backups={"specs.json": b"{}"},
-                    index=IndexRecord("0" * 40, ["later.py"], [], []),
-                ),
+                delivery=State(index=IndexRecord("0" * 40, ["later.py"], [], [])),
             )
             undone = undo(ctx)
-        self.assertEqual(
-            [name for name, _ in undone.failed],
-            ["the metadata specs.json", "the index"],
-        )
+        self.assertEqual([name for name, _ in undone.failed], ["the index"])
         self.assertEqual(
             [(link["actor"], link["code"]) for link in undone.causes],
-            [
-                ("Delivery undo", "metadata_unrestored"),
-                (f"git read-tree {'0' * 40}", "git_failed"),
-            ],
+            [(f"git read-tree {'0' * 40}", "git_failed")],
         )
-        self.assertIn("IsADirectoryError", undone.causes[0]["detail"])
         self.assertIn(
-            "restoring the metadata specs.json and the index failed, so the workspace is not as "
-            "the readiness examined it",
+            "restoring the index failed, so the workspace is not as the readiness examined it",
             str(undone),
         )
 
@@ -521,7 +487,7 @@ class DeliveryTests(unittest.TestCase):
         self.validated()
         _, first = self.project.deliver()
         delivered = first["output"]
-        self.assertEqual(delivered["confirmed"], ["src/new.py"])
+        self.assertNotIn("confirmed", delivered)
         # The run ended after its commit without leaving its result: the commit alone records
         # the delivery.
         (workspace_run(self.project.root, first) / "result.json").unlink()
@@ -531,7 +497,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(self.head(), delivered["commit"])
         self.assertEqual(
             envelope["output"],
-            {**delivered, "confirmed": [], "recovered": True},
+            {**delivered, "recovered": True},
         )
         self.assertEqual(
             [d["commit"] for d in self.project.deliveries()], [delivered["commit"]]

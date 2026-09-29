@@ -1,1 +1,1 @@
-"""Validation: the deterministic ``validate`` Operation, its input measurement and confirmations."""
+"""Validation: the deterministic ``task-validation`` command and its input measurement."""

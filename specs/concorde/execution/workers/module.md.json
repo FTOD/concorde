@@ -108,8 +108,7 @@
         "src/concorde/harness/runs.py",
         "tests/concorde/harness/workers/",
         "prompts/workers/common/"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.workers.claude",
@@ -118,8 +117,7 @@
       "meaning": "#realization.workers.claude",
       "entries": [
         "src/concorde/harness/claude_backend.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.workers.pi",
@@ -128,8 +126,7 @@
       "meaning": "#realization.workers.pi",
       "entries": [
         "src/concorde/harness/pi_backend.py"
-      ],
-      "pending": []
+      ]
     },
     {
       "id": "realization.workers.models",
@@ -140,8 +137,7 @@
         "src/concorde/harness/models.py",
         "src/concorde/harness/available_models.py",
         "scripts/available_models.py"
-      ],
-      "pending": []
+      ]
     }
   ],
   "relations": [
