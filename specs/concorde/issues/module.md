@@ -159,9 +159,9 @@ The bookkeeping command is the main agent's interface. In an installed project i
 `concorde issues` (`concorde` stands for `.concorde/bin/concorde`); in Concorde's source checkout it
 is `python3 scripts/concorde.py issues`, which routes to `python3 scripts/issues.py`. These reach
 the same store. The [main-session guidance](../coordination/main-session/module.md#issues) puts
-every Issue write in a task worktree, with `--task <task-id>` on `report`; `close` and `reopen` take
-no `--task`. Read-only inspection may use either worktree, and always describes that worktree's
-copy. This is guidance to the main agent: the command still accepts an optional task on a report and
+every Issue write in a task worktree, run by the task session working that task, with
+`--task <task-id>` on `report`; `close` and `reopen` take no `--task`. Read-only inspection may use
+either worktree, and always describes that worktree's copy. This is guidance to the main agent: the command still accepts an optional task on a report and
 uses its selected project root, without enforcing the task workflow.
 
 ### Recording and following up
@@ -218,13 +218,16 @@ preserve follow-up information before closing such a task, including how to find
 evidence; a decision-log entry alone does not make an Issue appear in `list` on the primary branch.
 
 Changes to the same Issue on different branches may conflict in Git. The worktree lock and
-revision checks do not reconcile those histories. The main agent resolves the conflict in the
-task worktree, retaining accepted reports unchanged and reconciling the disposition history with
-the decision it documents. Two competing closes cannot simply be concatenated, nor can a
-reopening be invented merely to make them alternate. Preserve the competing decisions and their
-evidence for review when deciding which history to carry forward. Run `concorde issues check`
-explicitly on the result before validation and delivery: ordinary structural Spec validation does
-not validate Issue records, and the store check cannot decide which closure is justified.
+revision checks do not reconcile those histories. The
+[task session](../glossary.json#concept.task-session) of the task resolves the conflict in the task
+worktree, while merging the primary branch into the task branch at the main agent's request,
+retaining accepted reports unchanged and reconciling the disposition history with the decision it
+documents. Two competing closes cannot simply be concatenated, nor can a reopening be invented
+merely to make them alternate. Preserve the competing decisions and their evidence for review when
+deciding which history to carry forward: the main agent decides between competing dispositions, or
+escalates the choice to the developer. Run `concorde issues check` explicitly on the result before
+validation and delivery: ordinary structural Spec validation does not validate Issue records, and
+the store check cannot decide which closure is justified.
 
 ### Inspection and refusals
 
@@ -251,12 +254,13 @@ inside, the store and the bookkeeping command that divide its work.
 
 ### Around it
 
-No program but the store writes a record; the one hand edit Issues expects is the main agent's
+No program but the store writes a record; the one hand edit Issues expects is a task session's
 resolution of a Git merge conflict in a record, described under
 [branch-local records](#branch-local-records-and-repair). The bookkeeping command is how the main
-agent adds reports and dispositions, usually closing an Issue on the task branch that fixed it. Main
-session declares `session -> issues` in the [structure](#structure) diagram; its
-[guidance](../coordination/main-session/module.md) says when to record, solve and close Issues.
+agent's reports and dispositions are added, by the task session working a task in its worktree,
+usually closing an Issue on the task branch that fixed it. Main session declares `session -> issues`
+in the [structure](#structure) diagram; its [guidance](../coordination/main-session/module.md)
+says when to record, solve and close Issues.
 
 Of the Modules, Issues relies only on Spec core. It also follows the Framework's
 [error contract](../tracing/contracts.md#contract.tracing.error): the command checks a report's
