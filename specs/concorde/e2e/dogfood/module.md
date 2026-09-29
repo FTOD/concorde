@@ -142,8 +142,9 @@ project](../../glossary.json#concept.test-project): every worker on the project 
 `--worker-model` when it is given, enabling only that model, and otherwise this checkout's own
 `.concorde/workers.json` without its `runtime` paths; `dogfood.json` names its enabled models. As
 for any test project, the developer's [model map](../../glossary.json#concept.model-map) resolves
-its models, and a configuration that map cannot resolve is refused before the scenario is set up. Without it every worker the session
-starts would be refused with `config_missing`, a failure no scenario's fault causes.
+its models, and a configuration that map cannot resolve is refused before the scenario is set up.
+Without a worker configuration every worker the session starts would be refused with
+`config_missing`, a failure no scenario's fault causes.
 
 `run` runs the scenario's prompt as a
 [headless session](../../glossary.json#concept.headless-session) in the project, kept under the

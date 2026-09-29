@@ -41,8 +41,7 @@ of the task's worktree.
 ### req.e2e.own-result — A run prints only its own workflow result
 
 `run` SHALL print only a [workflow result](../glossary.json#concept.workflow-result) saved in the
-[workflow record](../glossary.json#concept.workflow-record) after the run started, failing with
-`no_result` when the record holds no more saved results after the run than before it.
+[workflow record](../glossary.json#concept.workflow-record) after the run started.
 
 ### req.e2e.trust-explicit — Trust changes only on request
 
@@ -66,3 +65,11 @@ woken when the run ended, when any other live session began a turn or received a
 while the run ended, or when a session that does not own the run could not see it ended.
 
 It prompts no session in the time it judges, so every turn and notification there is a wake.
+
+### req.e2e.owners-deadline — An owner's missing wake is a verdict, not an error
+
+The owners case SHALL judge a phase at the latest `--wake` and `--grace` seconds after its run
+wrote its result, whether or not the run's owner has been woken by then.
+
+An owner not woken by then is therefore a problem of the `failed` verdict that
+[req.e2e.owners-case](#req.e2e.owners-case) requires, never an error of the case.

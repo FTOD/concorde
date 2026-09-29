@@ -21,10 +21,10 @@ whose findings become ordinary tasks.
 <a id="concept.test-project"></a>
 
 **[Test project](../glossary.json#concept.test-project).** A test project is a real codebase set up
-the way a user's project is set up: a repository SWE-bench names, fetched at a pinned revision into
-the **end-to-end root**, with the Concorde of this checkout installed and initialized, a [worker
-configuration](../glossary.json#concept.worker-configuration) written and a task open, bound to the
-root [Module](../glossary.json#concept.module). The end-to-end root is `CONCORDE_E2E_ROOT` when it
+the way a user's project is set up: a repository SWE-bench names, or another that `--any` admits,
+fetched at a pinned revision into the **end-to-end root**, with the Concorde of this checkout
+installed and initialized, a [worker configuration](../glossary.json#concept.worker-configuration)
+written and a task open, bound to the root [Module](../glossary.json#concept.module). The end-to-end root is `CONCORDE_E2E_ROOT` when it
 is set, and otherwise `concorde-e2e` in the system's temporary directory (`/tmp/concorde-e2e` on
 Linux), never the developer's home: test projects are throwaway, and Claude Code keeps no trust for
 the home directory itself. The developer reads a test project's Specs, runs and records, and removes
@@ -133,7 +133,7 @@ python3 scripts/e2e/e2e.py prepare <owner/name> --rev <tag|branch|commit> [--nam
 python3 scripts/e2e/e2e.py trust <project>…
 python3 scripts/e2e/e2e.py run <project> [--via claude|driver] [--workflow brownfield] [--task <task>] [--module <id>] [--mode no-ask|interactive] [--retry <key>]… [--restart <key>=<label>]…
 python3 scripts/e2e/e2e.py watch <project>
-python3 scripts/e2e/e2e.py owners <project> [--task t1] [--claude 2] [--claude-model <model>] [--grace 20]
+python3 scripts/e2e/e2e.py owners <project> [--task t1] [--claude 2] [--claude-model <model>] [--wake 180] [--grace 20]
 ```
 
 Its children add `session` ([Headless sessions](sessions/module.md)), `repair-specs` and `grade`
@@ -287,13 +287,18 @@ on the project's task `--task` (default `t1`), which must have a worktree:
 Each run is started with `--wait` while the case holds the task's
 [workspace lock](../glossary.json#concept.workspace-lock), which it releases only once the run is
 in the run store, so that the run outlives its launch and its end reaches the owner as a wake, never
-as the launching tool's own answer. When the run has written its result and the owner has been
-woken, and after `--grace` seconds more, the phase is judged over the time since the owner's
-launching turn ended (the phase's start for the unowned run), in which the case prompts no session:
-the owner must have begun a turn or received a notification, Claude Code's `task_notification`, and
-no other session may have done either. Then every session that does not own the run, into which
-nothing is pushed, is asked to run `concorde task show <task>` and must find the run with the status
-of its result ([requirements](requirements.md#req.e2e.owners-case)).
+as the launching tool's own answer.
+
+Once the run has written its result, the case observes the sessions for a bounded window. For an
+owned run it waits until the owner has been woken and has ended the turn it was woken into, but at
+most `--wake` seconds (180 by default) after the result; then, and for the unowned run at once, it
+waits `--grace` seconds more (20 by default), so that a wake of another session that comes late is
+still seen. The window ends then, whether or not the owner was woken, and the phase is judged over
+the time since the owner's launching turn ended (the phase's start for the unowned run), in which
+the case prompts no session: the owner must have begun a turn or received a notification, Claude
+Code's `task_notification`, and no other session may have done either. Then every session that
+does not own the run, into which nothing is pushed, is asked to run `concorde task show <task>` and
+must find the run with the status of its result ([requirements](requirements.md#req.e2e.owners-case)).
 
 ```d2 illustrative
 direction: down
@@ -302,22 +307,27 @@ start: "The launcher starts task-validation with --wait:\nthe case itself (unown
 store: "The run enters the run store,\nwaiting for the lock"
 release: "The case releases the lock"
 result: "The run works and writes its result"
-wake: "The owner, if any, is woken:\na turn or a task_notification"
+wake: "Owned run: wait until the owner is woken and its turn ends,\nat most --wake seconds after the result"
 grace: "The case waits --grace seconds more"
 judge: "Judge the wakes since the launching turn ended:\nthe owner woken, no other session woken"
 ask: "Ask every other session to run task show:\neach must find the run with its result's status"
 verdict: "Phase verdict, into owners.json" {shape: oval}
 hold -> start -> store -> release -> result -> wake -> grace -> judge -> ask -> verdict
+result -> grace: "unowned run" {style.stroke-dash: 3}
 ```
 
 The case prints, and keeps as `owners.json` beside every session's events under
 `.concorde/runs/e2e/owners/<time>/`, the sessions, every phase with its owner, run, status, each
 session's verdict and what each other session saw, and its outcome: `passed`, or `failed` with every
-problem, such as `claude-2 was woken by a run it does not own`. A contradicted promise is the case's
-verdict, not an error; fewer than two sessions (`invalid_input`), a missing task (`no_task`), a
-session that cannot start (`session_failed`) or a step that does not happen in time
-(`live_timeout`) stops it with an error. The case spends real model turns and is run by hand, like
-every end-to-end run.
+problem, such as `claude-2 was woken by a run it does not own` or `the owner claude-1 was not woken
+when its run ended` ([requirements](requirements.md#req.e2e.owners-deadline)). A contradicted
+promise is the case's verdict, not an error. What stops the case with an error is only what keeps it
+from observing: fewer than two sessions (`invalid_input`), a missing task (`no_task`), a session
+that cannot start or ends (`session_failed`), another run holding the task's workspace lock for
+the case's whole limit (`workspace_busy`), and `live_timeout`, the infrastructure's deadline,
+when within the case's limit of 600 seconds a session does not end a turn the case prompted, no run
+of the task appears in the run store or the run writes no result. The case spends real model turns
+and is run by hand, like every end-to-end run.
 
 ## Why it is built this way
 
@@ -364,7 +374,8 @@ The **owners case** is `scripts/e2e/owners.py`: the phases, holding the workspac
 who was woken and asking the others what they see. Its tests,
 `tests/concorde/e2e/test_owners.py`, run the whole case with stand-ins for `claude` and
 `concorde`, the first speaking the live sessions' protocol, including a `claude` stand-in that is
-also woken for every run it does not own, which must fail the case.
+also woken for every run it does not own and one never woken by its own run, each of which must
+fail the case.
 
 ## The children
 

@@ -545,6 +545,7 @@ def main(argv) -> int:
     owners_.add_argument("--task", default="t1")
     owners_.add_argument("--claude", type=int, default=2)
     owners_.add_argument("--claude-model")
+    owners_.add_argument("--wake", type=float, default=owners.WAKE_SECONDS)
     owners_.add_argument("--grace", type=float, default=owners.GRACE_SECONDS)
     arguments = parser.parse_args(argv)
     try:
@@ -614,6 +615,7 @@ def main(argv) -> int:
                 task=arguments.task,
                 claude_model=arguments.claude_model,
                 grace=arguments.grace,
+                wake=arguments.wake,
             )
         else:
             value = watch(arguments.project.resolve())

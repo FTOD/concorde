@@ -17,11 +17,17 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.dogfood-scenarios.worker-configuration — The project gets a worker configuration
 
-- GIVEN a scenario being prepared, with or without `--worker-model`
+- GIVEN a scenario being prepared with `--worker-model fast`, a project model name the developer's [model map](../../glossary.json#concept.model-map) gives an id for every worker's program
 - WHEN the runner commits the initialized project
-- THEN the commit holds the project's [worker configuration](../../glossary.json#concept.worker-configuration), the one [End-to-end testing](../module.md) gives a [test project](../../glossary.json#concept.test-project)
-- AND `dogfood.json` names its enabled models
-- BUT a model the developer's [model map](../../glossary.json#concept.model-map) gives no id for a worker's program is refused with `model_unmapped` before the scenario is set up
+- THEN the commit holds the project's [worker configuration](../../glossary.json#concept.worker-configuration), the one [End-to-end testing](../module.md) gives a [test project](../../glossary.json#concept.test-project) prepared with `--worker-model fast`
+- AND `dogfood.json` names `fast` as its enabled model
+
+### scenario.dogfood-scenarios.unmapped-model — A model the model map cannot resolve is refused
+
+- GIVEN a model map that gives the project model name `unmapped` no id for a worker's program
+- WHEN the developer prepares a scenario with `--worker-model unmapped`
+- THEN preparation is refused with `model_unmapped`
+- AND no scenario directory is set up
 
 ### scenario.dogfood-scenarios.fault — A fault is its own commit
 
@@ -51,6 +57,11 @@ Concrete situations that show the [requirements](requirements.md) of
 ### scenario.dogfood-scenarios.untouched — A changed framework or installed file is seen
 
 - GIVEN a prepared scenario whose project has the framework copy and the installed files of its baselines
-- WHEN a framework source or an installed file outside `.concorde/` changes and the scenario is evaluated
-- THEN `concorde_untouched` fails, naming the changed installed file or the changed framework copy
-- BUT a change only to Python's caches under the framework copy leaves `concorde_untouched` passing
+- WHEN a framework source and an installed file outside `.concorde/` change and the scenario is evaluated
+- THEN `concorde_untouched` fails, naming the changed installed file and the changed framework copy
+
+### scenario.dogfood-scenarios.caches-ignored — A change to Python's caches is no change
+
+- GIVEN a prepared scenario whose Concorde clone, framework copy and installed files are as their baselines record
+- WHEN only Python's caches under the framework copy change and the scenario is evaluated
+- THEN `concorde_untouched` passes
