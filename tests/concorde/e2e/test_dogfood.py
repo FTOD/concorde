@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
 import subprocess
@@ -61,7 +62,7 @@ class ScenarioTests(unittest.TestCase):
 
     @verifies("scenario.dogfood-scenarios.worker-configuration")
     def test_the_project_gets_a_worker_configuration_before_its_adopt_commit(self):
-        workers = e2e.worker_configuration("local/fast")
+        workers = e2e.worker_configuration("fast")
         committed = {}
 
         def fake_run(command, cwd, **options):
@@ -87,7 +88,22 @@ class ScenarioTests(unittest.TestCase):
                     "write-hook-rw-directories", Path(directory), workers
                 )
         self.assertEqual(workers, committed["workers"])
-        self.assertEqual(["local/fast"], prepared["worker_models"])
+        self.assertEqual(["fast"], prepared["worker_models"])
+        # A model this machine's model map cannot resolve is refused before the scenario is set
+        # up, since the project's workers would read the same map.
+        arguments = argparse.Namespace(
+            action="prepare",
+            scenario="write-hook-rw-directories",
+            worker_model="unmapped",
+            name=None,
+        )
+        with (
+            patch.object(dogfood, "prepare") as prepare,
+            self.assertRaises(e2e.E2EError) as raised,
+        ):
+            e2e.dogfood_command(arguments)
+        self.assertEqual("model_unmapped", raised.exception.code)
+        prepare.assert_not_called()
 
 
 class FaultTests(unittest.TestCase):

@@ -277,8 +277,15 @@ the main agent, when the project has none, to ask the developer which models wor
 which is the default, and to write the file with its required enabled models and a default model
 and commit it alone on the primary branch before any Operation runs
 ([requirements](requirements.md#req.main-session.worker-configuration-first)). It describes the
-enabled models, each with an optional level of its own, the refusals of a model that is not
-enabled and of a worker without a model, and which level a worker takes. The guidance tells the
+enabled models, each named by a project model name that depends on no installation and each with an
+optional level of its own, the refusals of a model that is not enabled and of a worker without a
+model, and which level a worker takes. It describes the developer's untracked [model
+map](../../glossary.json#concept.model-map), which gives each project model name its local id on pi
+or Claude Code, and its refusals of a missing or unreadable map and of a model it does not map for
+the worker's program; since the map belongs to the developer's machine, the guidance tells the main
+agent to change it only when the developer asks or agrees, and to tell the developer the entry the
+map needs when the file gains a model
+([requirements](requirements.md#req.main-session.model-map-developers)). The guidance tells the
 main agent to change the file only when the developer asks, by editing the JSON directly and
 preserving unrelated entries, adding every model it names to the enabled models; there is no
 editor. It chooses Claude Code for a worker by setting that entry's `backend` to `claude`; the
@@ -288,7 +295,8 @@ agent makes in the primary worktree, never while a merge is unfinished; a task m
 copy, which reaches the primary branch when the task merges
 ([requirements](requirements.md#req.main-session.model-change-method)). The separate
 `scripts/available_models.py --backend pi|claude [--json]` supplies optional suggestions without
-Git or inference API calls. Discovery does not gate custom/offline configuration or impose an extra
+Git or inference API calls, with the project model names the map already gives each candidate and
+the map's pi ids pi no longer lists. Discovery does not gate custom/offline configuration or impose an extra
 question flow when the developer already chose a model.
 
 ## Questions without a task

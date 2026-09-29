@@ -220,7 +220,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - AND a [worker configuration](../../glossary.json#concept.worker-configuration) that chooses a model and a level for a pi worker
 - WHEN the host prepares the worker's runtime directory and launches it
 - THEN its generated pi settings hold only `defaultProjectTrust` `never`, in both cases, and the run is not refused
-- AND the worker is launched with the configured model and level as `--model` and `--thinking`
+- AND the worker is launched with the local id the [model map](../../glossary.json#concept.model-map) gives the configured model and with the configured level, as `--model` and `--thinking`
 - AND its pi configuration directory holds copies of the user's `auth.json` and `models.json`
 
 ### scenario.workers.pi-limit — A pi run over its turn limit stops
@@ -236,7 +236,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 
 - GIVEN a command started from a Claude Code session, both programs installed, and a [worker configuration](../../glossary.json#concept.worker-configuration) whose default gives a pi model and which puts `spec_review`'s worker `checker` on `claude` with a Claude Code model and a level
 - WHEN the choices of `spec_review`'s `reviewer` and `checker` are resolved
-- THEN the reviewer runs on pi with the default's model
+- THEN the reviewer runs on pi with the default's model, as the local id the [model map](../../glossary.json#concept.model-map) gives it on pi, and the choice names that id and the map
 - AND the checker runs on `claude` with the model and level of its own entry
 
 ### scenario.workers.backend-default — Without a configuration entry a worker runs on pi
@@ -258,6 +258,8 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN pi listing two models with credentials, one of them without reasoning, and Claude Code whose user settings name a model and whose environment pins another
 - WHEN Workers lists the candidates of each backend
 - THEN the pi listing names both as `provider/model`, the reasoning one with pi's thinking levels and the other with only `off`, and is marked complete
+- AND with a [model map](../../glossary.json#concept.model-map) that maps a project model name to one of them on pi and another to a pi id pi does not list, the listing names that project model name for its candidate and the other name with its unlisted id
+- AND without a model map it reports the map's refusal without refusing the listing
 - AND the Claude Code listing names the aliases, the settings' model and the pinned model with Claude Code's effort levels, is marked incomplete and says why
 - BUT a backend whose program is not installed is refused with `backend_missing`
 
@@ -281,14 +283,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worker configuration whose default sets only a level, which names a model for `spec_review`'s default and puts `spec_panel`'s `chair` on `claude` without a model
 - WHEN the choices of `spec_review`'s `checker`, `implement`'s worker and `spec_panel`'s `chair` are resolved
 - THEN the checker gets the model of its Operation's default
-- AND `implement`'s worker and the chair are refused with `model_unresolved`, naming the worker, every entry its model may come from and how to set one, and saying that no program's or developer's default model is used
+- AND `implement`'s worker and the chair are refused with `model_unresolved`, naming the worker, every entry its model may come from, from its own entry to the default, and how to set one, and saying that no program's or developer's default model is used
 
 ### scenario.workers.model-refused — Validation admits custom models but rejects invalid entries
 
 - GIVEN a configuration with a custom model absent from discovery
 - WHEN the shared validator checks it without installed backends or credentials
 - THEN the custom model is accepted
-- BUT invalid structure, unknown Operation or worker names, malformed `enabled_models` entries and reasoning outside the effective backend's vocabulary are refused with `config_invalid`
+- BUT invalid structure, unknown Operation or worker names, malformed `enabled_models` entries, an enabled model named by one program's id such as `local-openai/gpt-6` rather than a project model name, and reasoning outside the effective backend's vocabulary are refused with `config_invalid`
 
 ### scenario.workers.model-not-enabled — A model outside the enabled models is refused
 
@@ -310,6 +312,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN Workers reads it
 - THEN it is refused with `config_invalid`, naming the file and what is wrong with it
 - AND a file of another schema version is refused the same way, naming the version it expects
+- AND a file of schema version 1, whose models are local ids such as `local-openai/gpt-6`, is refused saying to rename each model to a project model name, set the version and map each name in the model map
 
 ### scenario.workers.limits-configured — Limits and runtime paths come from the worker configuration
 
@@ -324,6 +327,42 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN Workers reads the worker configuration
 - THEN it is refused with `config_invalid`, naming both files and saying to move the models into `.concorde/workers.json`, commit it and delete the old file
 - BUT once `.concorde/workers.json` exists, it is the configuration read
+
+## The model map
+
+### scenario.workers.model-map-location — The model map is the named file, else the user's XDG configuration
+
+- GIVEN an environment that names a model map in `CONCORDE_MODEL_MAP`, and then environments that do not, with an absolute `XDG_CONFIG_HOME`, a relative one and none
+- WHEN Workers finds the [model map](../../glossary.json#concept.model-map)
+- THEN it is the named file, then `concorde/models.json` of the absolute `XDG_CONFIG_HOME`, and for the relative one and none `~/.config/concorde/models.json`
+- BUT a `CONCORDE_MODEL_MAP` that is not an absolute path refuses the worker with `model_map_invalid`
+
+### scenario.workers.model-map-resolved — A project model name resolves to its local id on the worker's backend
+
+- GIVEN a worker configuration choosing the project model `gpt-6-astra` by default and `claude-opus-5-5` for `spec_panel`'s `reviewer1`, and a model map giving `gpt-6-astra` a pi id and `claude-opus-5-5` ids on both programs, besides a model no project enables
+- WHEN the choices of `implement`'s worker and `spec_panel`'s `reviewer1` are resolved
+- THEN each runs on pi with its project model name, its level and the pi id of its model, and names the map it came from
+
+### scenario.workers.backend-switch — An entry choosing a backend inherits the model and level
+
+- GIVEN a worker configuration whose default chooses a model and a level and which puts `spec_panel`'s `chair` on `claude` without a model or level, and a model map giving the default's model a pi id only
+- WHEN the chair's choice is resolved
+- THEN it runs on `claude` with the default's model and level, each naming the default as its source
+- BUT since the map gives that model no Claude Code id, the chair is refused with `model_unmapped`, naming the worker, its backend and model with their sources, the map, the programs the model is mapped for and the exact entry to add, and saying that a project model name is never used as a local id
+
+### scenario.workers.model-unmapped — A model the map gives no id for the worker's backend is refused
+
+- GIVEN a model map that does not name the default's model
+- WHEN a worker on that model is resolved
+- THEN it is refused with `model_unmapped`, saying that the map does not name the model at all
+- AND checking a whole worker configuration against the map names, in one refusal, every model and backend it lacks with the workers that would take them, and passes once the map gives each its id
+
+### scenario.workers.model-map-missing — A missing or unreadable model map is refused, never ignored
+
+- GIVEN no model map, and then a map that is not valid JSON, has a duplicate key, another schema version, a model without an id, an unknown program or a name that is not a project model name
+- WHEN a worker is resolved
+- THEN the missing map is refused with `model_map_missing`, naming the file, showing what it holds and saying that it belongs to the machine and is never committed
+- AND each unreadable map with `model_map_invalid`, naming the file and what is wrong with it
 
 ## Discovering models
 

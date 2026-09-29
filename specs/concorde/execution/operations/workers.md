@@ -30,13 +30,18 @@ unbound run uses the committed file; the backend is pi unless the configuration 
 for that worker, its Operation or every worker. The validator checks the whole file's structure,
 limits and every configured Operation and worker name against the catalog before resolving any
 worker. It does not discover models or require credentials; custom/offline model names remain
-valid. A malformed or unknown-name entry fails even when it is for a different Operation.
+valid. A malformed or unknown-name entry fails even when it is for a different Operation. Workers
+then resolves the worker's project model name to its local id on the backend through the machine's
+[model map](../../glossary.json#concept.model-map), which the run reads from its own environment,
+bound or unbound alike.
 
 Workers records the Operation, [worker id](../../glossary.json#concept.worker-id), backend and where
-it came from, model and level in the run record, and the step adds `worker-model` evidence naming
-the worker id, the backend and its source, the model and the level the worker ran with. When the
-worker's program is not installed or the configuration file cannot be read, the step stops `failed`
-with `worker_model_unavailable` before any worker starts.
+it came from, project model name, its local id, the model map and the level in the run record, and
+the step adds `worker-model` evidence naming the worker id, the backend and its source, the project
+model name with the local id and the map it came from, and the level the worker ran with. When the
+worker's program is not installed, the configuration file cannot be read or the model map is missing,
+unreadable or gives the model no id for the backend, the step stops `failed` with
+`worker_model_unavailable` before any worker starts.
 
 ## Standard worker sequence
 
@@ -135,7 +140,7 @@ sequence adds these codes.
 | --- | --- | --- | --- |
 | Grant not computable | `grant_unavailable` | `scope` | Spec core's error |
 | An unbound run asked for a worker whose grant keeps a writable path | `unbound_write` | `scope` | none |
-| Worker backend or model configuration not settled | `worker_model_unavailable` | `input` (`config_invalid`) or `environment` (`backend_missing`) | the `component` link of Workers' model configuration, with its code (`config_invalid` or `backend_missing`) and the file |
+| Worker backend or model configuration not settled | `worker_model_unavailable` | `input` (`config_invalid` and the other refusals of the worker configuration) or `environment` (`backend_missing`, `model_map_missing`, `model_map_invalid`, `model_unmapped`) | the `component` link of Workers' model configuration, with its code and the file |
 | Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error |
 | Worker run ended with an audit violation | `audit_violation` | `permission` | the run record's error |
 | Worker run ended with checks still failing | `checks_failed` | `decision` | the run record's error |

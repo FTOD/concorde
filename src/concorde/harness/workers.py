@@ -51,17 +51,19 @@ _PATHS = {"type": "array", "items": {"type": "string", "minLength": 1}}
 _NULLABLE_TEXT = {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]}
 # A free-form object: the typed-value check closes an object without additionalProperties.
 _OBJECT = {"type": "object", "additionalProperties": {}}
-# contract.workers.worker-run-trace, version 2
+# contract.workers.worker-run-trace, version 3
 WORKER_RUN_TRACE = "concorde-worker-run-trace"
 register(
     WORKER_RUN_TRACE,
-    2,
+    3,
     {
         "type": "object",
         "additionalProperties": False,
         "required": [
             "task_type",
             "backend_source",
+            "local_model",
+            "model_map",
             "tools",
             "transcript",
             "worker_result",
@@ -72,6 +74,8 @@ register(
         "properties": {
             "task_type": {"type": "string", "minLength": 1},
             "backend_source": _NULLABLE_TEXT,
+            "local_model": _NULLABLE_TEXT,
+            "model_map": _NULLABLE_TEXT,
             "tools": {
                 "anyOf": [
                     {"type": "null"},
@@ -160,7 +164,11 @@ class WorkerRequest:
     timeout: float = 1800.0
     max_turns: int = 200
     max_budget_usd: float | None = None
+    # The project model name the worker configuration chose, recorded only.
     model: str | None = None
+    # The model's local id on the backend, passed with --model, and the model map it came from.
+    local_model: str | None = None
+    model_map: str | None = None
     home: Path | None = None
     claude: str | None = None
     credentials: Path | None = None
@@ -501,6 +509,8 @@ def run_worker(request: WorkerRequest) -> dict:
         "operation": request.operation,
         "worker": request.worker,
         "model": request.model,
+        "local_model": request.local_model,
+        "model_map": request.model_map,
         "reasoning": request.reasoning,
         "worktree": worktree.as_posix(),
         "context_identity": context_identity,
@@ -955,6 +965,8 @@ def _run_content(record: dict) -> dict:
     return {
         "task_type": record["task_type"],
         "backend_source": record["backend_source"],
+        "local_model": record["local_model"],
+        "model_map": record["model_map"],
         # The record keeps the tool set as the backend's comma-separated list; its trace node
         # keeps it as an array of tool names.
         "tools": [name for name in record["tools"].split(",") if name]

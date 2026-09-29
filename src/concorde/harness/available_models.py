@@ -1,6 +1,8 @@
 """Advisory model discovery, independent of Git and worker configuration.
 
-These are configured candidates, not proof of API access. No inference request is made.
+These are configured candidates, not proof of API access. No inference request is made. Each
+candidate names the project model names the model map already gives it as their local id, and a
+complete listing names the map's ids the program does not list, to help fill the map.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .models import LEVELS, ModelConfigError, _program
+from .models import LEVELS, ModelConfigError, _program, load_model_map
 
 # The command-line flag each backend takes the reasoning level with.
 REASONING_FLAG = {"claude": "--effort", "pi": "--thinking"}
@@ -213,6 +215,7 @@ def candidates(backend: str, environ=None) -> dict:
         models, note = _claude_models(levels, environ)
     else:
         models, note = _pi_models(program, levels, environ)
+    mapping = _mapping(backend, models, environ)
     return {
         "backend": backend,
         "program": program,
@@ -221,7 +224,43 @@ def candidates(backend: str, environ=None) -> dict:
         "reasoning_flag": REASONING_FLAG[backend],
         "reasoning_levels": levels,
         "models": models,
+        "model_map": mapping,
         "note": note,
+    }
+
+
+def _mapping(backend: str, models: list[dict], environ) -> dict:
+    """What the model map says of the listed models: each candidate's project model names, and,
+    for a complete listing, the map's ids of this backend the program does not list. A missing
+    or unreadable map is reported, never raised: discovery stays advisory."""
+    try:
+        path, mapped = load_model_map(environ)
+    except ModelConfigError as error:
+        for model in models:
+            model["project_models"] = []
+        return {
+            "path": None,
+            "error": {"code": error.code, "detail": str(error)},
+            "unlisted": [],
+        }
+    ids = {model["id"] for model in models}
+    for model in models:
+        model["project_models"] = sorted(
+            name for name, local in mapped.items() if local.get(backend) == model["id"]
+        )
+    return {
+        "path": path.as_posix(),
+        "error": None,
+        "unlisted": sorted(
+            (
+                {"model": name, "id": local[backend]}
+                for name, local in mapped.items()
+                if backend in local and local[backend] not in ids
+            ),
+            key=lambda item: item["model"],
+        )
+        if backend == "pi"
+        else [],
     }
 
 
@@ -243,6 +282,19 @@ def main(argv=None) -> int:
     else:
         print(f"{value['backend']} candidates ({value['version']})")
         for model in value["models"]:
-            print(f"  {model['id']}  reasoning: {', '.join(model['levels'])}")
+            names = ", ".join(model["project_models"]) or "none"
+            print(
+                f"  {model['id']}  reasoning: {', '.join(model['levels'])}  "
+                f"project models: {names}"
+            )
+        mapping = value["model_map"]
+        if mapping["error"]:
+            print(
+                f"model map: {mapping['error']['code']}: {mapping['error']['detail']}"
+            )
+        else:
+            print(f"model map: {mapping['path']}")
+            for item in mapping["unlisted"]:
+                print(f"  {item['model']} maps to {item['id']}, which pi does not list")
         print(value["note"])
     return 0

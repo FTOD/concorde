@@ -39,6 +39,10 @@ The model and reasoning level of every worker SHALL come from the worker configu
 
 The worker configuration SHALL be a file tracked by Git, so that a task carries the configuration of its base commit and a change the task makes to it merges with the task.
 
+### req.concorde.worker-models-install-independent — The tracked configuration names no installation's model ids
+
+The worker configuration SHALL name every model by a project model name that depends on no installation, leaving each program's local model id to the user's untracked [model map](glossary.json#concept.model-map).
+
 ### req.concorde.worker-models-explicit — Worker models change only on request
 
 A worktree's worker configuration SHALL change only by an explicit request of the developer.

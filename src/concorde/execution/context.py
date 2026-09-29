@@ -435,6 +435,8 @@ class RunContext:
                 max_turns=bounds["max_turns"],
                 max_budget_usd=bounds["max_budget_usd"],
                 model=model["model"],
+                local_model=model["local_model"],
+                model_map=model["model_map"],
                 backend=backend,
                 backend_source=model["backend_source"],
                 reasoning=model["reasoning"],
@@ -502,14 +504,23 @@ class RunContext:
                     "changes nothing",
                 )
             ],
-            options=[
-                (
-                    "install the program the worker runs on, or edit the backend of "
-                    f"operations.{self.name}.workers.{worker} in {path}"
-                ),
-                f"correct {path} as the error says and commit it; an unbound run reads the "
-                "committed file of its checkout",
-            ],
+            options=(
+                [
+                    "write or correct this machine's model map as the error says, giving the "
+                    "worker's project model name its local id on the worker's backend; the map "
+                    "is the user's and is never committed"
+                ]
+                if error.code
+                in ("model_map_missing", "model_map_invalid", "model_unmapped")
+                else [
+                    (
+                        "install the program the worker runs on, or edit the backend of "
+                        f"operations.{self.name}.workers.{worker} in {path}"
+                    ),
+                    f"correct {path} as the error says and commit it; an unbound run reads the "
+                    "committed file of its checkout",
+                ]
+            ),
         )
 
     @property
@@ -646,7 +657,9 @@ class RunContext:
                 record.get("backend") or "",
                 f"{record.get('worker') or 'worker'} (backend from "
                 f"{record.get('backend_source') or 'the request'}): model "
-                f"{record.get('model') or 'the backend default'}, reasoning "
+                f"{record.get('model') or 'the backend default'} as "
+                f"{record.get('local_model') or 'no local id'} (model map "
+                f"{record.get('model_map') or 'none'}), reasoning "
                 f"{record.get('reasoning') or 'the backend default'}",
             ),
         ]

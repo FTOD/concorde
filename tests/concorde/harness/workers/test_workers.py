@@ -725,7 +725,7 @@ class WorkerRunTests(unittest.TestCase):
             self.assertTrue((run / name).is_file(), name)
         node = json.loads((run / "trace.json").read_text())
         self.assertEqual(
-            ("worker-run", "ok", "concorde-worker-run-trace", 2, 2),
+            ("worker-run", "ok", "concorde-worker-run-trace", 3, 2),
             (
                 node["kind"],
                 node["status"],

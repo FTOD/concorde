@@ -70,7 +70,10 @@ Developing this checkout itself is direct developer-authorized maintenance, done
 
 A change of the worker configuration `.concorde/workers.json` alone, made when the developer asks
 for other worker models, is committed by itself directly on the primary branch, never while a
-`task merge` is unfinished.
+`task merge` is unfinished. The file names models by project model names; the developer's own
+model map, `~/.config/concorde/models.json`, gives each its local pi or Claude Code id and is never
+committed, so a model renamed in the developer's pi configuration changes only the map. Tests never
+read that map: `tests/__init__.py` points `CONCORDE_MODEL_MAP` at `tests/concorde/support/models.json`.
 
 Concorde's own Operations and worker agents may be used on this checkout, but they are still in
 early development, so using them is optional: do the work directly whenever that is more reliable.

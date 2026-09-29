@@ -124,6 +124,8 @@ def read_record(root: Path, run_id: str) -> dict:
         "operation": meta.get("operation"),
         "worker": meta.get("worker"),
         "model": meta.get("model"),
+        "local_model": data["local_model"],
+        "model_map": data["model_map"],
         "reasoning": meta.get("reasoning"),
         "context_identity": meta.get("context_identity"),
         "grant_digest": meta.get("grant_digest"),

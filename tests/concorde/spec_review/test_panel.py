@@ -209,7 +209,7 @@ class SpecPanelTests(unittest.TestCase):
     @verifies("scenario.spec-review.panel-worker-models")
     def test_each_reviewer_runs_on_the_model_configured_for_its_worker_id(self):
         config = {
-            "schema_version": 1,
+            "schema_version": 2,
             "enabled_models": {"claude-sonnet-5": {}, "claude-opus-5-5": {}},
             "default": {"backend": "claude"},
             "operations": {
@@ -254,9 +254,9 @@ class SpecPanelTests(unittest.TestCase):
                 argv[argv.index("--model") + 1],
                 argv[argv.index("--effort") + 1],
             )
-            # The run record keeps the model and level it was launched with.
+            # The run record keeps the model's local id and the level it was launched with.
             self.assertEqual(
-                chosen[record["worker"]], (record["model"], record["reasoning"])
+                chosen[record["worker"]], (record["local_model"], record["reasoning"])
             )
         self.assertEqual(
             {

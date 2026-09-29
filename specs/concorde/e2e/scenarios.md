@@ -19,8 +19,9 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN this checkout's own `.concorde/workers.json`
 - WHEN the developer prepares a test project, with or without `--worker-model`
-- THEN the project's committed `.concorde/workers.json` enables and chooses the given model for every worker, or holds this checkout's enabled models, defaults, [Operation](../glossary.json#concept.operation) entries and limits without its `runtime` paths
+- THEN the project's committed `.concorde/workers.json` enables and chooses the given project model name for every worker, or holds this checkout's enabled models, defaults, [Operation](../glossary.json#concept.operation) entries and limits without its `runtime` paths
 - AND the result names the enabled models
+- BUT a model the developer's [model map](../glossary.json#concept.model-map) gives no id for a worker's program is refused with `model_unmapped` before anything is cloned
 
 ### scenario.e2e.default-root — Test projects live in the temporary directory
 

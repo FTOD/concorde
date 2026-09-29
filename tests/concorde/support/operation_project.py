@@ -71,7 +71,7 @@ def commit(root: Path, message: str = "change") -> str:
 
 # Every worker on Claude Code, on a model the fake ``claude`` accepts like any other.
 CLAUDE_WORKERS = {
-    "schema_version": 1,
+    "schema_version": 2,
     "enabled_models": {"sonnet": {}},
     "default": {"backend": "claude", "model": "sonnet"},
 }

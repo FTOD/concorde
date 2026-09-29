@@ -28,7 +28,9 @@ task's session merge the primary branch into its task branch on `merge_conflict`
 merge that a `merge_incomplete` refusal names with `concorde task merge <task> --resume` (or
 `--abort`) before anything else; run workers only on the models the tracked
 `.concorde/workers.json` enables and chooses, never on anyone's own Claude Code or pi settings,
-and when the project has no such file ask the developer for its models before any Operation runs;
+naming each by a project model name that the developer's untracked model map resolves to each
+program's local id, and when the project has no such file ask the developer for its models before
+any Operation runs;
 change the models workers use only when the developer asks, by editing that file directly: commit
 a change of that file alone on the primary branch for future tasks, or change it in a task that is
 to use it (the skill's "Worker models"); run a task that follows a known procedure as its workflow (the skill's "Workflows"), such
