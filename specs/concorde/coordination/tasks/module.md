@@ -6,9 +6,8 @@ Tasks manages the workspace of the task level: it gives every unit of work the
 [main agent](../../glossary.json#concept.main-agent) starts its own place, a Git branch, a worktree
 checked out on it and bound as an [Execution](../../execution/module.md) workspace, a
 [task record](../../glossary.json#concept.task-record) and a
-[decision log](../../glossary.json#concept.decision-log). Whoever works the task relies on it the
-same way, the main agent that enters the worktree itself or a task session it delegated the task to:
-to run pieces of work side by side without their changes mixing, to know each task's state, and to
+[decision log](../../glossary.json#concept.decision-log). The main agent, and the task session it
+delegates every task to, rely on it to run pieces of work side by side without their changes mixing, to know each task's state, and to
 keep the reasons behind choices made without the developer. Tasks binds each task worktree when it
 opens the task and learns what happened in it only from what Execution recorded, the workspace's
 runs and its delivery commits; nothing below the task level reads or writes a task record. When the

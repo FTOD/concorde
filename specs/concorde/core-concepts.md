@@ -15,8 +15,10 @@ by that Module.
 
 The **developer** sets the project's direction with the
 **[main agent](glossary.json#concept.main-agent)**. The main agent's project-wide view lets it
-judge which responsibilities a change affects and which questions need the developer. It may also
-carry out a task itself; the role is not tied to staying in the primary worktree. The
+judge which responsibilities a change affects and which questions need the developer. It stays in
+the primary worktree and hands every task to a task session, so that it remains free to talk with
+the developer and to answer every session; only a small change the developer approved does it make
+itself, there. The
 [levels of work](module.md#the-levels-of-work) place both, and
 [Main session](coordination/main-session/module.md) explains the working method and decision policy.
 
@@ -24,7 +26,9 @@ carry out a task itself; the role is not tied to staying in the primary worktree
 
 A **[task session](glossary.json#concept.task-session)** works toward a task-wide goal: it may
 change Specs and code directly or use Operations, then validate and deliver. That responsibility
-is broader than a worker's single bounded job. It reports to the main agent, which alone merges;
+is broader than a worker's single bounded job. It never asks the developer in place: it gathers the
+decisions its task needs and reports them to the main agent together. The main agent alone merges
+a task into the primary branch;
 [Task sessions](coordination/task-session/module.md) explains its lifecycle.
 
 <a id="concept.worker"></a>

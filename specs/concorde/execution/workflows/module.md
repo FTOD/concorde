@@ -12,7 +12,8 @@ Operations and execution commands one at a time, records its steps in its own
 [workflow record](../../glossary.json#concept.workflow-record) in the run store, and returns one
 [workflow result](../../glossary.json#concept.workflow-result) with every step, decision,
 [open question](../../glossary.json#concept.open-question) and problem, preserving each problem's
-error chain. In interactive mode it stops where the developer must decide; in no-ask mode it follows
+error chain. In interactive mode it stops where a decision is needed, so that whoever started it
+can have it settled; in no-ask mode it follows
 the procedure's continuation rules and reports the decisions at the end.
 
 Workflows adds orchestration, not authority. It knows no task: it never opens, merges or closes one,
@@ -26,19 +27,20 @@ whoever works the workspace could have started itself.
 
 A **workflow** is started in a bound [workspace](../../glossary.json#concept.workspace), never by a
 worker or a run. In Concorde the task level starts it: the
-[main agent](../../glossary.json#concept.main-agent) inside a task it has opened, or the
-[task session](../../glossary.json#concept.task-session) the task was delegated to. It is level 3 of
+[task session](../../glossary.json#concept.task-session) the
+[main agent](../../glossary.json#concept.main-agent) delegated the task to, in the mode the task's
+brief names. It is level 3 of
 the [levels of work](../../module.md#the-levels-of-work), directly above the runs: the workflow
 determines which run comes next, while each run owns its workers, check calls and internal repair
 rounds. A task says what work is isolated where; a workflow says how the runs in that workspace
 proceed. For the [brownfield workflow](../../glossary.json#concept.brownfield-workflow), the main
-agent opens a task from the primary worktree:
+agent opens a task from the primary worktree and starts its task session:
 
 ```text
 concorde task open adopt --goal "describe the existing code in Specs" --modules module.shop
 ```
 
-and then, inside the task worktree, runs the installed Claude Code workflow `/concorde-brownfield`
+and the task session then, inside the task worktree, runs the installed Claude Code workflow `/concorde-brownfield`
 with the arguments `{"module": "module.shop", "mode": "no-ask"}`, or, in pi, the installed script
 `.concorde/workflows/pi/brownfield.js` through pi-subagents with the task worktree as its working
 directory and the same arguments. The arguments name no workspace: every command the workflow runs
@@ -67,8 +69,9 @@ Started with `"mode": "interactive"` instead, the same workflow pauses right aft
 the survey took a decision the developer has not settled, such as `d.db-helper`, where the worker
 chose to keep the shared database helper with the root. The workflow result has status
 `awaiting_decision` and lists `d.db-helper` with its options and recommendation, and the record
-holds the one step `survey`. Whoever started the workflow puts the question to the developer and
-starts it again with the answer under the base key `survey`:
+holds the one step `survey`. Whoever started the workflow has the question settled, in Concorde by
+escalating it to the main agent, which puts it to the developer, and starts it again with the
+answer under the base key `survey`:
 
 ```json
 {"module": "module.shop", "mode": "interactive",
@@ -105,10 +108,12 @@ the worker took rather than the developer, because how a project splits into Mod
 later work. A code_to_spec decision, such as a concept's name, is ordinary: the workflow never stops
 for it and reports it.
 
-- **Interactive.** The developer is present, so the workflow ends right after any step that needs
-  them: a step whose output has decision points its answers did not settle, with status
-  `awaiting_decision` and each pending point with its options and recommendation; and any step that
-  did not end `ok`, with that step's status. Whoever started it asks the developer, writes the
+- **Interactive.** The decision points are to be settled before the workflow goes on, so it ends
+  right after any step that needs them: a step whose output has decision points its answers did
+  not settle, with status `awaiting_decision` and each pending point with its options and
+  recommendation; and any step that did not end `ok`, with that step's status. Whoever started it
+  has every pending point settled at once, in Concorde by a task session that escalates them all
+  together to the main agent, which asks the developer, never by asking in place; then it writes the
   answers or repairs what failed, and starts the same workflow again. Steps that finished return
   their recorded runs immediately, an answered or retried step runs again, and the workflow
   continues.
@@ -298,8 +303,7 @@ started it.
 ### Its place in the levels of work
 
 Workflows is level 3 of the [levels of work](../../module.md#the-levels-of-work). It is called from
-the task level only: the main agent inside a task it has opened, or a task session inside the task
-delegated to it, starts a workflow in the task worktree and may go on with other work while it runs
+the task level only: the task session a task was delegated to starts a workflow in the task worktree and may go on with other work while it runs
 in its client's background. It calls only the level directly below: its commands start each step as
 a run, and it never reaches a worker or a service, which only a run calls. What goes back up is one
 workflow result, assembled from what the runs recorded, in which every run's error chain stays whole

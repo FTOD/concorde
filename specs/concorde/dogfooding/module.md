@@ -93,7 +93,7 @@ project: The project {
     write: Write the defect report, check it with concorde issues report --check
     log: Record it in the decision log, leave the blocked work open
     update: concorde update, then concorde spec-validation
-    resume: Merge the primary branch into open tasks, take up the blocked work
+    resume: "Have the open tasks' sessions merge the primary branch,\ntake up the blocked work"
     observe -> classify
     classify -> own: the project's own
     classify -> write: a Concorde defect
@@ -205,8 +205,9 @@ is still running in the project, re-checks that the Concorde repository's primar
 installs from it again in develop mode
 ([requirements](requirements.md#req.dogfooding.develop-kept)), recording the commit it installed
 ([requirements](requirements.md#req.dogfooding.update-commit-recorded)), and, like every update,
-leaves the project unvalidated until `concorde spec-validation` passes. The main agent then merges
-the primary branch into the open tasks when the update asks for it and takes up the blocked work.
+leaves the project unvalidated until `concorde spec-validation` passes. The main agent then has the
+sessions of the open tasks merge the primary branch into their task branches when the update asks
+for it and takes up the blocked work.
 
 A develop install is refused, writing nothing, when the checkout is not a Git worktree's root
 (`develop_source_not_repository`), is a linked worktree (`develop_source_not_primary`, naming the

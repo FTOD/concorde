@@ -3,22 +3,23 @@
 ## Purpose
 
 Task sessions is how the [main agent](../../glossary.json#concept.main-agent) delegates the task
-level of the work: when it splits work into several tasks it starts a task session per task, a
-session of its own agent program working inside that task's worktree while the main agent stays in
-the primary worktree. Task sessions starts, confines and follows those sessions: on Claude Code a
-background session, on pi a sequence of headless rounds on one session file, each ending with a
-report the task record confirms. The main agent relies on it to run tasks in parallel under a
+level of the work: it starts a task session for every task, a session of its own agent program
+working inside that task's worktree while the main agent stays in the primary worktree. Task
+sessions starts, confines and follows those sessions: on Claude Code a background session, on pi a
+sequence of headless rounds on one session file, each ending with a report the task record
+confirms. The main agent relies on it to have every task worked, one or several at once, under a
 boundary that keeps each session's writes inside its task. It does not decide how work is split,
-never merges or closes a task, and does not tell a session how to work in a task; that method is the
+never merges a task into the primary branch or closes it, and does not tell a session how to work
+in a task; that method is the
 main agent's own, given by the [Main session](../main-session/module.md) guidance, and the session
 follows it at a smaller scale. Its boundary guards against mistakes, not a malicious session.
 
 ## Usage
 
-The task level of the work is normally played by the main agent itself: it enters the task worktree,
-works there and leaves after delivery. Only when it wants several tasks to run at once does it
-delegate: from the primary worktree it starts a [task
-session](../../glossary.json#concept.task-session) per task. A task session runs on the main
+The task level of the work is always delegated: the main agent never works inside a task worktree
+but, from the primary worktree, starts a [task session](../../glossary.json#concept.task-session)
+for every task, even a single one, after recording the task's brief in its
+[decision log](../../glossary.json#concept.decision-log). A task session runs on the main
 session's own agent program, which Workers reads from the environment (`CONCORDE_CLIENT`,
 `CLAUDECODE=1`, pi's session variables); a command started from neither is refused with
 `client_unknown`, naming each variable it looked at. It never runs on the other program: a task
@@ -92,7 +93,8 @@ error beside it. It then records the round's outcome in the task record:
 | `failed` | pi exited without a report, or the report names a commit that is no delivery commit of the task's workspace on its branch or that does not verify against its [evidence bundle](../../glossary.json#concept.evidence-bundle), or an escalation the record does not hold; the round's `error` is a link naming pi's exit code, stop reason and error message, the logs, and each mismatch |
 | `stopped` | `--stop` ended the round |
 
-The main agent answers an escalation, or asks for more after a delivery, with `--answer`: Task
+The main agent answers the round's escalations, all together, or asks for more after a delivery,
+such as a merge of the primary branch into the task branch after a merge conflict, with `--answer`: Task
 sessions starts the next round on the same session file, so the session continues with its whole
 context and the answer as its prompt. `--answer` is refused while a round runs (`session_busy`), `--stop` when no round runs
 (`session_idle`), and both when the task has no pi session (`no_session`). A
@@ -139,19 +141,25 @@ leaves the record unchanged.
 
 A task session escalates what it may not decide with `concorde task escalate --by task-session`,
 which Tasks records as a link of level `task-session` on top of the failed runs' chains; the main
-agent adds its own link above it when the developer must decide. Exact commands and error codes
+agent adds its own link above it when the developer must decide. A task never asks the developer
+in place: the session gathers every decision it needs, records each as an escalation and reports
+them together, in one SendMessage on Claude Code or one `escalated` round on pi, and the main agent
+answers them together. Exact commands and error codes
 are in the [contracts](contracts.md), the obligations in the [requirements](requirements.md) and
 the behaviour in the [scenarios](scenarios.md).
 
 ## Design
 
-A task session is not a level of its own but the task level delegated. The main agent and a task
-session work a task the same way, and the differences all follow from the delegation: a task
-session has a write boundary while the main agent has none, it escalates to the main agent while
-the main agent escalates to the developer, it has a start, rounds and a stop, and it never merges.
-Keeping its program and configuration the main agent's is what makes it the same work: an isolated
-configuration, such as a worker gets, would give it other tools and instructions than the main
-agent that would otherwise do the task.
+A task session is not a level of its own but the task level delegated, and the main agent delegates
+every task. Keeping the main agent out of task worktrees keeps it free to talk with the developer
+and to answer every session while tasks run, and puts every task under a write boundary, which the
+main agent itself does not have. A task session escalates to the main agent while the main agent
+escalates to the developer, it has a start, rounds and a stop, and it never merges its task into
+the primary branch; the one merge it makes is the primary branch into its task branch when the
+main agent answers a merge conflict, a change inside its own worktree and branch. Keeping its
+program and configuration the main agent's is what makes the task the main agent's own work at a
+smaller scale: an isolated configuration, such as a worker gets, would give it other tools and
+instructions than the main agent's.
 
 ### Its place in the levels of work
 
@@ -189,19 +197,20 @@ runs -> workers: an Operation launches
 <a id="uses-workflows"></a>
 
 **Workflows** is level 3, which a task session may start for its task when the work follows a known
-procedure. The session starts a [workflow](../../glossary.json#concept.workflow) as the main agent
-would, for its own task only, but only in no-ask
-[mode](../../glossary.json#concept.workflow-mode): nobody answers a task session, so an interactive
-workflow would stop at its first [decision point](../../glossary.json#concept.decision-point) with
-no one to settle it, while a no-ask workflow decides those points and reports every decision at the
-end. The session relies on the [workflow result](../../glossary.json#concept.workflow-result)
-listing those decisions and keeping every step's
-[error chain](../../glossary.json#concept.error-chain) whole. It copies the decisions and problems
-into the task's [decision log](../../glossary.json#concept.decision-log), gives the decisions in
-its own report, and escalates to the main agent what needs the developer: a result that is not `ok`
-and that it cannot repair within the task, with its own link above the result's chain, and a
-decision of major impact the workflow took, which carries no error, with its own link alone. The workflow never merges or
-closes the task, which stays the main agent's.
+procedure. The session starts a [workflow](../../glossary.json#concept.workflow) for its own task
+only, in the [mode](../../glossary.json#concept.workflow-mode) its brief names, interactive when it
+names none. An interactive workflow ends at its first
+[decision point](../../glossary.json#concept.decision-point) not yet settled, and since nobody
+answers the session in place, it escalates every pending point of that step at once, with the
+workflow result as the cause, and starts the workflow again with the main agent's answers; a no-ask
+workflow decides those points itself and reports every decision at the end. The session relies on
+the [workflow result](../../glossary.json#concept.workflow-result) listing those decisions and
+keeping every step's [error chain](../../glossary.json#concept.error-chain) whole. It copies the
+decisions and problems into the task's [decision log](../../glossary.json#concept.decision-log),
+gives the decisions in its own report, and escalates to the main agent what needs the developer: a
+result that is not `ok` and that it cannot repair within the task, with its own link above the
+result's chain, and a decision of major impact a no-ask workflow took, which carries no error, with
+its own link alone. The workflow never merges or closes the task, which stays the main agent's.
 
 <a id="uses-execution"></a>
 
@@ -238,10 +247,10 @@ tasks -> starter: start, after Tasks' checks
 starter -> starter: write the session boundary
 starter -> session: round 1: guidance, goal, Modules, decision log
 session -> session: work the task: workflows, Operations, delivery
-session -> starter: concorde_report {style.stroke-dash: 3}
+session -> starter: "concorde_report: delivered, or every escalation" {style.stroke-dash: 3}
 starter -> tasks: check the report, record the outcome
 starter -> main: outcome, shown by the run view {style.stroke-dash: 3}
-main -> tasks: concorde task session <task> --answer
+main -> tasks: "concorde task session <task> --answer: every answer"
 tasks -> starter: next round on the same session file
 ```
 

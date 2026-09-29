@@ -297,14 +297,14 @@
       "id": "concept.main-agent",
       "title": "Main agent",
       "owner": "module.concorde",
-      "definition": "The developer-facing Claude Code or pi session, started in the primary worktree, that discusses the project, splits work into tasks, carries them out or hands them to task sessions, and merges their results.",
+      "definition": "The developer-facing Claude Code or pi session, started in the primary worktree, that discusses the project, splits work into tasks, hands every task to a task session and answers it, and merges the delivered tasks, asking the developer every question a task needs.",
       "explanation": "specs/concorde/core-concepts.md#concept.main-agent"
     },
     {
       "id": "concept.main-session-guidance",
       "title": "Main-session guidance",
       "owner": "module.main-session",
-      "definition": "The instructions, installed as a project skill for Claude Code and for pi and as a `CLAUDE.md` block, that tell the main agent how to work with Concorde.",
+      "definition": "The instructions, installed as a project skill for Claude Code and for pi and as a block of the project's `CLAUDE.md` and of an existing `AGENTS.md`, that tell the main agent how to work with Concorde.",
       "explanation": "specs/concorde/coordination/main-session/module.md#concept.main-session-guidance"
     },
     {
@@ -673,7 +673,7 @@
       "id": "concept.task-session",
       "title": "Task session",
       "owner": "module.concorde",
-      "definition": "A session of the main agent's own program to which the main agent delegates the work of one task when it runs several at once, working only inside that task's worktree until delivery and reporting to the main agent.",
+      "definition": "A session of the main agent's own program to which the main agent delegates the work of one task, as it does for every task, working only inside that task's worktree until delivery and reporting to the main agent, to which it escalates together every decision the task needs that is not its own.",
       "explanation": "specs/concorde/core-concepts.md#concept.task-session"
     },
     {
@@ -811,7 +811,7 @@
       "id": "concept.workflow-mode",
       "title": "Workflow mode",
       "owner": "module.workflows",
-      "definition": "Whether a workflow run is interactive, ending at the first decision point or the first step that did not end ok so the developer can act, or no-ask, keeping every decision its workers took and reporting it at the end.",
+      "definition": "Whether a workflow run is interactive, ending at the first decision point or the first step that did not end ok so that its decisions are settled above the task, through the main agent, before it goes on, or no-ask, keeping every decision its workers took and reporting it at the end.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-mode",
       "relates": [
         {

@@ -39,18 +39,24 @@ concorde task open retry-limit --goal "Retry a payment at most three times" --mo
 ```
 
 This creates the branch `concorde/retry-limit` and its worktree `.claude/worktrees/retry-limit`,
-bound as the task's workspace. The main agent enters that worktree and works there with the
-worktree's own `concorde`. `concorde run understand --goal "…" --plan` reports what the Module
+bound as the task's workspace. The main agent records the task's brief in its
+[decision log](glossary.json#concept.decision-log) and starts a
+[task session](glossary.json#concept.task-session) with `concorde task session`, which works in that
+worktree with the worktree's own `concorde`; the main agent stays in the primary worktree and never
+works a task itself, even a single one. `concorde run understand --goal "…" --plan` reports what the Module
 promises about retries today and plans the change; `concorde run specify --intent "…"` writes the
 limit into the Module's Spec; `concorde run implement --goal "…"` changes the code and
 `concorde run test` checks it against the Spec; `concorde run code_review` reviews the change. The
-main agent may make any of these changes directly instead, committing each verified step on the
+task session may make any of these changes directly instead, committing each verified step on the
 task branch. Then `concorde task-validation` shows what would block the task and `concorde
 delivery` commits the result and its evidence on the task branch. None of these names the task:
-each reads the worktree's binding. The main agent then returns to the primary worktree and merges
-with `concorde task merge retry-limit`. For work split into several tasks, it starts a
-[task session](glossary.json#concept.task-session) per task with `concorde task session`, which does
-the same inside its task and reports back, so several tasks run at once. Before any change, a
+each reads the worktree's binding. Told of the delivery, the main agent merges with
+`concorde task merge retry-limit`. When the session needs decisions that are not its own, it
+never asks the developer in place: it reports them all together, and the main agent decides those
+it may, asks the developer the rest at once and answers the session. For work split into several
+tasks, the main agent starts a task session per task, so several tasks run at once. Only a small
+change, such as a typo, that the developer approved is made by the main agent directly in the
+primary worktree. Before any change, a
 read-only Operation such as `understand` or a review may also run in the primary worktree itself, as
 an [unbound run](glossary.json#concept.unbound-run) that reads an
 [unbound checkout](glossary.json#concept.unbound-checkout) of that worktree's `HEAD` and changes
@@ -64,23 +70,24 @@ primary: "Primary worktree\nMain agent" {
   open: "Open task\nbranch + bound worktree"
   merge: "Merge delivered task"
 }
-task: "Task worktree\nMain agent or task session" {
+task: "Task worktree\nTask session" {
   grid-columns: 1
   work: "Change Specs and code\ndirectly or through Operations"
   validate: "task-validation\ncheck readiness"
   deliver: "delivery\ncommit result + evidence"
   work -> validate -> deliver
 }
-primary.open -> task.work: enter or delegate
+primary.open -> task.work: start a task session
 task.deliver -> primary.merge: delivered
 ```
 
 Some tasks follow a known procedure. A [workflow](execution/workflows/module.md) records that
-procedure: the main agent opens a task as usual and starts the workflow inside its worktree, which
+procedure: the main agent opens a task as usual and names the workflow in its brief, and the task
+session starts it inside the task worktree, which
 orders the workspace's runs one at a time and returns one
 [workflow result](glossary.json#concept.workflow-result). In **interactive** mode it ends at each
-point that needs the developer's decision, so the main agent can ask right away and start it again
-with the answers; in **no-ask** mode it follows its declared continuation rules and reports every
+point that needs a decision, so the task session can report every pending point to the main agent,
+which settles them with the developer, and start it again with the answers; in **no-ask** mode it follows its declared continuation rules and reports every
 decision and problem at the end. The first workflow is `brownfield`: after installation and
 initialization of a project whose code came before any Spec, it surveys the code, scaffolds child
 Modules, describes each [Module](glossary.json#concept.module)'s code with `code_to_spec`, reviews
@@ -104,8 +111,8 @@ travels back up them. The first two are Coordination's, the rest Execution's:
 | Level | Half | Who or what works there | Where | What it does | Module |
 | --- | --- | --- | --- | --- | --- |
 | 1. Main session | Coordination | the main agent, an interactive Claude Code or pi session | the primary worktree | discusses the project with the developer, splits work into tasks, merges delivered tasks, decides ordinary questions and escalates major ones | [Main session](coordination/main-session/module.md) |
-| 2. Task | Coordination | the main agent inside the task, or a task session it delegated the task to | one task worktree | changes Specs and code directly or through runs of Execution, keeps the [decision log](glossary.json#concept.decision-log), validates and delivers | [Task sessions](coordination/task-session/module.md), with the workspace from [Tasks](coordination/tasks/module.md) |
-| 3. Workflow | Execution | a procedure rendered for Claude Code and pi | one bound workspace | orders the workspace's runs for a known procedure and stops where the developer must decide | [Workflows](execution/workflows/module.md) |
+| 2. Task | Coordination | the task session the main agent delegated the task to | one task worktree | changes Specs and code directly or through runs of Execution, keeps the [decision log](glossary.json#concept.decision-log), validates and delivers | [Task sessions](coordination/task-session/module.md), with the workspace from [Tasks](coordination/tasks/module.md) |
+| 3. Workflow | Execution | a procedure rendered for Claude Code and pi | one bound workspace | orders the workspace's runs for a known procedure and stops where a decision is needed | [Workflows](execution/workflows/module.md) |
 | 4. Run | Execution | the Execution runner, running an [Operation](glossary.json#concept.operation) or an execution command | one bound workspace | completes one bounded job and returns one [run result](glossary.json#concept.run-result) with evidence: an Operation with AI workers, an [execution command](glossary.json#concept.execution-command) without | [Execution](execution/module.md), [Operations](execution/operations/module.md), [Commands](execution/commands/module.md) |
 | 5. Worker | Execution | a headless `claude -p` or `pi -p` process | a run over the workspace | reasons within its grant on one bounded job and returns a [worker result](glossary.json#concept.worker-result) the run checks | [Workers](execution/workers/module.md) |
 
@@ -119,8 +126,8 @@ developer: Developer {shape: person}
 coordination: "Coordination: project management" {
   class: layer
   main: "1  Main session\nthe main agent, primary worktree,\nthe whole project" {class: agent}
-  task: "2  Task level\nthe main agent or a task session,\none task worktree" {class: agent}
-  main -> task: "opens a task, enters it\nor delegates it"
+  task: "2  Task level\na task session,\none task worktree" {class: agent}
+  main -> task: "opens a task and\ndelegates it"
 }
 execution: "Execution: the core, in one bound workspace" {
   class: layer
@@ -139,7 +146,9 @@ Calls go only downward, and a level may be skipped: the task level runs an Opera
 directly whenever no workflow fits, and the execution commands use no worker at all. Nothing calls
 upward. A worker never touches Git, runs an Operation or starts an agent; a run never starts another
 run; a workflow never opens, merges or closes a task; nothing in Execution reads or writes a
-[task record](glossary.json#concept.task-record); and only the main agent merges. A run's steps, and
+[task record](glossary.json#concept.task-record); and only the main agent merges a task into the
+primary branch, a task session merging only the primary branch into its own task branch after a
+conflict. A run's steps, and
 the [Workers](execution/workers/module.md) code between a worker's rounds, call deterministic
 services such as [Check execution](execution/checks/module.md) in-process; such a call is not a
 level of its own, starts no run and returns to the step that made it, so that failing checks can
@@ -240,9 +249,9 @@ and the developer bound them. An Operation exists only where a model works: dete
 such as deciding readiness and delivering, are execution commands, which the same runner records
 without any worker machinery.
 
-Keeping one session inside one task worktree makes parallel tasks independent: the main agent can
-delegate each to a task session whose writes are confined to that task, while retaining the
-project-wide view and sole responsibility for merging. The [error flow](#errors) preserves failures
+Keeping one session inside one task worktree makes parallel tasks independent: the main agent
+delegates each task to a task session whose writes are confined to that task, while retaining the
+project-wide view, the conversation with the developer and sole responsibility for merging. The [error flow](#errors) preserves failures
 across that extra session. Where a task's commands run with the branch's own copy of the Framework,
 as in Concorde's own source checkout, their success is self-validation, which is why a merge there
 runs the build and `spec-validation` once more on the primary branch; in an installed project a task

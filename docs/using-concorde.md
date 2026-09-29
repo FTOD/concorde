@@ -25,8 +25,8 @@ itself, only that binding. Agents sit at both ends, and programs run between the
 | Level           | Kind    | What it is                                                                                                                                                                                                                                |
 | --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Main session | agent   | Your own Claude Code or pi session in the primary checkout, the **main agent**. It discusses the project with you, splits work into tasks and merges what was delivered.                                                                  |
-| 2. Task         | agent   | One task's branch and worktree, worked by the main agent itself or by a **task session** it starts when several tasks run at once.                                                                                                        |
-| 3. Workflow     | program | A procedure for tasks that follow a known path, such as `brownfield`; it orders the runs in the task's worktree and stops where you must decide.                                                                                          |
+| 2. Task         | agent   | One task's branch and worktree, worked by a **task session** the main agent starts for it; the main agent never works inside a task itself.                                                                                               |
+| 3. Workflow     | program | A procedure for tasks that follow a known path, such as `brownfield`; it orders the runs in the task's worktree and stops where a decision is needed.                                                                                     |
 | 4. Run          | program | One bounded job with one result: an **Operation**, which computes the grant, launches AI workers and runs your checks itself, or an **execution command** such as `task-validation` or `delivery`, a deterministic step without a worker. |
 | 5. Worker       | agent   | A **worker** is a headless `claude -p` or `pi -p` process for one bounded job, under a **grant** computed from the Specs.                                                                                                                 |
 
@@ -83,8 +83,10 @@ The installer places:
 - a copy of the Spec Protocol under `.concorde/protocol/`, so the rules your Specs follow travel
   with your project;
 - the main agent's guidance, as the Claude Code skill `.claude/skills/concorde/SKILL.md` and a short
-  block between `<!-- concorde:start -->` and `<!-- concorde:end -->` in your `CLAUDE.md` (the rest
-  of the file is left untouched);
+  block between `<!-- concorde:start -->` and `<!-- concorde:end -->` in your `CLAUDE.md`, and the
+  same block in your `AGENTS.md` when you have one (the rest of each file is left untouched; an
+  `AGENTS.md` is never created, since pi reads only the first of `AGENTS.md` and `CLAUDE.md` it
+  finds);
 - the [`d2`](https://github.com/d2lang/d2) program that draws your Specs' diagrams, as
   `.concorde/tools/d2`, at a pinned release whose checksum it verifies (`--without-d2` skips it);
 - the sandbox engine pi workers run their commands in, `@anthropic-ai/sandbox-runtime`, under
@@ -192,8 +194,8 @@ concorde registry --write    # refresh the registry after a Module's `module` bl
 Concorde normally works Spec first: a promise is written, then realized. When you adopt Concorde
 for a project that already has code, the **brownfield workflow** describes that code in Specs
 once, so that from then on you can work Spec first. After initialization, ask the main agent to
-run it. It opens a task bound to the root Module, starts the workflow inside that task's worktree
-and runs, one after another:
+run it. It opens a task bound to the root Module and starts its task session, which runs the
+workflow inside that task's worktree, one step after another:
 
 1. `survey`: a worker reads the code and proposes child Modules, which paths each binds, and the
    test and lint commands it found;
@@ -210,7 +212,8 @@ such as an error that is silently ignored, they write no promise about it and re
 question** instead. Choose one of two modes when the workflow starts:
 
 - **interactive**: the workflow stops at every open question and every choice about how the
-  project splits, the main agent asks you, and the workflow continues with your answers;
+  project splits; the task session reports all of them to the main agent together, the main agent
+  asks you about them at once, and the workflow continues with your answers;
 - **no-ask**: the workflow takes those choices itself and reports every choice, open question and
   problem at the end, for you to review before the task is merged.
 
@@ -285,10 +288,15 @@ the main agent; you talk to it as usual.
 - **Let it decide the ordinary things.** Names, internal structure, the order of tasks, rerunning an
   Operation with a clearer brief, splitting a task: the main agent decides these itself, writes
   each decision and its reason into the task's decision log and reports them at the end.
-- **Expect questions only when they matter.** It asks you before acting when a decision changes what
-  a Module promises or the project's direction, contradicts an earlier decision of yours, discards
-  work, cannot be undone by an ordinary revert, touches security or credentials, or needs more
-  resources than you allowed.
+- **Expect questions only when they matter, and all at once.** It asks you before acting when a
+  decision changes what a Module promises or the project's direction, contradicts an earlier
+  decision of yours, discards work, cannot be undone by an ordinary revert, touches security or
+  credentials, or needs more resources than you allowed. A task never asks you itself: its session
+  reports every decision it needs to the main agent together, and the main agent asks you about
+  all those it may not settle at once.
+- **Approve small changes.** A typo, a one-line fix or a wording correction may be made by the main
+  agent directly in your primary checkout, but only after it told you what it would change and you
+  approved it; everything else is a task.
 - **Delivered work is merged without asking.** When a task has been delivered, the main agent merges
   its branch and reports what it merged.
 
@@ -385,19 +393,20 @@ The worktree is created inside your checkout at `.claude/worktrees/retry` (or `-
 the installer tells Git to ignore, from your current commit (or `--base <ref>`). Your primary
 checkout's files are never touched by the task.
 
-### 2. Work inside the task
+### 2. A task session works the task
 
-The main agent enters the task worktree (Claude Code's EnterWorktree) and does the work there. It
-may change Specs and code directly and commit verified steps on the task branch, or run
-Operations for bounded steps. Every `concorde` command for the task runs from the task worktree
-with that worktree's own command, never your primary checkout's, because only the task branch
-knows the Specs and checks the task changes.
+The main agent records the task's brief in its decision log and starts a **task session** for it,
+even when it is the only task; it never works inside the task worktree itself, so it stays free to
+talk with you while the task runs. The task session works in the task worktree. It may change Specs
+and code directly and commit verified steps on the task branch, or run Operations for bounded
+steps. Every `concorde` command for the task runs from the task worktree with that worktree's own
+command, never your primary checkout's, because only the task branch knows the Specs and checks the
+task changes.
 
 Each Operation is one `concorde run` command and each deterministic step one execution command, all
 run inside the task worktree. Each prints one JSON result, also saved as
 `.concorde/runs/<run-id>/result.json` of your primary checkout, and one task's worktree runs one of
-them at a time. The main agent runs them in the background (background Bash in Claude Code, the
-`concorde_run` tool in pi) so it can keep talking with you meanwhile.
+them at a time.
 
 ```bash
 concorde run understand  --goal "how should retries be limited?" --plan
@@ -437,7 +446,8 @@ a change needs, the Operation stops with a **Spec gap**, and the Spec is changed
 ### 3. Merge and close
 
 `delivery` validates the whole task again itself and refuses it while anything blocks. Once it has
-committed, the main agent leaves the task worktree and, in your primary checkout:
+committed, the task session reports the delivery, and the main agent, in your primary checkout,
+runs:
 
 ```bash
 concorde task merge retry
@@ -447,8 +457,9 @@ This merges the task branch, runs `concorde spec-validation` on the result (or t
 `--check`, for example a build before validating), and closes the task. Closing removes the
 worktree and keeps the record. If a check fails, the merge is undone and the primary branch is left
 as it was; the output of the checks is in `.concorde/tasks/retry.merge.log`. A merge conflict is
-not resolved in your primary checkout either: the merge is aborted, and the conflict is resolved
-in the task worktree by merging your primary branch into the task branch and delivering again.
+not resolved in your primary checkout either: the merge is aborted, and the main agent has the
+task session merge your primary branch into the task branch, resolve the conflict and deliver
+again, the only merge a task session makes.
 
 Several main sessions can work in the same project. Only one of them merges at a time:
 `concorde task merge` holds a lock on the primary checkout for as long as it runs, and a second
@@ -480,22 +491,23 @@ with `concorde task close retry --failed --reason "<why>"`, plus `--run <run-id>
 whose error caused the failure, or `--no-error` when no error did; the reason and the error chains
 stay in the task's record and decision log.
 
-### Several tasks at once
+### Task sessions
 
-Tasks whose Modules and shared files do not overlap may run at the same time, each in its own
-worktree. A session works inside one task at a time, so for work split into several tasks the main
-agent starts a **task session** per task and stays in your primary checkout:
+Every task is worked by its own task session, and tasks whose Modules and shared files do not
+overlap may run at the same time, each in its own worktree, while the main agent stays in your
+primary checkout:
 
 ```bash
 concorde task session retry --main <the main agent's session name>
 ```
 
-A task session does what the main agent would do inside the task, so it always runs on the same
-program as the main agent, with the same configuration. It works in the task worktree by the same
-method, its file tools and shell may write only its own task, and it reports back to the main agent
-when it has delivered or needs a decision beyond its task. Only the main agent merges. One task
-runs at most one Operation at a time. A merge conflict is resolved in the task, and a check that
-fails after merging is new work, never a reason to discard a change.
+A task session does the main agent's own work inside the task, so it always runs on the same
+program as the main agent, with the same configuration. Its file tools and shell may write only its
+own task, and it reports back to the main agent when it has delivered or needs decisions beyond its
+task. It never asks you directly: it gathers every decision it needs and reports them together, and
+the main agent settles those it may and asks you the rest at once. Only the main agent merges a task
+into your primary branch. One task runs at most one Operation at a time. A check that fails after
+merging is new work, never a reason to discard a change.
 
 - In Claude Code a task session is a background Claude Code session (`claude agents` lists them).
   Because nobody answers a background session's permission prompts, it runs in Claude Code's
