@@ -113,8 +113,9 @@ pi in it, pi asks; choose to trust it, or the run view and the guidance are skip
 pi-subagents is installed; without it, `concorde_run`, the completion wake and `/concorde` still
 work.
 
-The installer never writes your Specs or your registry, and writes your project configuration
-only to bind a new Protocol copy when you update.
+The installer never writes your Specs or your registry, except the Concorde installation
+realization, which it keeps in step with the files it installs, and writes your project
+configuration only to bind a new Protocol copy when you update.
 
 To update Concorde, pull the checkout and build it again, then run `concorde update` in your
 project (`--from <checkout>` if the checkout moved). It installs the new version the way the first
