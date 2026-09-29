@@ -1,18 +1,25 @@
-"""``concorde task session``: the boundary it writes and the session it starts and records."""
+"""``concorde task session``: the boundary it writes and the session it starts and records, and
+what the end of its task does to a Claude Code task session."""
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
+import shlex
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from concorde.spec.verification import verifies
-from concorde.tasks import session, store
+from concorde.tasks import cli, session, store
+from concorde.tracing import layout
 from concorde.tracing import node as trace
-from tests.concorde.support.operation_project import OperationProject
+from tests.concorde.support.operation_project import OperationProject, commit
+from tests.concorde.tasks.deliveries import deliver
 
 
 class FakeClaude:
@@ -181,6 +188,235 @@ class TaskSessionTests(unittest.TestCase):
         )
         # A dry run records no session.
         self.assertEqual([], store.sessions(self.root, "t1"))
+
+
+# Stands in for Claude Code's ``claude stop`` and ``claude rm``: appends each call, with whether
+# the task worktree still exists then, to the log its configuration names, and answers with the
+# exit code and output configured for the subcommand, by default as Claude Code does.
+FAKE_CLAUDE = """\
+import json, os, sys
+config = json.loads(open(os.environ["FAKE_CLAUDE"]).read())
+command, short = sys.argv[1], sys.argv[2]
+with open(config["log"], "a") as stream:
+    stream.write(json.dumps({"argv": sys.argv[1:],
+                             "worktree": os.path.isdir(config["worktree"])}) + "\\n")
+code, out, err = config.get("answers", {}).get(
+    command, [0, {"stop": "stopped ", "rm": "removed "}[command] + short + "\\n", ""])
+sys.stdout.write(out)
+sys.stderr.write(err)
+sys.exit(code)
+"""
+
+
+class EndOfTaskTests(unittest.TestCase):
+    """A task's end stops, keeps and removes its Claude Code task sessions."""
+
+    def setUp(self):
+        self.project = OperationProject(self)
+        self.root = self.project.root
+        gitignore = self.root / ".gitignore"
+        gitignore.write_text(
+            gitignore.read_text() + "".join(f"{path}\n" for path in layout.IGNORED)
+        )
+        subprocess.run(["git", "config", "user.name", "t"], cwd=self.root, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "t@t"], cwd=self.root, check=True
+        )
+        commit(self.root, "ignore task records")
+        self.project.open_task("t1")
+        self.worktree = self.project.worktree("t1")
+        scratch = self.project.home / "claude-fake"
+        self.claude_config = self.project.home / "claude-config"
+        (scratch / "bin").mkdir(parents=True)
+        program = scratch / "bin/claude"
+        program.write_text(f"#!{sys.executable}\n{FAKE_CLAUDE}")
+        program.chmod(0o755)
+        self.log = scratch / "calls.jsonl"
+        self.config = scratch / "config.json"
+        self.answer()
+        environ = patch.dict(
+            os.environ,
+            {
+                "PATH": f"{scratch / 'bin'}{os.pathsep}{os.environ['PATH']}",
+                "FAKE_CLAUDE": str(self.config),
+                "CLAUDE_CONFIG_DIR": str(self.claude_config),
+            },
+        )
+        environ.start()
+        self.addCleanup(environ.stop)
+
+    def answer(self, **answers):
+        """Let the fake ``claude`` answer a subcommand with ``[code, stdout, stderr]``."""
+        self.config.write_text(
+            json.dumps(
+                {
+                    "log": str(self.log),
+                    "worktree": str(self.worktree),
+                    "answers": answers,
+                }
+            )
+        )
+
+    def calls(self) -> list[dict]:
+        if not self.log.exists():
+            return []
+        return [json.loads(line) for line in self.log.read_text().splitlines()]
+
+    def claude_session(self, short: str) -> None:
+        store.record_session(
+            self.root,
+            "t1",
+            {
+                "program": "claude",
+                "id": short,
+                "reported_id": short,
+                "name": "task-t1",
+                "main": "concorde-7d",
+                "model": None,
+            },
+        )
+
+    def transcript(self, short: str, project: str | None = None) -> Path:
+        """Write the session's transcript where Claude Code keeps it, in the project folder of
+        the task worktree unless ``project`` names another, with a subagent transcript beside."""
+        folder = (
+            self.claude_config
+            / "projects"
+            / (project or session._project_folder(str(self.worktree)))
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"{short}-1111-2222-3333-444455556666.jsonl"
+        path.write_text(json.dumps({"type": "user", "session": short}) + "\n")
+        beside = path.with_suffix("") / "subagents"
+        beside.mkdir(parents=True)
+        (beside / "agent-1.jsonl").write_text("{}\n")
+        return path
+
+    def command(self, *argv):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = cli.main(list(argv), cwd=self.root)
+        return status, json.loads(output.getvalue())
+
+    def kept(self, short: str, source: Path) -> None:
+        """The history keeps the session's transcript and its folder in the session's node."""
+        folder = self.root / ".concorde/history/t1/sessions" / short
+        self.assertEqual(
+            source.read_bytes(), (folder / session.TRANSCRIPT).read_bytes()
+        )
+        self.assertTrue((folder / "transcript/subagents/agent-1.jsonl").is_file())
+        node = trace.read(folder)
+        self.assertEqual(
+            [("transcript", "transcript.jsonl", trace.digest(source))],
+            [(item["id"], item["path"], item["digest"]) for item in node["artifacts"]],
+        )
+        self.assertEqual("unknown", node["status"])
+
+    @verifies("scenario.task-session.end-removed")
+    def test_a_merge_keeps_and_removes_every_claude_code_session(self):
+        self.claude_session("aaaa1111")
+        self.claude_session("bbbb2222")
+        first = self.transcript("aaaa1111")
+        # A transcript in another project folder is found too.
+        second = self.transcript("bbbb2222", project="-elsewhere")
+        deliver(self.worktree)
+        with store.decision_log_path(self.root, "t1").open("a") as stream:
+            stream.write("\n## Delivered\n")
+        check = shlex.join([sys.executable, "-c", ""])
+        status, value = self.command("merge", "t1", "--check", check)
+        self.assertEqual(0, status, value)
+        self.assertEqual([], value["warnings"])
+        self.assertEqual("merged", value["record"]["closed"]["outcome"])
+        # A merge stops nothing; it removes each session once the task has closed.
+        self.assertEqual(
+            [["rm", "aaaa1111"], ["rm", "bbbb2222"]],
+            [item["argv"] for item in self.calls()],
+        )
+        self.assertFalse(any(item["worktree"] for item in self.calls()))
+        self.kept("aaaa1111", first)
+        self.kept("bbbb2222", second)
+
+    @verifies("scenario.task-session.close-stops")
+    def test_a_close_without_a_merge_stops_its_claude_code_sessions_first(self):
+        self.claude_session("aaaa1111")
+        source = self.transcript("aaaa1111")
+        status, value = self.command(
+            "close", "t1", "--failed", "--reason", "wrong direction", "--no-error"
+        )
+        self.assertEqual(0, status, value)
+        self.assertEqual([], value["warnings"])
+        self.assertEqual("failed", value["record"]["state"])
+        # Stopped while its worktree still existed, removed after the close.
+        self.assertEqual(
+            [(["stop", "aaaa1111"], True), (["rm", "aaaa1111"], False)],
+            [(item["argv"], item["worktree"]) for item in self.calls()],
+        )
+        self.kept("aaaa1111", source)
+
+    @verifies("scenario.task-session.close-stops")
+    def test_a_session_claude_code_no_longer_knows_counts_as_stopped(self):
+        self.claude_session("aaaa1111")
+        self.transcript("aaaa1111")
+        gone = [1, "", "No job matching 'aaaa1111'\n"]
+        self.answer(stop=gone, rm=gone)
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        self.assertEqual([], value["warnings"])
+
+    @verifies("scenario.task-session.stop-unconfirmed")
+    def test_a_stop_claude_code_cannot_confirm_refuses_the_close(self):
+        self.claude_session("aaaa1111")
+        self.answer(
+            stop=[
+                1,
+                "",
+                "couldn't confirm aaaa1111 was stopped — the service restarts\n",
+            ]
+        )
+        before = store.load_task(self.root, "t1")
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(1, status, value)
+        error = value["error"]
+        self.assertEqual("session_stop_failed", error["code"])
+        for text in ("aaaa1111", "couldn't confirm", "claude stop aaaa1111"):
+            self.assertIn(text, error["detail"])
+        self.assertEqual(before, store.load_task(self.root, "t1"))
+        self.assertTrue(self.worktree.is_dir())
+        self.assertEqual(
+            [["stop", "aaaa1111"]], [item["argv"] for item in self.calls()]
+        )
+
+    @verifies("scenario.task-session.remove-best-effort")
+    def test_a_session_not_removed_only_warns(self):
+        self.claude_session("aaaa1111")
+        self.claude_session("bbbb2222")
+        source = self.transcript("aaaa1111")
+        # bbbb2222 has no transcript: it is not removed, so nothing of it is lost.
+        self.answer(rm=[1, "", "couldn't remove aaaa1111 — kill_unconfirmed\n"])
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        self.assertEqual("closed", value["record"]["state"])
+        removed, unkept = value["warnings"][1], value["warnings"][0]
+        for text in (
+            "aaaa1111",
+            "couldn't remove aaaa1111 — kill_unconfirmed",
+            "`claude rm aaaa1111`",
+        ):
+            self.assertIn(text, removed)
+        for text in (
+            "bbbb2222",
+            "no transcript bbbb2222*.jsonl",
+            "`claude rm bbbb2222`",
+        ):
+            self.assertIn(text, unkept)
+        self.assertEqual(
+            [["stop", "aaaa1111"], ["stop", "bbbb2222"], ["rm", "aaaa1111"]],
+            [item["argv"] for item in self.calls()],
+        )
+        self.kept("aaaa1111", source)
+        folder = self.root / ".concorde/history/t1/sessions/bbbb2222"
+        self.assertFalse((folder / session.TRANSCRIPT).exists())
+        self.assertEqual([], trace.read(folder)["artifacts"])
 
 
 if __name__ == "__main__":

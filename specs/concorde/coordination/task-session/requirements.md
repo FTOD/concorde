@@ -84,3 +84,36 @@ Task sessions SHALL record a pi session round as `delivered` only when the task 
 ### req.task-session.escalated-verified — Escalated only with the recorded escalations
 
 Task sessions SHALL record a pi session round as `escalated` only when the task's trace holds the escalations its session report names.
+
+## Ending with the task
+
+### req.task-session.stopped-before-close — A close without a merge stops Claude Code task sessions first
+
+Before a task is closed without a merge, Task sessions SHALL stop every Claude Code task session
+of the task with `claude stop`, refusing the close, before it changed anything of the task, when
+one of them cannot be confirmed stopped.
+
+A session Claude Code no longer knows counts as stopped. Stopping first keeps a session from going
+on working in, or starting runs in, the worktree the close removes; a merge stops nothing, since a
+delivered task's session has reported and waits.
+
+### req.task-session.transcript-kept — A Claude Code task session's transcript moves to the history
+
+When a task ends, Task sessions SHALL copy the transcript of each of its Claude Code task sessions
+into that session's [trace node](../../glossary.json#concept.trace-node) before the task's folder
+moves to the [history](../../glossary.json#concept.history), and never write into the history
+afterwards.
+
+A transcript that cannot be found or copied does not fail the close; it is named in the close's
+warnings.
+
+### req.task-session.removed — An ended task leaves no Claude Code task session in Claude's session list
+
+Once a task has ended, by any outcome, Task sessions SHALL remove each of its Claude Code task
+sessions whose transcript it kept from Claude's session list with `claude rm`, as a best effort
+whose failure leaves the close as it succeeded.
+
+Each session it does not remove, because its transcript was not kept or `claude rm` failed, is
+named in the close's warnings with the whole reason and the command that removes it by hand. A
+task session matters to the developer only through the
+[main agent](../../glossary.json#concept.main-agent), so an ended one is noise in that list.

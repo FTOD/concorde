@@ -126,3 +126,36 @@ defined in the [contracts](contracts.md).
 - THEN `sessions/<session>/rounds/1/` of the task's folder holds `trace.json` ended `ok` with the outcome `delivered`, the report, and the tokens, cost and turns pi reported as its usage, beside `prompt.md`, `events.jsonl`, `stderr.log` and `supervisor.log`
 - AND the session's node lists the round among its children, and `concorde trace show <task>` rolls its cost up into the task's
 
+
+## Ending with the task
+
+### scenario.task-session.end-removed — Ending a task keeps and removes its Claude Code sessions
+
+- GIVEN a delivered task `severity` whose trace lists two Claude Code task sessions, whose transcripts Claude Code keeps under `projects/` of its configuration folder, one in the project folder of the task worktree and one in another
+- WHEN the main agent merges the task with `concorde task merge severity`
+- THEN each session's node `sessions/<id>/` in the task's history folder holds its transcript as `transcript.jsonl`, listed with its digest among the node's artifacts, and the folder Claude Code keeps beside it as `transcript/`
+- AND after the task closed, `claude rm <id>` ran for each session, and the merge's `warnings` name none of them
+- AND no session was stopped, since a merge stops nothing
+
+### scenario.task-session.close-stops — A close without a merge stops a Claude Code task session first
+
+- GIVEN a task `severity` whose Claude Code task session still runs
+- WHEN the main agent closes it with `--failed` or `--completed`
+- THEN `claude stop <id>` runs while the task worktree still exists, before the close removes it
+- AND after the close, the session's transcript is in its node in the history and `claude rm <id>` removed the session
+- AND a session Claude Code answers it no longer knows (`No job matching`) counts as stopped and removed
+
+### scenario.task-session.stop-unconfirmed — A session that cannot be stopped keeps the task open
+
+- GIVEN a task `severity` with a Claude Code task session that `claude stop` cannot confirm stopped
+- WHEN the main agent closes it with `--completed` and a note
+- THEN the close is refused with `session_stop_failed`, naming the session, Claude Code's answer and `claude stop <id>`
+- AND the task's record and worktree are unchanged
+
+### scenario.task-session.remove-best-effort — A session not removed only warns
+
+- GIVEN a task `severity` with two Claude Code task sessions, one whose `claude rm` fails and one whose transcript Claude Code no longer has
+- WHEN the main agent closes the task
+- THEN the task is closed
+- AND the close's `warnings` name the first session with Claude Code's answer and the second with where its transcript was looked for, each with `claude rm <id>` to remove it by hand
+- AND the second session is not removed, and its node in the history holds no transcript

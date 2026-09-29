@@ -1432,9 +1432,12 @@ def close_task(
     A merged task must have its latest delivery commit in the primary branch. A completed task
     reached its goal without merging and says how in ``note``. A failed task gives its reason in
     ``note`` and the error chains that caused it in ``errors``, or none when no error did. A task
-    closed without a merge first has the runs of its workspace that still run and a running
-    round of its pi task session stopped; the close then waits for its workspace lock, so the
-    task's folder moves to the history only once nothing of it runs.
+    closed without a merge first has its Claude Code task sessions, the runs of its workspace
+    that still run and a running round of its pi task session stopped; the close then waits for
+    its workspace lock, so the task's folder moves to the history only once nothing of it runs.
+    Once the task is closed, its Claude Code task sessions are removed from Claude's session
+    list. ``{"record": <the closed record>, "warnings": [...]}``, the warnings naming what the
+    close could not do besides, such as a session it did not remove.
     """
     primary = require_primary(primary)
     problems = []
@@ -1465,19 +1468,40 @@ def close_task(
             unfinished = unfinished_merge(primary)
             if unfinished is not None:
                 raise incomplete_merge(primary, unfinished)
-            return close_locked(
-                primary, task_id, outcome, note=note, errors=errors, force=force
+            warnings = []
+            closed = close_locked(
+                primary,
+                task_id,
+                outcome,
+                note=note,
+                errors=errors,
+                force=force,
+                warnings=warnings,
             )
+    return {"record": closed, "warnings": warnings + end_sessions(primary, closed)}
+
+
+def end_sessions(primary: Path, closed: dict) -> list[str]:
+    """Remove the Claude Code task sessions of a task just closed from Claude's session list,
+    after the close, which kept their transcripts; the warnings of those it did not remove."""
+    from . import session
+
+    folder = history_folder(primary, closed["closed"]["history"])
+    return session.remove_sessions(primary, closed["id"], folder)
 
 
 def stop_task(primary: Path, task_id: str) -> list[str]:
-    """Stop what still runs for a task: each run of its workspace whose runner holds its run lock
-    and is visible to this process, with ``SIGTERM``, and a running round of its pi task
-    session, as ``session --stop`` does. The runs end with their own results; the close then
-    waits for the workspace lock. What was stopped, described."""
+    """Stop what still runs for a task: first its Claude Code task sessions, with
+    ``claude stop``, so none starts another run or keeps working in the worktree the close
+    removes, then each run of its workspace whose runner holds its run lock and is visible to
+    this process, with ``SIGTERM``, and a running round of its pi task session, as
+    ``session --stop`` does. The runs end with their own results; the close then waits for the
+    workspace lock. What was stopped, described."""
     import signal
 
-    stopped = []
+    from . import session
+
+    stopped = session.stop_sessions(primary, task_id)
     store = workspace_store(primary, task_id)
     for folder in store.folders():
         progress = load_progress_of(folder)
@@ -1526,6 +1550,7 @@ def close_locked(
     force: bool = False,
     again: str | None = None,
     before_move=None,
+    warnings: list[str] | None = None,
 ) -> dict:
     """``close_task`` for a caller already holding the merge lock and the workspace lock.
 
@@ -1533,10 +1558,14 @@ def close_locked(
     log and moving the folder to the history cannot be one transaction, so a refusal after one of
     them says what this close did and that ``again`` (by default the same close) finishes it; the
     same close of a task whose record is closed but that is still current finishes the steps it
-    lacks. ``before_move`` runs just before the folder moves, such as a merge ending its
-    attempt's node.
+    lacks. Before the folder moves, the transcripts of the task's Claude Code task sessions are
+    copied into their nodes, adding to ``warnings`` each one that cannot be, and
+    ``before_move`` runs, such as a merge ending its attempt's node.
     """
+    from . import session
+
     errors = list(errors or [])
+    warnings = warnings if warnings is not None else []
     again = (
         again or f"`concorde task close {task_id} --{outcome}` with the same options"
     )
@@ -1550,6 +1579,7 @@ def close_locked(
             )
         if not _closing_logged(primary, task_id, ended):
             _log_closing(primary, task_id, ended)
+        warnings.extend(session.keep_transcripts(primary, task_id))
         if before_move is not None:
             before_move()
         _move_to_history(primary, task_id, ended["history"], again)
@@ -1640,6 +1670,7 @@ def close_locked(
             "finishes the close",
         ) from error
     _log_closing(primary, task_id, closed["closed"])
+    warnings.extend(session.keep_transcripts(primary, task_id))
     if before_move is not None:
         before_move()
     _move_to_history(primary, task_id, key, again)
@@ -1788,6 +1819,7 @@ __all__ = [
     "deliveries",
     "derived_state",
     "end_merge",
+    "end_sessions",
     "escalate",
     "guard_merges",
     "incomplete_merge",

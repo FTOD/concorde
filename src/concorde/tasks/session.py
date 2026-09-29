@@ -29,10 +29,12 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from ..tracing import node as trace
 from . import session_hook, store
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[3]
@@ -243,4 +245,203 @@ def start(
     return session
 
 
-__all__ = ["brief", "hook_source", "session_name", "settings", "start", "writable"]
+# --- the end of a task: stopping, keeping and removing its Claude Code sessions -------------
+#
+# Task sessions matter to the developer only through their main session, and a finished
+# background session left in Claude's session list is noise there. When the task ends, each of
+# its Claude Code sessions' transcript is copied into its trace node, which moves to the history
+# with the task's folder, and the session is then removed with ``claude rm``, which kills a job
+# that still runs, deletes its job state and removes only a worktree Claude Code created itself,
+# never the task worktree the session was started in.
+
+# The transcript's names in the session's trace node: the conversation, and the folder Claude Code
+# keeps beside it (subagent transcripts, long tool results) when there is one.
+TRANSCRIPT = "transcript.jsonl"
+TRANSCRIPT_FILES = "transcript"
+CLAUDE_TIMEOUT = 60
+
+
+def claude_directory() -> Path:
+    """Claude Code's configuration folder, which holds ``projects/`` with every transcript."""
+    configured = os.environ.get("CLAUDE_CONFIG_DIR")
+    return Path(configured) if configured else Path.home() / ".claude"
+
+
+def claude_sessions(
+    primary: Path, task_id: str, folder: Path | None = None
+) -> list[dict]:
+    return [
+        item
+        for item in store.sessions(primary, task_id, folder)
+        if item["program"] == "claude"
+    ]
+
+
+def _short(session: dict) -> str:
+    """The id Claude Code's commands take: the one ``claude --bg`` reported."""
+    return session.get("reported_id") or session["id"]
+
+
+def _claude(*arguments: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["claude", *arguments],
+        capture_output=True,
+        text=True,
+        timeout=CLAUDE_TIMEOUT,
+        check=False,
+    )
+
+
+def _said(result: subprocess.CompletedProcess) -> str:
+    return (
+        ESCAPES.sub("", f"{result.stdout}\n{result.stderr}").strip()[-2000:]
+        or "(no output)"
+    )
+
+
+def _gone(result: subprocess.CompletedProcess) -> bool:
+    """Whether Claude Code answered that it has no such session, already removed."""
+    return "No job matching" in f"{result.stdout}{result.stderr}"
+
+
+def stop_sessions(primary: Path, task_id: str) -> list[str]:
+    """Stop every Claude Code session of a task with ``claude stop``, before a close without a
+    merge removes the worktree it works in; one already ended or removed counts as stopped.
+    What was stopped, described; ``session_stop_failed`` when one cannot be confirmed stopped,
+    before the close changed anything."""
+    stopped = []
+    for found in claude_sessions(primary, task_id):
+        short = _short(found)
+        worktree = store.load_task(primary, task_id)["worktree"]
+        command = f"claude stop {short}"
+        try:
+            result = _claude("stop", short)
+        except (OSError, subprocess.SubprocessError) as error:
+            problem = f"`{command}` could not run: {error}"
+        else:
+            if result.returncode == 0 or _gone(result):
+                stopped.append(f"Claude Code task session {short}")
+                continue
+            problem = f"`{command}` exited {result.returncode}: {_said(result)}"
+        raise store.TaskError(
+            "session_stop_failed",
+            f"the Claude Code task session {short} ({found['name']}) of task {task_id} could "
+            f"not be confirmed stopped, so closing the task without a merge would remove the "
+            f"worktree {worktree} under a session that may still work in it: {problem}; the "
+            f"task is unchanged"
+            + (f" ({', '.join(stopped)} already stopped)" if stopped else "")
+            + f"; stop the session (`{command}`, or `claude agents`), then close the task "
+            "again",
+        )
+    return stopped
+
+
+def _project_folder(cwd: str) -> str:
+    """The folder under ``projects/`` where Claude Code keeps the transcripts of ``cwd``."""
+    return re.sub(r"[^A-Za-z0-9]", "-", cwd)
+
+
+def find_transcript(worktree: str, short: str, directory: Path | None = None) -> Path:
+    """The transcript of the session ``short`` started in ``worktree``: exactly one
+    ``<short>*.jsonl`` in the project folder of the worktree, else in any project folder.
+    ``LookupError`` says where it looked."""
+    projects = (directory or claude_directory()) / "projects"
+    if not projects.is_dir():
+        raise LookupError(f"Claude Code's projects folder {projects} does not exist")
+    derived = projects / _project_folder(worktree)
+    for where, found in (
+        (derived, sorted(derived.glob(f"{short}*.jsonl")) if derived.is_dir() else []),
+        (projects, sorted(projects.glob(f"*/{short}*.jsonl"))),
+    ):
+        if len(found) == 1:
+            return found[0]
+        if found:
+            raise LookupError(
+                f"{len(found)} transcripts in {where} could be the session's: "
+                + ", ".join(path.as_posix() for path in found)
+            )
+    raise LookupError(
+        f"no transcript {short}*.jsonl is in any project folder of {projects}"
+    )
+
+
+def _kept(record: dict) -> bool:
+    return any(item["id"] == "transcript" for item in record.get("artifacts") or [])
+
+
+def keep_transcripts(primary: Path, task_id: str) -> list[str]:
+    """Copy the transcript of every Claude Code session of an ending task into its trace node,
+    as ``transcript.jsonl`` with the folder beside it as ``transcript/``, before the task's
+    folder moves to the history. A warning for each session whose transcript cannot be kept;
+    such a session is then not removed, so nothing of it is lost."""
+    worktree = store.load_task(primary, task_id)["worktree"]
+    warnings = []
+    for found in claude_sessions(primary, task_id):
+        short, folder = _short(found), Path(found["directory"])
+        with store.task_locked(primary, task_id):
+            record = trace.read(folder)
+            if record is None or _kept(record):
+                continue
+            try:
+                source = find_transcript(worktree, short)
+                shutil.copyfile(source, folder / TRANSCRIPT)
+                beside = source.with_suffix("")
+                if beside.is_dir():
+                    shutil.copytree(
+                        beside, folder / TRANSCRIPT_FILES, dirs_exist_ok=True
+                    )
+                record["artifacts"] = [
+                    *(record.get("artifacts") or []),
+                    trace.artifact(folder, "transcript", TRANSCRIPT),
+                ]
+                trace.write(folder, record)
+            except (LookupError, OSError, trace.TraceError) as error:
+                (folder / TRANSCRIPT).unlink(missing_ok=True)
+                warnings.append(
+                    f"the transcript of the Claude Code task session {short} "
+                    f"({found['name']}) of task {task_id} could not be kept in its trace node "
+                    f"{folder}: {error}; the session stays in Claude's session list so that "
+                    f"its transcript is not lost: keep what you need of it, then remove it "
+                    f"with `claude rm {short}`"
+                )
+    return warnings
+
+
+def remove_sessions(primary: Path, task_id: str, folder: Path) -> list[str]:
+    """Remove every Claude Code session of an ended task, whose folder is now ``folder`` in the
+    history, from Claude's session list with ``claude rm``, once its transcript is kept there.
+    Best effort: a warning for each session not removed, naming the reason and the command."""
+    warnings = []
+    for found in claude_sessions(primary, task_id, folder):
+        short = _short(found)
+        if not _kept(trace.read(Path(found["directory"])) or {}):
+            continue
+        command = f"claude rm {short}"
+        try:
+            result = _claude("rm", short)
+        except (OSError, subprocess.SubprocessError) as error:
+            problem = f"`{command}` could not run: {error}"
+        else:
+            if result.returncode == 0 or _gone(result):
+                continue
+            problem = f"`{command}` exited {result.returncode}: {_said(result)}"
+        warnings.append(
+            f"the Claude Code task session {short} ({found['name']}) of task {task_id} was "
+            f"not removed from Claude's session list: {problem}; its transcript is kept in "
+            f"{Path(found['directory']) / TRANSCRIPT}; remove it by hand with `{command}`"
+        )
+    return warnings
+
+
+__all__ = [
+    "brief",
+    "find_transcript",
+    "hook_source",
+    "keep_transcripts",
+    "remove_sessions",
+    "session_name",
+    "settings",
+    "start",
+    "stop_sessions",
+    "writable",
+]

@@ -134,7 +134,7 @@ each round of a pi task session one of kind `round` below the session's, as
       }
     }
   },
-  "semantics": "The data of the typed value concorde-session-trace, the content of a task session's trace node sessions/<session id>/ of the task. program is the agent program, name the session's name task-<task-id>, main the main agent's session it reports to (null for a pi session started without --main), model the model named with --model or null, and reported_id the identity Claude Code reported for a started background session (null for pi, whose session identity is the node's). The node's identity is the session identity, its start when the session started and its status unknown, since Concorde never observes a session's end; its metadata are the task, the program and the model. A pi session's rounds are its children, rounds/<n>/, and its pi session files lie under pi/ as its transcript. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-session-trace, the content of a task session's trace node sessions/<session id>/ of the task. program is the agent program, name the session's name task-<task-id>, main the main agent's session it reports to (null for a pi session started without --main), model the model named with --model or null, and reported_id the identity Claude Code reported for a started background session (null for pi, whose session identity is the node's). The node's identity is the session identity, its start when the session started and its status unknown, since Concorde never observes a session's end; its metadata are the task, the program and the model. A pi session's rounds are its children, rounds/<n>/, and its pi session files lie under pi/ as its transcript. A Claude Code session's transcript is copied into the node when its task ends, before the task's folder moves to the history: Claude Code's conversation file as transcript.jsonl, listed among the node's artifacts as transcript with its digest, and the folder Claude Code keeps beside it, when there is one, as transcript/; a session whose transcript could not be kept has neither. A behaviour or field change increments the version.",
   "example": {
     "program": "claude",
     "name": "task-severity",
@@ -240,6 +240,7 @@ its refusals use these:
 | `session_busy` | `session` starts a pi session, or `--answer` a round, while a round of the task's pi session runs; the message names the round and its supervisor process. |
 | `no_session` | `--answer`, `--wait` or `--stop` names a task that has no pi session. |
 | `session_idle` | `--stop` names a task whose pi session has no running round. |
+| `session_stop_failed` | `concorde task close` without a merge could not confirm a Claude Code task session of the task stopped: `claude stop <id>` could not run, or exited non-zero without answering `No job matching`; the message names the session, Claude Code's answer, the worktree the close would have removed and `claude stop <id>`, and the task is unchanged. |
 
 A pi round recorded `failed` carries, as its `error`, a link of one of these codes:
 
@@ -255,3 +256,20 @@ A pi round recorded `failed` carries, as its `error`, a link of one of these cod
 | `concorde task session <task-id> --answer <text>` | pi only: starts the next round of the task's latest pi session on the same session file, with the answer as its prompt | The recorded session |
 | `concorde task session <task-id> --stop` | pi only: asks the running round's supervisor to stop, which sends the round's pi process group SIGTERM and SIGKILL 3 seconds later, and records the round as `stopped`; waits up to 15 seconds for that record. When the round is not recorded in that time, the command records it `failed` with `session_supervisor_lost` if its supervisor has ended, and otherwise returns without waiting further while the supervisor goes on stopping the round; `concorde task show` shows the round once it is recorded | The recorded session, with the round as it stands when the command returns |
 | `concorde task session <task-id> --wait [<seconds>]` | pi only: waits inside the command, rereading the session's round nodes, until no round of the task's latest pi session runs, recording a round whose supervisor ended as `failed` with `session_supervisor_lost`; with `<seconds>`, returns after that time even while the round runs | The recorded session, with its last round's outcome, or the round `running` when `<seconds>` passed first |
+
+### At the end of a task
+
+`concorde task close` and `concorde task merge`, which [Tasks](../tasks/contracts.md#commands) runs,
+hand the task's Claude Code task sessions, every node `sessions/<id>/` of program `claude`, to
+[Task sessions](module.md#ending-claude-sessions). Each is named to Claude Code by its `reported_id`:
+
+| When | What runs | When it fails |
+| --- | --- | --- |
+| A close without a merge, before anything else of the close | `claude stop <id>` for each session; exit 0, or `No job matching`, counts as stopped | The close is refused with `session_stop_failed` |
+| Every close, just before the task's folder moves to the history | The only `<id>*.jsonl` of `projects/<worktree path, each character that is no letter or digit as ->/` of `$CLAUDE_CONFIG_DIR` (default `~/.claude`), else of any folder of `projects/`, is copied to the session's node as `transcript.jsonl`, and the folder of the same name without `.jsonl`, when present, as `transcript/` | A warning; the session is not removed |
+| Every close, once the task is closed | `claude rm <id>` for each session whose transcript was kept; exit 0, or `No job matching`, counts as removed | A warning |
+
+Each warning is one string in the command's `warnings`, naming the session's id and name, the task,
+the whole reason (where the transcript was looked for, or the command with its exit code and Claude
+Code's answer), where the transcript is kept when it was, and `claude rm <id>` to remove the
+session by hand.

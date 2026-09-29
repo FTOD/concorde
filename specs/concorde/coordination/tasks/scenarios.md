@@ -440,7 +440,7 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 - GIVEN a task whose workspace has a run still running in the background and whose pi task session has a running round
 - WHEN the main agent closes it with `--failed`, a reason and `--no-error`
-- THEN the run is stopped with `SIGTERM` and ends with its own result, the round is recorded `stopped`
+- THEN the run is stopped with `SIGTERM` and ends with its own result, the round is recorded `stopped`, as a Claude Code task session of the task would be stopped with `claude stop` ([scenario.task-session.close-stops](../task-session/scenarios.md#scenario.task-session.close-stops))
 - AND only then, holding the task's workspace lock, the close moves the task's folder to the history, with the stopped run and round in its trace
 
 ### scenario.tasks.closed-run-refused — A run of a closed task is refused

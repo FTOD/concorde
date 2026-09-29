@@ -102,6 +102,14 @@ class TaskStoreTests(unittest.TestCase):
             status = cli.main(list(argv), cwd=cwd or self.root)
         return status, json.loads(output.getvalue()) if output.getvalue() else None
 
+    def close(self, *argv, cwd=None):
+        """``task close`` with ``argv``; an accepted close's record, which warns of nothing."""
+        status, value = self.command("close", *argv, cwd=cwd)
+        if status == 0:
+            self.assertEqual([], value["warnings"])
+            value = value["record"]
+        return status, value
+
     def record(self, task_id="t1"):
         """The stored record of the task, current or in the history."""
         return store.load_any(self.root, task_id)[0]
@@ -864,7 +872,7 @@ class TaskStoreTests(unittest.TestCase):
         )
         git(self.root, "merge", "--ff-only", "concorde/t1")
         before = self.record()
-        status, value = self.command("close", "t1", "--merged")
+        status, value = self.close("t1", "--merged")
         self.assertEqual(1, status, value)
         error = value["error"]
         self.assertEqual(
@@ -894,7 +902,7 @@ class TaskStoreTests(unittest.TestCase):
         head = self.deliver()
         worktree = self.project.worktree("t1")
         git(self.root, "merge", "--ff-only", "concorde/t1")
-        status, value = self.command("close", "t1", "--merged")
+        status, value = self.close("t1", "--merged")
         self.assertEqual(0, status, value)
         self.assertEqual(
             ("closed", "merged"), (value["state"], value["closed"]["outcome"])
@@ -973,7 +981,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertTrue(worktree.exists())
         self.assertEqual(before, self.record())
         git(worktree / "vendor/lib", "checkout", "--", "README.md")
-        status, value = self.command("close", "t1", "--merged")
+        status, value = self.close("t1", "--merged")
         self.assertEqual(0, status, value)
         self.assertEqual(head, value["closed"]["primary_commit"])
         self.assertTrue(value["closed"]["worktree_removed"])
@@ -1022,8 +1030,8 @@ class TaskStoreTests(unittest.TestCase):
         self.project.open_task("t1")
         worktree = self.project.worktree("t1")
         (worktree / "src/a/calc.py").write_text("dirty = True\n")
-        status, value = self.command(
-            "close", "t1", "--completed", "--note", "the probe answered", "--force"
+        status, value = self.close(
+            "t1", "--completed", "--note", "the probe answered", "--force"
         )
         self.assertEqual(0, status, value)
         self.assertEqual(
@@ -1064,8 +1072,8 @@ class TaskStoreTests(unittest.TestCase):
             ),
         )
         reason = ["--reason", "the change needs module.b, which is out of scope"]
-        status, value = self.command(
-            "close", "t1", "--failed", *reason, "--run", failed["run_id"], "--force"
+        status, value = self.close(
+            "t1", "--failed", *reason, "--run", failed["run_id"], "--force"
         )
         self.assertEqual(0, status, value)
         self.assertEqual(
@@ -1093,8 +1101,7 @@ class TaskStoreTests(unittest.TestCase):
     @verifies("scenario.tasks.close-failed-no-error")
     def test_a_task_that_failed_for_no_error_closes_without_errors(self):
         self.project.open_task("t1")
-        status, value = self.command(
-            "close",
+        status, value = self.close(
             "t1",
             "--failed",
             "--reason",
@@ -1143,7 +1150,7 @@ class TaskStoreTests(unittest.TestCase):
     def test_a_closed_task_accepts_no_run(self):
         self.project.open_task("t1")
         worktree = self.project.worktree("t1")
-        self.command("close", "t1", "--completed", "--note", "done")
+        self.close("t1", "--completed", "--note", "done")
         # Closing removes the worktree and with it the workspace binding, so no run of the
         # task's workspace can start; a run recorded anyway leaves the task closed.
         self.assertFalse(binding.path_of(worktree).exists())
@@ -1216,7 +1223,7 @@ class TaskStoreTests(unittest.TestCase):
         store.record_session(self.root, "t1", self.session("t1"))
         supervisor = self.supervised_round("t1")
         # A round running when the task closes still records its outcome: the close stops it.
-        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        status, value = self.close("t1", "--completed", "--note", "done")
         self.assertEqual(0, status, value)
         self.assertEqual(0, supervisor.wait(30))
         self.assertEqual(["stopped"], [item["status"] for item in self.rounds("t1")])
@@ -1274,8 +1281,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(["running"], [run["status"] for run in shown["runs"]])
         self.assertIn(run_id, shown["busy"])
         self.assertEqual(["running"], [item["status"] for item in self.rounds("t1")])
-        status, value = self.command(
-            "close",
+        status, value = self.close(
             "t1",
             "--failed",
             "--reason",
@@ -1318,7 +1324,7 @@ class TaskStoreTests(unittest.TestCase):
         self.project.open_task("t1")
         worktree = self.project.worktree("t1")
         bound = binding.path_of(worktree).read_text()
-        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        status, value = self.close("t1", "--completed", "--note", "done")
         self.assertEqual(0, status, value)
         # The worktree is put back by hand, with its binding.
         git(self.root, "worktree", "add", str(worktree), "concorde/t1")
@@ -1335,14 +1341,12 @@ class TaskStoreTests(unittest.TestCase):
     @verifies("scenario.tasks.history-key")
     def test_a_reused_name_gets_its_own_history_folder(self):
         self.project.open_task("retry")
-        status, value = self.command("close", "retry", "--completed", "--note", "first")
+        status, value = self.close("retry", "--completed", "--note", "first")
         self.assertEqual((0, "retry"), (status, value["closed"]["history"]), value)
         git(self.root, "branch", "-D", "concorde/retry")
         first = snapshot(self.history("retry"))
         self.project.open_task("retry")
-        status, value = self.command(
-            "close", "retry", "--completed", "--note", "second"
-        )
+        status, value = self.close("retry", "--completed", "--note", "second")
         self.assertEqual((0, "retry.2"), (status, value["closed"]["history"]), value)
         self.assertEqual(
             "second",
@@ -1380,7 +1384,7 @@ class TaskStoreTests(unittest.TestCase):
             return real_git(root, *arguments, check=check)
 
         with patch.object(store, "_git", refusing_removal):
-            status, value = self.command("close", "t1", "--completed", "--note", "done")
+            status, value = self.close("t1", "--completed", "--note", "done")
         self.assertEqual((1, "worktree_failed"), (status, value["error"]["code"]))
         self.assertIn("record of task t1 is unchanged", value["error"]["detail"])
         self.assertIn("finishes the close", value["error"]["detail"])
@@ -1393,7 +1397,7 @@ class TaskStoreTests(unittest.TestCase):
             )
 
         with patch.object(store, "update", conflicting):
-            status, value = self.command("close", "t1", "--completed", "--note", "done")
+            status, value = self.close("t1", "--completed", "--note", "done")
         self.assertEqual(1, status, value)
         error = value["error"]
         self.assertEqual("record_conflict", error["code"])
@@ -1406,7 +1410,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("open", self.record()["state"])
         self.assertTrue(self.folder().is_dir())
         self.assertIs(real, store.update)
-        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        status, value = self.close("t1", "--completed", "--note", "done")
         self.assertEqual(0, status, value)
         self.assertEqual(
             ("closed", False), (value["state"], value["closed"]["worktree_removed"])
@@ -1417,9 +1421,7 @@ class TaskStoreTests(unittest.TestCase):
         # The record is written but the decision log refuses the closing.
         self.project.open_task("t2")
         log = self.read_only_log("t2")
-        status, value = self.command(
-            "close", "t2", "--failed", "--reason", "no", "--no-error"
-        )
+        status, value = self.close("t2", "--failed", "--reason", "no", "--no-error")
         self.assertEqual(1, status, value)
         validate(value["error"], ERROR_SCHEMA)
         self.assertEqual(
@@ -1437,9 +1439,7 @@ class TaskStoreTests(unittest.TestCase):
             self.refusal("close", "t2", "--completed", "--note", "other"),
         )
         log.chmod(0o644)
-        status, value = self.command(
-            "close", "t2", "--failed", "--reason", "no", "--no-error"
-        )
+        status, value = self.close("t2", "--failed", "--reason", "no", "--no-error")
         self.assertEqual(0, status, value)
         self.assertEqual(stored, self.record("t2"))
         self.assertFalse(self.folder("t2").exists())
