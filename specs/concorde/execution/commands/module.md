@@ -22,45 +22,25 @@ not execution commands, even those of Execution: `run` starts an Operation, `wor
 table of subcommands of the
 command-line interface shows.
 
-## Usage
+## Core concepts
+
+Commands rests on one idea, a deterministic step that is nonetheless a run, and on the fixed catalog
+that lists every such step.
+
+### Execution commands
 
 <a id="concept.execution-command"></a>
 
-Whoever works a workspace runs an **execution command** inside it by name, without `run`. A task
-usually ends with two of them. In a task worktree bound to the workspace `severity` on the branch
-`concorde/severity`, once its changes are made:
+Whoever works a workspace runs an
+**[execution command](../../glossary.json#concept.execution-command)** inside it by name, without
+`run`. An execution command exists because some steps of the work need
+no model, yet must be taken, cited and awaited like any run: a workflow takes `task-validation` or
+`scaffold` as a step, Delivery cites the runs that led to it, and the task level reads each
+command's evidence and [error chain](../../glossary.json#concept.error-chain). Running them with the
+same runner as Operations gives them all of that without the
+[Operation catalog](../../glossary.json#concept.operation-catalog) or any worker machinery.
 
-```text
-concorde task-validation
-concorde delivery
-```
-
-`task-validation` is the preview: it decides the workspace's
-[readiness](validation/contracts.md#contract.validation.readiness) and writes nothing. When the
-workspace is ready its run result has status `ok` and a readiness with `ready` true; otherwise it
-is `blocked` and names every blocking finding at once, to repair before trying again. `delivery`
-then decides the readiness again itself rather than trusting the preview and, when it is ready,
-creates the [delivery commit](../../glossary.json#concept.delivery-commit)
-`concorde: deliver severity` on `concorde/severity` and returns that commit as its output. Both
-runs are recorded in the [run store](../../glossary.json#concept.run-store).
-
-The execution commands and their arguments:
-
-```text
-concorde task-validation [--modules <id>[,<id>…]] [--input <run-id>]… [--detach]
-concorde delivery        [--adoption] [--detach]
-concorde scaffold        --input <survey run> [--detach]
-```
-
-`--modules`, `--input` and `--detach` are the [Execution runner](../runner.md)'s, and every
-execution command accepts them like every run, even where a line above leaves them out; each command
-adds its own arguments, such as `--adoption`. The run identity, the
-[run progress file](../../glossary.json#concept.run-progress-file), the workspace lock and the
-result are the runner's too: it keeps them for a command as for an Operation, though no worker is
-launched. Every execution command needs a bound workspace: in a worktree without a binding it is
-refused with `binding_required` and changes nothing. Its run result has `kind` `command`, no
-`worker` and no `worker_runs`, and when it is not `ok` its error link has the level `command`.
-`concorde run` naming an execution command is a command-line error that names the command to use.
+### The command catalog
 
 The **command catalog** is the fixed table, in
 Concorde's code, of the execution commands and their providers. A project cannot extend it: a new
@@ -76,14 +56,10 @@ catalog of this version:
 For a project whose code came before its Specs, `scaffold` sits between the Operations `survey` and
 `code_to_spec`, usually run by the [brownfield workflow](../workflows/module.md).
 
-## Design
+## Overview
 
-An execution command exists because some steps of the work need no model, yet must be taken, cited
-and awaited like any run: a workflow takes `task-validation` or `scaffold` as a step, Delivery cites
-the runs that led to it, and the task level reads each command's evidence and
-[error chain](../../glossary.json#concept.error-chain). Running them with the same runner as
-Operations gives them all of that without the
-[Operation catalog](../../glossary.json#concept.operation-catalog) or any worker machinery.
+Two pictures show Commands: its place beside Operations among the runs, and the two execution
+commands that usually end a task.
 
 ### Its place in the levels of work
 
@@ -107,6 +83,63 @@ commands: Commands {
   table -> command: lists
 }
 ```
+
+### A task's last two runs
+
+A task usually ends with two execution commands. In a task worktree bound to the workspace
+`severity` on the branch `concorde/severity`, once its changes are made:
+
+```text
+concorde task-validation
+concorde delivery
+```
+
+`task-validation` is the preview: it decides the workspace's
+[readiness](validation/contracts.md#contract.validation.readiness) and writes nothing. When the
+workspace is ready its run result has status `ok` and a readiness with `ready` true; otherwise it
+is `blocked` and names every blocking finding at once, to repair before trying again. `delivery`
+then decides the readiness again itself rather than trusting the preview and, when it is ready,
+creates the [delivery commit](../../glossary.json#concept.delivery-commit)
+`concorde: deliver severity` on `concorde/severity` and returns that commit as its output. Both
+runs are recorded in the [run store](../../glossary.json#concept.run-store).
+
+```d2 illustrative
+direction: right
+work: "Changes made\nin the task worktree"
+validate: "concorde task-validation\npreview, writes nothing"
+repair: "Repair every\nblocking finding"
+deliver: "concorde delivery\ndecides the readiness again"
+commit: "Delivery commit\nconcorde: deliver severity"
+work -> validate
+validate -> deliver: "ok, ready"
+validate -> repair: "blocked" {style.stroke-dash: 3}
+repair -> validate
+deliver -> commit: ready
+```
+
+## Running an execution command
+
+The execution commands and their arguments:
+
+```text
+concorde task-validation [--modules <id>[,<id>…]] [--input <run-id>]… [--detach]
+concorde delivery        [--adoption] [--detach]
+concorde scaffold        --input <survey run> [--detach]
+```
+
+`--modules`, `--input` and `--detach` are the [Execution runner](../runner.md)'s, and every
+execution command accepts them like every run, even where a line above leaves them out; each command
+adds its own arguments, such as `--adoption`. The run identity, the
+[run progress file](../../glossary.json#concept.run-progress-file), the workspace lock and the
+result are the runner's too: it keeps them for a command as for an Operation, though no worker is
+launched. Every execution command needs a bound workspace: in a worktree without a binding it is
+refused with `binding_required` and changes nothing. Its run result has `kind` `command`, no
+`worker` and no `worker_runs`, and when it is not `ok` its error link has the level `command`.
+`concorde run` naming an execution command is a command-line error that names the command to use.
+
+## How it is built
+
+### The command table
 
 <a id="realization.commands.catalog"></a>
 
@@ -146,7 +179,7 @@ whose entries state the survey's purpose and say plainly that their behaviour an
 yet specified. Adding Modules is a project-level change a worker may never make, so deterministic
 code makes it from the proposal a worker only suggested.
 
-### What Commands relies on
+## What Commands relies on
 
 <a id="uses-execution"></a>
 

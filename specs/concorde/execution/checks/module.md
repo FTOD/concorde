@@ -12,7 +12,7 @@ filesystem writes only, not reads, network or credentials. The service records w
 checked and refuses a result if they differ after the run from before it. It never decides whether
 a passing check means correct code or whether a workspace is ready to deliver.
 
-## Usage
+## Core concepts
 
 For a project checked with `pytest tests/`, this service starts that command, waits for it and
 returns its exit status and captured output. Pytest performs the assertions; Check execution
@@ -21,17 +21,7 @@ check answers what one command produced on exactly this input, and whether that 
 trusted. A configured command can itself depend on external services, so its output need not be
 identical on every run.
 
-The calling code, not an AI worker, decides when to run checks:
-
-| Caller | Use of the result |
-| --- | --- |
-| Workers host code | After a clean audit, record the checks and pass failures to a worker's next round when allowed |
-| `test` and `code_review` Operations | Supply recorded check results to a worker for interpretation or review |
-| `task-validation` and `delivery` execution commands | Use the results in the readiness decision; Delivery reuses Validation's steps |
-
-These are ordinary service calls inside a run, not nested runs. Check execution launches no
-Concorde worker. Users configure commands and see the results through the runs that call it; there
-is no separate Check execution command to start.
+### Configured checks and their results
 
 <a id="concept.configured-check"></a><a id="concept.check-result"></a>
 
@@ -59,6 +49,8 @@ fails with `stale_evidence`, because the result would vouch for input that chang
 stays valid only while a fresh measurement matches it. Exact declaration and records:
 [the check service](service.md).
 
+### The read-only check boundary
+
 <a id="concept.read-only-check-boundary"></a>
 
 Inside the **[read-only check boundary](../../glossary.json#concept.read-only-check-boundary)**, any
@@ -71,31 +63,17 @@ established (only Linux with a root-owned bubblewrap and the needed namespaces i
 command does not start and the run is refused with a sandbox error; there is no subprocess fallback.
 Environment/mounts: [the boundary](boundary.md).
 
+### Diagnostic spans
+
 The runner marks sandbox setup and each command as a
 **diagnostic span**, kept only in a caller-opened
 trace or under `CONCORDE_DIAGNOSTIC_TIMING_DIR`; spans never change a run's outcome. Record/summary:
 [the timing spans](timing.md).
 
-## Design
+## Overview
 
-Checks produce evidence that a workspace is ready, and that evidence is only worth having if
-the check could not change what it measured. So one guarantee is enforced, and the boundary states
-plainly what it leaves out:
-
-| Concern | Enforced |
-| --- | --- |
-| Writing any host file outside the scratch, through any path name, hard link, inherited descriptor or nested namespace | Yes, by the kernel |
-| Descendant processes outliving the run | Yes: the host ends the whole process tree |
-| Reading files the developer's user can read | Not enforced |
-| Network access | Not enforced: the network namespace is shared with the host |
-| Host sockets: abstract Unix sockets and filesystem sockets such as an SSH agent or a container daemon | Not enforced: a read-only mount does not stop connecting to a socket, so a command could ask a host service to act, including changing the project |
-| Environment and credentials | Not enforced by the boundary, which passes on whatever environment its caller gives; the check service builds that environment from `PATH`, `LANG`, the proxy and TLS trust variables and the check's own `env`, so a credential reaches a configured check only through one of those, such as a proxy address carrying one, or through a file the check can read |
-
-The omissions are deliberate: configured checks are commands the project itself chose, run by the
-host and never by a worker, which only receives their results. Because the boundary cannot stop a
-process outside it, or a host service a check talked to, from changing the project during the run,
-the service measures its input before and after and turns that race into `stale_evidence` rather
-than false evidence. A change undone before the second measurement is not detected.
+Two pictures show Check execution: its place among the programs that call it, and what one call
+does.
 
 ### Its place in the levels of work
 
@@ -139,25 +117,67 @@ node in the [run store](../../glossary.json#concept.run-store); a check's output
 bounded log tail Workers puts into a [resume round](../../glossary.json#concept.resume-round), and
 whether a worker needs more than its last 20,000 bytes is undecided.
 
-<a id="uses-tracing"></a>
+The calling code, not an AI worker, decides when to run checks:
 
-**Tracing** gives every check the shape of a [trace node](../../glossary.json#concept.trace-node),
-which the check service writes through Tracing's library before the command starts and after it
-ended, in the folder its caller names, and the error contract its failures follow. It relies on the
-[node contract](../../tracing/contracts.md#contract.tracing.node).
+| Caller | Use of the result |
+| --- | --- |
+| Workers host code | After a clean audit, record the checks and pass failures to a worker's next round when allowed |
+| `test` and `code_review` Operations | Supply recorded check results to a worker for interpretation or review |
+| `task-validation` and `delivery` execution commands | Use the results in the readiness decision; Delivery reuses Validation's steps |
 
-<a id="uses-spec"></a>
+These are ordinary service calls inside a run, not nested runs. Check execution launches no
+Concorde worker. Users configure commands and see the results through the runs that call it; there
+is no separate Check execution command to start.
 
-**Spec core** loads the configuration, the checks files and the
-[registry](../../glossary.json#concept.registry), from which the check service
-takes each Module's checks and resolves its `ImplementationScope` — a [boundary
-set](../../glossary.json#concept.boundary-set) whose digest is part of what a
-check measures; changed paths map the same way. It also supplies safe relative-path rules for
-inputs. Check execution relies on a Module's boundary set resolving the same way from the same
-Specs before and after a run, so that a digest mismatch means the input changed; an invalid or
-unreadable path fails the run before any command starts.
+### One call of the check service
 
-### Inside
+A caller names a worktree, the Modules to run and a log directory. For each Module the service
+measures the inputs, runs each check in the boundary and measures again; a boundary it cannot
+establish starts no command, and a measurement that changed fails the call with `stale_evidence`:
+
+```d2 illustrative
+direction: down
+select: "For each Module: select its checks\n(changed paths mapped to Modules)"
+before: "Digest the Module's inputs"
+boundary: "Set up the read-only boundary\nwith a fresh scratch"
+run: "Run the check's command\nwithin its time limit"
+logs: "Save its log and\nits check result"
+after: "Digest the Module's inputs again"
+result: "Return one check result\nper check"
+refused: "Refused with a sandbox error:\nno command starts"
+stale: "Fails with stale_evidence"
+select -> before -> boundary -> run -> logs
+logs -> boundary: "next check"
+logs -> after: "last check of the Module"
+after -> result: "digests match"
+after -> stale: "digests differ" {style.stroke-dash: 3}
+boundary -> refused: "cannot be established" {style.stroke-dash: 3}
+```
+
+## What the boundary enforces
+
+<a id="design"></a>
+
+Checks produce evidence that a workspace is ready, and that evidence is only worth having if
+the check could not change what it measured. So one guarantee is enforced, and the boundary states
+plainly what it leaves out:
+
+| Concern | Enforced |
+| --- | --- |
+| Writing any host file outside the scratch, through any path name, hard link, inherited descriptor or nested namespace | Yes, by the kernel |
+| Descendant processes outliving the run | Yes: the host ends the whole process tree |
+| Reading files the developer's user can read | Not enforced |
+| Network access | Not enforced: the network namespace is shared with the host |
+| Host sockets: abstract Unix sockets and filesystem sockets such as an SSH agent or a container daemon | Not enforced: a read-only mount does not stop connecting to a socket, so a command could ask a host service to act, including changing the project |
+| Environment and credentials | Not enforced by the boundary, which passes on whatever environment its caller gives; the check service builds that environment from `PATH`, `LANG`, the proxy and TLS trust variables and the check's own `env`, so a credential reaches a configured check only through one of those, such as a proxy address carrying one, or through a file the check can read |
+
+The omissions are deliberate: configured checks are commands the project itself chose, run by the
+host and never by a worker, which only receives their results. Because the boundary cannot stop a
+process outside it, or a host service a check talked to, from changing the project during the run,
+the service measures its input before and after and turns that race into `stale_evidence` rather
+than false evidence. A change undone before the second measurement is not detected.
+
+## Inside
 
 The check runner runs each configured check inside the read-only boundary, which provides the
 scratch the check may write, and records a check result and diagnostic spans:
@@ -195,3 +215,23 @@ exception passes through a span unchanged.
 - <a id="realization.checks.tests"></a>The **check tests** run real sandboxed processes, failing
   rather than skipping where the platform can't enforce the boundary — showing what it blocks, not
   that checks are adequate — and exercise the timing recorder and summary.
+
+## What Check execution relies on
+
+<a id="uses-tracing"></a>
+
+**Tracing** gives every check the shape of a [trace node](../../glossary.json#concept.trace-node),
+which the check service writes through Tracing's library before the command starts and after it
+ended, in the folder its caller names, and the error contract its failures follow. It relies on the
+[node contract](../../tracing/contracts.md#contract.tracing.node).
+
+<a id="uses-spec"></a>
+
+**Spec core** loads the configuration, the checks files and the
+[registry](../../glossary.json#concept.registry), from which the check service
+takes each Module's checks and resolves its `ImplementationScope` — a [boundary
+set](../../glossary.json#concept.boundary-set) whose digest is part of what a
+check measures; changed paths map the same way. It also supplies safe relative-path rules for
+inputs. Check execution relies on a Module's boundary set resolving the same way from the same
+Specs before and after a run, so that a digest mismatch means the input changed; an invalid or
+unreadable path fails the run before any command starts.

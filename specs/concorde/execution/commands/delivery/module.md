@@ -16,7 +16,84 @@ branch, and only Delivery makes the commit that marks the work delivered. Delive
 rewrites history, repairs a finding, writes a task record, or delivers anything it did not validate
 in the same run.
 
-## Usage
+## Core concepts
+
+Delivery rests on one idea, the delivery commit: the one mark of a delivery, made only on top of
+what the same run validated. It builds on Validation's
+[readiness](../../../glossary.json#concept.readiness).
+
+### The delivery commit
+
+<a id="concept.delivery-commit"></a>
+
+A **[delivery commit](../../../glossary.json#concept.delivery-commit)** has subject
+`concorde: deliver <workspace>`, which marks it as a delivery, and the goal as body. Its parent is
+the branch head Delivery validated; it contains the cleared markers and every uncommitted change
+except what Git ignores and untracked paths Git cannot version, such as a sandbox's `/dev/null`
+mounts — only any cleared markers, and so possibly nothing, when every step was already committed.
+A workspace may be delivered several times — another `implement` after a code review, say — each a
+new commit on top, never amended. The delivery commits are the only record of the deliveries:
+Delivery writes no [task record](../../../glossary.json#concept.task-record) and keeps no list of
+its own, and reads its earlier deliveries back from the branch by their subject
+([exact rule](contracts.md#delivery-commit)). Running `delivery` again when the branch head already
+is a delivery commit of the workspace and nothing waits reports that commit, `ok` with `recovered`
+true, and commits nothing — once it has verified that the commit has exactly one parent, as every
+commit Delivery creates has; a head with the subject that fails this, such as a merge commit, is
+`commit_unverified`, naming the mismatch. The delivery run's own
+[trace node](../../../glossary.json#concept.trace-node) references the delivery commit, so the trace
+leads to what was committed: as `commit` when the run created it, and as `found_commit` when it
+found its work already delivered and reported the existing commit, which an earlier run created.
+What the readiness examined and which runs led to it stay in the run's trace node and those of the
+workspace's other runs, local records that [Tracing](../../../tracing/module.md)'s retention may
+remove; what the task decided along the way is kept in Git by the task level, in Concorde as the
+task's [decision log](../../../glossary.json#concept.decision-log) Tasks commits when the task ends.
+
+## Overview
+
+### Delivering a workspace
+
+A run of `delivery` goes through ten steps. Every step before 7 leaves the workspace as it was, so a
+blocked delivery changes nothing; steps 7 and 8 are undone together when step 8 fails, and a commit
+that does not verify in step 9 stays for the task level to decide on:
+
+```d2 illustrative
+direction: down
+branch: "1. Head on the bound branch?"
+found: "2. Head already a delivery commit\nof the workspace, nothing waiting?"
+work: "3. A commit since the base\nor an uncommitted change?"
+readiness: "4. Decide the whole workspace's\nreadiness with Validation's steps"
+ready: "5. Ready?"
+tests: "6. Changed code: every added or\nchanged scenario has a verifying test?\n(skipped with --adoption)"
+index: "7. Record the index,\napply the confirmations"
+commit: "8. Stage every change, record\nthe staged tree, commit"
+verify: "9. Verify the commit"
+output: "10. Return the commit"
+ok: "ok"
+blocked: "blocked\nthe workspace unchanged"
+failed: "failed"
+branch -> found: yes
+found -> work: no
+work -> readiness: yes
+readiness -> ready
+ready -> tests: yes
+tests -> index: yes
+index -> commit -> verify -> output -> ok
+found -> ok: "yes, one parent:\nrecovered"
+found -> failed: "yes, but not one parent:\ncommit_unverified" {style.stroke-dash: 3}
+branch -> failed: "no: wrong_branch" {style.stroke-dash: 3}
+work -> blocked: "no: nothing_to_deliver" {style.stroke-dash: 3}
+readiness -> failed: "measurement, checks\nor inputs fail" {style.stroke-dash: 3}
+ready -> blocked: "no: not_ready" {style.stroke-dash: 3}
+tests -> blocked: "no: unverified_scenarios" {style.stroke-dash: 3}
+index -> failed: "index_unrecorded,\nconfirmations refused" {style.stroke-dash: 3}
+commit -> failed: "Git refuses: 7 and 8 undone" {style.stroke-dash: 3}
+verify -> failed: "mismatch: commit_unverified,\nthe commit stays" {style.stroke-dash: 3}
+```
+
+[The steps](#the-steps) gives each step's actor and stopping rule, and
+[The commit is the record](#the-commit-is-the-record) why the commit is all Delivery keeps.
+
+## Running delivery
 
 The task level runs the command in the task worktree when the workspace's work is complete. Each
 verified step may already be committed on the branch, so a clean worktree is the normal case:
@@ -53,29 +130,7 @@ changed code ships only with a test for each scenario it added or changed. Deliv
 this claim: the flag is the caller's declaration, recorded as `scenario-tests` evidence `exempt`.
 Every other rule applies unchanged.
 
-<a id="concept.delivery-commit"></a>
-
-A **[delivery commit](../../../glossary.json#concept.delivery-commit)** has subject
-`concorde: deliver <workspace>`, which marks it as a delivery, and the goal as body. Its parent is
-the branch head Delivery validated; it contains the cleared markers and every uncommitted change
-except what Git ignores and untracked paths Git cannot version, such as a sandbox's `/dev/null`
-mounts — only any cleared markers, and so possibly nothing, when every step was already committed.
-A workspace may be delivered several times — another `implement` after a code review, say — each a
-new commit on top, never amended. The delivery commits are the only record of the deliveries:
-Delivery writes no [task record](../../../glossary.json#concept.task-record) and keeps no list of
-its own, and reads its earlier deliveries back from the branch by their subject
-([exact rule](contracts.md#delivery-commit)). Running `delivery` again when the branch head already
-is a delivery commit of the workspace and nothing waits reports that commit, `ok` with `recovered`
-true, and commits nothing — once it has verified that the commit has exactly one parent, as every
-commit Delivery creates has; a head with the subject that fails this, such as a merge commit, is
-`commit_unverified`, naming the mismatch. The delivery run's own
-[trace node](../../../glossary.json#concept.trace-node) references the delivery commit, so the trace
-leads to what was committed: as `commit` when the run created it, and as `found_commit` when it
-found its work already delivered and reported the existing commit, which an earlier run created.
-What the readiness examined and which runs led to it stay in the run's trace node and those of the
-workspace's other runs, local records that [Tracing](../../../tracing/module.md)'s retention may
-remove; what the task decided along the way is kept in Git by the task level, in Concorde as the
-task's [decision log](../../../glossary.json#concept.decision-log) Tasks commits when the task ends.
+### The result
 
 | Status | Code | Reason | Detail |
 | --- | --- | --- | --- |
@@ -96,7 +151,7 @@ task level's decision; any other Git refusal to record the index is `index_unrec
 reason `environment`. Either way its cause is the `git write-tree`, `git ls-tree` or
 `git ls-files` link with Git's output, and nothing has changed yet.
 
-## Design
+## How it is built
 
 Delivery makes the delivery commit, workers do not: a delivery makes a proposal part of the history
 that is merged and must match what was checked, which only deterministic code that checks it can
@@ -129,6 +184,8 @@ a workspace is delivered reads the branch. In Concorde the task level does exact
 a task as delivered when its branch head is a delivery commit of its workspace and its worktree is
 clean, and merges only such a head. It also keeps Delivery ignorant of tasks, as all of Execution
 is: the commit names the workspace, which the binding names, and nothing else.
+
+### The steps
 
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
@@ -176,12 +233,14 @@ commit reworded with the subject is not taken for a delivery. A head that fails 
 what it claims is the task level's decision. A cherry-picked or reworded commit with one parent is
 not told from a delivery: the subject is a mark the task level relies on, not a proof.
 
+### The command
+
 <a id="realization.delivery.command"></a>
 
 The **Delivery command** realization holds the steps, the commit message and the reader of earlier
 delivery commits, and their tests.
 
-### Outside
+## What Delivery relies on
 
 - <a id="uses-execution"></a>**Execution**'s runner runs the command: it reads the workspace
   binding, which gives the steps the workspace's name, goal, Modules, bound branch and base commit,
