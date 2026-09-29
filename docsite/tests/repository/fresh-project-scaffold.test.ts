@@ -285,12 +285,13 @@ describe("a project holding only initialization outputs", () => {
     expect(mainPage).toContain('id="purpose"');
     expect(mainPage).not.toContain('id="requirements"');
     expect(mainPage).not.toContain('id="scenarios"');
-    expect(mainPage).toContain('id="usage"');
-    expect(mainPage).toContain('id="design"');
-    expect(mainPage).toContain('id="usage"');
-    expect(mainPage).toContain('id="design"');
-    expect(mainPage.indexOf('id="usage"')).toBeLessThan(
-      mainPage.indexOf('id="design"'),
+    expect(mainPage).toContain('id="not-yet-specified"');
+    expect(mainPage).toContain('id="parts"');
+    expect(mainPage.indexOf('id="purpose"')).toBeLessThan(
+      mainPage.indexOf('id="not-yet-specified"'),
+    );
+    expect(mainPage.indexOf('id="not-yet-specified"')).toBeLessThan(
+      mainPage.indexOf('id="parts"'),
     );
     expect(mainPage).not.toContain('id="entities"');
     expect(mainPage).not.toContain('id="usage--contract"');

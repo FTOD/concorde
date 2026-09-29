@@ -343,6 +343,8 @@ def initial_registry(target_id: str, name: str, path: str) -> dict:
 def initial_module_text(
     target_id: str, name: str, bound: bool = False, installed: bool = False
 ) -> str:
+    """The root stub in the entry's recommended order: Purpose, what is not yet specified, and
+    Parts, where the realizations and, once a scaffold adds them, the children are explained."""
     local = target_id.split(".")[-1]
     realization = (
         f'<a id="realization.{local}.existing-files"></a>\n\n'
@@ -356,13 +358,14 @@ def initial_module_text(
         f"# {name}\n\n## Purpose\n\n"
         f"This Module is the root of the {name} project. The project's purpose, its users and the\n"
         "limits of its promises have not been specified yet.\n\n"
-        "## Usage\n\n"
+        "## Not yet specified\n\n"
+        "The project's core concepts are not specified yet. This Module declares the project's\n"
+        "glossary, where every term of the project will be defined once; no term has been defined\n"
+        "yet.\n\n"
         "How the project is used is not specified yet: its entry points, inputs, results, effects,\n"
         "errors and repeat behaviour are unknown. Do not infer them from existing code.\n\n"
-        "This Module declares the project's glossary, where every term of the project will be\n"
-        "defined once; no term has been defined yet.\n\n"
-        "## Design\n\n"
         "The project's decomposition, state, control flow and design reasons are not specified yet.\n\n"
+        "## Parts\n\n"
         "The project's parts and their collaborations are not specified yet. This Module contains,\n"
         "uses and includes nothing, and no requirement or scenario has been written.\n\n"
         + realization

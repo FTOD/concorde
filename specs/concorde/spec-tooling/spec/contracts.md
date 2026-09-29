@@ -648,8 +648,10 @@ on propose as given, otherwise the first of `.venv/bin/python` and `venv/bin/pyt
 and absent when there is none;
 `.concorde/specs.json` with one record for the root Module; `specs/project/module.md` with its
 metadata; and the empty project glossary `specs/project/glossary.json`, beside the entry. The entry
-has the three required sections and says that the project's responsibility, behaviour and
-architecture are not yet specified. Its metadata declares the `module` block with the entry as the
+follows the reading order the Protocol's writing guidance recommends, in three sections: Purpose;
+Not yet specified, which says that the project's core concepts, behaviour and architecture are not
+yet specified; and Parts, which says that the root contains, uses and includes nothing yet, explains
+its realizations and is where the children are explained once it has some. Its metadata declares the `module` block with the entry as the
 only owned document, empty relation arrays and the glossary, and the glossary holds no concept.
 
 When the project already has files, the metadata defines one realization,

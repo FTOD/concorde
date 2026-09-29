@@ -60,7 +60,7 @@ SCAFFOLD_RECORD_SCHEMA = obj(
     }
 )
 
-# The sentence initialization writes into a root stub's Design section, which stops being true
+# The sentence initialization writes into a root stub's Parts section, which stops being true
 # once the root contains children.
 INIT_PARTS = (
     "The project's parts and their collaborations are not specified yet. This Module contains,\n"
@@ -208,14 +208,16 @@ def child_reading(child: dict, titles: dict[str, str]) -> str:
     )
     return (
         f"# {title}\n\n## Purpose\n\n{purpose}\n\n"
-        "## Usage\n\n"
+        "## Not yet specified\n\n"
+        f"The core concepts of {title} are not specified yet.\n\n"
         f"How {title} is used is not specified yet: its entry points, inputs, results, effects,\n"
         "errors and repeat behaviour are unknown.\n\n"
-        "## Design\n\n"
-        f"The design of {title} is not specified yet.\n\n"
+        f"The design of {title} and the reasons for it are not specified yet.\n\n"
+        "## Parts\n\n"
         f'<a id="realization.{local(identity)}.code"></a>\n\n'
         f"The files a survey of the code assigned to {title} are bound to it as its code. Binding\n"
         "them describes nothing yet about what they do.\n\n"
+        "## Collaborations\n\n"
         + (
             uses
             if uses
@@ -268,7 +270,7 @@ def child_metadata(child: dict, entry: str, externals: list[dict] = ()) -> dict:
 
 
 def parent_reading(text: str, children: list[dict]) -> str:
-    """The parent entry with one explaining paragraph per child at the end of Design."""
+    """The parent entry with one explaining paragraph per child at the end of Parts."""
     paragraphs = "".join(
         f'<a id="contains-{anchor(child["id"])}"></a>\n\n'
         f"**{child['title']}**, proposed by a survey of the code: "
@@ -278,11 +280,11 @@ def parent_reading(text: str, children: list[dict]) -> str:
     text = text.replace(INIT_PARTS, SCAFFOLDED_PARTS, 1)
     lines = text.splitlines(keepends=True)
     start = next(
-        (index for index, line in enumerate(lines) if line.strip() == "## Design"),
+        (index for index, line in enumerate(lines) if line.strip() == "## Parts"),
         None,
     )
     if start is None:
-        return text.rstrip("\n") + "\n\n## Design\n\n" + paragraphs.rstrip("\n") + "\n"
+        return text.rstrip("\n") + "\n\n## Parts\n\n" + paragraphs.rstrip("\n") + "\n"
     end = next(
         (
             index
