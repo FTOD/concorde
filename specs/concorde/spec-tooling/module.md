@@ -46,7 +46,7 @@ A change to a Module's Specs usually meets Spec tooling in this order:
 ```d2 illustrative
 direction: down
 task: "Task level" {
-  change: "Change a Module's Specs on the task branch:\nthe developer, the main agent\nor a specify worker"
+  change: "Change a Module's Specs on the task branch:\nthe task session, a specify worker\nit launches, or the developer"
   decide: "Decide what to act on,\nlog it, rerun specify"
 }
 core: "Spec core" {
@@ -67,9 +67,12 @@ task.decide -> task.change
 review.verdict -> ready: accepted
 ```
 
-On a task branch, the developer, the [main agent](../glossary.json#concept.main-agent) or a
-`specify` worker changes a Module's Specs. `concorde spec-validation` then reports every finding of
-the [structural checks](../glossary.json#concept.structural-check) in one run; while it reports an
+On a task branch, the [task session](../glossary.json#concept.task-session) working the task, a
+`specify` worker it launches, or the developer changes a Module's Specs; the
+[main agent](../glossary.json#concept.main-agent) never works in a task worktree, and changes a
+Spec itself only in a small change the developer approved, in the primary worktree.
+`concorde spec-validation` then reports every finding of the
+[structural checks](../glossary.json#concept.structural-check) in one run; while it reports an
 error, the change is not ready for delivery. Once the Specs are valid, `concorde run spec_review`
 (or `spec_panel`) has workers judge the named Modules' Specs and returns their findings with a
 [review verdict](../glossary.json#concept.review-verdict): `accepted`; `changes_required`, when a
