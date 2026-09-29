@@ -386,11 +386,17 @@ class PiSessionTests(unittest.TestCase):
         )
 
     @verifies("scenario.task-session.pi-no-session")
-    def test_an_answer_needs_a_pi_session(self):
+    def test_an_answer_or_a_stop_needs_a_pi_session(self):
         self.open("t2", {})
-        with self.assertRaises(store.TaskError) as raised:
-            pi_session.answer(self.root, "t2", "more")
-        self.assertEqual("no_session", raised.exception.code)
+        before = store.load_task(self.root, "t2")
+        for action in (
+            lambda: pi_session.answer(self.root, "t2", "more"),
+            lambda: pi_session.stop(self.root, "t2"),
+        ):
+            with self.assertRaises(store.TaskError) as raised:
+                action()
+            self.assertEqual("no_session", raised.exception.code)
+            self.assertEqual(before, store.load_task(self.root, "t2"))
         self.assertEqual([], store.load_task(self.root, "t2")["sessions"])
 
     @verifies("scenario.task-session.pi-wait")

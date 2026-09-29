@@ -94,8 +94,8 @@ error beside it. It then records the round's outcome in the task record:
 
 The main agent answers an escalation, or asks for more after a delivery, with `--answer`: Task
 sessions starts the next round on the same session file, so the session continues with its whole
-context and the answer as its prompt. `--answer` is refused while a round runs (`session_busy`) or
-when the task has no pi session (`no_session`), and `--stop` when no round runs (`session_idle`). A
+context and the answer as its prompt. `--answer` is refused while a round runs (`session_busy`), `--stop` when no round runs
+(`session_idle`), and both when the task has no pi session (`no_session`). A
 start while a round runs is refused with `session_busy`; after the last round ended, a start begins
 a new session. `--dry-run` writes the boundary and prints the command without starting anything.
 
@@ -120,7 +120,7 @@ running -> ended.escalated: report names recorded escalations
 running -> ended.failed: "no report, a contradicted report\nor a lost supervisor"
 running -> ended.stopped: --stop
 ended -> running: "--answer: next round, same session file\nstart: a new session"
-none -> none: "--answer, --wait: no_session"
+none -> none: "--answer, --wait, --stop: no_session"
 running -> running: "start, --answer: session_busy"
 ended -> ended: "--stop: session_idle"
 ```

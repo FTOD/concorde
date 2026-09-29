@@ -57,11 +57,11 @@ defined in the [contracts](contracts.md).
 - WHEN the main agent runs `concorde task session severity --answer "<answer>"` or `concorde task session severity`
 - THEN both are refused with `session_busy`, naming the running round and its supervisor process, and no round starts
 
-### scenario.task-session.pi-no-session — An answer needs a pi session
+### scenario.task-session.pi-no-session — An answer or a stop needs a pi session
 
 - GIVEN an open task `severity` for which no pi task session was started
-- WHEN the main agent runs `concorde task session severity --answer "<answer>"`
-- THEN it is refused with `no_session` and no round starts
+- WHEN the main agent runs `concorde task session severity` with `--answer "<answer>"` or with `--stop`
+- THEN it is refused with `no_session`, no round starts and the task record is unchanged
 
 ### scenario.task-session.pi-report-verified — A report the record contradicts fails the round
 

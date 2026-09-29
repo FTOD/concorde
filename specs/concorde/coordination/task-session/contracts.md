@@ -82,7 +82,7 @@ its refusals use these:
 | `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), pi, `bwrap`, `socat` or the sandbox-runtime package is missing (each is named), the pi supervisor could not start, or the task-session guidance is missing from the package. |
 | `client_unknown` | `session` cannot read the main session's program from the environment: `CONCORDE_CLIENT` is unset, `CLAUDECODE` is not 1 and no pi session variable is set; the message names each. |
 | `session_busy` | `session` starts a pi session, or `--answer` a round, while a round of the task's pi session runs; the message names the round and its supervisor process. |
-| `no_session` | `--answer` or `--wait` names a task that has no pi session. |
+| `no_session` | `--answer`, `--wait` or `--stop` names a task that has no pi session. |
 | `session_idle` | `--stop` names a task whose pi session has no running round. |
 
 A pi round recorded `failed` carries, as its `error`, a link of one of these codes:
