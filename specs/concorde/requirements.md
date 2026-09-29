@@ -140,7 +140,7 @@ back to the same worker automatically.
 
 ### req.concorde.delivery-separate — Delivery is its own execution command
 
-Changes of a task SHALL reach the task branch only through the `delivery` execution command, which commits them together with their evidence.
+Changes of a task SHALL reach the task branch only through the `delivery` execution command, which decides their readiness itself and commits them only when the workspace is ready.
 
 ### req.concorde.merge-by-main-agent — The main agent merges delivered tasks
 

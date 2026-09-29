@@ -131,7 +131,7 @@ passed, with `goal` set to the run's own `--goal` argument.
         {"run": "test", "modules": ["module.issues"], "purpose": "run and interpret the Issues checks"},
         {"run": "code_review", "modules": ["module.issues"], "purpose": "judge the change against the updated Spec"},
         {"run": "task-validation", "modules": ["module.issues"], "purpose": "decide whether the workspace is ready to deliver"},
-        {"run": "delivery", "modules": ["module.issues"], "purpose": "commit the change with its evidence"}
+        {"run": "delivery", "modules": ["module.issues"], "purpose": "validate the whole workspace again and commit the change"}
       ],
       "decisions": ["whether severity is required for new reports or optional"]
     }

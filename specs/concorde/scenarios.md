@@ -38,7 +38,7 @@ live worker test of Workers.
 - AND runs `implement` for that Module in the task worktree
 - AND runs `task-validation` and then `delivery` there
 - AND none of these runs names the task: each reads the worktree's [workspace binding](glossary.json#concept.workspace-binding)
-- THEN the task branch holds one [delivery commit](glossary.json#concept.delivery-commit) with the change and its evidence
+- THEN the task branch holds one [delivery commit](glossary.json#concept.delivery-commit) with the change
 - AND `concorde task show` reports the task delivered, derived from that commit and the runs the [run store](glossary.json#concept.run-store) holds, while its [task record](glossary.json#concept.task-record) was never written by a run
 - AND the main agent can merge the task branch into the primary branch
 - AND the primary worktree was never written by a worker

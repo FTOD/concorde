@@ -94,10 +94,10 @@ It is an [execution command](../../../glossary.json#concept.execution-command): 
 [Execution runner](../../runner.md) runs it like any
 [Operation](../../../glossary.json#concept.operation), in the workspace whose
 [binding](../../../glossary.json#concept.workspace-binding) lies in the worktree it starts in, and
-records it in the [run store](../../../glossary.json#concept.run-store), so that Delivery and a
-workflow can find it. In a worktree without a binding it is refused with `binding_required`, since
-readiness concerns a workspace's changes from its base commit. The command takes no arguments of its
-own; it accepts the runner's `--input` like any run, but no step reads an admitted input. The
+records it in the [run store](../../../glossary.json#concept.run-store), so that a workflow can
+find it. In a worktree without a binding it is refused with `binding_required`, since readiness
+concerns a workspace's changes from its base commit. The command takes no arguments of its own; it
+accepts the runner's `--input` like any run, but no step reads an admitted input. The
 **run's Modules** (`--modules`, the binding's by default) never narrow what is validated — readiness
 concerns the whole workspace — but add their checks to the changed Modules'. The checks of every
 Module that uses one of these, directly or through further uses, run too, so a change can bring
@@ -139,12 +139,12 @@ differ, when a configured check depends on something outside the workspace.
 
 Readiness is decided by deterministic code alone, so Delivery can run the same steps and trust their
 outcome without asking — a model's opinion of completeness is not enough. That is also why it is an
-execution command and not an Operation: it involves no model, yet delivery must cite the run that
-decided a readiness, a workflow must be able to take it as a step, and its caller must receive its
-evidence and error chain like any run's. Binding the readiness to an input digest, remeasured at the
-end, proves that the measured inputs at the end of the run are those it recorded at the start,
-rather than trusting a timestamp; Check execution in addition refuses a check whose own inputs
-changed while it ran. Changes the measurement leaves out, below, are not seen.
+execution command and not an Operation: it involves no model, yet a workflow must be able to take
+it as a step, and its caller must receive its evidence and error chain like any run's. Binding the
+readiness to an input digest, remeasured at the end, proves that the measured inputs at the end of
+the run are those it recorded at the start, rather than trusting a timestamp; Check execution in
+addition refuses a check whose own inputs changed while it ran. Changes the measurement leaves out,
+below, are not seen.
 
 ### What is measured and checked
 
