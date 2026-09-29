@@ -14,28 +14,10 @@ what reaches the developer. Neither Operation edits a [Spec](../../glossary.json
 repairs a finding or calls another Operation, and neither repeats structural validation (Spec
 core) or judges code (Code review).
 
-## Usage
+## Core concepts
 
-The caller runs a **Spec review** when a
-[Spec change](../../glossary.json#concept.spec-change) is ready to be judged, typically after
-`specify` and before implementation, or when it doubts that an existing Spec is clear enough to hand
-to workers:
-
-```text
-concorde run spec_review --modules module.checkout,module.inventory [--check-findings] [--force]
-```
-
-The command waits for the result; with `--detach` it is a
-[detached run](../../glossary.json#concept.detached-run) that prints its run identity at once and
-writes the result when it ends. In a task worktree it reviews the
-[workspace](../../glossary.json#concept.workspace) whose binding lies there, and `--modules`
-defaults to the binding's Modules; each named Module is reviewed on its own from that worktree's
-Specs, so what gets judged is the branch's own change, committed or not. In a worktree without a
-binding, such as the primary worktree, it is an
-[unbound run](../../glossary.json#concept.unbound-run) that judges the Specs of that worktree's
-`HEAD`, read from its [unbound checkout](../../glossary.json#concept.unbound-checkout).
-Status is `ok` whenever every Module could be reviewed, `blocked`/`failed` only when the verdict is
-`incomplete` — still carrying every reviewed Module's findings.
+A Spec review and a Spec panel both return findings and derive a verdict from them; a Spec review
+also keeps each Module's findings from one review to the next.
 
 <a id="concept.review-finding"></a>
 
@@ -72,34 +54,99 @@ verdict. While a Module's context identity is the one the last completed review 
 launches no reviewer and the memory decides the Module's outcome, unless `--force` asks for a new
 look. Only a review inside a workspace writes the memory, and the task's
 [delivery commit](../../glossary.json#concept.delivery-commit) carries it; an unbound review reads
-it and writes nothing. [The review memory](#the-review-memory) in Design explains why it works this
+it and writes nothing. [The review memory](#the-review-memory) below explains why it works this
 way.
 
-A **Spec panel** is for a review the caller wants to
-rely on more than on one reviewer, whose findings vary from run to run and are sometimes wrong. It
-is run the same way as a Spec review:
-
-```text
-concorde run spec_panel --modules module.checkout [--reviewers 3]
-```
-
-Three reviewers, by default, review the Module at the same time, each on its own and with the same
-checklist. The chair then reads all their findings, checks each against the Specs, merges the ones
-that describe the same problem and rejects the ones that do not hold. The result is the **panel
-report**: every merged finding names the reviewer findings it came from and how many reviewers
-reported it, and every rejection gives its reason. The Operation checks that the report accounts for
-every reviewer finding exactly once, so nothing a reviewer found is silently lost, and gives the
-chair one more attempt when it does not. The Module's outcome is `changes_required` when a report
-finding is blocking, `accepted` otherwise. A panel writes nothing, not even a review memory
+The **panel report** is what a Spec panel's chair returns: every merged finding names the reviewer
+findings it came from and how many reviewers reported it, and every rejection gives its reason.
+The Operation checks that the report accounts for every reviewer finding exactly once, so nothing a
+reviewer found is silently lost. The Module's outcome is `changes_required` when a report finding
+is blocking, `accepted` otherwise. A panel writes nothing, not even a review memory
 ([definition](panel.md)).
 
-## Design
+## Overview
+
+### A Spec review
 
 Spec review follows the ordinary step sequence of a worker-backed Operation, minus the writing
-steps a `review-spec` grant makes moot. It validates Modules first, marking one `incomplete` on a
-Spec core structural error rather than send a worker to judge a Spec that won't load; freezes one
-grant per Module; launches one reviewer per Module; audits for changes; optionally runs the
-checker; and derives the verdict ([step table](operation.md#host-sequence)).
+steps a `review-spec` grant makes moot. For each named Module it validates first, freezes one
+grant, reads the review memory, launches one reviewer, audits for changes, optionally runs the
+checker, and derives the Module's outcome; the numbers are those of the
+[step table](operation.md#host-sequence):
+
+```d2 illustrative
+direction: down
+core: "Spec core" {
+  validate: "1. Load the Specs,\nvalidate the Module"
+  grant: "2. Compute and freeze the\nreview-spec grant with\nits context identity"
+}
+op: "Operation" {
+  memory: "3. Read the review memory"
+  audit: "5. Audit: nothing changed"
+  merge: "7. Normalize the findings,\nmerge them into the memory,\noutcome from its open findings"
+  verdict: "Verdict over\nevery named Module" {shape: page}
+}
+workers: "Worker runs" {
+  reviewer: "4. Reviewer: one pass,\nevery blocking finding"
+  checker: "6. Checker, with --check-findings:\nconfirmed or disputed"
+}
+core.validate -> core.grant
+core.grant -> op.memory
+op.memory -> workers.reviewer: "Specs changed\nor --force"
+op.memory -> op.merge: "unchanged:\nthe memory decides"
+workers.reviewer -> op.audit
+op.audit -> workers.checker: "findings\nto check"
+workers.checker -> op.merge: "after its audit"
+op.audit -> op.merge: otherwise
+op.merge -> op.verdict: "after the\nlast Module"
+```
+
+The diagram shows the normal path. On a Spec core structural error the Module is marked
+`incomplete` rather than sent to a worker to judge a Spec that won't load; it is `incomplete` too
+when no grant can be computed for it, its review memory is unusable, the reviewer or checker ends
+`blocked`/`failed`, or an audit finds a change. Only a loading error fails the whole run; otherwise
+the other Modules are still reviewed.
+
+### A Spec panel
+
+A **Spec panel** is for a review the caller wants to rely on more than on one reviewer, whose
+findings vary from run to run and are sometimes wrong. Three reviewers, by default, review the
+Module at the same time, each on its own and with the same checklist. The chair then reads all
+their findings, checks each against the Specs, merges the ones that describe the same problem and
+rejects the ones that do not hold, and the Operation checks its accounting, giving the chair one
+more attempt when the report does not account for every reviewer finding:
+
+```d2 illustrative
+direction: down
+reviewers: "Reviewer runs, in parallel" {
+  r1: "Reviewer 1"
+  rn: "Reviewer N"
+}
+op: "Operation" {
+  gather: "Gather: every\nreviewer finished?" {shape: diamond}
+  account: "Accounting: every reviewer\nfinding accounted once?" {shape: diamond}
+  retry: "An attempt left?" {shape: diamond}
+  outcome: "Outcome from the\nreport's findings" {shape: page}
+  short: "Module incomplete:\npanel_short" {shape: page}
+  unaccounted: "Module incomplete:\nreport_unaccounted" {shape: page}
+}
+chair: "Chair run" {
+  merge: "Check each finding against the Specs,\nmerge duplicates, reject what\ndoes not hold"
+}
+reviewers.r1 -> op.gather
+reviewers.rn -> op.gather
+op.gather -> chair.merge: yes
+op.gather -> op.short: no
+chair.merge -> op.account
+op.account -> op.outcome: yes
+op.account -> op.retry: no
+op.retry -> chair.merge: "yes, with the problems"
+op.retry -> op.unaccounted: no
+```
+
+The [definition](panel.md#the-panel-graph) gives the exact graph and its control rules.
+
+### Its parts
 
 ```d2
 review: Spec review {
@@ -138,6 +185,37 @@ checklist itself is a shared part, so that a panel judges by exactly the same ba
 reviewers and the chair, plus, from the Operation, the role and seat or attempt, and for the chair
 every labelled reviewer finding and, on its second attempt, its previous report and what it left
 unaccounted.
+
+## Running a review
+
+The caller runs a **Spec review** when a
+[Spec change](../../glossary.json#concept.spec-change) is ready to be judged, typically after
+`specify` and before implementation, or when it doubts that an existing Spec is clear enough to hand
+to workers:
+
+```text
+concorde run spec_review --modules module.checkout,module.inventory [--check-findings] [--force]
+```
+
+The command waits for the result; with `--detach` it is a
+[detached run](../../glossary.json#concept.detached-run) that prints its run identity at once and
+writes the result when it ends. In a task worktree it reviews the
+[workspace](../../glossary.json#concept.workspace) whose binding lies there, and `--modules`
+defaults to the binding's Modules; each named Module is reviewed on its own from that worktree's
+Specs, so what gets judged is the branch's own change, committed or not. In a worktree without a
+binding, such as the primary worktree, it is an
+[unbound run](../../glossary.json#concept.unbound-run) that judges the Specs of that worktree's
+`HEAD`, read from its [unbound checkout](../../glossary.json#concept.unbound-checkout).
+Status is `ok` whenever every Module could be reviewed, `blocked`/`failed` only when the verdict is
+`incomplete` — still carrying every reviewed Module's findings.
+
+A Spec panel is run the same way as a Spec review:
+
+```text
+concorde run spec_panel --modules module.checkout [--reviewers 3]
+```
+
+## Why it is built this way
 
 ### The review memory
 
@@ -221,9 +299,8 @@ chair at most once. It is written as a LangGraph graph with typed state and cond
 that the fan-out, the join and the bounded repair are declared in one place and its state is plain
 data between steps, which a later version can checkpoint and resume; the
 [definition](panel.md#the-panel-graph) draws it. The graph lives inside the Operation's steps: to
-its caller
-`spec_panel` is an ordinary Operation with one result, and every reviewer and chair is an ordinary
-worker run.
+its caller `spec_panel` is an ordinary Operation with one result, and every reviewer and chair is
+an ordinary worker run.
 
 The Operation keeps what no worker may decide: it labels each reviewer finding, normalizes every
 finding as a Spec review does, checks the chair's accounting and derives the outcome. A report that
@@ -232,6 +309,8 @@ judges findings; after its second attempt the Module is `incomplete` with the re
 result. A reviewer that does not finish stops the panel before the chair, so that a report never
 silently rests on fewer reviews than asked for.
 
+### What a reviewer sees
+
 A reviewer cannot widen its own view: lacking a needed document of another Module, it reports a
 `context` finding naming it and goes on, and the task level decides whether the Spec lacks a
 relation or the review needs another Module. A reviewer ends `blocked` only when it cannot review
@@ -239,7 +318,7 @@ at all, for example because the reviewed Module's own documents cannot be read. 
 reviewers read Specs directly under their grant, not the Spec MCP server, on one checklist covering
 all dimensions; splitting by dimension and server queries are future work.
 
-### Around it
+## Around it
 
 Spec review stays inside Spec tooling but reaches outside it for everything a Spec cannot judge on
 its own: it asks Spec core whether a Module can be reviewed at all, it reaches an agent only

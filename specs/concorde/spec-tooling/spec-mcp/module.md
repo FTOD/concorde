@@ -9,7 +9,71 @@ read-only stdio MCP server rooted at one worktree, usable without knowing Concor
 adds no rule of its own — every answer is Spec core's — is not how workers receive grants, and
 enforces nothing; workers have no access to it in this version.
 
-## Usage
+## Core concepts
+
+The **server root** is the one worktree whose Specs the server answers from. It is resolved once,
+at session start: `CLAUDE_PROJECT_DIR` when set, otherwise the client's single `file://` root;
+without either, or with several roots and no variable, every call fails with `no_root`. It never
+moves during the session, and a path resolving outside it — via `..`, an absolute path elsewhere or
+a symlink whose target lies elsewhere — is refused with `outside_root`.
+
+Every answer is **Spec core's**: the server loads the Specs of its root through Spec core and
+returns what Spec core computes, a [grant](../../glossary.json#concept.grant) with its
+[context identity](../../glossary.json#concept.context-identity), a
+[Spec context](../../glossary.json#concept.spec-context), an
+[impact index](../../glossary.json#concept.impact-index) lookup or the findings of the
+[structural checks](../../glossary.json#concept.structural-check), unchanged. A grant it returns is
+planning information only, never an authorization.
+
+## Overview
+
+The server is a thin presentation of Spec core: every call that has a root and acceptable
+arguments loads a fresh repository and calls the same functions the rest of Concorde uses, trading
+speed for never answering from a stale model. A call refused before that, with `no_root`,
+`invalid_input` or `outside_root`, loads no Specs.
+
+```d2 illustrative
+direction: down
+agent: "Agent" {
+  call: "Calls a tool"
+}
+server: "Server program" {
+  root: "Server root resolved\nat session start?" {shape: diamond}
+  args: "Arguments acceptable\nand inside the root?" {shape: diamond}
+  refuse: "Tool error: no_root,\ninvalid_input or outside_root\n(no Specs loaded)" {shape: page}
+  error: "Tool error with\nSpec core's code" {shape: page}
+  answer: "Spec core's result,\nunchanged" {shape: page}
+}
+core: "Spec core" {
+  load: "Load a fresh repository\nfrom the root"
+  compute: "Compute the answer"
+  refused: "Refused?" {shape: diamond}
+}
+agent.call -> server.root
+server.root -> server.refuse: no
+server.root -> server.args: yes
+server.args -> server.refuse: no
+server.args -> core.load: yes
+core.load -> core.compute -> core.refused
+core.refused -> server.error: yes
+core.refused -> server.answer: no
+```
+
+The server sits inside Spec tooling, between the
+[Main session](../../coordination/main-session/module.md) Module, whose main agent calls it, and
+the Spec core it presents:
+
+```d2
+tooling: Spec tooling {
+  mcp: Spec MCP server
+  core: Spec core
+  mcp -> core
+}
+session: Main session
+session -> tooling.mcp
+```
+
+## Using the server
 
 A project using Concorde registers the **Spec MCP server** for Claude Code in its `.mcp.json`:
 
@@ -48,36 +112,7 @@ A call fails with a code, never a partial answer: one of the server's own codes 
 such as `protocol_mismatch` or `shared_file`; the [contracts](contracts.md#session) say when each
 applies. No tool writes, so a call may be repeated at any time and reads the Specs as they stand.
 
-The **server root** is resolved once, at session start:
-`CLAUDE_PROJECT_DIR` when set, otherwise the client's single `file://` root; without either, or with
-several roots and no variable, every call fails with `no_root`. It never moves during the session,
-and a path resolving outside it — via `..`, an absolute path elsewhere or a symlink whose target
-lies elsewhere — is refused with `outside_root`.
-
-## Design
-
-The server is a thin presentation of Spec core: every call that has a root and acceptable
-arguments loads a fresh repository and calls the same functions the rest of Concorde uses, trading
-speed for never answering from a stale model. A call refused before that, with `no_root`,
-`invalid_input` or `outside_root`, loads no Specs.
-
-```d2
-mcp: Spec MCP server {
-  server: Server program {
-    "src/concorde/spec_mcp/"
-  }
-}
-```
-
-<a id="realization.spec-mcp.server"></a>
-
-**Server program** runs the stdio MCP session, resolves and holds the root, confines path
-arguments, maps each tool to Spec core, and turns every failure into a tool error — a small
-hand-written JSON-RPC session with no MCP library dependency, tested over a real stdio connection.
-The session is written by hand because its wire is small and fully specified: newline-delimited
-JSON-RPC carrying `initialize`, `ping`, `tools/list` and `tools/call`, and one `roots/list` request
-to the client. An MCP library would add a runtime dependency to every project that installs
-Concorde for that much protocol.
+## Why it is built this way
 
 `CLAUDE_PROJECT_DIR` wins over the client's roots because it is the project directory Claude Code
 sets for the session, one directory by construction, while a client may offer several roots and
@@ -103,21 +138,27 @@ The server is read-only by construction — no tool writes, regenerates the regi
 pending entries, or opens a network listener — and success of its `validate` tool is evidence
 about structure only.
 
-### Around it
-
-The server sits inside Spec tooling, between the
-[Main session](../../coordination/main-session/module.md) Module, whose main agent calls it, and
-the Spec core it presents:
+## The server program
 
 ```d2
-tooling: Spec tooling {
-  mcp: Spec MCP server
-  core: Spec core
-  mcp -> core
+mcp: Spec MCP server {
+  server: Server program {
+    "src/concorde/spec_mcp/"
+  }
 }
-session: Main session
-session -> tooling.mcp
 ```
+
+<a id="realization.spec-mcp.server"></a>
+
+**Server program** runs the stdio MCP session, resolves and holds the root, confines path
+arguments, maps each tool to Spec core, and turns every failure into a tool error — a small
+hand-written JSON-RPC session with no MCP library dependency, tested over a real stdio connection.
+The session is written by hand because its wire is small and fully specified: newline-delimited
+JSON-RPC carrying `initialize`, `ping`, `tools/list` and `tools/call`, and one `roots/list` request
+to the client. An MCP library would add a runtime dependency to every project that installs
+Concorde for that much protocol.
+
+## Around it
 
 <a id="uses-spec"></a>
 
