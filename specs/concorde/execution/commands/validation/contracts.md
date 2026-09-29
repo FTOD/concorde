@@ -8,10 +8,17 @@ it is bound to.
 
 - The **changed paths** are the union of the paths Git reports as different between the base
   commit and the working tree, staged or not, and the untracked paths Git does not ignore, each as
-  a project-relative POSIX path, sorted by byte order. An untracked path that is neither a regular
-  file, a symbolic link nor a directory is left out: Git cannot version it, and it is how Claude
-  Code's Bash sandbox hides a path such as `.bashrc` behind a `/dev/null` mount. Such a path is no
-  uncommitted change for Delivery either, which tests for one with this measurement's rules. A
+  a project-relative POSIX path, sorted by byte order. Two kinds of untracked path are left out,
+  since they are no content of the task. One is a path that is neither a regular file, a symbolic
+  link nor a directory: Git cannot version it, and it is how Claude Code's Bash sandbox hides a
+  path such as `.bashrc` behind a `/dev/null` mount. The other is a **sandbox placeholder**: an
+  empty regular file with no write bit and a single link, which that sandbox creates on the host
+  where an absent path is to be hidden, before it mounts `/dev/null` over it, and removes only
+  when no sandbox of its Claude Code process is alive, so that meanwhile another command sees it
+  as a regular file. This is the signature by which the sandbox runtime itself recognises such a
+  file; a file a task creates has a write bit, content or another link, and is measured. Neither
+  kind is an uncommitted change for Delivery either, which tests for one with this measurement's
+  rules. A
   submodule is a changed path when its checked-out commit differs; changes inside the submodule's
   own worktree are not measured and are no uncommitted change for Delivery, since the workspace
   commits only the submodule's commit.

@@ -151,8 +151,13 @@ changed while it ran. Changes the measurement leaves out, below, are not seen.
 The measurement covers everything Delivery will commit: tracked changes since the binding's base
 commit and untracked files Git does not ignore. An untracked path Git cannot version, such as the
 `/dev/null` mounts with which Claude Code's Bash sandbox hides `.bashrc` or `.claude/settings.json`
-from a [task session](../../../glossary.json#concept.task-session), is left out, so the readiness
-and delivery come out the same inside and outside that sandbox. Checks run for the changed Modules
+from a [task session](../../../glossary.json#concept.task-session), is left out, and so is the
+empty read-only placeholder file the sandbox creates on the host at each such path and keeps while
+any of the session's sandboxed commands still runs, so the readiness and delivery come out the same
+inside and outside that sandbox. A placeholder is recognised by the signature the sandbox runtime
+itself uses for its leftovers (empty, regular, no write bit, one link) rather than by a mount point
+in `/proc/self/mountinfo`, which exists only inside the sandbox that mounted it: a validation run
+on the host, or in another sandbox, must leave the placeholder out as well. Checks run for the changed Modules
 and for every Module that uses one of them, directly or through further uses, since their code runs
 against the change (the Protocol's impact of a written file); the rest of the project is not
 checked, which would be too slow. A full test suite is therefore best checked by the Module that

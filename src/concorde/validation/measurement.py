@@ -68,17 +68,41 @@ def _paths(raw: bytes) -> set[str]:
 
 
 def _special(worktree: Path, relative: str) -> bool:
-    """Whether an untracked path is neither a file, a symbolic link nor a directory."""
+    """Whether an untracked path is no content of the task: Git cannot version it, or it is a
+    sandbox's placeholder.
+
+    Git cannot version a path that is neither a file, a symbolic link nor a directory, such as the
+    ``/dev/null`` character device mounted over it. A placeholder is an empty regular file with no
+    write bits and a single link: before mounting ``/dev/null`` over an absent path, the sandbox
+    creates it on the host with bubblewrap's ``ensure_file(dest, 0444)`` and removes it only once
+    no sandbox of its Claude Code process is alive, so another command sees it as a regular file
+    meanwhile. This is the signature by which the sandbox runtime itself recognises one it left
+    behind (``isStaleBwrapMountPoint``); a file a task creates has write bits, content or another
+    link. It holds on the host and inside any sandbox, unlike a mount point in
+    ``/proc/self/mountinfo``, which exists only inside the sandbox that mounted it.
+    """
     path = worktree / relative
-    return not (path.is_symlink() or path.is_file() or path.is_dir())
+    if path.is_symlink():
+        return False
+    try:
+        status = path.stat()
+    except OSError:
+        return True
+    if stat.S_ISDIR(status.st_mode):
+        return False
+    if not stat.S_ISREG(status.st_mode):
+        return True
+    return status.st_size == 0 and status.st_mode & 0o222 == 0 and status.st_nlink == 1
 
 
 def special_paths(worktree: Path) -> list[str]:
-    """Unignored new paths Git cannot version, such as a sandbox's ``/dev/null`` mounts.
+    """Unignored new paths that are no content of the task, such as a sandbox's mounts.
 
     Claude Code's Bash sandbox hides some paths of its working directory, such as ``.bashrc`` or
     ``.claude/settings.json``, behind ``/dev/null`` mounts, which Git inside that sandbox lists as
-    untracked; they are no content of the task, and ``git add`` refuses them.
+    untracked, and outside it, while a sandbox of the same session is alive, as the empty read-only
+    placeholder files it mounts over (see ``_special``); they are no content of the task, and
+    ``git add`` refuses the mounts.
     """
     new = _paths(_output(worktree, "ls-files", "--others", "--exclude-standard", "-z"))
     return sorted(path for path in new if _special(worktree, path))
@@ -87,7 +111,7 @@ def special_paths(worktree: Path) -> list[str]:
 def changed_paths(worktree: Path, base: str) -> list[str]:
     """Every path changed since ``base``, committed or not, and every unignored new path.
 
-    New paths Git cannot version (see ``special_paths``) are left out.
+    New paths that are no content of the task (see ``special_paths``) are left out.
     """
     tracked = _paths(
         _output(
@@ -203,7 +227,7 @@ def configuration_digest(worktree: Path) -> str:
 def has_uncommitted(worktree: Path) -> bool:
     """Whether the worktree has a staged, unstaged or new unignored change against its head.
 
-    A new path Git cannot version (see ``special_paths``) is no change.
+    A new path that is no content of the task (see ``special_paths``) is no change.
     """
     raw = _output(
         worktree,

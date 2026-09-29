@@ -243,6 +243,52 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual(["vendor/lib"], changed_paths(self.worktree, head))
         self.assertTrue(has_uncommitted(self.worktree))
 
+    @verifies("scenario.validation.sandbox-placeholder")
+    def test_a_sandbox_placeholder_is_not_measured(self):
+        from concorde.validation.measurement import (
+            changed_paths,
+            has_uncommitted,
+            special_paths,
+        )
+
+        head = git(self.worktree, "rev-parse", "HEAD")
+        placeholder = self.worktree / ".bashrc"
+        placeholder.touch()
+        placeholder.chmod(0o444)
+        self.assertEqual([".bashrc"], special_paths(self.worktree))
+        self.assertEqual([], changed_paths(self.worktree, head))
+        self.assertFalse(has_uncommitted(self.worktree))
+
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        notes = self.worktree / "notes"
+        notes.mkdir()
+        (notes / "empty.txt").touch()
+        frozen = notes / "frozen.txt"
+        frozen.write_text("kept\n")
+        frozen.chmod(0o444)
+        # A second link is not the sandbox's own placeholder either.
+        linked = notes / "linked.txt"
+        linked.touch()
+        linked.chmod(0o444)
+        (notes / "link.txt").hardlink_to(linked)
+        readiness = self.project.validate()[1]["output"]
+        self.assertEqual(
+            [item["path"] for item in readiness["inputs"]["changed"]],
+            [
+                "notes/empty.txt",
+                "notes/frozen.txt",
+                "notes/link.txt",
+                "notes/linked.txt",
+                "src/a/calc.py",
+            ],
+        )
+        unbound = [
+            item["ref"] for item in readiness["blocking"] if item["kind"] == "unbound"
+        ]
+        self.assertNotIn(".bashrc", unbound)
+        self.assertIn("notes/empty.txt", unbound)
+        self.assertIn("notes/frozen.txt", unbound)
+
     @verifies("scenario.validation.mode-change")
     def test_a_changed_file_mode_changes_the_input_digest(self):
         calc = self.worktree / "src/a/calc.py"
