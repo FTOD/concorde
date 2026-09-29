@@ -1,0 +1,120 @@
+"""The reference initializer writes the shared Git configuration only to register a submodule."""
+
+from __future__ import annotations
+
+import contextlib
+import importlib.util
+import io
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from concorde.spec.verification import verifies
+from tests.concorde.support.paths import REPOSITORY_ROOT
+
+
+def load_script():
+    spec = importlib.util.spec_from_file_location(
+        "init_references", REPOSITORY_ROOT / "scripts/development/init-references.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def git(cwd: Path, *arguments: str) -> str:
+    return subprocess.run(
+        ("git", "-c", "protocol.file.allow=always", *arguments),
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+
+
+class InitReferencesTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        identity = ("-c", "user.name=t", "-c", "user.email=t@example.com")
+        upstream = root / "upstream"
+        git(root, "init", "--quiet", "-b", "main", upstream.as_posix())
+        (upstream / "README.md").write_text("reference\n")
+        git(upstream, "add", "README.md")
+        git(upstream, *identity, "commit", "--quiet", "-m", "reference")
+        self.primary = root / "primary"
+        git(root, "init", "--quiet", "-b", "main", self.primary.as_posix())
+        git(
+            self.primary,
+            "submodule",
+            "add",
+            "--quiet",
+            upstream.as_posix(),
+            "references/r",
+        )
+        git(self.primary, *identity, "commit", "--quiet", "-m", "vendor")
+        self.worktree = root / "task"
+        git(self.primary, "worktree", "add", "--quiet", self.worktree.as_posix())
+        self.config = self.primary / ".git/config"
+        self.lock = self.primary / ".git/config.lock"
+        self.script = load_script()
+
+    def run_script(self) -> str:
+        output = io.StringIO()
+        with (
+            patch.object(self.script, "ROOT", self.worktree),
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(self.script.main([]), 0)
+        return output.getvalue()
+
+    @verifies("scenario.concorde.references-registered-once")
+    def test_registered_submodule_is_checked_out_while_the_lock_is_held(self):
+        before = self.config.read_bytes()
+        self.lock.write_bytes(b"")
+        self.lock.chmod(0o444)
+        output = self.run_script()
+        self.assertIn("references/r: initialized", output)
+        self.assertEqual(
+            (self.worktree / "references/r/README.md").read_text(), "reference\n"
+        )
+        self.assertEqual(self.config.read_bytes(), before)
+        self.assertTrue(self.lock.exists())
+
+    @verifies("scenario.concorde.references-registered-once")
+    def test_unregistered_submodule_under_a_held_lock_is_refused_in_detail(self):
+        git(self.primary, "config", "--remove-section", "submodule.references/r")
+        before = self.config.read_bytes()
+        self.lock.write_bytes(b"")
+        self.lock.chmod(0o444)
+        with (
+            patch.object(self.script, "ROOT", self.worktree),
+            self.assertRaises(SystemExit) as refused,
+        ):
+            self.script.main([])
+        message = str(refused.exception.code)
+        self.assertIn("references/r", message)
+        self.assertIn(self.lock.as_posix(), message)
+        self.assertIn("sandbox", message)
+        self.assertIn("never delete the lock", message)
+        self.assertTrue(self.lock.exists())
+        self.assertEqual(self.config.read_bytes(), before)
+        self.assertFalse((self.worktree / "references/r/.git").exists())
+
+    @verifies("scenario.concorde.references-registered-once")
+    def test_unregistered_submodule_is_registered_when_the_lock_is_free(self):
+        git(self.primary, "config", "--remove-section", "submodule.references/r")
+        output = self.run_script()
+        self.assertIn("references/r: initialized", output)
+        self.assertEqual(
+            git(self.primary, "config", "--get", "submodule.references/r.active"),
+            "true",
+        )
+        self.assertTrue((self.worktree / "references/r/README.md").is_file())
+
+
+if __name__ == "__main__":
+    unittest.main()

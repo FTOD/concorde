@@ -40,6 +40,20 @@ repository, whose LangGraph pages match that release; when the lock moves to ano
 release, both move with it. `scripts/development/init-references.py` checks them out,
 without their media, at exactly the recorded commits.
 
+A submodule's registration, its `url` and `active` settings, lives in the repository's shared
+`.git/config`, which every worktree reads. The initializer registers only a submodule that is not
+registered yet, so preparing a task worktree while other task sessions run reads that file and
+never needs its lock: a task session's sandbox keeps `.git/config.lock` in place for as long as one
+of its commands runs, to keep the shared configuration read-only.
+
+### scenario.concorde.references-registered-once — Preparing a worktree leaves registered submodules' configuration alone
+
+- GIVEN a worktree of this repository whose reference submodules are not checked out
+- AND another session's sandboxed command holding `.git/config.lock` of the shared Git directory
+- WHEN `scripts/development/init-references.py` runs in that worktree
+- THEN it checks out every submodule already registered in the shared `.git/config` without writing that file
+- AND when a submodule still needs registering, it stops before cloning any submodule with an error that names the submodule and the lock, says a running session's sandbox may hold the lock and to run it again once that command ends, and leaves the lock in place
+
 ## Agent instructions
 
 A session in this checkout, [main agent](glossary.json#concept.main-agent) or
