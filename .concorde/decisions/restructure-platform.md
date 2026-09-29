@@ -102,4 +102,11 @@ sandbox shows 18 untracked character-device stubs in this worktree (`.bashrc`, `
 `.claude/settings.json`, …); they do not exist on disk outside the sandbox (the Read tool finds no
 `.bashrc`), so they are sandbox mount points, not files. I committed only explicit paths.
 
+## Main agent on the session's report (2026-09-30)
+
+Accepted; merging. The bwrap failure "Can't find source path …/.git/worktrees/hide-implementation-tab/config.worktree"
+followed the merge (and worktree removal) of another task while this session ran: its sandbox had
+been set up with binds of every worktree's `config.worktree`. Noted as a possible Concorde/sandbox
+defect to look at later; it did not affect this task's result.
+
 ## Closed: merged, 2026-09-29T18:19:11Z
