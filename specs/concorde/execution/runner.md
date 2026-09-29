@@ -1,8 +1,8 @@
 # How a run is executed
 
 The exact behaviour of the [Execution runner](../glossary.json#concept.execution-runner): the
-command lines, the [workspace binding](../glossary.json#concept.workspace-binding) it reads, the
-runner's steps, the [run progress file](../glossary.json#concept.run-progress-file) and how refusals
+command lines, the [workspace binding](../glossary.json#concept.workspace-binding) it reads, what
+the runner does from the parse to the finish, the [run progress file](../glossary.json#concept.run-progress-file) and how refusals
 and failures become a result. The Operation or execution command a command line names is the run's
 definition: its steps, its arguments, whether it may run unbound and its output contract. The
 envelope is the [run result contract](contracts.md#contract.execution.run-result) and the binding
@@ -107,17 +107,20 @@ launcher.check -> exit2: malformed, unknown or outside Git
 launcher.check -> runner.parse: start in a new session with the run identity and directory
 ```
 
-| # | Step | Stops the run when |
-| --- | --- | --- |
-| 1 | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity, the run's directory and its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
-| 2 | Refuse a binding that could not be read, breaks the binding contract or names another root | an unreadable, invalid or misplaced binding (`failed`) |
-| 3 | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock), waiting for it up to `--wait` seconds (none by default); for an unbound run, refuse a definition that needs a binding, then create the [unbound checkout](#unbound-checkout) and work in it from here on | `workspace_busy`, `binding_required`, `checkout_unavailable` (`failed`) |
-| 4 | Admit the run: settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
-| 5 | Execute the definition's steps in order | a step stops the run with a status |
-| 6 | Remove an unbound run's checkout, then compose the run result from the step outcomes and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
-| 7 | Write `result.json`, mark the run progress file finished, release the lock, print the result and exit | — |
+The runner does what the rows below say, in their order. This document cites each row by its
+name; the number gives only the order, so that no row is confused with a step of the definition.
 
-- Each step returns either "continue", with any output and evidence it produced, or "stop", with a
+| # | Name | What the runner does | Stops the run when |
+| --- | --- | --- | --- |
+| 1 | parse | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity, the run's directory and its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
+| 2 | binding check | Refuse a binding that could not be read, breaks the binding contract or names another root | an unreadable, invalid or misplaced binding (`failed`) |
+| 3 | lock | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock), waiting for it up to `--wait` seconds (none by default); for an unbound run, refuse a definition that needs a binding, then create the [unbound checkout](#unbound-checkout) and work in it from here on | `workspace_busy`, `binding_required`, `checkout_unavailable` (`failed`) |
+| 4 | admission | Admit the run: settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
+| 5 | execution | Execute the definition's steps in order | a step stops the run with a status |
+| 6 | composition | Remove an unbound run's checkout, then compose the run result from the step outcomes and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
+| 7 | finish | Write `result.json`, mark the run progress file finished, release the lock, print the result and exit | — |
+
+- Each of the definition's steps returns either "continue", with any output and evidence it produced, or "stop", with a
   status, a summary and evidence. Steps of one run share the run context: the workspace binding, the
   worktree the run works in, for an unbound run also the worktree it started in and the commit it
   examines, the records directory, the Modules, the admitted inputs, the output so far, a state the
@@ -134,11 +137,12 @@ launcher.check -> runner.parse: start in a new session with the run identity and
   `worker-run` pointing at each run's record and
   [progress file](../glossary.json#concept.progress-file), and `worker_runs` lists them: the
   runner learns each worker run's identity when the worker run starts, not when it returns.
-- Steps 6 and 7 run whatever happened before them. A refusal in steps 2 to 4 still writes and
-  prints a result, with the refusal code as `refused` evidence and an error whose cause is the
-  refusal of the workspace binding, the unbound checkout or the run store with its message, such
-  as Git's output for a checkout it refused, the run holding the lock of a busy workspace or the
-  registered Modules for an unknown one.
+- The composition and the finish run whatever happened before them. A refusal in the binding
+  check, the lock or the admission still writes and prints a result, with the refusal code as
+  `refused` evidence and an error whose cause is the refusal of the workspace binding, the
+  unbound checkout or the run store with its message, such as Git's output for a checkout it
+  refused, the run holding the lock of a busy workspace or the registered Modules for an unknown
+  one.
 - The result is written while the lock is still held, so a run admitted to the workspace after
   this one always finds its result written. The converse does not hold: whoever reads the result
   may still find the lock held until the runner has ended, so a caller that wants to start the
@@ -183,14 +187,14 @@ here called its origin:
    its control, by `SIGKILL`, leaves the directory to the system's temporary-file cleaning and its
    worktree entry to Git's own pruning.
 
-When the origin's `HEAD` names no commit, or Git refuses the checkout, the run is refused at step 3
+When the origin's `HEAD` names no commit, or Git refuses the checkout, the run is refused in the lock
 with `checkout_unavailable`, whose cause is the `Execution (unbound checkout)` link with Git's
 output, and nothing is left behind; the runner never falls back to working in the origin.
 
 ## Detached runs
 
 With `--detach` the command checks the command line (a malformed one starts nothing, with exit
-status 2), reads the workspace binding to select the records directory as step 1 does, chooses the
+status 2), reads the workspace binding to select the records directory as the parse does, chooses the
 run identity, creates the run's directory and starts the runner as a process of its own, in a new
 session, handing it the identity, so that the runner records in the directory the command
 announces. It then waits until the run progress file exists and prints
