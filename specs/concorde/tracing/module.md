@@ -80,9 +80,9 @@ it writes into.
   type the producer registers, such as a run's steps with their timings or a worker round's audit.
 
 A producer writes its node when the node starts and rewrites it when it ends, so a node that is
-still running, or whose process died, is already there. A trace holds no absolute path: a node names
-its files relative to its own folder and other nodes by their identity, since a task's folder moves
-when the task ends.
+still running, or whose process died, is already there. A node never refers to a file or another node by an absolute
+path: it names its files relative to its own folder and other nodes by their identity, since a
+task's folder moves when the task ends.
 
 **Reading a trace.** `concorde trace` reads traces and never changes one:
 
@@ -194,11 +194,12 @@ largest file and make the uniform part slow to read. Writing the record at the s
 the end costs one more write per node and means a crashed process still leaves a node that says when
 it started and what it was doing.
 
-A trace holds no absolute path because a task's folder moves when the task ends, and because a
-history copied to another machine must still read. Run results are different: a
-[run result](../glossary.json#concept.run-result) is what its caller acts on at once, so its
-evidence names absolute paths the caller can open; it is kept in the run's node as a file, and the
-node's own record names it relatively.
+A node refers to its files and to other nodes without absolute paths because a task's folder moves
+when the task ends, and because a history copied to another machine must still read. What a node
+keeps as it was reported is different: a [run result](../glossary.json#concept.run-result) and the
+error link it carries are what their receiver acts on at once, so their evidence names absolute
+paths the receiver can open. The node keeps them unchanged, the result as a file of its folder named
+relatively, and never follows those paths to find its own files or its children.
 
 ### One folder per task, by its lifecycle
 

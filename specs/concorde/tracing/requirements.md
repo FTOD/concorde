@@ -32,9 +32,13 @@ node repeats its children's.
 A trace node's `metadata` SHALL hold only facts the Concorde code that writes the node observed
 itself, never a statement taken from a [worker result](../glossary.json#concept.worker-result).
 
-### req.tracing.relative-paths — A trace holds no absolute path
+### req.tracing.relative-paths — A trace refers to its files and nodes relatively
 
-No `trace.json` SHALL contain an absolute path.
+A trace node SHALL refer to its own files only by paths relative to its folder and to other nodes
+only by their identities, never by an absolute path.
+
+An error link or a worker's claim that a node keeps is kept exactly as it was reported, with the
+paths it named then; the node's own references never depend on them.
 
 A node names its files relative to its own folder and other nodes by their identity, so a task's
 trace reads the same after its folder moved to the [history](../glossary.json#concept.history) or to
