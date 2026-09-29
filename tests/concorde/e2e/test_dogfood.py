@@ -81,6 +81,36 @@ class ScenarioTests(unittest.TestCase):
             dogfood.install_command(concorde, project, "pi")[2:],
         )
 
+    @verifies("scenario.dogfood-scenarios.worker-configuration")
+    def test_the_project_gets_a_worker_configuration_before_its_adopt_commit(self):
+        workers = e2e.worker_configuration("local/fast")
+        committed = {}
+
+        def fake_run(command, cwd, **options):
+            if command[:2] == ["git", "add"]:
+                path = Path(cwd) / dogfood.WORKERS
+                committed["workers"] = json.loads(path.read_text())
+            stdout = json.dumps({"result": {}})
+            return subprocess.CompletedProcess(command, 0, stdout, "")
+
+        def fake_clone(url, rev, project):
+            # The clone, and the install that makes `.concorde/`, as far as prepare reads them.
+            (project / ".concorde").mkdir(parents=True)
+
+        with tempfile.TemporaryDirectory() as directory:
+            with (
+                patch.object(dogfood, "run", fake_run),
+                patch.object(dogfood, "clone", fake_clone),
+                patch.object(dogfood, "inject", lambda concorde, fault: "fault"),
+                patch.object(dogfood, "framework_digest", lambda project: "f"),
+                patch.object(dogfood, "installed_digests", lambda project: {}),
+            ):
+                prepared = dogfood.prepare(
+                    "write-hook-rw-directories", Path(directory), workers
+                )
+        self.assertEqual(workers, committed["workers"])
+        self.assertEqual(["local/fast"], prepared["worker_models"])
+
 
 class FaultTests(unittest.TestCase):
     def setUp(self):

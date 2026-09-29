@@ -27,6 +27,13 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the runner makes the [develop install](../../glossary.json#concept.develop-install)
 - THEN for pi it installs Concorde with `--pi`, and for Claude Code without
 
+### scenario.dogfood-scenarios.worker-configuration — The project gets a worker configuration
+
+- GIVEN a scenario being prepared, with or without `--worker-model`
+- WHEN the runner commits the initialized project
+- THEN the commit holds the project's [worker configuration](../../glossary.json#concept.worker-configuration), the one [End-to-end testing](../module.md) gives a [test project](../../glossary.json#concept.test-project)
+- AND `dogfood.json` names its enabled models
+
 ### scenario.dogfood-scenarios.fault — A fault is its own commit
 
 - GIVEN a clean clone and a fault
