@@ -253,11 +253,14 @@ A result that is not `ok`, or a refused `concorde` command, carries an
 [error chain](../../glossary.json#concept.error-chain); the guidance tells the main agent to read it
 in full, since the origin says what went wrong and each link says why that level could not handle
 it. The main agent decides ordinary design uncertainty itself — naming, internal structure, task
-order, a clarified re-run, splitting a task — and records and reports the choice. It asks the
-developer first only for a decision with major impact: changing what a Module promises to its users
-or the project's direction, contradicting an earlier developer decision, discarding work or data,
-doing something an ordinary revert cannot undo, touching security or credentials, or needing more
-resources than the developer set; in doubt it records its reasoning and asks. A task never asks the
+order, a clarified re-run, splitting a task — and records and reports the choice. Among the
+questions the work raises, it asks the developer first only for a decision with major impact:
+changing what a Module promises to its users or the project's direction, contradicting an earlier
+developer decision, discarding work or data, doing something an ordinary revert cannot undo,
+touching security or credentials, or needing more resources than the developer set; in doubt it
+records its reasoning and asks. The choices and approvals the sections of this guidance reserve to
+the developer — a workflow's mode, the models of a missing worker configuration and a small change
+in the primary worktree — stay the developer's besides. A task never asks the
 developer in place: a task session escalates every decision it needs together, and the main agent
 answers them together, asking the developer at once about all those it may not decide. An
 escalation is never a summary: `concorde task escalate` adds its own link, with the reason it may
@@ -547,7 +550,9 @@ responsibility, and the log is written by the main agent and the task's session 
 relies on `concorde task merge` holding the merge lock and undoing a merge whose checks fail, and
 tells the main agent to retry a `merge_busy`, to have the task's session resolve a conflict in the
 task worktree, and to treat a failed check as new work rather than discard a change. It also relies
-on Tasks refusing every task command with `merge_incomplete` after a merge was interrupted, and
+on Tasks refusing `open`, `merge`, `close`, `session` and `escalate` with `merge_incomplete` after a
+merge was interrupted, all but the merging task's `merge --resume` and `merge --abort`, while `list`
+and `show` stay available to inspect it, and
 tells the main agent to finish that merge first with `--resume` or `--abort` rather than to work
 around the refusal: checking the merge again is the default, since the recorded checks decide as
 they would have, and only a primary branch changed by hand after the merge goes to the developer. A

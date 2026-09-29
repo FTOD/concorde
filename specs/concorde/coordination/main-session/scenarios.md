@@ -272,6 +272,7 @@ This illustrates [conflict handling](requirements.md#req.main-session.issues-con
 ### scenario.main-session.project-mcp-queries — Queries answer the project from any worktree
 
 - GIVEN a project with an open task `t1`, and a server started in the task's worktree
+- AND no process holds the merge lock or the workspace lock of `t1` while the calls run
 - WHEN the session calls `task_list`, `task_show`, `trace_show` and `locks`
 - THEN each answers from the primary worktree's records as `concorde task list`, `task show` and `trace show` do, and `locks` says that nobody holds the merge lock or the workspace lock of `t1`
 

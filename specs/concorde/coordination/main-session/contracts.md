@@ -5,9 +5,11 @@ The exact session, tools and events of the
 [Main session](module.md#the-project-mcp-server). Every tool is a presentation of a command
 that already exists; where a row says "as" a command, the result and every refusal are that
 command's when it waits for no lock, as [Tasks](../tasks/contracts.md#commands) and
-[Tracing](../../tracing/contracts.md) define them. `task_merge` and `register_wait` instead answer
-at once with the start and the registration defined [below](#starting-a-merge): the merge's own
-result and refusals, and the wait's answer, are the commands' and arrive later.
+[Tracing](../../tracing/contracts.md) define them. `run_result`, `workflow_report` and `locks`
+present records no command prints in that shape: their rows define their results, and their
+refusals are the codes below. `task_merge` and `register_wait` answer at once with the start and the
+registration defined [below](#starting-a-merge): the merge's own result and refusals, and the
+wait's answer, are the commands' and arrive later.
 
 ## Session
 
@@ -61,7 +63,7 @@ server's own `component` link of actor `Concorde project MCP server (<tool>)`:
 | `task_list` | optional `state`, one of the task states | as `concorde task list [--state]` |
 | `task_show` | `task` | as `concorde task show` |
 | `trace_show` | `node`: a task, history key, run or worker run identity or a node's folder; optional `depth` ≥ 0 | as `concorde trace show <node> --depth <depth>` from the primary worktree |
-| `run_result` | `run`: a run identity | `{"run", "running": false, "result": <run result>}` for a run that ended, else `{"run", "running", "result": null, "progress": <run progress file or null>}` |
+| `run_result` | `run`: a run identity | `{"run", "running": false, "result": <run result>}` when no runner holds the run's [run lock](../../glossary.json#concept.run-lock) and its result is saved; otherwise `{"run", "running", "result": null, "progress": <run progress file or null>}`, where `running` is `true` while its runner holds the run lock and `false` for a run whose runner ended without writing a result |
 | `workflow_report` | `task`; optional `number` ≥ 1 | `{"task", "number", "path", "report": <[workflow result](../../glossary.json#concept.workflow-result)>}`, the latest saved one when no number is given |
 | `locks` | none | `{"merge": <holder line or null>, "workspaces": {"<task>": <holder line or null>}}` for the merge lock and the workspace lock of every task that has not ended |
 | `task_open` | `task`, `goal`, `modules` (nonempty), optional `base` | as `concorde task open`, taking the merge lock without waiting |

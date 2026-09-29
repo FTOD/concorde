@@ -44,7 +44,11 @@ elsewhere with `not_primary`.
 
 The guidance SHALL tell the main agent to start a
 [task session](../../glossary.json#concept.task-session) with `concorde task session` for every
-task, even a single one, and never to work inside a task worktree itself.
+task, even a single one.
+
+### req.main-session.no-work-in-task-worktree — The main agent never works inside a task worktree
+
+The guidance SHALL tell the main agent never to work inside a task worktree itself.
 
 The main agent keeps what needs the whole project or the developer:
 discussing, opening, merging and closing tasks, starting and answering task sessions,
@@ -172,7 +176,10 @@ one answer.
 The task-session guidance SHALL tell a task session to start a workflow that ended
 `awaiting_decision` again, once the main agent answered, with every answer given so far.
 
-Steps that finished are not run again.
+A step that finished and is neither answered nor retried returns its recorded run; the answered
+step runs again and supersedes itself and every step recorded after it, which run anew, as
+[Workflows](../../execution/workflows/module.md) states for its
+[step keys](../../glossary.json#concept.step-key).
 
 ### req.main-session.merge-without-authorization — Delivered tasks are merged
 
@@ -215,9 +222,12 @@ A task session has no authority to finish a merge.
 ### req.main-session.merge-conflict — The task session resolves a merge conflict
 
 The guidance SHALL tell the main agent, when merging a task fails with `merge_conflict`, to have
-the task's session merge the primary branch into its task branch and deliver again.
+the task's session merge the primary branch into its task branch.
 
-Merging the task into the primary branch stays the main agent's.
+The session then delivers again
+([A task session merges the primary branch when asked](#req.main-session.task-session-conflict-merge)),
+and the main agent merges the task once more. Merging the task into the primary branch stays the
+main agent's.
 
 ### req.main-session.task-session-conflict-merge — A task session merges the primary branch when asked
 
@@ -295,22 +305,36 @@ only its brief, as the [Harness](../../harness/module.md) describes.
 
 ### req.main-session.project-mcp-presentation — Queries and short writes answer as their commands
 
-Each query and short write of the
-[project MCP server](../../glossary.json#concept.project-mcp-server) SHALL answer and refuse
-exactly as the `concorde` command it presents does when that command waits for no lock, from the
+Each tool of the [project MCP server](../../glossary.json#concept.project-mcp-server) whose row of
+its [contracts](contracts.md#tools) names a `concorde` command SHALL answer and refuse exactly as
+that command does when it waits for no lock, from the
 [task records](../../glossary.json#concept.task-record), traces and locks of the primary worktree
 read afresh for that call, adding no other rule of its own.
 
-The queries are `task_list`, `task_show`, `trace_show`, `run_result`, `workflow_report` and
-`locks`, the short writes `task_open`, `task_escalate` and `task_close`; the
-[contracts](contracts.md#tools) name the command each presents. The primary worktree is that of
+Those tools are the queries `task_list`, `task_show` and `trace_show` and the short writes
+`task_open`, `task_escalate` and `task_close`. The primary worktree is that of
 the repository the server was started in, whichever worktree of the project it was started from.
+
+### req.main-session.project-mcp-record-queries — The other queries present records read-only
+
+The queries `run_result`, `workflow_report` and `locks` SHALL answer with the result and refuse
+with the codes their [contracts](contracts.md#tools) define, from the records and locks of the
+primary worktree read afresh for that call, changing nothing.
+
+No `concorde` command answers them in that shape: they read a run's saved result,
+[run lock](../../glossary.json#concept.run-lock) and
+[run progress file](../../glossary.json#concept.run-progress-file), a task's saved workflow results, and the holder lines of the merge lock and the
+workspace locks.
 
 ### req.main-session.project-mcp-merge-start — `task_merge` starts the command's merge
 
 `task_merge` SHALL, once it holds both locks, start the same `concorde task merge` the command line
-runs, with the task and the `checks`, `resume` or `abort` it was given, and answer at once with the
-start its [contracts](contracts.md#starting-a-merge) define instead of the merge's result.
+runs, with the task and the `checks`, `resume` or `abort` it was given.
+
+### req.main-session.project-mcp-merge-answer — `task_merge` answers at once with the start
+
+`task_merge` SHALL answer, once it started the merge, at once with the start its
+[contracts](contracts.md#starting-a-merge) define instead of the merge's result.
 
 The merge's own result and refusals are the command's, delivered later: in a `merge_ended` channel
 event, or in the output file once the returned `concorde task wait` command returns. Before the
@@ -319,8 +343,12 @@ start, the call is refused only by its arguments, by a busy lock
 
 ### req.main-session.project-mcp-wait-as-command — `register_wait` waits for what the command waits for
 
-`register_wait` SHALL wait for exactly what the matching `concorde task wait` waits for, and answer
-with the registration its [contracts](contracts.md#registering-a-wait) define.
+`register_wait` SHALL wait for exactly what the matching `concorde task wait` waits for.
+
+### req.main-session.project-mcp-wait-answer — `register_wait` answers with its registration
+
+`register_wait` SHALL answer at once with the registration its
+[contracts](contracts.md#registering-a-wait) define.
 
 When what it waits for already happened, its answer carries the value that command would print.
 
@@ -351,9 +379,12 @@ lock or on the kernel's notice of its changes, never by polling.
 
 ### req.main-session.project-mcp-fallback — Without a channel the server says so
 
-When the server does not know its session to listen to it as a channel, `register_wait` and
-`task_merge` SHALL say so and return the `concorde task wait` command that returns when the same
-thing happens, for background Bash.
+When the server does not know its session to listen to it as a channel, `task_merge`, and
+`register_wait` for something that has not happened yet, SHALL say so and return the
+`concorde task wait` command that returns when the same thing happens, for background Bash.
+
+A `register_wait` for something that already happened answers at once with that answer, channel or
+not ([`register_wait` answers with its registration](#req.main-session.project-mcp-wait-answer)).
 
 For `task_merge` that is the wait for the task's
 [workspace lock](../../glossary.json#concept.workspace-lock), which the merge holds until it ends.
@@ -411,8 +442,12 @@ The installer does not write it.
 ### req.main-session.worker-configuration-created — A missing worker configuration is created with the developer
 
 The guidance SHALL tell the main agent, when the project has no worker configuration, to create it
-with the enabled models and default model the developer names and commit it alone on the primary
-branch before any Operation runs.
+with the enabled models and default model the developer names.
+
+### req.main-session.worker-configuration-committed — A new worker configuration is committed before any Operation
+
+The guidance SHALL tell the main agent to commit a worker configuration it created alone on the
+primary branch before any Operation runs.
 
 ### req.main-session.model-map-names — Worker models are project model names
 
@@ -459,24 +494,40 @@ A task never asks the developer in place: the developer is asked only from the m
 
 ### req.main-session.batched-answers — Answers go back together
 
-The guidance SHALL tell the main agent to answer the decisions a task session escalated together:
-to put all those its authority does not cover to the developer at once and to answer the session
-once with every answer.
+The guidance SHALL tell the main agent to put all the decisions a task session escalated together
+that its authority does not cover to the developer at once.
 
-### req.main-session.ordinary-decisions — Ordinary questions are decided and reported
+### req.main-session.answer-once — The session is answered once
 
-The guidance SHALL tell the main agent to decide ordinary questions itself and report them.
+The guidance SHALL tell the main agent to answer a task session's escalations once, with every
+answer.
 
-Ordinary questions are naming, internal structure, task order, a clarified re-run or splitting a
-task. Recording those decisions is the obligation of
+### req.main-session.ordinary-decisions — Ordinary questions are decided
+
+The guidance SHALL tell the main agent to decide ordinary questions itself.
+
+Ordinary questions are those without major impact, such as naming, internal structure, task order,
+a clarified re-run or splitting a task. Recording those decisions is the obligation of
 [Decisions are recorded](#req.main-session.decision-log).
+
+### req.main-session.report-decisions — Decisions taken for the developer are reported
+
+The guidance SHALL tell the main agent to report to the developer the decisions it took on the
+developer's behalf.
+
+Its report closes each piece of work with what was merged, what was decided and what is still open.
 
 ### req.main-session.escalation-policy — Only major decisions reach the developer
 
 The guidance SHALL tell the main agent to ask the developer before acting on a decision with major
-impact, and on no other.
+impact.
 
-A decision has major impact when it changes what a Module promises or the project's direction,
+It decides the other questions of the work itself
+([Ordinary questions are decided](#req.main-session.ordinary-decisions)). The
+developer is still asked, beyond such decisions, for what other requirements name: the
+[workflow mode](#req.main-session.workflow-mode), the models of a
+[missing worker configuration](#req.main-session.worker-configuration-created) and the approval of
+a [small change](#req.main-session.small-change). A decision has major impact when it changes what a Module promises or the project's direction,
 contradicts an earlier developer decision, discards work or data, cannot be undone by an ordinary
 revert, touches security or credentials or needs more resources than the developer set.
 
@@ -500,8 +551,13 @@ An unbound run belongs to no task, so no decision log or escalation records it.
 ### req.main-session.unbound-failure-task — Work from a failed unbound run carries its chain
 
 The guidance SHALL tell the main agent, when the failure of an unbound run leads to work, to open a
-task for that work and escalate there with `concorde task escalate` naming the run's result file,
-`.concorde/unbound/<run-id>/result.json`, with `--error-file`.
+task for that work.
+
+### req.main-session.unbound-failure-escalated — The task escalates with the run's result file
+
+The guidance SHALL tell the main agent to escalate in the task opened for a failed unbound run with
+`concorde task escalate` naming the run's result file, `.concorde/unbound/<run-id>/result.json`,
+with `--error-file`.
 
 `--run` names only runs of the task's own [workspace](../../glossary.json#concept.workspace), and an
 unbound run has none.
@@ -583,11 +639,17 @@ delivered the task or cannot go further.
 ### req.main-session.task-session-never-merges — A task session never merges or closes its task
 
 The task-session guidance SHALL tell a task session never to merge its task into the primary
-branch, rebase, switch branches or close its task.
+branch or close its task.
 
 Merging the primary branch into its task branch when the main agent asks for it after a
 `merge_conflict` is the one merge it makes
 ([The task session resolves a merge conflict](#req.main-session.merge-conflict)).
+
+### req.main-session.task-session-keeps-branch — A task session keeps its task branch
+
+The task-session guidance SHALL tell a task session never to rebase or switch branches.
+
+The task worktree stays checked out on the task branch that `task open` created.
 
 ## Issues
 
