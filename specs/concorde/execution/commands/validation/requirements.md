@@ -65,8 +65,8 @@ blocking finding.
 ### req.validation.read-only — A task-validation run changes nothing in the workspace
 
 A `task-validation` run SHALL NOT change any file, index entry, branch or commit of the workspace
-outside the [run store](../../../glossary.json#concept.run-store) of its binding's records
-directory.
+outside its own [trace node](../../../glossary.json#concept.trace-node) and the locks directory its
+binding names.
 
 ### req.validation.confirm-exact — Confirmation clears only the listed markers
 

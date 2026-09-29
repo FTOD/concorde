@@ -16,7 +16,7 @@ an [Operation](../../glossary.json#concept.operation) runs its workers is in
 - THEN the run computes the implement grant from the workspace's Specs and launches one worker through Workers
 - AND the audit is clean and every configured check passes
 - AND the result has status `ok`, the worker's result in `worker` and the grant, audit and checks in `host_evidence`
-- AND the result is printed and saved in the [run store](../../glossary.json#concept.run-store) of the binding's records directory
+- AND the result is printed and saved in the run's [trace node](../../glossary.json#concept.trace-node) in the [run store](../../glossary.json#concept.run-store) of the binding's workspace folder, with the worker run's node below it
 - AND the command exits with status 0
 
 ### scenario.operations.worker-model — A worker runs with the worktree's model for its id

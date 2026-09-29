@@ -3,7 +3,8 @@
 The exact shapes of [Workflows](module.md): what one step prints, the step and report requests a
 pi [step agent](../../glossary.json#concept.step-agent) passes on standard input, the
 [workflow result](../../glossary.json#concept.workflow-result), and the error codes of the
-workflow's own links. Error links follow the Framework's
+workflow's own links, and the content of the workflow's and each step's trace node. Error links
+follow the Framework's
 [error contract](../../tracing/contracts.md#contract.tracing.error), copied here as `$defs`.
 
 ## Step outcome
@@ -289,7 +290,7 @@ Printed by `concorde workflow step`, from the workspace's
     "state": "finished",
     "status": "ok",
     "summary": "survey finished for module.shop.",
-    "result_path": "/home/dev/shop/.concorde/runs/r-20260925T101500-survey-1a2b3c4d/result.json",
+    "result_path": "/home/dev/shop/.concorde/tasks/adopt/workspace/workflow/steps/1-survey/run/result.json",
     "decision_points": 1,
     "created_modules": [],
     "ready": null,
@@ -451,8 +452,8 @@ receives as its task.
 
 ## Workflow result
 
-Printed by `concorde workflow report` and saved beside the workspace's workflow record, at
-`<records>/runs/workflows/<workspace>/reports/<n>.json` with its Markdown rendering at `<n>.md`.
+Printed by `concorde workflow report` and saved in the workflow's trace node, at
+`<workspace folder>/workflow/reports/<n>.json` with its Markdown rendering at `<n>.md`.
 
 ```concorde-contract
 {
@@ -1381,8 +1382,8 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
               "detail": "the worker process was stopped after 1800 seconds without a result",
               "evidence": [
                 {
-                  "kind": "run-record",
-                  "ref": "/home/dev/shop/.concorde/runs/w-20260925T104001-code-to-spec-0f3b2a91/record.json",
+                  "kind": "trace",
+                  "ref": "w-20260925T104001-code-to-spec-0f3b2a91",
                   "detail": ""
                 }
               ],
@@ -1401,6 +1402,237 @@ Printed by `concorde workflow report` and saved beside the workspace's workflow 
     ],
     "error": null,
     "reported_at": "2026-09-25T11:02:00Z"
+  }
+}
+```
+
+## Workflow trace
+
+The workflow of a workspace is a [trace node](../../glossary.json#concept.trace-node) of kind `workflow`, `workflow/` of the
+workspace folder, and each step one of kind `step` below it, as
+[Tracing](../../tracing/contracts.md#contract.tracing.node) defines them; their contents are these values.
+
+```concorde-contract
+{
+  "id": "contract.workflows.workflow-trace",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "workflow",
+      "steps",
+      "reports"
+    ],
+    "properties": {
+      "workflow": {
+        "type": "string",
+        "minLength": 1
+      },
+      "steps": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "key",
+            "name",
+            "run_id",
+            "mode",
+            "answers",
+            "error",
+            "superseded",
+            "node",
+            "at"
+          ],
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "run_id": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "minLength": 1
+                }
+              ]
+            },
+            "mode": {
+              "enum": [
+                "interactive",
+                "no-ask"
+              ]
+            },
+            "answers": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "format": "project-path"
+                }
+              ]
+            },
+            "error": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object"
+                }
+              ]
+            },
+            "superseded": {
+              "type": "boolean"
+            },
+            "node": {
+              "type": "string",
+              "minLength": 1,
+              "format": "project-path"
+            },
+            "at": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "reports": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "path",
+            "rendered",
+            "at"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "minLength": 1
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "format": "project-path"
+            },
+            "rendered": {
+              "type": "string",
+              "minLength": 1,
+              "format": "project-path"
+            },
+            "at": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "semantics": "The data of the typed value concorde-workflow-trace, the content of a workflow's trace node, which is the workspace's workflow record. workflow names the workspace's one workflow. steps lists every step ever recorded, in order: its key, the Operation or execution command it ran, its run identity or null when it was refused, the mode it ran in, the answers file it passed (relative to the workflow's node), the refusal's error link or null, whether a later rerun superseded it, its node folder relative to the workflow's node (steps/<n>-<key>) and when it was recorded. reports lists every report with its status, the paths of its JSON and Markdown files relative to the workflow's node and when it was saved. The node's identity is the workflow name, its metadata the workspace, the workflow and the mode of the latest step, its start the first step, its status running until a report ends it ok, blocked or failed (awaiting_decision counting as blocked, with that outcome), and it is written again with every step and report. A behaviour or field change increments the version.",
+  "example": {
+    "workflow": "brownfield",
+    "steps": [
+      {
+        "key": "survey",
+        "name": "survey",
+        "run_id": "r-20260925T100000-survey-1a2b3c4d",
+        "mode": "no-ask",
+        "answers": null,
+        "error": null,
+        "superseded": false,
+        "node": "steps/1-survey",
+        "at": "2026-09-25T10:00:00Z"
+      }
+    ],
+    "reports": [
+      {
+        "status": "ok",
+        "path": "reports/1.json",
+        "rendered": "reports/1.md",
+        "at": "2026-09-25T11:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+```concorde-contract
+{
+  "id": "contract.workflows.step-trace",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "key",
+      "name",
+      "run_id",
+      "mode",
+      "superseded",
+      "state"
+    ],
+    "properties": {
+      "key": {
+        "type": "string",
+        "minLength": 1
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "run_id": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "minLength": 1
+          }
+        ]
+      },
+      "mode": {
+        "enum": [
+          "interactive",
+          "no-ask"
+        ]
+      },
+      "superseded": {
+        "type": "boolean"
+      },
+      "state": {
+        "enum": [
+          "running",
+          "finished",
+          "lost",
+          "refused"
+        ]
+      }
+    }
+  },
+  "semantics": "The data of the typed value concorde-step-trace, the content of one workflow step's trace node. key is the step key, name the Operation or execution command, run_id the run it started, whose node is run/ inside this one, or null when it was refused, mode the workflow's mode, superseded whether a later rerun superseded it, and state what the step command or report last saw of its run. The node starts when the step is recorded and ends once a step or report command sees its run finished, lost or refused, with the run's status (ok, blocked or failed, failed for lost and refused) and the state as outcome; its error is the run's error, or the step's own link for a lost or refused step. A behaviour or field change increments the version.",
+  "example": {
+    "key": "describe:module.checkout",
+    "name": "code_to_spec",
+    "run_id": "r-20260925T104000-code_to_spec-5e6f7a8b",
+    "mode": "no-ask",
+    "superseded": false,
+    "state": "finished"
   }
 }
 ```

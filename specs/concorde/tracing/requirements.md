@@ -49,7 +49,7 @@ its artifacts, never copied into its `trace.json`.
 
 No trace, task folder or history folder SHALL contain a credential file or a copy of one.
 
-A worker's credential copies live only in its runtime directory, which is removed when the worker
+A worker's credential copies live only in its [runtime directory](../glossary.json#concept.runtime-directory), which is removed when the worker
 ends.
 
 ## The tree

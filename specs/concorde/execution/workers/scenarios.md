@@ -11,7 +11,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - WHEN the host runs a worker that edits the source file, writes the pending file, changes nothing else and ends with a valid `ok` result
 - THEN both changes reach the worktree
 - AND the audit is clean, the [configured checks](../../glossary.json#concept.configured-check) run on the worktree, and when they pass the run ends `ok`
-- AND the [run record](../../glossary.json#concept.run-record) holds the grant's [context identity](../../glossary.json#concept.context-identity), the settings and brief digests, the tool set, the transcript path, the round with its audit and [check results](../../glossary.json#concept.check-result), and the [worker result](../../glossary.json#concept.worker-result) verbatim
+- AND the [run record](../../glossary.json#concept.run-record) holds the grant's [context identity](../../glossary.json#concept.context-identity), the settings and brief digests, the tool set, the transcript path and the [worker result](../../glossary.json#concept.worker-result) verbatim, and the round's node below it its audit, [check results](../../glossary.json#concept.check-result), standard error and the tokens, cost and turns the agent program reported
 
 ### scenario.workers.pending-precreated — Pending files exist before launch and vanish if unused
 
@@ -26,7 +26,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a `CLAUDE.md` in the worktree and in the working directory, and user settings, skills and MCP servers in the user's Claude Code configuration
 - WHEN the host launches a worker
 - THEN none of them reaches the worker
-- AND the worker's environment holds only the listed variables, with `HOME` and `CLAUDE_CONFIG_DIR` inside its [run directory](../../glossary.json#concept.run-directory) and `TMPDIR` the run's private temporary directory
+- AND the worker's environment holds only the listed variables, with `HOME`, `CLAUDE_CONFIG_DIR` and `TMPDIR` inside its [runtime directory](../../glossary.json#concept.runtime-directory)
 
 ### scenario.workers.brief-terms — The brief carries the definitions of the worker's terms
 
@@ -160,7 +160,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - GIVEN a worker that exits without a structured result that satisfies the worker result schema
 - WHEN the host reads its output
 - THEN the run ends `failed` with `worker_result_invalid` and the schema violation or the worker's final text in its error
-- AND the stderr tail and transcript path are in the run record
+- AND the round's standard error is its `stderr.log` and the transcript path is in the run record
 - AND a `blocked` or `failed` result without an error, or an `ok` result with one, is invalid too
 
 ### scenario.workers.claude-error — An error of Claude Code itself is reported with its cause
@@ -182,7 +182,7 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 ### scenario.workers.pi-file-tools-denied — pi file tools explain every denial
 
 - GIVEN a running pi worker
-- WHEN it reads a `names` file, an ungranted file, `.git` or a file of the run's `config/`, or writes a `ro` file or an undeclared file
+- WHEN it reads a `names` file, an ungranted file, `.git` or a file of its runtime directory's `config/`, or writes a `ro` file or an undeclared file
 - THEN each call is denied with the reason the Harness's read or write table gives, prefixed `Concorde grant:`
 - AND no file changes
 
@@ -290,3 +290,14 @@ The testable situations of one worker run. The [entry](module.md) explains the r
 - THEN it lists configured candidates with sources and reasoning levels, explaining that no inference API access was probed
 - AND pi uses its credentialed listing while Claude's aliases and settings-derived list is explicitly incomplete
 - BUT a missing program or failed listing returns a discovery error without gating custom/offline configuration
+
+## What a run leaves
+
+### scenario.workers.trace-left — A worker run leaves its trace and no credentials
+
+- GIVEN an Operation run whose worker needs two rounds, the first failing a configured check, on a backend whose configuration holds a credential copy
+- WHEN the run ends
+- THEN the run's node holds `workers/<run-id>/` with `trace.json`, `status.json`, `grant.json`, `brief.md`, `transcript.jsonl` and `rounds/1/` and `rounds/2/`, each round with its own `trace.json`, `stderr.log` and check nodes
+- AND each round's usage holds the tokens, cost and turns the agent program reported for it
+- AND the runtime directory, with the credential copy, no longer exists
+- AND the worker run's `trace.json` was already there, `running`, while the worker ran

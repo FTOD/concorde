@@ -33,7 +33,7 @@ The context of a worker, its five kinds and how each is computed are defined in 
 [shared vocabulary](../glossary.json#concept.context); the Harness decides how that context reaches
 the agent, which for a worker is the brief and the files the grant lets it read. The permission and
 environment are what the Harness generates. It is used as a library: an agent Module assembles the
-inputs of its level — a frozen grant and [run directory](../glossary.json#concept.run-directory), or
+inputs of its level — a frozen grant and [runtime directory](../glossary.json#concept.runtime-directory), or
 a task's paths — and asks the Harness for the configuration, which it then hands to the program it
 launches.
 
@@ -50,7 +50,7 @@ others of the same kinds:
 | `src/billing/invoice.py` | `ro` | the project's code, which an `implement` task reads whole |
 | `specs/shop/billing/module.md` | none | outside every [boundary set](../glossary.json#concept.boundary-set) of Checkout |
 
-Workers hands the Harness that grant, the run directory and the runtime paths. For a Claude Code
+Workers hands the Harness that grant, the runtime directory and the runtime paths. For a Claude Code
 worker the Harness returns the worker settings: deny rules `Edit` on the Checkout Spec and on
 `invoice.py`, `Read` and `Edit` on `specs/shop/billing/**`, since no granted path lies below it,
 and the rules that hide the rest of the home directory and the run's own configuration; the write
@@ -72,7 +72,7 @@ shape: sequence_diagram
 workers: Workers (agent Module)
 harness: Harness
 program: Claude Code or pi (agent program)
-workers -> harness: frozen grant, run directory, runtime paths
+workers -> harness: frozen grant, runtime directory, runtime paths
 harness -> workers: worker settings or permission extension, tool set
 workers -> program: launch with the configuration and the brief
 program -> program: edit src/checkout/cart.py: rw, allowed
@@ -91,8 +91,8 @@ file's name in its brief but read it with no tool.
 `CLAUDE_CONFIG_DIR`) and hold three layers from the same grant.
 **[Deny rules](../glossary.json#concept.deny-rules)** cover the file tools. They deny Read and Edit
 for every grant-omitted task-worktree path and every `names` path, Edit for every `ro` path, and
-Read and Edit for each ungranted directory as a whole, the primary worktree outside the run, `.git`,
-`~/.claude` and the run's `control/` and `config/`; the
+Read and Edit for each ungranted directory as a whole, the primary worktree, `.git`,
+`~/.claude` and the runtime directory's `control/` and `config/`; the
 [Claude Code mechanics](claude-code.md#deny-rules) list them exactly. They hold under
 `bypassPermissions` and make Grep silently omit denied files. Since Claude Code applies `Read`
 denials to Bash too, they never cover system directories or the **runtime paths**: the paths Bash
@@ -132,10 +132,13 @@ Exact tables: [pi mechanics](pi.md).
 On Claude Code it is a settings file with a write hook of its own, which lets Edit and Write change
 only the task worktree and its decision log instead of a grant's `rw` list, and a Bash sandbox that
 writes only the task worktree, the repository's Git directory (for commits on the task branch), the
-primary worktree's `.concorde/runs/` (the [run store](../glossary.json#concept.run-store) that the
-task worktree's [workspace binding](../glossary.json#concept.workspace-binding) names for every run
-started there) and `.concorde/tasks/` (where escalations are recorded) and the user's package
-caches, with every network host allowed. On pi it is the **boundary extension**, the session's
+task's own folder `.concorde/tasks/<task>/` of the primary worktree (which holds the workspace
+folder that the task worktree's [workspace binding](../glossary.json#concept.workspace-binding)
+names for every run started there, and the [task record](../glossary.json#concept.task-record) in which escalations are recorded), the
+primary worktree's `.concorde/locks/` (where those runs take their locks) and the user's package
+caches, with every network host allowed. Once the task is closed its folder has moved to the
+[history](../glossary.json#concept.history), and the write hook refuses every write to the decision
+log, whose folder no longer exists, rather than recreate it. On pi it is the **boundary extension**, the session's
 counterpart of a worker's permission extension, loaded on top of the developer's own configuration,
 which blocks a `write` or `edit` outside the task worktree and its decision log, naming the task
 worktree, rewrites every `bash` command to run inside sandbox-runtime with the same writable paths
@@ -156,7 +159,7 @@ place that turns those inputs into a program's own configuration.
 ### Around it
 
 The agent Modules use the Harness; it knows none of them and receives everything it needs as
-inputs, including a worker's run directory and runtime paths from Workers.
+inputs, including a worker's runtime directory and runtime paths from Workers.
 
 <a id="uses-spec"></a>
 
@@ -213,11 +216,11 @@ flags and environment listed here; the Harness generates everything the settings
 
 | Surface | Mechanism | What it stops |
 | --- | --- | --- |
-| Read, Glob, Grep | `permissions.deny` for the grant's complement in the task worktree; the primary worktree outside the run dir; `.git`, `~/.claude` with Claude Code's credential file | Ungranted/`names` reads; Grep silently omits them |
+| Read, Glob, Grep | `permissions.deny` for the grant's complement in the task worktree; the primary worktree; `.git`, `~/.claude` with Claude Code's credential file | Ungranted/`names` reads; Grep silently omits them |
 | Edit, Write | Same deny rules, plus a write-only PreToolUse hook denying non-`rw` paths, reason naming the level | `ro` edits or new files — deny alone can't, since deny beats allow |
-| Bash | Sandbox: `denyRead` worktree/`$HOME`, `allowRead` granted files + runtime paths, `allowWrite` `rw` files + run dirs, no network, `allowUnsandboxedCommands: false` | Ungranted reads, `ro` writes, network, `dangerouslyDisableSandbox` |
+| Bash | Sandbox: `denyRead` worktree/`$HOME`, `allowRead` granted files + runtime paths, `allowWrite` `rw` files + the runtime directory's `work/`, `home/`, `tmp/`, no network, `allowUnsandboxedCommands: false` | Ungranted reads, `ro` writes, network, `dangerouslyDisableSandbox` |
 | Permission mode | `bypassPermissions` via `--allow-dangerously-skip-permissions`; deny rules/hook/sandbox are the boundary | Nothing alone; `dontAsk` denies writes outside the working dir even when allowed |
-| Working directory | The run's own directory, never the task worktree | Claude Code adding the worktree to the Bash sandbox's read/write set |
+| Working directory | The runtime directory's `work/`, never the task worktree | Claude Code adding the worktree to the Bash sandbox's read/write set |
 | Tool set | `--tools` per task type, never WebFetch/WebSearch, no agent tool | Web access via tools, workers starting other agents |
 | MCP | `--strict-mcp-config` with no servers | Any tool beyond the listed ones |
 | Claude state/instructions | Own `CLAUDE_CONFIG_DIR`, cleared env, `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` | User settings, memory, skills, plugins, transcripts, project instructions |
@@ -284,7 +287,7 @@ code of Workers and Check execution, which bind their own files; a
 The **Claude Code harness** is the worker settings generator (`settings.py`: the run's paths, the
 deny rules, the Bash sandbox lists, the tool set of a task type and the complete settings file),
 the worker write hook (`write_hook.py`) and the task-session write hook (`session_hook.py`). Workers
-writes the settings and the hook, with the grant's lists embedded, into the run's `control/`, and
+writes the settings and the hook, with the grant's lists embedded, into the runtime directory's `control/`, and
 Task sessions assembles the rest of a task session's settings around its hook.
 
 <a id="realization.harness.pi"></a>

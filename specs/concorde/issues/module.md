@@ -261,7 +261,7 @@ reports are never rewritten: a later observation that classifies the problem dif
 report. Each write checks the revision its caller read, publishes through a
 [file transaction](../glossary.json#concept.file-transaction) and syncs before
 acknowledging, so success means the record is on disk and a concurrent writer is never silently
-overwritten. One exclusive lock per worktree, `.concorde/runs/issues.lock`, is enough: identities
+overwritten. One exclusive lock per worktree, `.concorde/locks/issues.lock`, is enough: identities
 are derived from the reporting invocation and the reporter's key rather than counted, so writers in
 different worktrees share neither a file nor allocation state. The lock is cooperative; a hand edit
 bypasses it and the revision check catches it at the next write. Report and receipt shapes are

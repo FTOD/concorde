@@ -11,6 +11,7 @@ shapes are in the [contracts](contracts.md).
 - WHEN `concorde workflow step --workflow brownfield --mode no-ask --key survey -- survey --modules module.shop` is run there
 - THEN it starts `concorde run survey --modules module.shop --detach` with the workspace's own `concorde`
 - AND the workspace's [workflow record](../../glossary.json#concept.workflow-record) names the workflow `brownfield` and the key `survey` with the run
+- AND the run's [trace node](../../glossary.json#concept.trace-node) lies in `run/` of the step's node `workflow/steps/1-survey/` of the workspace folder, whose `trace.json` names the key and the run
 - AND once the run has finished it prints the step outcome with state `finished`, the workspace `adopt` and the result's status, and exits with status 0
 
 ### scenario.workflows.step-starts-command — A step starts an execution command
@@ -88,7 +89,7 @@ shapes are in the [contracts](contracts.md).
 - WHEN the workflow runs to its end
 - THEN it runs survey, scaffold, the three code_to_spec steps, spec_review, task-validation and `delivery --adoption`, one after another
 - AND the workflow result lists the survey's decisions, the open question and the blocked description as a problem with its chain unchanged
-- AND the result is saved with its Markdown rendering beside the workspace's workflow record and listed there
+- AND the result is saved with its Markdown rendering in the workflow's trace node and listed in the workflow record
 - BUT no [decision log](../../glossary.json#concept.decision-log) changes
 
 ## Results

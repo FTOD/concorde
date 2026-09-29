@@ -382,7 +382,7 @@
       "id": "concept.progress-file",
       "title": "Progress file",
       "owner": "module.workers",
-      "definition": "A worker run's `status.json`, which the host keeps current while the worker runs so the main session can show what it is doing.",
+      "definition": "A worker run's `status.json` in its [run directory](#concept.run-directory), which the host keeps current while the worker runs so the main session can show what it is doing.",
       "explanation": "specs/concorde/execution/workers/module.md#concept.progress-file",
       "contrasts": [
         {
@@ -471,13 +471,9 @@
       "id": "concept.run-directory",
       "title": "Run directory",
       "owner": "module.workers",
-      "definition": "The directory `runs/<run-id>/` of the run store that holds one worker run's record, generated configuration and the worker's private state and working directory.",
+      "definition": "The [trace node](#concept.trace-node) `workers/<run-id>/` of one worker run, inside the node of the run that launched it, holding its run record, progress file, grant, brief, transcript and one node per round.",
       "explanation": "specs/concorde/execution/workers/module.md#concept.run-directory",
       "relates": [
-        {
-          "verb": "holds",
-          "target": "concept.worker-settings"
-        },
         {
           "verb": "holds",
           "target": "concept.run-record"
@@ -492,7 +488,7 @@
       "id": "concept.run-lock",
       "title": "Run lock",
       "owner": "module.execution",
-      "definition": "The file lock on a run's directory that its runner holds from before its first run progress file until after its result, by which any observer tells, from any PID namespace, whether the run still runs.",
+      "definition": "The file `locks/runs/<run-id>.lock` that a run's runner alone locks from before its first run progress file until after its result and removes as it exits, by which any observer tells, from any PID namespace, whether the run still runs.",
       "explanation": "specs/concorde/execution/module.md#concept.run-lock",
       "contrasts": [
         {
@@ -505,14 +501,14 @@
       "id": "concept.run-progress-file",
       "title": "Run progress file",
       "owner": "module.execution",
-      "definition": "A run's `status.json`, which the runner keeps current with what is running, where and in which step, and once finished with the status and summary.",
+      "definition": "A run's `status.json` in its trace node, which the runner keeps current with what is running, where and in which step, and once finished with the status and summary.",
       "explanation": "specs/concorde/execution/module.md#concept.run-progress-file"
     },
     {
       "id": "concept.run-record",
       "title": "Run record",
       "owner": "module.workers",
-      "definition": "The host's durable record of one worker run: its grant and context identity, settings, transcript path, audits, checks, rounds and result.",
+      "definition": "The host's durable record of one worker run, the `trace.json` of its [run directory](#concept.run-directory): its grant and context identity, settings, transcript, audits, checks, rounds and result.",
       "explanation": "specs/concorde/execution/workers/module.md#concept.run-record",
       "relates": [
         {
@@ -540,7 +536,7 @@
       "id": "concept.run-store",
       "title": "Run store",
       "owner": "module.execution",
-      "definition": "The `runs/` directory of the records directory, holding every run's progress file and result, the workers' run records and the workflows' records.",
+      "definition": "Where Execution keeps its runs as [trace nodes](#concept.trace-node): `runs/` of a workspace folder, the step nodes of its workflow, and `.concorde/unbound/` of a worktree for unbound runs.",
       "explanation": "specs/concorde/execution/module.md#concept.run-store",
       "relates": [
         {
@@ -555,6 +551,25 @@
       "owner": "module.main-session",
       "definition": "The Concorde extension of a pi main session that starts Operations and execution commands in the background, shows every run and its worker's progress, and wakes the main agent when a run ends.",
       "explanation": "specs/concorde/coordination/main-session/module.md#concept.run-view"
+    },
+    {
+      "id": "concept.runtime-directory",
+      "title": "Runtime directory",
+      "owner": "module.workers",
+      "definition": "The private directory under `/tmp` that holds what one worker run needs only while it runs, its generated configuration, credential copies, home, temporary and working directories, and that the host removes when the run ends.",
+      "explanation": "specs/concorde/execution/workers/module.md#concept.runtime-directory",
+      "relates": [
+        {
+          "verb": "holds",
+          "target": "concept.worker-settings"
+        }
+      ],
+      "contrasts": [
+        {
+          "target": "concept.run-directory",
+          "reason": "the run directory is the worker run's trace node and is kept; the runtime directory holds what the worker needs only while it runs and is removed"
+        }
+      ]
     },
     {
       "id": "concept.session-boundary",
@@ -857,7 +872,7 @@
       "id": "concept.workflow-record",
       "title": "Workflow record",
       "owner": "module.workflows",
-      "definition": "The file in the run store in which Workflows records the workflow of one workspace: its name, every step with its run, and every report.",
+      "definition": "The `trace.json` of a workspace's workflow [trace node](#concept.trace-node), in which Workflows records the workflow's name, every step with its run and node, and every report.",
       "explanation": "specs/concorde/execution/workflows/module.md#concept.workflow-record",
       "relates": [
         {
@@ -910,14 +925,14 @@
       "id": "concept.workspace-binding",
       "title": "Workspace binding",
       "owner": "module.execution",
-      "definition": "The file `.concorde/workspace.json` at a workspace's root that names it, its goal, Modules, branch, base commit and the records directory, written by whoever prepares the workspace and only read by Execution.",
+      "definition": "The file `.concorde/workspace.json` at a workspace's root that names it, its goal, Modules, branch and base commit, the workspace folder where its runs are traced and the `.concorde` whose `locks/` holds its locks, written by whoever prepares the workspace and only read by Execution.",
       "explanation": "specs/concorde/execution/module.md#concept.workspace-binding"
     },
     {
       "id": "concept.workspace-lock",
       "title": "Workspace lock",
       "owner": "module.execution",
-      "definition": "The lock of one workspace, held by the process running one of its runs for that run's whole life, so that a workspace runs one thing at a time.",
+      "definition": "The lock file `locks/workspaces/<workspace>.lock` of one workspace, held by the process running one of its runs for that run's whole life, so that a workspace runs one thing at a time.",
       "explanation": "specs/concorde/execution/module.md#concept.workspace-lock"
     },
     {

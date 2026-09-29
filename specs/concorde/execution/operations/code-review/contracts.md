@@ -67,7 +67,7 @@ verdict.
     "reviewed_paths": ["src/concorde/issues/store.py", "tests/concorde/issues/test_store.py"],
     "named_only_paths": [],
     "checks": [
-      {"check": "check.issues.store", "module": "module.issues", "outcome": "passed", "exit_code": 0, "log": ".concorde/runs/r-0003/checks/check.issues.store.log"}
+      {"check": "check.issues.store", "module": "module.issues", "outcome": "passed", "exit_code": 0, "log": "/home/dev/shop/.concorde/tasks/severity/workspace/runs/r-0003/checks/check.issues.store/output.log"}
     ],
     "summary": "The store accepts a severity but rewrites earlier reports when saving it.",
     "findings": [

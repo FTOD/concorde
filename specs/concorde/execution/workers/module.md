@@ -9,8 +9,8 @@ work](../../module.md#the-levels-of-work): one headless worker for one job under
 [Operation](../../glossary.json#concept.operation) that launched it can trust. Each run is its own
 session, its own process and its own permissions, on the model the worktree's [worker
 configuration](../../glossary.json#concept.worker-configuration) chooses, and its [run
-directory](../../glossary.json#concept.run-directory) lies in the [run
-store](../../glossary.json#concept.run-store) beside the Operation run that launched it. Workers
+directory](../../glossary.json#concept.run-directory) is a [trace
+node](../../glossary.json#concept.trace-node) inside the node of the Operation run that launched it. Workers
 also owns that configuration, which the project tracks and edits directly. Of each run it owns the whole lifecycle: the run directory, the
 brief, the launch and [resume rounds](../../glossary.json#concept.resume-round), the [write
 audit](../../glossary.json#concept.write-audit), the checks after each round and the record. The
@@ -29,7 +29,7 @@ files this is a bound workspace; an [unbound run](../../glossary.json#concept.un
 launch only a reading worker over the worktree it runs in, its
 [unbound checkout](../../glossary.json#concept.unbound-checkout), which Workers audits like any
 worktree. The step calls Workers with the worktree,
-the records directory of the run, the frozen grant and [context
+the trace node folder of its run, the frozen grant and [context
 identity](../../glossary.json#concept.context-identity), task instructions for the
 [brief](../../glossary.json#concept.brief), checks to run after the worker, and run limits — getting
 back a run record (status `ok`/`blocked`/`failed`) with the [worker
@@ -64,17 +64,20 @@ checks -> launch: a check fails, rounds left
 checks -> record: pass, or rounds used up
 ```
 
-<a id="concept.run-directory"></a>
+<a id="concept.run-directory"></a><a id="concept.runtime-directory"></a>
 
-The host creates the **run directory** `runs/<run-id>/` in the [run
-store](../../glossary.json#concept.run-store) of the records directory the Operation names: the
-records directory of its [workspace binding](../../glossary.json#concept.workspace-binding) for a
-bound run, so that a task's worker runs lie beside its Operation runs in the primary worktree's
-`.concorde/runs/` however many task worktrees there are, and for an unbound run the `.concorde` of
-the worktree it started in, never its throwaway checkout. It holds host-only `control/` (settings, hook, grant, brief), the worker's `config/`
-(`CLAUDE_CONFIG_DIR` plus a credential copy), `home/` (`HOME`) and `work/` (its working directory);
-the run directory is ignored by Git. `TMPDIR` is a short private directory under `/tmp`, removed
-when the run ends. It pre-creates `src/shop/discounts.py` empty — a worker can write only files that
+The host creates the **run directory** `workers/<run-id>/` inside the trace node of the Operation run
+that launched it, wherever that run's node lies, so a task's worker runs are found below its runs in
+the task's [trace](../../glossary.json#concept.trace), and an unbound run's below it in the
+`.concorde` of the worktree it started in, never in its throwaway checkout. The run directory keeps
+what analysis needs: the run record, the frozen grant, the brief, each round's node with its standard
+error and checks, and the transcript. What the worker needs only while it runs is in its **runtime
+directory**, a short private directory under `/tmp` that the host removes when the run ends: the
+host-only `control/` (settings, hook, result schema), the worker's `config/` (`CLAUDE_CONFIG_DIR` or
+pi's configuration, with the credential copies and the session), `home/` (`HOME`), `tmp/`
+(`TMPDIR`) and `work/` (its working directory). The transcript is moved from `config/` into the run
+directory before the [runtime directory](../../glossary.json#concept.runtime-directory) is removed, so no credential copy is ever retained. It
+pre-creates `src/shop/discounts.py` empty — a worker can write only files that
 already exist — generates the worker's harness and brief, launches the worker's program headless in
 `work/` with a cleared environment — on pi, the default, `pi -p` with the permission extension as
 its only extension ([the pi run mechanics](pi.md#launch)); on Claude Code `claude -p` with
@@ -208,8 +211,8 @@ grant and the run's own paths: on Claude Code the [worker
 settings](../../glossary.json#concept.worker-settings) with their [deny
 rules](../../glossary.json#concept.deny-rules), [write
 hook](../../glossary.json#concept.write-hook) and Bash sandbox, on pi the permission
-extension, and the tool set of the task type. It places them in the run's `control/` directory and
-never changes them during the run.
+extension, and the tool set of the task type. It places them in the runtime directory's `control/`
+and never changes them during the run.
 
 <a id="concept.brief"></a>
 
@@ -262,11 +265,15 @@ validation outcome.
 
 <a id="concept.run-record"></a>
 
-The **run record**, written for every run including a refused launch, holds the grant/context
-identity, settings/brief digests, the tool list, transcript path, session ids, each round's audit
-and [check results](../../glossary.json#concept.check-result) with logs, the worker's stderr tail,
-the worker result verbatim, deletions performed, and the host's final status with its error link —
-evidence that never restates a worker's claim as fact. Delivery later lists these records'
+The **run record** is the worker run's `trace.json`, written when the run directory is created,
+after every round and at the end, for every run including a refused launch. Its metadata hold the
+grant's context identity, the grant, settings and brief digests, the task type, worker id, backend,
+model and reasoning level; its content the tool list, transcript path, the worker result verbatim
+and the deletions performed; and the host's final status with its error link. Each round is a node
+of its own below it, with its session, prompt kind, audit and
+[check results](../../glossary.json#concept.check-result), its standard error, and the tokens, cost
+and turns the agent program reported for it — evidence that never restates a worker's claim as
+fact. Delivery later lists these records'
 identities in a workspace's evidence.
 
 ### Failures and repeat runs
@@ -274,7 +281,7 @@ identities in a workspace's evidence.
 Every non-`ok` run carries an error link: what failed, in which round, why Workers cannot handle it,
 and its causes — the worker's own error, a Claude Code error such as a used-up turn limit, or every
 still-failing check with its log's end. Host failures use the same shape with status `failed`: a
-missing/unreadable grant, a run directory a deny rule would cover, a launch error, a timeout (the
+missing/unreadable grant, a runtime directory a deny rule would cover, a launch error, a timeout (the
 process group is killed), a Claude Code error, a missing/invalid worker result, an audit violation,
 or checks that can't run. Every call starts a fresh run; a failed one is never resumed later. Exact
 codes/layout: [the run mechanics](launch.md); testable behaviour: [the scenarios](scenarios.md).
@@ -352,12 +359,12 @@ the task type. Workers relies on them confining the worker's tools to the grant,
 unchanged for every round, and refuses to launch when a generated deny rule would cover the run's
 own directories. It never edits what the Harness generated.
 
-Which of the Harness's parts reaches a worker depends on its backend, and the run directory holds
+Which of the Harness's parts reaches a worker depends on its backend, and the runtime directory holds
 what was generated:
 
 ```d2
 backend: Worker backend
-dir: Run directory
+dir: Runtime directory
 settings: Harness / Worker settings
 extension: Harness / Permission extension
 backend -> settings: Claude Code applies
@@ -379,16 +386,25 @@ as its cause, and no further round.
 
 <a id="uses-execution"></a>
 
-**Execution** gives every worker run its place: the Operation's step passes the records directory
-of its run, and Workers creates the run directory in that [run
-store](../../glossary.json#concept.run-store), beside the Operation run, and records the
+**Execution** gives every worker run its place: the Operation's step passes the trace node folder
+of its run in the [run store](../../glossary.json#concept.run-store), and Workers creates the run
+directory inside it, and records the
 Operation run's identity, which the step passes, and the runner's process identifier in the
 progress file, beside the runner's own [run progress
 file](../../glossary.json#concept.run-progress-file). Workers relies on the runner refusing an
-unbound run's writing worker before it reaches Workers, and never reads a workspace binding itself.
+unbound run's writing worker before it reaches Workers, and never reads a [workspace binding](../../glossary.json#concept.workspace-binding) itself.
 For an unbound run the step passes the run's checkout as the worktree and reads the backend,
 model and limits from the worker configuration committed in that checkout, as every other input of
 the run, so Workers never learns that the worktree it audits is a checkout.
+
+<a id="uses-tracing"></a>
+
+**Tracing** gives the worker run and each round the shape and place of a
+[trace node](../../glossary.json#concept.trace-node): Workers writes both through Tracing's library,
+at their start, after each round and at their end, records in their usage only what the agent
+program reported for each round, and reports its failures in the error contract. It relies on the
+[node contract](../../tracing/contracts.md#contract.tracing.node) and on nothing of the Operation's
+node but the folder it is given.
 
 <a id="uses-operations"></a>
 
@@ -478,8 +494,8 @@ record -> result: keeps
 `bypassPermissions` is used since `-p` mode's `dontAsk` denies every Edit/Write outside the working
 directory even when allowed, and that directory can't be the worktree — Claude Code adds it (and
 every `--add-dir`) to the Bash sandbox's read/write set, defeating per-file confinement — so the
-brief uses absolute paths. The run directory must also avoid any deny-rule path, or the host refuses
-to launch.
+brief uses absolute paths. The runtime directory must also avoid any deny-rule path, or the host
+refuses to launch.
 
 Pending files are pre-created since a worker must never create an undeclared file, and Bash can only
 grant writes to existing files; for the same reason it can't delete — only propose deletions,
@@ -492,8 +508,9 @@ failing checks and what the caller's validation reports; a Spec gap or grant vio
 decision for the main agent or developer, not to retry.
 
 `--safe-mode`/`--bare` are unused since they'd disable the write hook too. Credentials are a copy of
-the user's file in `config/`; an env-var token was untested, and keeping credentials from the worker
-is future work alongside the outer sandbox. Limits: the [Harness](../../harness/module.md).
+the user's file in the runtime directory's `config/`, removed with it when the run ends, so the
+traces never retain one; an env-var token was untested, and keeping credentials from the worker
+itself is future work alongside the outer sandbox. Limits: the [Harness](../../harness/module.md).
 
 [Open questions](../../glossary.json#concept.open-question): whether Bash needs read access to
 Claude Code's shell snapshots in `CLAUDE_CONFIG_DIR` (deciding if `config/` stays unreadable) awaits

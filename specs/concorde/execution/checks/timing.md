@@ -40,7 +40,7 @@ with status `incomplete`, and `complete` is false whenever `omitted` is not zero
 | `Span(name, **labels)` / `timed(name)` | mark a unit of work, or every call of a function, as a span; a no-op without an open trace, except that `timed` then opens one when `CONCORDE_DIAGNOSTIC_TIMING_DIR` is set |
 | `Trace(trace_id=None, *, sink=None, layer="B")` / `tracing(trace)` | open a trace in the current context; its sink receives the finished trace once |
 | `notice_incomplete()` | write the one `CONCORDE_TIMING_INCOMPLETE` line of a sink that could not keep its trace |
-| `diagnostic_sink(directory)` | a sink writing each trace as a new mode-0600 file, never through a symbolic link, in a directory that exists and is absolute, canonical and outside both the working directory and any `.concorde/status` or `.concorde/runs` directory; any other directory is refused |
+| `diagnostic_sink(directory)` | a sink writing each trace as a new mode-0600 file, never through a symbolic link, in a directory that exists and is absolute, canonical and outside both the working directory and any `.concorde/tasks`, `.concorde/history`, `.concorde/unbound` or `.concorde/locks` directory; any other directory is refused |
 | `interval_record(...)` | adapt an interval measured elsewhere to the span shape |
 | `summarize(spans)` | the timing summary of finished span records |
 
@@ -48,7 +48,7 @@ The timing summary is `{complete, summed_span_seconds, covered_seconds_by_proces
 spans measured, and nothing they cannot, such as elapsed wall time.
 
 The directory conditions keep diagnostic files apart from the project and from the lifecycle
-records Concorde keeps under `.concorde/status` and `.concorde/runs`. A function marked with
+records and locks Concorde keeps under `.concorde/tasks`, `.concorde/history`, `.concorde/unbound` and `.concorde/locks`. A function marked with
 `timed` and called while no trace is open but `CONCORDE_DIAGNOSTIC_TIMING_DIR` is set opens a trace
 of its own whose sink is `diagnostic_sink` of that directory; when the directory is refused, the
 trace has no sink and the `CONCORDE_TIMING_INCOMPLETE` line is written instead.
@@ -118,13 +118,13 @@ timestamps are used only to correlate records.
 
 ### scenario.checks.timing-standalone-directory — A standalone process writes its trace to a named directory
 
-- GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` names an existing, absolute, canonical directory outside the working directory and outside any `.concorde/status` or `.concorde/runs` directory
+- GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` names an existing, absolute, canonical directory outside the working directory and outside any `.concorde/tasks`, `.concorde/history`, `.concorde/unbound` or `.concorde/locks` directory
 - WHEN host code marks a unit of work as a span
 - THEN a new trace file for that work is created in the directory with mode 0600, without following a symbolic link
 
 ### scenario.checks.timing-invalid-directory — A refused timing directory receives nothing
 
-- GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` names a directory that is relative, missing, a symbolic link, not canonical, the working directory or inside it, or inside a `.concorde/status` or `.concorde/runs` directory
+- GIVEN no trace is open and `CONCORDE_DIAGNOSTIC_TIMING_DIR` names a directory that is relative, missing, a symbolic link, not canonical, the working directory or inside it, or inside a `.concorde/tasks`, `.concorde/history`, `.concorde/unbound` or `.concorde/locks` directory
 - WHEN host code marks a unit of work as a span
 - THEN nothing is written to that directory or to the working directory
 - AND one `CONCORDE_TIMING_INCOMPLETE` line is written to standard error

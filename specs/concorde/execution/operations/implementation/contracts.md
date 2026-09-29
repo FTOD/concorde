@@ -54,7 +54,7 @@ supplies as the Operation-specific part of its answer are its claims and are pas
     "pending_cleared": ["src/concorde/issues/severity.py"],
     "rounds": 2,
     "checks": [
-      {"check": "check.issues.store", "module": "module.issues", "outcome": "passed", "exit_code": 0, "log": ".concorde/runs/r-0001/checks/check.issues.store.log"}
+      {"check": "check.issues.store", "module": "module.issues", "outcome": "passed", "exit_code": 0, "log": "/home/dev/shop/.concorde/tasks/severity/workspace/runs/r-0001/checks/check.issues.store/output.log"}
     ],
     "addresses": ["scenario.issues.report-severity"]
   }
@@ -113,7 +113,7 @@ supplies as the Operation-specific part of its answer are its claims and are pas
     "focus": null,
     "passed": false,
     "checks": [
-      {"check": "check.issues.store", "module": "module.issues", "outcome": "failed", "exit_code": 1, "log": ".concorde/runs/r-0002/checks/check.issues.store.log"}
+      {"check": "check.issues.store", "module": "module.issues", "outcome": "failed", "exit_code": 1, "log": "/home/dev/shop/.concorde/tasks/severity/workspace/runs/r-0002/checks/check.issues.store/output.log"}
     ],
     "summary": "One Issues check fails because a stored report drops its severity.",
     "failures": [

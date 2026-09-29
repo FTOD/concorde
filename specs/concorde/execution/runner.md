@@ -13,8 +13,8 @@ the [workspace binding contract](contracts.md#contract.execution.workspace-bindi
 ## Command lines
 
 ```text
-concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [operation arguments]
-concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [command arguments]
+concorde run <operation> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [--trace-at <folder>] [operation arguments]
+concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [--trace-at <folder>] [command arguments]
 ```
 
 - `<operation>` is a name from the [Operation catalog](../glossary.json#concept.operation-catalog);
@@ -35,6 +35,11 @@ concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--det
 - `--wait <seconds>` (default 0) is how long a bound run waits for a busy workspace's lock before
   it is refused with `workspace_busy`; a negative value is a command-line error. An unbound run
   takes no lock and ignores it.
+- `--trace-at <folder>` places the run's [trace node](../glossary.json#concept.trace-node) in that
+  folder instead of `runs/<run-id>/` of the workspace folder. It is how a
+  [workflow step](../glossary.json#concept.workflow-step) nests the run it starts inside its own
+  node. The folder must lie inside the binding's workspace folder and hold no `trace.json` yet;
+  otherwise, and for an unbound run, it is a command-line error.
 - Operation and command arguments are defined by the definition and parsed with the rest; an
   unknown argument is a command-line error.
 - Without `--detach`, standard output receives exactly the
@@ -48,27 +53,42 @@ concorde <command>       [--modules <id>[,<id>…]] [--input <run-id>]… [--det
 
 The runner reads `.concorde/workspace.json` at the root of the worktree it starts in:
 
-- When the file is absent, the run is **unbound**: its records directory is that worktree's own
-  `.concorde`, its workspace is null, it takes no lock, and it is admitted only when its
-  definition allows unbound runs; otherwise it is refused with `binding_required`. An admitted
-  unbound run works in its [unbound checkout](#unbound-checkout).
+- When the file is absent, the run is **unbound**: its trace node is `.concorde/unbound/<run-id>/`
+  of that worktree and its run lock lies under that worktree's `.concorde/locks/`, its workspace is
+  null, it takes no workspace lock, and it is admitted only when its definition allows unbound runs;
+  otherwise it is refused with `binding_required`. An admitted unbound run works in its
+  [unbound checkout](#unbound-checkout).
 - When the file is present, it must satisfy the binding contract and name as `root` the worktree
   it lies in; otherwise the run is refused with `binding_unreadable`, `binding_invalid` or
-  `binding_misplaced`, and its result is written in the worktree's own `.concorde`.
-- A bound run's records directory is the binding's `records`, and its run context gives every step
-  the workspace's name, goal, Modules, branch and base commit.
+  `binding_misplaced`, and it is recorded as an unbound run of the worktree would be.
+- A bound run's trace node lies in the binding's workspace folder `traces`, its locks under
+  `locks/` of the binding's `concorde`, and its run context gives every step the workspace's name,
+  goal, Modules, branch and base commit. A binding whose workspace folder does not exist is refused
+  with `binding_invalid`.
 
 The runner never writes the binding.
 
-## Run identity and directory
+## Run identity and trace node
 
 The runner creates the run identity `r-<YYYYMMDD>T<HHMMSS>-<name>-<8 hex digits>` from the UTC start
-time, the definition's name with `-` written as `_`, and random digits, and the run's directory
-`<records>/runs/<run-id>/`. The directory holds `result.json`, the run result exactly as printed,
-the run progress file, the logs of the checks the run ran, and for a
-[detached run](../glossary.json#concept.detached-run) the runner's output `host.out`. Workers keeps
-each worker launch's [run record](../glossary.json#concept.run-record) beside it, in the same
-[run store](../glossary.json#concept.run-store), and the result lists their identities.
+time, the definition's name with `-` written as `_`, and random digits, and the run's
+[trace node](../glossary.json#concept.trace-node): `runs/<run-id>/` of the workspace folder, the
+folder `--trace-at` names, or `.concorde/unbound/<run-id>/` for an unbound run. The folder holds
+`trace.json`, the run's node as [Tracing](../tracing/contracts.md#contract.tracing.node) defines it
+with the [run trace](contracts.md#contract.execution.run-trace) as content; `result.json`, the run
+result exactly as printed; the run progress file `status.json`; the nodes of the checks the run ran
+under `checks/`; the nodes of the worker runs it launched under `workers/`, each with its
+[run record](../glossary.json#concept.run-record); and for a
+[detached run](../glossary.json#concept.detached-run) the runner's output `host.out`. The result
+lists the worker runs' identities and names the run's own node as `trace` evidence.
+
+The runner writes `trace.json` when it has taken the run lock, before any other file of the run,
+with status `running` and the metadata it knows then, and again after `result.json`, with the run's
+end, its status (`ok`, `blocked` or `failed`) and outcome (the status, or `cancelled`), its duration,
+error, metadata, inputs as `input` references, the digests of its files, and the steps with their
+timings. Its metadata are the workspace, the Modules, the Operation or command, the base commit of a
+bound run and the `HEAD` it started on, or the commit an unbound run examined, the Concorde commit
+and the Protocol version the project binds.
 
 ## Runner
 
@@ -78,7 +98,7 @@ from the binding check to the execution, like a refusal, goes straight to the co
 
 ```d2 illustrative
 direction: down
-exit2: "exit 2: the reason on standard error, no result, no run directory"
+exit2: "exit 2: the reason on standard error, no result, no trace node"
 launcher: "Detaching command" {
   check: "check the command line; read the binding; create the run identity and directory"
   wait: "wait up to 60 s for the run progress file"
@@ -89,7 +109,7 @@ launcher: "Detaching command" {
   wait -> kill: runner ended or 60 s passed
 }
 runner: "Execution runner" {
-  parse: "parse: command line, definition, binding, records directory; run directory, run lock, run progress file"
+  parse: "parse: command line, definition, binding, node folder; run lock, trace.json, run progress file"
   binding: "binding check"
   lock: "lock: workspace lock (bound) or unbound checkout"
   admission: "admission: Modules, registry, inputs"
@@ -112,35 +132,35 @@ name; the number gives only the order, so that no row is confused with a step of
 
 | # | Name | What the runner does | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | parse | Parse the command line, look up the definition and read the workspace binding, which selects the records directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity and the run's directory, take its [run lock](#run-progress-file) and write its run progress file | malformed command line, unknown Operation or command, a directory outside Git (exit 2, the reason on standard error, no result, no directory) |
+| 1 | parse | Parse the command line, look up the definition and read the workspace binding, which selects the trace node's place and the locks directory (the worktree's own `.concorde` when the binding is absent or cannot be trusted); only then create the run identity and the run's node folder, take its [run lock](#run-progress-file), write its first `trace.json` and its run progress file | malformed command line, unknown Operation or command, a directory outside Git, a `--trace-at` folder outside the workspace folder (exit 2, the reason on standard error, no result, no folder) |
 | 2 | binding check | Refuse a binding that could not be read, breaks the binding contract or names another root | an unreadable, invalid or misplaced binding (`failed`) |
 | 3 | lock | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock), waiting for it up to `--wait` seconds (none by default); for an unbound run, refuse a definition that needs a binding, then create the [unbound checkout](#unbound-checkout) and work in it from here on | `workspace_busy`, `binding_required`, `checkout_unavailable` (`failed`) |
 | 4 | admission | Admit the run: settle the Modules, leaving out with `removed-module` evidence each binding Module the workspace no longer registers; check the named Modules against the workspace's registry unless the definition diagnoses the Specs itself; admit the inputs | `modules_removed`, `unknown_module`, `specs_unloadable`, `input_not_admissible` (`failed`) |
 | 5 | execution | Execute the definition's steps in order | a step stops the run with a status |
 | 6 | composition | Remove an unbound run's checkout, then compose the run result from the step outcomes and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
-| 7 | finish | Write `result.json`, mark the run progress file finished, release the locks it holds, print the result and exit | — |
+| 7 | finish | Write `result.json`, mark the run progress file finished, write the final `trace.json`, release the workspace lock, remove and release the run lock, print the result and exit | — |
 
 - Each of the definition's steps returns either "continue", with any output and evidence it
   produced, or "stop", with a status, a summary and evidence. Steps of one run share the run context: the workspace binding, the
   worktree the run works in, for an unbound run also the worktree it started in and the commit it
-  examines, the records directory, the Modules, the admitted inputs, the output so far, a state the
+  examines, the run's node folder, the Modules, the admitted inputs, the output so far, a state the
   definition owns, and the run record of the latest worker launch. The runner never skips, repeats
   or reorders steps; any repetition, such as [resume rounds](../glossary.json#concept.resume-round),
   happens inside one step.
 - An exception raised by a step becomes a `failed` result with `host-error` evidence naming the
   step, the error type and message; the cause of its error is a `component` link with the
   exception's type, message and command output, where it was raised and the path of the full
-  traceback in the run's directory.
+  traceback in the run's node folder.
 - On `SIGINT` or `SIGTERM` the runner stops its running step, ends every worker process the run
   started through Workers and finishes with a `failed` result with `cancelled` evidence naming the
   signal. Its `cancelled` link names every worker run the run started, with evidence of kind
-  `worker-run` pointing at each run's record and
+  `worker-run` pointing at each worker run's node, with its
   [progress file](../glossary.json#concept.progress-file), and `worker_runs` lists them: the
   runner learns each worker run's identity when the worker run starts, not when it returns.
 - The composition and the finish run whatever happened before them. A refusal in the binding
   check, the lock or the admission still writes and prints a result, with the refusal code as
   `refused` evidence and an error whose cause is the refusal of the workspace binding, the
-  unbound checkout or the run store with its message, such as Git's output for a checkout it
+  unbound checkout or the [run store](../glossary.json#concept.run-store) with its message, such as Git's output for a checkout it
   refused, the run holding the lock of a busy workspace or the registered Modules for an unknown
   one.
 - The result is written while the lock is still held, so a run admitted to the workspace after
@@ -174,7 +194,7 @@ here called its origin:
    ignore is not linked, with `environment-not-linked` evidence, since the commit holds it.
 4. From here on the run context's worktree is the checkout: the Specs, the grant, the workers,
    Workers' audit and the steps all work there. The run context keeps the origin, whose `.concorde`
-   remains the records directory and whose
+   keeps the run's trace node and run lock and whose
    [worker configuration](../glossary.json#concept.worker-configuration) chooses the
    workers' backends and models, and the commit, which the result names as `commit` and the run's
    error link as `… (unbound, <origin> at <commit>)`. `checkout` evidence names the commit and the
@@ -195,11 +215,12 @@ never falls back to working in the origin.
 ## Detached runs
 
 With `--detach` the command checks the command line (a malformed one starts nothing, with exit
-status 2), reads the workspace binding to select the records directory as the parse does, chooses the
-run identity, creates the run's directory and starts the runner as a process of its own, in a new
-session, handing it the identity, so that the runner records in the directory the command
-announces. It then waits until the run progress file exists and prints
-`{run_id, kind, name, host_pid, progress, result}` with exit status 0. A runner that ends or has
+status 2), reads the workspace binding to select the node folder as the parse does, chooses the
+run identity, creates the run's node folder and starts the runner as a process of its own, in a new
+session, handing it the identity and the folder, so that the runner records in the folder the
+command announces and writes its output to `host.out` there. It then waits until the run progress
+file exists and prints `{run_id, kind, name, host_pid, trace, progress, result}`, `trace` being the
+node folder, with exit status 0. A runner that ends or has
 not written its run progress file within the announcement wait, 60 seconds from its start, is
 killed, with its process group, and the command prints the same fields with an `error` link
 `detach_failed` naming the end of the runner's output, with exit status 1, so an unannounced runner
@@ -207,17 +228,19 @@ never starts its run later.
 
 ## Run progress file
 
-Before it writes anything in the run's directory, the runner takes the [run
-lock](../glossary.json#concept.run-lock): an exclusive `flock` on the run's directory itself, held
-until after the result and the finished progress file are written, through a descriptor the
-processes it starts do not inherit, so a worker or check that outlives the runner never keeps its
-run alive. An observer tells a running run from a dead one by
-trying the lock for an instant, shared and without waiting (`runner_alive`); the kernel's lock table
-`/proc/locks` shows the same, whichever PID namespace holds it. A run without `result.json` whose
-lock nobody holds is `lost`.
+Before it writes anything in the run's node folder, apart from `host.out` of a detached run, the
+runner takes the [run lock](../glossary.json#concept.run-lock): an exclusive `flock` on the file
+`locks/runs/<run-id>.lock` of the `.concorde` that holds its locks, which it creates, held until
+after the result, the finished progress file and the final `trace.json` are written, through a
+descriptor the processes it starts do not inherit, so a worker or check that outlives the runner
+never keeps its run alive. The runner removes the file, still holding it, as it exits; the file of a
+runner killed with `SIGKILL` stays but is not held. An observer tells a running run from a dead one
+by the file's existence and by trying the lock for an instant, shared and without waiting
+(`runner_alive`); the kernel's lock table `/proc/locks` shows the same for the file's inode,
+whichever PID namespace holds it. A run without `result.json` whose lock nobody holds is `lost`.
 
-The runner writes `<records>/runs/<run-id>/status.json` atomically when the run's directory is
-created, before each step and when the result is written:
+The runner writes `status.json` in the run's node folder atomically when the folder is created,
+before each step and when the result is written:
 
 | Field | Content |
 | --- | --- |

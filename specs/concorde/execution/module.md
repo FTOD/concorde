@@ -8,7 +8,8 @@ that work, the Operations that combine AI workers with host logic, the execution
 deterministic work such as deciding readiness and delivering, the workers themselves and Check
 execution, which runs the project's checks for them. Everything in it learns what it works on from
 one place, the [workspace binding](../glossary.json#concept.workspace-binding) in the worktree it
-starts in, and records what it did in its own [run store](../glossary.json#concept.run-store).
+starts in, and records what it did as [trace nodes](../glossary.json#concept.trace-node) in the
+workspace folder that binding names, its [run store](../glossary.json#concept.run-store).
 Whoever prepares a workspace and reads those records relies on it: in Concorde that is the task
 level of [Coordination](../coordination/module.md), which binds each task worktree and derives the
 task's state from what Execution recorded.
@@ -26,10 +27,13 @@ started a run, or the workflow that orders runs, decides what runs next.
 prepares it writes `.concorde/workspace.json` at the worktree's root, as the
 [binding contract](contracts.md#contract.execution.workspace-binding) defines: the workspace's
 name, the absolute root it lies in, its goal, the Modules it works on, the branch and base commit it
-works from, and the records directory where its runs are kept. In Concorde,
-[`concorde task open`](../coordination/tasks/module.md) writes it into each new task worktree,
-naming the workspace after the task and pointing the records directory at the primary worktree's
-`.concorde`, so that the runs of every task are found in one place. Git ignores the file. Execution
+works from, the **workspace folder** where its runs are traced and the `.concorde` directory whose
+`locks/` holds its locks. In Concorde, [`concorde task open`](../coordination/tasks/module.md) writes
+it into each new task worktree, naming the workspace after the task and placing the workspace folder
+inside the task's own folder of the primary worktree, `.concorde/tasks/<task>/workspace/`, so that a
+task's [trace](../glossary.json#concept.trace) holds every run of its workspace. Execution never
+learns that the folder belongs to a task: another preparer may place it anywhere. Git ignores the
+file. Execution
 reads it and never writes it; a binding that breaks its contract, or that names a root other than
 the worktree it lies in, is refused rather than trusted, since a copied binding would bind the
 wrong workspace.
@@ -66,8 +70,8 @@ workspace without naming it, but is not itself a run: it starts and awaits runs 
 A run of `implement` in a task worktree, for example, reads the binding (workspace `retry`,
 [Module](../glossary.json#concept.module) `module.http`, base `4be1…`), takes the lock of `retry`,
 computes the implement grant for `module.http` from the worktree's Specs, launches one worker
-through [Workers](workers/module.md), audits and checks its change, and prints and saves its run
-result as `<records>/runs/<run-id>/result.json`. The command exits 0 for `ok`, 1 for `blocked` or
+through [Workers](workers/module.md), audits and checks its change, and prints its run result and
+saves it in the run's trace node, `<workspace folder>/runs/<run-id>/result.json`. The command exits 0 for `ok`, 1 for `blocked` or
 `failed`, and 2 for a malformed command line, which starts nothing.
 
 <a id="concept.run-result"></a>
@@ -99,8 +103,9 @@ many seconds. A caller that wants a `delivery` after an `implement` thus asks on
 the lock. The lock is a file lock held by the runner's process, so
 the kernel releases it however the run ends. The runner writes a run's result before it releases
 the lock, so a run admitted after it always finds that result written; a result on disk, though,
-does not mean the lock is free yet. The lock lies in the run store, not in the workspace, so a run
-that only reads the workspace leaves it untouched.
+does not mean the lock is free yet. The lock is a file under `locks/workspaces/` of the binding's
+`.concorde`, apart from every record and outside the workspace, so a run that only reads the
+workspace leaves it untouched.
 
 <a id="concept.unbound-run"></a>
 
@@ -121,7 +126,8 @@ read, and Workers audits, that checkout; the result's `commit` names the commit 
 merge tasks into the primary worktree while such a run lasts, and a merge there can therefore
 neither change what the run reads nor make a worker's audit fail. What the run examines is the
 commit, not uncommitted changes of the worktree it started in. The run is still recorded in that
-worktree's run store and uses its [worker configuration](../glossary.json#concept.worker-configuration);
+worktree's `.concorde/unbound/<run-id>/`, a trace of its own, and uses its
+[worker configuration](../glossary.json#concept.worker-configuration);
 the environments the project configuration names as runtime paths and Git ignores, such as `.venv`
 and `node_modules`, are linked from it into the checkout, so the checks a review runs there find
 them, and submodules it has checked out are checked out in the checkout too. However the run ends,
@@ -138,23 +144,26 @@ run progress file names what runs, in which workspace and step, with the runner'
 identifier, and every worker run it launches records the run's identity, so an observer such as the
 main session's [run view](../glossary.json#concept.run-view) follows a run and its worker without
 asking the runner. Whether the runner still lives is told by its
-**[run lock](../glossary.json#concept.run-lock)**, a file lock on the run's directory that the
-runner holds from before its first run progress file until after its result, and that the kernel
-releases however the runner ends: a run without a result whose run lock nobody holds ended without
-writing one. No observer decides it by the recorded process identifier, which is only meaningful in
+**[run lock](../glossary.json#concept.run-lock)**, the file `locks/runs/<run-id>.lock` that the
+runner locks from before its first run progress file until after its result and removes as it exits,
+and that the kernel releases however the runner ends: a run without a result whose run lock nobody
+holds ended without writing one. No observer decides it by the recorded process identifier, which is only meaningful in
 the PID namespace the runner ran in: a runner started in a sandboxed shell may record 2, a number
 that names an unrelated, living process on the host.
 
 <a id="concept.run-store"></a>
 
-**Where runs are kept.** The **run store** is the `runs/` directory of the records directory: each
-run's directory with its [run progress file](../glossary.json#concept.run-progress-file) and
-result, the [run records](../glossary.json#concept.run-record) of the workers it launched, and
-[Workflows](workflows/module.md)' own records under `runs/workflows/`. A bound run records in the
-directory its binding names; an unbound run in the `.concorde` of the worktree it started in, never
-in its checkout. The store is ignored
-by Git. Whoever prepared a workspace reads its runs there, by the workspace's name, to know what
-happened in it.
+**Where runs are kept.** Every run is a [trace node](../glossary.json#concept.trace-node) of
+[Tracing](../tracing/module.md): a folder with its `trace.json`, its
+[run progress file](../glossary.json#concept.run-progress-file), its result and, below it, the nodes
+of the checks it ran and of the worker runs it launched, each worker run with its
+[run record](../glossary.json#concept.run-record) and rounds. The **run store** is where those
+folders lie: a run started directly lies in `runs/<run-id>/` of the workspace folder, a run a
+[workflow step](../glossary.json#concept.workflow-step) started inside that step's node of
+[Workflows](workflows/module.md)' workflow node in the same folder, and an unbound run in
+`.concorde/unbound/<run-id>/` of the worktree it started in, never in its checkout. Git ignores all
+of them. Whoever prepared a workspace reads its runs in its workspace folder to know what happened
+in it, and `concorde trace` finds any run by its identity.
 
 ## Design
 
@@ -169,8 +178,8 @@ someone prepared, not only in a task.
 ### Why a binding file
 
 A run needs five facts about its workspace: which Modules it works on, which branch it may commit
-on, which commit its changes are measured from, the goal a worker is briefed with, and where to
-record. Asking every caller to pass them on every command line would make each command long and
+on, which commit its changes are measured from, the goal a worker is briefed with, and where its
+traces and locks go. Asking every caller to pass them on every command line would make each command long and
 easy to get wrong, and would let two runs in the same workspace disagree on its base. Asking the
 task store for them would tie the execution core to tasks. A file in the workspace, written once
 when the workspace is prepared, gives every run the same facts from where it already is, and
@@ -180,7 +189,10 @@ Concorde state so that it never enters a commit.
 
 Some state is deliberately not in the binding. The binding never records what a run did: which
 runs happened, whether the workspace was delivered, which workflow runs in it. Those facts are the
-records themselves, read where they are, so there is no second copy that could disagree.
+traces themselves, read where they are, so there is no second copy that could disagree. The binding
+names the workspace folder rather than letting Execution derive it, so that the preparer decides
+where a workspace's traces belong; Coordination places them inside the task, which is how a task's
+trace reaches its runs without anything in Execution naming the task.
 
 ### Why commands are runs
 
@@ -216,12 +228,12 @@ from its own repository at the commit the checkout records.
 <a id="concept.execution-runner"></a><a id="realization.execution.runner"></a>
 
 The **Execution runner** runs one run per process. It parses the command line, reads the binding,
-takes the workspace lock for a bound run or checks out the worktree's `HEAD` for an unbound one,
+creates the run's trace node and takes its run lock, takes the workspace lock for a bound run or checks out the worktree's `HEAD` for an unbound one,
 checks the Modules and inputs, runs the definition's steps in their declared order until one stops
 the run, removes an unbound run's checkout, composes the run result, checks it against
 its contract and, when it is `ok`, the definition's output contract, and writes it while it still
-holds the lock, so that whoever sees the result never finds the workspace busy with that run. A
-refusal before the steps, a step that raises, a signal or an invalid result each still end in a
+holds the lock, so that whoever sees the result never finds the workspace busy with that run, and
+writes its trace node again with its end. A refusal before the steps, a step that raises, a signal or an invalid result each still end in a
 written result with the runner's link on top. Its exact behaviour is in [How a run is executed](runner.md).
 
 The **Runner and run store** realization binds the binding reader, the run store, the unbound
@@ -321,6 +333,15 @@ registered and leave out the binding's Modules the workspace no longer registers
 relies on it refusing Specs that cannot be loaded rather than reading them in part; a run then ends
 `failed` with `specs_unloadable`, unless its definition diagnoses the Specs itself, as
 `task-validation` and `delivery` do.
+
+<a id="uses-tracing"></a>
+
+**Tracing** gives every run its trace node's shape and place and every lock its file: the runner
+writes the run's node at its start and its end through Tracing's library, takes the run lock and the
+workspace lock under `locks/`, and reports its errors in the error contract. Execution relies on the
+[node contract](../tracing/contracts.md#contract.tracing.node), the
+[layout](../tracing/contracts.md#layout) and the [locks](../tracing/contracts.md#locks), and
+records nothing that Tracing's node contract refuses.
 
 Execution relies on no Module of the upper half. The task level of Coordination uses it: it writes
 the binding and reads the run store and the delivery commits, as its own Spec explains.

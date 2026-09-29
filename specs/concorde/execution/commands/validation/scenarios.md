@@ -105,7 +105,7 @@ readiness is defined in the [contracts](contracts.md).
 - GIVEN a worktree without a [workspace binding](../../../glossary.json#concept.workspace-binding), such as the primary worktree
 - WHEN `concorde task-validation` is run there
 - THEN no step runs and the result is `failed`, with `workspace` and `output` null and a `refused` link whose cause is `binding_required`, reason `scope`
-- AND the result is saved in that worktree's own [run store](../../../glossary.json#concept.run-store)
+- AND the result is saved in that worktree's own [run store](../../../glossary.json#concept.run-store), `.concorde/unbound/<run-id>/`
 
 ### scenario.validation.sandbox-unavailable — Checks cannot be bounded
 

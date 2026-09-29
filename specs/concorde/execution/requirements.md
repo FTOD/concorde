@@ -87,7 +87,7 @@ holds, at once or, with `--wait <seconds>`, once the lock is still held after th
 With `--wait <seconds>`, the runner SHALL wait for a busy workspace's lock inside its own process
 and start the run's steps as soon as the lock is free within that time.
 
-While it waits, its run progress file names the step `workspace-lock` and, in `waiting_for`, the
+While it waits, its run [progress file](../glossary.json#concept.progress-file) names the step `workspace-lock` and, in `waiting_for`, the
 run holding the lock.
 
 ### req.execution.unbound-read-only — Only a definition that allows it runs unbound
@@ -103,7 +103,7 @@ An unbound run SHALL NOT launch a worker whose grant would keep a writable path.
 
 The runner SHALL run every step of an admitted unbound run, and every worker it launches, in an
 [unbound checkout](../glossary.json#concept.unbound-checkout) of the commit at `HEAD` of the
-worktree the run started in, changing no file of that worktree outside its records directory and
+worktree the run started in, changing no file of that worktree outside its `.concorde/unbound/` and `.concorde/locks/` and
 not its index.
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
@@ -116,11 +116,21 @@ run's result.
 The result of an unbound run whose checkout was created SHALL name as `commit` the commit that
 checkout held.
 
-### req.execution.records-directory — Runs are recorded where the binding says
+### req.execution.trace-node — Every run is a trace node where the binding says
 
-The runner SHALL write every run's directory and result under `runs/` of the binding's records
-directory, or of the `.concorde` of the worktree it started in for an unbound run or a run whose
-binding it refused.
+The runner SHALL record every run as a [trace node](../glossary.json#concept.trace-node) in the
+binding's workspace folder, or in `.concorde/unbound/` of the worktree it started in for an unbound
+run or a run whose binding it refused, writing its `trace.json` before its first step and again
+after its result.
+
+The node lies in `runs/<run-id>/` of the workspace folder, or in the folder `--trace-at` names inside
+it, and every file of the run, its result, progress file, checks and worker runs, lies in it.
+
+### req.execution.locks-apart — A run's locks lie under the locks directory
+
+The runner SHALL take a run's [run lock](../glossary.json#concept.run-lock) and
+[workspace lock](../glossary.json#concept.workspace-lock) as files under `locks/` of the binding's
+`.concorde`, or of the `.concorde` of the worktree an unbound run started in, never inside a trace.
 
 ### req.execution.inputs-same-workspace — Inputs come from the same workspace
 

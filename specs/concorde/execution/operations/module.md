@@ -134,7 +134,7 @@ operations.operation -> checks: runs checks through
 <a id="uses-workers"></a>
 
 **Workers** launches every worker. A worker-backed step hands it the grant it froze, the brief, the
-worker id and the records directory, and Workers performs the rest of the
+worker id and the [trace node](../../glossary.json#concept.trace-node) folder of the run, and Workers performs the rest of the
 [standard worker sequence](../../glossary.json#concept.standard-worker-sequence) — settings,
 pending files, launch, audit, checks and resume rounds, run record — and returns the
 [worker result](../../glossary.json#concept.worker-result) with the evidence it gathered. The

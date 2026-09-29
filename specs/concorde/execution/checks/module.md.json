@@ -22,15 +22,19 @@
           "concept.registry",
           "concept.boundary-set"
         ]
-      }
-    ],
-    "includes": [
+      },
       {
-        "kind": "document",
-        "target": "document.tracing.contracts",
-        "reason": "the Framework's error contract, which this Module's errors follow"
+        "target": "module.tracing",
+        "meaning": "#uses-tracing",
+        "relies_on": [
+          "contract.tracing.node",
+          "contract.tracing.error",
+          "concept.trace-node",
+          "concept.error-chain"
+        ]
       }
     ],
+    "includes": [],
     "participates": []
   },
   "defines": [

@@ -323,14 +323,19 @@
           "relies_on": [
             "concept.operation-catalog"
           ]
+        },
+        {
+          "target": "module.tracing",
+          "meaning": "#uses-tracing",
+          "relies_on": [
+            "contract.tracing.node",
+            "contract.tracing.error",
+            "concept.trace-node",
+            "concept.error-chain"
+          ]
         }
       ],
       "includes": [
-        {
-          "kind": "document",
-          "target": "document.tracing.contracts",
-          "reason": "the Framework's error contract, which this Module's errors follow"
-        },
         {
           "kind": "external",
           "target": "references/claude-code/",
@@ -373,15 +378,19 @@
             "concept.registry",
             "concept.boundary-set"
           ]
-        }
-      ],
-      "includes": [
+        },
         {
-          "kind": "document",
-          "target": "document.tracing.contracts",
-          "reason": "the Framework's error contract, which this Module's errors follow"
+          "target": "module.tracing",
+          "meaning": "#uses-tracing",
+          "relies_on": [
+            "contract.tracing.node",
+            "contract.tracing.error",
+            "concept.trace-node",
+            "concept.error-chain"
+          ]
         }
       ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1096,15 +1105,19 @@
           "relies_on": [
             "concept.execution-command"
           ]
-        }
-      ],
-      "includes": [
+        },
         {
-          "kind": "document",
-          "target": "document.tracing.contracts",
-          "reason": "the Framework's error contract, whose workflow level this Module writes"
+          "target": "module.tracing",
+          "meaning": "#uses-tracing",
+          "relies_on": [
+            "contract.tracing.node",
+            "contract.tracing.error",
+            "concept.trace-node",
+            "concept.error-chain"
+          ]
         }
       ],
+      "includes": [],
       "participates": []
     },
     {
@@ -1551,15 +1564,19 @@
         {
           "target": "module.spec",
           "meaning": "#uses-spec"
-        }
-      ],
-      "includes": [
+        },
         {
-          "kind": "document",
-          "target": "document.tracing.contracts",
-          "reason": "the Framework's error contract, which every run's errors follow"
+          "target": "module.tracing",
+          "meaning": "#uses-tracing",
+          "relies_on": [
+            "contract.tracing.node",
+            "contract.tracing.error",
+            "concept.trace-node",
+            "concept.error-chain"
+          ]
         }
       ],
+      "includes": [],
       "participates": []
     },
     {

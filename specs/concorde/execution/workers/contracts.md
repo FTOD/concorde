@@ -1,6 +1,7 @@
 # Workers contracts
 
-The exact answer every worker ends with, and the worker configuration file.
+The exact answer every worker ends with, the worker configuration file, and what a worker run and
+each of its rounds retain in their trace nodes.
 
 ## Worker result
 
@@ -393,6 +394,263 @@ The file the [worker configuration](../../glossary.json#concept.worker-configura
       "node_modules",
       "docsite/node_modules"
     ]
+  }
+}
+```
+
+## Worker run trace
+
+Every worker run is a [trace node](../../glossary.json#concept.trace-node) of kind `worker-run`, and each of
+its rounds one of kind `worker-round` below it, as [Tracing](../../tracing/contracts.md#contract.tracing.node)
+defines them; their contents are these values.
+
+```concorde-contract
+{
+  "id": "contract.workers.worker-run-trace",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "task_type",
+      "backend_source",
+      "tools",
+      "transcript",
+      "worker_result",
+      "pending_created",
+      "pending_removed",
+      "deleted",
+      "deletions_refused",
+      "rounds"
+    ],
+    "properties": {
+      "task_type": {
+        "type": "string",
+        "minLength": 1
+      },
+      "backend_source": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "minLength": 1
+          }
+        ]
+      },
+      "tools": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      },
+      "transcript": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          }
+        ]
+      },
+      "worker_result": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      },
+      "pending_created": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "pending_removed": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "deleted": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "deletions_refused": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "rounds": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  },
+  "semantics": "The data of the typed value concorde-worker-run-trace, the content of a worker run's trace node, which is its run record. task_type is the worker's task type; backend_source says what chose the backend (a worker configuration entry, or null when the default applied); tools is the tool set the worker was given, or null when the run was refused before a backend was prepared. transcript is the path, relative to the node's folder, of the transcript the host moved there from the runtime directory once the worker ended (transcript.jsonl), null when no session existed. worker_result is the last worker result verbatim, a claim, or null. pending_created lists the pending paths of the grant the host pre-created, pending_removed those it removed again because the worker left them empty, deleted the proposed deletions it performed and deletions_refused those it refused. rounds is how many rounds began; each is a worker-round node below this one. The worker run's identity, times, status, outcome, error (Workers' link), its metadata (the Modules, the Operation and worker id it was launched for, task type, backend, model and reasoning level as configured, context identity and the grant, brief and settings digests) and its files (status.json, grant.json, brief.md, transcript.jsonl) are the uniform fields of its trace node. A behaviour or field change increments the version.",
+  "example": {
+    "task_type": "implement",
+    "backend_source": "operations.implement.default",
+    "tools": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash"
+    ],
+    "transcript": "transcript.jsonl",
+    "worker_result": {
+      "status": "ok",
+      "summary": "Retry limited to three attempts.",
+      "error": null,
+      "proposed_deletions": [],
+      "output": {}
+    },
+    "pending_created": [],
+    "pending_removed": [],
+    "deleted": [],
+    "deletions_refused": [],
+    "rounds": 2
+  }
+}
+```
+
+```concorde-contract
+{
+  "id": "contract.workers.worker-round-trace",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "round",
+      "prompt",
+      "session",
+      "exit",
+      "audit",
+      "checks",
+      "validation",
+      "agent"
+    ],
+    "properties": {
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "prompt": {
+        "enum": [
+          "initial",
+          "check_failures",
+          "validation_failures"
+        ]
+      },
+      "session": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "minLength": 1
+          }
+        ]
+      },
+      "exit": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "integer"
+          }
+        ]
+      },
+      "audit": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      },
+      "checks": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "validation": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "agent": {
+        "type": "object"
+      }
+    }
+  },
+  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial), the failing checks (check_failures) or the caller's validation (validation_failures). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the verdict of the host's audit after the round (changed paths and violations) or null when the round ended before it, checks the check results of the round in Check execution's shape with their logs as paths relative to this node's folder, and validation the outcome of the caller's validation (clean, the text to repair, or why it did not run), null when none ran. agent is what the agent program reported about the round, as its backend reads it: Claude Code's subtype, error flag, turn count and cost, or pi's last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log and its checks are check nodes below it. A behaviour or field change increments the version.",
+  "example": {
+    "round": 1,
+    "prompt": "initial",
+    "session": "5d7c9a8e-1f2b-4c3d-9e0f-a1b2c3d4e5f6",
+    "exit": 0,
+    "audit": {
+      "changed": [
+        "src/http/retry.py"
+      ],
+      "violations": []
+    },
+    "checks": [
+      {
+        "check_id": "check.http.tests",
+        "module": "module.http",
+        "status": "failed",
+        "exit_code": 1,
+        "source_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "log": "checks/check.http.tests/output.log",
+        "log_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      }
+    ],
+    "validation": null,
+    "agent": {
+      "claude": {
+        "subtype": "success",
+        "is_error": false,
+        "num_turns": 14,
+        "total_cost_usd": 0.41
+      }
+    }
   }
 }
 ```

@@ -200,7 +200,7 @@ The bookkeeping command reports a `TypedDataError` as `invalid_issue`, and a `sy
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
 | `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
 
-Every write runs under the exclusive lock `.concorde/runs/issues.lock` of the worktree `root` names,
+Every write runs under the exclusive lock `.concorde/locks/issues.lock` of the worktree `root` names,
 which serializes the writes into that worktree; writes into different worktrees touch different
 files and take different locks. It checks the file's previous digest, publishes a staged file
 through a [file transaction](../glossary.json#concept.file-transaction), and syncs the directory

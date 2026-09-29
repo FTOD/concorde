@@ -12,7 +12,8 @@ run.
 
 ## Worker settings
 
-On the Claude Code backend `control/settings.json` has this shape; paths are absolute:
+On the Claude Code backend the [runtime directory](../glossary.json#concept.runtime-directory)'s `control/settings.json` has this shape; paths are
+absolute, `<runtime>` being the runtime directory:
 
 ```json
 {
@@ -22,16 +23,16 @@ On the Claude Code backend `control/settings.json` has this shape; paths are abs
   "hooks": {
     "PreToolUse": [
       {"matcher": "Edit|Write|MultiEdit|NotebookEdit",
-       "hooks": [{"type": "command", "command": "<python> <run>/control/write_hook.py"}]}
+       "hooks": [{"type": "command", "command": "<python> <runtime>/control/write_hook.py"}]}
     ]
   },
   "sandbox": {
     "enabled": true,
     "allowUnsandboxedCommands": false,
     "filesystem": {
-      "denyRead": ["<worktree>", "<user home>", "<run>/control", "<run>/config"],
-      "allowRead": ["<each ro and rw path>", "<runtime paths>", "<run>/work", "<run>/home", "<TMPDIR>"],
-      "allowWrite": ["<each rw path>", "<run>/work", "<run>/home", "<TMPDIR>"]
+      "denyRead": ["<worktree>", "<user home>", "<runtime>/control", "<runtime>/config"],
+      "allowRead": ["<each ro and rw path>", "<runtime paths>", "<runtime>/work", "<runtime>/home", "<runtime>/tmp"],
+      "allowWrite": ["<each rw path>", "<runtime>/work", "<runtime>/home", "<runtime>/tmp"]
     },
     "network": {"allowedDomains": [], "strictAllowlist": true}
   }
@@ -54,8 +55,8 @@ directories. They are generated from the grant and the file tree:
 | a task-worktree directory with no `ro` or `rw` path below it | one `Read` and one `Edit` rule on `<dir>/**` instead of rules per file |
 | a directory covered by a `ro` directory entry with no `rw` path below it | one `Edit` rule on `<dir>/**` |
 | the task worktree's `.git` | `Read` and `Edit` on the path and below |
-| inside the user's home, every entry that leads neither to the task worktree, to the run's `work/` or `home/`, nor to a runtime path | `Read` and `Edit` on the entry and below; a home that holds none of them is denied as a whole |
-| `<run>/control/` and `<run>/config/` | `Read` and `Edit` on the path and below |
+| inside the user's home, every entry that leads neither to the task worktree, to the runtime directory's `work/` or `home/`, nor to a runtime path | `Read` and `Edit` on the entry and below; a home that holds none of them is denied as a whole |
+| `<runtime>/control/` and `<runtime>/config/` | `Read` and `Edit` on the path and below |
 
 The home rule hides other projects, other task worktrees, the primary worktree's `.git` and other
 runs, and `~/.claude`. Paths below a runtime path are left alone. Glob and Grep are governed by the
@@ -66,7 +67,7 @@ such a file itself, since it writes only `rw` paths.
 
 ### Write hook
 
-The hook is `write_hook.py` copied into the run's `control/` with the task worktree and the grant's
+The hook is `write_hook.py` copied into the runtime directory's `control/` with the task worktree and the grant's
 `rw`, `ro` and `names` lists embedded, generated from the same grant as the deny rules. It receives
 Claude Code's PreToolUse JSON on standard input and resolves `tool_input.file_path` to an absolute
 path without following a final symbolic link. The rows are tried from the top and the first that
@@ -105,16 +106,18 @@ whatever its task type. WebFetch, WebSearch, the agent tool and notebook editing
 
 ## Task-session settings
 
-A Claude Code task session's settings, `.concorde/tasks/<task>.session/settings.json`, hold the
+A Claude Code task session's settings, `.concorde/tasks/<task>/runtime/settings.json`, hold the
 task-session write hook and the Bash sandbox of its
 [session boundary](../glossary.json#concept.session-boundary):
 
 - a PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit, `session_hook.py` copied beside the
   settings with the task worktree and [decision log](../glossary.json#concept.decision-log)
-  embedded, which allows a path inside the task worktree or the decision log and denies any other
-  with a reason naming the task worktree; any failure denies;
+  embedded, which allows a path inside the task worktree, or the decision log while its folder
+  exists, and denies any other with a reason naming the task worktree, or naming the closed task
+  for the decision log of a task whose folder has moved to the history; any failure denies;
 - the sandbox enabled, with sandboxed Bash commands approved without asking and unsandboxed
   commands disabled, `allowWrite` the task worktree, the
-  repository's Git directory, the primary worktree's `.concorde/runs/` and `.concorde/tasks/`, and
+  repository's Git directory, the task's folder `.concorde/tasks/<task>/` and `.concorde/locks/` of
+  the primary worktree, and
   the user's package caches, and the network open to every host (`allowedDomains` is `*`);
 - no deny rules: reads stay open.

@@ -9,7 +9,9 @@ such as describing existing code in Specs, and handles their results and
 once and the build renders it into a Claude Code workflow and a pi-subagents workflow. Whoever works
 a workspace, in Concorde the task level inside a task worktree, starts the workflow there; it runs
 Operations and execution commands one at a time, records its steps in its own
-[workflow record](../../glossary.json#concept.workflow-record) in the run store, and returns one
+[workflow record](../../glossary.json#concept.workflow-record), the
+[trace node](../../glossary.json#concept.trace-node) of the workflow in the workspace folder, with
+the runs of its steps nested inside it, and returns one
 [workflow result](../../glossary.json#concept.workflow-result) with every step, decision,
 [open question](../../glossary.json#concept.open-question) and problem, preserving each problem's
 error chain. In interactive mode it stops where a decision is needed, so that whoever started it
@@ -59,7 +61,8 @@ workspace is ready, and, since it is, `delivery --adoption` makes the
 [delivery commit](../../glossary.json#concept.delivery-commit) on the task branch. Each run is a
 step with its own key, `survey`, `scaffold`, `describe:module.inventory`, `describe:module.checkout`,
 `describe:module.shop`, `spec_review`, `validate` and `delivery`, listed in the workspace's workflow
-record. The workflow ends with its report, saved beside that record as `reports/1.json` with the
+record, each a node `steps/<n>-<key>/` of the workflow's node with its run's node inside it. The
+workflow ends with its report, saved beside that record as `reports/1.json` with the
 Markdown rendering `reports/1.md`: status `ok`, every decision and open question the runs
 reported, the review's verdict and findings, the proposed checks and every step that
 did not end `ok` with its error chain. The task level copies the decisions into the task's decision
@@ -139,15 +142,20 @@ concorde workflow step --stdin
 The step's key is the base key, followed by `#` and the generation label when `--restart` names one,
 and with `--answers` by `@` and the first eight hexadecimal digits of the SHA-256 of the answers
 list in canonical JSON (keys sorted, no whitespace), so a restarted or answered rerun is a new step
-while the same label and answers find the same step again. Holding the workspace's **step lock**,
-the lock on its workflow record that only the step and report commands take and that is distinct
-from the [workspace lock](../../glossary.json#concept.workspace-lock) a run holds, the command looks
+while the same label and answers find the same step again. Holding the workspace's **workflow lock**,
+`locks/workflows/<workspace>.lock` of the binding's `.concorde`, which only the step and report
+commands take and which is distinct from the [workspace lock](../../glossary.json#concept.workspace-lock)
+a run holds, the command looks
 the key up among the **current steps** of the workspace's workflow record, those no later rerun has
-superseded. When it is not there, it starts the run detached with the workspace's own `concorde`:
+superseded. When it is not there, it creates the step's node `steps/<n>-<key>/`, `<n>` counting every
+step the workflow recorded from 1 and the key written with every character other than a lower-case
+letter, digit, `.` or `-` as `_`, and starts the run detached with the workspace's own `concorde`,
+placing the run's node inside the step's with `--trace-at <step node>/run`:
 `concorde run <operation> … --detach` for an Operation and `concorde <command> … --detach` for an
 execution command such as `task-validation`, `delivery` or `scaffold`. For an answered step it adds
 `--answers` with the answers written next to the workflow record and `--input` naming the latest
-`ok` run of the same base key, whose questions the answers settle; then it records the key and run.
+`ok` run of the same base key, whose questions the answers settle; then it records the key and run
+in the workflow's node and writes the step's node.
 It waits for the result at most `--wait` seconds (default 540). Asked again, it finds the recorded
 run and only waits for it. `--retry` starts a new run for a key whose recorded run did not end `ok`.
 `--json` takes the same request as one [step request](contracts.md#contract.workflows.step-request),
@@ -181,14 +189,17 @@ runner's output.
 
 <a id="concept.workflow-record"></a>
 
-The **workflow record** of a workspace lies in the
-[run store](../../glossary.json#concept.run-store) of the records directory its binding names, at
-`runs/workflows/<workspace>/record.json`, beside the step lock, the answers passed to steps and the
-saved reports. It names the workflow once, at its first step, and lists every step with its key, the
-name of its Operation or command, its run or refusal, its mode and whether it was superseded, and
-every report. A workspace runs at most one workflow. Only the step and report commands write the
-record, and only while they hold the step lock. Whoever prepared the workspace finds it there by the
-workspace's name, next to the workspace's runs.
+The **workflow record** of a workspace is the `trace.json` of the workflow's
+[trace node](../../glossary.json#concept.trace-node), `workflow/` of the workspace folder its binding
+names, beside the answers passed to steps (`answers/`), the saved reports (`reports/`) and the step
+nodes (`steps/`). It names the workflow and its mode once, at its first step, and its content lists
+every step with its key, the name of its Operation or command, its run or refusal, its mode, its node
+and whether it was superseded, and every report. Each step's node records when the step started and,
+once a step or report command saw its run end, when it ended and how; the run's own node lies inside
+it. A workspace runs at most one workflow. Only the step and report commands write the record and the
+step nodes, and only while they hold the workflow lock. Whoever prepared the workspace finds the
+workflow in the workspace folder, next to the runs started directly, and a task's
+[trace](../../glossary.json#concept.trace) holds it.
 
 ### One procedure, two client workflows
 
@@ -251,7 +262,7 @@ not end `ok` as a problem with its error chain unchanged. Superseded steps are l
 their runs, and contribute nothing else. When the status is not `ok`, `error` is the workflow's own
 [error chain](../../glossary.json#concept.error-chain) link, level `workflow`, whose causes
 are the errors of the steps that stopped it, unchanged; for `awaiting_decision` its evidence names
-every pending point. The report is saved beside the workflow record as `reports/<n>.json`, with a
+every pending point. The report is saved in the workflow's node as `reports/<n>.json`, with a
 Markdown rendering `reports/<n>.md`, and listed in the record; it is written into no decision log.
 Decisions a no-ask workflow took without the developer belong in the decision log of whoever
 started it, so the task level copies them from the rendering into the task's log itself. When a
@@ -327,9 +338,22 @@ which alone start runs, keep the workflow record and read the run results.
 
 Workflows keeps its own record rather than writing into the task record, because the execution
 core knows no task: a workflow runs in any bound workspace, and the facts it records, which steps
-ran with which runs, are Execution's to keep, next to the runs they name. The task level reads the
+ran with which runs, are Execution's to keep, around the runs they name. A step nests its run
+because it gives the run its place before the run starts, as [Tracing](../../tracing/module.md)
+requires of every parent, so a workflow's trace holds its runs without any run knowing it is a
+step. The task level reads the
 record and the reports where they are. For the same reason the report is not appended to a
 decision log: the log is the task level's, and it decides what to copy into it.
+
+<a id="uses-tracing"></a>
+
+**Tracing** gives the workflow and each step the shape of a
+[trace node](../../glossary.json#concept.trace-node) and the workflow lock its file under
+`locks/workflows/`: the step and report commands write the workflow's and the steps' nodes through
+Tracing's library and create each step's node before starting its run inside it, which is how
+Tracing nests a run below its step. Workflows relies on the
+[node contract](../../tracing/contracts.md#contract.tracing.node) and the
+[locks](../../tracing/contracts.md#locks).
 
 <a id="uses-execution"></a>
 
@@ -519,7 +543,7 @@ workflows: Workflows {
 
 The **[Workflow](../../glossary.json#concept.workflow) commands** realization holds the workflow
 catalog (`catalog.py`: each workflow's name, description and script), the workflow record with its
-step lock, answers and saved reports (`store.py`), the `concorde workflow step` and `report`
+workflow lock, answers, saved reports and step nodes (`store.py`), the `concorde workflow step` and `report`
 commands and the step outcome, step request and workflow result schemas.
 
 <a id="realization.workflows.scripts"></a>

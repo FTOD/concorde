@@ -10,10 +10,11 @@ how a pi worker is launched with it.
 
 ## Permission extension
 
-`control/permission.ts` is the host's source of the extension with one JSON policy embedded. The
+The [runtime directory](../glossary.json#concept.runtime-directory)'s `control/permission.ts` is the host's source of the extension with one JSON
+policy embedded. The
 policy holds, as absolute paths, the task worktree, the grant's `rw`, `ro` and `names` lists, the
-host-only directories (`control/`, `config/`), the run's own directories (`work/`, `home/`,
-`TMPDIR`), the runtime paths, the user's real home directory, the sandbox's filesystem
+host-only directories (`control/`, `config/`), the worker's own directories (`work/`, `home/`,
+`tmp/`) of the runtime directory, the runtime paths, the user's real home directory, the sandbox's filesystem
 configuration, the programs `rg` and `fd`, the limits and the
 [worker result](../glossary.json#concept.worker-result) schema. The extension registers exactly
 these tools, replacing pi's built-ins of the same name:
@@ -52,8 +53,8 @@ path decides it:
 | a `rw` or `ro` path of the task worktree | allow | — |
 | a `names` path | deny | only the path's name is visible to this task |
 | another path in the task worktree | deny | the path is not in this task's grant |
-| `control/` or `config/` of the run | deny | the path belongs to the host |
-| the run's `work/`, `home/` or `TMPDIR`, or a runtime path | allow | — |
+| `control/` or `config/` of the runtime directory | deny | the path belongs to the host |
+| the runtime directory's `work/`, `home/` or `tmp/`, or a runtime path | allow | — |
 | another path inside the user's home | deny | the path is outside this task's boundary |
 | any other path | allow | — |
 
@@ -71,9 +72,9 @@ the same rows, decisions and reasons, including the `.git` row.
 `bash`, `grep`, `find` and `ls` run their command through `@anthropic-ai/sandbox-runtime`, the
 engine Claude Code's own sandbox uses. The extension initializes it once per process with no allowed
 network domain and a strict allowlist, and passes the filesystem configuration with every command:
-`denyRead` the task worktree, the user's home and the run's `control/` and `config/`; `allowRead`
-each `ro` and `rw` path, the runtime paths, the run's own directories and the sandbox-runtime's own
-helper programs; `allowWrite` each `rw` path and the run's own directories. These are the lists of
+`denyRead` the task worktree, the user's home and the runtime directory's `control/` and `config/`;
+`allowRead` each `ro` and `rw` path, the runtime paths, the worker's own directories and the sandbox-runtime's own
+helper programs; `allowWrite` each `rw` path and the worker's own directories. These are the lists of
 the Claude Code backend's [sandbox](claude-code.md#worker-settings), computed by the same code. The
 extension resets the sandbox when the session ends, so the process exits.
 
@@ -96,7 +97,7 @@ A grant with no writable path gets the first row's set whatever its task type, a
 
 ## Session boundary extension
 
-A pi task session's boundary is `.concorde/tasks/<task>.session/boundary.ts`, the source
+A pi task session's boundary is `.concorde/tasks/<task>/runtime/boundary.ts`, the source
 `pi_session.ts` with the session's policy embedded, beside `pi_session_policy.ts` and the
 `pi_policy.ts` it imports. The policy holds, as absolute paths, the task worktree, the decision log,
 the writable paths of the shell, the private temporary directory and the
@@ -105,7 +106,7 @@ intercepts pi's tools instead of replacing them, so the developer's own extensio
 
 | Tool | Behaviour |
 | --- | --- |
-| `write`, `edit` | Blocked, with a reason naming the task worktree, unless the path, resolved as pi resolves it, is inside the task worktree or is the [decision log](../glossary.json#concept.decision-log) |
+| `write`, `edit` | Blocked, with a reason naming the task worktree, unless the path, resolved as pi resolves it, is inside the task worktree or is the [decision log](../glossary.json#concept.decision-log) while its folder exists |
 | `bash` | Rewritten to run inside sandbox-runtime, writing only the policy's writable paths and the temporary directory, with every network host allowed |
 | `concorde_report` | Takes the [session report](../coordination/task-session/contracts.md#contract.task-session.report) and ends the round |
 

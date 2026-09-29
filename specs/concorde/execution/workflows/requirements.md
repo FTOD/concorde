@@ -43,7 +43,7 @@ was restarted with: asking for that label again starts a new run under the same 
 
 ### req.workflows.step-lock — A step is looked up, started and recorded at once
 
-`concorde workflow step` SHALL look a key up, start its run and record it while holding the workspace's step lock.
+`concorde workflow step` SHALL look a key up, start its run and record it while holding the workspace's workflow lock.
 
 ### req.workflows.supersede — A rerun supersedes what came after it
 

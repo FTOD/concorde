@@ -64,15 +64,19 @@
         "relies_on": [
           "concept.execution-command"
         ]
-      }
-    ],
-    "includes": [
+      },
       {
-        "kind": "document",
-        "target": "document.tracing.contracts",
-        "reason": "the Framework's error contract, whose workflow level this Module writes"
+        "target": "module.tracing",
+        "meaning": "#uses-tracing",
+        "relies_on": [
+          "contract.tracing.node",
+          "contract.tracing.error",
+          "concept.trace-node",
+          "concept.error-chain"
+        ]
       }
     ],
+    "includes": [],
     "participates": []
   },
   "defines": [

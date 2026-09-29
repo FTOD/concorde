@@ -133,10 +133,18 @@ failure, such as `stale_evidence` or a boundary that cannot be established, goes
 Module's own error link, made by `service_error` of [the check service](service.md), which the
 caller keeps as a cause under its link. The check result is
 owned here, next to the runner that produces it, so Workers, Validation and Delivery consume one
-record and never run checks another way. Logs go only to the directory the caller names, usually the calling run's directory in the
-[run store](../../glossary.json#concept.run-store); a check's output reaches a worker only as the
+record and never run checks another way. Every check it runs is a [trace node](../../glossary.json#concept.trace-node) with its log,
+placed only in the directory the caller names, the `checks/` of the calling run's or worker round's
+node in the [run store](../../glossary.json#concept.run-store); a check's output reaches a worker only as the
 bounded log tail Workers puts into a [resume round](../../glossary.json#concept.resume-round), and
 whether a worker needs more than its last 20,000 bytes is undecided.
+
+<a id="uses-tracing"></a>
+
+**Tracing** gives every check the shape of a [trace node](../../glossary.json#concept.trace-node),
+which the check service writes through Tracing's library before the command starts and after it
+ended, in the folder its caller names, and the error contract its failures follow. It relies on the
+[node contract](../../tracing/contracts.md#contract.tracing.node).
 
 <a id="uses-spec"></a>
 

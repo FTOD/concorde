@@ -37,7 +37,7 @@ check results from Modules the workspace did not touch. A run that decides a rea
 [run result](../../../glossary.json#concept.run-result) of kind `command`, with no worker, whose
 `output` is the readiness ([contract](contracts.md#contract.validation.readiness)), one per run,
 which it also saves as `readiness.json` in its
-[run directory](../../../glossary.json#concept.run-directory).
+[trace node](../../../glossary.json#concept.trace-node).
 
 <a id="concept.readiness"></a>
 
@@ -137,9 +137,9 @@ the runner does not load them before the steps and these diagnoses always reach 
 findings rather than as a refusal. Step 8 catches changes of the workspace during a check, which can
 take minutes.
 
-A `task-validation` run writes nothing in the workspace; its logs and readiness go to its run
-directory in the run store, under the binding's records directory; the run store, where the runner
-also holds the workspace lock, is the only place it writes, even when that directory lies inside the
+A `task-validation` run writes nothing in the workspace; its checks' nodes with their logs and its
+readiness go to its trace node in the run store, under the binding's workspace folder, and its locks
+under the binding's `locks/`; those are the only places it writes, even when they lie inside the
 worktree. Delivery reuses the readiness steps and a
 confirmation service that clears exactly the listed pending markers in one
 [file transaction](../../../glossary.json#concept.file-transaction), bound to the measured metadata
@@ -173,6 +173,6 @@ bound-workspace fixture Delivery's tests share.
   read-only, with the workspace as the project, and returns one
   [check result](../../../glossary.json#concept.check-result) per check. The readiness keeps
   each result's check identity as `check`, its Module, status and exit code, its measured
-  digest as `measured_digest` and its log path relative to the directory holding the
-  records directory; a timeout's exit code becomes null and the log digest is dropped. A boundary
+  digest as `measured_digest` and its log path relative to the run's trace node,
+  `checks/<check>/output.log`; a timeout's exit code becomes null and the log digest is dropped. A boundary
   it cannot establish fails the run.

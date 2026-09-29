@@ -64,7 +64,7 @@ added to the command line or diagnostic messages.
 
 ## Running checks
 
-`run_checks(worktree, *, modules=None, changed=None, log_directory, stage="work", kinds="all")` in
+`run_checks(worktree, *, modules=None, changed=None, trace_directory, stage="work", kinds="all")` in
 `src/concorde/harness/checks.py`:
 
 1. selects the Modules: those named in `modules`, or else every Module whose `ImplementationScope`
@@ -85,10 +85,13 @@ added to the command line or diagnostic messages.
    inputs, and `CHECK_POLICY`. For a selective check it is the digest of that `check_revision`
    together with the sorted selected Modules, the tests it selected and the digest of every file
    holding one of them;
-5. runs the check through `execute_check` with `worktree` as project root and the default boundary,
-   and writes `<stdout>\n<stderr>` to `<log_directory>/<check id>.log`, preceded for a selective
-   check by the tests it selected; when the boundary refused the command, the log holds what it
-   reported and the call fails with `check_sandbox_unavailable`;
+5. creates the check's [trace node](../../glossary.json#concept.trace-node)
+   `<trace_directory>/<check id>/`, writes its `trace.json` with status `running`, runs the check
+   through `execute_check` with `worktree` as project root and the default boundary, writes
+   `<stdout>\n<stderr>` to `output.log` of the node, preceded for a selective check by the tests it
+   selected, and writes `trace.json` again with the check's end; when the boundary refused the
+   command, the log holds what it reported, the node ends `failed` with the service's error and the
+   call fails with `check_sandbox_unavailable`;
 6. computes the measured digest again, selecting a selective check's tests anew, and fails the
    whole call with `stale_evidence` when it differs;
 7. returns one check result per check it ran, in configuration order.
@@ -106,8 +109,79 @@ is acceptable.
 | `status` | `passed` (exit code 0), `failed` (any other exit code) or `timeout` |
 | `exit_code` | The exit status, `-1` on timeout |
 | `source_digest` | The measured digest taken before the run |
-| `log` | The log's path |
+| `log` | The absolute path of the check node's `output.log` |
 | `log_digest` | The digest of the saved log |
+
+Every check the service runs is also a trace node of kind `check`, as
+[Tracing](../../tracing/contracts.md#contract.tracing.node) defines it, whose content is this value:
+
+```concorde-contract
+{
+  "id": "contract.checks.check-trace",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "status",
+      "exit_code",
+      "source_digest",
+      "argv",
+      "selected_tests"
+    ],
+    "properties": {
+      "status": {
+        "enum": [
+          "passed",
+          "failed",
+          "timeout",
+          "refused"
+        ]
+      },
+      "exit_code": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "integer"
+          }
+        ]
+      },
+      "source_digest": {
+        "type": "string",
+        "minLength": 1
+      },
+      "argv": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "selected_tests": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "semantics": "The data of the typed value concorde-check-trace, the content of one check's trace node. status is the check result's status, or refused when the boundary refused to start the command; exit_code is its exit status, -1 on timeout, null when refused; source_digest is the measured digest taken before the run; argv is the command as run; selected_tests are the tests a selective check selected, empty otherwise. The node's identity is the check identity, its metadata the check and its Module, its status ok for passed and failed otherwise, its outcome the check status, its usage the check's duration, and output.log its artifact with the log digest. A behaviour or field change increments the version.",
+  "example": {
+    "status": "failed",
+    "exit_code": 1,
+    "source_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "argv": [
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/http"
+    ],
+    "selected_tests": []
+  }
+}
+```
 
 A consumer decides whether a stored check result is still current by recomputing `measured_digest`
 for the same check and, for a selective check, the same selected Modules, and comparing it with
@@ -184,8 +258,8 @@ the caller keeps as a cause under its own link.
 
 ### req.checks.logs-where-asked — Check output stays with the caller's run
 
-The check service SHALL write every configured check's log only into the log directory its caller
-named.
+The check service SHALL record every configured check it runs as a trace node, with its log, only
+inside the trace directory its caller named.
 
 ### req.checks.failure-link — A failing check explains itself
 
@@ -203,7 +277,7 @@ start.
 - GIVEN a worktree whose Module A has one configured check and Module B none
 - WHEN the service runs with a changed path of A's realization or A's [Spec](../../glossary.json#concept.spec)
 - THEN it selects A, runs its check read-only and returns one result with its status, exit code, source digest and log path
-- AND the log is written into the caller's log directory
+- AND the check's trace node, with its `output.log`, is written into the caller's trace directory
 
 ### scenario.checks.service-no-checks — A Module without checks gets no result
 

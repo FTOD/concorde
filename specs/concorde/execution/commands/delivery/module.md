@@ -82,7 +82,12 @@ applied confirmations, and each run of the workspace since the previous delivery
 status, summary, worker run identities, result digest). Full results,
 [run records](../../../glossary.json#concept.run-record) and worker transcripts stay in the
 Git-ignored [run store](../../../glossary.json#concept.run-store); the bundle carries only
-identities and digests ([exact shape](contracts.md#contract.delivery.evidence-bundle)).
+identities and digests ([exact shape](contracts.md#contract.delivery.evidence-bundle)). It is
+readable on its own: after [Tracing](../../../tracing/module.md)'s retention has removed the local
+traces, it is the only record of the delivery and travels with the code, and its run identities
+lead into the traces only while they are kept. The delivery run's own
+[trace node](../../../glossary.json#concept.trace-node) references the delivery commit and the
+bundle (`<commit>:<path>`), so the trace leads to what was committed.
 
 | Status | Code | Reason | Detail |
 | --- | --- | --- | --- |
@@ -149,8 +154,8 @@ is: the commit names the workspace, which the binding names, and nothing else.
 | 10 | Verify the commit is head, its tree the staged tree, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit stays) |
 | 11 | Return the commit as the output | host | — |
 
-Every step before 7 leaves the workspace as it was — Validation writes its check logs and the
-readiness only to the [run directory](../../../glossary.json#concept.run-directory) — so a blocked
+Every step before 7 leaves the workspace as it was — Validation writes its check nodes and the
+readiness only to the run's [trace node](../../../glossary.json#concept.trace-node) — so a blocked
 delivery changes nothing in the workspace. Steps 7–9 are undone together when step 8 or 9 fails
 (`bundle_exists`, `measurement_failed` while staging, `stage_failed`, `commit_failed`): confirmed
 metadata is restored from the bytes read before, the bundle and the directories created for it
@@ -195,9 +200,9 @@ path, so every commit carries it.
   binding, which gives the steps the workspace's name, goal, Modules, bound branch and base commit,
   holds the workspace lock for the whole run, so no other run changes the workspace between the
   readiness and the commit, and records the run. Delivery reads the runs of the workspace from the
-  [run store](../../../glossary.json#concept.run-store) to write the bundle's run entries, relying
-  on each saved result being the run's own and on the store listing a workspace's runs in the order
-  they started.
+  [run store](../../../glossary.json#concept.run-store) of its workspace folder, those started
+  directly and those of its workflow's steps, to write the bundle's run entries, relying on each
+  saved result being the run's own and on each run's start time ordering the runs.
 - <a id="uses-commands"></a>**Commands** lists `delivery` in its catalog, which is how the runner
   finds this [Module](../../../glossary.json#concept.module)'s definition by the command's name.
 - <a id="uses-validation"></a>**Validation** provides the readiness steps and the confirmations.

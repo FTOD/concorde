@@ -8,10 +8,11 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 
 ### scenario.execution.bound-run — A run works on the workspace its worktree binds
 
-- GIVEN a task worktree whose binding names the workspace `severity`, the [Module](../glossary.json#concept.module) `module.issues`, its branch and base commit and the primary worktree's `.concorde` as its records directory
+- GIVEN a task worktree whose binding names the workspace `severity`, the [Module](../glossary.json#concept.module) `module.issues`, its branch and base commit, the workspace folder `.concorde/tasks/severity/workspace/` of the primary worktree and that worktree's `.concorde`
 - WHEN the task level runs `concorde run implement --goal "…"` in that worktree
 - THEN the run works on `module.issues` with the grant computed from that worktree's Specs
-- AND its result names the workspace `severity` and is saved under the primary worktree's `.concorde/runs/`
+- AND its result names the workspace `severity` and is saved in its [trace node](../glossary.json#concept.trace-node) `runs/<run-id>/` of that workspace folder, whose `trace.json` names the workspace, the Module and the Operation
+- AND its run lock and the [workspace lock](../glossary.json#concept.workspace-lock) are files under the primary worktree's `.concorde/locks/`
 - AND neither the binding nor any [task record](../glossary.json#concept.task-record) changes
 
 ### scenario.execution.binding-refused — A broken or copied binding is refused
@@ -33,7 +34,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - GIVEN a primary worktree with `module.a`
 - WHEN the [main agent](../glossary.json#concept.main-agent) runs `concorde run spec_review --modules module.a` there
 - THEN the reviewer runs in an [unbound checkout](../glossary.json#concept.unbound-checkout) of the primary worktree's `HEAD`, with the grant computed from its Specs
-- AND the result has `workspace` null, names that `HEAD` as `commit` and is saved under the primary worktree's `.concorde/runs/`
+- AND the result has `workspace` null, names that `HEAD` as `commit` and is saved in the trace node `.concorde/unbound/<run-id>/` of the primary worktree
 - AND a later [unbound run](../glossary.json#concept.unbound-run) may admit it with `--input`
 - BUT an `--input` naming a run of a workspace is refused with `input_not_admissible`
 
@@ -43,7 +44,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - WHEN an unbound `understand` run is started there and a main session commits a merge in the primary worktree while its worker works
 - THEN the run's steps and worker work in a detached checkout of `C` in a private temporary directory, reading `C`'s files without the uncommitted change, the primary worktree's `.venv` through a link, and the submodule with the same sparse patterns
 - AND the worker's audit of the checkout is clean, and its model is the one `C`'s committed [worker configuration](../glossary.json#concept.worker-configuration) chooses, not an uncommitted change of it
-- AND the result is `ok`, names `C` as `commit`, has `checkout` evidence and is saved in the primary worktree's run store
+- AND the result is `ok`, names `C` as `commit`, has `checkout` evidence and is saved in the primary worktree's `.concorde/unbound/`
 - AND the checkout and its temporary directory are gone once the result is written, also when a step raised an error, and the primary worktree keeps its uncommitted change, its `.venv` and the merge
 - BUT in a worktree whose `HEAD` names no commit the run is refused with `checkout_unavailable`, reason `environment`, and leaves nothing behind
 
@@ -102,7 +103,7 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - WHEN `concorde run` or an [execution command](../glossary.json#concept.execution-command) is invoked
 - THEN it exits with status 2
 - AND standard error names what is wrong, such as the unknown Operation or argument
-- AND no result is written and no run's directory is created
+- AND no result is written and no trace node is created
 
 ### scenario.execution.progress-file — A run shows its progress
 
@@ -111,7 +112,8 @@ Concrete situations that show the [requirements](requirements.md) of [Execution]
 - THEN its `status.json` names the kind, the Operation, the workspace, the current step and the runner process while it runs
 - AND once finished it holds the result's status and summary
 - AND the worker run it launched records the run's identity in its own [progress file](../glossary.json#concept.progress-file)
-- AND the run's [run lock](../glossary.json#concept.run-lock) is held from before its first `status.json` until after its result, and free once it ended
+- AND the run's [run lock](../glossary.json#concept.run-lock) `locks/runs/<run-id>.lock` is held from before its first `status.json` until after its result, and gone once the runner exited
+- AND its `trace.json` says `running` from before its first step, and once finished holds its end, status, duration and each step with its timing
 
 ### scenario.execution.run-lock — A dead runner is told by its run lock
 
