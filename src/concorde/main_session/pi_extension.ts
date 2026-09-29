@@ -40,6 +40,7 @@ import {
   chainText,
   concordeCommand,
   discoveredRuns,
+  givenText,
   glossaryText,
   lockedInodes,
   OWNED_RUN_ENTRY,
@@ -60,6 +61,7 @@ import {
   type SessionStatus,
   sessionText,
   sessionView,
+  taskSessionArgs,
   taskWorktree,
   view,
   wakes,
@@ -498,10 +500,11 @@ export default function (pi: ExtensionAPI) {
       root = primaryRoot(ctx.cwd);
       // The task worktree's own copy knows the task's Specs and checks, and its workspace binding
       // tells the run what it works on.
-      const worktree = params.task ? taskWorktree(root, params.task) : ctx.cwd;
+      const task = givenText(params.task);
+      const worktree = task ? taskWorktree(root, task) : ctx.cwd;
       if (worktree === null)
         throw new Error(
-          `task ${params.task} has no worktree in ${root}; run concorde task list to see the tasks`,
+          `task ${task} has no worktree in ${root}; run concorde task list to see the tasks`,
         );
       const [command, ...prefix] = concordeCommand(worktree);
       // `--detach` starts the runner as a process of its own, which writes its output to
@@ -588,7 +591,7 @@ export default function (pi: ExtensionAPI) {
       track(operation, shown.finished, true);
       if (shown.finished) markGiven(runId, tracked.get(runId)!);
       refresh(ctx);
-      const started = `Started ${params.operation} ${params.task ? `in the worktree of task ${params.task}` : "unbound"} as run ${runId} (runner process ${announced.host_pid}).`;
+      const started = `Started ${params.operation} ${task ? `in the worktree of task ${task}` : "unbound"} as run ${runId} (runner process ${announced.host_pid}).`;
       return {
         content: [
           {
@@ -642,18 +645,9 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_id, params, _signal, _onUpdate, ctx) {
       root = primaryRoot(ctx.cwd);
-      const args = [
-        "task",
-        "session",
-        params.task,
-        ...(params.answer !== undefined ? ["--answer", params.answer] : []),
-        ...(params.stop ? ["--stop"] : []),
-        ...(params.model ? ["--model", params.model] : []),
-        // A new task session is started for this session, which owns its rounds.
-        ...(params.answer === undefined && !params.stop && mainId
-          ? ["--main", mainId]
-          : []),
-      ];
+      // An empty answer or model is absent; a new task session is started for this session,
+      // which owns its rounds.
+      const args = taskSessionArgs(params, mainId);
       const outcome = await concorde(root, args);
       if (outcome.code !== 0 || !outcome.value)
         throw new Error(

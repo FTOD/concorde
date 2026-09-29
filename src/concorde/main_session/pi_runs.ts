@@ -474,6 +474,38 @@ export function taskWorktree(root: string, task: string): string | null {
   return typeof worktree === "string" && existsSync(worktree) ? worktree : null;
 }
 
+/**
+ * An optional text argument of a tool as it was given: absent when it is missing, empty or only
+ * whitespace, since a model may fill an optional field it means to leave out with an empty string.
+ */
+export function givenText(value: string | undefined): string | undefined {
+  return value === undefined || value.trim() === "" ? undefined : value;
+}
+
+/**
+ * The arguments of `concorde task session` for a call of the `concorde_task_session` tool. An
+ * empty `answer` or `model` is left out as absent; a start, neither an answer nor a stop, names
+ * the main session `mainId` with `--main` as the owner of the task session's rounds.
+ */
+export function taskSessionArgs(
+  params: { task: string; answer?: string; stop?: boolean; model?: string },
+  mainId: string,
+): string[] {
+  const answer = givenText(params.answer);
+  const model = givenText(params.model);
+  return [
+    "task",
+    "session",
+    params.task,
+    ...(answer !== undefined ? ["--answer", answer] : []),
+    ...(params.stop ? ["--stop"] : []),
+    ...(model !== undefined ? ["--model", model] : []),
+    ...(answer === undefined && !params.stop && mainId
+      ? ["--main", mainId]
+      : []),
+  ];
+}
+
 /** The `concorde` command of a project: its installed command, a source checkout, or PATH. */
 export function concordeCommand(root: string): string[] {
   const installed = join(root, ".concorde", "bin", "concorde");

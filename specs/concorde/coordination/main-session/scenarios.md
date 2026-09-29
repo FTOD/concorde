@@ -196,6 +196,13 @@ Situations the [main-session guidance](module.md) prepares the
 - AND the second's tool result names the first as the owner that alone will be woken
 - AND a round of a task session started without `--main` wakes neither
 
+### scenario.main-session.pi-tool-empty-argument — pi treats an empty optional argument of its tools as absent
+
+- GIVEN a pi main session whose model fills an optional text argument of `concorde_task_session` (`answer`, `model`) or `concorde_run` (`task`) with an empty or whitespace-only string
+- WHEN the tool runs
+- THEN it runs the `concorde` command as if the argument had been left out, passing no empty flag value such as `--answer ""`
+- AND a `concorde_task_session` call with an empty `answer` and no `stop` starts a task session named with `--main`, as a start does
+
 ### scenario.main-session.claude-sees-by-query — A Claude Code main session sees another session's work by asking
 
 - GIVEN a Claude Code main session and another main session of the same project that owns a run of the task `t1` or a round of its task session

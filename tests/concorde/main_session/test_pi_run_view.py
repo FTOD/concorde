@@ -547,7 +547,7 @@ class RunViewTests(unittest.TestCase):
         extension = (SOURCE.parent / "pi_extension.ts").read_text()
         refusal = extension.index("if (worktree === null)")
         self.assertIn(
-            "`task ${params.task} has no worktree in ${root}",
+            "`task ${task} has no worktree in ${root}",
             extension[refusal : refusal + 200],
         )
         self.assertLess(refusal, extension.index("spawn(", refusal))
@@ -1019,13 +1019,75 @@ class OwnerTests(unittest.TestCase):
         out = self.probe([], [], records)
         self.assertEqual(["0199a3", None, None, None], out["owners"])
         # A start names this session with --main; an answer leaves the owner as it is.
+        calls = self.arguments(
+            [
+                {"task": "t1"},
+                {"task": "t1", "answer": "yes"},
+                {"task": "t1", "stop": True},
+            ]
+        )["session"]
+        self.assertEqual(["task", "session", "t1", "--main", "0199a3"], calls[0])
+        self.assertEqual(["task", "session", "t1", "--answer", "yes"], calls[1])
+        self.assertEqual(["task", "session", "t1", "--stop"], calls[2])
         extension = (SOURCE.parent / "pi_extension.ts").read_text()
-        self.assertIn('? ["--main", mainId]', extension)
-        self.assertIn(
-            "params.answer === undefined && !params.stop && mainId", extension
-        )
+        self.assertIn("taskSessionArgs(params, mainId)", extension)
         self.assertIn(
             "which alone is woken when it ends, so you will not be woken", extension
+        )
+
+    def arguments(self, calls, texts=()):
+        """The ``concorde task session`` arguments of each ``concorde_task_session`` call in
+        ``calls`` for the main session ``0199a3``, and each of ``texts`` as a given text."""
+        with tempfile.TemporaryDirectory() as directory:
+            probe = Path(directory) / "arguments.mts"
+            probe.write_text(
+                "import { givenText, taskSessionArgs } from "
+                f"{json.dumps(SOURCE.as_posix())};\n"
+                "console.log(JSON.stringify({\n"
+                f"  session: {json.dumps(calls)}"
+                ".map((call) => taskSessionArgs(call, '0199a3')),\n"
+                f"  given: {json.dumps(list(texts))}"
+                ".map((text) => givenText(text ?? undefined) ?? null),\n"
+                "}));\n"
+            )
+            completed = subprocess.run(
+                ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        return json.loads(completed.stdout)
+
+    @verifies("scenario.main-session.pi-tool-empty-argument")
+    def test_an_empty_optional_argument_is_absent(self):
+        out = self.arguments(
+            [
+                {"task": "t1", "answer": "", "model": ""},
+                {"task": "t1", "answer": "  \n", "model": " "},
+                {"task": "t1", "answer": "", "stop": True},
+                {"task": "t1", "answer": "go on", "model": "openai/gpt"},
+            ],
+            [None, "", "   ", "t1", " t1 "],
+        )
+        # An empty answer is no answer: the call starts a task session owned by this session.
+        self.assertEqual(
+            [
+                ["task", "session", "t1", "--main", "0199a3"],
+                ["task", "session", "t1", "--main", "0199a3"],
+                ["task", "session", "t1", "--stop"],
+                ["task", "session", "t1", "--answer", "go on", "--model", "openai/gpt"],
+            ],
+            out["session"],
+        )
+        self.assertEqual([None, None, None, "t1", " t1 "], out["given"])
+        # concorde_run's optional task goes through the same reading before it picks a worktree.
+        extension = (SOURCE.parent / "pi_extension.ts").read_text()
+        self.assertIn("const task = givenText(params.task);", extension)
+        self.assertLess(
+            extension.index("const task = givenText(params.task);"),
+            extension.index("taskWorktree(root, task)"),
         )
 
 

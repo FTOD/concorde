@@ -217,8 +217,10 @@ wake -> next: between turns
 
 The view follows pi task sessions the same way. The `concorde_task_session` tool starts a task
 session, answers it (`answer`, which starts the next round) or stops its running round (`stop`), by
-running `concorde task session` from the primary worktree, and returns at once; a start names the
-session with `--main`, so the task session's [trace node](../../glossary.json#concept.trace-node)
+running `concorde task session` from the primary worktree, and returns at once. Like `concorde_run`,
+it takes an optional text argument (`answer`, `model`, or `concorde_run`'s `task`) that is empty or
+only whitespace as absent, since a model may fill an optional field it means to leave out that way.
+A start names the session with `--main`, so the task session's [trace node](../../glossary.json#concept.trace-node)
 names it as the owner of every round of that task session. The extension reads each pi session's
 status file `status.json` in the session's node `.concorde/tasks/<task>/sessions/<session>/` and
 shows every running round as an external job — its task, round and the session's latest tool call —
